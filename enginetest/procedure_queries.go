@@ -18,7 +18,7 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 var ProcedureTests = []ScriptTest{
 	{
-		Name: "simple select",
+		Name: "Simple SELECT",
 		SetUpScript: []string{
 			"CREATE PROCEDURE testabc(x DOUBLE, y DOUBLE) SELECT x*y",
 		},
@@ -36,6 +36,98 @@ var ProcedureTests = []ScriptTest{
 				Expected: []sql.Row{
 					{
 						float64(85.5),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "OUT param with SET",
+		SetUpScript: []string{
+			"SET @outparam = 5",
+			"CREATE PROCEDURE testabc(OUT x BIGINT) SET x = 9",
+			"CALL testabc(@outparam)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						int64(9),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "OUT param without SET",
+		SetUpScript: []string{
+			"SET @outparam = 5",
+			"CREATE PROCEDURE testabc(OUT x BIGINT) SELECT x",
+			"CALL testabc(@outparam)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						nil,
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "INOUT param with SET",
+		SetUpScript: []string{
+			"SET @outparam = 5",
+			"CREATE PROCEDURE testabc(INOUT x BIGINT) BEGIN SET x = x + 1; SET x = x + 3; END;",
+			"CALL testabc(@outparam)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						int64(9),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "INOUT param without SET",
+		SetUpScript: []string{
+			"SET @outparam = 5",
+			"CREATE PROCEDURE testabc(INOUT x BIGINT) SELECT x",
+			"CALL testabc(@outparam)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						int64(5),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "Nested CALL with INOUT param",
+		SetUpScript: []string{
+			"SET @outparam = 5",
+			"CREATE PROCEDURE p3(INOUT z INT) BEGIN SET z = z * 111; END;",
+			"CREATE PROCEDURE p2(INOUT y DOUBLE) BEGIN SET y = y + 4; CALL p3(y); END;",
+			"CREATE PROCEDURE p1(INOUT x BIGINT) BEGIN SET x = 3; CALL p2(x); END;",
+			"CALL p1(@outparam)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						int64(777),
 					},
 				},
 			},

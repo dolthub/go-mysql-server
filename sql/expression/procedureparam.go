@@ -15,20 +15,80 @@
 package expression
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-//TODO: doc
+// ProcedureParamReference contains the references to the parameters for a single CALL statement.
 type ProcedureParamReference struct {
-	NameToParam map[string]interface{} // Names are always lowercase for simplicity
+	nameToParam map[string]*procedureParamReferenceValue
+}
+type procedureParamReferenceValue struct {
+	Name       string
+	Value      interface{}
+	SqlType    sql.Type
+	HasBeenSet bool
+}
+
+// Initialize sets the initial value for the parameter.
+func (ppr *ProcedureParamReference) Initialize(name string, sqlType sql.Type, val interface{}) {
+	name = strings.ToLower(name)
+	ppr.nameToParam[name] = &procedureParamReferenceValue{
+		Name:       name,
+		Value:      val,
+		SqlType:    sqlType,
+		HasBeenSet: false,
+	}
+}
+
+// Get returns the value of the given parameter. Name is case-insensitive.
+func (ppr *ProcedureParamReference) Get(name string) (interface{}, error) {
+	name = strings.ToLower(name)
+	paramRefVal, ok := ppr.nameToParam[name]
+	if !ok {
+		return nil, fmt.Errorf("cannot find value for parameter `%s`", name)
+	}
+	return paramRefVal.Value, nil
+}
+
+// Set updates the value of the given parameter. Name is case-insensitive.
+func (ppr *ProcedureParamReference) Set(name string, val interface{}, valType sql.Type) error {
+	name = strings.ToLower(name)
+	paramRefVal, ok := ppr.nameToParam[name]
+	if !ok {
+		return fmt.Errorf("cannot find value for parameter `%s`", name)
+	}
+	//TODO: do some actual type checking using the given value's type
+	val, err := paramRefVal.SqlType.Convert(val)
+	if err != nil {
+		return err
+	}
+	paramRefVal.Value = val
+	paramRefVal.HasBeenSet = true
+	return nil
+}
+
+// HasBeenSet returns whether the parameter has had its value altered from the initial value.
+func (ppr *ProcedureParamReference) HasBeenSet(name string) bool {
+	name = strings.ToLower(name)
+	paramRefVal, ok := ppr.nameToParam[name]
+	if !ok {
+		return false
+	}
+	return paramRefVal.HasBeenSet
+}
+
+func NewProcedureParamReference() *ProcedureParamReference {
+	return &ProcedureParamReference{make(map[string]*procedureParamReferenceValue)}
 }
 
 // ProcedureParam represents the parameter of a stored procedure or stored function.
 type ProcedureParam struct {
-	name string
-	pRef *ProcedureParamReference
+	name       string
+	pRef       *ProcedureParamReference
+	hasBeenSet bool
 }
 
 // NewProcedureParam creates a new ProcedureParam expression.
@@ -68,7 +128,7 @@ func (pp *ProcedureParam) String() string {
 
 // Eval implements the sql.Expression interface.
 func (pp *ProcedureParam) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
-	return pp.pRef.NameToParam[pp.name], nil
+	return pp.pRef.Get(pp.name)
 }
 
 // WithChildren implements the sql.Expression interface.
@@ -84,4 +144,9 @@ func (pp *ProcedureParam) WithParamReference(pRef *ProcedureParamReference) *Pro
 	npp := *pp
 	npp.pRef = pRef
 	return &npp
+}
+
+// Set sets the value of this procedure parameter to the given value.
+func (pp *ProcedureParam) Set(val interface{}, valType sql.Type) error {
+	return pp.pRef.Set(pp.name, val, valType)
 }

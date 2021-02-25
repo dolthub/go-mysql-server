@@ -309,12 +309,13 @@ type Context struct {
 	Session
 	*IndexRegistry
 	*ViewRegistry
-	Memory    *MemoryManager
-	pid       uint64
-	query     string
-	queryTime time.Time
-	tracer    opentracing.Tracer
-	rootSpan  opentracing.Span
+	ProcedureCache *ProcedureCache
+	Memory         *MemoryManager
+	pid            uint64
+	query          string
+	queryTime      time.Time
+	tracer         opentracing.Tracer
+	rootSpan       opentracing.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -399,7 +400,7 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
+	c := &Context{ctx, NewBaseSession(), nil, nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -410,6 +411,10 @@ func NewContext(
 
 	if c.ViewRegistry == nil {
 		c.ViewRegistry = NewViewRegistry()
+	}
+
+	if c.ProcedureCache == nil {
+		c.ProcedureCache = NewProcedureCache(false)
 	}
 
 	if c.Memory == nil {
@@ -454,16 +459,17 @@ func (c *Context) Span(
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
 	return span, &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
+		Context:        ctx,
+		Session:        c.Session,
+		IndexRegistry:  c.IndexRegistry,
+		ViewRegistry:   c.ViewRegistry,
+		ProcedureCache: c.ProcedureCache,
+		Memory:         c.Memory,
+		pid:            c.Pid(),
+		query:          c.Query(),
+		queryTime:      c.queryTime,
+		tracer:         c.tracer,
+		rootSpan:       c.rootSpan,
 	}
 }
 
@@ -472,16 +478,17 @@ func (c *Context) Span(
 func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(c.Context)
 	return &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
+		Context:        ctx,
+		Session:        c.Session,
+		IndexRegistry:  c.IndexRegistry,
+		ViewRegistry:   c.ViewRegistry,
+		ProcedureCache: c.ProcedureCache,
+		Memory:         c.Memory,
+		pid:            c.Pid(),
+		query:          c.Query(),
+		queryTime:      c.queryTime,
+		tracer:         c.tracer,
+		rootSpan:       c.rootSpan,
 	}, cancelFunc
 }
 
@@ -493,16 +500,17 @@ func (c *Context) WithCurrentDB(db string) *Context {
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
 	return &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
+		Context:        ctx,
+		Session:        c.Session,
+		IndexRegistry:  c.IndexRegistry,
+		ViewRegistry:   c.ViewRegistry,
+		ProcedureCache: c.ProcedureCache,
+		Memory:         c.Memory,
+		pid:            c.Pid(),
+		query:          c.Query(),
+		queryTime:      c.queryTime,
+		tracer:         c.tracer,
+		rootSpan:       c.rootSpan,
 	}
 }
 
