@@ -3862,7 +3862,7 @@ var QueryTests = []QueryTest{
 		Query:    `select pk1, pk2, 
 			row_number() over (partition by pk1 order by c1 desc), 
 			row_number() over (partition by pk2 order by 10 - c1),
-			max(c4)
+			max(c4) over ()
 			from two_pk order by 1,2;`,
 		Expected: []sql.Row{
 			{0,0,2,2,33},

@@ -2153,10 +2153,10 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	`SELECT a, count(i) over (partition by s order by x) FROM foo`: plan.NewWindow(
+	`SELECT a, row_number() over (partition by s order by x) FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("s"),
 				},
@@ -2167,22 +2167,16 @@ var fixtures = map[string]sql.Node{
 						NullOrdering: sql.NullsFirst,
 					},
 				},
-			), expression.NewUnresolvedColumn("i")),
+			)),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	`SELECT a, count(i) over (order by x) FROM foo`: plan.NewWindow(
+	`SELECT a, count(i) over () FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewUnresolvedFunction("count", true, sql.NewWindow(
 				[]sql.Expression{},
-				sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
-					},
-				},
+				nil,
 			), expression.NewUnresolvedColumn("i")),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2209,7 +2203,7 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	`SELECT a, row_number() over (order by x), max(b) over (partition by y) FROM foo`: plan.NewWindow(
+	`SELECT a, row_number() over (order by x), max(b) over () FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
@@ -2223,9 +2217,7 @@ var fixtures = map[string]sql.Node{
 				},
 			)),
 			expression.NewUnresolvedFunction("max", true, sql.NewWindow(
-				[]sql.Expression{
-					expression.NewUnresolvedColumn("y"),
-				},
+				[]sql.Expression{},
 				nil,
 				),
 				expression.NewUnresolvedColumn("b"),
@@ -2565,6 +2557,10 @@ var fixturesErrors = map[string]*errors.Kind{
 	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`:   ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
 	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    ErrUnknownIndexColumn,
+	`SELECT a, count(i) over (order by x) FROM foo`:  		   ErrUnsupportedFeature,
+	`SELECT a, count(i) over (partition by y) FROM foo`:  		   ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a) group by 1`:     ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a), max(b)`:     ErrUnsupportedFeature,
 }
 
 func TestParseErrors(t *testing.T) {

@@ -1611,6 +1611,18 @@ func selectToSelectionNode(
 	}
 
 	if isWindow {
+		if len(g) > 0 {
+			return nil, ErrUnsupportedFeature.New("group by with window functions")
+		}
+		for _, e := range selectExprs {
+			if isAggregateExpr(e) {
+				if uf, ok := e.(*expression.UnresolvedFunction); ok {
+					if uf.Window == nil || len(uf.Window.PartitionBy) > 0 || len(uf.Window.OrderBy) > 0 {
+						return nil, ErrUnsupportedFeature.New("aggregate functions appearing alongside window functions must have an empty OVER () clause")
+					}
+				}
+			}
+		}
 		return plan.NewWindow(selectExprs, child), nil
 	}
 
