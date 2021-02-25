@@ -17,12 +17,12 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -37,8 +37,8 @@ func TestPushdownSortProject(t *testing.T) {
 
 	tests := []analyzerFnTestCase{
 		{
-			name:     "no reorder needed",
-			node:     plan.NewSort(
+			name: "no reorder needed",
+			node: plan.NewSort(
 				[]sql.SortField{
 					{Column: expression.NewUnresolvedColumn("x")},
 				},

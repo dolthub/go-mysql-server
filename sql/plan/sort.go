@@ -192,4 +192,3 @@ func (i *sortIter) computeSortedRows() error {
 	i.sortedRows = rows
 	return nil
 }
-

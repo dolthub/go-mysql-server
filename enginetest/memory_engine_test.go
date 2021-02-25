@@ -89,11 +89,11 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
+		Query: `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
 		Expected: []sql.Row{
-			{1,3},
-			{2,2},
-			{3,1}},
+			{1, 3},
+			{2, 2},
+			{3, 1}},
 	}
 	fmt.Sprintf("%v", test)
 

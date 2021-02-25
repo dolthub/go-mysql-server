@@ -24,7 +24,7 @@ import (
 
 type RowNumber struct {
 	window *sql.Window
-	pos  int
+	pos    int
 }
 
 var _ sql.FunctionExpression = (*RowNumber)(nil)
@@ -164,13 +164,12 @@ func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
 	return nil
 }
 
-
 func partitionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
 	sfs := make(sql.SortFields, len(partitionExprs))
 	for i, expr := range partitionExprs {
 		sfs[i] = sql.SortField{
-			Column:       expr,
-			Order:        sql.Ascending,
+			Column: expr,
+			Order:  sql.Ascending,
 		}
 	}
 	return sfs

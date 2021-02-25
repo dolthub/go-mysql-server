@@ -77,4 +77,3 @@ func (n BinaryNode) Children() []sql.Node {
 func (n BinaryNode) Resolved() bool {
 	return n.left.Resolved() && n.right.Resolved()
 }
-

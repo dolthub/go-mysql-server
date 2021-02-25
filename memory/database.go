@@ -15,8 +15,9 @@
 package memory
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Database is an in-memory database.

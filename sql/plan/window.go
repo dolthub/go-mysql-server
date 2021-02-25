@@ -112,12 +112,12 @@ func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 }
 
 type windowIter struct {
-	ctx          *sql.Context
-	selectExprs  []sql.Expression
-	childIter    sql.RowIter
-	rows         []sql.Row
-	buffers      []sql.Row
-	pos          int
+	ctx         *sql.Context
+	selectExprs []sql.Expression
+	childIter   sql.RowIter
+	rows        []sql.Row
+	buffers     []sql.Row
+	pos         int
 }
 
 func (i *windowIter) Next() (sql.Row, error) {
@@ -205,7 +205,6 @@ func (i *windowIter) compute() error {
 
 	return nil
 }
-
 
 func newBuffer(expr sql.Expression) sql.Row {
 	switch n := expr.(type) {

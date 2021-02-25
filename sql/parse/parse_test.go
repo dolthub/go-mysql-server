@@ -2219,7 +2219,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedFunction("max", true, sql.NewWindow(
 				[]sql.Expression{},
 				nil,
-				),
+			),
 				expression.NewUnresolvedColumn("b"),
 			),
 		},
@@ -2557,10 +2557,10 @@ var fixturesErrors = map[string]*errors.Kind{
 	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`:   ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
 	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    ErrUnknownIndexColumn,
-	`SELECT a, count(i) over (order by x) FROM foo`:  		   ErrUnsupportedFeature,
-	`SELECT a, count(i) over (partition by y) FROM foo`:  		   ErrUnsupportedFeature,
+	`SELECT a, count(i) over (order by x) FROM foo`:           ErrUnsupportedFeature,
+	`SELECT a, count(i) over (partition by y) FROM foo`:       ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a) group by 1`:     ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a), max(b)`:     ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a), max(b)`:        ErrUnsupportedFeature,
 }
 
 func TestParseErrors(t *testing.T) {

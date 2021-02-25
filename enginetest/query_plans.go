@@ -36,7 +36,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query:        `select row_number() over (order by i desc), mytable.i as i2 
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
 				from mytable join othertable on i = i2 order by 1`,
 		ExpectedPlan: "Sort(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) ASC)\n" +
 			" └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
@@ -46,7 +46,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query:        `select row_number() over (order by i desc), mytable.i as i2 
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
 				from mytable join othertable on i = i2
 				where mytable.i = 2
 				order by 1`,

@@ -107,10 +107,10 @@ func NewUnresolvedFunction(
 	arguments ...sql.Expression,
 ) *UnresolvedFunction {
 	return &UnresolvedFunction{
-		name: name,
+		name:        name,
 		IsAggregate: agg,
-		Window: window,
-		Arguments: arguments,
+		Window:      window,
+		Arguments:   arguments,
 	}
 }
 
@@ -172,8 +172,8 @@ func (*UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error
 
 // WithChildren implements the Expression interface.
 func (uf *UnresolvedFunction) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != len(uf.Arguments) + len(uf.Window.ToExpressions()) {
-		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments) + len(uf.Window.ToExpressions()))
+	if len(children) != len(uf.Arguments)+len(uf.Window.ToExpressions()) {
+		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments)+len(uf.Window.ToExpressions()))
 	}
 
 	window, err := uf.Window.FromExpressions(children[len(uf.Arguments):])

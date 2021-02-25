@@ -45,8 +45,8 @@ func (w *Window) FromExpressions(children []Expression) (*Window, error) {
 		return nil, nil
 	}
 
-	if len(children) != len(w.OrderBy) +len(w.PartitionBy) {
-		return nil, ErrInvalidChildrenNumber.New(w, len(children), len(w.OrderBy) +len(w.PartitionBy))
+	if len(children) != len(w.OrderBy)+len(w.PartitionBy) {
+		return nil, ErrInvalidChildrenNumber.New(w, len(children), len(w.OrderBy)+len(w.PartitionBy))
 	}
 
 	nw := *w

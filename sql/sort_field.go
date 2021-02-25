@@ -102,4 +102,3 @@ const (
 	// NullsLast puts the null values after all other values.
 	NullsLast NullOrdering = 2
 )
-
