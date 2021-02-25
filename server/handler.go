@@ -303,6 +303,21 @@ func (h *Handler) doQuery(
 	// for execution.
 	// TODO: unify parser logic so we don't have to parse twice
 	parsedQuery, parseErr := sqlparser.Parse(query)
+	switch n := parsedQuery.(type) {
+	case *sqlparser.Load:
+		if n.Local {
+			// tell the connection to undergo the load data process with this
+			// metdata
+			err = c.HandleLoadDataLocalQuery("/tmp", n.Infile)
+			if err != nil {
+				return err
+			}
+		}
+	default:
+	}
+
+	// TODO: Check if this is a load query so I can send the packet with my data
+
 	var schema sql.Schema
 	var rows sql.RowIter
 	if len(bindings) == 0 {
