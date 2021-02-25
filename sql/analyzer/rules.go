@@ -21,6 +21,7 @@ import (
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
+	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
 	{"resolve_set_variables", resolveSetVariables},

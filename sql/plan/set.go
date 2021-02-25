@@ -91,6 +91,15 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if err != nil {
 				return nil, err
 			}
+		case *expression.ProcedureParam:
+			value, err := setField.Right.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			err = left.Set(value, setField.Right.Type())
+			if err != nil {
+				return nil, err
+			}
 		case *expression.GetField:
 			updateExprs = append(updateExprs, setField)
 		default:
