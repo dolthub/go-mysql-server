@@ -66,6 +66,7 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// 2. How do i go through the non local path for discovering files
 	// 3. Biggest Risk is nailing the parsing algorithm and getting the types correct
 	// TODO: Add the security variables for mysql
+	// Current actions: Clean up parsing of lines -> Hack into values -> write test cases -> Revist value parsing
 
 	// Start the parsing by grabbing all the config variables.
 	l.updateParsingConsts()
@@ -82,21 +83,19 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 	defer file.Close()
 
-	//scanner := bufio.NewScanner(file)
-	//parseLines(scanner)
+	scanner := bufio.NewScanner(file)
+	parseLines(scanner)
 
 	var values [][]sql.Expression
-	scanner := bufio.NewScanner(file)
+	scanner = bufio.NewScanner(file)
 	for scanner.Scan() {
-		txt := scanner.Text()
-		exprs := make([]sql.Expression, 1)
+		line := scanner.Text()
+		exprs, err := parseFields(line)
 
-		val, err := strconv.ParseInt(txt, 10, 64)
 		if err != nil {
 			return nil, err
 		}
 
-		exprs[0] = expression.NewLiteral(val, sql.Int8)
 		values = append(values, exprs)
 	}
 
@@ -146,7 +145,7 @@ func (l LoadData) updateParsingConsts() {
 	}
 }
 
-func parseLines(scanner *bufio.Scanner) string {
+func parseLines(scanner *bufio.Scanner) {
 	splitFunc := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		if atEOF {
 			return 0, nil, nil
@@ -164,9 +163,10 @@ func parseLines(scanner *bufio.Scanner) string {
 			endingDelimPos = strings.Index(string(data), linesTerminatedByDelim)
 		}
 
-		// Throw an error if an ending token was expected but not given. TODO: make sure this correct
+
+		// Return the remaining data and exit
 		if endingDelimPos < 0 && linesTerminatedByDelim != "" {
-			return 0, nil, fmt.Errorf("error: data does not meet parsing criteria")
+			return len(data), data[0:], nil
 		}
 
 		if linesStartingByDelim == "" {
@@ -199,13 +199,18 @@ func parseLines(scanner *bufio.Scanner) string {
 	}
 
 	scanner.Split(splitFunc)
+}
 
-	for scanner.Scan() {
-		x := scanner.Text()
-		fmt.Println(x)
+func parseFields(line string) ([]sql.Expression, error) {
+	exprs := make([]sql.Expression, 1)
+
+	val, err := strconv.ParseInt(line, 10, 64)
+	if err != nil {
+		return nil, err
 	}
 
-	return ""
+	exprs[0] = expression.NewLiteral(val, sql.Int8)
+	return exprs, nil
 }
 
 func getLoadPath(fileName string, local bool) string {
