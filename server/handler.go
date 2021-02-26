@@ -316,8 +316,6 @@ func (h *Handler) doQuery(
 	default:
 	}
 
-	// TODO: Check if this is a load query so I can send the packet with my data
-
 	var schema sql.Schema
 	var rows sql.RowIter
 	if len(bindings) == 0 {
