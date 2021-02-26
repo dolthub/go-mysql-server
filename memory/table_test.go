@@ -19,8 +19,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/memory"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"

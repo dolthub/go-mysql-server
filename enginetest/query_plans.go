@@ -36,6 +36,29 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
+				from mytable join othertable on i = i2 order by 1`,
+		ExpectedPlan: "Sort(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) ASC)\n" +
+			" └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
+			"     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"         ├─ Table(mytable)\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
+				from mytable join othertable on i = i2
+				where mytable.i = 2
+				order by 1`,
+		ExpectedPlan: "Sort(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) ASC)\n" +
+			" └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
+			"     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"         ├─ Filter(mytable.i = 2)\n" +
+			"         │   └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
 		Query: "INSERT INTO mytable(i,s) SELECT t1.i, 'hello' FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Insert(i, s)\n" +
 			" ├─ Table(mytable)\n" +

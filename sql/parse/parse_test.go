@@ -935,7 +935,7 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
-		[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+		[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
@@ -961,7 +961,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
 		plan.NewSort(
-			[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -973,7 +973,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
 		plan.NewSort(
-			[]plan.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: plan.Descending, NullOrdering: plan.NullsFirst}},
+			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -1033,7 +1033,7 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT COUNT(*) FROM t1;`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("count", true,
+			expression.NewUnresolvedFunction("count", true, nil,
 				expression.NewStar()),
 		},
 		[]sql.Expression{},
@@ -1346,6 +1346,7 @@ var fixtures = map[string]sql.Node{
 			expression.NewUnresolvedFunction(
 				"somefunc",
 				false,
+				nil,
 				expression.NewTuple(
 					expression.NewLiteral(int8(1), sql.Int8),
 					expression.NewLiteral(int8(2), sql.Int8),
@@ -1508,16 +1509,16 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`SELECT a, b FROM t ORDER BY 2, 1`: plan.NewSort(
-		[]plan.SortField{
+		[]sql.SortField{
 			{
 				Column:       expression.NewLiteral(int8(2), sql.Int8),
-				Order:        plan.Ascending,
-				NullOrdering: plan.NullsFirst,
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsFirst,
 			},
 			{
 				Column:       expression.NewLiteral(int8(1), sql.Int8),
-				Order:        plan.Ascending,
-				NullOrdering: plan.NullsFirst,
+				Order:        sql.Ascending,
+				NullOrdering: sql.NullsFirst,
 			},
 		},
 		plan.NewProject(
@@ -1682,7 +1683,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewArithmetic(
 				expression.NewUnresolvedFunction(
-					"max", true, expression.NewUnresolvedColumn("i"),
+					"max", true, nil, expression.NewUnresolvedColumn("i"),
 				),
 				expression.NewLiteral(int8(2), sql.Int8),
 				"/",
@@ -2041,13 +2042,13 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT bar, AVG(baz) FROM foo GROUP BY bar HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(
-			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+			expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
 			expression.NewLiteral(int8(5), sql.Int8),
 		),
 		plan.NewGroupBy(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("bar"),
-				expression.NewUnresolvedFunction("avg", true, expression.NewUnresolvedColumn("baz"))},
+				expression.NewUnresolvedFunction("avg", true, nil, expression.NewUnresolvedColumn("baz"))},
 			[]sql.Expression{expression.NewUnresolvedColumn("bar")},
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2065,11 +2066,11 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewHaving(
 		expression.NewGreaterThan(
-			expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+			expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
 			expression.NewLiteral(int8(5), sql.Int8),
 		),
 		plan.NewGroupBy(
-			[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
+			[]sql.Expression{expression.NewUnresolvedFunction("count", true, nil, expression.NewStar())},
 			[]sql.Expression{expression.NewUnresolvedColumn("a")},
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2077,11 +2078,11 @@ var fixtures = map[string]sql.Node{
 	`SELECT DISTINCT COUNT(*) FROM foo GROUP BY a HAVING COUNT(*) > 5`: plan.NewDistinct(
 		plan.NewHaving(
 			expression.NewGreaterThan(
-				expression.NewUnresolvedFunction("count", true, expression.NewStar()),
+				expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
 				expression.NewLiteral(int8(5), sql.Int8),
 			),
 			plan.NewGroupBy(
-				[]sql.Expression{expression.NewUnresolvedFunction("count", true, expression.NewStar())},
+				[]sql.Expression{expression.NewUnresolvedFunction("count", true, nil, expression.NewStar())},
 				[]sql.Expression{expression.NewUnresolvedColumn("a")},
 				plan.NewUnresolvedTable("foo", ""),
 			),
@@ -2133,14 +2134,14 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT FIRST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("first", true, expression.NewUnresolvedColumn("i")),
+			expression.NewUnresolvedFunction("first", true, nil, expression.NewUnresolvedColumn("i")),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT LAST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("last", true, expression.NewUnresolvedColumn("i")),
+			expression.NewUnresolvedFunction("last", true, nil, expression.NewUnresolvedColumn("i")),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2150,6 +2151,78 @@ var fixtures = map[string]sql.Node{
 			aggregation.NewCountDistinct(expression.NewUnresolvedColumn("i")),
 		},
 		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (partition by s order by x) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("s"),
+				},
+				sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				},
+			)),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, count(i) over () FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+				[]sql.Expression{},
+				nil,
+			), expression.NewUnresolvedColumn("i")),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (order by x), row_number() over (partition by y) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				[]sql.Expression{},
+				sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				},
+			)),
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				[]sql.Expression{
+					expression.NewUnresolvedColumn("y"),
+				},
+				nil,
+			)),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (order by x), max(b) over () FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				[]sql.Expression{},
+				sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				},
+			)),
+			expression.NewUnresolvedFunction("max", true, sql.NewWindow(
+				[]sql.Expression{},
+				nil,
+			),
+				expression.NewUnresolvedColumn("b"),
+			),
+		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`: plan.NewProject(
@@ -2429,7 +2502,7 @@ func TestParse(t *testing.T) {
 
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString
 // methods.
-func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
+func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 	if !assert.Equal(t, expected, actual) {
 		expectedStr := sql.DebugString(expected)
 		actualStr := sql.DebugString(actual)
@@ -2444,16 +2517,28 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 		})
 		require.NoError(t, err)
 
-		a := make([]string, 0, 2)
-		b := make([]string, 0, 1)
-		a = append(a, "a")
-		b = append(b, "a")
-		require.Equal(t, a, b)
-
 		if len(diff) > 0 {
 			fmt.Println(diff)
+		} else {
+			// No textual diff found, but not equal. Ugh. Let's at least figure out which node in the plans isn't equal.
+		Top:
+			for {
+				for i := range expected.Children() {
+					if !assertNodesEqualWithDiff(t, expected.Children()[i], actual.Children()[i]) {
+						expected, actual = expected.Children()[i], actual.Children()[i]
+						continue Top
+					}
+				}
+				// Either no children, or all children were equal. This must the node that's different. Probably should add
+				// enough information in DebugPrint for this node that it shows up in the textual diff.
+				fmt.Printf("Non-textual difference found in node %s -- implement a better DebugPrint?\n", sql.DebugString(expected))
+				break
+			}
 		}
+
+		return false
 	}
+	return true
 }
 
 var fixturesErrors = map[string]*errors.Kind{
@@ -2472,6 +2557,10 @@ var fixturesErrors = map[string]*errors.Kind{
 	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`:   ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
 	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    ErrUnknownIndexColumn,
+	`SELECT a, count(i) over (order by x) FROM foo`:           ErrUnsupportedFeature,
+	`SELECT a, count(i) over (partition by y) FROM foo`:       ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a) group by 1`:     ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a), max(b)`:        ErrUnsupportedFeature,
 }
 
 func TestParseErrors(t *testing.T) {

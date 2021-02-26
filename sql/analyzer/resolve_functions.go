@@ -51,9 +51,19 @@ func resolveFunctionsInExpr(a *Analyzer) sql.TransformExprFunc {
 			return nil, err
 		}
 
-		rf, err := f.Call(uf.Arguments...)
+		rf, err := f.NewInstance(uf.Arguments)
 		if err != nil {
 			return nil, err
+		}
+
+		// Because of the way that we instantiate functions, we need to pass in the window from the UnresolvedFunction
+		// separately. Otherwise we would need to change function constructors to all consider windows, when most
+		// functions don't have a window expression.
+		if wa, ok := rf.(sql.WindowAggregation); ok {
+			rf, err = wa.WithWindow(uf.Window)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		a.Log("resolved function %q", n)

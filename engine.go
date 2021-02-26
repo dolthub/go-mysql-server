@@ -194,7 +194,6 @@ func (e *Engine) QueryWithBindings(
 			e.Catalog.Done(ctx.Pid())
 		}
 	}()
-
 	if err != nil {
 		return nil, nil, err
 	}

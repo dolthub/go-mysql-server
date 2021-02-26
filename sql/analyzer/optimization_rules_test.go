@@ -34,7 +34,7 @@ func TestEraseProjection(t *testing.T) {
 	}})
 
 	expected := plan.NewSort(
-		[]plan.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
+		[]sql.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
@@ -96,7 +96,7 @@ func TestOptimizeDistinct(t *testing.T) {
 		{
 			"sort but column not projected",
 			plan.NewSort(
-				[]plan.SortField{
+				[]sql.SortField{
 					{Column: gf(0, "foo", "c")},
 				},
 				plan.NewResolvedTable(t1),
@@ -106,7 +106,7 @@ func TestOptimizeDistinct(t *testing.T) {
 		{
 			"sort and column projected",
 			plan.NewSort(
-				[]plan.SortField{
+				[]sql.SortField{
 					{Column: gf(0, "foo", "a")},
 				},
 				plan.NewResolvedTable(t1),

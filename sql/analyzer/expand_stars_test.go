@@ -17,11 +17,10 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -38,18 +37,14 @@ func TestExpandStars(t *testing.T) {
 		{Name: "d", Type: sql.Int32, Source: "mytable2"},
 	})
 
-	testCases := []struct {
-		name     string
-		node     sql.Node
-		expected sql.Node
-	}{
+	testCases := []analyzerFnTestCase{
 		{
-			"unqualified star",
-			plan.NewProject(
+			name: "unqualified star",
+			node: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewResolvedTable(table),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
@@ -58,15 +53,15 @@ func TestExpandStars(t *testing.T) {
 			),
 		},
 		{
-			"qualified star",
-			plan.NewProject(
+			name: "qualified star",
+			node: plan.NewProject(
 				[]sql.Expression{expression.NewQualifiedStar("mytable2")},
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(table),
 					plan.NewResolvedTable(table2),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(2, sql.Int32, "mytable2", "c", false),
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
@@ -78,8 +73,8 @@ func TestExpandStars(t *testing.T) {
 			),
 		},
 		{
-			"qualified star and unqualified star",
-			plan.NewProject(
+			name: "qualified star and unqualified star",
+			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewStar(),
 					expression.NewQualifiedStar("mytable2"),
@@ -89,7 +84,7 @@ func TestExpandStars(t *testing.T) {
 					plan.NewResolvedTable(table2),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
@@ -105,8 +100,8 @@ func TestExpandStars(t *testing.T) {
 			),
 		},
 		{
-			"stars mixed with other expressions",
-			plan.NewProject(
+			name: "stars mixed with other expressions",
+			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewStar(),
 					expression.NewUnresolvedColumn("foo"),
@@ -117,7 +112,7 @@ func TestExpandStars(t *testing.T) {
 					plan.NewResolvedTable(table2),
 				),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
@@ -134,15 +129,15 @@ func TestExpandStars(t *testing.T) {
 			),
 		},
 		{
-			"star in groupby",
-			plan.NewGroupBy(
+			name: "star in groupby",
+			node: plan.NewGroupBy(
 				[]sql.Expression{
 					expression.NewStar(),
 				},
 				nil,
 				plan.NewResolvedTable(table),
 			),
-			plan.NewGroupBy(
+			expected: plan.NewGroupBy(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
@@ -151,16 +146,58 @@ func TestExpandStars(t *testing.T) {
 				plan.NewResolvedTable(table),
 			),
 		},
+		{
+			name: "star in window",
+			node: plan.NewWindow(
+				[]sql.Expression{
+					expression.NewStar(),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						sql.NewWindow(
+							[]sql.Expression{
+								expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+							},
+							sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+								},
+							},
+						),
+					)),
+				},
+				plan.NewResolvedTable(table),
+			),
+			expected: plan.NewWindow(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						sql.NewWindow(
+							[]sql.Expression{
+								expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
+							},
+							sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
+								},
+							},
+						),
+					)),
+				},
+				plan.NewResolvedTable(table),
+			),
+		},
 		{ // note that this behaviour deviates from MySQL
-			"star after some expressions",
-			plan.NewProject(
+			name: "star after some expressions",
+			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewStar(),
 				},
 				plan.NewResolvedTable(table),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
@@ -170,15 +207,15 @@ func TestExpandStars(t *testing.T) {
 			),
 		},
 		{ // note that this behaviour deviates from MySQL
-			"unqualified star used multiple times",
-			plan.NewProject(
+			name: "unqualified star used multiple times",
+			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewStar(),
 					expression.NewStar(),
 				},
 				plan.NewResolvedTable(table),
 			),
-			plan.NewProject(
+			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
@@ -190,11 +227,5 @@ func TestExpandStars(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := f.Apply(sql.NewEmptyContext(), nil, tt.node, nil)
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, result)
-		})
-	}
+	runTestCases(t, nil, testCases, NewDefault(nil), f)
 }

@@ -480,7 +480,7 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	}
 
-	node, err = selectToProjectOrGroupBy(ctx, s.SelectExprs, s.GroupBy, node)
+	node, err = selectToSelectionNode(ctx, s.SelectExprs, s.GroupBy, node)
 	if err != nil {
 		return nil, err
 	}
@@ -592,16 +592,16 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
-	var params []plan.ProcedureParam
+	var params []sql.ProcedureParam
 	for _, param := range c.ProcedureSpec.Params {
-		var direction plan.ProcedureParamDirection
+		var direction sql.ProcedureParamDirection
 		switch param.Direction {
 		case sqlparser.ProcedureParamDirection_In:
-			direction = plan.ProcedureParamDirection_In
+			direction = sql.ProcedureParamDirection_In
 		case sqlparser.ProcedureParamDirection_Inout:
-			direction = plan.ProcedureParamDirection_Inout
+			direction = sql.ProcedureParamDirection_Inout
 		case sqlparser.ProcedureParamDirection_Out:
-			direction = plan.ProcedureParamDirection_Out
+			direction = sql.ProcedureParamDirection_Out
 		default:
 			return nil, fmt.Errorf("unknown procedure parameter direction: `%s`", string(param.Direction))
 		}
@@ -609,38 +609,38 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 		if err != nil {
 			return nil, err
 		}
-		params = append(params, plan.ProcedureParam{
+		params = append(params, sql.ProcedureParam{
 			Direction: direction,
 			Name:      param.Name,
 			Type:      internalTyp,
 		})
 	}
 
-	var characteristics []plan.Characteristic
-	securityType := plan.ProcedureSecurityType_Definer // Default Security Type
+	var characteristics []sql.Characteristic
+	securityType := sql.ProcedureSecurityContext_Definer // Default Security Context
 	comment := ""
 	for _, characteristic := range c.ProcedureSpec.Characteristics {
 		switch characteristic.Type {
 		case sqlparser.CharacteristicValue_Comment:
 			comment = characteristic.Comment
 		case sqlparser.CharacteristicValue_LanguageSql:
-			characteristics = append(characteristics, plan.Characteristic_LanguageSql)
+			characteristics = append(characteristics, sql.Characteristic_LanguageSql)
 		case sqlparser.CharacteristicValue_Deterministic:
-			characteristics = append(characteristics, plan.Characteristic_Deterministic)
+			characteristics = append(characteristics, sql.Characteristic_Deterministic)
 		case sqlparser.CharacteristicValue_NotDeterministic:
-			characteristics = append(characteristics, plan.Characteristic_NotDeterministic)
+			characteristics = append(characteristics, sql.Characteristic_NotDeterministic)
 		case sqlparser.CharacteristicValue_ContainsSql:
-			characteristics = append(characteristics, plan.Characteristic_ContainsSql)
+			characteristics = append(characteristics, sql.Characteristic_ContainsSql)
 		case sqlparser.CharacteristicValue_NoSql:
-			characteristics = append(characteristics, plan.Characteristic_NoSql)
+			characteristics = append(characteristics, sql.Characteristic_NoSql)
 		case sqlparser.CharacteristicValue_ReadsSqlData:
-			characteristics = append(characteristics, plan.Characteristic_ReadsSqlData)
+			characteristics = append(characteristics, sql.Characteristic_ReadsSqlData)
 		case sqlparser.CharacteristicValue_ModifiesSqlData:
-			characteristics = append(characteristics, plan.Characteristic_ModifiesSqlData)
+			characteristics = append(characteristics, sql.Characteristic_ModifiesSqlData)
 		case sqlparser.CharacteristicValue_SqlSecurityDefiner:
 			// This is already the default value, so this prevents the default switch case
 		case sqlparser.CharacteristicValue_SqlSecurityInvoker:
-			securityType = plan.ProcedureSecurityType_Invoker
+			securityType = sql.ProcedureSecurityContext_Invoker
 		default:
 			return nil, fmt.Errorf("unknown procedure characteristic: `%s`", string(characteristic.Type))
 		}
@@ -1484,28 +1484,36 @@ func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.
 }
 
 func orderByToSort(ctx *sql.Context, ob sqlparser.OrderBy, child sql.Node) (*plan.Sort, error) {
-	var sortFields []plan.SortField
+	sortFields, err := orderByToSortFields(ctx, ob)
+	if err != nil {
+		return nil, err
+	}
+
+	return plan.NewSort(sortFields, child), nil
+}
+
+func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) ([]sql.SortField, error) {
+	var sortFields []sql.SortField
 	for _, o := range ob {
 		e, err := exprToExpression(ctx, o.Expr)
 		if err != nil {
 			return nil, err
 		}
 
-		var so plan.SortOrder
+		var so sql.SortOrder
 		switch strings.ToLower(o.Direction) {
 		default:
 			return nil, ErrInvalidSortOrder.New(o.Direction)
 		case sqlparser.AscScr:
-			so = plan.Ascending
+			so = sql.Ascending
 		case sqlparser.DescScr:
-			so = plan.Descending
+			so = sql.Descending
 		}
 
-		sf := plan.SortField{Column: e, Order: so}
+		sf := sql.SortField{Column: e, Order: so}
 		sortFields = append(sortFields, sf)
 	}
-
-	return plan.NewSort(sortFields, child), nil
+	return sortFields, nil
 }
 
 func limitToLimit(
@@ -1589,7 +1597,7 @@ func getInt64Value(ctx *sql.Context, expr sqlparser.Expr, errStr string) (int64,
 	return i.(int64), nil
 }
 
-func isAggregate(e sql.Expression) bool {
+func isAggregateExpr(e sql.Expression) bool {
 	var isAgg bool
 	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
@@ -1604,7 +1612,7 @@ func isAggregate(e sql.Expression) bool {
 	return isAgg
 }
 
-func selectToProjectOrGroupBy(
+func selectToSelectionNode(
 	ctx *sql.Context,
 	se sqlparser.SelectExprs,
 	g sqlparser.GroupBy,
@@ -1615,10 +1623,34 @@ func selectToProjectOrGroupBy(
 		return nil, err
 	}
 
+	isWindow := false
+	for _, e := range selectExprs {
+		if isWindowExpr(e) {
+			isWindow = true
+			break
+		}
+	}
+
+	if isWindow {
+		if len(g) > 0 {
+			return nil, ErrUnsupportedFeature.New("group by with window functions")
+		}
+		for _, e := range selectExprs {
+			if isAggregateExpr(e) {
+				if uf, ok := e.(*expression.UnresolvedFunction); ok {
+					if uf.Window == nil || len(uf.Window.PartitionBy) > 0 || len(uf.Window.OrderBy) > 0 {
+						return nil, ErrUnsupportedFeature.New("aggregate functions appearing alongside window functions must have an empty OVER () clause")
+					}
+				}
+			}
+		}
+		return plan.NewWindow(selectExprs, child), nil
+	}
+
 	isAgg := len(g) > 0
 	if !isAgg {
 		for _, e := range selectExprs {
-			if isAggregate(e) {
+			if isAggregateExpr(e) {
 				isAgg = true
 				break
 			}
@@ -1651,6 +1683,21 @@ func selectToProjectOrGroupBy(
 	}
 
 	return plan.NewProject(selectExprs, child), nil
+}
+
+func isWindowExpr(e sql.Expression) bool {
+	isWindow := false
+	sql.Inspect(e, func(e sql.Expression) bool {
+		if uf, ok := e.(*expression.UnresolvedFunction); ok {
+			if uf.Window != nil {
+				isWindow = true
+				return false
+			}
+		}
+		return true
+	})
+
+	return isWindow
 }
 
 func selectExprsToExpressions(ctx *sql.Context, se sqlparser.SelectExprs) ([]sql.Expression, error) {
@@ -1791,7 +1838,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
-			isAggregateFunc(v), exprs...), nil
+			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
 	case *sqlparser.ParenExpr:
 		return exprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:
@@ -1885,8 +1932,30 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-		return expression.NewUnresolvedFunction("values", false, col), nil
+		return expression.NewUnresolvedFunction("values", false, nil, col), nil
 	}
+}
+
+func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
+	if over == nil {
+		return nil
+	}
+
+	sortFields, err := orderByToSortFields(ctx, over.OrderBy)
+	if err != nil {
+		return nil
+	}
+
+	partitions := make([]sql.Expression, len(over.PartitionBy))
+	for i, expr := range over.PartitionBy {
+		var err error
+		partitions[i], err = exprToExpression(ctx, expr)
+		if err != nil {
+			return nil
+		}
+	}
+
+	return sql.NewWindow(partitions, sortFields)
 }
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {

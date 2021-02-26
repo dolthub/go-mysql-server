@@ -395,6 +395,7 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 			expression.NewUnresolvedFunction(
 				"count",
 				true,
+				nil,
 				expression.NewQualifiedStar("mytable"),
 			),
 		},
@@ -406,6 +407,7 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 			expression.NewUnresolvedFunction(
 				"count",
 				true,
+				nil,
 				expression.NewStar(),
 			),
 		},
@@ -654,11 +656,11 @@ func TestPushdownGroupByAliases(t *testing.T) {
 	a := NewDefault(nil)
 	node := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true,
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true, nil,
 				uc("c"),
 			)),
 			expression.NewAlias("b", uc("d")),
-			expression.NewUnresolvedFunction("bar", false,
+			expression.NewUnresolvedFunction("bar", false, nil,
 				uc("b"),
 			),
 		},
@@ -671,11 +673,11 @@ func TestPushdownGroupByAliases(t *testing.T) {
 
 	expected := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true,
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true, nil,
 				uc("c"),
 			)),
 			uc("b"),
-			expression.NewUnresolvedFunction("bar", false,
+			expression.NewUnresolvedFunction("bar", false, nil,
 				uc("b_01"),
 			),
 		},
