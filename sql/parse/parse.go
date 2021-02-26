@@ -157,6 +157,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
 	case *sqlparser.BeginEndBlock:
 		return convertBeginEndBlock(ctx, n, query)
+	case *sqlparser.IfStatement:
+		return convertIfBlock(ctx, n)
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -197,16 +199,55 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	}
 }
 
-func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
+func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query string) (*plan.Block, error) {
+	if query == "" {
+		query = "compound statement in block"
+	}
 	var statements []sql.Node
-	for _, s := range n.Statements {
-		statement, err := convert(ctx, s, "compound statement in begin..end block")
+	for _, s := range parserStatements {
+		statement, err := convert(ctx, s, query)
 		if err != nil {
 			return nil, err
 		}
 		statements = append(statements, statement)
 	}
-	return plan.NewBeginEndBlock(statements), nil
+	return plan.NewBlock(statements), nil
+}
+
+func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
+	block, err := convertBlock(ctx, n.Statements, "compound statement in begin..end block")
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewBeginEndBlock(block), nil
+}
+
+func convertIfBlock(ctx *sql.Context, n *sqlparser.IfStatement) (sql.Node, error) {
+	ifConditionals := make([]*plan.IfConditional, len(n.Conditions))
+	for i, ic := range n.Conditions {
+		ifConditional, err := convertIfConditional(ctx, ic)
+		if err != nil {
+			return nil, err
+		}
+		ifConditionals[i] = ifConditional
+	}
+	elseBlock, err := convertBlock(ctx, n.Else, "compound statement in else block")
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewIfElse(ifConditionals, elseBlock), nil
+}
+
+func convertIfConditional(ctx *sql.Context, n sqlparser.IfStatementCondition) (*plan.IfConditional, error) {
+	block, err := convertBlock(ctx, n.Statements, "compound statement in if block")
+	if err != nil {
+		return nil, err
+	}
+	condition, err := exprToExpression(ctx, n.Expr)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewIfConditional(condition, block), nil
 }
 
 func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql.Node, error) {
@@ -338,6 +379,29 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			node = plan.NewFilter(filter, node)
 		}
 
+		return node, nil
+	case "procedure status":
+		var filter sql.Expression
+
+		if s.ProcFuncFilter != nil {
+			if s.ProcFuncFilter.Filter != nil {
+				var err error
+				filter, err = exprToExpression(ctx, s.ProcFuncFilter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.ProcFuncFilter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Name"),
+					expression.NewLiteral(s.ProcFuncFilter.Like, sql.LongText),
+				)
+			}
+		}
+
+		var node sql.Node = plan.NewShowProcedureStatus(sql.UnresolvedDatabase(""))
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
 		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
@@ -540,6 +604,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	case sqlparser.DropStr:
 		if c.TriggerSpec != nil {
 			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
+		}
+		if c.ProcedureSpec != nil {
+			return plan.NewDropProcedure(sql.UnresolvedDatabase(""), c.ProcedureSpec.Name, c.IfExists), nil
 		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)

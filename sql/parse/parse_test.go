@@ -2276,7 +2276,7 @@ var fixtures = map[string]sql.Node{
    END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewBeginEndBlock(
-			[]sql.Node{
+			plan.NewBlock([]sql.Node{
 				plan.NewUpdate(
 					plan.NewFilter(
 						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
@@ -2303,7 +2303,7 @@ var fixtures = map[string]sql.Node{
 					[]string{"a", "b"},
 					[]sql.Expression{},
 				),
-			},
+			}),
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
    BEGIN 

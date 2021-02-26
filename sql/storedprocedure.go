@@ -16,7 +16,9 @@ package sql
 
 import (
 	"fmt"
+	"sort"
 	"strings"
+	"time"
 )
 
 // ProcedureSecurityContext determines whether the stored procedure is executed using the privileges of the definer or
@@ -90,6 +92,26 @@ func (pc *ProcedureCache) Get(dbName, procedureName string) *Procedure {
 	return nil
 }
 
+// AllForDatabase returns all of the stored procedures for the given database, sorted by name ascending. The database
+// name is case-insensitive.
+func (pc *ProcedureCache) AllForDatabase(dbName string) []*Procedure {
+	pc.isPopulating = false
+	dbName = strings.ToLower(dbName)
+	var procedures []*Procedure
+	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
+		procedures = make([]*Procedure, len(procMap))
+		i := 0
+		for _, procedure := range procMap {
+			procedures[i] = procedure
+			i++
+		}
+		sort.Slice(procedures, func(i, j int) bool {
+			return procedures[i].Name < procedures[j].Name
+		})
+	}
+	return procedures
+}
+
 // Register adds the given stored procedure to the cache. Will overwrite any procedures that already exist with the
 // same name for the given database name.
 func (pc *ProcedureCache) Register(dbName string, procedure *Procedure) {
@@ -116,9 +138,12 @@ type Procedure struct {
 	Definer               string
 	Params                []ProcedureParam
 	SecurityContext       ProcedureSecurityContext
+	Comment               string
 	Characteristics       []Characteristic
 	CreateProcedureString string
 	Body                  Node
+	CreatedAt             time.Time
+	ModifiedAt            time.Time
 }
 
 // NewProcedure returns a *Procedure. All names contained within are lowercase, and all methods are case-insensitive.
@@ -127,9 +152,12 @@ func NewProcedure(
 	definer string,
 	params []ProcedureParam,
 	securityContext ProcedureSecurityContext,
+	comment string,
 	characteristics []Characteristic,
 	createProcedureString string,
 	body Node,
+	createdAt time.Time,
+	modifiedAt time.Time,
 ) *Procedure {
 	lowercasedParams := make([]ProcedureParam, len(params))
 	for i, param := range params {
@@ -144,9 +172,12 @@ func NewProcedure(
 		Definer:               definer,
 		Params:                lowercasedParams,
 		SecurityContext:       securityContext,
+		Comment:               comment,
 		Characteristics:       characteristics,
 		CreateProcedureString: createProcedureString,
 		Body:                  body,
+		CreatedAt:             createdAt,
+		ModifiedAt:            modifiedAt,
 	}
 }
 
