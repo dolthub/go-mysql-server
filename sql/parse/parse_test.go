@@ -368,7 +368,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
+			Name:              "t1_constraint_0",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -418,7 +418,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
+			Name:              "t1_constraint_0",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -443,7 +443,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
+			Name:              "t1_constraint_0",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -468,7 +468,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
+			Name:              "t1_constraint_0",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -498,7 +498,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
+			Name:              "t1_constraint_0",
 			Columns:           []string{"b_id", "c_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b", "c"},

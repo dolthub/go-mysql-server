@@ -924,7 +924,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	for _, unknownConstraint := range c.TableSpec.Constraints {
 		name := unknownConstraint.Name
 		if name == "" {
-			name = fmt.Sprintf("%s_chk_%d", c.Table.Name, constraintCnt)
+			name = fmt.Sprintf("%s_constraint_%d", c.Table.Name, constraintCnt)
 		}
 		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint, name)
 		if err != nil {
