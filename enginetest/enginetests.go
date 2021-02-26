@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -3378,7 +3379,19 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	widenedRows := WidenRows(rows)
 	widenedExpected := WidenRows(expected)
 
-	orderBy := strings.Contains(strings.ToUpper(q), "ORDER BY ")
+	upperQuery := strings.ToUpper(q)
+	orderBy := strings.Contains(upperQuery, "ORDER BY ")
+
+	// We replace all times for SHOW statements with the Unix epoch
+	if strings.HasPrefix(upperQuery, "SHOW ") {
+		for _, widenedRow := range widenedRows {
+			for i, val := range widenedRow {
+				if _, ok := val.(time.Time); ok {
+					widenedRow[i] = time.Unix(0, 0).UTC()
+				}
+			}
+		}
+	}
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
 	if orderBy || len(expected) <= 1 {

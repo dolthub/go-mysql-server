@@ -24,16 +24,7 @@ import (
 )
 
 type CreateProcedure struct {
-	Name                  string
-	Definer               string
-	Params                []sql.ProcedureParam
-	CreatedAt             time.Time
-	ModifiedAt            time.Time
-	SecurityContext       sql.ProcedureSecurityContext
-	Characteristics       []sql.Characteristic
-	Comment               string
-	CreateProcedureString string
-	Body                  sql.Node
+	*sql.Procedure
 	BodyString            string
 	Db                    sql.Database
 }
@@ -53,18 +44,20 @@ func NewCreateProcedure(
 	body sql.Node,
 	comment, createString, bodyString string,
 ) *CreateProcedure {
+	procedure := sql.NewProcedure(
+		name,
+		definer,
+		params,
+		securityContext,
+		comment,
+		characteristics,
+		createString,
+		body,
+		createdAt,
+		modifiedAt)
 	return &CreateProcedure{
-		Name:                  name,
-		Definer:               definer,
-		Params:                params,
-		CreatedAt:             createdAt,
-		ModifiedAt:            modifiedAt,
-		SecurityContext:       securityContext,
-		Characteristics:       characteristics,
-		Comment:               comment,
-		CreateProcedureString: createString,
-		Body:                  body,
-		BodyString:            bodyString,
+		Procedure:  procedure,
+		BodyString: bodyString,
 	}
 }
 
@@ -154,18 +147,6 @@ func (c *CreateProcedure) DebugString() string {
 	}
 	return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
 		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, sql.DebugString(c.Body))
-}
-
-// AsProcedure returns this *CreateProcedure as a *sql.Procedure.
-func (c *CreateProcedure) AsProcedure() *sql.Procedure {
-	return sql.NewProcedure(
-		c.Name,
-		c.Definer,
-		c.Params,
-		c.SecurityContext,
-		c.Characteristics,
-		c.CreateProcedureString,
-		c.Body)
 }
 
 // RowIter implements the sql.Node interface.

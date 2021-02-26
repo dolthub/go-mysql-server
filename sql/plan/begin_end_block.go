@@ -15,29 +15,24 @@
 package plan
 
 import (
-	"io"
-	"sync"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type BeginEndBlock struct {
-	statements []sql.Node
+	*Block
 }
 
-func NewBeginEndBlock(statements []sql.Node) *BeginEndBlock {
-	return &BeginEndBlock{statements: statements}
-}
-
-func (b *BeginEndBlock) Resolved() bool {
-	for _, s := range b.statements {
-		if !s.Resolved() {
-			return false
-		}
+// NewBeginEndBlock creates a new *BeginEndBlock node.
+func NewBeginEndBlock(block *Block) *BeginEndBlock {
+	return &BeginEndBlock{
+		Block: block,
 	}
-	return true
 }
 
+var _ sql.Node = (*BeginEndBlock)(nil)
+var _ sql.DebugStringer = (*BeginEndBlock)(nil)
+
+// String implements the sql.Node interface.
 func (b *BeginEndBlock) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("BEGIN .. END")
@@ -49,6 +44,7 @@ func (b *BeginEndBlock) String() string {
 	return p.String()
 }
 
+// DebugString implements the sql.DebugStringer interface.
 func (b *BeginEndBlock) DebugString() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("BEGIN .. END")
@@ -58,72 +54,4 @@ func (b *BeginEndBlock) DebugString() string {
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()
-}
-
-func (b *BeginEndBlock) Schema() sql.Schema {
-	// TODO: some of these actually do return a result (like for stored procedures)
-	return nil
-}
-
-func (b *BeginEndBlock) Children() []sql.Node {
-	return b.statements
-}
-
-type blockIter struct {
-	statements []sql.Node
-	ctx        *sql.Context
-	row        sql.Row
-	once       *sync.Once
-}
-
-func (i *blockIter) Next() (sql.Row, error) {
-	run := false
-	i.once.Do(func() {
-		run = true
-	})
-
-	if !run {
-		return nil, io.EOF
-	}
-
-	row := i.row
-	for _, s := range i.statements {
-		subIter, err := s.RowIter(i.ctx, row)
-		if err != nil {
-			return nil, err
-		}
-
-		for {
-			newRow, err := subIter.Next()
-			if err == io.EOF {
-				err := subIter.Close(i.ctx)
-				if err != nil {
-					return nil, err
-				}
-				break
-			} else if err != nil {
-				return nil, err
-			}
-			row = newRow[len(newRow)/2:]
-		}
-	}
-
-	return row, nil
-}
-
-func (i *blockIter) Close(*sql.Context) error {
-	return nil
-}
-
-func (b *BeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &blockIter{
-		statements: b.statements,
-		row:        row,
-		ctx:        ctx,
-		once:       &sync.Once{},
-	}, nil
-}
-
-func (b *BeginEndBlock) WithChildren(node ...sql.Node) (sql.Node, error) {
-	return NewBeginEndBlock(node), nil
 }

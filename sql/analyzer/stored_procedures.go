@@ -32,16 +32,18 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	if ctx.ProcedureCache.IsPopulating() {
 		return n, nil
 	}
-	hasCall := false
+	referencesProcedures := false
 	plan.Inspect(n, func(n sql.Node) bool {
-		_, ok := n.(*plan.Call)
-		if ok {
-			hasCall = true
+		if _, ok := n.(*plan.Call); ok {
+			referencesProcedures = true
+			return false
+		} else if _, ok := n.(*plan.ShowProcedureStatus); ok {
+			referencesProcedures = true
 			return false
 		}
 		return true
 	})
-	if !hasCall {
+	if !referencesProcedures {
 		return n, nil
 	}
 	ctx.ProcedureCache = sql.NewProcedureCache(true)
@@ -73,7 +75,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 					return nil, fmt.Errorf("analyzed node %T and expected *plan.CreateProcedure", analyzedNode)
 				}
 
-				ctx.ProcedureCache.Register(database.Name(), analyzedCp.AsProcedure())
+				ctx.ProcedureCache.Register(database.Name(), analyzedCp.Procedure)
 			}
 		}
 	}
@@ -166,36 +168,47 @@ func validateStoredProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 
 func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		call, ok := n.(*plan.Call)
-		if !ok {
+		switch n := n.(type) {
+		case *plan.Call:
+			return applyProceduresCall(ctx, a, n, scope)
+		case *plan.ShowProcedureStatus:
+			return applyProceduresShowProcedure(ctx, a, n, scope)
+		default:
 			return n, nil
 		}
-
-		pRef := expression.NewProcedureParamReference()
-		call = call.WithParamReference(pRef)
-
-		procedure := ctx.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name)
-		if procedure == nil {
-			return nil, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
-		}
-		procedureBody, err := plan.TransformExpressionsUp(procedure.Body, func(e sql.Expression) (sql.Expression, error) {
-			switch expr := e.(type) {
-			case *expression.ProcedureParam:
-				return expr.WithParamReference(pRef), nil
-			default:
-				return e, nil
-			}
-		})
-		if err != nil {
-			return nil, err
-		}
-		procedureBody, err = applyProcedures(ctx, a, procedureBody, scope)
-		if err != nil {
-			return nil, err
-		}
-
-		procedure.Body = procedureBody
-		call = call.WithProcedure(procedure)
-		return call, nil
 	})
+}
+
+func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *Scope) (sql.Node, error) {
+	pRef := expression.NewProcedureParamReference()
+	call = call.WithParamReference(pRef)
+
+	procedure := ctx.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name)
+	if procedure == nil {
+		return nil, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+	}
+	procedureBody, err := plan.TransformExpressionsUp(procedure.Body, func(e sql.Expression) (sql.Expression, error) {
+		switch expr := e.(type) {
+		case *expression.ProcedureParam:
+			return expr.WithParamReference(pRef), nil
+		default:
+			return e, nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	procedureBody, err = applyProcedures(ctx, a, procedureBody, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	procedure.Body = procedureBody
+	call = call.WithProcedure(procedure)
+	return call, nil
+}
+
+func applyProceduresShowProcedure(ctx *sql.Context, a *Analyzer, n *plan.ShowProcedureStatus, scope *Scope) (sql.Node, error) {
+	n.Procedures = ctx.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase())
+	return n, nil
 }
