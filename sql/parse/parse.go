@@ -702,24 +702,31 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	//TODO: support multiple constraints in a single ALTER statement
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
 		table := tableNameToUnresolvedTable(ddl.Table)
-		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
+		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0], ddl.TableSpec.Constraints[0].Name)
 		if err != nil {
 			return nil, err
 		}
 		switch strings.ToLower(ddl.ConstraintAction) {
 		case sqlparser.AddStr:
-			if fkConstraint, ok := parsedConstraint.(*sql.ForeignKeyConstraint); ok {
+			switch c := parsedConstraint.(type) {
+			case *sql.ForeignKeyConstraint:
 				return plan.NewAlterAddForeignKey(
 					table,
-					plan.NewUnresolvedTable(fkConstraint.ReferencedTable, ddl.Table.Qualifier.String()),
-					fkConstraint), nil
-			} else {
+					plan.NewUnresolvedTable(c.ReferencedTable, ddl.Table.Qualifier.String()),
+					c), nil
+
+			case *sql.CheckConstraint:
+				return plan.NewAlterAddCheck(table, c), nil
+			default:
 				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+
 			}
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
 				return plan.NewAlterDropForeignKey(table, c), nil
+			case *sql.CheckConstraint:
+				return plan.NewAlterDropCheck(table, c), nil
 			case namedConstraint:
 				// For simple named constraint drops, fill in a partial foreign key constraint. This will need to be changed if
 				// we ever support other kinds of constraints than foreign keys (e.g. CHECK)
@@ -913,8 +920,13 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	var fkDefs []*sql.ForeignKeyConstraint
+	constraintCnt := 0
 	for _, unknownConstraint := range c.TableSpec.Constraints {
-		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
+		name := unknownConstraint.Name
+		if name == "" {
+			name = fmt.Sprintf("%s_chk_%d", c.Table.Name, constraintCnt)
+		}
+		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint, name)
 		if err != nil {
 			return nil, err
 		}
@@ -997,7 +1009,7 @@ type namedConstraint struct {
 	name string
 }
 
-func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefinition) (interface{}, error) {
+func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefinition, name string) (interface{}, error) {
 	if fkConstraint, ok := cd.Details.(*sqlparser.ForeignKeyDefinition); ok {
 		columns := make([]string, len(fkConstraint.Source))
 		for i, col := range fkConstraint.Source {
@@ -1008,13 +1020,22 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			refColumns[i] = col.String()
 		}
 		return &sql.ForeignKeyConstraint{
-			Name:              cd.Name,
+			Name:              name,
 			Columns:           columns,
 			ReferencedTable:   fkConstraint.ReferencedTable.Name.String(),
 			ReferencedColumns: refColumns,
 			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
 		}, nil
+	} else if cConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
+			c, err := exprToExpression(ctx, cConstraint.Expr)
+			if err != nil {
+				return nil, err
+			}
+			return &sql.CheckConstraint{
+				Name: name,
+				Expr: c,
+			}, nil
 	} else if len(cd.Name) > 0 && cd.Details == nil {
 		return namedConstraint{cd.Name}, nil
 	}

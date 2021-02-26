@@ -205,6 +205,13 @@ type ForeignKeyConstraint struct {
 	OnDelete          ForeignKeyReferenceOption
 }
 
+// CheckConstraint declares a constraint between the columns of two tables.
+type CheckConstraint struct {
+	Name              string
+    Expr Expression
+    Enforced bool
+}
+
 // TableWrapper is a node that wraps the real table. This is needed because
 // wrappers cannot implement some methods the table may implement.
 type TableWrapper interface {
@@ -327,6 +334,16 @@ type ForeignKeyAlterableTable interface {
 		onUpdate, onDelete ForeignKeyReferenceOption) error
 	// DropForeignKey removes a foreign key from the database.
 	DropForeignKey(ctx *Context, fkName string) error
+}
+
+// ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
+type CheckAlterableTable interface {
+	Table
+	// CreateCheckConstraint creates an check constraint for this table, using the provided parameters.
+	// Returns an error if the constraint name already exists.
+	CreateCheckConstraint(ctx *Context, chName string, expr Expression, enforced bool) error
+	// DropCheckConstraint removes a check constraint from the database.
+	DropCheckConstraint(ctx *Context, chName string) error
 }
 
 // InsertableTable is a table that can process insertion of new rows.

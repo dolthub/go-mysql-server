@@ -37,6 +37,7 @@ type Table struct {
 	columns          []int
 	indexes          map[string]sql.Index
 	foreignKeys      []sql.ForeignKeyConstraint
+	checks      []sql.CheckConstraint
 	pkIndexesEnabled bool
 
 	// Data storage
@@ -1048,6 +1049,11 @@ func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, erro
 	return t.foreignKeys, nil
 }
 
+// GetForeignKeys implements sql.ForeignKeyTable
+func (t *Table) GetChecks(_ *sql.Context) ([]sql.CheckConstraint, error) {
+	return t.checks, nil
+}
+
 // CreateForeignKey implements sql.ForeignKeyAlterableTable. Foreign keys are not enforced on update / delete.
 func (t *Table) CreateForeignKey(_ *sql.Context, fkName string, columns []string, referencedTable string, referencedColumns []string, onUpdate, onDelete sql.ForeignKeyReferenceOption) error {
 	for _, key := range t.foreignKeys {
@@ -1073,6 +1079,34 @@ func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	for i, key := range t.foreignKeys {
 		if key.Name == fkName {
 			t.foreignKeys = append(t.foreignKeys[:i], t.foreignKeys[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+// CreateCheck implements sql.CheckAlterableTable
+func (t *Table) CreateCheckConstraint(_ *sql.Context, chName string, expr sql.Expression, enforced bool) error {
+	for _, key := range t.checks {
+		if key.Name == chName {
+			return fmt.Errorf("constraint %s already exists", chName)
+		}
+	}
+
+	t.checks = append(t.checks, sql.CheckConstraint{
+		Name:              chName,
+		Expr: expr,
+		Enforced: enforced,
+	})
+
+	return nil
+}
+
+// func (t *Table) DropCheck(ctx *sql.Context, chName string) error {} implements sql.CheckAlterableTable.
+func (t *Table) DropCheckConstraint(ctx *sql.Context, chName string) error {
+	for i, key := range t.checks {
+		if key.Name == chName {
+			t.checks = append(t.checks[:i], t.checks[i+1:]...)
 			return nil
 		}
 	}
