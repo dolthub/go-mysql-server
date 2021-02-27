@@ -227,9 +227,9 @@ type ForeignKeyConstraint struct {
 
 // CheckConstraint declares a constraint between the columns of two tables.
 type CheckConstraint struct {
-	Name              string
-    Expr Expression
-    Enforced bool
+	Name     string
+	Expr     Expression
+	Enforced bool
 }
 
 // TableWrapper is a node that wraps the real table. This is needed because

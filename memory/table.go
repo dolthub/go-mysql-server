@@ -37,7 +37,7 @@ type Table struct {
 	columns          []int
 	indexes          map[string]sql.Index
 	foreignKeys      []sql.ForeignKeyConstraint
-	checks      []sql.CheckConstraint
+	checks           []sql.CheckConstraint
 	pkIndexesEnabled bool
 
 	// Data storage
@@ -1049,7 +1049,7 @@ func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, erro
 	return t.foreignKeys, nil
 }
 
-// GetForeignKeys implements sql.ForeignKeyTable
+// GetChecks implements sql.ForeignKeyTable
 func (t *Table) GetChecks(_ *sql.Context) ([]sql.CheckConstraint, error) {
 	return t.checks, nil
 }
@@ -1094,8 +1094,8 @@ func (t *Table) CreateCheckConstraint(_ *sql.Context, chName string, expr sql.Ex
 	}
 
 	t.checks = append(t.checks, sql.CheckConstraint{
-		Name:              chName,
-		Expr: expr,
+		Name:     chName,
+		Expr:     expr,
 		Enforced: enforced,
 	})
 

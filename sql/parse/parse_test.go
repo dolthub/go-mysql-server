@@ -84,6 +84,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY, b TEXT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -100,6 +101,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		nil,
 		nil,
 	),
@@ -122,6 +124,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -138,6 +141,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: false,
 		}},
 		false,
+		nil,
 		nil,
 		nil,
 	),
@@ -158,6 +162,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		nil,
+		nil,
 	),
 	`CREATE TABLE IF NOT EXISTS t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -174,6 +179,7 @@ var fixtures = map[string]sql.Node{
 			PrimaryKey: true,
 		}},
 		true,
+		nil,
 		nil,
 		nil,
 	),
@@ -200,6 +206,7 @@ var fixtures = map[string]sql.Node{
 			Comment:    "",
 		}},
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -223,6 +230,7 @@ var fixtures = map[string]sql.Node{
 			Columns:    []sql.IndexColumn{{"b", 0}},
 			Comment:    "",
 		}},
+		nil,
 		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b) COMMENT 'hi')`: plan.NewCreateTable(
@@ -248,6 +256,7 @@ var fixtures = map[string]sql.Node{
 			Comment:    "hi",
 		}},
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE INDEX (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -271,6 +280,7 @@ var fixtures = map[string]sql.Node{
 			Columns:    []sql.IndexColumn{{"b", 0}},
 			Comment:    "",
 		}},
+		nil,
 		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE (b))`: plan.NewCreateTable(
@@ -296,6 +306,7 @@ var fixtures = map[string]sql.Node{
 			Comment:    "",
 		}},
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b, a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -319,6 +330,7 @@ var fixtures = map[string]sql.Node{
 			Columns:    []sql.IndexColumn{{"b", 0}, {"a", 0}},
 			Comment:    "",
 		}},
+		nil,
 		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b), INDEX (b, a))`: plan.NewCreateTable(
@@ -350,6 +362,7 @@ var fixtures = map[string]sql.Node{
 			Comment:    "",
 		}},
 		nil,
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -375,6 +388,7 @@ var fixtures = map[string]sql.Node{
 			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
 			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
 		}},
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, CONSTRAINT fk_name FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -400,6 +414,7 @@ var fixtures = map[string]sql.Node{
 			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
 			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
 		}},
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE CASCADE)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -425,6 +440,7 @@ var fixtures = map[string]sql.Node{
 			OnUpdate:          sql.ForeignKeyReferenceOption_Cascade,
 			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
 		}},
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON DELETE RESTRICT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -450,6 +466,7 @@ var fixtures = map[string]sql.Node{
 			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
 			OnDelete:          sql.ForeignKeyReferenceOption_Restrict,
 		}},
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE SET NULL ON DELETE NO ACTION)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -475,6 +492,7 @@ var fixtures = map[string]sql.Node{
 			OnUpdate:          sql.ForeignKeyReferenceOption_SetNull,
 			OnDelete:          sql.ForeignKeyReferenceOption_NoAction,
 		}},
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, c_id BIGINT, FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -505,6 +523,7 @@ var fixtures = map[string]sql.Node{
 			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
 			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
 		}},
+		nil,
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, c_id BIGINT, CONSTRAINT fk_name FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c) ON UPDATE RESTRICT ON DELETE CASCADE)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
@@ -534,6 +553,49 @@ var fixtures = map[string]sql.Node{
 			ReferencedColumns: []string{"b", "c"},
 			OnUpdate:          sql.ForeignKeyReferenceOption_Restrict,
 			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
+		}},
+		nil,
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, CHECK (a > 0))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}},
+		false,
+		nil,
+		nil,
+		[]*sql.CheckConstraint{{
+			Name: "t1_constraint_0",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		}},
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, CONSTRAINT ch1 CHECK (a > 0))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		sql.Schema{{
+			Name:       "a",
+			Type:       sql.Int32,
+			Nullable:   false,
+			PrimaryKey: true,
+		}},
+		false,
+		nil,
+		nil,
+		[]*sql.CheckConstraint{{
+			Name: "ch1",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
 		}},
 	),
 	`DROP TABLE foo;`: plan.NewDropTable(

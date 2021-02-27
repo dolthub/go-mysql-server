@@ -22,17 +22,13 @@ import (
 )
 
 var (
-	// ErrNoCheckSupport is returned when the table does not support FOREIGN KEY operations.
-	ErrNoCheckSupport = errors.NewKind("the table does not support foreign key operations: %s")
-	// ErrCheckMissingColumns is returned when an ALTER TABLE ADD FOREIGN KEY statement does not provide any columns
-	ErrCheckMissingColumns = errors.NewKind("cannot create a foreign key without columns")
-	// ErrAddCheckDuplicateColumn is returned when an ALTER TABLE ADD FOREIGN KEY statement has the same column multiple times
-	ErrAddCheckDuplicateColumn = errors.NewKind("cannot have duplicates of columns in a foreign key: `%v`")
+	// ErrNoCheckConstraintSupport is returned when the table does not support CONSTRAINT CHECK operations.
+	ErrNoCheckConstraintSupport = errors.NewKind("the table does not support check constraint operations: %s")
 )
 
 type CreateCheck struct {
 	UnaryNode
-	ChDef      *sql.CheckConstraint
+	ChDef *sql.CheckConstraint
 }
 
 type DropCheck struct {
@@ -43,7 +39,7 @@ type DropCheck struct {
 func NewAlterAddCheck(table sql.Node, chDef *sql.CheckConstraint) *CreateCheck {
 	return &CreateCheck{
 		UnaryNode: UnaryNode{table},
-		ChDef:      chDef,
+		ChDef:     chDef,
 	}
 }
 
@@ -61,7 +57,7 @@ func getCheckAlterable(node sql.Node) (sql.CheckAlterableTable, error) {
 	case *ResolvedTable:
 		return getCheckAlterableTable(node.Table)
 	default:
-		return nil, ErrNoCheckSupport.New(node.String())
+		return nil, ErrNoCheckConstraintSupport.New(node.String())
 	}
 }
 
@@ -72,7 +68,7 @@ func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
 	case sql.TableWrapper:
 		return getCheckAlterableTable(t.Underlying())
 	default:
-		return nil, ErrNoCheckSupport.New(t.Name())
+		return nil, ErrNoCheckConstraintSupport.New(t.Name())
 	}
 }
 

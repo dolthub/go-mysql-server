@@ -82,6 +82,7 @@ type CreateTable struct {
 	schema      sql.Schema
 	ifNotExists bool
 	fkDefs      []*sql.ForeignKeyConstraint
+	chDefs      []*sql.CheckConstraint
 	idxDefs     []*IndexDefinition
 	like        sql.Node
 }
@@ -91,7 +92,7 @@ var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, idxDefs []*IndexDefinition, fkDefs []*sql.ForeignKeyConstraint) *CreateTable {
+func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, idxDefs []*IndexDefinition, fkDefs []*sql.ForeignKeyConstraint, chDefs []*sql.CheckConstraint) *CreateTable {
 	for _, s := range schema {
 		s.Source = name
 	}
@@ -103,6 +104,7 @@ func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists
 		ifNotExists: ifNotExists,
 		idxDefs:     idxDefs,
 		fkDefs:      fkDefs,
+		chDefs:      chDefs,
 	}
 }
 
@@ -151,7 +153,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 		//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
 		//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
-		if len(c.idxDefs) > 0 || len(c.fkDefs) > 0 {
+		if len(c.idxDefs) > 0 || len(c.fkDefs) > 0 || len(c.chDefs) > 0 {
 			tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
 			if err != nil {
 				return sql.RowsToRowIter(), err
@@ -178,6 +180,18 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				}
 				for _, fkDef := range c.fkDefs {
 					err = fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedTable, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
+					if err != nil {
+						return sql.RowsToRowIter(), err
+					}
+				}
+			}
+			if len(c.chDefs) > 0 {
+				chAlterable, ok := tableNode.(sql.CheckAlterableTable)
+				if !ok {
+					return sql.RowsToRowIter(), ErrNoCheckConstraintSupport.New(c.name)
+				}
+				for _, chDef := range c.chDefs {
+					err = chAlterable.CreateCheckConstraint(ctx, chDef.Name, chDef.Expr, chDef.Enforced)
 					if err != nil {
 						return sql.RowsToRowIter(), err
 					}

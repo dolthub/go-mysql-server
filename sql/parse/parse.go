@@ -920,6 +920,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	var fkDefs []*sql.ForeignKeyConstraint
+	var chDefs []*sql.CheckConstraint
 	constraintCnt := 0
 	for _, unknownConstraint := range c.TableSpec.Constraints {
 		name := unknownConstraint.Name
@@ -933,6 +934,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
 			fkDefs = append(fkDefs, constraint)
+		case *sql.CheckConstraint:
+			chDefs = append(chDefs, constraint)
 		default:
 			return nil, ErrUnknownConstraintDefinition.New(unknownConstraint.Name, unknownConstraint)
 		}
@@ -1002,7 +1005,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs), nil
+		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs, chDefs), nil
 }
 
 type namedConstraint struct {
@@ -1027,15 +1030,16 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
 		}, nil
-	} else if cConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
-			c, err := exprToExpression(ctx, cConstraint.Expr)
-			if err != nil {
-				return nil, err
-			}
-			return &sql.CheckConstraint{
-				Name: name,
-				Expr: c,
-			}, nil
+	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
+		c, err := exprToExpression(ctx, chConstraint.Expr)
+		if err != nil {
+			return nil, err
+		}
+		return &sql.CheckConstraint{
+			Name:     name,
+			Expr:     c,
+			Enforced: chConstraint.Enforced,
+		}, nil
 	} else if len(cd.Name) > 0 && cd.Details == nil {
 		return namedConstraint{cd.Name}, nil
 	}
