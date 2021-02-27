@@ -52,6 +52,9 @@ func getFiltersByTable(n sql.Node) (filtersByTable, error) {
 			}
 			filters.merge(fs)
 		}
+		if o, ok := node.(sql.OpaqueNode); ok {
+			return !o.Opaque()
+		}
 		return true
 	})
 
