@@ -91,7 +91,11 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer os.Remove(fileName)
+	if l.Local {
+		defer os.Remove(fileName)
+	} else {
+		defer file.Close()
+	}
 
 	scanner := bufio.NewScanner(file)
 	parseLines(scanner)
@@ -107,10 +111,20 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				return nil, err
 			}
 
-			// line was skipped
-			if exprs != nil {
-				values = append(values, exprs)
+			// Line was skipped
+			if exprs == nil {
+				continue
 			}
+
+			// Match input columns with the amount of columns provided in the text.
+			// Append nils to the parsed fields if they are less than the input columns.
+			// TODO: Match schema with column order
+			colDiff := len(l.Schema()) - len(exprs)
+
+			// append NULLS for the rest of the fields
+			exprs = addNullsToValues(exprs, colDiff)
+
+			values = append(values, exprs)
 		} else {
 			l.IgnoreNum--
 		}
@@ -125,6 +139,15 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return newInsertIter(ctx, l.Destination, newValue, false, nil, row)
 }
 
+func addNullsToValues(exprs []sql.Expression, diff int) []sql.Expression {
+	for i := diff; i > 0; i-- {
+		exprs = append(exprs, expression.NewLiteral(nil, sql.Null))
+	}
+
+	return exprs
+}
+
+// updateParsingConsts parses the LoadData object to update the 5 constants defined at top of the file.
 func (l *LoadData) updateParsingConsts() error {
 	if l.Lines != nil {
 		ll := l.Lines
@@ -189,20 +212,20 @@ func (l *LoadData) updateParsingConsts() error {
 	return nil
 }
 
+// parseLines finds the delim that terminates each line and returns the overall line.
 func parseLines(scanner *bufio.Scanner) {
 	splitFunc := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		// Return nothing if at end of file and no data passed
+		// Return nothing if at end of file and no data passed.
 		if atEOF && len(data) == 0 {
 			return 0, nil, nil
 		}
 
-		// Find the index of the input of a newline followed by a
-		// pound sign.
+		// Find the index of the LINES TERMINATED BY delim.
 		if i := strings.Index(string(data), linesTerminatedByDelim); i >= 0 {
 			return i + 1, data[0:i], nil
 		}
 
-		// If at end of file with data return the data
+		// If at end of file with data return the data.
 		if atEOF {
 			return len(data), data, nil
 		}
@@ -212,6 +235,7 @@ func parseLines(scanner *bufio.Scanner) {
 	scanner.Split(splitFunc)
 }
 
+// parseLinePrefix searches for the delim defined by linesStartingByDelim.
 func parseLinePrefix(line string) string {
 	if linesStartingByDelim == "" {
 		return line
@@ -260,6 +284,7 @@ func parseFields(line string) ([]sql.Expression, error) {
 }
 
 // TODO: Do robust path finding for load data.
+// getLoadPath searches for the path for a non local file.
 func getLoadPath(fileName string, local bool) string {
 	return ""
 }

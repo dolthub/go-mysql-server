@@ -1078,7 +1078,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 
 	isReplace := i.Action == sqlparser.ReplaceStr
 
-	src, err := InsertRowsToNode(ctx, i.Rows)
+	src, err := insertRowsToNode(ctx, i.Rows)
 	if err != nil {
 		return nil, err
 	}
@@ -1337,7 +1337,7 @@ func columnsToStrings(cols sqlparser.Columns) []string {
 	return res
 }
 
-func InsertRowsToNode(ctx *sql.Context, ir sqlparser.InsertRows) (sql.Node, error) {
+func insertRowsToNode(ctx *sql.Context, ir sqlparser.InsertRows) (sql.Node, error) {
 	switch v := ir.(type) {
 	case sqlparser.SelectStatement:
 		return convertSelectStatement(ctx, v)
