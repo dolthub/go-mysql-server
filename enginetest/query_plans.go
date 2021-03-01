@@ -155,6 +155,21 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM othertable ot LEFT JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 WHERE CONVERT(s2, signed) <> 0) sub ON sub.i = ot.i2 WHERE ot.i2 > 0",
+		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
+			" └─ LeftJoin(sub.i = ot.i2)\n" +
+			"     ├─ Filter(ot.i2 > 0)\n" +
+			"     │   └─ TableAlias(ot)\n" +
+			"     │       └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"     └─ SubqueryAlias(sub)\n" +
+			"         └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"             └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"                 ├─ Table(mytable)\n" +
+			"                 └─ Filter(NOT(convert(othertable.s2, signed) = 0))\n" +
+			"                     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
 		Query: "INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2",
 		ExpectedPlan: "Insert()\n" +
 			" ├─ Table(mytable)\n" +
