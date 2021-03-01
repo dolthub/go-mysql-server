@@ -1026,10 +1026,15 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
 		}, nil
 	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
-		c, err := exprToExpression(ctx, chConstraint.Expr)
-		if err != nil {
-			return nil, err
+		var c sql.Expression
+		var err error
+		if chConstraint.Expr != nil {
+			c, err = exprToExpression(ctx, chConstraint.Expr)
+			if err != nil {
+				return nil, err
+			}
 		}
+
 		return &sql.CheckConstraint{
 			Name:     cd.Name,
 			Expr:     c,

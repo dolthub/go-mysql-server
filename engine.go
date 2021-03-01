@@ -176,7 +176,7 @@ func (e *Engine) QueryWithBindings(
 	case *plan.CreateIndex:
 		typ = sql.CreateIndexProcess
 		perm = auth.ReadPerm | auth.WritePerm
-	case *plan.CreateForeignKey, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateView,
+	case *plan.CreateForeignKey, *plan.CreateCheck, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateView,
 		*plan.DeleteFrom, *plan.DropIndex, *plan.DropView,
 		*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
 		*plan.Update:
@@ -242,7 +242,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 		return unresolvedSchema, nil
 	}
 	// *plan.CreateTable properly handles resolving default values, so we hijack it
-	createTable := plan.NewCreateTable(db, tableName, unresolvedSchema, false, nil, nil)
+	createTable := plan.NewCreateTable(db, tableName, unresolvedSchema, false, nil, nil, nil)
 	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
 	if err != nil {
 		return nil, err

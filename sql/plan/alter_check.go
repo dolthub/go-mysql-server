@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -78,6 +79,46 @@ func (p *CreateCheck) Execute(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Make sure that all columns are valid, in the table, and there are no duplicates
+	cols := make(map[string]bool)
+	for _, col := range chAlterable.Schema() {
+		cols[col.Name] = true
+	}
+
+	sql.Inspect(p.ChDef.Expr, func(expr sql.Expression) bool {
+		switch expr := expr.(type) {
+		case *expression.UnresolvedColumn:
+			if _, ok := cols[expr.Name()]; !ok {
+				err = sql.ErrTableColumnNotFound.New(expr.Name())
+				return false
+			}
+		case *expression.UnresolvedFunction:
+			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(expr.String())
+			return false
+		case *Subquery:
+			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(expr.String())
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		return err
+	}
+	//switch p.ChDef.Expr.(type):
+	//	case expression.BinaryExpression:
+	//for _, chCol := range p.ChDef.Expr. {
+	//	if seen, ok := seenCols[fkCol]; ok {
+	//		if !seen {
+	//			seenCols[fkCol] = true
+	//		} else {
+	//			return ErrAddForeignKeyDuplicateColumn.New(fkCol)
+	//		}
+	//	} else {
+	//		return sql.ErrTableColumnNotFound.New(fkCol)
+	//	}
+	//}
+
 	return chAlterable.CreateCheckConstraint(ctx, p.ChDef.Name, p.ChDef.Expr, p.ChDef.Enforced)
 }
 
@@ -112,7 +153,7 @@ func (p *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewAlterDropCheck(children[0], p.ChDef), nil
+	return NewAlterAddCheck(children[0], p.ChDef), nil
 }
 
 func (p *CreateCheck) Schema() sql.Schema { return nil }

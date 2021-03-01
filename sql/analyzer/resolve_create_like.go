@@ -68,5 +68,5 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		tempCol.Source = planCreate.Name()
 		newSch[i] = &tempCol
 	}
-	return plan.NewCreateTable(planCreate.Database(), planCreate.Name(), newSch, planCreate.IfNotExists(), idxDefs, nil), nil
+	return plan.NewCreateTable(planCreate.Database(), planCreate.Name(), newSch, planCreate.IfNotExists(), idxDefs, nil, nil), nil
 }

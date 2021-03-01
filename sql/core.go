@@ -356,6 +356,13 @@ type ForeignKeyAlterableTable interface {
 	DropForeignKey(ctx *Context, fkName string) error
 }
 
+// CheckConstraintTable is a table that can declare its check constraints.
+type CheckConstraintTable interface {
+	Table
+	// GetCheckConstraints returns the check constraints on this table.
+	GetCheckConstraints(ctx *Context) ([]CheckConstraint, error)
+}
+
 // ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
 type CheckAlterableTable interface {
 	Table

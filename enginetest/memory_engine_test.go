@@ -317,6 +317,18 @@ func TestDropForeignKeys(t *testing.T) {
 	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestCreateCheckConstraints(t *testing.T) {
+	enginetest.TestCreateCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestTestDisallowedCheckConstraints(t *testing.T) {
+	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestDropCheckConstraints(t *testing.T) {
+	enginetest.TestDropCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestExplode(t *testing.T) {
 	enginetest.TestExplode(t, enginetest.NewDefaultMemoryHarness())
 }

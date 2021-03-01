@@ -114,6 +114,14 @@ func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	}
 }
 
+func createCheckConstraint(t *testing.T, harness Harness, engine *sqle.Engine) {
+	if chk, ok := harness.(CheckConstraintHarness); ok && chk.SupportsCheckConstraint() {
+		ctx := NewContextWithEngine(harness, engine)
+		TestQueryWithContext(t, ctx, engine,
+			"ALTER TABLE chk_tbl ADD CONSTRAINT chk1 CHECK (a > 0)",
+			nil, nil)
+	}
+}
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {
@@ -2153,6 +2161,146 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child3 DROP CONSTRAINT dne")
 	require.Error(err)
 	assert.True(t, sql.ErrTableNotFound.Is(err))
+}
+
+func TestCreateCheckConstraints(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)",
+		[]sql.Row(nil),
+		nil,
+	)
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewContext(harness)
+	table, ok, err := db.GetTableInsensitive(ctx, "t1")
+	require.NoError(err)
+	require.True(ok)
+
+	cht, ok := table.(sql.CheckConstraintTable)
+	require.True(ok)
+
+	checks, err := cht.GetCheckConstraints(NewContext(harness))
+	require.NoError(err)
+
+	expected := []sql.CheckConstraint{{
+		Name: "chk2",
+		Expr: expression.NewGreaterThan(
+			expression.NewUnresolvedColumn("b"),
+			expression.NewLiteral(int8(0), sql.Int8),
+		),
+		Enforced: true,
+	}}
+	assert.Equal(t, expected, checks)
+
+	// Some faulty create statements
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t2 ADD CONSTRAINT chk2 CHECK (c > 0)")
+	require.Error(err)
+	assert.True(t, sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (c > 0)")
+	require.Error(err)
+	assert.True(t, sql.ErrTableColumnNotFound.Is(err))
+}
+
+func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e := NewEngine(t, harness)
+	var err error
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
+		[]sql.Row(nil),
+		nil,
+	)
+
+	// functions, UDFs, procedures
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")")
+	require.Error(err)
+	assert.True(t, sql.ErrInvalidConstraintFunctionsNotSupported.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK ((select count(*) from t1) = 0)")
+	require.Error(err)
+	assert.True(t, sql.ErrInvalidConstraintSubqueryNotSupported.Is(err))
+}
+
+func TestDropCheckConstraints(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 DROP CONSTRAINT chk3",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 DROP CHECK chk1",
+		[]sql.Row(nil),
+		nil,
+	)
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewContext(harness)
+	table, ok, err := db.GetTableInsensitive(ctx, "t1")
+	require.NoError(err)
+	require.True(ok)
+
+	cht, ok := table.(sql.CheckConstraintTable)
+	require.True(ok)
+
+	checks, err := cht.GetCheckConstraints(NewContext(harness))
+	require.NoError(err)
+
+	expected := []sql.CheckConstraint{{
+		Name: "chk2",
+		Expr: expression.NewGreaterThan(
+			expression.NewUnresolvedColumn("b"),
+			expression.NewLiteral(int8(0), sql.Int8),
+		),
+		Enforced: true,
+	}}
+	assert.Equal(t, expected, checks)
+
+	// Some faulty create statements
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t2 DROP CONSTRAINT chk2")
+	require.Error(err)
+	assert.True(t, sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 DROP CHECK chk3")
+	require.NoError(err)
 }
 
 func TestNaturalJoin(t *testing.T, harness Harness) {

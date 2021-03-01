@@ -100,7 +100,7 @@ func TestDropTable(t *testing.T) {
 }
 
 func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, ifNotExists bool) error {
-	c := NewCreateTable(db, name, schema, ifNotExists, nil, nil)
+	c := NewCreateTable(db, name, schema, ifNotExists, nil, nil, nil)
 
 	rows, err := c.RowIter(sql.NewEmptyContext(), nil)
 	if err != nil {
