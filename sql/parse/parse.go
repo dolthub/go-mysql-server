@@ -1177,26 +1177,24 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 	unresolvedTable := tableNameToUnresolvedTable(d.Table)
 
-	var ignoreNumVal int8 = 0
-	var ok = false
+	var ignoreNumVal int64 = 0
+	var err error
 	if d.IgnoreNum != nil {
-		ignoreNum, err := convertVal(d.IgnoreNum)
+		ignoreNumVal, err = getInt64Value(ctx, d.IgnoreNum, "Cannot parse ignore Value")
 		if err != nil {
 			return nil, err
-		}
-
-		ign, err := ignoreNum.Eval(ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-
-		ignoreNumVal, ok = ign.(int8)
-		if !ok {
-			return nil, fmt.Errorf("Cannot parse ignore Value")
 		}
 	}
 
-	return plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal), nil
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
+
+	return plan.NewInsertInto(
+		tableNameToUnresolvedTable(d.Table),
+		ld,
+		false,
+		ld.ColumnNames,
+		nil,
+	), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec

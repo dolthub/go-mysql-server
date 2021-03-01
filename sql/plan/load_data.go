@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -35,7 +34,7 @@ type LoadData struct {
 	ResponsePacketSent bool
 	Fields             *sqlparser.Fields
 	Lines              *sqlparser.Lines
-	IgnoreNum          int8
+	IgnoreNum          int64
 }
 
 const (
@@ -136,7 +135,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	newValue := NewValues(values)
 
-	return newInsertIter(ctx, l.Destination, newValue, false, nil, row)
+	return newValue.RowIter(ctx, row)
 }
 
 func addNullsToValues(exprs []sql.Expression, diff int) []sql.Expression {
@@ -151,40 +150,27 @@ func addNullsToValues(exprs []sql.Expression, diff int) []sql.Expression {
 func (l *LoadData) updateParsingConsts() error {
 	if l.Lines != nil {
 		ll := l.Lines
-		if ll.StartingBy != "" {
-			sb := ll.StartingBy[1 : len(ll.StartingBy)-1]
-			linesStartingByDelim = sb
+		if ll.StartingBy != nil {
+			linesStartingByDelim = string(ll.StartingBy.Val)
 		}
-		if ll.TerminatedBy != "" {
-			tb, err := strconv.Unquote(ll.TerminatedBy)
-			if err != nil {
-				return err
-			}
-			linesTerminatedByDelim = tb
+		if ll.TerminatedBy != nil {
+			linesTerminatedByDelim = string(ll.TerminatedBy.Val)
 		}
 	}
 
 	if l.Fields != nil {
 		lf := l.Fields
 
-		if lf.TerminatedBy != "" {
-			tb, err := strconv.Unquote(lf.TerminatedBy)
-			if err != nil {
-				return err
-			}
-			fieldsTerminatedByDelim = tb
+		if lf.TerminatedBy != nil {
+			fieldsTerminatedByDelim = string(lf.TerminatedBy.Val)
 		}
 
-		if lf.EscapedBy != "" {
-			if len(lf.EscapedBy) > 1 {
-				return fmt.Errorf("error: LOAD DATA ESCAPED BY must be 1 character long")
+		if lf.EscapedBy != nil {
+			if len(string(lf.EscapedBy.Val)) > 1 {
+				return fmt.Errorf("error: LOAD DATA ESCAPED BY %s must be 1 character long", lf.EscapedBy)
 			}
 
-			eb, err := strconv.Unquote(lf.TerminatedBy)
-			if err != nil {
-				return err
-			}
-			fieldsEscapedByDelim = eb
+			fieldsEscapedByDelim = string(lf.EscapedBy.Val)
 		}
 
 		if lf.EnclosedBy != nil {
@@ -194,19 +180,14 @@ func (l *LoadData) updateParsingConsts() error {
 				fieldsOptionallyDelim = true
 			}
 
-			if lfe.Delim != "" {
-				if len(lfe.Delim) > 1 {
+			if lfe.Delim != nil {
+				if len(string(lfe.Delim.Val)) > 1 {
 					return fmt.Errorf("error: LOAD DATA ENCLOSED BY must be 1 character long")
 				}
 
-				eb, err := strconv.Unquote(lfe.Delim)
-				if err != nil {
-					return err
-				}
-				fieldsEnclosedByDelim = eb
+				fieldsEnclosedByDelim = string(lfe.Delim.Val)
 			}
 		}
-
 	}
 
 	return nil
@@ -298,7 +279,7 @@ func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return l, nil
 }
 
-func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int8) *LoadData {
+func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64) *LoadData {
 	return &LoadData{
 		Local:       local,
 		File:        file,
