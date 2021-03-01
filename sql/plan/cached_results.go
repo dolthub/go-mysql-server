@@ -70,7 +70,7 @@ func (n *CachedResults) String() string {
 func (n *CachedResults) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CachedResults")
-	_ = pr.WriteChildren(sql.DebugString(n.UnaryNode))
+	_ = pr.WriteChildren(sql.DebugString(n.UnaryNode.Child))
 	return pr.String()
 }
 
