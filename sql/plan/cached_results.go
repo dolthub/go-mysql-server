@@ -61,7 +61,10 @@ func (n *CachedResults) Dispose() {
 }
 
 func (n *CachedResults) String() string {
-	return "CachedResults(" + n.UnaryNode.Child.String() + ")"
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("CachedResults")
+	_ = pr.WriteChildren(n.UnaryNode.Child.String())
+	return pr.String()
 }
 
 func (n *CachedResults) DebugString() string {
@@ -125,5 +128,5 @@ func (i *cachedResultsIter) Next() (sql.Row, error) {
 }
 
 func (i *cachedResultsIter) Close(ctx *sql.Context) error {
-	return i.Close(ctx)
+	return i.iter.Close(ctx)
 }
