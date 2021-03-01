@@ -122,6 +122,7 @@ func createCheckConstraint(t *testing.T, harness Harness, engine *sqle.Engine) {
 			nil, nil)
 	}
 }
+
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {
