@@ -237,9 +237,15 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint32(num), nil
 	case sqltypes.Int32:
+		// If empty return the nil value.
+		if v == "" {
+			return nil, nil
+		}
+
 		if dec, ok := v.(decimal.Decimal); ok {
 			v = dec.IntPart()
 		}
+
 		num, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err

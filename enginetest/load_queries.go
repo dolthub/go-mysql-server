@@ -60,9 +60,8 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    fmt.Sprintf("select * from %s", tableNameConst),
-				Expected: []sql.Row{{"\"abc\"", int8(1)}, {"\"def\"", int8(2)}, {"\"hello\"", "NULL"}},
+				Expected: []sql.Row{{"\"abc\"", int8(1)}, {"\"def\"", int8(2)}, {"\"hello\"", nil}},
 			},
 		},
 	},
-	// TODO: Test partial inserts
 }
