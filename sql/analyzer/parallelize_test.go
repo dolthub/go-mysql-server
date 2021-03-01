@@ -17,6 +17,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -91,9 +92,9 @@ func TestIsParallelizable(t *testing.T) {
 	table := memory.NewTable("t", nil)
 
 	testCases := []struct {
-		name string
-		node sql.Node
-		ok   bool
+		name           string
+		node           sql.Node
+		parallelizable bool
 	}{
 		{
 			"just table",
@@ -109,6 +110,33 @@ func TestIsParallelizable(t *testing.T) {
 			true,
 		},
 		{
+			"filter with a subquery",
+			plan.NewFilter(
+				eq(
+					lit(1),
+					plan.NewSubquery(
+						plan.NewProject([]sql.Expression{lit(1)}, plan.NewResolvedTable(table)), "select 1 from table")),
+				plan.NewResolvedTable(table),
+			),
+			true,
+		},
+		{
+			"filter with an incompatible subquery",
+			plan.NewFilter(
+				eq(
+					lit(1),
+					plan.NewSubquery(
+						plan.NewProject([]sql.Expression{gf(0, "", "row_number()")},
+						plan.NewWindow([]sql.Expression{window.NewRowNumber()}, plan.NewResolvedTable(table)),
+						),
+						"select row_number over () from table",
+					),
+				),
+				plan.NewResolvedTable(table),
+			),
+			false,
+		},
+		{
 			"project",
 			plan.NewProject(
 				nil,
@@ -118,6 +146,36 @@ func TestIsParallelizable(t *testing.T) {
 				),
 			),
 			true,
+		},
+		{
+			"project with a subquery",
+			plan.NewProject([]sql.Expression{
+				plan.NewSubquery(
+					plan.NewProject([]sql.Expression{lit(1)}, plan.NewResolvedTable(table)), "select 1 from table"),
+			},
+			plan.NewFilter(
+					expression.NewLiteral(1, sql.Int64),
+					plan.NewResolvedTable(table),
+				),
+			),
+			true,
+		},
+		{
+			"project with an incompatible subquery",
+			plan.NewProject([]sql.Expression{
+				plan.NewSubquery(
+					plan.NewProject([]sql.Expression{gf(0, "", "row_number()")},
+						plan.NewWindow([]sql.Expression{window.NewRowNumber()}, plan.NewResolvedTable(table)),
+					),
+					"select row_number over () from table",
+				),
+			},
+				plan.NewFilter(
+					expression.NewLiteral(1, sql.Int64),
+					plan.NewResolvedTable(table),
+				),
+			),
+			false,
 		},
 		{
 			"join",
@@ -179,7 +237,7 @@ func TestIsParallelizable(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.ok, isParallelizable(tt.node))
+			require.Equal(t, tt.parallelizable, isParallelizable(tt.node))
 		})
 	}
 }

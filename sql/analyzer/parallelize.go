@@ -136,6 +136,9 @@ func isParallelizable(node sql.Node) bool {
 					if q, ok := e.(*plan.Subquery); ok {
 						subqueryParallelizable := true
 						plan.Inspect(q.Query, func(node sql.Node) bool {
+							if node == nil {
+								return true
+							}
 							subqueryParallelizable = isParallelizable(node)
 							return subqueryParallelizable
 						})
@@ -150,9 +153,6 @@ func isParallelizable(node sql.Node) bool {
 		// IndexedTablesAccess already uses an index for lookups, so parallelizing it won't help in most cases (and can
 		// blow up the query execution graph)
 		case *plan.IndexedTableAccess:
-			parallelizable = false
-			return false
-		case *plan.Window:
 			parallelizable = false
 			return false
 		case sql.Table:
