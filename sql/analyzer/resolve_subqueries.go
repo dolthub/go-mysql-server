@@ -122,6 +122,18 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 	return cacheable
 }
 
+func isDeterminstic(sa *plan.SubqueryAlias) bool {
+	isDeterminstic := true
+	plan.InspectExpressions(sa.Child, func(e sql.Expression) bool {
+		if nd, ok := e.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
+			isDeterminstic = false
+			return false
+		}
+		return true
+	})
+	return isDeterminstic
+}
+
 // cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // and if all expressions in the subquery are deterministic.
@@ -140,5 +152,22 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 
 		return s, nil
+	})
+}
+
+// cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
+// will repeatedly execute the subquery, and will insert a *plan.CachedResults
+// node on top of those nodes when it is safe to do so.
+func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	return plan.TransformUpWithParent(n, func(child, parent sql.Node, childNum int) (sql.Node, error) {
+		if join, isJoin := parent.(plan.JoinNode); isJoin {
+			sa, isSubqueryAlias := child.(*plan.SubqueryAlias)
+			if isSubqueryAlias && isDeterminstic(sa) {
+				if (join.JoinType() == plan.JoinTypeLeft || join.JoinType() == plan.JoinTypeInner) && childNum == 1 || (join.JoinType() == plan.JoinTypeRight && childNum == 0) {
+					return plan.NewCachedResults(child), nil
+				}
+			}
+		}
+		return child, nil
 	})
 }

@@ -227,6 +227,44 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ InnerJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ CachedResults(SubqueryAlias(othertable)\n" +
+			"         └─ Table(othertable)\n" +
+			"        )\n" +
+			"",
+	},
+	{
+		Query: "SELECT s2, i2, i FROM mytable LEFT JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ LeftJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ CachedResults(SubqueryAlias(othertable)\n" +
+			"         └─ Table(othertable)\n" +
+			"        )\n" +
+			"",
+	},
+	{
+		Query: "SELECT s2, i2, i FROM mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ RightIndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: "SELECT s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: "SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i = (SELECT i2 FROM othertable LIMIT 1)",
 		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Limit(1)\n" +
 			" └─ Project(othertable.i2)\n" +
