@@ -109,7 +109,7 @@ func removeRedundantExchanges(node sql.Node) (sql.Node, error) {
 }
 
 func isParallelizable(node sql.Node) bool {
-	var ok = true
+	var parallelizable = true
 	var tableSeen bool
 	var lastWasTable bool
 
@@ -120,32 +120,51 @@ func isParallelizable(node sql.Node) bool {
 
 		lastWasTable = false
 		if plan.IsBinary(node) {
-			ok = false
+			parallelizable = false
 			return false
 		}
 
-		switch node.(type) {
+		switch node := node.(type) {
 		// These are the only unary nodes that can be parallelized. Any other
 		// unary nodes will not.
-		case *plan.Filter,
-			*plan.Project,
-			*plan.TableAlias,
+		case *plan.TableAlias,
 			*plan.Exchange:
+		// Some nodes may have subquery expressions that make them unparallelizable
+		case *plan.Project, *plan.Filter:
+			for _, e := range node.(sql.Expressioner).Expressions() {
+				sql.Inspect(e, func(e sql.Expression) bool {
+					if q, ok := e.(*plan.Subquery); ok {
+						subqueryParallelizable := true
+						plan.Inspect(q.Query, func(node sql.Node) bool {
+							subqueryParallelizable = isParallelizable(node)
+							return subqueryParallelizable
+						})
+						if !subqueryParallelizable {
+							parallelizable = false
+						}
+						return true
+					}
+					return true
+				})
+			}
 		// IndexedTablesAccess already uses an index for lookups, so parallelizing it won't help in most cases (and can
 		// blow up the query execution graph)
 		case *plan.IndexedTableAccess:
-			ok = false
+			parallelizable = false
+			return false
+		case *plan.Window:
+			parallelizable = false
 			return false
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true
 		default:
-			ok = false
+			parallelizable = false
 			return false
 		}
 
 		return true
 	})
 
-	return ok && tableSeen && lastWasTable
+	return parallelizable && tableSeen && lastWasTable
 }
