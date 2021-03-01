@@ -107,7 +107,7 @@ func CreateDummyFiles(dir string) error {
 		return err
 	}
 
-	loadStatement = fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES", file3.Name(), tableNameConst)
+	loadStatement = fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES (`pk`, `c1`)", file3.Name(), tableNameConst)
 	LoadDataScripts[2].SetUpScript = append(LoadDataScripts[2].SetUpScript, loadStatement)
 
 	return nil
