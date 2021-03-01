@@ -381,7 +381,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "t1_constraint_0",
+			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -433,7 +433,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "t1_constraint_0",
+			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -459,7 +459,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "t1_constraint_0",
+			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -485,7 +485,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "t1_constraint_0",
+			Name:              "",
 			Columns:           []string{"b_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b"},
@@ -516,7 +516,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		nil,
 		[]*sql.ForeignKeyConstraint{{
-			Name:              "t1_constraint_0",
+			Name:              "",
 			Columns:           []string{"b_id", "c_id"},
 			ReferencedTable:   "t0",
 			ReferencedColumns: []string{"b", "c"},
@@ -569,7 +569,7 @@ var fixtures = map[string]sql.Node{
 		nil,
 		nil,
 		[]*sql.CheckConstraint{{
-			Name: "t1_constraint_0",
+			Name: "",
 			Expr: expression.NewGreaterThan(
 				expression.NewUnresolvedColumn("a"),
 				expression.NewLiteral(int8(0), sql.Int8),
@@ -793,6 +793,28 @@ var fixtures = map[string]sql.Node{
 			ReferencedColumns: []string{"b", "c"},
 			OnUpdate:          sql.ForeignKeyReferenceOption_Restrict,
 			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
+		},
+	),
+	`ALTER TABLE t1 ADD CHECK (a > 0)`: plan.NewAlterAddCheck(
+		plan.NewUnresolvedTable("t1", ""),
+		&sql.CheckConstraint{
+			Name: "",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		},
+	),
+	`ALTER TABLE t1 ADD CONSTRAINT ch1 CHECK (a > 0)`: plan.NewAlterAddCheck(
+		plan.NewUnresolvedTable("t1", ""),
+		&sql.CheckConstraint{
+			Name: "ch1",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
 		},
 	),
 	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(

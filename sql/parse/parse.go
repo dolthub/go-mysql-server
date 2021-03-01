@@ -702,7 +702,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	//TODO: support multiple constraints in a single ALTER statement
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
 		table := tableNameToUnresolvedTable(ddl.Table)
-		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0], ddl.TableSpec.Constraints[0].Name)
+		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
 		if err != nil {
 			return nil, err
 		}
@@ -921,13 +921,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	var fkDefs []*sql.ForeignKeyConstraint
 	var chDefs []*sql.CheckConstraint
-	constraintCnt := 0
 	for _, unknownConstraint := range c.TableSpec.Constraints {
-		name := unknownConstraint.Name
-		if name == "" {
-			name = fmt.Sprintf("%s_constraint_%d", c.Table.Name, constraintCnt)
-		}
-		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint, name)
+		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
 		if err != nil {
 			return nil, err
 		}
@@ -1012,7 +1007,7 @@ type namedConstraint struct {
 	name string
 }
 
-func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefinition, name string) (interface{}, error) {
+func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefinition) (interface{}, error) {
 	if fkConstraint, ok := cd.Details.(*sqlparser.ForeignKeyDefinition); ok {
 		columns := make([]string, len(fkConstraint.Source))
 		for i, col := range fkConstraint.Source {
@@ -1023,7 +1018,7 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			refColumns[i] = col.String()
 		}
 		return &sql.ForeignKeyConstraint{
-			Name:              name,
+			Name:              cd.Name,
 			Columns:           columns,
 			ReferencedTable:   fkConstraint.ReferencedTable.Name.String(),
 			ReferencedColumns: refColumns,
@@ -1036,7 +1031,7 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			return nil, err
 		}
 		return &sql.CheckConstraint{
-			Name:     name,
+			Name:     cd.Name,
 			Expr:     c,
 			Enforced: chConstraint.Enforced,
 		}, nil
