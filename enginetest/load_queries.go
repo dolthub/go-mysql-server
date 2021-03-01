@@ -16,8 +16,9 @@ package enginetest
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io/ioutil"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 const (
@@ -44,7 +45,7 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:   fmt.Sprintf("select * from %s", tableNameConst),
+				Query:    fmt.Sprintf("select * from %s", tableNameConst),
 				Expected: []sql.Row{{int8(1), "hi"}, {int8(2), "hello"}},
 			},
 		},
@@ -101,7 +102,7 @@ func CreateDummyFiles(dir string) error {
 		return err
 	}
 
-	_, err = file3.WriteString("pk,c1\nxxx\"abc\",1\nsomething xxx\"def\",2\n\"ghi\",3" )
+	_, err = file3.WriteString("pk,c1\nxxx\"abc\",1\nsomething xxx\"def\",2\n\"ghi\",3")
 	if err != nil {
 		return err
 	}

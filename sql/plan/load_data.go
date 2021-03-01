@@ -17,37 +17,39 @@ package plan
 import (
 	"bufio"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 type LoadData struct {
-	Local bool
-	File string
-	Destination sql.Node
-	ColumnNames []string
+	Local              bool
+	File               string
+	Destination        sql.Node
+	ColumnNames        []string
 	ResponsePacketSent bool
-	Fields *sqlparser.Fields
-	Lines *sqlparser.Lines
-	IgnoreNum int8
+	Fields             *sqlparser.Fields
+	Lines              *sqlparser.Lines
+	IgnoreNum          int8
 }
 
 const (
-	Tmpfiledir = "/tmp/"
+	Tmpfiledir  = "/tmp/"
 	TmpfileName = ".LOADFILE"
 )
 
 var (
 	fieldsTerminatedByDelim = "\t"
-	fieldsEnclosedByDelim = ""
-	fieldsOptionallyDelim = false
-	fieldsEscapedByDelim = "\\"
-	linesTerminatedByDelim = "\n"
-	linesStartingByDelim = ""
+	fieldsEnclosedByDelim   = ""
+	fieldsOptionallyDelim   = false
+	fieldsEscapedByDelim    = "\\"
+	linesTerminatedByDelim  = "\n"
+	linesStartingByDelim    = ""
 )
 
 func (l *LoadData) Resolved() bool {
@@ -127,7 +129,7 @@ func (l *LoadData) updateParsingConsts() error {
 	if l.Lines != nil {
 		ll := l.Lines
 		if ll.StartingBy != "" {
-			sb := ll.StartingBy[1:len(ll.StartingBy)-1]
+			sb := ll.StartingBy[1 : len(ll.StartingBy)-1]
 			linesStartingByDelim = sb
 		}
 		if ll.TerminatedBy != "" {
@@ -240,7 +242,7 @@ func parseFields(line string) ([]sql.Expression, error) {
 	if fieldsEnclosedByDelim != "" {
 		for i, field := range fields {
 			if string(field[0]) == fieldsEnclosedByDelim && string(field[len(field)-1]) == fieldsEnclosedByDelim {
-				fields[i] = field[1:len(field)-1]
+				fields[i] = field[1 : len(field)-1]
 			} else {
 				return nil, fmt.Errorf("error: dield not properly enclosed")
 			}
@@ -251,7 +253,7 @@ func parseFields(line string) ([]sql.Expression, error) {
 	exprs := make([]sql.Expression, len(fields))
 
 	for i, field := range fields {
-		exprs[i] =  expression.NewLiteral(field, sql.LongText)
+		exprs[i] = expression.NewLiteral(field, sql.LongText)
 	}
 
 	return exprs, nil
@@ -273,12 +275,12 @@ func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int8) *LoadData {
 	return &LoadData{
-		Local: local,
-		File: file,
+		Local:       local,
+		File:        file,
 		Destination: destination,
 		ColumnNames: cols,
-		Fields: fields,
-		Lines: lines,
-		IgnoreNum: ignoreNum,
+		Fields:      fields,
+		Lines:       lines,
+		IgnoreNum:   ignoreNum,
 	}
 }

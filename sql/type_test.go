@@ -16,9 +16,10 @@ package sql
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestFloatCovert(t *testing.T) {
