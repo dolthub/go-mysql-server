@@ -33,7 +33,7 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 
 	switch n := n.(type) {
 	//TODO: add stored procedures
-	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
+	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update, *plan.LoadData:
 		accumulatorType, err := getUpdateAccumulatorType(n)
 		if err != nil {
 			return nil, err
@@ -60,6 +60,8 @@ func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
 		return plan.UpdateTypeDelete, nil
 	case *plan.Update:
 		return plan.UpdateTypeUpdate, nil
+	case *plan.LoadData:
+		return plan.UpdateTypeInsert, nil
 	}
 
 	return -1, fmt.Errorf("unexpected node type: %T", n)

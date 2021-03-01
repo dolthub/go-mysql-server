@@ -802,19 +802,6 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name: "Super basic load data",
-		SetUpScript: []string{
-			"create table x (pk int primary key)",
-			"LOAD DATA INFILE 'x.txt' INTO TABLE x",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from x",
-				Expected: []sql.Row{{int8(0)}},
-			},
-		},
-	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

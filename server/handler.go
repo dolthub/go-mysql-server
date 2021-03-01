@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"io"
 	"net"
 	"regexp"
@@ -308,7 +309,7 @@ func (h *Handler) doQuery(
 		if n.Local {
 			// tell the connection to undergo the load data process with this
 			// metdata
-			err = c.HandleLoadDataLocalQuery("/tmp", ".LOADFILE", n.Infile)
+			err = c.HandleLoadDataLocalQuery(plan.Tmpfiledir, plan.TmpfileName, n.Infile)
 			if err != nil {
 				return err
 			}

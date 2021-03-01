@@ -16,6 +16,8 @@ package enginetest
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -455,6 +457,19 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 		})
 	}
 	for _, script := range InsertErrorScripts {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestLoadData(t *testing.T, harness Harness) {
+	dir, err := ioutil.TempDir("", "loaddata")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	err = CreateDummyFiles(dir)
+	require.NoError(t, err)
+
+	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
 	}
 }

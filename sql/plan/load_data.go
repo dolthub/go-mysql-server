@@ -33,7 +33,13 @@ type LoadData struct {
 	ResponsePacketSent bool
 	Fields *sqlparser.Fields
 	Lines *sqlparser.Lines
+	IgnoreNum int8
 }
+
+const (
+	Tmpfiledir = "/tmp/"
+	TmpfileName = ".LOADFILE"
+)
 
 var (
 	fieldsTerminatedByDelim = "\t"
@@ -44,44 +50,46 @@ var (
 	linesStartingByDelim = ""
 )
 
-func (l LoadData) Resolved() bool {
+func (l *LoadData) Resolved() bool {
 	return l.Destination.Resolved()
 }
 
-func (l LoadData) String() string {
-	return "Load data yooyoyoy"
+func (l *LoadData) String() string {
+	pr := sql.NewTreePrinter()
+
+	_ = pr.WriteNode("LOAD DATA")
+	_ = pr.WriteChildren(l.Destination.String())
+	return pr.String()
 }
 
-func (l LoadData) Schema() sql.Schema {
+func (l *LoadData) Schema() sql.Schema {
 	return l.Destination.Schema()
 }
 
-func (l LoadData) Children() []sql.Node {
+func (l *LoadData) Children() []sql.Node {
 	return []sql.Node{l.Destination}
 }
 
-func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// Get Files as an InsertRows
-	// 1. How do I attach a column name to an inserter (might need to use update iter instead)
-	// 2. How do i go through the non local path for discovering files
-	// 3. Biggest Risk is nailing the parsing algorithm and getting the types correct
+func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// TODO: Add the security variables for mysql
-	// Current actions: Clean up parsing of lines -> Hack into values -> write test cases -> Revist value parsing
 
 	// Start the parsing by grabbing all the config variables.
-	l.updateParsingConsts()
+	err := l.updateParsingConsts()
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO: Add tmpdir setting for mysql
 	var fileName = l.File
 	if l.Local {
-		fileName = "/tmp/.LOADFILE"
+		fileName = Tmpfiledir + TmpfileName
 	}
 
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer os.Remove(fileName)
 
 	scanner := bufio.NewScanner(file)
 	parseLines(scanner)
@@ -90,13 +98,20 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	scanner = bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		exprs, err := parseFields(line)
+		if l.IgnoreNum <= 0 {
+			exprs, err := parseFields(line)
 
-		if err != nil {
-			return nil, err
+			if err != nil {
+				return nil, err
+			}
+
+			// line was skipped
+			if exprs != nil {
+				values = append(values, exprs)
+			}
+		} else {
+			l.IgnoreNum--
 		}
-
-		values = append(values, exprs)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -108,14 +123,19 @@ func (l LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return newInsertIter(ctx, l.Destination, newValue, false, nil, row)
 }
 
-func (l LoadData) updateParsingConsts() {
+func (l *LoadData) updateParsingConsts() error {
 	if l.Lines != nil {
 		ll := l.Lines
 		if ll.StartingBy != "" {
-			linesStartingByDelim = ll.StartingBy
+			sb := ll.StartingBy[1:len(ll.StartingBy)-1]
+			linesStartingByDelim = sb
 		}
 		if ll.TerminatedBy != "" {
-			linesTerminatedByDelim = ll.TerminatedBy
+			tb, err := strconv.Unquote(ll.TerminatedBy)
+			if err != nil {
+				return err
+			}
+			linesTerminatedByDelim = tb
 		}
 	}
 
@@ -123,11 +143,23 @@ func (l LoadData) updateParsingConsts() {
 		lf := l.Fields
 
 		if lf.TerminatedBy != "" {
-			fieldsTerminatedByDelim = lf.TerminatedBy
+			tb, err := strconv.Unquote(lf.TerminatedBy)
+			if err != nil {
+				return err
+			}
+			fieldsTerminatedByDelim = tb
 		}
 
 		if lf.EscapedBy != "" {
-			fieldsEscapedByDelim = lf.EscapedBy
+			if len(lf.EscapedBy) > 1 {
+				return fmt.Errorf("error: LOAD DATA ESCAPED BY must be 1 character long")
+			}
+
+			eb, err := strconv.Unquote(lf.TerminatedBy)
+			if err != nil {
+				return err
+			}
+			fieldsEscapedByDelim = eb
 		}
 
 		if lf.EnclosedBy != nil {
@@ -138,86 +170,99 @@ func (l LoadData) updateParsingConsts() {
 			}
 
 			if lfe.Delim != "" {
-				fieldsEnclosedByDelim = lfe.Delim
+				if len(lfe.Delim) > 1 {
+					return fmt.Errorf("error: LOAD DATA ENCLOSED BY must be 1 character long")
+				}
+
+				eb, err := strconv.Unquote(lfe.Delim)
+				if err != nil {
+					return err
+				}
+				fieldsEnclosedByDelim = eb
 			}
 		}
 
 	}
+
+	return nil
 }
 
 func parseLines(scanner *bufio.Scanner) {
 	splitFunc := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		if atEOF {
+		// Return nothing if at end of file and no data passed
+		if atEOF && len(data) == 0 {
 			return 0, nil, nil
 		}
 
-		// Find the prefix
-		startingDelimPos := -1
-		if linesStartingByDelim != "" {
-			startingDelimPos = strings.Index(string(data), linesTerminatedByDelim)
+		// Find the index of the input of a newline followed by a
+		// pound sign.
+		if i := strings.Index(string(data), linesTerminatedByDelim); i >= 0 {
+			return i + 1, data[0:i], nil
 		}
 
-		// Find the ending token
-		endingDelimPos := -1
-		if linesTerminatedByDelim != "" {
-			endingDelimPos = strings.Index(string(data), linesTerminatedByDelim)
+		// If at end of file with data return the data
+		if atEOF {
+			return len(data), data, nil
 		}
 
-
-		// Return the remaining data and exit
-		if endingDelimPos < 0 && linesTerminatedByDelim != "" {
-			return len(data), data[0:], nil
-		}
-
-		if linesStartingByDelim == "" {
-			if endingDelimPos >= 0 {
-				return endingDelimPos+len(linesTerminatedByDelim), data[0:endingDelimPos], nil
-			} else {
-				return len(data), data[0:], nil
-			}
-		}
-
-		// If the starting delimeter isn't found and is non-empty we need to skip this data.
-		if startingDelimPos < 0 {
-			// if the starting delim wasn't found and the ending delim wasn't found throw an error
-			if endingDelimPos < 0 {
-				return 0, nil, fmt.Errorf("error: data does not meet parsing criteria")
-			} else {
-				advancePos := endingDelimPos + len(linesTerminatedByDelim)
-
-				return advancePos, nil, nil
-			}
-		} else {
-			startPos := startingDelimPos + len(linesStartingByDelim)
-			if endingDelimPos < 0 {
-				return len(data), data[startPos:], nil
-			} else {
-				advancePos := endingDelimPos + len(linesTerminatedByDelim)
-				return advancePos, data[startPos:endingDelimPos], nil
-			}
-		}
+		return
 	}
-
 	scanner.Split(splitFunc)
 }
 
-func parseFields(line string) ([]sql.Expression, error) {
-	exprs := make([]sql.Expression, 1)
-
-	val, err := strconv.ParseInt(line, 10, 64)
-	if err != nil {
-		return nil, err
+func parseLinePrefix(line string) string {
+	if linesStartingByDelim == "" {
+		return line
 	}
 
-	exprs[0] = expression.NewLiteral(val, sql.Int8)
+	prefixIndex := strings.Index(line, linesStartingByDelim)
+
+	// The prefix wasn't found so we need to skip this line.
+	if prefixIndex < 0 {
+		return ""
+	} else {
+		return line[prefixIndex+len(linesStartingByDelim):]
+	}
+}
+
+func parseFields(line string) ([]sql.Expression, error) {
+	// Step 1. Start by Searching for prefix if there is one
+	line = parseLinePrefix(line)
+	if line == "" {
+		return nil, nil
+	}
+
+	// Step 2: Split the lines into fields given the delim
+	fields := strings.Split(line, fieldsTerminatedByDelim)
+
+	// Step 3: Go through each field and see if it was enclosed by something
+	// TODO: Support the OPTIONALLY parameter.
+	if fieldsEnclosedByDelim != "" {
+		for i, field := range fields {
+			if string(field[0]) == fieldsEnclosedByDelim && string(field[len(field)-1]) == fieldsEnclosedByDelim {
+				fields[i] = field[1:len(field)-1]
+			} else {
+				return nil, fmt.Errorf("error: dield not properly enclosed")
+			}
+		}
+	}
+
+	// TODO: Step 4: Check for the ESCAPED BY parameter.
+	exprs := make([]sql.Expression, len(fields))
+
+	for i, field := range fields {
+		exprs[i] =  expression.NewLiteral(field, sql.LongText)
+	}
+
 	return exprs, nil
 }
 
+// TODO: Do robust path finding for load data.
 func getLoadPath(fileName string, local bool) string {
 	return ""
 }
 
-func (l LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
@@ -226,7 +271,7 @@ func (l LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return l, nil
 }
 
-func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines) *LoadData {
+func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int8) *LoadData {
 	return &LoadData{
 		Local: local,
 		File: file,
@@ -234,5 +279,6 @@ func NewLoadData(local bool, file string, destination sql.Node, cols []string, f
 		ColumnNames: cols,
 		Fields: fields,
 		Lines: lines,
+		IgnoreNum: ignoreNum,
 	}
 }
