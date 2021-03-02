@@ -164,7 +164,7 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
 // node on top of those nodes when it is safe to do so.
 func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUpWithParent(n, func(child, parent sql.Node, childNum int) (sql.Node, error) {
+	n, err := plan.TransformUpWithParent(n, func(child, parent sql.Node, childNum int) (sql.Node, error) {
 		_, isJoin := parent.(plan.JoinNode)
 		_, isIndexedJoin := parent.(*plan.IndexedJoin)
 		if isJoin || isIndexedJoin {
@@ -175,4 +175,37 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 		return child, nil
 	})
+	if err != nil {
+		return n, err
+	}
+
+	// If the most primary table in the top level join is a CachedResults, remove it.
+	// We only want to do this if we're at the top of the tree.
+	// TODO: Not a perfect indicator of whether we're at the top of the tree...
+	if scope == nil {
+		selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+			if j, isJoin := parent.(plan.JoinNode); isJoin {
+				if j.JoinType() == plan.JoinTypeRight {
+					return childNum == 1
+				} else {
+					return childNum == 0
+				}
+			} else if j, isIndexedJoin := parent.(*plan.IndexedJoin); isIndexedJoin {
+				if j.JoinType() == plan.JoinTypeRight {
+					return childNum == 1
+				} else {
+					return childNum == 0
+				}
+			}
+			return true
+		}
+		n, err = plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
+			cr, isCR := n.(*plan.CachedResults)
+			if isCR {
+				return cr.UnaryNode.Child, nil
+			}
+			return n, nil
+		})
+	}
+	return n, err
 }

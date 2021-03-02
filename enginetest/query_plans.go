@@ -132,12 +132,11 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub INNER JOIN othertable ot ON sub.i = ot.i2",
 		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
 			" └─ IndexedJoin(sub.i = ot.i2)\n" +
-			"     ├─ CachedResults\n" +
-			"     │   └─ SubqueryAlias(sub)\n" +
-			"     │       └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			"     │           └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"     │               ├─ Table(mytable)\n" +
-			"     │               └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"     ├─ SubqueryAlias(sub)\n" +
+			"     │   └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"     │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"     │           ├─ Table(mytable)\n" +
+			"     │           └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"     └─ TableAlias(ot)\n" +
 			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
@@ -146,12 +145,11 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2",
 		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
 			" └─ IndexedJoin(sub.i = ot.i2)\n" +
-			"     ├─ CachedResults\n" +
-			"     │   └─ SubqueryAlias(sub)\n" +
-			"     │       └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			"     │           └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"     │               ├─ Table(mytable)\n" +
-			"     │               └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"     ├─ SubqueryAlias(sub)\n" +
+			"     │   └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"     │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"     │           ├─ Table(mytable)\n" +
+			"     │           └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"     └─ TableAlias(ot)\n" +
 			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
@@ -163,12 +161,11 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(i, s)\n" +
 			"     └─ Project(sub.i + 10, ot.s2)\n" +
 			"         └─ IndexedJoin(sub.i = ot.i2)\n" +
-			"             ├─ CachedResults\n" +
-			"             │   └─ SubqueryAlias(sub)\n" +
-			"             │       └─ Project(mytable.i)\n" +
-			"             │           └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"             │               ├─ Table(mytable)\n" +
-			"             │               └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"             ├─ SubqueryAlias(sub)\n" +
+			"             │   └─ Project(mytable.i)\n" +
+			"             │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"             │           ├─ Table(mytable)\n" +
+			"             │           └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"             └─ TableAlias(ot)\n" +
 			"                 └─ IndexedTableAccess(othertable on [othertable.i2])\n",
 	},
@@ -263,9 +260,8 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i",
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ CachedResults\n" +
-			"     │   └─ SubqueryAlias(othertable)\n" +
-			"     │       └─ Table(othertable)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Table(othertable)\n" +
 			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
