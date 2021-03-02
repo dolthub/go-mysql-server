@@ -299,7 +299,7 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUpWithSelector(n, canPruneChild, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			child, err := fixRemainingFieldsIndexes(n.Child, scope)
+			child, err := fixRemainingFieldsIndexes(n.Child, nil)
 			if err != nil {
 				return nil, err
 			}
