@@ -300,6 +300,15 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT /*+ JOIN_ORDER(mt, o) */ * FROM mytable mt INNER JOIN one_pk o ON mt.i = o.pk AND mt.s = o.c2",
+		ExpectedPlan: "IndexedJoin(mt.i = o.pk AND mt.s = o.c2)\n" +
+			" ├─ TableAlias(mt)\n" +
+			" │   └─ Table(mytable)\n" +
+			" └─ TableAlias(o)\n" +
+			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
 		Query: "SELECT i, i2, s2 FROM mytable RIGHT JOIN othertable ON i = i2 - 1",
 		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
 			" └─ RightIndexedJoin(mytable.i = othertable.i2 - 1)\n" +

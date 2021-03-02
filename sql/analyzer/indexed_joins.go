@@ -681,7 +681,19 @@ func getJoinIndex(
 	exprsByTable := joinExprsByTable(joinCondPredicates)
 	indexesByTable := make(joinIndexesByTable)
 	for table, cols := range exprsByTable {
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, extractExpressions(cols)...)...)
+		exprs := extractExpressions(cols)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, exprs...)...)
+		// If we do not find a perfect index, we take the first single column partial index if there is one.
+		// This currently only finds single column indexes. A better search would look for the most complete
+		// index available, covering the columns with the most specificity / highest cardinality.
+		if idx == nil && len(exprs) > 1 {
+			for _, e := range exprs {
+				idx = ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, e)...)
+				if idx != nil {
+					break
+				}
+			}
+		}
 		indexesByTable[table] = append(indexesByTable[table], colExprsToJoinIndex(table, idx, joinCond, cols))
 	}
 
