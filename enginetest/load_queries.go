@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -24,12 +25,20 @@ const (
 	tableNameConst = "LOADTABLE"
 )
 
+func deterimeTerminatedByChar() string {
+	if runtime.GOOS == "windows" {
+		return "\r\n"
+	} else {
+		return "\n"
+	}
+}
+
 var LoadDataScripts = []ScriptTest{
 	{
 		Name: "Basic load data with enclosed values.",
 		SetUpScript: []string{
 			fmt.Sprintf("create table %s(pk int primary key)", tableNameConst),
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS ENCLOSED BY '\"'", "./testdata/test1.txt", tableNameConst),
+			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS ENCLOSED BY '\"' LINES TERMINATED BY '%s'", "./testdata/test1.txt", tableNameConst, deterimeTerminatedByChar()),
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -42,7 +51,7 @@ var LoadDataScripts = []ScriptTest{
 		Name: "Load data with csv",
 		SetUpScript: []string{
 			fmt.Sprintf("create table %s(pk int primary key, c1 longtext)", tableNameConst),
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' IGNORE 1 LINES", "./testdata/test2.csv", tableNameConst),
+			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' LINES TERMINATED BY '%s' IGNORE 1 LINES", "./testdata/test2.csv", tableNameConst, deterimeTerminatedByChar()),
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -55,7 +64,7 @@ var LoadDataScripts = []ScriptTest{
 		Name: "Load data with csv with prefix.",
 		SetUpScript: []string{
 			fmt.Sprintf("create table %s(pk longtext primary key, c1 int)", tableNameConst),
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES (`pk`, `c1`)", "./testdata/test3.csv", tableNameConst),
+			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' TERMINATED BY '%s' IGNORE 1 LINES (`pk`, `c1`)", "./testdata/test3.csv", tableNameConst, deterimeTerminatedByChar()),
 		},
 		Assertions: []ScriptTestAssertion{
 			{
