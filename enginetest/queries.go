@@ -63,6 +63,27 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT pk DIV 2, SUM(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{int64(0), float64(14)},
+			{int64(1), float64(54)},
+		},
+	},
+	{
+		Query: "SELECT pk DIV 2, SUM(c3) + sum(c3) as sum FROM one_pk GROUP BY 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{int64(0), float64(28)},
+			{int64(1), float64(108)},
+		},
+	},
+	{
+		Query: "SELECT pk DIV 2, SUM(c3) + min(c3) as sum_and_min FROM one_pk GROUP BY 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{int64(0), float64(16)},
+			{int64(1), float64(76)},
+		},
+	},
+	{
 		Query: "SELECT pk1, SUM(c1) FROM two_pk GROUP BY pk1 ORDER BY pk1;",
 		Expected: []sql.Row{
 			{0, 10.0},
@@ -641,6 +662,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
+		Query:    "SELECT i FROM (SELECT 1 AS i FROM DUAL UNION SELECT 2 AS i FROM DUAL) some_is WHERE i NOT IN (SELECT i FROM (SELECT 1 as i FROM DUAL) different_is);",
+		Expected: []sql.Row{{int64(2)}},
+	},
+	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1,1;",
 		Expected: []sql.Row{{int64(2)}},
 	},
@@ -1051,6 +1076,23 @@ var QueryTests = []QueryTest{
 			{1, 1},
 			{2, 2},
 			{3, 3},
+		},
+	},
+	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2
+				from mytable join othertable on i = i2 order by 1`,
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2
+				from mytable join othertable on i = i2
+				where mytable.i = 3 order by 1`,
+		Expected: []sql.Row{
+			{1, 3},
 		},
 	},
 	{
@@ -2211,6 +2253,28 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
 	{
+		Query:    `SELECT i AS i FROM mytable GROUP BY s ORDER BY 1`,
+		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		Query:    `SELECT i AS x FROM mytable GROUP BY s ORDER BY x`,
+		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
+	},
+	{
+		Query: `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1}},
+	},
+	{
+		Query: `SELECT i as i, row_number() over (order by i DESC) FROM mytable ORDER BY 1`,
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1}},
+	},
+	{
 		Query: `
 		SELECT
 			i,
@@ -2654,6 +2718,22 @@ var QueryTests = []QueryTest{
 						 ORDER BY i`,
 		Expected: []sql.Row{
 			{1}, {2}, {3},
+		},
+	},
+	{
+		Query: `SELECT i FROM mytable mt
+						 WHERE (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) = 2
+						 ORDER BY i`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query: `SELECT i FROM mytable mt
+						 WHERE (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) = 1
+						 ORDER BY i`,
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
 		},
 	},
 	{
@@ -3652,6 +3732,153 @@ var QueryTests = []QueryTest{
 			sql.NewRow(nil),
 			sql.NewRow(nil),
 			sql.NewRow(nil),
+		},
+	},
+	{
+		Query: `select i, row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1, 3, 1},
+			{2, 2, 3},
+			{3, 1, 2},
+		},
+	},
+	{
+		Query: `select i, row_number() over (order by i desc) from mytable where i = 2 order by 1;`,
+		Expected: []sql.Row{
+			{2, 1},
+		},
+	},
+	{
+		Query: `SELECT i, (SELECT row_number() over (order by ot.i2 desc) FROM othertable ot where ot.i2 = mt.i) from mytable mt order by 1;`,
+		Expected: []sql.Row{
+			{1, 1},
+			{2, 1},
+			{3, 1},
+		},
+	},
+	{
+		Query: `select row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by i;`,
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 3},
+			{1, 2},
+		},
+	},
+	{
+		Query: `select *, row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by i;`,
+		Expected: []sql.Row{
+			{1, "first row", 3, 1},
+			{2, "second row", 2, 3},
+			{3, "third row", 1, 2},
+		},
+	},
+	{
+		Query: `select row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) 
+				from mytable mt join othertable ot 
+				on mt.i = ot.i2    
+				order by mt.i;`,
+		Expected: []sql.Row{
+			{3, 1},
+			{2, 3},
+			{1, 2},
+		},
+	},
+	{
+		Query: `select i, row_number() over (order by i desc), 
+				row_number() over (order by length(s),i) from mytable order by 1 desc;`,
+		Expected: []sql.Row{
+			{3, 1, 2},
+			{2, 2, 3},
+			{1, 3, 1},
+		},
+	},
+	{
+		Query: `select i, row_number() over (order by i desc) as i_num,
+				row_number() over (order by length(s),i) as s_num from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1, 3, 1},
+			{2, 2, 3},
+			{3, 1, 2},
+		},
+	},
+	{
+		Query: `select i, row_number() over (order by i desc) + 3,
+			row_number() over (order by length(s),i) as s_asc, 
+			row_number() over (order by length(s) desc,i desc) as s_desc 
+			from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1, 6, 1, 3},
+			{2, 5, 3, 1},
+			{3, 4, 2, 2},
+		},
+	},
+	{
+		Query: `select i, row_number() over (order by i desc) + 3,
+			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0  
+			from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1, 6, 1.0},
+			{2, 5, 3.0},
+			{3, 4, 2.0},
+		},
+	},
+	{
+		Query: "select pk1, pk2, row_number() over (partition by pk1 order by c1 desc) from two_pk order by 1,2;",
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{0, 1, 1},
+			{1, 0, 2},
+			{1, 1, 1},
+		},
+	},
+	{
+		Query: `select pk1, pk2, 
+			row_number() over (partition by pk1 order by c1 desc) 
+			from two_pk order by 1,2;`,
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{0, 1, 1},
+			{1, 0, 2},
+			{1, 1, 1},
+		},
+	},
+	{
+		Query: `select pk1, pk2, 
+			row_number() over (partition by pk1 order by c1 desc), 
+			row_number() over (partition by pk2 order by 10 - c1)
+			from two_pk order by 1,2;`,
+		Expected: []sql.Row{
+			{0, 0, 2, 2},
+			{0, 1, 1, 2},
+			{1, 0, 2, 1},
+			{1, 1, 1, 1},
+		},
+	},
+	{
+		Query: `select pk1, pk2, 
+			row_number() over (partition by pk1 order by c1 desc), 
+			row_number() over (partition by pk2 order by 10 - c1),
+			max(c4) over ()
+			from two_pk order by 1,2;`,
+		Expected: []sql.Row{
+			{0, 0, 2, 2, 33},
+			{0, 1, 1, 2, 33},
+			{1, 0, 2, 1, 33},
+			{1, 1, 1, 1, 33},
+		},
+	},
+	{
+		Query: `select i,
+			row_number() over (partition by case when i > 2 then "under two" else "over two" end order by i desc) as s_asc
+			from mytable order by 1;`,
+		Expected: []sql.Row{
+			{1, 2},
+			{2, 1},
+			{3, 1},
 		},
 	},
 }

@@ -17,7 +17,6 @@ package plan
 import (
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,7 +26,7 @@ import (
 type Call struct {
 	Name   string
 	Params []sql.Expression
-	proc   *CreateProcedure
+	proc   *sql.Procedure
 	pRef   *expression.ProcedureParamReference
 }
 
@@ -83,8 +82,8 @@ func (c *Call) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &nc, nil
 }
 
-// WithProcedure returns a new *Call containing the given *CreateProcedure.
-func (c *Call) WithProcedure(proc *CreateProcedure) *Call {
+// WithProcedure returns a new *Call containing the given *sql.Procedure.
+func (c *Call) WithProcedure(proc *sql.Procedure) *Call {
 	nc := *c
 	nc.proc = proc
 	return &nc
@@ -144,8 +143,9 @@ func (iter *callIter) Next() (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		paramName := strings.ToLower(iter.call.proc.Params[i].Name)
-		iter.call.pRef.NameToParam[paramName] = val
+		paramName := iter.call.proc.Params[i].Name
+		paramType := iter.call.proc.Params[i].Type
+		iter.call.pRef.Initialize(paramName, paramType, val)
 	}
 
 	bodyIter, err := iter.call.proc.Body.RowIter(iter.ctx, nil)
@@ -168,5 +168,52 @@ func (iter *callIter) Next() (sql.Row, error) {
 
 // Close implements the sql.RowIter interface.
 func (c *callIter) Close(ctx *sql.Context) error {
+	// Set all user and system variables from INOUT and OUT params
+	for i, param := range c.call.proc.Params {
+		if param.Direction == sql.ProcedureParamDirection_Inout ||
+			(param.Direction == sql.ProcedureParamDirection_Out && c.call.pRef.HasBeenSet(param.Name)) {
+			val, err := c.call.pRef.Get(param.Name)
+			if err != nil {
+				return err
+			}
+			switch callParam := c.call.Params[i].(type) {
+			case *expression.UserVar:
+				err = ctx.Set(ctx, callParam.Name, param.Type, val)
+				if err != nil {
+					return err
+				}
+			case *expression.SystemVar:
+				err = ctx.Set(ctx, callParam.Name, param.Type, val)
+				if err != nil {
+					return err
+				}
+			case *expression.ProcedureParam:
+				err = callParam.Set(val, param.Type)
+				if err != nil {
+					return err
+				}
+			}
+		} else if param.Direction == sql.ProcedureParamDirection_Out { // HasBeenSet was false
+			// For OUT only, if a var was not set within the procedure body, then we set the vars to nil.
+			// If the var had a value before the call then it is basically removed.
+			switch callParam := c.call.Params[i].(type) {
+			case *expression.UserVar:
+				err := ctx.Set(ctx, callParam.Name, param.Type, nil)
+				if err != nil {
+					return err
+				}
+			case *expression.SystemVar:
+				err := ctx.Set(ctx, callParam.Name, param.Type, nil)
+				if err != nil {
+					return err
+				}
+			case *expression.ProcedureParam:
+				err := callParam.Set(nil, param.Type)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }

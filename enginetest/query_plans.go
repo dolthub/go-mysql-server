@@ -36,6 +36,29 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
+				from mytable join othertable on i = i2 order by 1`,
+		ExpectedPlan: "Sort(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) ASC)\n" +
+			" └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
+			"     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"         ├─ Table(mytable)\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `select row_number() over (order by i desc), mytable.i as i2 
+				from mytable join othertable on i = i2
+				where mytable.i = 2
+				order by 1`,
+		ExpectedPlan: "Sort(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) ASC)\n" +
+			" └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
+			"     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"         ├─ Filter(mytable.i = 2)\n" +
+			"         │   └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
 		Query: "INSERT INTO mytable(i,s) SELECT t1.i, 'hello' FROM mytable t1 JOIN mytable t2 on t1.i = t2.i + 1 where t1.i = 2 and t2.i = 1",
 		ExpectedPlan: "Insert(i, s)\n" +
 			" ├─ Table(mytable)\n" +
@@ -132,6 +155,21 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM othertable ot LEFT JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 WHERE CONVERT(s2, signed) <> 0) sub ON sub.i = ot.i2 WHERE ot.i2 > 0",
+		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
+			" └─ LeftJoin(sub.i = ot.i2)\n" +
+			"     ├─ Filter(ot.i2 > 0)\n" +
+			"     │   └─ TableAlias(ot)\n" +
+			"     │       └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"     └─ SubqueryAlias(sub)\n" +
+			"         └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"             └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"                 ├─ Table(mytable)\n" +
+			"                 └─ Filter(NOT(convert(othertable.s2, signed) = 0))\n" +
+			"                     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
 		Query: "INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2",
 		ExpectedPlan: "Insert()\n" +
 			" ├─ Table(mytable)\n" +
@@ -145,6 +183,18 @@ var PlanTests = []QueryPlanTest{
 			"             │           └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"             └─ TableAlias(ot)\n" +
 			"                 └─ IndexedTableAccess(othertable on [othertable.i2])\n",
+	},
+	{
+		Query: "SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)",
+		ExpectedPlan: "Project(mytable.i, selfjoin.i)\n" +
+			" └─ Filter(selfjoin.i IN (Project(1)\n" +
+			"     └─ Table(dual)\n" +
+			"    ))\n" +
+			"     └─ IndexedJoin(mytable.i = selfjoin.i)\n" +
+			"         ├─ Table(mytable)\n" +
+			"         └─ TableAlias(selfjoin)\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
 	},
 	{
 		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2",
@@ -204,6 +254,16 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT othertable.s2, othertable.i2, mytable.i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON othertable.i2 = mytable.i WHERE othertable.s2 > 'a'",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Filter(othertable.s2 > \"a\")\n" +
+			"     │   └─ SubqueryAlias(othertable)\n" +
+			"     │       └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: "SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i = (SELECT i2 FROM othertable LIMIT 1)",
 		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Limit(1)\n" +
 			" └─ Project(othertable.i2)\n" +
@@ -237,6 +297,15 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER(mt, o) */ * FROM mytable mt INNER JOIN one_pk o ON mt.i = o.pk AND mt.s = o.c2",
+		ExpectedPlan: "IndexedJoin(mt.i = o.pk AND mt.s = o.c2)\n" +
+			" ├─ TableAlias(mt)\n" +
+			" │   └─ Table(mytable)\n" +
+			" └─ TableAlias(o)\n" +
+			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{

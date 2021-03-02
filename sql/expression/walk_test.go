@@ -29,6 +29,7 @@ func TestWalk(t *testing.T) {
 	fn := NewUnresolvedFunction(
 		"bar",
 		false,
+		nil,
 		lit1,
 		lit2,
 	)
@@ -79,6 +80,7 @@ func TestInspect(t *testing.T) {
 	fn := NewUnresolvedFunction(
 		"bar",
 		false,
+		nil,
 		lit1,
 		lit2,
 	)

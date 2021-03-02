@@ -23,50 +23,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-type ProcedureSecurityType byte
-
-const (
-	ProcedureSecurityType_Definer ProcedureSecurityType = iota
-	ProcedureSecurityType_Invoker
-)
-
-type ProcedureParamDirection byte
-
-const (
-	ProcedureParamDirection_In ProcedureParamDirection = iota
-	ProcedureParamDirection_Inout
-	ProcedureParamDirection_Out
-)
-
-type ProcedureParam struct {
-	Direction ProcedureParamDirection
-	Name      string
-	Type      sql.Type
-}
-
-type Characteristic byte
-
-const (
-	Characteristic_LanguageSql Characteristic = iota
-	Characteristic_Deterministic
-	Characteristic_NotDeterministic
-	Characteristic_ContainsSql
-	Characteristic_NoSql
-	Characteristic_ReadsSqlData
-	Characteristic_ModifiesSqlData
-)
-
 type CreateProcedure struct {
-	Name                  string
-	Definer               string
-	Params                []ProcedureParam
-	CreatedAt             time.Time
-	ModifiedAt            time.Time
-	SecurityType          ProcedureSecurityType
-	Characteristics       []Characteristic
-	Comment               string
-	CreateProcedureString string
-	Body                  sql.Node
+	*sql.Procedure
 	BodyString            string
 	Db                    sql.Database
 }
@@ -79,25 +37,27 @@ var _ sql.DebugStringer = (*CreateProcedure)(nil)
 func NewCreateProcedure(
 	name,
 	definer string,
-	params []ProcedureParam,
+	params []sql.ProcedureParam,
 	createdAt, modifiedAt time.Time,
-	securityType ProcedureSecurityType,
-	characteristics []Characteristic,
+	securityContext sql.ProcedureSecurityContext,
+	characteristics []sql.Characteristic,
 	body sql.Node,
 	comment, createString, bodyString string,
 ) *CreateProcedure {
+	procedure := sql.NewProcedure(
+		name,
+		definer,
+		params,
+		securityContext,
+		comment,
+		characteristics,
+		createString,
+		body,
+		createdAt,
+		modifiedAt)
 	return &CreateProcedure{
-		Name:                  name,
-		Definer:               definer,
-		Params:                params,
-		CreatedAt:             createdAt,
-		ModifiedAt:            modifiedAt,
-		SecurityType:          securityType,
-		Characteristics:       characteristics,
-		Comment:               comment,
-		CreateProcedureString: createString,
-		Body:                  body,
-		BodyString:            bodyString,
+		Procedure:  procedure,
+		BodyString: bodyString,
 	}
 }
 
@@ -161,7 +121,7 @@ func (c *CreateProcedure) String() string {
 		characteristics += fmt.Sprintf(" %s", characteristic.String())
 	}
 	return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
-		definer, c.Name, params, c.SecurityType.String(), comment, characteristics, c.Body.String())
+		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, c.Body.String())
 }
 
 // DebugString implements the sql.DebugStringer interface.
@@ -186,7 +146,7 @@ func (c *CreateProcedure) DebugString() string {
 		characteristics += fmt.Sprintf(" %s", characteristic.String())
 	}
 	return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
-		definer, c.Name, params, c.SecurityType.String(), comment, characteristics, sql.DebugString(c.Body))
+		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, sql.DebugString(c.Body))
 }
 
 // RowIter implements the sql.Node interface.
@@ -237,49 +197,4 @@ func (c *createProcedureIter) Next() (sql.Row, error) {
 // Close implements the sql.RowIter interface.
 func (c *createProcedureIter) Close(ctx *sql.Context) error {
 	return nil
-}
-
-func (pst ProcedureSecurityType) String() string {
-	switch pst {
-	case ProcedureSecurityType_Definer:
-		return "SQL SECURITY DEFINER"
-	case ProcedureSecurityType_Invoker:
-		return "SQL SECURITY INVOKER"
-	default:
-		panic(fmt.Errorf("invalid characteristic value `%d`", byte(pst)))
-	}
-}
-
-func (pp ProcedureParam) String() string {
-	direction := ""
-	switch pp.Direction {
-	case ProcedureParamDirection_In:
-		direction = "IN"
-	case ProcedureParamDirection_Inout:
-		direction = "INOUT"
-	case ProcedureParamDirection_Out:
-		direction = "OUT"
-	}
-	return fmt.Sprintf("%s %s %s", direction, pp.Name, pp.Type.String())
-}
-
-func (c Characteristic) String() string {
-	switch c {
-	case Characteristic_LanguageSql:
-		return "LANGUAGE SQL"
-	case Characteristic_Deterministic:
-		return "DETERMINISTIC"
-	case Characteristic_NotDeterministic:
-		return "NOT DETERMINISTIC"
-	case Characteristic_ContainsSql:
-		return "CONTAINS SQL"
-	case Characteristic_NoSql:
-		return "NO SQL"
-	case Characteristic_ReadsSqlData:
-		return "READS SQL DATA"
-	case Characteristic_ModifiesSqlData:
-		return "MODIFIES SQL DATA"
-	default:
-		panic(fmt.Errorf("invalid characteristic value `%d`", byte(c)))
-	}
 }

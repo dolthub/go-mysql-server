@@ -89,19 +89,15 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT i from mytable where 4 = :foo * 2 order by 1",
+		Query: `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
 		Expected: []sql.Row{
-			{1},
-			{2},
-			{3},
-		},
-		Bindings: map[string]sql.Expression{
-			"foo": expression.NewLiteral(int64(2), sql.Int64),
-		},
+			{1, 3},
+			{2, 2},
+			{3, 1}},
 	}
 	fmt.Sprintf("%v", test)
 
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, mergableIndexDriver)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, mergableIndexDriver)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true

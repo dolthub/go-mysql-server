@@ -50,7 +50,7 @@ func TestValidateOrderBy(t *testing.T) {
 	require.NoError(err)
 
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, plan.NewSort(
-		[]plan.SortField{{Column: aggregation.NewCount(nil), Order: plan.Descending}},
+		[]sql.SortField{{Column: aggregation.NewCount(nil), Order: sql.Descending}},
 		nil,
 	), nil)
 	require.Error(err)

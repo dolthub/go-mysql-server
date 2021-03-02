@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Values represents a set of tuples of expressions.
@@ -63,7 +64,7 @@ func (p *Values) Children() []sql.Node {
 // Resolved implements the Resolvable interface.
 func (p *Values) Resolved() bool {
 	for _, et := range p.ExpressionTuples {
-		if !expressionsResolved(et...) {
+		if !expression.ExpressionsResolved(et...) {
 			return false
 		}
 	}

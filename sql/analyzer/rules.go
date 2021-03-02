@@ -21,6 +21,7 @@ import (
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
+	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
 	{"resolve_set_variables", resolveSetVariables},
@@ -47,7 +48,7 @@ var DefaultRules = []Rule{
 	{"resolve_functions", resolveFunctions},
 	{"resolve_having", resolveHaving},
 	{"merge_union_schemas", mergeUnionSchemas},
-	{"flatten_group_by_aggregations", flattenGroupByAggregations},
+	{"flatten_aggregation_exprs", flattenAggregationExpressions},
 	{"reorder_projection", reorderProjection},
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},

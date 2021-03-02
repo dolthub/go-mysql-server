@@ -52,8 +52,8 @@ func NewGroupBy(selectedExprs, groupByExprs []sql.Expression, child sql.Node) *G
 // Resolved implements the Resolvable interface.
 func (g *GroupBy) Resolved() bool {
 	return g.UnaryNode.Child.Resolved() &&
-		expressionsResolved(g.SelectedExprs...) &&
-		expressionsResolved(g.GroupByExprs...)
+		expression.ExpressionsResolved(g.SelectedExprs...) &&
+		expression.ExpressionsResolved(g.GroupByExprs...)
 }
 
 // Schema implements the Node interface.
@@ -213,7 +213,7 @@ func (i *groupByIter) Next() (sql.Row, error) {
 	i.done = true
 
 	for j, a := range i.selectedExprs {
-		i.buf[j] = fillBuffer(a)
+		i.buf[j] = newAggregationBuffer(a)
 	}
 
 	for {
@@ -300,7 +300,7 @@ func (i *groupByGroupingIter) compute() error {
 		if _, err := i.aggregations.Get(key); err != nil {
 			var buf = make([]sql.Row, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				buf[j] = fillBuffer(a)
+				buf[j] = newAggregationBuffer(a)
 			}
 
 			if err := i.aggregations.Put(key, buf); err != nil {
@@ -326,6 +326,11 @@ func (i *groupByGroupingIter) compute() error {
 
 func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
 	i.aggregations = nil
+	if i.dispose != nil {
+		i.dispose()
+		i.dispose = nil
+	}
+
 	return i.child.Close(ctx)
 }
 
@@ -349,12 +354,10 @@ func groupingKey(
 	return hash.Sum64(), nil
 }
 
-func fillBuffer(expr sql.Expression) sql.Row {
+func newAggregationBuffer(expr sql.Expression) sql.Row {
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.NewBuffer()
-	case *expression.Alias:
-		return fillBuffer(n.Child)
 	default:
 		return nil
 	}
@@ -385,8 +388,6 @@ func updateBuffer(
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.Update(ctx, buffers[idx], row)
-	case *expression.Alias:
-		return updateBuffer(ctx, buffers, idx, n.Child, row)
 	default:
 		val, err := expr.Eval(ctx, row)
 		if err != nil {
@@ -423,8 +424,6 @@ func evalBuffer(
 	switch n := aggregation.(type) {
 	case sql.Aggregation:
 		return n.Eval(ctx, buffer)
-	case *expression.Alias:
-		return evalBuffer(ctx, n.Child, buffer)
 	default:
 		if len(buffer) > 0 {
 			return buffer[0], nil

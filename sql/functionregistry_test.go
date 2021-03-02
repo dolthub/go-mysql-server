@@ -37,15 +37,15 @@ func TestFunctionRegistry(t *testing.T) {
 	f, err := c.Function(name)
 	require.NoError(err)
 
-	e, err := f.Call()
+	e, err := f.NewInstance(nil)
 	require.Error(err)
 	require.Nil(e)
 
-	e, err = f.Call(expression.NewStar())
+	e, err = f.NewInstance([]sql.Expression{expression.NewStar()})
 	require.NoError(err)
 	require.Equal(expected, e)
 
-	e, err = f.Call(expression.NewStar(), expression.NewStar())
+	e, err = f.NewInstance([]sql.Expression{expression.NewStar(), expression.NewStar()})
 	require.Error(err)
 	require.Nil(e)
 }

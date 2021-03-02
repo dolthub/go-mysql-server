@@ -43,23 +43,34 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 				return n, nil
 			}
 
-			expressions, err := expandStarsForExpressions(a, n.Projections, n.Child.Schema(), tableAliases)
+			expanded, err := expandStarsForExpressions(a, n.Projections, n.Child.Schema(), tableAliases)
 			if err != nil {
 				return nil, err
 			}
 
-			return plan.NewProject(expressions, n.Child), nil
+			return plan.NewProject(expanded, n.Child), nil
 		case *plan.GroupBy:
 			if !n.Child.Resolved() {
 				return n, nil
 			}
 
-			aggregate, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child.Schema(), tableAliases)
+			expanded, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child.Schema(), tableAliases)
 			if err != nil {
 				return nil, err
 			}
 
-			return plan.NewGroupBy(aggregate, n.GroupByExprs, n.Child), nil
+			return plan.NewGroupBy(expanded, n.GroupByExprs, n.Child), nil
+		case *plan.Window:
+			if !n.Child.Resolved() {
+				return n, nil
+			}
+
+			expanded, err := expandStarsForExpressions(a, n.SelectExprs, n.Child.Schema(), tableAliases)
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewWindow(expanded, n.Child), nil
 		default:
 			return n, nil
 		}

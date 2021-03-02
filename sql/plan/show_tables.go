@@ -18,6 +18,7 @@ import (
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ShowTables is a node that shows the database tables.
@@ -63,7 +64,7 @@ func (p *ShowTables) WithDatabase(db sql.Database) (sql.Node, error) {
 // Resolved implements the Resolvable interface.
 func (p *ShowTables) Resolved() bool {
 	_, ok := p.db.(sql.UnresolvedDatabase)
-	return !ok && expressionsResolved(p.Expressions()...)
+	return !ok && expression.ExpressionsResolved(p.Expressions()...)
 }
 
 // Children implements the Node interface.

@@ -80,13 +80,13 @@ func TestGroupByRowIter(t *testing.T) {
 	}
 
 	p := NewSort(
-		[]SortField{
+		[]sql.SortField{
 			{
 				Column: expression.NewGetField(0, sql.LongText, "col1", true),
-				Order:  Ascending,
+				Order:  sql.Ascending,
 			}, {
 				Column: expression.NewGetField(1, sql.Int64, "col2", true),
-				Order:  Ascending,
+				Order:  sql.Ascending,
 			},
 		},
 		NewGroupBy(

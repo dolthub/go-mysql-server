@@ -56,6 +56,11 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, nil
 	}
 
+	if !pruneColumnsIsSafe(n) {
+		a.Log("not pruning columns because it is not safe.")
+		return n, nil
+	}
+
 	columns := columnsUsedByNode(n)
 	findUsedColumns(columns, n)
 
@@ -72,6 +77,20 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	return fixRemainingFieldsIndexes(n, scope)
 }
 
+func pruneColumnsIsSafe(n sql.Node) bool {
+	isSafe := true
+	// We do not run pruneColumns if there is a Subquery
+	// expression, because the field rewrites and scope handling
+	// in here are not principled.
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if _, ok := e.(*plan.Subquery); ok {
+			isSafe = false
+		}
+		return isSafe
+	})
+	return isSafe
+}
+
 func columnsUsedByNode(n sql.Node) usedColumns {
 	columns := make(usedColumns)
 
@@ -80,6 +99,11 @@ func columnsUsedByNode(n sql.Node) usedColumns {
 	}
 
 	return columns
+}
+
+func canPruneChild(parent, child sql.Node, idx int) bool {
+	_, isIndexedJoin := parent.(*plan.IndexedJoin)
+	return !isIndexedJoin
 }
 
 func pruneSubqueryColumns(
@@ -198,7 +222,7 @@ func pruneSubqueries(
 	n sql.Node,
 	parentColumns usedColumns,
 ) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUpWithSelector(n, canPruneChild, func(n sql.Node) (sql.Node, error) {
 		subq, ok := n.(*plan.SubqueryAlias)
 		if !ok {
 			return n, nil
@@ -209,7 +233,7 @@ func pruneSubqueries(
 }
 
 func pruneUnusedColumns(a *Analyzer, n sql.Node, columns usedColumns) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUpWithSelector(n, canPruneChild, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.Project:
 			return pruneProject(a, n, columns), nil
@@ -272,7 +296,7 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 }
 
 func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUpWithSelector(n, canPruneChild, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			child, err := fixRemainingFieldsIndexes(n.Child, scope)

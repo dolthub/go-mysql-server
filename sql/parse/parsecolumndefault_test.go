@@ -52,7 +52,7 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 			"(RAND() + 5)",
 			NewColumnDefaultValue(
 				expression.NewArithmetic(
-					expression.NewUnresolvedFunction("rand", false),
+					expression.NewUnresolvedFunction("rand", false, nil),
 					expression.NewLiteral(int8(5), sql.Int8),
 					"+",
 				),
@@ -64,9 +64,9 @@ func TestStringToColumnDefaultValue(t *testing.T) {
 		{
 			"(GREATEST(RAND(), RAND()))",
 			NewColumnDefaultValue(
-				expression.NewUnresolvedFunction("greatest", false,
-					expression.NewUnresolvedFunction("rand", false),
-					expression.NewUnresolvedFunction("rand", false),
+				expression.NewUnresolvedFunction("greatest", false, nil,
+					expression.NewUnresolvedFunction("rand", false, nil),
+					expression.NewUnresolvedFunction("rand", false, nil),
 				),
 				nil,
 				false,

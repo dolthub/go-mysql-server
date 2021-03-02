@@ -93,6 +93,8 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 		expressions = child.Projections
 	case *plan.GroupBy:
 		expressions = child.SelectedExprs
+	case *plan.Window:
+		expressions = child.SelectExprs
 	default:
 		return nil, errSortPushdown.New(child)
 	}
@@ -136,6 +138,14 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 				plan.NewGroupBy(newExpressions, child.GroupByExprs, child.Child),
 			),
 		), nil
+	case *plan.Window:
+		return plan.NewProject(
+			expressions,
+			plan.NewSort(
+				sort.SortFields,
+				plan.NewWindow(newExpressions, child.Child),
+			),
+		), nil
 	default:
 		return nil, errSortPushdown.New(child)
 	}
@@ -154,6 +164,11 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 		return plan.NewGroupBy(
 			child.SelectedExprs,
 			child.GroupByExprs,
+			plan.NewSort(sort.SortFields, child.Child),
+		), nil
+	case *plan.Window:
+		return plan.NewWindow(
+			child.SelectExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
 	case *plan.ResolvedTable:
@@ -189,7 +204,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		schema := sort.Child.Schema()
 		var (
-			fields     = make([]plan.SortField, len(sort.SortFields))
+			fields     = make([]sql.SortField, len(sort.SortFields))
 			schemaCols = make([]*sql.Column, len(schema))
 		)
 		for i, col := range sort.Child.Schema() {
@@ -214,7 +229,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return nil, ErrOrderByColumnIndex.New(idx + 1)
 				}
 
-				fields[i] = plan.SortField{
+				fields[i] = sql.SortField{
 					Column:       expression.NewUnresolvedQualifiedColumn(schemaCols[idx].Source, schemaCols[idx].Name),
 					Order:        f.Order,
 					NullOrdering: f.NullOrdering,
@@ -228,7 +243,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 						name = nameable.Name()
 					}
 
-					fields[i] = plan.SortField{
+					fields[i] = sql.SortField{
 						Column:       expression.NewUnresolvedColumn(name),
 						Order:        f.Order,
 						NullOrdering: f.NullOrdering,
