@@ -28,20 +28,20 @@ import (
 )
 
 type LoadData struct {
-	Local              bool
-	File               string
-	Destination        sql.Node
-	ColumnNames        []string
-	ResponsePacketSent bool
-	Fields             *sqlparser.Fields
-	Lines              *sqlparser.Lines
-	IgnoreNum          int64
+	Local                   bool
+	File                    string
+	Destination             sql.Node
+	ColumnNames             []string
+	ResponsePacketSent      bool
+	Fields                  *sqlparser.Fields
+	Lines                   *sqlparser.Lines
+	IgnoreNum               int64
 	fieldsTerminatedByDelim string
-	fieldsEnclosedByDelim string
-	fieldsOptionallyDelim bool
-	fieldsEscapedByDelim string
-	linesTerminatedByDelim string
-	linesStartingByDelim string
+	fieldsEnclosedByDelim   string
+	fieldsOptionallyDelim   bool
+	fieldsEscapedByDelim    string
+	linesTerminatedByDelim  string
+	linesStartingByDelim    string
 }
 
 const (
@@ -50,7 +50,7 @@ const (
 )
 
 // Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
-var (
+const (
 	defaultFieldsTerminatedByDelim = "\t"
 	defaultFieldsEnclosedByDelim   = ""
 	defaultFieldsOptionallyDelim   = false
@@ -157,16 +157,16 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	return &loadDataIter{
-		scanner: scanner,
-		destination: l.Destination,
+		scanner:                 scanner,
+		destination:             l.Destination,
+		ctx:                     ctx,
+		file:                    file,
+		local:                   l.Local,
 		fieldsTerminatedByDelim: l.fieldsTerminatedByDelim,
-		fieldsEnclosedByDelim: l.fieldsEnclosedByDelim,
-		fieldsOptionallyDelim: l.fieldsOptionallyDelim,
-		linesTerminatedByDelim: l.linesTerminatedByDelim,
-		linesStartingByDelim: l.linesStartingByDelim,
-		ctx: ctx,
-		file: file,
-		local: l.Local,
+		fieldsEnclosedByDelim:   l.fieldsEnclosedByDelim,
+		fieldsOptionallyDelim:   l.fieldsOptionallyDelim,
+		linesTerminatedByDelim:  l.linesTerminatedByDelim,
+		linesStartingByDelim:    l.linesStartingByDelim,
 	}, nil
 }
 
@@ -194,17 +194,17 @@ func (l LoadData) parseLines(scanner *bufio.Scanner) {
 }
 
 type loadDataIter struct {
-	scanner *bufio.Scanner
-	destination sql.Node
+	scanner                 *bufio.Scanner
+	destination             sql.Node
+	ctx                     *sql.Context
+	file                    *os.File
+	local                   bool
 	fieldsTerminatedByDelim string
-	fieldsEnclosedByDelim string
-	fieldsOptionallyDelim bool
-	fieldsEscapedByDelim string
-	linesTerminatedByDelim string
-	linesStartingByDelim string
-	ctx *sql.Context
-	file *os.File
-	local bool
+	fieldsEnclosedByDelim   string
+	fieldsOptionallyDelim   bool
+	fieldsEscapedByDelim    string
+	linesTerminatedByDelim  string
+	linesStartingByDelim    string
 }
 
 func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
@@ -220,7 +220,8 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 		return nil, err
 	}
 
-	// TODO: Very shit code
+	// If exprs is nil then this is a skipped line (see test cases). Keep skipping
+	// until exprs !+ nil
 	for exprs == nil {
 		keepGoing = l.scanner.Scan()
 		if !keepGoing {
@@ -243,6 +244,7 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 	// append NULLS for the rest of the fields
 	exprs = addNullsToValues(exprs, colDiff)
 
+	// create the values that are returned as a row iter.
 	var values [][]sql.Expression
 	values = append(values, exprs)
 	newValue := NewValues(values)
@@ -319,7 +321,7 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 	exprs := make([]sql.Expression, len(fields))
 
 	for i, field := range fields {
-		dSchema :=  l.destination.Schema()[i]
+		dSchema := l.destination.Schema()[i]
 		// Replace the empty string with defaults
 		if field == "" {
 			_, ok := dSchema.Type.(sql.StringType)
@@ -360,18 +362,18 @@ func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64) *LoadData {
 	return &LoadData{
-		Local:       local,
-		File:        file,
-		Destination: destination,
-		ColumnNames: cols,
-		Fields:      fields,
-		Lines:       lines,
-		IgnoreNum:   ignoreNum,
-		linesStartingByDelim: defaultLinesStartingByDelim,
-		linesTerminatedByDelim: defaultLinesTerminatedByDelim,
-		fieldsEnclosedByDelim: defaultFieldsEnclosedByDelim,
+		Local:                   local,
+		File:                    file,
+		Destination:             destination,
+		ColumnNames:             cols,
+		Fields:                  fields,
+		Lines:                   lines,
+		IgnoreNum:               ignoreNum,
+		linesStartingByDelim:    defaultLinesStartingByDelim,
+		linesTerminatedByDelim:  defaultLinesTerminatedByDelim,
+		fieldsEnclosedByDelim:   defaultFieldsEnclosedByDelim,
 		fieldsTerminatedByDelim: defaultFieldsTerminatedByDelim,
-		fieldsOptionallyDelim: defaultFieldsOptionallyDelim,
-		fieldsEscapedByDelim: defaultFieldsEscapedByDelim,
+		fieldsOptionallyDelim:   defaultFieldsOptionallyDelim,
+		fieldsEscapedByDelim:    defaultFieldsEscapedByDelim,
 	}
 }
