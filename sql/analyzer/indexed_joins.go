@@ -681,7 +681,17 @@ func getJoinIndex(
 	exprsByTable := joinExprsByTable(joinCondPredicates)
 	indexesByTable := make(joinIndexesByTable)
 	for table, cols := range exprsByTable {
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, extractExpressions(cols)...)...)
+		exprs := extractExpressions(cols)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, exprs...)...)
+		// if we do not find a perfect index, take the first partial index if there is one.
+		if idx == nil && len(exprs) > 1 {
+			for _, e := range exprs {
+				idx = ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, e)...)
+				if idx != nil {
+					break
+				}
+			}
+		}
 		indexesByTable[table] = append(indexesByTable[table], colExprsToJoinIndex(table, idx, joinCond, cols))
 	}
 
