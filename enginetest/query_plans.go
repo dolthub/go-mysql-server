@@ -250,9 +250,8 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT s2, i2, i FROM mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i",
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ RightIndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ CachedResults\n" +
-			"     │   └─ SubqueryAlias(othertable)\n" +
-			"     │       └─ Table(othertable)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Table(othertable)\n" +
 			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},

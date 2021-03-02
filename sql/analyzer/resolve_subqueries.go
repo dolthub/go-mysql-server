@@ -184,13 +184,9 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	// TODO: Not a perfect indicator of whether we're at the top of the tree...
 	if scope == nil {
 		selector := func(parent sql.Node, child sql.Node, childNum int) bool {
-			if j, isJoin := parent.(plan.JoinNode); isJoin {
-				if j.JoinType() == plan.JoinTypeRight {
-					return childNum == 1
-				} else {
-					return childNum == 0
-				}
-			} else if j, isIndexedJoin := parent.(*plan.IndexedJoin); isIndexedJoin {
+			if _, isIndexedJoin := parent.(*plan.IndexedJoin); isIndexedJoin {
+				return childNum == 0
+			} else if j, isJoin := parent.(plan.JoinNode); isJoin {
 				if j.JoinType() == plan.JoinTypeRight {
 					return childNum == 1
 				} else {
