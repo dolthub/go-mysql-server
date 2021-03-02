@@ -27,7 +27,7 @@ const (
 
 func deterimeTerminatedByChar() string {
 	if runtime.GOOS == "windows" {
-		return "\r\n"
+		return "\n"
 	} else {
 		return "\n"
 	}
