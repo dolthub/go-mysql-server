@@ -104,7 +104,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if l.IgnoreNum <= 0 {
-			exprs, err := parseFields(line)
+			exprs, err := l.parseFields(line)
 
 			if err != nil {
 				return nil, err
@@ -232,7 +232,7 @@ func parseLinePrefix(line string) string {
 	}
 }
 
-func parseFields(line string) ([]sql.Expression, error) {
+func (l *LoadData) parseFields(line string) ([]sql.Expression, error) {
 	// Step 1. Start by Searching for prefix if there is one
 	line = parseLinePrefix(line)
 	if line == "" {
@@ -258,6 +258,16 @@ func parseFields(line string) ([]sql.Expression, error) {
 	exprs := make([]sql.Expression, len(fields))
 
 	for i, field := range fields {
+		dSchema :=  l.Destination.Schema()[i]
+		// Replace the empty string with defaults
+		if field == "" {
+			_, ok := dSchema.Type.(sql.StringType)
+			if !ok {
+				exprs[i] = expression.NewLiteral(dSchema.Default,dSchema.Type)
+				continue
+			}
+		}
+
 		exprs[i] = expression.NewLiteral(field, sql.LongText)
 	}
 

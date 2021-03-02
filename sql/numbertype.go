@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -155,7 +156,7 @@ func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
-	if v == nil {
+	if v == nil || (reflect.ValueOf(v).Kind() == reflect.Ptr && reflect.ValueOf(v).IsNil()) {
 		return nil, nil
 	}
 
@@ -237,11 +238,6 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint32(num), nil
 	case sqltypes.Int32:
-		// If empty return the nil value.
-		if v == "" {
-			return nil, nil
-		}
-
 		if dec, ok := v.(decimal.Decimal); ok {
 			v = dec.IntPart()
 		}
