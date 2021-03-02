@@ -99,25 +99,14 @@ func (i *cachedResultsIter) Next() (sql.Row, error) {
 			if err == io.EOF {
 				i.parent.mutex.Lock()
 				defer i.parent.mutex.Unlock()
-				if i.parent.cache == nil {
-					i.parent.cache = i.cache
-					i.parent.dispose = i.dispose
-				} else {
-					i.dispose()
-					i.cache = nil
-					i.dispose = nil
-				}
+				i.setCacheInParent()
 			} else {
-				i.dispose()
-				i.cache = nil
-				i.dispose = nil
+				i.cleanUp()
 			}
 		} else {
 			aerr := i.cache.Add(r)
 			if aerr != nil {
-				i.dispose()
-				i.cache = nil
-				i.dispose = nil
+				i.cleanUp()
 				i.parent.mutex.Lock()
 				defer i.parent.mutex.Unlock()
 				i.parent.noCache = true
@@ -127,6 +116,26 @@ func (i *cachedResultsIter) Next() (sql.Row, error) {
 	return r, err
 }
 
+func (i *cachedResultsIter) setCacheInParent() {
+	if i.parent.cache == nil {
+		i.parent.cache = i.cache
+		i.parent.dispose = i.dispose
+		i.cache = nil
+		i.dispose = nil
+	} else {
+		i.cleanUp()
+	}
+}
+
+func (i *cachedResultsIter) cleanUp() {
+	if i.dispose != nil {
+		i.dispose()
+		i.cache = nil
+		i.dispose = nil
+	}
+}
+
 func (i *cachedResultsIter) Close(ctx *sql.Context) error {
+	i.cleanUp()
 	return i.iter.Close(ctx)
 }
