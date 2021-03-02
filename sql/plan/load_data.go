@@ -78,7 +78,7 @@ func (l *LoadData) Children() []sql.Node {
 	return []sql.Node{l.Destination}
 }
 
-// updateParsingConsts parses the LoadData object to update the 5 constants defined at top of the file.
+// updateParsingConsts parses the LoadData object to update the 5 constants that are used for file parsing.
 func (l *LoadData) updateParsingConsts() error {
 	if l.Lines != nil {
 		ll := l.Lines
@@ -221,7 +221,7 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	// If exprs is nil then this is a skipped line (see test cases). Keep skipping
-	// until exprs !+ nil
+	// until exprs != nil
 	for exprs == nil {
 		keepGoing = l.scanner.Scan()
 		if !keepGoing {
@@ -312,7 +312,7 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 			if string(field[0]) == l.fieldsEnclosedByDelim && string(field[len(field)-1]) == l.fieldsEnclosedByDelim {
 				fields[i] = field[1 : len(field)-1]
 			} else {
-				return nil, fmt.Errorf("error: dield not properly enclosed")
+				return nil, fmt.Errorf("error: field not properly enclosed")
 			}
 		}
 	}

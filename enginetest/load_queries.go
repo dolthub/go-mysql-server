@@ -26,10 +26,10 @@ const (
 
 var LoadDataScripts = []ScriptTest{
 	{
-		Name: "Super basic load data",
+		Name: "Basic load data with enclosed values.",
 		SetUpScript: []string{
 			fmt.Sprintf("create table %s(pk int primary key)", tableNameConst),
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s", "./testdata/test1.txt", tableNameConst),
+			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE %s FIELDS ENCLOSED BY '\"'", "./testdata/test1.txt", tableNameConst),
 		},
 		Assertions: []ScriptTestAssertion{
 			{

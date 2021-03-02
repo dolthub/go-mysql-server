@@ -241,7 +241,6 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		if dec, ok := v.(decimal.Decimal); ok {
 			v = dec.IntPart()
 		}
-
 		num, err := cast.ToInt64E(v)
 		if err != nil {
 			return nil, err
