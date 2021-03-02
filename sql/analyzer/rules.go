@@ -77,6 +77,7 @@ var OnceAfterDefault = []Rule{
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"cache_subquery_results", cacheSubqueryResults},
+	{"cache_subquery_aliases_in_joins", cacheSubqueryAlisesInJoins},
 	{"resolve_insert_rows", resolveInsertRows},
 	{"apply_triggers", applyTriggers},
 	{"apply_procedures", applyProcedures},
