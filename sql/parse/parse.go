@@ -999,8 +999,15 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	tableSpec := &plan.TableSpec{
+		Schema:  schema,
+		IdxDefs: idxDefs,
+		FkDefs:  fkDefs,
+		ChDefs:  chDefs,
+	}
+
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs, chDefs), nil
+		sql.UnresolvedDatabase(""), c.Table.Name.String(), c.IfNotExists, tableSpec), nil
 }
 
 type namedConstraint struct {

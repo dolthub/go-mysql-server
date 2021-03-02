@@ -114,15 +114,6 @@ func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	}
 }
 
-func createCheckConstraint(t *testing.T, harness Harness, engine *sqle.Engine) {
-	if chk, ok := harness.(CheckConstraintHarness); ok && chk.SupportsCheckConstraint() {
-		ctx := NewContextWithEngine(harness, engine)
-		TestQueryWithContext(t, ctx, engine,
-			"ALTER TABLE chk_tbl ADD CONSTRAINT chk1 CHECK (a > 0)",
-			nil, nil)
-	}
-}
-
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {

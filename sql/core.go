@@ -225,7 +225,7 @@ type ForeignKeyConstraint struct {
 	OnDelete          ForeignKeyReferenceOption
 }
 
-// CheckConstraint declares a constraint between the columns of two tables.
+// CheckConstraint declares a boolean-eval constraint.
 type CheckConstraint struct {
 	Name     string
 	Expr     Expression

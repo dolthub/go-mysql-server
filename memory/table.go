@@ -1044,12 +1044,12 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return append(indexes, nonPrimaryIndexes...), nil
 }
 
-// GetForeignKeys implements sql.ForeignKeyTable
+// GetForeignKeys implements sql.CheckConstraintTable
 func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, error) {
 	return t.foreignKeys, nil
 }
 
-// GetChecks implements sql.ForeignKeyTable
+// GetChecks implements sql.CheckConstraintTable
 func (t *Table) GetCheckConstraints(_ *sql.Context) ([]sql.CheckConstraint, error) {
 	return t.checks, nil
 }
@@ -1085,7 +1085,6 @@ func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	return t.DropConstraint(ctx, fkName)
 }
 
-// DropForeignKey implements sql.ForeignKeyAlterableTable.
 func (t *Table) DropConstraint(ctx *sql.Context, name string) error {
 	for i, key := range t.foreignKeys {
 		if key.Name == name {

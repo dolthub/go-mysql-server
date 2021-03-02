@@ -75,15 +75,47 @@ type IndexDefinition struct {
 	Comment    string
 }
 
+// TableSpec is a node describing the schema of a table.
+type TableSpec struct {
+	Schema  sql.Schema
+	FkDefs  []*sql.ForeignKeyConstraint
+	ChDefs  []*sql.CheckConstraint
+	IdxDefs []*IndexDefinition
+}
+
+func (c *TableSpec) WithSchema(schema sql.Schema) (*TableSpec, error) {
+	nc := *c
+	nc.Schema = schema
+	return &nc, nil
+}
+
+func (c *TableSpec) WithForeignKeys(fkDefs []*sql.ForeignKeyConstraint) (*TableSpec, error) {
+	nc := *c
+	nc.FkDefs = fkDefs
+	return &nc, nil
+}
+
+func (c *TableSpec) WithCheckConstraints(chDefs []*sql.CheckConstraint) (*TableSpec, error) {
+	nc := *c
+	nc.ChDefs = chDefs
+	return &nc, nil
+}
+
+func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) (*TableSpec, error) {
+	nc := *c
+	nc.IdxDefs = idxDefs
+	return &nc, nil
+}
+
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
 	ddlNode
 	name        string
 	schema      sql.Schema
-	ifNotExists bool
 	fkDefs      []*sql.ForeignKeyConstraint
 	chDefs      []*sql.CheckConstraint
 	idxDefs     []*IndexDefinition
+	ifNotExists bool
 	like        sql.Node
 }
 
@@ -92,19 +124,19 @@ var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, schema sql.Schema, ifNotExists bool, idxDefs []*IndexDefinition, fkDefs []*sql.ForeignKeyConstraint, chDefs []*sql.CheckConstraint) *CreateTable {
-	for _, s := range schema {
+func NewCreateTable(db sql.Database, name string, ifNotExists bool, tableSpec *TableSpec) *CreateTable {
+	for _, s := range tableSpec.Schema {
 		s.Source = name
 	}
 
 	return &CreateTable{
 		ddlNode:     ddlNode{db},
 		name:        name,
-		schema:      schema,
+		schema:      tableSpec.Schema,
+		fkDefs:      tableSpec.FkDefs,
+		chDefs:      tableSpec.ChDefs,
+		idxDefs:     tableSpec.IdxDefs,
 		ifNotExists: ifNotExists,
-		idxDefs:     idxDefs,
-		fkDefs:      fkDefs,
-		chDefs:      chDefs,
 	}
 }
 
