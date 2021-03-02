@@ -544,6 +544,32 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 				),
 			),
 		},
+		{
+			name: "filter contains a subquery",
+			node: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewFilter(
+					plan.NewInSubquery(
+						expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+						plan.NewSubquery(
+							plan.NewProject(
+								[]sql.Expression{
+									expression.NewLiteral(1, sql.Int32),
+								},
+								plan.EmptyTable,
+							),
+							"SELECT 1 FROM DUAL",
+						),
+					),
+					plan.NewCrossJoin(
+						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table2),
+					),
+				),
+			),
+		},
 	}
 
 	runTestCases(t, sql.NewEmptyContext(), tests, a, getRule("pushdown_filters"))

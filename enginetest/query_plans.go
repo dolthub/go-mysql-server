@@ -185,6 +185,18 @@ var PlanTests = []QueryPlanTest{
 			"                 └─ IndexedTableAccess(othertable on [othertable.i2])\n",
 	},
 	{
+		Query: "SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)",
+		ExpectedPlan: "Project(mytable.i, selfjoin.i)\n" +
+			" └─ Filter(selfjoin.i IN (Project(1)\n" +
+			"     └─ Table(dual)\n" +
+			"    ))\n" +
+			"     └─ IndexedJoin(mytable.i = selfjoin.i)\n" +
+			"         ├─ Table(mytable)\n" +
+			"         └─ TableAlias(selfjoin)\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2",
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ IndexedJoin(mytable.i = othertable.i2)\n" +
