@@ -17,6 +17,7 @@ package plan
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -35,6 +36,12 @@ type LoadData struct {
 	Fields             *sqlparser.Fields
 	Lines              *sqlparser.Lines
 	IgnoreNum          int64
+	fieldsTerminatedByDelim string
+	fieldsEnclosedByDelim string
+	fieldsOptionallyDelim bool
+	fieldsEscapedByDelim string
+	linesTerminatedByDelim string
+	linesStartingByDelim string
 }
 
 const (
@@ -42,13 +49,14 @@ const (
 	TmpfileName = ".LOADFILE"
 )
 
+// Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
 var (
-	fieldsTerminatedByDelim = "\t"
-	fieldsEnclosedByDelim   = ""
-	fieldsOptionallyDelim   = false
-	fieldsEscapedByDelim    = "\\"
-	linesTerminatedByDelim  = "\n"
-	linesStartingByDelim    = ""
+	defaultFieldsTerminatedByDelim = "\t"
+	defaultFieldsEnclosedByDelim   = ""
+	defaultFieldsOptionallyDelim   = false
+	defaultFieldsEscapedByDelim    = "\\"
+	defaultLinesTerminatedByDelim  = "\n"
+	defaultLinesStartingByDelim    = ""
 )
 
 func (l *LoadData) Resolved() bool {
@@ -58,8 +66,7 @@ func (l *LoadData) Resolved() bool {
 func (l *LoadData) String() string {
 	pr := sql.NewTreePrinter()
 
-	_ = pr.WriteNode("LOAD DATA")
-	_ = pr.WriteChildren(l.Destination.String())
+	_ = pr.WriteNode("LOAD DATA %s", l.File)
 	return pr.String()
 }
 
@@ -69,6 +76,53 @@ func (l *LoadData) Schema() sql.Schema {
 
 func (l *LoadData) Children() []sql.Node {
 	return []sql.Node{l.Destination}
+}
+
+// updateParsingConsts parses the LoadData object to update the 5 constants defined at top of the file.
+func (l *LoadData) updateParsingConsts() error {
+	if l.Lines != nil {
+		ll := l.Lines
+		if ll.StartingBy != nil {
+			l.linesStartingByDelim = string(ll.StartingBy.Val)
+		}
+		if ll.TerminatedBy != nil {
+			l.linesTerminatedByDelim = string(ll.TerminatedBy.Val)
+		}
+	}
+
+	if l.Fields != nil {
+		lf := l.Fields
+
+		if lf.TerminatedBy != nil {
+			l.fieldsTerminatedByDelim = string(lf.TerminatedBy.Val)
+		}
+
+		if lf.EscapedBy != nil {
+			if len(string(lf.EscapedBy.Val)) > 1 {
+				return fmt.Errorf("error: LOAD DATA ESCAPED BY %s must be 1 character long", lf.EscapedBy)
+			}
+
+			l.fieldsEscapedByDelim = string(lf.EscapedBy.Val)
+		}
+
+		if lf.EnclosedBy != nil {
+			lfe := lf.EnclosedBy
+
+			if lfe.Optionally {
+				l.fieldsOptionallyDelim = true
+			}
+
+			if lfe.Delim != nil {
+				if len(string(lfe.Delim.Val)) > 1 {
+					return fmt.Errorf("error: LOAD DATA ENCLOSED BY must be 1 character long")
+				}
+
+				l.fieldsEnclosedByDelim = string(lfe.Delim.Val)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -90,111 +144,34 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	if l.Local {
-		defer os.Remove(fileName)
-	} else {
-		defer file.Close()
-	}
 
 	scanner := bufio.NewScanner(file)
-	parseLines(scanner)
 
-	var values [][]sql.Expression
-	scanner = bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if l.IgnoreNum <= 0 {
-			exprs, err := l.parseFields(line)
+	// Set the split function for lines.
+	l.parseLines(scanner)
 
-			if err != nil {
-				return nil, err
-			}
-
-			// Line was skipped
-			if exprs == nil {
-				continue
-			}
-
-			// Match input columns with the amount of columns provided in the text.
-			// Append nils to the parsed fields if they are less than the input columns.
-			// TODO: Match schema with column order
-			colDiff := len(l.Schema()) - len(exprs)
-
-			// append NULLS for the rest of the fields
-			exprs = addNullsToValues(exprs, colDiff)
-
-			values = append(values, exprs)
-		} else {
-			l.IgnoreNum--
-		}
+	// Skip through the lines that need to be ignored.
+	for l.IgnoreNum > 0 && scanner.Scan() {
+		scanner.Text()
+		l.IgnoreNum--
 	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	newValue := NewValues(values)
-
-	return newValue.RowIter(ctx, row)
-}
-
-func addNullsToValues(exprs []sql.Expression, diff int) []sql.Expression {
-	for i := diff; i > 0; i-- {
-		exprs = append(exprs, expression.NewLiteral(nil, sql.Null))
-	}
-
-	return exprs
-}
-
-// updateParsingConsts parses the LoadData object to update the 5 constants defined at top of the file.
-func (l *LoadData) updateParsingConsts() error {
-	if l.Lines != nil {
-		ll := l.Lines
-		if ll.StartingBy != nil {
-			linesStartingByDelim = string(ll.StartingBy.Val)
-		}
-		if ll.TerminatedBy != nil {
-			linesTerminatedByDelim = string(ll.TerminatedBy.Val)
-		}
-	}
-
-	if l.Fields != nil {
-		lf := l.Fields
-
-		if lf.TerminatedBy != nil {
-			fieldsTerminatedByDelim = string(lf.TerminatedBy.Val)
-		}
-
-		if lf.EscapedBy != nil {
-			if len(string(lf.EscapedBy.Val)) > 1 {
-				return fmt.Errorf("error: LOAD DATA ESCAPED BY %s must be 1 character long", lf.EscapedBy)
-			}
-
-			fieldsEscapedByDelim = string(lf.EscapedBy.Val)
-		}
-
-		if lf.EnclosedBy != nil {
-			lfe := lf.EnclosedBy
-
-			if lfe.Optionally {
-				fieldsOptionallyDelim = true
-			}
-
-			if lfe.Delim != nil {
-				if len(string(lfe.Delim.Val)) > 1 {
-					return fmt.Errorf("error: LOAD DATA ENCLOSED BY must be 1 character long")
-				}
-
-				fieldsEnclosedByDelim = string(lfe.Delim.Val)
-			}
-		}
-	}
-
-	return nil
+	return &loadDataIter{
+		scanner: scanner,
+		destination: l.Destination,
+		fieldsTerminatedByDelim: l.fieldsTerminatedByDelim,
+		fieldsEnclosedByDelim: l.fieldsEnclosedByDelim,
+		fieldsOptionallyDelim: l.fieldsOptionallyDelim,
+		linesTerminatedByDelim: l.linesTerminatedByDelim,
+		linesStartingByDelim: l.linesStartingByDelim,
+		ctx: ctx,
+		file: file,
+		local: l.Local,
+	}, nil
 }
 
 // parseLines finds the delim that terminates each line and returns the overall line.
-func parseLines(scanner *bufio.Scanner) {
+func (l LoadData) parseLines(scanner *bufio.Scanner) {
 	splitFunc := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		// Return nothing if at end of file and no data passed.
 		if atEOF && len(data) == 0 {
@@ -202,7 +179,7 @@ func parseLines(scanner *bufio.Scanner) {
 		}
 
 		// Find the index of the LINES TERMINATED BY delim.
-		if i := strings.Index(string(data), linesTerminatedByDelim); i >= 0 {
+		if i := strings.Index(string(data), l.linesTerminatedByDelim); i >= 0 {
 			return i + 1, data[0:i], nil
 		}
 
@@ -216,37 +193,121 @@ func parseLines(scanner *bufio.Scanner) {
 	scanner.Split(splitFunc)
 }
 
+type loadDataIter struct {
+	scanner *bufio.Scanner
+	destination sql.Node
+	fieldsTerminatedByDelim string
+	fieldsEnclosedByDelim string
+	fieldsOptionallyDelim bool
+	fieldsEscapedByDelim string
+	linesTerminatedByDelim string
+	linesStartingByDelim string
+	ctx *sql.Context
+	file *os.File
+	local bool
+}
+
+func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
+	keepGoing := l.scanner.Scan()
+	if !keepGoing {
+		return nil, io.EOF
+	}
+
+	line := l.scanner.Text()
+	exprs, err := l.parseFields(line)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Very shit code
+	for exprs == nil {
+		keepGoing = l.scanner.Scan()
+		if !keepGoing {
+			return nil, io.EOF
+		}
+
+		line = l.scanner.Text()
+		exprs, err = l.parseFields(line)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Match input columns with the amount of columns provided in the text.
+	// Append nils to the parsed fields if they are less than the input columns.
+	// TODO: Match schema with column order
+	colDiff := len(l.destination.Schema()) - len(exprs)
+
+	// append NULLS for the rest of the fields
+	exprs = addNullsToValues(exprs, colDiff)
+
+	var values [][]sql.Expression
+	values = append(values, exprs)
+	newValue := NewValues(values)
+
+	ri, err := newValue.RowIter(l.ctx, returnRow)
+	if err != nil {
+		return nil, err
+	}
+
+	return ri.Next()
+}
+
+func (l loadDataIter) Close(ctx *sql.Context) error {
+	if !l.scanner.Scan() {
+		if err := l.scanner.Err(); err != nil {
+			return err
+		}
+
+		if l.local {
+			err := os.Remove(l.file.Name())
+			if err != nil {
+				return err
+			}
+		} else {
+			err := l.file.Close()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // parseLinePrefix searches for the delim defined by linesStartingByDelim.
-func parseLinePrefix(line string) string {
-	if linesStartingByDelim == "" {
+func (l loadDataIter) parseLinePrefix(line string) string {
+	if l.linesStartingByDelim == "" {
 		return line
 	}
 
-	prefixIndex := strings.Index(line, linesStartingByDelim)
+	prefixIndex := strings.Index(line, l.linesStartingByDelim)
 
 	// The prefix wasn't found so we need to skip this line.
 	if prefixIndex < 0 {
 		return ""
 	} else {
-		return line[prefixIndex+len(linesStartingByDelim):]
+		return line[prefixIndex+len(l.linesStartingByDelim):]
 	}
 }
 
-func (l *LoadData) parseFields(line string) ([]sql.Expression, error) {
+func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 	// Step 1. Start by Searching for prefix if there is one
-	line = parseLinePrefix(line)
+	line = l.parseLinePrefix(line)
 	if line == "" {
 		return nil, nil
 	}
 
 	// Step 2: Split the lines into fields given the delim
-	fields := strings.Split(line, fieldsTerminatedByDelim)
+	fields := strings.Split(line, l.fieldsTerminatedByDelim)
 
 	// Step 3: Go through each field and see if it was enclosed by something
 	// TODO: Support the OPTIONALLY parameter.
-	if fieldsEnclosedByDelim != "" {
+	if l.fieldsEnclosedByDelim != "" {
 		for i, field := range fields {
-			if string(field[0]) == fieldsEnclosedByDelim && string(field[len(field)-1]) == fieldsEnclosedByDelim {
+			if string(field[0]) == l.fieldsEnclosedByDelim && string(field[len(field)-1]) == l.fieldsEnclosedByDelim {
 				fields[i] = field[1 : len(field)-1]
 			} else {
 				return nil, fmt.Errorf("error: dield not properly enclosed")
@@ -258,12 +319,12 @@ func (l *LoadData) parseFields(line string) ([]sql.Expression, error) {
 	exprs := make([]sql.Expression, len(fields))
 
 	for i, field := range fields {
-		dSchema :=  l.Destination.Schema()[i]
+		dSchema :=  l.destination.Schema()[i]
 		// Replace the empty string with defaults
 		if field == "" {
 			_, ok := dSchema.Type.(sql.StringType)
 			if !ok {
-				exprs[i] = expression.NewLiteral(dSchema.Default,dSchema.Type)
+				exprs[i] = expression.NewLiteral(dSchema.Default, dSchema.Type)
 				continue
 			}
 		}
@@ -272,6 +333,14 @@ func (l *LoadData) parseFields(line string) ([]sql.Expression, error) {
 	}
 
 	return exprs, nil
+}
+
+func addNullsToValues(exprs []sql.Expression, diff int) []sql.Expression {
+	for i := diff; i > 0; i-- {
+		exprs = append(exprs, expression.NewLiteral(nil, sql.Null))
+	}
+
+	return exprs
 }
 
 // TODO: Do robust path finding for load data.
@@ -298,5 +367,11 @@ func NewLoadData(local bool, file string, destination sql.Node, cols []string, f
 		Fields:      fields,
 		Lines:       lines,
 		IgnoreNum:   ignoreNum,
+		linesStartingByDelim: defaultLinesStartingByDelim,
+		linesTerminatedByDelim: defaultLinesTerminatedByDelim,
+		fieldsEnclosedByDelim: defaultFieldsEnclosedByDelim,
+		fieldsTerminatedByDelim: defaultFieldsTerminatedByDelim,
+		fieldsOptionallyDelim: defaultFieldsOptionallyDelim,
+		fieldsEscapedByDelim: defaultFieldsEscapedByDelim,
 	}
 }
