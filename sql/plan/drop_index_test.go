@@ -58,7 +58,7 @@ func TestDeleteIndex(t *testing.T) {
 	require.NotNil(idx)
 	idxReg.ReleaseIndex(idx)
 
-	di := NewDropIndex("idx", NewResolvedTable(table))
+	di := NewDropIndex("idx", NewResolvedTable(table, nil, nil))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
@@ -102,7 +102,7 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	require.NotNil(idx)
 	idxReg.ReleaseIndex(idx)
 
-	di := NewDropIndex("idx", NewResolvedTable(table))
+	di := NewDropIndex("idx", NewResolvedTable(table, nil, nil))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
@@ -152,7 +152,7 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	idxReg.ReleaseIndex(idx)
 	idxReg.MarkOutdated(idx)
 
-	di := NewDropIndex("idx", NewResolvedTable(table))
+	di := NewDropIndex("idx", NewResolvedTable(table, nil, nil))
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 

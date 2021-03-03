@@ -32,7 +32,7 @@ func TestTableAlias(t *testing.T) {
 		{Name: "a", Type: sql.Text, Nullable: true},
 		{Name: "b", Type: sql.Text, Nullable: true},
 	})
-	alias := NewTableAlias("foo", NewResolvedTable(table))
+	alias := NewTableAlias("foo", NewResolvedTable(table, nil, nil))
 
 	var rows = []sql.Row{
 		sql.NewRow("1", "2"),

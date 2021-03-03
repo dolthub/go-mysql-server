@@ -69,22 +69,22 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				return nil, err
 			}
 
-			rt, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
+			rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
 			if err != nil {
 				return handleTableLookupFailure(err, name, db, a, t)
 			}
 
 			a.Log("table resolved: %q as of %s", rt.Name(), asOf)
-			return plan.NewResolvedTable(rt), nil
+			return plan.NewResolvedTable(rt, database, asOf), nil
 		}
 
-		rt, err := a.Catalog.Table(ctx, db, name)
+		rt, database, err := a.Catalog.Table(ctx, db, name)
 		if err != nil {
 			return handleTableLookupFailure(err, name, db, a, t)
 		}
 
 		a.Log("table resolved: %s", t.Name())
-		return plan.NewResolvedTable(rt), nil
+		return plan.NewResolvedTable(rt, database, nil), nil
 	})
 }
 
@@ -92,7 +92,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 	if sql.ErrDatabaseNotFound.Is(err) {
 		if tableName == dualTableName {
 			a.Log("table resolved: %q", t.Name())
-			return plan.NewResolvedTable(dualTable), nil
+			return plan.NewResolvedTable(dualTable, nil, nil), nil
 		}
 		if dbName == "" {
 			return nil, sql.ErrNoDatabaseSelected.New()
@@ -100,7 +100,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 	} else if sql.ErrTableNotFound.Is(err) {
 		if tableName == dualTableName {
 			a.Log("table resolved: %s", t.Name())
-			return plan.NewResolvedTable(dualTable), nil
+			return plan.NewResolvedTable(dualTable, nil, nil), nil
 		}
 	}
 

@@ -40,7 +40,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
 				expression.NewGetField(1, sql.Text, "t", true),
-			}, plan.NewResolvedTable(table)),
+			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
 		plan.EmptyTable,
@@ -55,7 +55,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		plan.NewSubquery(plan.EmptyTable, "select from dual"),
 		plan.NewProject([]sql.Expression{
 			expression.NewGetField(1, sql.Text, "t", true),
-		}, plan.NewResolvedTable(table)),
+		}, plan.NewResolvedTable(table, nil, nil)),
 		1,
 		expression.NewGetField(0, sql.Int32, "id", false),
 		false),
@@ -67,7 +67,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
 				expression.NewGetField(1, sql.Text, "t", true),
-			}, plan.NewResolvedTable(table)),
+			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
 		plan.EmptyTable,
@@ -81,12 +81,12 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
 				expression.NewGetField(1, sql.Text, "t", true),
-			}, plan.NewResolvedTable(table)),
+			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
 		plan.NewProject([]sql.Expression{
 			expression.NewGetField(0, sql.Text, "t", true),
-		}, plan.NewResolvedTable(table)),
+		}, plan.NewResolvedTable(table, nil, nil)),
 		1,
 		expression.NewGetField(0, sql.Text, "t", false),
 		false),
@@ -110,12 +110,12 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		plan.NewSubquery(
 			plan.NewProject([]sql.Expression{
 				expression.NewGetField(1, sql.Text, "t", true),
-			}, plan.NewResolvedTable(table)),
+			}, plan.NewResolvedTable(table, nil, nil)),
 			"select t from foo",
 		),
 		plan.NewProject([]sql.Expression{
 			c,
-		}, plan.NewResolvedTable(table)),
+		}, plan.NewResolvedTable(table, nil, nil)),
 		1,
 		expression.NewGetField(0, sql.Text, "t", false),
 		false),

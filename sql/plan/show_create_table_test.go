@@ -48,7 +48,7 @@ func TestShowCreateTable(t *testing.T) {
 	cat := sql.NewCatalog()
 	cat.AddDatabase(db)
 
-	showCreateTable := NewShowCreateTable(NewResolvedTable(table), false)
+	showCreateTable := NewShowCreateTable(NewResolvedTable(table, nil, nil), false)
 
 	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
@@ -69,7 +69,7 @@ func TestShowCreateTable(t *testing.T) {
 
 	require.Equal(expected, row)
 
-	showCreateTable = NewShowCreateTable(NewResolvedTable(table), true)
+	showCreateTable = NewShowCreateTable(NewResolvedTable(table, nil, nil), true)
 
 	ctx = sql.NewEmptyContext()
 	rowIter, _ = showCreateTable.RowIter(ctx, nil)
@@ -104,7 +104,7 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 	cat := sql.NewCatalog()
 	cat.AddDatabase(db)
 
-	showCreateTable := NewShowCreateTable(NewResolvedTable(table), false)
+	showCreateTable := NewShowCreateTable(NewResolvedTable(table, nil, nil), false)
 	// This mimics what happens during analysis (indexes get filled in for the table)
 	showCreateTable.(*ShowCreateTable).Indexes = []sql.Index{
 		&mockIndex{
@@ -175,7 +175,7 @@ func TestShowCreateView(t *testing.T) {
 	cat.AddDatabase(db)
 
 	showCreateTable := NewShowCreateTable(
-		NewSubqueryAlias("myView", "select * from `test-table`", NewResolvedTable(table)),
+		NewSubqueryAlias("myView", "select * from `test-table`", NewResolvedTable(table, nil, nil)),
 		true,
 	)
 

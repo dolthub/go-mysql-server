@@ -62,6 +62,8 @@ func getForeignKeyAlterable(node sql.Node) (sql.ForeignKeyAlterableTable, error)
 		return node, nil
 	case *ResolvedTable:
 		return getForeignKeyAlterableTable(node.Table)
+	case sql.TableWrapper:
+		return getForeignKeyAlterableTable(node.Underlying())
 	default:
 		return nil, ErrNoForeignKeySupport.New(node.String())
 	}

@@ -196,35 +196,11 @@ func (ieb *IfElseBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // RowIter implements the sql.Node interface.
 func (ieb *IfElseBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &ifElseIter{
-		ifConditionals: ieb.IfConditionals,
-		elseCondition:  ieb.Else,
-		row:            row,
-		ctx:            ctx,
-		branchIter:     nil,
-	}, nil
-}
-
-// ifElseIter is the row iterator for *IfElseBlock.
-type ifElseIter struct {
-	ifConditionals []*IfConditional
-	elseCondition  sql.Node
-	ctx            *sql.Context
-	row            sql.Row
-	branchIter     sql.RowIter
-}
-
-var _ sql.RowIter = (*ifElseIter)(nil)
-
-// Next implements the sql.RowIter interface.
-func (i *ifElseIter) Next() (sql.Row, error) {
-	if i.branchIter != nil {
-		return i.branchIter.Next()
-	}
+	var branchIter sql.RowIter
 
 	var err error
-	for _, ifConditional := range i.ifConditionals {
-		condition, err := ifConditional.Condition.Eval(i.ctx, i.row)
+	for _, ifConditional := range ieb.IfConditionals {
+		condition, err := ifConditional.Condition.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -236,22 +212,64 @@ func (i *ifElseIter) Next() (sql.Row, error) {
 			continue
 		}
 
-		i.branchIter, err = ifConditional.RowIter(i.ctx, i.row)
+		branchIter, err = ifConditional.RowIter(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		return i.branchIter.Next()
+		// If the branchIter is already a block iter, then we don't need to construct our own, as its contained
+		// node and schema will be a better representation of the iterated rows.
+		if blockRowIter, ok := branchIter.(BlockRowIter); ok {
+			return blockRowIter, nil
+		}
+		return &ifElseIter{
+			branchIter: branchIter,
+			sch:        ifConditional.Body.Schema(),
+			branchNode: ifConditional.Body,
+		}, nil
 	}
 
 	// All conditions failed so we run the else
-	i.branchIter, err = i.elseCondition.RowIter(i.ctx, i.row)
+	branchIter, err = ieb.Else.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	// If the branchIter is already a block iter, then we don't need to construct our own, as its contained
+	// node and schema will be a better representation of the iterated rows.
+	if blockRowIter, ok := branchIter.(BlockRowIter); ok {
+		return blockRowIter, nil
+	}
+	return &ifElseIter{
+		branchIter: branchIter,
+		sch:        ieb.Else.Schema(),
+		branchNode: ieb.Else,
+	}, nil
+}
+
+// ifElseIter is the row iterator for *IfElseBlock.
+type ifElseIter struct {
+	branchIter sql.RowIter
+	sch        sql.Schema
+	branchNode sql.Node
+}
+
+var _ BlockRowIter = (*ifElseIter)(nil)
+
+// Next implements the sql.RowIter interface.
+func (i *ifElseIter) Next() (sql.Row, error) {
 	return i.branchIter.Next()
 }
 
 // Close implements the sql.RowIter interface.
 func (i *ifElseIter) Close(ctx *sql.Context) error {
 	return i.branchIter.Close(ctx)
+}
+
+// RepresentingNode implements the sql.BlockRowIter interface.
+func (i *ifElseIter) RepresentingNode() sql.Node {
+	return i.branchNode
+}
+
+// Schema implements the sql.BlockRowIter interface.
+func (i *ifElseIter) Schema() sql.Schema {
+	return i.sch
 }

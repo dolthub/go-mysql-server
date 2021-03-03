@@ -41,7 +41,7 @@ func TestTransformUp(t *testing.T) {
 	pt, err := TransformUp(p, func(n sql.Node) (sql.Node, error) {
 		switch n.(type) {
 		case *UnresolvedTable:
-			return NewResolvedTable(table), nil
+			return NewResolvedTable(table, nil, nil), nil
 		default:
 			return n, nil
 		}
@@ -51,7 +51,7 @@ func TestTransformUp(t *testing.T) {
 	ep := NewProject(
 		[]sql.Expression{aCol, bCol},
 		NewFilter(expression.NewEquals(aCol, bCol),
-			NewResolvedTable(table),
+			NewResolvedTable(table, nil, nil),
 		),
 	)
 	require.Equal(ep, pt)

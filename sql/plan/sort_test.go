@@ -206,7 +206,7 @@ func TestSort(t *testing.T) {
 				require.NoError(tbl.Insert(sql.NewEmptyContext(), row))
 			}
 
-			sort := NewSort(tt.sortFields, NewResolvedTable(tbl))
+			sort := NewSort(tt.sortFields, NewResolvedTable(tbl, nil, nil))
 
 			actual, err := sql.NodeToRows(ctx, sort)
 			require.NoError(err)
@@ -239,7 +239,7 @@ func TestSortAscending(t *testing.T) {
 	sf := []sql.SortField{
 		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 	}
-	s := NewSort(sf, NewResolvedTable(child))
+	s := NewSort(sf, NewResolvedTable(child, nil, nil))
 	require.Equal(schema, s.Schema())
 
 	expected := []sql.Row{
@@ -279,7 +279,7 @@ func TestSortDescending(t *testing.T) {
 	sf := []sql.SortField{
 		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 	}
-	s := NewSort(sf, NewResolvedTable(child))
+	s := NewSort(sf, NewResolvedTable(child, nil, nil))
 	require.Equal(schema, s.Schema())
 
 	expected := []sql.Row{

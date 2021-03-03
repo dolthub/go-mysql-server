@@ -179,13 +179,17 @@ func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
 				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
-			return plan.NewResolvedTable(table), nil
+			return n.WithTable(table)
 		case *plan.IndexedTableAccess:
 			if foundTable {
 				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
-			return n.WithChildren(plan.NewResolvedTable(table))
+			newRt, err := n.WithTable(table)
+			if err != nil {
+				return nil, err
+			}
+			return n.WithChildren(newRt)
 		default:
 			return n, nil
 		}

@@ -49,21 +49,21 @@ func TestMergeUnionSchemas(t *testing.T) {
 			plan.NewUnion(
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 			),
 			plan.NewUnion(
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(3), sql.Int64)},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 			),
 			nil,
@@ -73,14 +73,14 @@ func TestMergeUnionSchemas(t *testing.T) {
 			plan.NewUnion(
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewLiteral(int64(3), sql.Int64),
 						expression.NewLiteral(int64(6), sql.Int64),
 					},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 			),
 			nil,
@@ -91,11 +91,11 @@ func TestMergeUnionSchemas(t *testing.T) {
 			plan.NewUnion(
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 				plan.NewProject(
 					[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
-					plan.NewResolvedTable(dualTable),
+					plan.NewResolvedTable(dualTable, nil, nil),
 				),
 			),
 			plan.NewUnion(
@@ -106,7 +106,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 					},
 					plan.NewProject(
 						[]sql.Expression{expression.NewLiteral(int64(1), sql.Int64)},
-						plan.NewResolvedTable(dualTable),
+						plan.NewResolvedTable(dualTable, nil, nil),
 					),
 				),
 				plan.NewProject(
@@ -116,7 +116,7 @@ func TestMergeUnionSchemas(t *testing.T) {
 					},
 					plan.NewProject(
 						[]sql.Expression{expression.NewLiteral(int32(3), sql.Int32)},
-						plan.NewResolvedTable(dualTable),
+						plan.NewResolvedTable(dualTable, nil, nil),
 					),
 				),
 			),

@@ -20,6 +20,9 @@ import (
 )
 
 var (
+	// ErrSyntaxError is returned when a syntax error in vitess is encountered.
+	ErrSyntaxError = errors.NewKind("%s")
+
 	// ErrInvalidType is thrown when there is an unexpected type at some part of
 	// the execution tree.
 	ErrInvalidType = errors.NewKind("invalid type: %s")
@@ -121,8 +124,20 @@ var (
 	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
 	ErrStoredProcedureDoesNotExist = errors.NewKind(`stored procedure "%s" does not exist`)
 
-	// ErrProcedureCreateStatementInvalid is returned when a StoredProcedureDatabse returns a CREATE PROCEDURE statement that is invalid.
+	// ErrProcedureCreateStatementInvalid is returned when a StoredProcedureDatabase returns a CREATE PROCEDURE statement that is invalid.
 	ErrProcedureCreateStatementInvalid = errors.NewKind(`Invalid CREATE PROCEDURE statement: %s`)
+
+	// ErrProcedureDuplicateParameterName is returned when a stored procedure has two (or more) parameters with the same name.
+	ErrProcedureDuplicateParameterName = errors.NewKind("duplicate parameter name `%s` on stored procedure `%s`")
+
+	// ErrProcedureRecursiveCall is returned when a stored procedure has a CALL statement that refers to itself.
+	ErrProcedureRecursiveCall = errors.NewKind("recursive CALL on stored procedure `%s`")
+
+	// ErrProcedureInvalidBodyStatement is returned when a stored procedure has a statement that is invalid inside of procedures.
+	ErrProcedureInvalidBodyStatement = errors.NewKind("`%s` statements are invalid inside of stored procedures")
+
+	// ErrCallIncorrectParameterCount is returned when a CALL statement has the incorrect number of parameters.
+	ErrCallIncorrectParameterCount = errors.NewKind("`%s` expected `%d` parameters but got `%d`")
 
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)

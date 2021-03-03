@@ -20,8 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var ProcedureTests = []ScriptTest{
-	// CREATE PROCEDURE & CALL
+var ProcedureLogicTests = []ScriptTest{
 	{
 		Name: "Simple SELECT",
 		SetUpScript: []string{
@@ -46,6 +45,399 @@ var ProcedureTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Multiple SELECTs",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk VARCHAR(20) PRIMARY KEY)",
+			"INSERT INTO t1 VALUES (3), (4), (50)",
+			`CREATE PROCEDURE p1()
+BEGIN
+	SELECT * FROM t1;
+	UPDATE t1 SET pk = CONCAT(pk, '0');
+	SELECT * FROM t1;
+	INSERT INTO t1 VALUES (1), (2);
+	SELECT * FROM t1;
+	REPLACE INTO t1 VALUES (1), (30);
+	DELETE FROM t1 WHERE pk LIKE '%00';
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1()",
+				Expected: []sql.Row{
+					{"1"},
+					{"2"},
+					{"30"},
+					{"40"},
+					{"500"},
+				},
+			},
+			{
+				Query: "SELECT * FROM t1 ORDER BY 1",
+				Expected: []sql.Row{
+					{"1"},
+					{"2"},
+					{"30"},
+					{"40"},
+				},
+			},
+		},
+	},
+	{
+		Name: "IF/ELSE with 1 SELECT at end",
+		SetUpScript: []string{
+			"SET @outparam = ''",
+			`CREATE PROCEDURE p1(OUT s VARCHAR(200), N DOUBLE, m DOUBLE)
+BEGIN
+	SET s = '';
+	IF n = m THEN SET s = 'equals';
+	ELSE
+		IF n > m THEN SET s = 'greater';
+		ELSE SET s = 'less';
+		END IF;
+		SET s = CONCAT('is ', s, ' than');
+	END IF;
+	SET s = CONCAT(n, ' ', s, ' ', m, '.');
+	SELECT s;
+END;`,
+			`CREATE PROCEDURE p2(s VARCHAR(200), N DOUBLE, m DOUBLE)
+BEGIN
+	SET s = '';
+	IF n = m THEN SET s = 'equals';
+	ELSE
+		IF n > m THEN SET s = 'greater';
+		ELSE SET s = 'less';
+		END IF;
+		SET s = CONCAT('is ', s, ' than');
+	END IF;
+	SET s = CONCAT(n, ' ', s, ' ', m, '.');
+	SELECT s;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(@outparam, 1, 2)",
+				Expected: []sql.Row{
+					{
+						"1 is less than 2.",
+					},
+				},
+			},
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						"1 is less than 2.",
+					},
+				},
+			},
+			{
+				Query: "CALL p1(@outparam, 7, 4)",
+				Expected: []sql.Row{
+					{
+						"7 is greater than 4.",
+					},
+				},
+			},
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						"7 is greater than 4.",
+					},
+				},
+			},
+			{
+				Query: "CALL p1(@outparam, 5, 5)",
+				Expected: []sql.Row{
+					{
+						"5 equals 5.",
+					},
+				},
+			},
+			{
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						"5 equals 5.",
+					},
+				},
+			},
+			{
+				Query: "CALL p2(@outparam, 9, 3)",
+				Expected: []sql.Row{
+					{
+						"9 is greater than 3.",
+					},
+				},
+			},
+			{ // Not affected as p2 has an IN param rather than OUT
+				Query: "SELECT @outparam",
+				Expected: []sql.Row{
+					{
+						"5 equals 5.",
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "IF/ELSE with nested SELECT in branches",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY)",
+			`CREATE PROCEDURE p1(x BIGINT)
+BEGIN
+	DELETE FROM t1;
+	IF x < 10 THEN
+		IF x = 0 THEN
+			SELECT 1000;
+		ELSEIF x = 1 THEN
+			SELECT 1001;
+		ELSE
+			INSERT INTO t1 VALUES (3), (4), (5);
+		END IF;
+	ELSEIF x < 20 THEN
+		IF x = 10 THEN
+			INSERT INTO t1 VALUES (1), (2), (6), (7);
+		ELSEIF x = 11 THEN
+			INSERT INTO t1 VALUES (8), (9), (10), (11), (12);
+			SELECT * FROM t1;
+		ELSE
+			SELECT 2002;
+			SELECT 2003;
+		END IF;
+	END IF;
+	INSERT INTO t1 VALUES (1), (2);
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(0)",
+				Expected: []sql.Row{
+					{
+						int64(1000),
+					},
+				},
+			},
+			{
+				Query: "CALL p1(1)",
+				Expected: []sql.Row{
+					{
+						int64(1001),
+					},
+				},
+			},
+			{
+				Query: "CALL p1(2)",
+				Expected: []sql.Row{
+					{
+						sql.NewOkResult(2),
+					},
+				},
+			},
+			{
+				Query:       "CALL p1(10)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "CALL p1(11)",
+				Expected: []sql.Row{
+					{int64(8)},
+					{int64(9)},
+					{int64(10)},
+					{int64(11)},
+					{int64(12)},
+				},
+			},
+			{
+				Query: "CALL p1(12)",
+				Expected: []sql.Row{
+					{
+						int64(2003),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "SELECT with JOIN and table aliases",
+		SetUpScript: []string{
+			"CREATE TABLE foo(a BIGINT PRIMARY KEY, b VARCHAR(20))",
+			"INSERT INTO foo VALUES (1, 'd'), (2, 'e'), (3, 'f')",
+			"CREATE TABLE bar(b VARCHAR(30) PRIMARY KEY, c BIGINT)",
+			"INSERT INTO bar VALUES ('x', 3), ('y', 2), ('z', 1)",
+			// Direct child is SELECT
+			"CREATE PROCEDURE p1() SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1",
+			// Direct child is BEGIN/END
+			"CREATE PROCEDURE p2() BEGIN SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END;",
+			// Direct child is IF
+			"CREATE PROCEDURE p3() IF 0 = 0 THEN SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END IF;",
+			// Direct child is BEGIN/END with preceding SELECT
+			"CREATE PROCEDURE p4() BEGIN SELECT 7; SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END;",
+			// Direct child is IF with preceding SELECT
+			"CREATE PROCEDURE p5() IF 0 = 0 THEN SELECT 7; SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1; END IF;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{ // Enforces that this is the expected output from the query normally
+				Query: "SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c ORDER BY 1",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p1()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p2()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p3()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p4()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+			{
+				Query: "CALL p5()",
+				Expected: []sql.Row{
+					{int64(1), "z", "d"},
+					{int64(2), "y", "e"},
+					{int64(3), "x", "f"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Nested CALL in IF/ELSE branch",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY)",
+			"INSERT INTO t1 VALUES (2), (3)",
+			"CREATE PROCEDURE p1(INOUT x BIGINT) BEGIN IF X = 1 THEN CALL p2(10); ELSEIF x = 2 THEN CALL p2(100); ELSE CALL p2(X); END IF; END;",
+			"CREATE PROCEDURE p2(INOUT y BIGINT) BEGIN SELECT pk * y FROM t1 ORDER BY 1; END;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(1)",
+				Expected: []sql.Row{
+					{int64(20)},
+					{int64(30)},
+				},
+			},
+			{
+				Query: "CALL p1(2)",
+				Expected: []sql.Row{
+					{int64(200)},
+					{int64(300)},
+				},
+			},
+			{
+				Query: "CALL p1(5)",
+				Expected: []sql.Row{
+					{int64(10)},
+					{int64(15)},
+				},
+			},
+		},
+	},
+	{
+		Name: "INSERT INTO SELECT doesn't override SELECT",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY)",
+			"CREATE TABLE t2(pk BIGINT PRIMARY KEY)",
+			"INSERT INTO t1 VALUES (2), (3)",
+			"INSERT INTO t2 VALUES (1)",
+			`CREATE PROCEDURE p1(x BIGINT)
+BEGIN
+	DELETE FROM t2 WHERE pk > 1;
+	INSERT INTO t2 SELECT pk FROM t1;
+	SELECT * FROM t2;
+	INSERT INTO t2 SELECT pk + 10 FROM t1;
+	IF x = 1 THEN
+		SELECT * FROM t2;
+	END IF;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(0)",
+				Expected: []sql.Row{
+					{int64(1)},
+					{int64(2)},
+					{int64(3)},
+				},
+			},
+			{
+				Query: "CALL p1(1)",
+				Expected: []sql.Row{
+					{int64(1)},
+					{int64(2)},
+					{int64(3)},
+					{int64(12)},
+					{int64(13)},
+				},
+			},
+		},
+	},
+	{
+		Name:        "Duplicate parameter names",
+		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
+		ExpectedErr: sql.ErrProcedureDuplicateParameterName,
+	},
+	{
+		Name:        "Duplicate parameter names mixed casing",
+		Query:       "CREATE PROCEDURE p1(abc DATETIME, ABC DOUBLE) SELECT abc",
+		ExpectedErr: sql.ErrProcedureDuplicateParameterName,
+	},
+	{
+		Name:        "Invalid parameter type",
+		Query:       "CREATE PROCEDURE p1(x FAKETYPE) SELECT x",
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{ // This statement is not allowed in stored procedures, and is caught by the vitess parser.
+		Name:        "Invalid USE statement",
+		Query:       `CREATE PROCEDURE p1() USE mydb`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{ // These statements are not allowed in stored procedures, and are caught by the vitess parser.
+		Name: "Invalid LOCK/UNLOCK statements",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE PROCEDURE p1(x BIGINT) LOCK TABLES t1 READ",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "CREATE PROCEDURE p1(x BIGINT) UNLOCK TABLES",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+}
+
+var ProcedureCallTests = []ScriptTest{
 	{
 		Name: "OUT param with SET",
 		SetUpScript: []string{
@@ -139,75 +531,54 @@ var ProcedureTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "IF/ELSE with OUT param",
+		Name: "OUT param without SET",
 		SetUpScript: []string{
-			"SET @outparam = ''",
-			`CREATE PROCEDURE p1(OUT s VARCHAR(200), n DOUBLE, m DOUBLE)
-BEGIN
-	SET s = '';
-	IF n = m THEN SET s = 'equals';
-	ELSE
-		IF n > m THEN SET s = 'greater';
-		ELSE SET s = 'less';
-		END IF;
-		SET s = CONCAT('is ', s, ' than');
-	END IF;
-	SET s = CONCAT(n, ' ', s, ' ', m, '.');
-	SELECT s;
-END;`,
+			"SET @outparam = 5",
+			"CREATE PROCEDURE testabc(OUT x BIGINT) SELECT x",
+			"CALL testabc(@outparam)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CALL p1(@outparam, 1, 2)",
-				Expected: []sql.Row{
-					{
-						"1 is less than 2.",
-					},
-				},
-			},
-			{
 				Query: "SELECT @outparam",
 				Expected: []sql.Row{
 					{
-						"1 is less than 2.",
-					},
-				},
-			},
-			{
-				Query: "CALL p1(@outparam, 7, 4)",
-				Expected: []sql.Row{
-					{
-						"7 is greater than 4.",
-					},
-				},
-			},
-			{
-				Query: "SELECT @outparam",
-				Expected: []sql.Row{
-					{
-						"7 is greater than 4.",
-					},
-				},
-			},
-			{
-				Query: "CALL p1(@outparam, 5, 5)",
-				Expected: []sql.Row{
-					{
-						"5 equals 5.",
-					},
-				},
-			},
-			{
-				Query: "SELECT @outparam",
-				Expected: []sql.Row{
-					{
-						"5 equals 5.",
+						nil,
 					},
 				},
 			},
 		},
 	},
-	// DROP PROCEDURE
+	{
+		Name: "Incompatible type for parameter",
+		SetUpScript: []string{
+			"CREATE PROCEDURE p1(x DATETIME) SELECT x",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL p1('hi')",
+				ExpectedErr: sql.ErrConvertingToTime,
+			},
+		},
+	},
+	{
+		Name: "Incorrect parameter count",
+		SetUpScript: []string{
+			"CREATE PROCEDURE p1(x BIGINT, y BIGINT) SELECT x + y",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL p1(1)",
+				ExpectedErr: sql.ErrCallIncorrectParameterCount,
+			},
+			{
+				Query:       "CALL p1(1, 2, 3)",
+				ExpectedErr: sql.ErrCallIncorrectParameterCount,
+			},
+		},
+	},
+}
+
+var ProcedureDropTests = []ScriptTest{
 	{
 		Name: "DROP procedures",
 		SetUpScript: []string{
@@ -257,7 +628,9 @@ END;`,
 			},
 		},
 	},
-	// SHOW PROCEDURE STATUS
+}
+
+var ProcedureShowStatus = []ScriptTest{
 	{
 		Name: "SHOW procedures",
 		SetUpScript: []string{
