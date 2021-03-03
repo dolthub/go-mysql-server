@@ -190,7 +190,7 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 			})
 		}
 		return hasSetField, row[len(row)/2:]
-	case *BeginEndBlock, *Block:
+	case *TriggerBeginEndBlock:
 		hasSetField := false
 		Inspect(logic, func(n sql.Node) bool {
 			set, ok := n.(*Set)

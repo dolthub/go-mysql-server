@@ -214,11 +214,12 @@ func (ab *Builder) Build() *Analyzer {
 	}
 
 	return &Analyzer{
-		Debug:        debug || ab.debug,
-		contextStack: make([]string, 0),
-		Batches:      batches,
-		Catalog:      ab.catalog,
-		Parallelism:  ab.parallelism,
+		Debug:          debug || ab.debug,
+		contextStack:   make([]string, 0),
+		Batches:        batches,
+		Catalog:        ab.catalog,
+		Parallelism:    ab.parallelism,
+		ProcedureCache: NewProcedureCache(),
 	}
 }
 
@@ -236,6 +237,8 @@ type Analyzer struct {
 	Batches []*Batch
 	// Catalog of databases and registered functions.
 	Catalog *sql.Catalog
+	// ProcedureCache is a cache of stored procedures.
+	ProcedureCache *ProcedureCache
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

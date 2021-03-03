@@ -39,7 +39,7 @@ func TestInSubquery(t *testing.T) {
 	project := func(expr sql.Expression) sql.Node {
 		return plan.NewProject([]sql.Expression{
 			expr,
-		}, plan.NewResolvedTable(table))
+		}, plan.NewResolvedTable(table, nil, nil))
 	}
 
 	testCases := []struct {
@@ -127,7 +127,7 @@ func TestNotInSubquery(t *testing.T) {
 	project := func(expr sql.Expression) sql.Node {
 		return plan.NewProject([]sql.Expression{
 			expr,
-		}, plan.NewResolvedTable(table))
+		}, plan.NewResolvedTable(table, nil, nil))
 	}
 
 	testCases := []struct {

@@ -43,6 +43,8 @@ func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return getUpdatable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
+	case sql.TableWrapper:
+		return getUpdatableTable(node.Underlying())
 	}
 	for _, child := range node.Children() {
 		updater, _ := getUpdatable(child)

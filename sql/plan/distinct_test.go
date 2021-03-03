@@ -49,7 +49,7 @@ func TestDistinct(t *testing.T) {
 
 	p := NewProject([]sql.Expression{
 		expression.NewGetField(0, sql.Text, "name", true),
-	}, NewResolvedTable(child))
+	}, NewResolvedTable(child, nil, nil))
 	d := NewDistinct(p)
 
 	iter, err := d.RowIter(ctx, nil)
@@ -96,7 +96,7 @@ func TestOrderedDistinct(t *testing.T) {
 
 	p := NewProject([]sql.Expression{
 		expression.NewGetField(0, sql.Text, "name", true),
-	}, NewResolvedTable(child))
+	}, NewResolvedTable(child, nil, nil))
 	d := NewOrderedDistinct(p)
 
 	iter, err := d.RowIter(ctx, nil)
@@ -131,7 +131,7 @@ func BenchmarkDistinct(b *testing.B) {
 			expression.NewGetField(3, sql.Int32, "intfield", false),
 			expression.NewGetField(4, sql.Int64, "bigintfield", false),
 			expression.NewGetField(5, sql.Blob, "blobfield", false),
-		}, NewResolvedTable(benchtable))
+		}, NewResolvedTable(benchtable, nil, nil))
 		d := NewDistinct(p)
 
 		iter, err := d.RowIter(ctx, nil)
@@ -164,7 +164,7 @@ func BenchmarkOrderedDistinct(b *testing.B) {
 			expression.NewGetField(3, sql.Int32, "intfield", false),
 			expression.NewGetField(4, sql.Int64, "bigintfield", false),
 			expression.NewGetField(5, sql.Blob, "blobfield", false),
-		}, NewResolvedTable(benchtable))
+		}, NewResolvedTable(benchtable, nil, nil))
 		d := NewOrderedDistinct(p)
 
 		iter, err := d.RowIter(ctx, nil)

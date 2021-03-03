@@ -33,7 +33,7 @@ func TestGroupBySchema(t *testing.T) {
 		expression.NewAlias("c1", expression.NewLiteral("s", sql.LongText)),
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
-	gb := NewGroupBy(agg, nil, NewResolvedTable(child))
+	gb := NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
 	require.Equal(sql.Schema{
 		{Name: "c1", Type: sql.LongText},
 		{Name: "c2", Type: sql.Int64},
@@ -47,13 +47,13 @@ func TestGroupByResolved(t *testing.T) {
 	agg := []sql.Expression{
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
-	gb := NewGroupBy(agg, nil, NewResolvedTable(child))
+	gb := NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
 	require.True(gb.Resolved())
 
 	agg = []sql.Expression{
 		expression.NewStar(),
 	}
-	gb = NewGroupBy(agg, nil, NewResolvedTable(child))
+	gb = NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
 	require.False(gb.Resolved())
 }
 
@@ -98,7 +98,7 @@ func TestGroupByRowIter(t *testing.T) {
 				expression.NewGetField(0, sql.LongText, "col1", true),
 				expression.NewGetField(1, sql.Int64, "col2", true),
 			},
-			NewResolvedTable(child),
+			NewResolvedTable(child, nil, nil),
 		))
 
 	require.Equal(1, len(p.Children()))
@@ -152,7 +152,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 			aggregation.NewCount(expression.NewGetField(0, sql.LongText, "col1", true)),
 			expression.NewGetField(1, sql.Int64, "col2", true),
 		},
-		NewResolvedTable(child),
+		NewResolvedTable(child, nil, nil),
 	)
 
 	rows, err := sql.NodeToRows(ctx, p)
@@ -176,7 +176,7 @@ func BenchmarkGroupBy(b *testing.B) {
 			),
 		},
 		nil,
-		NewResolvedTable(table),
+		NewResolvedTable(table, nil, nil),
 	)
 
 	expected := []sql.Row{{int64(200)}}
@@ -209,7 +209,7 @@ func BenchmarkGroupBy(b *testing.B) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Int64, "a", false),
 		},
-		NewResolvedTable(table),
+		NewResolvedTable(table, nil, nil),
 	)
 
 	expected = []sql.Row{}

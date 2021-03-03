@@ -992,7 +992,16 @@ func TestTriggers(t *testing.T, harness Harness) {
 }
 
 func TestStoredProcedures(t *testing.T, harness Harness) {
-	for _, script := range ProcedureTests {
+	for _, script := range ProcedureLogicTests {
+		TestScript(t, harness, script)
+	}
+	for _, script := range ProcedureCallTests {
+		TestScript(t, harness, script)
+	}
+	for _, script := range ProcedureDropTests {
+		TestScript(t, harness, script)
+	}
+	for _, script := range ProcedureShowStatus {
 		TestScript(t, harness, script)
 	}
 }
@@ -3101,7 +3110,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		)
 
 		ctx := NewContext(harness)
-		t28, err := e.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
+		t28, _, err := e.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
 		require.NoError(err)
 		sch := t28.Schema()
 		require.Len(sch, 2)

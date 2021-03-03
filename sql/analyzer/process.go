@@ -79,7 +79,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			}
 
-			return plan.NewResolvedTable(t), nil
+			return n.WithTable(t)
 		default:
 			return n, nil
 		}

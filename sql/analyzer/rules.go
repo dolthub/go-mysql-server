@@ -31,7 +31,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_describe_query", resolveDescribeQuery},
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
-	{"validate_stored_procedure", validateStoredProcedure},
+	{"validate_create_procedure", validateCreateProcedure},
 }
 
 // DefaultRules to apply when analyzing nodes.

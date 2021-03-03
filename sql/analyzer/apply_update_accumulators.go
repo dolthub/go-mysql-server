@@ -32,7 +32,6 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	}
 
 	switch n := n.(type) {
-	//TODO: add stored procedures
 	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 		accumulatorType, err := getUpdateAccumulatorType(n)
 		if err != nil {

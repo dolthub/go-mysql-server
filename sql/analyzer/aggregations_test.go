@@ -56,7 +56,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 
 			expected: plan.NewProject(
@@ -76,7 +76,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -96,7 +96,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
@@ -116,7 +116,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -139,7 +139,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
@@ -164,7 +164,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},

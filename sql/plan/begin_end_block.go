@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// BeginEndBlock represents a BEGIN/END block.
 type BeginEndBlock struct {
 	*Block
 }
@@ -54,4 +55,9 @@ func (b *BeginEndBlock) DebugString() string {
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()
+}
+
+// WithChildren implements the sql.Node interface.
+func (b *BeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NewBeginEndBlock(NewBlock(children)), nil
 }

@@ -42,7 +42,7 @@ func TestQueryProcess(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetField(0, sql.Int64, "a", false),
 			},
-			NewResolvedTable(table),
+			NewResolvedTable(table, nil, nil),
 		),
 		func() {
 			notifications++
@@ -85,20 +85,18 @@ func TestProcessTable(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Int64, "a", false),
 		},
-		NewResolvedTable(
-			NewProcessTable(
-				table,
-				func(partitionName string) {
-					partitionDoneNotifications++
-				},
-				func(partitionName string) {
-					partitionStartNotifications++
-				},
-				func(partitionName string) {
-					rowNextNotifications++
-				},
-			),
-		),
+		NewResolvedTable(NewProcessTable(
+			table,
+			func(partitionName string) {
+				partitionDoneNotifications++
+			},
+			func(partitionName string) {
+				partitionStartNotifications++
+			},
+			func(partitionName string) {
+				rowNextNotifications++
+			},
+		), nil, nil),
 	)
 
 	ctx := sql.NewEmptyContext()

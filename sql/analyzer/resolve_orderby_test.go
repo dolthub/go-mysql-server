@@ -46,7 +46,7 @@ func TestPushdownSortProject(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -60,7 +60,7 @@ func TestPushdownSortProject(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
@@ -71,7 +71,7 @@ func TestPushdownSortProject(t *testing.T) {
 					[]sql.SortField{
 						{Column: expression.NewUnresolvedColumn("a")},
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -85,7 +85,7 @@ func TestPushdownSortProject(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
@@ -96,7 +96,7 @@ func TestPushdownSortProject(t *testing.T) {
 					[]sql.SortField{
 						{Column: expression.NewUnresolvedColumn("a")},
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -128,7 +128,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -145,7 +145,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewGroupBy(
@@ -159,7 +159,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 					[]sql.SortField{
 						{Column: expression.NewUnresolvedColumn("a")},
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -177,7 +177,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
@@ -197,7 +197,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 						[]sql.Expression{
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						},
-						plan.NewResolvedTable(table),
+						plan.NewResolvedTable(table, nil, nil),
 					),
 				),
 			),
@@ -239,7 +239,7 @@ func TestPushdownSortWindow(t *testing.T) {
 							),
 						)),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -265,7 +265,7 @@ func TestPushdownSortWindow(t *testing.T) {
 							),
 						)),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewWindow(
@@ -288,7 +288,7 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.SortField{
 						{Column: expression.NewUnresolvedColumn("a")},
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -314,7 +314,7 @@ func TestPushdownSortWindow(t *testing.T) {
 							),
 						)),
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 			expected: plan.NewWindow(
@@ -337,7 +337,7 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.SortField{
 						{Column: expression.NewUnresolvedColumn("a")},
 					},
-					plan.NewResolvedTable(table),
+					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
 		},
@@ -360,7 +360,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 			{Column: expression.NewLiteral(int64(2), sql.Int64)},
 			{Column: expression.NewLiteral(int64(1), sql.Int64)},
 		},
-		plan.NewResolvedTable(table),
+		plan.NewResolvedTable(table, nil, nil),
 	)
 
 	result, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)
@@ -372,7 +372,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 				{Column: expression.NewUnresolvedQualifiedColumn("t", "b")},
 				{Column: expression.NewUnresolvedQualifiedColumn("t", "a")},
 			},
-			plan.NewResolvedTable(table),
+			plan.NewResolvedTable(table, nil, nil),
 		),
 		result,
 	)
@@ -382,7 +382,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 			{Column: expression.NewLiteral(int64(3), sql.Int64)},
 			{Column: expression.NewLiteral(int64(1), sql.Int64)},
 		},
-		plan.NewResolvedTable(table),
+		plan.NewResolvedTable(table, nil, nil),
 	)
 
 	_, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil)

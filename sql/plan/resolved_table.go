@@ -23,13 +23,15 @@ import (
 // ResolvedTable represents a resolved SQL Table.
 type ResolvedTable struct {
 	sql.Table
+	Database sql.Database
+	AsOf     interface{}
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
-func NewResolvedTable(table sql.Table) *ResolvedTable {
-	return &ResolvedTable{table}
+func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
+	return &ResolvedTable{table, db, asOf}
 }
 
 // Resolved implements the Resolvable interface.
@@ -68,4 +70,14 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return t, nil
+}
+
+// WithTable returns this Node with the given table. The new table should have the same name as the previous table.
+func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
+	if t.Name() != table.Name() {
+		return nil, fmt.Errorf("attempted to update ResolvedTable `%s` with table `%s`", t.Name(), table.Name())
+	}
+	nt := *t
+	nt.Table = table
+	return &nt, nil
 }
