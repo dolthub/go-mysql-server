@@ -35,6 +35,8 @@ var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 // one_or_all argument:
 //   - 'one': 1 if at least one path exists within the document, 0 otherwise.
 //   - 'all': 1 if all paths exist within the document, 0 otherwise.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains-path
 type JSONContainsPath struct {
 	sql.Expression
 }
@@ -60,6 +62,7 @@ func (j JSONContainsPath) FunctionName() string {
 // document or the path argument is not a valid path expression or contains a * or ** wildcard. The result array is
 // empty if the selected object is empty. If the top-level value has nested subobjects, the return value does not
 // include keys from those subobjects.
+//
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-keys
 type JSONKeys struct {
 	sql.Expression
@@ -89,6 +92,7 @@ func (j JSONKeys) FunctionName() string {
 //
 // Queries on JSON columns of InnoDB tables using JSON_OVERLAPS() in the WHERE clause can be optimized using
 // multi-valued indexes. Multi-Valued Indexes, provides detailed information and examples.
+//
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-overlaps
 type JSONOverlaps struct {
 	sql.Expression
@@ -131,12 +135,13 @@ func (j JSONOverlaps) FunctionName() string {
 // must evaluate to a constant at compile time, not just at execution time. For example, if JSON_SEARCH() is used in a
 // prepared statement and the escape_char argument is supplied using a ? parameter, the parameter value might be
 // constant at execution time, but is not at compile time.
+//
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-search
 type JSONSearch struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONOverlaps)(nil)
+var _ sql.FunctionExpression = (JSONSearch)(nil)
 
 // NewJSONSearch creates a new NewJSONSearch function.
 func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
@@ -152,12 +157,13 @@ func (j JSONSearch) FunctionName() string {
 //
 // JSONValue Extracts a value from a JSON document at the path given in the specified document, and returns the
 // extracted value, optionally converting it to a desired type.
+//
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-value
 type JSONValue struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONOverlaps)(nil)
+var _ sql.FunctionExpression = (JSONValue)(nil)
 
 // NewJSONValue creates a new JSONValue function.
 func NewJSONValue(args ...sql.Expression) (sql.Expression, error) {
@@ -173,9 +179,81 @@ func (j JSONValue) FunctionName() string {
 // value MEMBER OF(json_array)
 //
 // Returns true (1) if value is an element of json_array, otherwise returns false (0). value must be a scalar or a JSON
-// document; if it is a scalar, the operator attempts to treat it as an element of a JSON array.
+// document; if it is a scalar, the operator attempts to treat it as an element of a JSON array. Queries using
+// MEMBER OF() on JSON columns of InnoDB tables in the WHERE clause can be optimized using multi-valued indexes. See
+// Multi-Valued Indexes, for detailed information and examples.
 //
-// Queries using MEMBER OF() on JSON columns of InnoDB tables in the WHERE clause can be optimized using multi-valued
-// indexes. See Multi-Valued Indexes, for detailed information and examples.
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#operator_member-of
 // TODO(andy): relocate
+
+
+// JSON_ARRAY([val[, val] ...])
+//
+// JSONArray Evaluates a (possibly empty) list of values and returns a JSON array containing those values.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-array
+type JSONArray struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONOverlaps)(nil)
+
+// NewJSONArray creates a new JSONValue function.
+func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONArray{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONArray) FunctionName() string {
+	return "json_array"
+}
+
+
+// JSON_OBJECT([key, val[, key, val] ...])
+//
+// JSONObject Evaluates a (possibly empty) list of key-value pairs and returns a JSON object containing those pairs. An
+// error occurs if any key name is NULL or the number of arguments is odd.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-object
+type JSONObject struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONObject)(nil)
+
+// NewJSONObject creates a new JSONValue function.
+func NewJSONObject(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONObject{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONObject) FunctionName() string {
+	return "json_object"
+}
+
+
+// JSON_QUOTE(string)
+//
+// JSONQuote Quotes a string as a JSON value by wrapping it with double quote characters and escaping interior quote and
+// other characters, then returning the result as a utf8mb4 string. Returns NULL if the argument is NULL. This function
+// is typically used to produce a valid JSON string literal for inclusion within a JSON document. Certain special
+// characters are escaped with backslashes per the escape sequences shown in Table 12.23, “JSON_UNQUOTE() Special
+// Character Escape Sequences”:
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#json-unquote-character-escape-sequences
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-quote
+type JSONQuote struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONQuote)(nil)
+
+// NewJSONQuote creates a new JSONValue function.
+func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONQuote{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONQuote) FunctionName() string {
+	return "json_quote"
+}
