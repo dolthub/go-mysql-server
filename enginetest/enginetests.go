@@ -462,7 +462,9 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestLoadData(t *testing.T, harness Harness) {
 	for _, script := range LoadDataScripts {
-		TestScript(t, harness, script)
+		if !script.Skip {
+			TestScript(t, harness, script)
+		}
 	}
 }
 
@@ -1051,6 +1053,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 	for _, assertion := range assertions {
 		if assertion.ExpectedErr != nil {
 			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+		} else if assertion.RequiredErr {
+			AssertErr(t, e, harness, assertion.Query,nil)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil)
 		}

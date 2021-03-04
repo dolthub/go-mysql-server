@@ -78,8 +78,27 @@ func (l *LoadData) Children() []sql.Node {
 	return []sql.Node{l.Destination}
 }
 
-// updateParsingConsts parses the LoadData object to update the 5 constants that are used for file parsing.
-func (l *LoadData) updateParsingConsts() error {
+func (l *LoadData) splitLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	// Return nothing if at end of file and no data passed.
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	// Find the index of the LINES TERMINATED BY delim.
+	if i := strings.Index(string(data), l.linesTerminatedByDelim); i >= 0 {
+		return i + 1, data[0:i], nil
+	}
+
+	// If at end of file with data return the data.
+	if atEOF {
+		return len(data), data, nil
+	}
+
+	return
+}
+
+// setParsingValues parses the LoadData object to get the delimiter into FIELDS and LINES terms.
+func (l *LoadData) setParsingValues() error {
 	if l.Lines != nil {
 		ll := l.Lines
 		if ll.StartingBy != nil {
@@ -129,7 +148,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// TODO: Add the security variables for mysql
 
 	// Start the parsing by grabbing all the config variables.
-	err := l.updateParsingConsts()
+	err := l.setParsingValues()
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +167,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	scanner := bufio.NewScanner(file)
 
 	// Set the split function for lines.
-	l.parseLines(scanner)
+	scanner.Split(l.splitLines)
 
 	// Skip through the lines that need to be ignored.
 	for l.IgnoreNum > 0 && scanner.Scan() {
@@ -168,29 +187,6 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		linesTerminatedByDelim:  l.linesTerminatedByDelim,
 		linesStartingByDelim:    l.linesStartingByDelim,
 	}, nil
-}
-
-// parseLines finds the delim that terminates each line and returns the overall line.
-func (l LoadData) parseLines(scanner *bufio.Scanner) {
-	splitFunc := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		// Return nothing if at end of file and no data passed.
-		if atEOF && len(data) == 0 {
-			return 0, nil, nil
-		}
-
-		// Find the index of the LINES TERMINATED BY delim.
-		if i := strings.Index(string(data), l.linesTerminatedByDelim); i >= 0 {
-			return i + 1, data[0:i], nil
-		}
-
-		// If at end of file with data return the data.
-		if atEOF {
-			return len(data), data, nil
-		}
-
-		return
-	}
-	scanner.Split(splitFunc)
 }
 
 type loadDataIter struct {
@@ -236,44 +232,36 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 		}
 	}
 
-	// Match input columns with the amount of columns provided in the text.
-	// Append nils to the parsed fields if they are less than the input columns.
 	// TODO: Match schema with column order
-	colDiff := len(l.destination.Schema()) - len(exprs)
-
-	// append NULLS for the rest of the fields
-	exprs = addNullsToValues(exprs, colDiff)
-
-	// create the values that are returned as a row iter.
-	var values [][]sql.Expression
-	values = append(values, exprs)
-	newValue := NewValues(values)
-
-	ri, err := newValue.RowIter(l.ctx, returnRow)
-	if err != nil {
-		return nil, err
+	// return the exprs as a row
+	vals := make([]interface{}, len(exprs))
+	for i, expr := range exprs {
+		if expr != nil {
+			vals[i], err = expr.Eval(l.ctx, returnRow)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	return ri.Next()
+	return sql.NewRow(vals...), nil
 }
 
 func (l loadDataIter) Close(ctx *sql.Context) error {
-	if !l.scanner.Scan() {
-		if err := l.scanner.Err(); err != nil {
+	if l.local {
+		err := os.Remove(l.file.Name())
+		if err != nil {
 			return err
 		}
-
-		if l.local {
-			err := os.Remove(l.file.Name())
-			if err != nil {
-				return err
-			}
-		} else {
-			err := l.file.Close()
-			if err != nil {
-				return err
-			}
+	} else {
+		err := l.file.Close()
+		if err != nil {
+			return err
 		}
+	}
+
+	if err := l.scanner.Err(); err != nil {
+		return err
 	}
 
 	return nil
@@ -318,7 +306,7 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 	}
 
 	// TODO: Step 4: Check for the ESCAPED BY parameter.
-	exprs := make([]sql.Expression, len(fields))
+	exprs := make([]sql.Expression, len(l.destination.Schema()))
 
 	for i, field := range fields {
 		dSchema := l.destination.Schema()[i]
@@ -335,14 +323,6 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 	}
 
 	return exprs, nil
-}
-
-func addNullsToValues(exprs []sql.Expression, diff int) []sql.Expression {
-	for i := diff; i > 0; i-- {
-		exprs = append(exprs, expression.NewLiteral(nil, sql.Null))
-	}
-
-	return exprs
 }
 
 // TODO: Do robust path finding for load data.
