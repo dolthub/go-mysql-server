@@ -77,20 +77,6 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "Escaped values are correctly parsed.",
-		SetUpScript: []string{
-			"create table loadtable(pk longtext)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'", "./testdata/test4.txt"),
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select * from loadtable",
-				Expected: []sql.Row{{"hi"}, {"hello"}},
-			},
-		},
-		Skip: true,
-	},
-	{
 		Name: "Load and terminate have the same values.",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",

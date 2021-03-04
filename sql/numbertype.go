@@ -17,7 +17,6 @@ package sql
 import (
 	"fmt"
 	"math"
-	"reflect"
 	"strconv"
 	"time"
 
@@ -156,7 +155,7 @@ func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
-	if v == nil || (reflect.ValueOf(v).Kind() == reflect.Ptr && reflect.ValueOf(v).IsNil()) {
+	if v == nil {
 		return nil, nil
 	}
 

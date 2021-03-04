@@ -306,6 +306,13 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 	}
 
 	// TODO: Step 4: Check for the ESCAPED BY parameter.
+	if l.fieldsEscapedByDelim != "" {
+		for i, field := range fields {
+			fields[i] = strings.ReplaceAll(field, l.fieldsEscapedByDelim, "")
+		}
+	}
+
+
 	exprs := make([]sql.Expression, len(l.destination.Schema()))
 
 	for i, field := range fields {

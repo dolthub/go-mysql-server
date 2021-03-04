@@ -1,2 +1,2 @@
 "hi"    "1"
-"\hello"        "\N"
+"\hello"    "\N"
