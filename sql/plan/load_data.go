@@ -59,6 +59,8 @@ const (
 	defaultLinesStartingByDelim    = ""
 )
 
+var specialEscapeCharacters = []string{"\\0", "\\Z", "\\N"}
+
 func (l *LoadData) Resolved() bool {
 	return l.Destination.Resolved()
 }
@@ -184,6 +186,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		fieldsTerminatedByDelim: l.fieldsTerminatedByDelim,
 		fieldsEnclosedByDelim:   l.fieldsEnclosedByDelim,
 		fieldsOptionallyDelim:   l.fieldsOptionallyDelim,
+		fieldsEscapedByDelim:    l.fieldsEscapedByDelim,
 		linesTerminatedByDelim:  l.linesTerminatedByDelim,
 		linesStartingByDelim:    l.linesStartingByDelim,
 	}, nil
@@ -210,6 +213,8 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	line := l.scanner.Text()
+	asBytes := l.scanner.Bytes()
+	fmt.Println(asBytes)
 	exprs, err := l.parseFields(line)
 
 	if err != nil {
@@ -305,10 +310,20 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 		}
 	}
 
-	// TODO: Step 4: Check for the ESCAPED BY parameter.
+	//Step 4: Handle the ESCAPED BY parameter.
 	if l.fieldsEscapedByDelim != "" {
 		for i, field := range fields {
-			fields[i] = strings.ReplaceAll(field, l.fieldsEscapedByDelim, "")
+			if field == "\\N" {
+				fields[i] = "NULL"
+			} else if field == "\\Z" {
+				fields[i] = fmt.Sprintf("%c", 26) // ASCII 26
+			} else if field == "\\0" {
+				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
+			} else {
+				x := strings.Index(field, "\\n")
+				fmt.Println(x)
+				fields[i] = strings.ReplaceAll(field, l.fieldsEscapedByDelim, "")
+			}
 		}
 	}
 
@@ -322,11 +337,14 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 			_, ok := dSchema.Type.(sql.StringType)
 			if !ok {
 				exprs[i] = expression.NewLiteral(dSchema.Default, dSchema.Type)
-				continue
+			} else {
+				exprs[i] = expression.NewLiteral(field, sql.LongText)
 			}
+		} else if field == "NULL" {
+			exprs[i] = nil
+		} else {
+			exprs[i] = expression.NewLiteral(field, sql.LongText)
 		}
-
-		exprs[i] = expression.NewLiteral(field, sql.LongText)
 	}
 
 	return exprs, nil

@@ -17,6 +17,7 @@ package enginetest
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var LoadDataScripts = []ScriptTest{
@@ -60,19 +61,15 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "Load data into table that doesn't exist throws error.",
-		Query: fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable", "./testdata/test1.txt"),
-		ExpectedErr: sql.ErrTableNotFound,
-	},
-	{
-		Name: "Load data with unknown files throws an error.",
+		Name: "Escaped values are correctly parsed.",
 		SetUpScript: []string{
-			"create table loadtable(pk longtext primary key, c1 int)",
+			"create table loadtable(pk longtext)",
+			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' IGNORE 1 LINES", "./testdata/test5.txt"),
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
-				RequiredErr: true, // path error
+				Query:    "select * from loadtable",
+				Expected: []sql.Row{{"hi"}, {"hello"}, {nil}, {"TryN"}, {fmt.Sprintf("%c", 26)}, {fmt.Sprintf("%c", 0)}, {"new\n"}},
 			},
 		},
 	},
@@ -131,5 +128,37 @@ var LoadDataScripts = []ScriptTest{
 			},
 		},
 		Skip: true,
+	},
+}
+
+var LoadDataErrorScripts = []ScriptTest{
+	{
+		Name: "Load data into table that doesn't exist throws error.",
+		Query: fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable", "./testdata/test1.txt"),
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Name: "Load data with unknown files throws an error.",
+		SetUpScript: []string{
+			"create table loadtable(pk longtext primary key, c1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
+				RequiredErr: true, // path error
+			},
+		},
+	},
+	{
+		Name: "Load data with unknown columns throws an error",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (bad)",
+				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
+			},
+		},
 	},
 }
