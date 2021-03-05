@@ -22,7 +22,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 type QueryTest struct {
@@ -4046,6 +4045,87 @@ var BrokenQueries = []QueryTest{
 			{nil, nil, 6},
 		},
 	},
+	{
+		Query: "SELECT json_array() FROM dual;",
+	},
+	{
+		Query: "SELECT json_array_append() FROM dual;",
+	},
+	{
+		Query: "SELECT json_array_insert() FROM dual;",
+	},
+	{
+		Query: "SELECT json_contains() FROM dual;",
+	},
+	{
+		Query: "SELECT json_contains_path() FROM dual;",
+	},
+	{
+		Query: "SELECT json_depth() FROM dual;",
+	},
+	{
+		Query: "SELECT json_insert() FROM dual;",
+	},
+	{
+		Query: "SELECT json_keys() FROM dual;",
+	},
+	{
+		Query: "SELECT json_length() FROM dual;",
+	},
+	{
+		Query: "SELECT json_merge_patch() FROM dual;",
+	},
+	{
+		Query: "SELECT json_merge_preserve() FROM dual;",
+	},
+	{
+		Query: "SELECT json_object() FROM dual;",
+	},
+	{
+		Query: "SELECT json_overlaps() FROM dual;",
+	},
+	{
+		Query: "SELECT json_pretty() FROM dual;",
+	},
+	{
+		Query: "SELECT json_quote() FROM dual;",
+	},
+	{
+		Query: "SELECT json_remove() FROM dual;",
+	},
+	{
+		Query: "SELECT json_replace() FROM dual;",
+	},
+	{
+		Query: "SELECT json_schema_valid() FROM dual;",
+	},
+	{
+		Query: "SELECT json_schema_validation_report() FROM dual;",
+	},
+	{
+		Query: "SELECT json_set() FROM dual;",
+	},
+	{
+		Query: "SELECT json_search() FROM dual;",
+	},
+	{
+		Query: "SELECT json_storage_free() FROM dual;",
+	},
+	{
+		Query: "SELECT json_storage_size() FROM dual;",
+	},
+	{
+		Query: "SELECT json_type() FROM dual;",
+	},
+	{
+		Query: "SELECT json_table() FROM dual;",
+	},
+	{
+		Query: "SELECT json_valid() FROM dual;",
+	},
+	{
+		Query: "SELECT json_value() FROM dual;",
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -4623,114 +4703,6 @@ var errorQueries = []QueryErrorTest{
 	// 	Query:       "SELECT pk1, sum(c1) FROM two_pk GROUP BY 1 having c1 > 10;",
 	// 	ExpectedErr: sql.ErrColumnNotFound,
 	// },
-	{
-		Query: "SELECT json_array() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_array_append() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_array_insert() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_contains() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_contains_path() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_depth() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_insert() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_keys() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_length() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_merge_patch() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_merge_preserve() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_object() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_overlaps() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_pretty() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_quote() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_remove() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_replace() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_schema_valid() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_schema_validation_report() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_set() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_search() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_storage_free() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_storage_size() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_type() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_table() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_valid() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
-	{
-		Query: "SELECT json_value() FROM dual;",
-		ExpectedErr: function.ErrUnsupportedJSONFunction,
-	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
