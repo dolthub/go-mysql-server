@@ -75,6 +75,7 @@ var Defaults = []sql.Function{
 	sql.Function2{Name: "instr", Fn: NewInstr},
 	sql.Function1{Name: "is_binary", Fn: NewIsBinary},
 	sql.FunctionN{Name: "json_array", Fn: NewJSONArray},
+	sql.Function1{Name: "json_arrayagg", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewJSONArrayAgg(e) }},
 	sql.FunctionN{Name: "json_array_append", Fn: NewJSONArrayAppend},
 	sql.FunctionN{Name: "json_array_insert", Fn: NewJSONArrayInsert},
 	sql.FunctionN{Name: "json_contains", Fn: NewJSONContains},

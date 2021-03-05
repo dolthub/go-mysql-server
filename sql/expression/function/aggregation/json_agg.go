@@ -15,7 +15,10 @@
 package aggregation
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -35,18 +38,90 @@ type JSONArrayAgg struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = JSONArrayAgg{}
+var _ sql.FunctionExpression = &JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
-func NewJSONArrayAgg(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONArrayAgg{}.FunctionName())
+func NewJSONArrayAgg(arg sql.Expression) sql.Expression {
+	return &JSONArrayAgg{arg}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (j JSONArrayAgg) FunctionName() string {
+func (j *JSONArrayAgg) FunctionName() string {
 	return "json_arrayagg"
 }
 
+// NewBuffer creates a new buffer for the aggregation.
+func (j *JSONArrayAgg) NewBuffer() sql.Row {
+	return sql.NewRow([]string{})
+}
+
+// Type returns the type of the result.
+func (j *JSONArrayAgg) Type() sql.Type {
+	return sql.JSON
+}
+
+// IsNullable returns whether the return value can be null.
+func (j *JSONArrayAgg) IsNullable() bool {
+	return false
+}
+
+// Resolved implements the Expression interface.
+func (j *JSONArrayAgg) Resolved() bool {
+	if _, ok := j.Expression.(*expression.Star); ok {
+		return true
+	}
+
+	return j.Expression.Resolved()
+}
+
+func (j *JSONArrayAgg) String() string {
+	return fmt.Sprintf("JSON_ARRAYAGG(%s)", j.Expression)
+}
+
+// WithChildren implements the Expression interface.
+func (j *JSONArrayAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 1)
+	}
+	return NewJSONArrayAgg(children[0]), nil
+}
+
+// Update implements the Aggregation interface.
+func (j *JSONArrayAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	v, err := j.Expression.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	v, err = sql.LongText.Convert(v)
+	if err != nil {
+		v = ""
+	}
+
+	buffer[0] = append(buffer[0].([]string), v.(string))
+
+	return nil
+}
+
+// Merge implements the Aggregation interface.
+func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
+	arr1 := buffer[0].([]string)
+	arr2 := partial[0].([]string)
+
+	buffer[0] = append(arr1, arr2...)
+
+	return nil
+}
+
+// Eval implements the Aggregation interface.
+func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
+	x, err := json.Marshal(buffer[0]) // TODO: Spaces?
+	if err != nil {
+		return nil, err
+	}
+
+	return string(x), nil
+}
 
 // JSON_OBJECTAGG(key, value) [over_clause]
 //
