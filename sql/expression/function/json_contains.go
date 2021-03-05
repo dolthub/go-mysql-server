@@ -31,18 +31,16 @@ import (
 //   - A candidate scalar is contained in a target scalar if and only if they are comparable and are equal. Two scalar
 //     values are comparable if they have the same JSON_TYPE() types, with the exception that values of types INTEGER
 //     and DECIMAL are also comparable to each other.
-//
 //   - A candidate array is contained in a target array if and only if every element in the candidate is contained in
 //     some element of the target.
-//
-//   - A candidate non\
-//  array is contained in a target array if and only if the candidate is contained in some element
+//   - A candidate non-array is contained in a target array if and only if the candidate is contained in some element
 //     of the target.
 ///   - A candidate object is contained in a target object if and only if for each key in the candidate there is a key
 //     with the same name in the target and the value associated with the candidate key is contained in the value
 //     associated with the target key.
-//
 // Otherwise, the candidate value is not contained in the target document.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains
 type JSONContains struct {
 	sql.Expression
 }
