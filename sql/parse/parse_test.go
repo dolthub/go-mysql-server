@@ -2245,6 +2245,112 @@ var fixtures = map[string]sql.Node{
 				),
 			},
 	),
+	`with cte1 as (select a from b), cte2 as (select c from d) select * from cte1`: plan.NewWith(
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewStar(),
+			},
+			plan.NewUnresolvedTable("cte1", "")),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte2", "select c from d",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("c"),
+						},
+						plan.NewUnresolvedTable("d", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+	),
+	`with cte1 (x) as (select a from b), cte2 (y,z) as (select c from d) select * from cte1`: plan.NewWith(
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewStar(),
+			},
+			plan.NewUnresolvedTable("cte1", "")),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{"x"},
+			),
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte2", "select c from d",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("c"),
+						},
+						plan.NewUnresolvedTable("d", ""),
+					),
+				),
+				[]string{"y", "z"},
+			),
+		},
+	),
+	`with cte1 as (select a from b) select c, (with cte2 as (select c from d) select e from cte2) from cte1`: plan.NewWith(
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("c"),
+				plan.NewSubquery(
+					plan.NewWith(
+						plan.NewProject(
+							[]sql.Expression{
+								expression.NewUnresolvedColumn("e"),
+							},
+							plan.NewUnresolvedTable("cte2", "")),
+						[]*plan.CommonTableExpression{
+							plan.NewCommonTableExpression(
+								plan.NewSubqueryAlias("cte2", "select c from d",
+									plan.NewProject(
+										[]sql.Expression{
+											expression.NewUnresolvedColumn("c"),
+										},
+										plan.NewUnresolvedTable("d", ""),
+									),
+								),
+								[]string{},
+							),
+						},
+					),
+					"with cte2 as (select c from d) select e from cte2",
+					),
+			},
+			plan.NewUnresolvedTable("cte1", ""),
+			),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
+					),
+				),
+				[]string{},
+			),
+		},
+	),
 	`SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewLiteral(int8(math.MinInt8), sql.Int8),
