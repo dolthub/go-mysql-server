@@ -2257,6 +2257,10 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		}
 
 		return expression.NewArithmetic(l, r, be.Operator), nil
+	case
+		sqlparser.JSONExtractOp,
+		sqlparser.JSONUnquoteExtractOp:
+		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
 
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)
