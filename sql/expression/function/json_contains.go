@@ -47,7 +47,7 @@ type JSONContains struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONContains)(nil)
+var _ sql.FunctionExpression = JSONContains{}
 
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {

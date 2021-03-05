@@ -41,7 +41,7 @@ type JSONContainsPath struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONContainsPath)(nil)
+var _ sql.FunctionExpression = JSONContainsPath{}
 
 // NewJSONContainsPath creates a new JSONContainsPath function.
 func NewJSONContainsPath(args ...sql.Expression) (sql.Expression, error) {
@@ -68,7 +68,7 @@ type JSONKeys struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONKeys)(nil)
+var _ sql.FunctionExpression = JSONKeys{}
 
 // NewJSONKeys creates a new JSONKeys function.
 func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
@@ -98,7 +98,7 @@ type JSONOverlaps struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONOverlaps)(nil)
+var _ sql.FunctionExpression = JSONOverlaps{}
 
 // NewJSONOverlaps creates a new JSONOverlaps function.
 func NewJSONOverlaps(args ...sql.Expression) (sql.Expression, error) {
@@ -140,7 +140,7 @@ type JSONSearch struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONSearch)(nil)
+var _ sql.FunctionExpression = JSONSearch{}
 
 // NewJSONSearch creates a new NewJSONSearch function.
 func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
@@ -163,7 +163,7 @@ type JSONValue struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONValue)(nil)
+var _ sql.FunctionExpression = JSONValue{}
 
 // NewJSONValue creates a new JSONValue function.
 func NewJSONValue(args ...sql.Expression) (sql.Expression, error) {
@@ -196,7 +196,7 @@ type JSONArray struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONArray)(nil)
+var _ sql.FunctionExpression = JSONArray{}
 
 // NewJSONArray creates a new JSONArray function.
 func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
@@ -219,7 +219,7 @@ type JSONObject struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONObject)(nil)
+var _ sql.FunctionExpression = JSONObject{}
 
 // NewJSONObject creates a new JSONObject function.
 func NewJSONObject(args ...sql.Expression) (sql.Expression, error) {
@@ -246,7 +246,7 @@ type JSONQuote struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONQuote)(nil)
+var _ sql.FunctionExpression = JSONQuote{}
 
 // NewJSONQuote creates a new JSONQuote function.
 func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
@@ -273,7 +273,7 @@ type JSONArrayAppend struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONArrayAppend)(nil)
+var _ sql.FunctionExpression = JSONArrayAppend{}
 
 // NewJSONArrayAppend creates a new JSONArrayAppend function.
 func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
@@ -302,7 +302,7 @@ type JSONArrayInsert struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONArrayInsert)(nil)
+var _ sql.FunctionExpression = JSONArrayInsert{}
 
 // NewJSONArrayInsert creates a new JSONArrayInsert function.
 func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
@@ -333,7 +333,7 @@ type JSONInsert struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONInsert)(nil)
+var _ sql.FunctionExpression = JSONInsert{}
 
 // NewJSONInsert creates a new JSONInsert function.
 func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
@@ -375,7 +375,7 @@ type JSONMergePatch struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONMergePatch)(nil)
+var _ sql.FunctionExpression = JSONMergePatch{}
 
 // NewJSONMergePatch creates a new JSONMergePatch function.
 func NewJSONMergePatch(args ...sql.Expression) (sql.Expression, error) {
@@ -424,7 +424,7 @@ type JSONMergePreserve struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONMergePreserve)(nil)
+var _ sql.FunctionExpression = JSONMergePreserve{}
 
 // NewJSONMergePreserve creates a new JSONMergePreserve function.
 func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
@@ -450,7 +450,7 @@ type JSONRemove struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONRemove)(nil)
+var _ sql.FunctionExpression = JSONRemove{}
 
 // NewJSONRemove creates a new JSONRemove function.
 func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
@@ -477,7 +477,7 @@ type JSONReplace struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONReplace)(nil)
+var _ sql.FunctionExpression = JSONReplace{}
 
 // NewJSONReplace creates a new JSONReplace function.
 func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
@@ -509,7 +509,7 @@ type JSONSet struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONSet)(nil)
+var _ sql.FunctionExpression = JSONSet{}
 
 // NewJSONSet creates a new JSONSet function.
 func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
@@ -534,7 +534,7 @@ type JSONDepth struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONDepth)(nil)
+var _ sql.FunctionExpression = JSONDepth{}
 
 // NewJSONDepth creates a new JSONDepth function.
 func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
@@ -563,7 +563,7 @@ type JSONLength struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONLength)(nil)
+var _ sql.FunctionExpression = JSONLength{}
 
 // NewJSONLength creates a new JSONLength function.
 func NewJSONLength(args ...sql.Expression) (sql.Expression, error) {
@@ -586,7 +586,7 @@ type JSONType struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONType)(nil)
+var _ sql.FunctionExpression = JSONType{}
 
 // NewJSONType creates a new JSONType function.
 func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
@@ -608,7 +608,7 @@ type JSONValid struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONValid)(nil)
+var _ sql.FunctionExpression = JSONValid{}
 
 // NewJSONValid creates a new JSONValid function.
 func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
@@ -631,7 +631,7 @@ type JSONTable struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONTable)(nil)
+var _ sql.FunctionExpression = JSONTable{}
 
 // NewJSONTable creates a new JSONTable function.
 func NewJSONTable(args ...sql.Expression) (sql.Expression, error) {
@@ -654,7 +654,7 @@ type JSONSchemaValid struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONSchemaValid)(nil)
+var _ sql.FunctionExpression = JSONSchemaValid{}
 
 // NewJSONSchemaValid creates a new JSONSchemaValid function.
 func NewJSONSchemaValid(args ...sql.Expression) (sql.Expression, error) {
@@ -690,7 +690,7 @@ type JSONSchemaValidationReport struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONSchemaValidationReport)(nil)
+var _ sql.FunctionExpression = JSONSchemaValidationReport{}
 
 // NewJSONSchemaValidationReport creates a new JSONSchemaValidationReport function.
 func NewJSONSchemaValidationReport(args ...sql.Expression) (sql.Expression, error) {
@@ -725,7 +725,7 @@ type JSONPretty struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONPretty)(nil)
+var _ sql.FunctionExpression = JSONPretty{}
 
 // NewJSONPretty creates a new JSONPretty function.
 func NewJSONPretty(args ...sql.Expression) (sql.Expression, error) {
@@ -756,7 +756,7 @@ type JSONStorageFree struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONStorageFree)(nil)
+var _ sql.FunctionExpression = JSONStorageFree{}
 
 // NewJSONStorageFree creates a new JSONStorageFree function.
 func NewJSONStorageFree(args ...sql.Expression) (sql.Expression, error) {
@@ -784,7 +784,7 @@ type JSONStorageSize struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONStorageSize)(nil)
+var _ sql.FunctionExpression = JSONStorageSize{}
 
 // NewJSONStorageSize creates a new JSONStorageSize function.
 func NewJSONStorageSize(args ...sql.Expression) (sql.Expression, error) {

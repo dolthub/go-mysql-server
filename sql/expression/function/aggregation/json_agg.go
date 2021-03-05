@@ -35,7 +35,7 @@ type JSONArrayAgg struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONArrayAgg)(nil)
+var _ sql.FunctionExpression = JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
 func NewJSONArrayAgg(args ...sql.Expression) (sql.Expression, error) {
@@ -61,7 +61,7 @@ type JSONObjectAgg struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONObjectAgg)(nil)
+var _ sql.FunctionExpression = JSONObjectAgg{}
 
 // NewJSONObjectAgg creates a new JSONArrayAgg function.
 func NewJSONObjectAgg(args ...sql.Expression) (sql.Expression, error) {
