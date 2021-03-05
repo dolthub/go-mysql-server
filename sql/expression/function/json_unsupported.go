@@ -520,3 +520,102 @@ func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONSet) FunctionName() string {
 	return "json_set"
 }
+
+
+// JSON_DEPTH(json_doc)
+//
+// JSONDepth Returns the maximum depth of a JSON document. Returns NULL if the argument is NULL. An error occurs if the
+// argument is not a valid JSON document. An empty array, empty object, or scalar value has depth 1. A nonempty array
+// containing only elements of depth 1 or nonempty object containing only member values of depth 1 has depth 2.
+// Otherwise, a JSON document has depth greater than 2.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-depth
+type JSONDepth struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONDepth)(nil)
+
+// NewJSONDepth creates a new JSONDepth function.
+func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONDepth{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONDepth) FunctionName() string {
+	return "json_depth"
+}
+
+
+// JSON_LENGTH(json_doc[, path])
+//
+// JSONLength Returns the length of a JSON document, or, if a path argument is given, the length of the value within
+// the document identified by the path. Returns NULL if any argument is NULL or the path argument does not identify a
+// value in the document. An error occurs if the json_doc argument is not a valid JSON document or the path argument is
+// not a valid path expression or contains a * or ** wildcard. The length of a document is determined as follows:
+//   - The length of a scalar is 1.
+//   - The length of an array is the number of array elements.
+//   - The length of an object is the number of object members.
+//   - The length does not count the length of nested arrays or objects.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-length
+type JSONLength struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONLength)(nil)
+
+// NewJSONLength creates a new JSONLength function.
+func NewJSONLength(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONLength{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONLength) FunctionName() string {
+	return "json_length"
+}
+
+
+// JSON_TYPE(json_val)
+//
+// Returns a utf8mb4 string indicating the type of a JSON value. This can be an object, an array, or a scalar type.
+// JSONType returns NULL if the argument is NULL. An error occurs if the argument is not a valid JSON value
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-type
+type JSONType struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONType)(nil)
+
+// NewJSONType creates a new JSONType function.
+func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONType{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONType) FunctionName() string {
+	return "json_type"
+}
+
+
+// JSON_VALID(val)
+//
+// Returns 0 or 1 to indicate whether a value is valid JSON. Returns NULL if the argument is NULL.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-attribute-functions.html#function_json-valid
+type JSONValid struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONValid)(nil)
+
+// NewJSONValid creates a new JSONValid function.
+func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONValid{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONValid) FunctionName() string {
+	return "json_valid"
+}
