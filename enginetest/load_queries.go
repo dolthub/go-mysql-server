@@ -185,4 +185,30 @@ var LoadDataErrorScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Load data escaped by terms longer than 1 character throws an error",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key)",
+			"SET secure_file_priv='./testdata'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ESCAPED BY 'xx' (pk)",
+				RequiredErr: true,
+			},
+		},
+	},
+	{
+		Name: "Load data enclosed by term longer than 1 character throws an error",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key)",
+			"SET secure_file_priv='./testdata'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY 'xx' (pk)",
+				RequiredErr: true,
+			},
+		},
+	},
 }
