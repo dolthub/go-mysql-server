@@ -93,6 +93,8 @@ func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 		return node, nil
 	case *ResolvedTable:
 		return getInsertableTable(node.Table)
+	case sql.TableWrapper:
+		return getInsertableTable(node.Underlying())
 	case *prependNode:
 		return GetInsertable(node.Child)
 	default:

@@ -122,6 +122,23 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 	return cacheable
 }
 
+func isDeterminstic(n sql.Node) bool {
+	res := true
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if s, ok := e.(*plan.Subquery); ok {
+			if !isDeterminstic(s.Query) {
+				res = false
+			}
+			return false
+		} else if nd, ok := e.(sql.NonDeterministicExpression); ok && nd.IsNonDeterministic() {
+			res = false
+			return false
+		}
+		return true
+	})
+	return res
+}
+
 // cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // and if all expressions in the subquery are deterministic.
@@ -141,4 +158,50 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 
 		return s, nil
 	})
+}
+
+// cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
+// will repeatedly execute the subquery, and will insert a *plan.CachedResults
+// node on top of those nodes when it is safe to do so.
+func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	n, err := plan.TransformUpWithParent(n, func(child, parent sql.Node, childNum int) (sql.Node, error) {
+		_, isJoin := parent.(plan.JoinNode)
+		_, isIndexedJoin := parent.(*plan.IndexedJoin)
+		if isJoin || isIndexedJoin {
+			sa, isSubqueryAlias := child.(*plan.SubqueryAlias)
+			if isSubqueryAlias && isDeterminstic(sa.Child) {
+				return plan.NewCachedResults(child), nil
+			}
+		}
+		return child, nil
+	})
+	if err != nil {
+		return n, err
+	}
+
+	// If the most primary table in the top level join is a CachedResults, remove it.
+	// We only want to do this if we're at the top of the tree.
+	// TODO: Not a perfect indicator of whether we're at the top of the tree...
+	if scope == nil {
+		selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+			if _, isIndexedJoin := parent.(*plan.IndexedJoin); isIndexedJoin {
+				return childNum == 0
+			} else if j, isJoin := parent.(plan.JoinNode); isJoin {
+				if j.JoinType() == plan.JoinTypeRight {
+					return childNum == 1
+				} else {
+					return childNum == 0
+				}
+			}
+			return true
+		}
+		n, err = plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
+			cr, isCR := n.(*plan.CachedResults)
+			if isCR {
+				return cr.UnaryNode.Child, nil
+			}
+			return n, nil
+		})
+	}
+	return n, err
 }

@@ -83,6 +83,8 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			rt := getResolvedTable(node.Table)
 			analysisErr = passAliases.add(rt, rt)
 			return false
+		case *plan.Procedure:
+			return false
 		case *plan.CreateForeignKey:
 			rt := getResolvedTable(node.Left())
 			analysisErr = passAliases.add(rt, rt)

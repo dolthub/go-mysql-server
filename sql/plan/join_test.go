@@ -29,11 +29,11 @@ import (
 func TestJoinSchema(t *testing.T) {
 	t1 := NewResolvedTable(memory.NewTable("foo", sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
-	}))
+	}), nil, nil)
 
 	t2 := NewResolvedTable(memory.NewTable("bar", sql.Schema{
 		{Name: "b", Source: "bar", Type: sql.Int64},
-	}))
+	}), nil, nil)
 
 	t.Run("inner", func(t *testing.T) {
 		j := NewInnerJoin(t1, t2, nil)
@@ -94,8 +94,8 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 	insertData(t, rtable)
 
 	j := NewInnerJoin(
-		NewResolvedTable(ltable),
-		NewResolvedTable(rtable),
+		NewResolvedTable(ltable, nil, nil),
+		NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Text, "lcol1", false),
 			expression.NewGetField(4, sql.Text, "rcol1", false),
@@ -117,8 +117,8 @@ func TestInnerJoinEmpty(t *testing.T) {
 	rtable := memory.NewTable("right", rSchema)
 
 	j := NewInnerJoin(
-		NewResolvedTable(ltable),
-		NewResolvedTable(rtable),
+		NewResolvedTable(ltable, nil, nil),
+		NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Text, "lcol1", false),
 			expression.NewGetField(4, sql.Text, "rcol1", false),
@@ -147,8 +147,8 @@ func BenchmarkInnerJoin(b *testing.B) {
 	}
 
 	n1 := NewInnerJoin(
-		NewResolvedTable(t1),
-		NewResolvedTable(t2),
+		NewResolvedTable(t1, nil, nil),
+		NewResolvedTable(t2, nil, nil),
 		expression.NewEquals(
 			expression.NewGetField(0, sql.Int64, "a", false),
 			expression.NewGetField(2, sql.Int64, "a", false),
@@ -161,8 +161,8 @@ func BenchmarkInnerJoin(b *testing.B) {
 			expression.NewGetField(2, sql.Int64, "a", false),
 		),
 		NewCrossJoin(
-			NewResolvedTable(t1),
-			NewResolvedTable(t2),
+			NewResolvedTable(t1, nil, nil),
+			NewResolvedTable(t2, nil, nil),
 		),
 	)
 
@@ -246,8 +246,8 @@ func TestLeftJoin(t *testing.T) {
 	insertData(t, rtable)
 
 	j := NewLeftJoin(
-		NewResolvedTable(ltable),
-		NewResolvedTable(rtable),
+		NewResolvedTable(ltable, nil, nil),
+		NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
 			expression.NewPlus(
 				expression.NewGetField(2, sql.Text, "lcol3", false),
@@ -276,8 +276,8 @@ func TestRightJoin(t *testing.T) {
 	insertData(t, rtable)
 
 	j := NewRightJoin(
-		NewResolvedTable(ltable),
-		NewResolvedTable(rtable),
+		NewResolvedTable(ltable, nil, nil),
+		NewResolvedTable(rtable, nil, nil),
 		expression.NewEquals(
 			expression.NewPlus(
 				expression.NewGetField(2, sql.Text, "lcol3", false),

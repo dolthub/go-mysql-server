@@ -104,7 +104,7 @@ func (c *Catalog) Database(db string) (Database, error) {
 }
 
 // Table returns the table in the given database with the given name.
-func (c *Catalog) Table(ctx *Context, db, table string) (Table, error) {
+func (c *Catalog) Table(ctx *Context, db, table string) (Table, Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.dbs.Table(ctx, db, table)
@@ -112,7 +112,7 @@ func (c *Catalog) Table(ctx *Context, db, table string) (Table, error) {
 
 // TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
 // named must support timed queries.
-func (c *Catalog) TableAsOf(ctx *Context, db, table string, time interface{}) (Table, error) {
+func (c *Catalog) TableAsOf(ctx *Context, db, table string, time interface{}) (Table, Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.dbs.TableAsOf(ctx, db, table, time)
@@ -160,21 +160,21 @@ func (d *Databases) Delete(dbName string) {
 }
 
 // Table returns the Table with the given name if it exists.
-func (d Databases) Table(ctx *Context, dbName string, tableName string) (Table, error) {
+func (d Databases) Table(ctx *Context, dbName string, tableName string) (Table, Database, error) {
 	db, err := d.Database(dbName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if !ok {
-		return nil, suggestSimilarTables(db, ctx, tableName)
+		return nil, nil, suggestSimilarTables(db, ctx, tableName)
 	}
 
-	return tbl, nil
+	return tbl, db, nil
 }
 
 func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
@@ -189,26 +189,26 @@ func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
 
 // TableAsOf returns the table with the name given at the time given, if it existed. The database named must implement
 // sql.VersionedDatabase or an error is returned.
-func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, asOf interface{}) (Table, error) {
+func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, asOf interface{}) (Table, Database, error) {
 	db, err := d.Database(dbName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	versionedDb, ok := db.(VersionedDatabase)
 	if !ok {
-		return nil, ErrAsOfNotSupported.New(tableName)
+		return nil, nil, ErrAsOfNotSupported.New(tableName)
 	}
 
 	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if !ok {
-		return nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, asOf)
+		return nil, nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, asOf)
 	}
 
-	return tbl, nil
+	return tbl, versionedDb, nil
 }
 
 func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName string, time interface{}) error {
@@ -250,7 +250,7 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			table, err := c.dbs.Table(ctx, db, t)
+			table, _, err := c.dbs.Table(ctx, db, t)
 			if err == nil {
 				if lockable, ok := table.(Lockable); ok {
 					if e := lockable.Unlock(ctx, id); e != nil {

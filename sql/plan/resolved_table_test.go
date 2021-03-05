@@ -30,7 +30,7 @@ import (
 func TestResolvedTable(t *testing.T) {
 	var require = require.New(t)
 
-	table := NewResolvedTable(newTableTest("test"))
+	table := NewResolvedTable(newTableTest("test"), nil, nil)
 	require.NotNil(table)
 
 	ctx := sql.NewEmptyContext()
@@ -53,7 +53,7 @@ func TestResolvedTable(t *testing.T) {
 func TestResolvedTableCancelled(t *testing.T) {
 	var require = require.New(t)
 
-	table := NewResolvedTable(newTableTest("test"))
+	table := NewResolvedTable(newTableTest("test"), nil, nil)
 	require.NotNil(table)
 
 	ctx, cancel := context.WithCancel(context.Background())

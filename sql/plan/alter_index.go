@@ -101,6 +101,8 @@ func getIndexAlterable(node sql.Node) (sql.IndexAlterableTable, error) {
 		return node, nil
 	case *ResolvedTable:
 		return getIndexAlterableTable(node.Table)
+	case sql.TableWrapper:
+		return getIndexAlterableTable(node.Underlying())
 	default:
 		return nil, ErrNotIndexable.New()
 	}

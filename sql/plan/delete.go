@@ -40,6 +40,8 @@ func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return getDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
+	case sql.TableWrapper:
+		return getDeletableTable(node.Underlying())
 	}
 	for _, child := range node.Children() {
 		deleter, _ := getDeletable(child)

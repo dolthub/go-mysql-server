@@ -33,14 +33,19 @@ type procedureParamReferenceValue struct {
 }
 
 // Initialize sets the initial value for the parameter.
-func (ppr *ProcedureParamReference) Initialize(name string, sqlType sql.Type, val interface{}) {
+func (ppr *ProcedureParamReference) Initialize(name string, sqlType sql.Type, val interface{}) error {
 	name = strings.ToLower(name)
+	convertedVal, err := sqlType.Convert(val)
+	if err != nil {
+		return err
+	}
 	ppr.nameToParam[name] = &procedureParamReferenceValue{
 		Name:       name,
-		Value:      val,
+		Value:      convertedVal,
 		SqlType:    sqlType,
 		HasBeenSet: false,
 	}
+	return nil
 }
 
 // Get returns the value of the given parameter. Name is case-insensitive.

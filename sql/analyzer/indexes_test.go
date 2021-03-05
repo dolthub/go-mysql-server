@@ -57,7 +57,7 @@ func TestNegateIndex(t *testing.T) {
 					expression.NewLiteral(int64(1), sql.Int64),
 				),
 			),
-			plan.NewResolvedTable(t1),
+			plan.NewResolvedTable(t1, nil, nil),
 		),
 	)
 
@@ -140,8 +140,8 @@ func TestAssignIndexes(t *testing.T) {
 				),
 			),
 			plan.NewInnerJoin(
-				plan.NewResolvedTable(t1),
-				plan.NewResolvedTable(t2),
+				plan.NewResolvedTable(t1, nil, nil),
+				plan.NewResolvedTable(t2, nil, nil),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "t1", "foo", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "t2", "baz", false),
@@ -181,7 +181,7 @@ func TestAssignIndexes(t *testing.T) {
 					expression.NewLiteral(int64(2), sql.Int64),
 				),
 			),
-			plan.NewResolvedTable(t1),
+			plan.NewResolvedTable(t1, nil, nil),
 		),
 	)
 
@@ -198,7 +198,7 @@ func TestAssignIndexes(t *testing.T) {
 				expression.NewGetFieldWithTable(0, sql.Int64, "t1", "bar", false),
 				expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(2), sql.Int64)),
 			),
-			plan.NewResolvedTable(t1),
+			plan.NewResolvedTable(t1, nil, nil),
 		),
 	)
 
@@ -1322,14 +1322,12 @@ func TestContainsSources(t *testing.T) {
 
 func TestNodeSources(t *testing.T) {
 	sources := nodeSources(
-		plan.NewResolvedTable(
-			memory.NewTable("foo", sql.Schema{
-				{Source: "foo"},
-				{Source: "foo"},
-				{Source: "bar"},
-				{Source: "baz"},
-			}),
-		),
+		plan.NewResolvedTable(memory.NewTable("foo", sql.Schema{
+			{Source: "foo"},
+			{Source: "foo"},
+			{Source: "bar"},
+			{Source: "baz"},
+		}), nil, nil),
 	)
 
 	expected := []string{"foo", "bar", "baz"}

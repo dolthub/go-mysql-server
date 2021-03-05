@@ -37,7 +37,7 @@ func TestProject(t *testing.T) {
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
 	p := NewProject(
 		[]sql.Expression{expression.NewGetField(1, sql.Text, "col2", true)},
-		NewResolvedTable(child),
+		NewResolvedTable(child, nil, nil),
 	)
 	require.Equal(1, len(p.Children()))
 	schema := sql.Schema{
@@ -61,12 +61,12 @@ func TestProject(t *testing.T) {
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
-	p = NewProject(nil, NewResolvedTable(child))
+	p = NewProject(nil, NewResolvedTable(child, nil, nil))
 	require.Equal(0, len(p.Schema()))
 
 	p = NewProject([]sql.Expression{
 		expression.NewAlias("foo", expression.NewGetField(1, sql.Text, "col2", true)),
-	}, NewResolvedTable(child))
+	}, NewResolvedTable(child, nil, nil))
 	schema = sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: true},
 	}
@@ -85,7 +85,7 @@ func BenchmarkProject(b *testing.B) {
 			expression.NewGetField(3, sql.Int32, "intfield", false),
 			expression.NewGetField(4, sql.Int64, "bigintfield", false),
 			expression.NewGetField(5, sql.Blob, "blobfield", false),
-		}, NewResolvedTable(benchtable))
+		}, NewResolvedTable(benchtable, nil, nil))
 
 		iter, err := d.RowIter(ctx, nil)
 		require.NoError(err)

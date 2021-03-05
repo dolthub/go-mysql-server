@@ -205,6 +205,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT mytable.i, selfjoined.s FROM mytable LEFT JOIN (SELECT * FROM mytable) selfjoined ON mytable.i = selfjoined.i",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
 		Query: "SELECT s,i FROM MyTable ORDER BY 2",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -660,6 +668,10 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
 		Expected: []sql.Row{{int64(2)}},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM (SELECT * FROM (SELECT i as i, s as s FROM mytable) f) s)",
+		Expected: []sql.Row{},
 	},
 	{
 		Query:    "SELECT i FROM (SELECT 1 AS i FROM DUAL UNION SELECT 2 AS i FROM DUAL) some_is WHERE i NOT IN (SELECT i FROM (SELECT 1 as i FROM DUAL) different_is);",

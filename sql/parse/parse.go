@@ -142,7 +142,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 			return plan.Nothing, nil
 		}
-		return nil, err
+		return nil, sql.ErrSyntaxError.New(err.Error())
 	}
 
 	return convert(ctx, stmt, s)
@@ -661,16 +661,16 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
-	var params []sql.ProcedureParam
+	var params []plan.ProcedureParam
 	for _, param := range c.ProcedureSpec.Params {
-		var direction sql.ProcedureParamDirection
+		var direction plan.ProcedureParamDirection
 		switch param.Direction {
 		case sqlparser.ProcedureParamDirection_In:
-			direction = sql.ProcedureParamDirection_In
+			direction = plan.ProcedureParamDirection_In
 		case sqlparser.ProcedureParamDirection_Inout:
-			direction = sql.ProcedureParamDirection_Inout
+			direction = plan.ProcedureParamDirection_Inout
 		case sqlparser.ProcedureParamDirection_Out:
-			direction = sql.ProcedureParamDirection_Out
+			direction = plan.ProcedureParamDirection_Out
 		default:
 			return nil, fmt.Errorf("unknown procedure parameter direction: `%s`", string(param.Direction))
 		}
@@ -678,38 +678,38 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 		if err != nil {
 			return nil, err
 		}
-		params = append(params, sql.ProcedureParam{
+		params = append(params, plan.ProcedureParam{
 			Direction: direction,
 			Name:      param.Name,
 			Type:      internalTyp,
 		})
 	}
 
-	var characteristics []sql.Characteristic
-	securityType := sql.ProcedureSecurityContext_Definer // Default Security Context
+	var characteristics []plan.Characteristic
+	securityType := plan.ProcedureSecurityContext_Definer // Default Security Context
 	comment := ""
 	for _, characteristic := range c.ProcedureSpec.Characteristics {
 		switch characteristic.Type {
 		case sqlparser.CharacteristicValue_Comment:
 			comment = characteristic.Comment
 		case sqlparser.CharacteristicValue_LanguageSql:
-			characteristics = append(characteristics, sql.Characteristic_LanguageSql)
+			characteristics = append(characteristics, plan.Characteristic_LanguageSql)
 		case sqlparser.CharacteristicValue_Deterministic:
-			characteristics = append(characteristics, sql.Characteristic_Deterministic)
+			characteristics = append(characteristics, plan.Characteristic_Deterministic)
 		case sqlparser.CharacteristicValue_NotDeterministic:
-			characteristics = append(characteristics, sql.Characteristic_NotDeterministic)
+			characteristics = append(characteristics, plan.Characteristic_NotDeterministic)
 		case sqlparser.CharacteristicValue_ContainsSql:
-			characteristics = append(characteristics, sql.Characteristic_ContainsSql)
+			characteristics = append(characteristics, plan.Characteristic_ContainsSql)
 		case sqlparser.CharacteristicValue_NoSql:
-			characteristics = append(characteristics, sql.Characteristic_NoSql)
+			characteristics = append(characteristics, plan.Characteristic_NoSql)
 		case sqlparser.CharacteristicValue_ReadsSqlData:
-			characteristics = append(characteristics, sql.Characteristic_ReadsSqlData)
+			characteristics = append(characteristics, plan.Characteristic_ReadsSqlData)
 		case sqlparser.CharacteristicValue_ModifiesSqlData:
-			characteristics = append(characteristics, sql.Characteristic_ModifiesSqlData)
+			characteristics = append(characteristics, plan.Characteristic_ModifiesSqlData)
 		case sqlparser.CharacteristicValue_SqlSecurityDefiner:
 			// This is already the default value, so this prevents the default switch case
 		case sqlparser.CharacteristicValue_SqlSecurityInvoker:
-			securityType = sql.ProcedureSecurityContext_Invoker
+			securityType = plan.ProcedureSecurityContext_Invoker
 		default:
 			return nil, fmt.Errorf("unknown procedure characteristic: `%s`", string(characteristic.Type))
 		}

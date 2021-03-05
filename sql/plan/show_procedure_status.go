@@ -20,7 +20,7 @@ import (
 
 type ShowProcedureStatus struct {
 	db         sql.Database
-	Procedures []*sql.Procedure
+	Procedures []*Procedure
 }
 
 var _ sql.Databaser = (*ShowProcedureStatus)(nil)
@@ -73,7 +73,7 @@ func (s *ShowProcedureStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	var rows []sql.Row
 	for _, procedure := range s.Procedures {
 		securityType := "DEFINER"
-		if procedure.SecurityContext == sql.ProcedureSecurityContext_Invoker {
+		if procedure.SecurityContext == ProcedureSecurityContext_Invoker {
 			securityType = "INVOKER"
 		}
 		_, characterSetClient := ctx.Get("character_set_client")
