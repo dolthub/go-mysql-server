@@ -25,7 +25,8 @@ var LoadDataScripts = []ScriptTest{
 		Name: "Basic load data with enclosed values.",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'", "./testdata/test1.txt"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -38,7 +39,8 @@ var LoadDataScripts = []ScriptTest{
 		Name: "Load data with csv",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key, c1 longtext)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES", "./testdata/test2.csv"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test2.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -51,7 +53,8 @@ var LoadDataScripts = []ScriptTest{
 		Name: "Load data with csv with prefix.",
 		SetUpScript: []string{
 			"create table loadtable(pk longtext primary key, c1 int)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES (`pk`, `c1`)", "./testdata/test3.csv"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test3.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' LINES STARTING BY 'xxx' IGNORE 1 LINES (`pk`, `c1`)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -64,7 +67,8 @@ var LoadDataScripts = []ScriptTest{
 		Name: "Escaped values are correctly parsed.",
 		SetUpScript: []string{
 			"create table loadtable(pk longtext)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' IGNORE 1 LINES", "./testdata/test5.txt"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test5.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' IGNORE 1 LINES",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -72,12 +76,14 @@ var LoadDataScripts = []ScriptTest{
 				Expected: []sql.Row{{"hi"}, {"hello"}, {nil}, {"TryN"}, {fmt.Sprintf("%c", 26)}, {fmt.Sprintf("%c", 0)}, {"new\n"}},
 			},
 		},
+		Skip: true,
 	},
 	{
 		Name: "Load and terminate have the same values.",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS TERMINATED BY '\"' ENCLOSED BY '\"'", "./testdata/test1.txt"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test1.txt' INTO TABLE loadtable FIELDS TERMINATED BY '\"' ENCLOSED BY '\"'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -91,7 +97,8 @@ var LoadDataScripts = []ScriptTest{
 		Name: "Loading value into different column type results in default value.",
 		SetUpScript: []string{
 			"create table loadtable(pk longtext, c1 int)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (c1)", "./testdata/test4.txt"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test4.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (c1)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -105,7 +112,8 @@ var LoadDataScripts = []ScriptTest{
 		Name: "LOAD DATA handles nulls",
 		SetUpScript: []string{
 			"create table loadtable(pk longtext, c1 int)",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'", "./testdata/test4.txt"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test4.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -119,7 +127,8 @@ var LoadDataScripts = []ScriptTest{
 		Name: "LOAD DATA can handle a differing column order",
 		SetUpScript: []string{
 			"create table loadtable(pk int, c1 string) ",
-			fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (c1, pk)", "./testdata/test4.txt"),
+			"SET secure_file_priv='./testdata'",
+			"LOAD DATA INFILE 'test4.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (c1, pk)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -133,14 +142,27 @@ var LoadDataScripts = []ScriptTest{
 
 var LoadDataErrorScripts = []ScriptTest{
 	{
+		Name: "Load data without secure file throws error.",
+		SetUpScript: []string{
+			"create table loadtable(pk longtext primary key, c1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
+				ExpectedErr: sql.ErrSecureFileDirNotSet,
+			},
+		},
+	},
+	{
 		Name: "Load data into table that doesn't exist throws error.",
-		Query: fmt.Sprintf("LOAD DATA INFILE '%s' INTO TABLE loadtable", "./testdata/test1.txt"),
+		Query: "LOAD DATA INFILE 'test1.txt' INTO TABLE loadtable",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
 		Name: "Load data with unknown files throws an error.",
 		SetUpScript: []string{
 			"create table loadtable(pk longtext primary key, c1 int)",
+			"SET secure_file_priv='./testdata'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -153,6 +175,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		Name: "Load data with unknown columns throws an error",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",
+			"SET secure_file_priv='./testdata'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -268,7 +269,30 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"character_set_connection": TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"character_set_results":    TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"collation_connection":     TypedValue{LongText, Collation_Default.String()},
+		"tmpdir":					TypedValue{LongText, getTmpdirSessionVar()},
+		"local_infile":				TypedValue{Int8, 0},
+		"secure_file_priv":			TypedValue{LongText, nil},
 	}
+}
+
+// cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html
+func getTmpdirSessionVar() string {
+	ret := os.Getenv("TMPDIR")
+	if ret != "" {
+		return ret
+	}
+
+	ret = os.Getenv("TEMP")
+	if ret != "" {
+		return ret
+	}
+
+	ret = os.Getenv("TMP")
+	if ret != "" {
+		return ret
+	}
+
+	return ""
 }
 
 // HasDefaultValue checks if session variable value is the default one.

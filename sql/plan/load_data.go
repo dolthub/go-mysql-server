@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -45,7 +46,6 @@ type LoadData struct {
 }
 
 const (
-	Tmpfiledir  = "/tmp/"
 	TmpfileName = ".LOADFILE"
 )
 
@@ -58,8 +58,6 @@ const (
 	defaultLinesTerminatedByDelim  = "\n"
 	defaultLinesStartingByDelim    = ""
 )
-
-var specialEscapeCharacters = []string{"\\0", "\\Z", "\\N"}
 
 func (l *LoadData) Resolved() bool {
 	return l.Destination.Resolved()
@@ -147,18 +145,28 @@ func (l *LoadData) setParsingValues() error {
 }
 
 func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// TODO: Add the security variables for mysql
-
 	// Start the parsing by grabbing all the config variables.
 	err := l.setParsingValues()
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Add tmpdir setting for mysql
-	var fileName = l.File
+	var fileName string
 	if l.Local {
-		fileName = Tmpfiledir + TmpfileName
+		_, localInfile := ctx.Get("local_infile")
+		if localInfile.(int8) == 0 {
+			return nil, fmt.Errorf("local_infile needs to be set to 1 to use LOCAL")
+		}
+
+		_, tmpdir := ctx.Get("tmpdir")
+		fileName = tmpdir.(string) + TmpfileName
+	} else {
+		_,  dir := ctx.Get("secure_file_priv")
+		if dir == nil {
+			return nil, sql.ErrSecureFileDirNotSet.New()
+		}
+
+		fileName = filepath.Join(dir.(string), l.File)
 	}
 
 	file, err := os.Open(fileName)
@@ -213,8 +221,6 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	line := l.scanner.Text()
-	asBytes := l.scanner.Bytes()
-	fmt.Println(asBytes)
 	exprs, err := l.parseFields(line)
 
 	if err != nil {
@@ -320,13 +326,10 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 			} else if field == "\\0" {
 				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
 			} else {
-				x := strings.Index(field, "\\n")
-				fmt.Println(x)
 				fields[i] = strings.ReplaceAll(field, l.fieldsEscapedByDelim, "")
 			}
 		}
 	}
-
 
 	exprs := make([]sql.Expression, len(l.destination.Schema()))
 
@@ -348,12 +351,6 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 	}
 
 	return exprs, nil
-}
-
-// TODO: Do robust path finding for load data.
-// getLoadPath searches for the path for a non local file.
-func getLoadPath(fileName string, local bool) string {
-	return ""
 }
 
 func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {

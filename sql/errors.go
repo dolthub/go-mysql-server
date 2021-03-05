@@ -150,6 +150,9 @@ var (
 
 	// ErrCannotDropDatabaseDoesntExist is returned when a DROP DATABASE is callend when a table is dropped that doesn't exist.
 	ErrCannotDropDatabaseDoesntExist = errors.NewKind("can't drop database %s; database doesn't exist")
+
+	// ErrSecureFileDirNotSet is returned when LOAD DATA INFILE is called but the secure_file_priv system variable is not set.
+	ErrSecureFileDirNotSet = errors.NewKind("secure_file_priv needs to be set to a directory")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

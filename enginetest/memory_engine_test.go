@@ -233,6 +233,10 @@ func TestLoadData(t *testing.T) {
 	enginetest.TestLoadData(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestLoadDataErrors(t *testing.T) {
+	enginetest.TestLoadDataErrors(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestReplaceInto(t *testing.T) {
 	enginetest.TestReplaceInto(t, enginetest.NewDefaultMemoryHarness())
 }

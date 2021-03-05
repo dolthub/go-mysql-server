@@ -309,7 +309,8 @@ func (h *Handler) doQuery(
 		if n.Local {
 			// tell the connection to undergo the load data process with this
 			// metdata
-			err = c.HandleLoadDataLocalQuery(plan.Tmpfiledir, plan.TmpfileName, n.Infile)
+			_, tmpdir := ctx.Get("tmpdir")
+			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, n.Infile)
 			if err != nil {
 				return err
 			}
