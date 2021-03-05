@@ -117,7 +117,6 @@ func (j JSONOverlaps) FunctionName() string {
 // search_str, or path arguments are NULL; no path exists within the document; or search_str is not found. An error
 // occurs if the json_doc argument is not a valid JSON document, any path argument is not a valid path expression,
 // one_or_all is not 'one' or 'all', or escape_char is not a constant expression.
-//
 // The one_or_all argument affects the search as follows:
 //   - 'one': The search terminates after the first match and returns one path string. It is undefined which match is
 //     considered first.
@@ -152,6 +151,7 @@ func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONSearch) FunctionName() string {
 	return "json_search"
 }
+
 
 // JSON_VALUE(json_doc, path)
 //
@@ -196,9 +196,9 @@ type JSONArray struct {
 	sql.Expression
 }
 
-var _ sql.FunctionExpression = (JSONOverlaps)(nil)
+var _ sql.FunctionExpression = (JSONArray)(nil)
 
-// NewJSONArray creates a new JSONValue function.
+// NewJSONArray creates a new JSONArray function.
 func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONArray{}.FunctionName())
 }
@@ -221,7 +221,7 @@ type JSONObject struct {
 
 var _ sql.FunctionExpression = (JSONObject)(nil)
 
-// NewJSONObject creates a new JSONValue function.
+// NewJSONObject creates a new JSONObject function.
 func NewJSONObject(args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONObject{}.FunctionName())
 }
@@ -248,7 +248,7 @@ type JSONQuote struct {
 
 var _ sql.FunctionExpression = (JSONQuote)(nil)
 
-// NewJSONQuote creates a new JSONValue function.
+// NewJSONQuote creates a new JSONQuote function.
 func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONQuote{}.FunctionName())
 }
@@ -256,4 +256,267 @@ func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
 // FunctionName implements sql.FunctionExpression
 func (j JSONQuote) FunctionName() string {
 	return "json_quote"
+}
+
+
+// JSON_ARRAY_APPEND(json_doc, path, val[, path, val] ...)
+//
+// JSONArrayAppend Appends values to the end of the indicated arrays within a JSON document and returns the result.
+// Returns NULL if any argument is NULL. An error occurs if the json_doc argument is not a valid JSON document or any
+// path argument is not a valid path expression or contains a * or ** wildcard. The path-value pairs are evaluated left
+// to right. The document produced by evaluating one pair becomes the new value against which the next pair is
+// evaluated. If a path selects a scalar or object value, that value is autowrapped within an array and the new value is
+// added to that array. Pairs for which the path does not identify any value in the JSON document are ignored.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-array-append
+type JSONArrayAppend struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONArrayAppend)(nil)
+
+// NewJSONArrayAppend creates a new JSONArrayAppend function.
+func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONArrayAppend{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONArrayAppend) FunctionName() string {
+	return "json_array_append"
+}
+
+
+// JSON_ARRAY_INSERT(json_doc, path, val[, path, val] ...)
+//
+// JSONArrayInsert Updates a JSON document, inserting into an array within the document and returning the modified
+// document. Returns NULL if any argument is NULL. An error occurs if the json_doc argument is not a valid JSON document
+// or any path argument is not a valid path expression or contains a * or ** wildcard or does not end with an array
+// element identifier. The path-value pairs are evaluated left to right. The document produced by evaluating one pair
+// becomes the new value against which the next pair is evaluated. Pairs for which the path does not identify any array
+// in the JSON document are ignored. If a path identifies an array element, the corresponding value is inserted at that
+// element position, shifting any following values to the right. If a path identifies an array position past the end of
+// an array, the value is inserted at the end of the array.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-array-insert
+type JSONArrayInsert struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONArrayInsert)(nil)
+
+// NewJSONArrayInsert creates a new JSONArrayInsert function.
+func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONArrayInsert{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONArrayInsert) FunctionName() string {
+	return "json_array_insert"
+}
+
+
+// JSON_INSERT(json_doc, path, val[, path, val] ...)
+//
+// JSONInsert Inserts data into a JSON document and returns the result. Returns NULL if any argument is NULL. An error
+// occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path expression or
+// contains a * or ** wildcard. The path-value pairs are evaluated left to right. The document produced by evaluating
+// one pair becomes the new value against which the next pair is evaluated. A path-value pair for an existing path in
+// the document is ignored and does not overwrite the existing document value. A path-value pair for a nonexisting path
+// in the document adds the value to the document if the path identifies one of these types of values:
+//   - A member not present in an existing object. The member is added to the object and associated with the new value.
+//   - A position past the end of an existing array. The array is extended with the new value. If the existing value is
+//     not an array, it is autowrapped as an array, then extended with the new value.
+// Otherwise, a path-value pair for a nonexisting path in the document is ignored and has no effect.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-insert
+type JSONInsert struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONInsert)(nil)
+
+// NewJSONInsert creates a new JSONInsert function.
+func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONInsert{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONInsert) FunctionName() string {
+	return "json_insert"
+}
+
+
+// JSON_MERGE_PATCH(json_doc, json_doc[, json_doc] ...)
+//
+// JSONMergePatch Performs an RFC 7396 compliant merge of two or more JSON documents and returns the merged result,
+// without preserving members having duplicate keys. Raises an error if at least one of the documents passed as arguments
+// to this function is not valid. JSONMergePatch performs a merge as follows:
+//   - If the first argument is not an object, the result of the merge is the same as if an empty object had been merged
+//	   with the second argument.
+//   - If the second argument is not an object, the result of the merge is the second argument.
+//   - If both arguments are objects, the result of the merge is an object with the following members:
+//     - All members of the first object which do not have a corresponding member with the same key in the second
+//       object.
+//     - All members of the second object which do not have a corresponding key in the first object, and whose value is
+//       not the JSON null literal.
+//     - All members with a key that exists in both the first and the second object, and whose value in the second
+//       object is not the JSON null literal. The values of these members are the results of recursively merging the
+//       value in the first object with the value in the second object.
+//
+// The behavior of JSONMergePatch is the same as that of JSONMergePreserve, with the following two exceptions:
+//   - JSONMergePatch removes any member in the first object with a matching key in the second object, provided that
+//     the value associated with the key in the second object is not JSON null.
+//   - If the second object has a member with a key matching a member in the first object, JSONMergePatch replaces
+//     the value in the first object with the value in the second object, whereas JSONMergePreserve appends the
+//     second value to the first value.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-merge-patch
+type JSONMergePatch struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONMergePatch)(nil)
+
+// NewJSONMergePatch creates a new JSONMergePatch function.
+func NewJSONMergePatch(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONMergePatch{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONMergePatch) FunctionName() string {
+	return "json_merge_patch"
+}
+
+
+// JSON_MERGE(json_doc, json_doc[, json_doc] ...)
+//
+// JSONMerge Merges two or more JSON documents. Synonym for JSONMergePreserve(); deprecated in MySQL 8.0.3 and subject
+// to removal in a future release.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-merge
+type JSONMerge struct {
+	sql.Expression
+}
+
+
+// JSON_MERGE_PRESERVE(json_doc, json_doc[, json_doc] ...)
+//
+// JSONMergePreserve Merges two or more JSON documents and returns the merged result. Returns NULL if any argument is
+// NULL. An error occurs if any argument is not a valid JSON document. Merging takes place according to the following
+// rules:
+//   - Adjacent arrays are merged to a single array.
+//   - Adjacent objects are merged to a single object.
+//   - A scalar value is autowrapped as an array and merged as an array.
+//   - An adjacent array and object are merged by autowrapping the object as an array and merging the two arrays.
+//
+// This function was added in MySQL 8.0.3 as a synonym for JSONMerge. The JSONMerge function is now deprecated,
+// and is subject to removal in a future release of MySQL.
+//
+// The behavior of JSONMergePatch is the same as that of JSONMergePreserve, with the following two exceptions:
+//   - JSONMergePatch removes any member in the first object with a matching key in the second object, provided that
+//     the value associated with the key in the second object is not JSON null.
+//   - If the second object has a member with a key matching a member in the first object, JSONMergePatch replaces
+//     the value in the first object with the value in the second object, whereas JSONMergePreserve appends the
+//     second value to the first value.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-merge-preserve
+type JSONMergePreserve struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONMergePreserve)(nil)
+
+// NewJSONMergePreserve creates a new JSONMergePreserve function.
+func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONMergePreserve{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONMergePreserve) FunctionName() string {
+	return "json_merge_preserve"
+}
+
+
+// JSON_REMOVE(json_doc, path[, path] ...)
+//
+// JSONRemove Removes data from a JSON document and returns the result. Returns NULL if any argument is NULL. An error
+// occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path expression or
+// is $ or contains a * or ** wildcard. The path arguments are evaluated left to right. The document produced by
+// evaluating one path becomes the new value against which the next path is evaluated. It is not an error if the element
+// to be removed does not exist in the document; in that case, the path does not affect the document.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-remove
+type JSONRemove struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONRemove)(nil)
+
+// NewJSONRemove creates a new JSONRemove function.
+func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONRemove{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONRemove) FunctionName() string {
+	return "json_remove"
+}
+
+
+// JSON_REPLACE(json_doc, path, val[, path, val] ...)
+//
+// JSONReplace Replaces existing values in a JSON document and returns the result. Returns NULL if any argument is NULL.
+// An error occurs if the json_doc argument is not a valid JSON document or any path argument is not a valid path
+// expression or contains a * or ** wildcard. The path-value pairs are evaluated left to right. The document produced by
+// evaluating one pair becomes the new value against which the next pair is evaluated. A path-value pair for an existing
+// path in the document overwrites the existing document value with the new value. A path-value pair for a non-existing
+// path in the document is ignored and has no effect.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-replace
+type JSONReplace struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONReplace)(nil)
+
+// NewJSONReplace creates a new JSONReplace function.
+func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONReplace{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONReplace) FunctionName() string {
+	return "json_replace"
+}
+
+
+// JSON_SET(json_doc, path, val[, path, val] ...)
+//
+// JSONSet Inserts or updates data in a JSON document and returns the result. Returns NULL if any argument is NULL or
+// path, if given, does not locate an object. An error occurs if the json_doc argument is not a valid JSON document or
+// any path argument is not a valid path expression or contains a * or ** wildcard. The path-value pairs are evaluated
+// left to right. The document produced by evaluating one pair becomes the new value against which the next pair is
+// evaluated. A path-value pair for an existing path in the document overwrites the existing document value with the
+// new value. A path-value pair for a non-existing path in the document adds the value to the document if the path
+// identifies one of these types of values:
+//   - A member not present in an existing object. The member is added to the object and associated with the new value.
+//   - A position past the end of an existing array. The array is extended with the new value. If the existing value is
+//     not an array, it is auto-wrapped as an array, then extended with the new value.
+// Otherwise, a path-value pair for a non-existing path in the document is ignored and has no effect.
+//
+// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-set
+type JSONSet struct {
+	sql.Expression
+}
+
+var _ sql.FunctionExpression = (JSONSet)(nil)
+
+// NewJSONSet creates a new JSONSet function.
+func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
+	return nil, ErrUnsupportedJSONFunction.New(JSONSet{}.FunctionName())
+}
+
+// FunctionName implements sql.FunctionExpression
+func (j JSONSet) FunctionName() string {
+	return "json_set"
 }
