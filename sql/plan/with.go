@@ -40,7 +40,7 @@ func (w *With) String() string {
 	for i, e := range w.CTEs {
 		cteStrings[i] = e.String()
 	}
-	
+
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("With(%s)", strings.Join(cteStrings, ", "))
 	_ = pr.WriteChildren(w.Child.String())
@@ -54,7 +54,7 @@ func (w *With) DebugString() string {
 	}
 
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("With(", strings.Join(cteStrings, ", "))
+	_ = pr.WriteNode("With(%s)", strings.Join(cteStrings, ", "))
 	_ = pr.WriteChildren(sql.DebugString(w.Child))
 	return pr.String()
 }
@@ -94,6 +94,6 @@ func (e *CommonTableExpression) DebugString() string {
 	if len(e.Columns) > 0 {
 		return fmt.Sprintf("%s (%s) AS %s", e.Subquery.name, strings.Join(e.Columns, ","), sql.DebugString(e.Subquery))
 	}
-	return fmt.Sprintf("%s AS %s", e.Subquery.name, sql.DebugString(e))
+	return fmt.Sprintf("%s AS %s", e.Subquery.name, e)
 }
 

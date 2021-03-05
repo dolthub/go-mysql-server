@@ -2225,6 +2225,26 @@ var fixtures = map[string]sql.Node{
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`with cte1 as (select a from b) select * from cte1`: plan.NewWith(
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewStar(),
+			},
+			plan.NewUnresolvedTable("cte1", "")),
+			[]*plan.CommonTableExpression{
+				plan.NewCommonTableExpression(
+					plan.NewSubqueryAlias("cte1", "select a from b",
+						plan.NewProject(
+							[]sql.Expression{
+								expression.NewUnresolvedColumn("a"),
+							},
+							plan.NewUnresolvedTable("b", ""),
+							),
+					),
+					[]string{},
+				),
+			},
+	),
 	`SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewLiteral(int8(math.MinInt8), sql.Int8),
