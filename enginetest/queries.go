@@ -155,6 +155,13 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -4616,6 +4623,10 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT pk FROM one_pk WHERE pk > :pk",
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
+	},
+	{
+		Query: "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	// TODO: Bug: the having column must appear in the select list
 	// {

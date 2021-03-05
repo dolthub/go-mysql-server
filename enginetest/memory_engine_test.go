@@ -85,15 +85,15 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
 		Expected: []sql.Row{
-			{1, 3},
-			{2, 2},
-			{3, 1}},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
 	}
 	fmt.Sprintf("%v", test)
 
