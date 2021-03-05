@@ -269,14 +269,14 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"character_set_connection": TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"character_set_results":    TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"collation_connection":     TypedValue{LongText, Collation_Default.String()},
-		"tmpdir":					TypedValue{LongText, getTmpdirSessionVar()},
-		"local_infile":				TypedValue{Int8, 0},
-		"secure_file_priv":			TypedValue{LongText, nil},
+		"tmpdir":                   TypedValue{LongText, GetTmpdirSessionVar()},
+		"local_infile":             TypedValue{Int8, 0},
+		"secure_file_priv":         TypedValue{LongText, nil},
 	}
 }
 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html
-func getTmpdirSessionVar() string {
+func GetTmpdirSessionVar() string {
 	ret := os.Getenv("TMPDIR")
 	if ret != "" {
 		return ret
@@ -333,12 +333,12 @@ type Context struct {
 	Session
 	*IndexRegistry
 	*ViewRegistry
-	Memory         *MemoryManager
-	pid            uint64
-	query          string
-	queryTime      time.Time
-	tracer         opentracing.Tracer
-	rootSpan       opentracing.Span
+	Memory    *MemoryManager
+	pid       uint64
+	query     string
+	queryTime time.Time
+	tracer    opentracing.Tracer
+	rootSpan  opentracing.Span
 }
 
 // ContextOption is a function to configure the context.

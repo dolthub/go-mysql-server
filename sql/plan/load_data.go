@@ -161,7 +161,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		_, tmpdir := ctx.Get("tmpdir")
 		fileName = tmpdir.(string) + TmpfileName
 	} else {
-		_,  dir := ctx.Get("secure_file_priv")
+		_, dir := ctx.Get("secure_file_priv")
 		if dir == nil {
 			return nil, sql.ErrSecureFileDirNotSet.New()
 		}

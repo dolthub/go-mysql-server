@@ -1833,6 +1833,9 @@ var QueryTests = []QueryTest{
 			{"character_set_connection", sql.Collation_Default.CharacterSet().String()},
 			{"character_set_results", sql.Collation_Default.CharacterSet().String()},
 			{"collation_connection", sql.Collation_Default.String()},
+			{"tmpdir", sql.GetTmpdirSessionVar()},
+			{"local_infile", int8(0)},
+			{"secure_file_priv", nil},
 		},
 	},
 	{

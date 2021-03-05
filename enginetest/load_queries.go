@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -44,7 +45,7 @@ var LoadDataScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:   "select * from loadtable",
+				Query:    "select * from loadtable",
 				Expected: []sql.Row{{int8(1), "hi"}, {int8(2), "hello"}},
 			},
 		},
@@ -148,14 +149,14 @@ var LoadDataErrorScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
+				Query:       "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
 				ExpectedErr: sql.ErrSecureFileDirNotSet,
 			},
 		},
 	},
 	{
-		Name: "Load data into table that doesn't exist throws error.",
-		Query: "LOAD DATA INFILE 'test1.txt' INTO TABLE loadtable",
+		Name:        "Load data into table that doesn't exist throws error.",
+		Query:       "LOAD DATA INFILE 'test1.txt' INTO TABLE loadtable",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
@@ -166,7 +167,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
+				Query:       "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
 				RequiredErr: true, // path error
 			},
 		},
@@ -179,7 +180,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (bad)",
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (bad)",
 				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
 			},
 		},
