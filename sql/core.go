@@ -225,6 +225,13 @@ type ForeignKeyConstraint struct {
 	OnDelete          ForeignKeyReferenceOption
 }
 
+// CheckDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
+// but must store and return them when asked.
+type CheckDefinition struct {
+	Name           string // The name of this check. Check names in a database are unique.
+	AlterStatement string // Reference for expression body
+}
+
 // CheckConstraint declares a boolean-eval constraint.
 type CheckConstraint struct {
 	Name     string
@@ -356,21 +363,21 @@ type ForeignKeyAlterableTable interface {
 	DropForeignKey(ctx *Context, fkName string) error
 }
 
-// CheckConstraintTable is a table that can declare its check constraints.
-type CheckConstraintTable interface {
+// CheckTable is a table that can declare its check constraints.
+type CheckTable interface {
 	Table
-	// GetCheckConstraints returns the check constraints on this table.
-	GetCheckConstraints(ctx *Context) ([]CheckConstraint, error)
+	// GetChecks returns the check constraints on this table.
+	GetChecks(ctx *Context) ([]CheckDefinition, error)
 }
 
 // ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
 type CheckAlterableTable interface {
 	Table
-	// CreateCheckConstraint creates an check constraint for this table, using the provided parameters.
+	// CreateCheck creates an check constraint for this table, using the provided parameters.
 	// Returns an error if the constraint name already exists.
-	CreateCheckConstraint(ctx *Context, chName string, expr Expression, enforced bool) error
-	// DropCheckConstraint removes a check constraint from the database.
-	DropCheckConstraint(ctx *Context, chName string) error
+	CreateCheck(ctx *Context, check *CheckDefinition) error
+	// DropCheck removes a check constraint from the database.
+	DropCheck(ctx *Context, chName string) error
 }
 
 // InsertableTable is a table that can process insertion of new rows.

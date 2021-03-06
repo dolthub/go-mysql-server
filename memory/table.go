@@ -37,7 +37,7 @@ type Table struct {
 	columns          []int
 	indexes          map[string]sql.Index
 	foreignKeys      []sql.ForeignKeyConstraint
-	checks           []sql.CheckConstraint
+	checks           []sql.CheckDefinition
 	pkIndexesEnabled bool
 
 	// Data storage
@@ -67,6 +67,8 @@ var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.ForeignKeyAlterableTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
+var _ sql.CheckAlterableTable = (*Table)(nil)
+var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 
 // PushdownTable is an extension to Table that implements sql.FilteredTable and sql.ProjectedTable. This is mostly just
@@ -1044,14 +1046,9 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return append(indexes, nonPrimaryIndexes...), nil
 }
 
-// GetForeignKeys implements sql.CheckConstraintTable
+// GetForeignKeys implements sql.CheckTable
 func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, error) {
 	return t.foreignKeys, nil
-}
-
-// GetChecks implements sql.CheckConstraintTable
-func (t *Table) GetCheckConstraints(_ *sql.Context) ([]sql.CheckConstraint, error) {
-	return t.checks, nil
 }
 
 // CreateForeignKey implements sql.ForeignKeyAlterableTable. Foreign keys are not enforced on update / delete.
@@ -1082,10 +1079,10 @@ func (t *Table) CreateForeignKey(_ *sql.Context, fkName string, columns []string
 
 // DropForeignKey implements sql.ForeignKeyAlterableTable.
 func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
-	return t.DropConstraint(ctx, fkName)
+	return t.dropConstraint(ctx, fkName)
 }
 
-func (t *Table) DropConstraint(ctx *sql.Context, name string) error {
+func (t *Table) dropConstraint(ctx *sql.Context, name string) error {
 	for i, key := range t.foreignKeys {
 		if key.Name == name {
 			t.foreignKeys = append(t.foreignKeys[:i], t.foreignKeys[i+1:]...)
@@ -1101,32 +1098,33 @@ func (t *Table) DropConstraint(ctx *sql.Context, name string) error {
 	return nil
 }
 
+// GetChecks implements sql.CheckTable
+func (t *Table) GetChecks(_ *sql.Context) ([]sql.CheckDefinition, error) {
+	return t.checks, nil
+}
+
 // CreateCheck implements sql.CheckAlterableTable
-func (t *Table) CreateCheckConstraint(_ *sql.Context, chName string, expr sql.Expression, enforced bool) error {
+func (t *Table) CreateCheck(_ *sql.Context, check *sql.CheckDefinition) error {
 	for _, key := range t.checks {
-		if key.Name == chName {
-			return fmt.Errorf("constraint %s already exists", chName)
+		if key.Name == check.Name {
+			return fmt.Errorf("constraint %s already exists", check.Name)
 		}
 	}
 
 	for _, key := range t.foreignKeys {
-		if key.Name == chName {
-			return fmt.Errorf("constraint %s already exists", chName)
+		if key.Name == check.Name {
+			return fmt.Errorf("constraint %s already exists", check.Name)
 		}
 	}
 
-	t.checks = append(t.checks, sql.CheckConstraint{
-		Name:     chName,
-		Expr:     expr,
-		Enforced: enforced,
-	})
+	t.checks = append(t.checks, *check)
 
 	return nil
 }
 
 // func (t *Table) DropCheck(ctx *sql.Context, chName string) error {} implements sql.CheckAlterableTable.
-func (t *Table) DropCheckConstraint(ctx *sql.Context, chName string) error {
-	return t.DropConstraint(ctx, chName)
+func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
+	return t.dropConstraint(ctx, chName)
 }
 
 func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {

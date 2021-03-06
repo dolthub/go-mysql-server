@@ -2159,6 +2159,8 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	//e.Analyzer.Debug = true
+	//e.Analyzer.Verbose = true
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
@@ -2179,20 +2181,22 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	cht, ok := table.(sql.CheckConstraintTable)
+	cht, ok := table.(sql.CheckTable)
 	require.True(ok)
 
-	checks, err := cht.GetCheckConstraints(NewContext(harness))
+	checks, err := cht.GetChecks(NewContext(harness))
 	require.NoError(err)
 
-	expected := []sql.CheckConstraint{{
+	cmp := sql.CheckConstraint{
 		Name: "chk2",
 		Expr: expression.NewGreaterThan(
-			expression.NewUnresolvedColumn("b"),
+			expression.NewUnresolvedColumn("t1.b"),
 			expression.NewLiteral(int8(0), sql.Int8),
 		),
 		Enforced: true,
-	}}
+	}
+	expected := []sql.CheckDefinition{*plan.NewCheckDefinition(&cmp)}
+
 	assert.Equal(t, expected, checks)
 
 	// Some faulty create statements
@@ -2270,10 +2274,10 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	cht, ok := table.(sql.CheckConstraintTable)
+	cht, ok := table.(sql.CheckTable)
 	require.True(ok)
 
-	checks, err := cht.GetCheckConstraints(NewContext(harness))
+	checks, err := cht.GetChecks(NewContext(harness))
 	require.NoError(err)
 
 	expected := []sql.CheckConstraint{{

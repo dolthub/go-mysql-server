@@ -59,6 +59,8 @@ var (
 	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
 
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
+
+	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 )
 
 var (
@@ -1120,6 +1122,35 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		columnsToStrings(i.Columns),
 		onDupExprs,
 	), nil
+}
+
+func convertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
+	parsed, err := sqlparser.ParseStrictDDL(check.AlterStatement)
+	if err != nil {
+		return nil, err
+	}
+
+	ddl, ok := parsed.(*sqlparser.DDL)
+	if !ok || ddl.ConstraintAction == "" || len(ddl.TableSpec.Constraints) != 1 || strings.ToLower(ddl.ConstraintAction) != sqlparser.AddStr {
+		return nil, ErrInvalidCheckConstraint.New(check.AlterStatement)
+	}
+
+	parsedConstraint := ddl.TableSpec.Constraints[0]
+	chConstraint, ok := parsedConstraint.Details.(*sqlparser.CheckConstraintDefinition)
+	if !ok || chConstraint.Expr == nil {
+		return nil, ErrInvalidCheckConstraint.New(check.AlterStatement)
+	}
+
+	c, err := exprToExpression(ctx, chConstraint.Expr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sql.CheckConstraint{
+		Name:     parsedConstraint.Name,
+		Expr:     c,
+		Enforced: chConstraint.Enforced,
+	}, nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {

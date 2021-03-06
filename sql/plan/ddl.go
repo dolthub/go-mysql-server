@@ -222,8 +222,8 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 				if !ok {
 					return sql.RowsToRowIter(), ErrNoCheckConstraintSupport.New(c.name)
 				}
-				for _, chDef := range c.chDefs {
-					err = chAlterable.CreateCheckConstraint(ctx, chDef.Name, chDef.Expr, chDef.Enforced)
+				for _, ch := range c.chDefs {
+					err = chAlterable.CreateCheck(ctx, NewCheckDefinition(ch))
 					if err != nil {
 						return sql.RowsToRowIter(), err
 					}
