@@ -165,6 +165,10 @@ var (
 
 	// ErrCannotDropDatabaseDoesntExist is returned when a DROP DATABASE is callend when a table is dropped that doesn't exist.
 	ErrCannotDropDatabaseDoesntExist = errors.NewKind("can't drop database %s; database doesn't exist")
+
+	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
+	// list with a different number of columns than the schema of the table.
+	ErrColumnCountMismatch = errors.NewKind("In definition of view, derived table or common table expression, SELECT list and column names list have different column counts")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

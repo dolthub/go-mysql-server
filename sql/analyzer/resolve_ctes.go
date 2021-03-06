@@ -31,8 +31,16 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 
 	ctes := make(map[string]sql.Node)
 	for _, cte := range with.CTEs {
-		// TODO: column name aliases and schema validation
-		ctes[strings.ToLower(cte.Subquery.Name())] = cte.Subquery
+		cteName := cte.Subquery.Name()
+		subquery := cte.Subquery
+
+		if len(cte.Columns) > 0 {
+			schemaLen := schemaLength(subquery)
+			if schemaLen != len(cte.Columns) {
+				return nil, sql.ErrColumnCountMismatch.New()
+			}
+		}
+		ctes[strings.ToLower(cteName)] = subquery
 	}
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
@@ -68,4 +76,31 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 
 		return n, nil
 	})
+}
+
+// schemaLength returns the length of a node's schema without actually accessing it, useful when
+func schemaLength(node sql.Node) int {
+	schemaLen := 0
+	plan.Inspect(node, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *plan.Project:
+			schemaLen = len(node.Projections)
+			return false
+		case *plan.GroupBy:
+			schemaLen = len(node.SelectedExprs)
+			return false
+		case *plan.Window:
+			schemaLen = len(node.SelectExprs)
+			return false
+		case *plan.CrossJoin:
+			schemaLen = schemaLength(node.Left()) + schemaLength(node.Right())
+			return false
+		case plan.JoinNode:
+			schemaLen = schemaLength(node.Left()) + schemaLength(node.Right())
+			return false
+		default:
+			return true
+		}
+	})
+	return schemaLen
 }
