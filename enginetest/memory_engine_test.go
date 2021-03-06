@@ -89,7 +89,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
+		Query: "WITH mt as (select i,s FROM mytable) SELECT a.s,b.i FROM mt a join mt b on a.i = b.i;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},

@@ -152,14 +152,56 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT a.s,b.i FROM mt a join mt b on a.i = b.i order by 2;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1 as i, concat(s, '!') as s from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 (i,s) as (select i+1, concat(s, '!') from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select concat(s, '!') as s, i+1 as i from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i,s FROM mytable) SELECT s,i FROM mt;",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
 	},
 	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
@@ -4626,6 +4668,15 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query: "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt join mt;",
+		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1, concat(s, '!') from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i;`,
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	// TODO: Bug: the having column must appear in the select list
