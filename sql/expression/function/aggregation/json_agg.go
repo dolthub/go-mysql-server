@@ -35,14 +35,14 @@ var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 //
 // see also: https://dev.mysql.com/doc/refman/8.0/en/json.html#json-normalization
 type JSONArrayAgg struct {
-	sql.Expression
+	expression.UnaryExpression
 }
 
 var _ sql.FunctionExpression = &JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
 func NewJSONArrayAgg(arg sql.Expression) sql.Expression {
-	return &JSONArrayAgg{arg}
+	return &JSONArrayAgg{expression.UnaryExpression{Child: arg}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -52,7 +52,8 @@ func (j *JSONArrayAgg) FunctionName() string {
 
 // NewBuffer creates a new buffer for the aggregation.
 func (j *JSONArrayAgg) NewBuffer() sql.Row {
-	return sql.NewRow([]string{})
+	var row []interface{}
+	return sql.NewRow(row)
 }
 
 // Type returns the type of the result.
@@ -67,15 +68,15 @@ func (j *JSONArrayAgg) IsNullable() bool {
 
 // Resolved implements the Expression interface.
 func (j *JSONArrayAgg) Resolved() bool {
-	if _, ok := j.Expression.(*expression.Star); ok {
+	if _, ok := j.Child.(*expression.Star); ok {
 		return true
 	}
 
-	return j.Expression.Resolved()
+	return j.Child.Resolved()
 }
 
 func (j *JSONArrayAgg) String() string {
-	return fmt.Sprintf("JSON_ARRAYAGG(%s)", j.Expression)
+	return fmt.Sprintf("JSON_ARRAYAGG(%s)", j.Child)
 }
 
 // WithChildren implements the Expression interface.
@@ -88,25 +89,20 @@ func (j *JSONArrayAgg) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // Update implements the Aggregation interface.
 func (j *JSONArrayAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := j.Expression.Eval(ctx, row)
+	v, err := j.Child.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
 
-	v, err = sql.LongText.Convert(v)
-	if err != nil {
-		v = ""
-	}
-
-	buffer[0] = append(buffer[0].([]string), v.(string))
+	buffer[0] = append(buffer[0].([]interface{}), v)
 
 	return nil
 }
 
 // Merge implements the Aggregation interface.
 func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	arr1 := buffer[0].([]string)
-	arr2 := partial[0].([]string)
+	arr1 := buffer[0].([]interface{})
+	arr2 := partial[0].([]interface{})
 
 	buffer[0] = append(arr1, arr2...)
 
@@ -115,12 +111,18 @@ func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	x, err := json.Marshal(buffer[0]) // TODO: Spaces?
+	val, err := json.Marshal(buffer[0])
+	sval := string(val)
+
+	if sval == "null" {
+		return sql.Null.String(), nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	return string(x), nil
+	return sval, nil
 }
 
 // JSON_OBJECTAGG(key, value) [over_clause]
