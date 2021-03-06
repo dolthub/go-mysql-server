@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -39,7 +40,48 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 			if schemaLen != len(cte.Columns) {
 				return nil, sql.ErrColumnCountMismatch.New()
 			}
+
+			selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+				switch parent.(type) {
+				case *plan.Project, *plan.GroupBy, *plan.Window:
+					return false
+				}
+				return true
+			}
+
+			child, err := plan.TransformUpWithSelector(subquery.Child, selector, func(n sql.Node) (sql.Node, error) {
+				// TODO: unwrap aliases here
+				switch n := n.(type) {
+				case *plan.Project:
+					projections := make([]sql.Expression, len(cte.Columns))
+					for i, p := range n.Projections {
+						projections[i] = expression.NewAlias(cte.Columns[i], p)
+					}
+					return n.WithExpressions(projections...)
+				case *plan.GroupBy:
+					projections := make([]sql.Expression, len(cte.Columns))
+					for i, p := range n.SelectedExprs {
+						projections[i] = expression.NewAlias(cte.Columns[i], p)
+					}
+					return plan.NewGroupBy(projections, n.GroupByExprs, n.Child), nil
+				case *plan.Window:
+					projections := make([]sql.Expression, len(cte.Columns))
+					for i, p := range n.SelectExprs {
+						projections[i] = expression.NewAlias(cte.Columns[i], p)
+					}
+					return n.WithExpressions(projections...)
+				default:
+					return n, nil
+				}
+			})
+
+			if err != nil {
+				return nil, err
+			}
+
+			subquery.Child = child
 		}
+
 		ctes[strings.ToLower(cteName)] = subquery
 	}
 
