@@ -105,7 +105,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT o_id, JSON_ARRAYAGG(val2) FROM t2 GROUP BY o_id",
+				Query:       "SELECT o_id, JSON_ARRAYAGG(val2) FROM t2 GROUP BY o_id",
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},

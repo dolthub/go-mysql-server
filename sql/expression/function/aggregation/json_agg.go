@@ -17,9 +17,11 @@ package aggregation
 import (
 	"encoding/json"
 	"fmt"
+
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrUnsupportedJSONFunction is returned when a unsupported JSON function is called.
@@ -121,7 +123,7 @@ func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, erro
 	if sval == "null" {
 		return nil, nil
 	}
-	
+
 	return sval, nil
 }
 
@@ -149,4 +151,3 @@ func NewJSONObjectAgg(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONObjectAgg) FunctionName() string {
 	return "json_objectagg"
 }
-

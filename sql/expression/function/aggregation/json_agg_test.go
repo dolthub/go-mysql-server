@@ -15,10 +15,12 @@
 package aggregation
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestJsonArrayAgg_Name(t *testing.T) {

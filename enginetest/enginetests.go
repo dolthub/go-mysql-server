@@ -3416,7 +3416,6 @@ func TestJsonScripts(t *testing.T, harness Harness) {
 	}
 }
 
-
 // For a variety of reasons, the widths of various primitive types can vary when passed through different SQL queries
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
