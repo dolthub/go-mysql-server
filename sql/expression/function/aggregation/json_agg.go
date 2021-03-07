@@ -41,7 +41,7 @@ type JSONArrayAgg struct {
 var _ sql.FunctionExpression = &JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
-func NewJSONArrayAgg(arg sql.Expression) sql.Expression {
+func NewJSONArrayAgg(arg sql.Expression) *JSONArrayAgg {
 	return &JSONArrayAgg{expression.UnaryExpression{Child: arg}}
 }
 
@@ -112,16 +112,16 @@ func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 // Eval implements the Aggregation interface.
 func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	val, err := json.Marshal(buffer[0])
-	sval := string(val)
-
-	if sval == "null" {
-		return sql.Null.String(), nil
-	}
-
 	if err != nil {
 		return nil, err
 	}
 
+	sval := string(val)
+
+	if sval == "null" {
+		return nil, nil
+	}
+	
 	return sval, nil
 }
 

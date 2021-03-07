@@ -444,6 +444,13 @@ func aggregationEquals(a, b sql.Expression) bool {
 		}
 
 		return aggregationChildEquals(a.Child, b.Child)
+	case *aggregation.JSONArrayAgg:
+		b, ok := b.(*aggregation.JSONArrayAgg)
+		if !ok {
+			return false
+		}
+
+		return aggregationChildEquals(a.Child, b.Child)
 	default:
 		return false
 	}

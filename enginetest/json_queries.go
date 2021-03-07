@@ -120,7 +120,7 @@ var JsonScripts = []ScriptTest{
 				Query: "SELECT JSON_ARRAYAGG(o_id) FROM t2",
 				Expected: []sql.Row{
 					{
-						"NULL",
+						nil,
 					},
 				},
 			},
