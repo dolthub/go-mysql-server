@@ -308,14 +308,13 @@ func (h *Handler) doQuery(
 	case *sqlparser.Load:
 		if n.Local {
 			// tell the connection to undergo the load data process with this
-			// metdata
+			// metadata
 			_, tmpdir := ctx.Get("tmpdir")
 			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, n.Infile)
 			if err != nil {
 				return err
 			}
 		}
-	default:
 	}
 
 	var schema sql.Schema
