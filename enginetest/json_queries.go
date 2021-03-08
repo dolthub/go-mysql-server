@@ -179,4 +179,33 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "JSON_ARRAGG with simple and nested json objects.",
+		SetUpScript: []string{
+			"create table j(pk JSON)",
+			"INSERT INTO j VALUES('{\"key1\": {\"key\": \"value\"}}')",
+			"INSERT INTO j VALUES('{\"key1\": \"value1\", \"key2\": \"value2\"}')",
+			"INSERT INTO j VALUES('{\"key1\": {\"key\": [2,3]}}')",
+			"INSERT INTO j VALUES('[\"a\", 1]')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT JSON_ARRAYAGG(pk) FROM j GROUPa BY pk",
+				Expected: []sql.Row{
+					{
+						"[{\"key1\":\"value1\",\"key2\":\"value2\"}]",
+					},
+					{
+						"[{\"key1\":{\"key\":\"value\"}}]",
+					},
+					{
+						"[{\"key1\":{\"key\":[2,3]}}]",
+					},
+					{
+						"[[\"a\",1]]",
+					},
+				},
+			},
+		},
+	},
 }

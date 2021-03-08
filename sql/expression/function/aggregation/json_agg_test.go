@@ -71,3 +71,17 @@ func TestJsonArrayAgg_Empty(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
+
+func TestJsonArrayAgg_JSON(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	j := NewJSONArrayAgg(expression.NewGetField(0, sql.JSON, "field", true))
+	b := j.NewBuffer()
+
+	j.Update(ctx, b, sql.NewRow("{\"key1\": \"value1\", \"key2\": \"value2\"}"))
+
+	v, err := j.Eval(ctx, b)
+	assert.NoError(err)
+	assert.Equal("[{\"key1\": \"value1\", \"key2\": \"value2\"}]", v)
+}
