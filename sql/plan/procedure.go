@@ -25,6 +25,7 @@ import (
 // ProcedureSecurityContext determines whether the stored procedure is executed using the privileges of the definer or
 // the invoker.
 type ProcedureSecurityContext byte
+
 const (
 	// ProcedureSecurityContext_Definer uses the definer's security context.
 	ProcedureSecurityContext_Definer ProcedureSecurityContext = iota
@@ -34,6 +35,7 @@ const (
 
 // ProcedureParamDirection represents the use case of the stored procedure parameter.
 type ProcedureParamDirection byte
+
 const (
 	// ProcedureParamDirection_In means the parameter passes its contained value to the stored procedure.
 	ProcedureParamDirection_In ProcedureParamDirection = iota
@@ -54,6 +56,7 @@ type ProcedureParam struct {
 
 // Characteristic represents a characteristic that is defined on either a stored procedure or stored function.
 type Characteristic byte
+
 const (
 	Characteristic_LanguageSql Characteristic = iota
 	Characteristic_Deterministic

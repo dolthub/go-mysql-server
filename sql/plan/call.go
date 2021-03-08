@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -132,8 +133,8 @@ func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 	return &callIter{
-		call:       c,
-		innerIter:  innerIter,
+		call:      c,
+		innerIter: innerIter,
 	}, nil
 }
 

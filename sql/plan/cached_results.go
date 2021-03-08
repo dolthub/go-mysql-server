@@ -18,7 +18,7 @@ import (
 	"io"
 	"sync"
 
-        "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // NewCachedResults returns a cached results plan Node, which will use a
@@ -32,9 +32,9 @@ func NewCachedResults(n sql.Node) *CachedResults {
 
 type CachedResults struct {
 	UnaryNode
-	cache sql.RowsCache
+	cache   sql.RowsCache
 	dispose sql.DisposeFunc
-	mutex sync.Mutex
+	mutex   sync.Mutex
 	noCache bool
 }
 
@@ -83,12 +83,10 @@ func (n *CachedResults) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
-
-
 type cachedResultsIter struct {
-	parent *CachedResults
-	iter sql.RowIter
-	cache sql.RowsCache
+	parent  *CachedResults
+	iter    sql.RowIter
+	cache   sql.RowsCache
 	dispose sql.DisposeFunc
 }
 

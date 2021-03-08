@@ -39,6 +39,8 @@ type ScriptTestAssertion struct {
 	Query       string
 	Expected    []sql.Row
 	ExpectedErr *errors.Kind
+	// For tests that just require a particular error but are not linked to a custom error, RequiredError can be set.
+	RequiredErr bool
 }
 
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of

@@ -194,6 +194,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDelete(ctx, n)
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
+	case *sqlparser.Load:
+		return convertLoad(ctx, n)
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	}
@@ -1237,6 +1239,29 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	}
 
 	return plan.NewUpdate(node, updateExprs), nil
+}
+
+func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
+	unresolvedTable := tableNameToUnresolvedTable(d.Table)
+
+	var ignoreNumVal int64 = 0
+	var err error
+	if d.IgnoreNum != nil {
+		ignoreNumVal, err = getInt64Value(ctx, d.IgnoreNum, "Cannot parse ignore Value")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
+
+	return plan.NewInsertInto(
+		tableNameToUnresolvedTable(d.Table),
+		ld,
+		false,
+		ld.ColumnNames,
+		nil,
+	), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
