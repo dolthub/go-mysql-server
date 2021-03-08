@@ -190,7 +190,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT JSON_ARRAYAGG(pk) FROM j GROUPa BY pk",
+				Query: "SELECT JSON_ARRAYAGG(pk) FROM j GROUP BY pk",
 				Expected: []sql.Row{
 					{
 						"[{\"key1\":\"value1\",\"key2\":\"value2\"}]",
