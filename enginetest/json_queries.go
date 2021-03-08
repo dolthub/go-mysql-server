@@ -152,4 +152,31 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "JSON_ARRAYAGG and group by use the same field.",
+		SetUpScript: []string{
+			"create table x(pk int, c1 int)",
+			"INSERT INTO x VALUES (1, 1)",
+			"INSERT INTO x VALUES (1, 2)",
+			"INSERT INTO x VALUES (2, 3)",
+			"INSERT INTO x VALUES (2, 3)",
+			"INSERT INTO x VALUES (3, 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT JSON_ARRAYAGG(pk) FROM x GROUP BY pk",
+				Expected: []sql.Row{
+					{
+						"[1,1]",
+					},
+					{
+						"[2,2]",
+					},
+					{
+						"[3]",
+					},
+				},
+			},
+		},
+	},
 }
