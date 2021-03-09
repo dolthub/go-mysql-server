@@ -64,7 +64,7 @@ func (j *JSONArrayAgg) Type() sql.Type {
 
 // IsNullable returns whether the return value can be null.
 func (j *JSONArrayAgg) IsNullable() bool {
-	return false
+	return true
 }
 
 // Resolved implements the Expression interface.
@@ -125,7 +125,7 @@ func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, erro
 
 	sval := string(val)
 
-	// If the value is null explicity return nil.
+	// If the value is null explicitly return nil.
 	if sval == "null" {
 		return nil, nil
 	}

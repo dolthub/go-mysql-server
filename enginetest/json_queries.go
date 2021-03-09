@@ -182,15 +182,15 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAGG with simple and nested json objects.",
 		SetUpScript: []string{
-			"create table j(pk JSON)",
-			"INSERT INTO j VALUES('{\"key1\": {\"key\": \"value\"}}')",
-			"INSERT INTO j VALUES('{\"key1\": \"value1\", \"key2\": \"value2\"}')",
-			"INSERT INTO j VALUES('{\"key1\": {\"key\": [2,3]}}')",
-			"INSERT INTO j VALUES('[\"a\", 1]')",
+			"create table j(field JSON)",
+			`INSERT INTO j VALUES('{"key1": {"key": "value"}}')`,
+			`INSERT INTO j VALUES('{"key1": "value1", "key2": "value2"}')`,
+			`INSERT INTO j VALUES('{"key1": {"key": [2,3]}}')`,
+			`INSERT INTO j VALUES('["a", 1]')`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT JSON_ARRAYAGG(pk) FROM j GROUP BY pk",
+				Query: "SELECT JSON_ARRAYAGG(field) FROM j GROUP BY field",
 				Expected: []sql.Row{
 					{
 						"[{\"key1\":\"value1\",\"key2\":\"value2\"}]",
