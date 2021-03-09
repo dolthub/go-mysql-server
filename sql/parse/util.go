@@ -377,7 +377,7 @@ func parseExpr(ctx *sql.Context, str string) (sql.Expression, error) {
 		return nil, errInvalidIndexExpression.New(str)
 	}
 
-	return exprToExpression(ctx, selectExpr.Expr)
+	return ExprToExpression(ctx, selectExpr.Expr)
 }
 
 func readQuotableIdent(ident *string) parseFunc {

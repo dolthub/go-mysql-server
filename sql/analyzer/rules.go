@@ -22,6 +22,7 @@ import (
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{"load_stored_procedures", loadStoredProcedures},
+	{"load_check_constraints", loadChecks},
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
 	{"resolve_set_variables", resolveSetVariables},
@@ -32,6 +33,7 @@ var OnceBeforeDefault = []Rule{
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
 	{"validate_stored_procedure", validateStoredProcedure},
+	{"validate_check_constraint", validateCreateCheck},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -60,6 +62,7 @@ var DefaultRules = []Rule{
 // DefaultRules.
 var OnceAfterDefault = []Rule{
 	{"load_triggers", loadTriggers},
+	{"load_checks", loadChecks},
 	{"process_truncate", processTruncate},
 	{"resolve_column_defaults", resolveColumnDefaults},
 	{"resolve_generators", resolveGenerators},

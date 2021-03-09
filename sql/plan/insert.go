@@ -46,6 +46,7 @@ type InsertInto struct {
 	ColumnNames []string
 	IsReplace   bool
 	OnDupExprs  []sql.Expression
+	Checks      []*sql.CheckConstraint
 }
 
 // NewInsertInto creates an InsertInto node.
@@ -82,6 +83,7 @@ type insertIter struct {
 	ctx         *sql.Context
 	updateExprs []sql.Expression
 	tableNode   sql.Node
+	checks      []*sql.CheckConstraint
 	closed      bool
 }
 
@@ -117,6 +119,7 @@ func newInsertIter(
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
+	checks []*sql.CheckConstraint,
 	row sql.Row,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
@@ -326,7 +329,7 @@ func (i insertIter) Close(ctx *sql.Context) error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Destination, p.Source, p.IsReplace, p.OnDupExprs, row)
+	return newInsertIter(ctx, p.Destination, p.Source, p.IsReplace, p.OnDupExprs, p.Checks, row)
 }
 
 // WithChildren implements the Node interface.

@@ -163,7 +163,7 @@ func (p *CreateCheck) Execute(ctx *sql.Context) error {
 	//		return false
 	//	case *Subquery:
 	//		err = sql.ErrInvalidConstraintSubqueryNotSupported.New(expr.String())
-	//		return false
+	//		return falseErrInvalidCheckConstraint
 	//	}
 	//	return true
 	//})
