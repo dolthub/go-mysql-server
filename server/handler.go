@@ -551,7 +551,7 @@ func isSessionAutocommit(ctx *sql.Context) bool {
 func statementNeedsCommit(parsedQuery sqlparser.Statement, parseErr error) bool {
 	if parseErr == nil {
 		switch parsedQuery.(type) {
-		case *sqlparser.DDL, *sqlparser.Commit, *sqlparser.Update, *sqlparser.Insert, *sqlparser.Delete:
+		case *sqlparser.DDL, *sqlparser.Commit, *sqlparser.Update, *sqlparser.Insert, *sqlparser.Delete, *sqlparser.Load:
 			return true
 		}
 	}
