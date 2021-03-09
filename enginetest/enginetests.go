@@ -3301,6 +3301,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 }
 
+func MustConvert(val interface{}, err error) interface{} {
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
 var pid uint64
 
 func NewContext(harness Harness) *sql.Context {

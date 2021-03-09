@@ -59,15 +59,6 @@ func (t jsonType) Convert(v interface{}) (interface{}, error) {
 	}
 }
 
-// MustConvert implements the Type interface.
-func (t jsonType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
-}
-
 // Promote implements the Type interface.
 func (t jsonType) Promote() Type {
 	return t

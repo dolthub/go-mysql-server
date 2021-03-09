@@ -53,8 +53,6 @@ type Type interface {
 	Compare(interface{}, interface{}) (int, error)
 	// Convert a value of a compatible type to a most accurate type.
 	Convert(interface{}) (interface{}, error)
-	// MustConvert converts a value of a compatible type to a most accurate type, causing a panic on failure.
-	MustConvert(interface{}) interface{}
 	// Promote will promote the current type to the largest representing type of the same kind, such as Int8 to Int64.
 	Promote() Type
 	// SQL returns the sqltypes.Value for the given value.
