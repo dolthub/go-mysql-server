@@ -36,6 +36,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)
@@ -303,6 +304,19 @@ func (h *Handler) doQuery(
 	// for execution.
 	// TODO: unify parser logic so we don't have to parse twice
 	parsedQuery, parseErr := sqlparser.Parse(query)
+	switch n := parsedQuery.(type) {
+	case *sqlparser.Load:
+		if n.Local {
+			// tell the connection to undergo the load data process with this
+			// metadata
+			_, tmpdir := ctx.Get("tmpdir")
+			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, n.Infile)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	var schema sql.Schema
 	var rows sql.RowIter
 	if len(bindings) == 0 {
