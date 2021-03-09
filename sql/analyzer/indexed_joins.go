@@ -254,22 +254,33 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 
 	joinHint := extractJoinHint(node)
 
-	// Collect all tables and find an access order for them
-	tables := lexicalTableOrder(node)
-	tablesByName := byLowerCaseName(tables)
-	tableOrder, err := orderTables(ctx, tables, tablesByName, joinIndexes, joinHint)
-	if err != nil {
-		return nil, err
+	// Collect all tables
+	tableJoinOrder := newJoinOrderNode(node)
+
+	// Find a hinted or cost optimized access order for them
+	if joinHint != nil {
+		err := tableJoinOrder.applyJoinHint(joinHint)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Then use that order to construct a join tree
-	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds(tableOrder))
+	if tableJoinOrder.order == nil {
+		err := tableJoinOrder.estimateCost(ctx, joinIndexes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Use the order in tableJoinOrder to construct a join tree
+	joinTree := buildJoinTree(tableJoinOrder, joinIndexes.flattenJoinConds(tableJoinOrder.tableNames()))
 
 	// This shouldn't happen, but better to fail gracefully if it does
 	if joinTree == nil {
 		return node, nil
 	}
 
+	tablesByName := byLowerCaseName(tableJoinOrder.tables())
 	joinNode := joinTreeToNodes(joinTree, tablesByName)
 
 	return joinNode, nil
@@ -334,20 +345,37 @@ func (j JoinOrder) HintType() string {
 	return "JOIN_ORDER"
 }
 
-// lexicalTableOrder returns the names of the tables under the join node given, in the original lexical order. This is
-// possible to reconstruct because the parser assembles joins in left-bound fashion, so that the first two tables are
-// the most deeply nested node on the left branch. Each additional join wraps this original join node, with the
-// original on the left and the new table being joined on the right.
-func lexicalTableOrder(node sql.Node) []NameableNode {
+// newJoinOrderNode builds a joinOrderNode for the given `sql.Node`. A
+// table, table alias or subquery alias gets a leaf node, a sequence
+// of commutable joins get coalesced into a single node with children
+// set in `commutes`, and a left or right join gets a node with a
+// `left` and a `right` child.  original on the left and the new table
+// being joined on the right.
+func newJoinOrderNode(node sql.Node) *joinOrderNode {
 	switch node := node.(type) {
 	case *plan.TableAlias:
-		return []NameableNode{node}
+		return &joinOrderNode{node: node}
 	case *plan.ResolvedTable:
-		return []NameableNode{node}
+		return &joinOrderNode{node: node}
 	case *plan.SubqueryAlias:
-		return []NameableNode{node}
+		return &joinOrderNode{node: node}
 	case plan.JoinNode:
-		return append(lexicalTableOrder(node.Left()), lexicalTableOrder(node.Right())...)
+		ljo := newJoinOrderNode(node.Left())
+		rjo := newJoinOrderNode(node.Right())
+		if node.JoinType() == plan.JoinTypeLeft {
+			return &joinOrderNode{left: ljo, right: rjo}
+		} else if node.JoinType() == plan.JoinTypeRight {
+			return &joinOrderNode{left: rjo, right: ljo}
+		} else {
+			commutes := append(ljo.commutes, rjo.commutes...)
+			if ljo.left != nil || ljo.node != nil {
+				commutes = append(commutes, *ljo)
+			}
+			if rjo.left != nil || rjo.node != nil {
+				commutes = append(commutes, *rjo)
+			}
+			return &joinOrderNode{commutes: commutes}
+		}
 	default:
 		panic(fmt.Sprintf("unexpected node type: %t", node))
 	}
@@ -535,7 +563,7 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 // that the order of the conditions returned is deterministic for a given table order.
 func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	if len(tableOrder) != len(ji) {
-		panic("Inconsistent table order for flattenJoinConds")
+		panic(fmt.Sprintf("Inconsistent table order for flattenJoinConds: tableOrder: %v, ji: %v", tableOrder, ji))
 	}
 
 	joinConditions := make([]*joinCond, 0)

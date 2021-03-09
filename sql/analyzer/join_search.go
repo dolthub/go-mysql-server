@@ -16,76 +16,20 @@ package analyzer
 
 import (
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// orderTables returns an access order for the tables provided, attempting to minimize total query cost
-func orderTables(
-	ctx *sql.Context,
-	tables []NameableNode,
-	tablesByName map[string]NameableNode,
-	joinIndexes joinIndexesByTable,
-	hint QueryHint,
-) ([]string, error) {
-	tableNames := make([]string, len(tablesByName))
-	indexes := make([]int, len(tablesByName))
-	for i, table := range tables {
-		tableNames[i] = strings.ToLower(table.Name())
-		indexes[i] = i
-	}
-
-	// If we got a hint about table order, apply it instead of using heuristics.
-	// Only valid hint is specifying JOIN_ORDER for all tables in the join.
-	if hint != nil {
-		switch hint := hint.(type) {
-		case JoinOrder:
-			var nodeTables []string
-			for table, _ := range tablesByName {
-				nodeTables = append(nodeTables, table)
-			}
-			if len(hint.tables) == len(tables) && containsAll(hint.tables, nodeTables) {
-				return hint.tables, nil
-			}
-		default:
-			panic("unrecognized hint type")
-		}
-	}
-
-	// generate all permutations of table order
-	accessOrders := permutations(indexes)
-	lowestCost := uint64(math.MaxUint64)
-	lowestCostIdx := 0
-	for i, accessOrder := range accessOrders {
-		cost, err := estimateTableOrderCost(ctx, tableNames, tablesByName, accessOrder, joinIndexes, lowestCost)
-		if err != nil {
-			return nil, err
-		}
-		if cost < lowestCost {
-			lowestCost = cost
-			lowestCostIdx = i
-		}
-	}
-
-	cheapestOrder := make([]string, len(tableNames))
-	for i, j := range accessOrders[lowestCostIdx] {
-		cheapestOrder[i] = tableNames[j]
-	}
-
-	return cheapestOrder, nil
-}
-
-// buildJoinTree builds a join plan for the tables in the access order given, using the join expressions given.
 func buildJoinTree(
-	tableOrder []string,
+	jo *joinOrderNode,
 	joinConds []*joinCond,
 ) *joinSearchNode {
 
 	var found *joinSearchNode
-	visitJoinSearchNodes(tableOrder, func(n *joinSearchNode) bool {
+	jo.visitJoinSearchNodes(func(n *joinSearchNode) bool {
 		assignConditions(n, joinConds)
 		if n.joinCond != nil {
 			found = n
@@ -95,74 +39,6 @@ func buildJoinTree(
 	})
 
 	return found
-}
-
-// Estimates the cost of the table ordering given. Lower numbers are better. Bails out and returns cost so far if cost
-// exceeds lowest found so far. We could do this better if we had table and key statistics.
-func estimateTableOrderCost(
-	ctx *sql.Context,
-	tables []string,
-	tableNodes map[string]NameableNode,
-	accessOrder []int,
-	joinIndexes joinIndexesByTable,
-	lowestCost uint64,
-) (uint64, error) {
-	cost := uint64(1)
-	var availableSchemaForKeys sql.Schema
-	for i, idx := range accessOrder {
-		if cost >= lowestCost {
-			return cost, nil
-		}
-
-		table := tables[idx]
-		availableSchemaForKeys = append(availableSchemaForKeys, tableNodes[table].Schema()...)
-		indexes := joinIndexes[table]
-
-		// If this table is part of a left or a right join, assert that tables are in the correct order. No table
-		// referenced in the join condition can precede this one in that case.
-		for _, idx := range indexes {
-			if (idx.joinType == plan.JoinTypeLeft && idx.joinPosition == plan.JoinTypeLeft) ||
-				(idx.joinType == plan.JoinTypeRight && idx.joinPosition == plan.JoinTypeRight) {
-				for j := 0; j < i; j++ {
-					otherTable := tables[accessOrder[j]]
-					if colsIncludeTable(idx.comparandCols, otherTable) {
-						return math.MaxInt64, nil
-					}
-				}
-			}
-		}
-
-		tableNode := tableNodes[table]
-		_, isSubquery := tableNode.(*plan.SubqueryAlias)
-		if i == 0 || isSubquery || indexes.getUsableIndex(availableSchemaForKeys) == nil {
-			rt := getResolvedTable(tableNode)
-			// TODO: also consider indexes which could be pushed down to this table, if it's the first one
-			if st, ok := rt.Table.(sql.StatisticsTable); ok {
-				numRows, err := st.NumRows(ctx)
-				if err != nil {
-					return 0, err
-				}
-				cost *= numRows
-			} else {
-				cost *= 1000
-			}
-		} else {
-			// TODO: estimate number of rows from index lookup based on cardinality
-			cost += 1
-		}
-	}
-
-	return cost, nil
-}
-
-// colsIncludeTable returns whether the columns given contain the table given
-func colsIncludeTable(cols []*expression.GetField, table string) bool {
-	for _, col := range cols {
-		if strings.ToLower(col.Table()) == table {
-			return true
-		}
-	}
-	return false
 }
 
 // Generates all permutations of the slice given.
@@ -182,32 +58,6 @@ func permutations(a []int) (res [][]int) {
 	}
 	helper(0)
 	return res
-}
-
-// visitJoinSearchNodes visits every possible joinSearchNode where the
-// in-order leaves are given by |tables|. If the callback returns
-// |false|, visits stop.
-func visitJoinSearchNodes(tables []string, cb func(n *joinSearchNode) bool) {
-	if len(tables) == 0 {
-		return
-	}
-	if len(tables) == 1 {
-		cb(&joinSearchNode{table: tables[0]})
-		return
-	}
-	var stop bool
-	for i := 1; i < len(tables) && !stop; i++ {
-		visitJoinSearchNodes(tables[:i], func(l *joinSearchNode) bool {
-			visitJoinSearchNodes(tables[i:len(tables)], func(r *joinSearchNode) bool {
-				if !cb(&joinSearchNode{left: l, right: r}) {
-					stop = true
-					return false
-				}
-				return true
-			})
-			return !stop
-		})
-	}
 }
 
 // assignConditions attempts to assign the conditions in |conditions|
@@ -263,6 +113,293 @@ func assignConditions(root *joinSearchNode, conditions []*joinCond) {
 		}
 		return true
 	})
+}
+
+// joinOrderNode is a node used to search for and construct the
+// IndexedJoin tree. A joinOrderNode is either: (1) A NameableNode,
+// with node != nil, (2) A list of commutable joinOrderNodes, in
+// `commutes`, or (3) A `left` and `right` child joinOrderNode. The
+// constructed tree must have every node with `left` and `right`
+// preserving their child relationships, but can order the `commutes`
+// lists in order to achieve the best performance.
+type joinOrderNode struct {
+	commutes []joinOrderNode
+	node     NameableNode
+	left     *joinOrderNode
+	right    *joinOrderNode
+	order    []int
+	cost     uint64
+}
+
+func (jo *joinOrderNode) String() string {
+	if jo.node != nil {
+		return "Node(" + jo.node.Name() + ")"
+	} else if jo.left != nil {
+		return "Ordered(Left: " + jo.left.String() + ", " + jo.right.String() + ")"
+	} else {
+		res := "Commutes(["
+		for i, jo := range jo.commutes {
+			if i != 0 {
+				res += ", "
+			}
+			res += jo.String()
+		}
+		res += "], order: ["
+		for i, o := range jo.order {
+			if i != 0 {
+				res += ", "
+			}
+			res += strconv.Itoa(o)
+		}
+		res += "])"
+		return res
+	}
+}
+
+// applyJoinHint will set the `jo.order` fields of the root node and
+// the internal nodes of the joinOrderNode to the order in the
+// provided `hint`, presuming that order to valid. If it is not valid,
+// `jo.order` remains `nil`.
+func (jo *joinOrderNode) applyJoinHint(hint QueryHint) error {
+	switch hint := hint.(type) {
+	case JoinOrder:
+		remaining, err := jo.applyJoinHintTables(hint.tables)
+		if len(remaining) != 0 {
+			jo.order = nil
+		}
+		return err
+	default:
+		panic("unrecognized hint type")
+	}
+}
+
+// applyJoinHintTables takes the tables in `tables` and sets the
+// correct indexes in `jo.order` so that that join order is used when
+// constructing the join tree. It works by repeatedly finding the next
+// unassigned `commutes` index which matches the front of the `tables`
+// list, assigning those tables to that node, and continuing the
+// search on the remaining `commutes` indexes. If if cannot make a
+// valid assignment given the list, returns `nil, nil`. If it
+// does make a successful assignment, returns the remaining list of
+// tables that have not been assigned.
+func (jo *joinOrderNode) applyJoinHintTables(tables []string) ([]string, error) {
+	if len(tables) == 0 {
+		return nil, nil
+	}
+	if jo.node != nil {
+		if strings.ToLower(jo.node.Name()) == strings.ToLower(tables[0]) {
+			return tables[1:], nil
+		} else {
+			return nil, nil
+		}
+	}
+	if jo.left != nil {
+		remaining, err := jo.left.applyJoinHintTables(tables)
+		if err != nil {
+			return nil, err
+		}
+		if remaining == nil {
+			return nil, nil
+		}
+		return jo.right.applyJoinHintTables(remaining)
+	}
+	assigned := make(map[int]struct{})
+	order := []int{}
+	remaining := tables
+START:	for {
+		var i int
+		for i = range jo.commutes {
+			if _, ok := assigned[i]; ok {
+				continue
+			}
+			newRemaining, err := jo.commutes[i].applyJoinHintTables(remaining)
+			if err != nil {
+				return nil, err
+			}
+			if newRemaining != nil {
+				remaining = newRemaining
+				assigned[i] = struct{}{}
+				order = append(order, i)
+				if len(assigned) == len(jo.commutes) {
+					jo.order = order
+					return remaining, nil
+				}
+				continue START
+			}
+		}
+		// If we didn't assign the front of the `remaining`
+		// list on that loop through, then we can't apply this
+		// hint to this joinOrderNode.
+		return nil, nil
+	}
+}
+
+// tableNames returns lowercase table names of an in-order traversal of
+// the `node` leaves in this `joinOrderNode`. The traversal obeys
+// `jo.order` and requires it to be populated.
+func (jo *joinOrderNode) tableNames() []string {
+	if jo.node != nil {
+		return []string{strings.ToLower(jo.node.Name())}
+	} else if jo.left != nil {
+		return append(jo.left.tableNames(), jo.right.tableNames()...)
+	} else {
+		var res []string
+		for _, i := range jo.order {
+			res = append(res, jo.commutes[i].tableNames()...)
+		}
+		return res
+	}
+}
+
+// tables returns an ordered slice of NameableNodes of the leaves in
+// this `joinOrderNode`.
+func (jo *joinOrderNode) tables() []NameableNode {
+	if jo.node != nil {
+		return []NameableNode{jo.node}
+	} else if jo.left != nil {
+		return append(jo.left.tables(), jo.right.tables()...)
+	} else {
+		var res []NameableNode
+		for _, i := range jo.order {
+			res = append(res, jo.commutes[i].tables()...)
+		}
+		return res
+	}
+}
+
+// estimateCost sets `jo.cost` and `jo.order` for this
+// `joinOrderNode`, taking into account the cost of its children and
+// attempting to find the lowest cost assignment by varying
+// `jo.order` for commutable nodes.
+func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesByTable) error {
+	if jo.node != nil {
+		rt := getResolvedTable(jo.node)
+		// TODO: also consider indexes which could be pushed down to this table, if it's the first one
+		if st, ok := rt.Table.(sql.StatisticsTable); ok {
+			numRows, err := st.NumRows(ctx)
+			if err != nil {
+				return err
+			}
+			jo.cost = numRows
+		} else {
+			jo.cost = uint64(1000)
+		}
+	} else if jo.left != nil {
+		err := jo.left.estimateCost(ctx, joinIndexes)
+		if err != nil {
+			return err
+		}
+		err = jo.right.estimateCost(ctx, joinIndexes)
+		if err != nil {
+			return err
+		}
+		jo.cost = jo.left.cost * jo.right.cost
+	} else {
+		for i := range jo.commutes {
+			err := jo.commutes[i].estimateCost(ctx, joinIndexes)
+			if err != nil {
+				return err
+			}
+		}
+		indexes := make([]int, len(jo.commutes))
+		for i := range jo.commutes {
+			indexes[i] = i
+		}
+		lowestCost := uint64(math.MaxUint64)
+		accessOrders := permutations(indexes)
+		lowestCostIdx := 0
+		for i, accessOrder := range accessOrders {
+			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost)
+			if err != nil {
+				return err
+			}
+			if cost < lowestCost {
+				lowestCost = cost
+				lowestCostIdx = i
+			}
+		}
+		jo.order = accessOrders[lowestCostIdx]
+		jo.cost = lowestCost
+	}
+	return nil
+}
+
+func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64) (uint64, error) {
+	cost := uint64(1)
+	var availableSchemaForKeys sql.Schema
+	for i, idx := range accessOrder {
+		if cost >= lowestCost {
+			return cost, nil
+		}
+		availableSchemaForKeys = append(availableSchemaForKeys, jo.commutes[idx].schema()...)
+		if jo.commutes[idx].node != nil {
+			indexes := joinIndexes[strings.ToLower(jo.commutes[idx].node.Name())]
+			_, isSubquery := jo.commutes[idx].node.(*plan.SubqueryAlias)
+			if i == 0 || isSubquery || indexes.getUsableIndex(availableSchemaForKeys) == nil {
+				cost *= jo.commutes[idx].cost
+			} else {
+				cost += 1
+			}
+		} else {
+			cost *= jo.commutes[idx].cost
+		}
+	}
+	return cost, nil
+}
+
+func (jo *joinOrderNode) schema() sql.Schema {
+	if jo.node != nil {
+		return jo.node.Schema()
+	} else if jo.left != nil {
+		return append(jo.left.schema(), jo.right.schema()...)
+	} else {
+		var res sql.Schema
+		for i := range jo.order {
+			res = append(res, jo.commutes[jo.order[i]].schema()...)
+		}
+		return res
+	}
+}
+
+func (jo *joinOrderNode) visitJoinSearchNodes(cb func(n *joinSearchNode) bool) {
+	if jo.node != nil {
+		cb(&joinSearchNode{table: jo.node.Name()})
+	} else if jo.left != nil {
+		stop := false
+		jo.left.visitJoinSearchNodes(func(l *joinSearchNode) bool {
+			jo.right.visitJoinSearchNodes(func (r *joinSearchNode) bool {
+				if !cb(&joinSearchNode{left: l, right: r}) {
+					stop = true
+				}
+				return !stop
+			})
+			return !stop
+		})
+	} else {
+		visitCommutableJoinSearchNodes(jo.order, jo.commutes, cb)
+	}
+}
+
+func visitCommutableJoinSearchNodes(indexes []int, nodes []joinOrderNode, cb func(n *joinSearchNode) bool) {
+	if len(indexes) == 0 {
+		return
+	}
+	if len(indexes) == 1 {
+		nodes[indexes[0]].visitJoinSearchNodes(cb)
+		return
+	}
+	stop := false
+	for i := 1; i < len(indexes) && !stop; i++ {
+		visitCommutableJoinSearchNodes(indexes[:i], nodes, func(l *joinSearchNode) bool {
+			visitCommutableJoinSearchNodes(indexes[i:], nodes, func(r *joinSearchNode) bool {
+				if !cb(&joinSearchNode{left: l, right: r}) {
+					stop = true
+				}
+				return !stop
+			})
+			return !stop
+		})
+	}
 }
 
 // A joinSearchNode is a simplified type representing a join tree node, which is either an internal node (a join) or a

@@ -1243,12 +1243,7 @@ func TestPushdownIndex(t *testing.T) {
 							),
 						),
 						plan.NewTableAlias("t2",
-							plan.NewStaticIndexedTableAccess(
-								plan.NewResolvedTable(table2, nil, nil),
-								mustIndexLookup(idxTable2I2.Get(21)),
-								idxTable2I2,
-								[]sql.Expression{gfCol(0, mytable2I)},
-							),
+							plan.NewResolvedTable(table2, nil, nil),
 						),
 					),
 					plan.JoinTypeInner,
