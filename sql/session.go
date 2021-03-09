@@ -270,7 +270,7 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"character_set_results":    TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"collation_connection":     TypedValue{LongText, Collation_Default.String()},
 		"tmpdir":                   TypedValue{LongText, GetTmpdirSessionVar()},
-		"local_infile":             TypedValue{Int8, 0},
+		"local_infile":             TypedValue{Int8, int8(0)},
 		"secure_file_priv":         TypedValue{LongText, nil},
 	}
 }
