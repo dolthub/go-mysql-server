@@ -365,6 +365,10 @@ func TestColumnDefaults(t *testing.T) {
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestJsonScripts(t *testing.T) {
+	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
