@@ -73,7 +73,7 @@ func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 type CommonTableExpression struct {
 	Subquery *SubqueryAlias
-	Columns []string
+	Columns  []string
 }
 
 func NewCommonTableExpression(subquery *SubqueryAlias, columns []string) *CommonTableExpression {
@@ -96,4 +96,3 @@ func (e *CommonTableExpression) DebugString() string {
 	}
 	return fmt.Sprintf("%s AS %s", e.Subquery.name, e)
 }
-

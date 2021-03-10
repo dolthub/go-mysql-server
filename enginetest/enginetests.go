@@ -468,7 +468,7 @@ func TestLoadData(t *testing.T, harness Harness) {
 
 func TestLoadDataErrors(t *testing.T, harness Harness) {
 	for _, script := range LoadDataErrorScripts {
-			TestScript(t, harness, script)
+		TestScript(t, harness, script)
 	}
 }
 

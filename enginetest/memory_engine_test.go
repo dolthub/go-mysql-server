@@ -88,7 +88,7 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
 	var test enginetest.QueryTest
-	test = enginetest.QueryTest	{
+	test = enginetest.QueryTest{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, 
 				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1) 

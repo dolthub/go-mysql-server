@@ -15,14 +15,13 @@
 package function
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
-)
 
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 // ErrUnsupportedJSONFunction is returned when a unsupported JSON function is called.
 var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
-
 
 // JSON_CONTAINS_PATH(json_doc, one_or_all, path[, path] ...)
 //
@@ -53,7 +52,6 @@ func (j JSONContainsPath) FunctionName() string {
 	return "json_contains_path"
 }
 
-
 // JSON_KEYS(json_doc[, path])
 //
 // JSONKeys Returns the keys from the top-level value of a JSON object as a JSON array, or, if a path argument is given,
@@ -79,7 +77,6 @@ func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONKeys) FunctionName() string {
 	return "json_keys"
 }
-
 
 // JSON_OVERLAPS(json_doc1, json_doc2)
 //
@@ -109,7 +106,6 @@ func NewJSONOverlaps(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONOverlaps) FunctionName() string {
 	return "json_overlaps"
 }
-
 
 // JSON_SEARCH(json_doc, one_or_all, search_str[, escape_char[, path] ...])
 //
@@ -152,7 +148,6 @@ func (j JSONSearch) FunctionName() string {
 	return "json_search"
 }
 
-
 // JSON_VALUE(json_doc, path)
 //
 // JSONValue Extracts a value from a JSON document at the path given in the specified document, and returns the
@@ -175,7 +170,6 @@ func (j JSONValue) FunctionName() string {
 	return "json_value"
 }
 
-
 // value MEMBER OF(json_array)
 //
 // Returns true (1) if value is an element of json_array, otherwise returns false (0). value must be a scalar or a JSON
@@ -185,7 +179,6 @@ func (j JSONValue) FunctionName() string {
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#operator_member-of
 // TODO(andy): relocate
-
 
 // JSON_ARRAY([val[, val] ...])
 //
@@ -208,7 +201,6 @@ func (j JSONArray) FunctionName() string {
 	return "json_array"
 }
 
-
 // JSON_OBJECT([key, val[, key, val] ...])
 //
 // JSONObject Evaluates a (possibly empty) list of key-value pairs and returns a JSON object containing those pairs. An
@@ -230,7 +222,6 @@ func NewJSONObject(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONObject) FunctionName() string {
 	return "json_object"
 }
-
 
 // JSON_QUOTE(string)
 //
@@ -258,7 +249,6 @@ func (j JSONQuote) FunctionName() string {
 	return "json_quote"
 }
 
-
 // JSON_ARRAY_APPEND(json_doc, path, val[, path, val] ...)
 //
 // JSONArrayAppend Appends values to the end of the indicated arrays within a JSON document and returns the result.
@@ -284,7 +274,6 @@ func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONArrayAppend) FunctionName() string {
 	return "json_array_append"
 }
-
 
 // JSON_ARRAY_INSERT(json_doc, path, val[, path, val] ...)
 //
@@ -313,7 +302,6 @@ func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONArrayInsert) FunctionName() string {
 	return "json_array_insert"
 }
-
 
 // JSON_INSERT(json_doc, path, val[, path, val] ...)
 //
@@ -344,7 +332,6 @@ func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONInsert) FunctionName() string {
 	return "json_insert"
 }
-
 
 // JSON_MERGE_PATCH(json_doc, json_doc[, json_doc] ...)
 //
@@ -387,7 +374,6 @@ func (j JSONMergePatch) FunctionName() string {
 	return "json_merge_patch"
 }
 
-
 // JSON_MERGE(json_doc, json_doc[, json_doc] ...)
 //
 // JSONMerge Merges two or more JSON documents. Synonym for JSONMergePreserve(); deprecated in MySQL 8.0.3 and subject
@@ -397,7 +383,6 @@ func (j JSONMergePatch) FunctionName() string {
 type JSONMerge struct {
 	sql.Expression
 }
-
 
 // JSON_MERGE_PRESERVE(json_doc, json_doc[, json_doc] ...)
 //
@@ -436,7 +421,6 @@ func (j JSONMergePreserve) FunctionName() string {
 	return "json_merge_preserve"
 }
 
-
 // JSON_REMOVE(json_doc, path[, path] ...)
 //
 // JSONRemove Removes data from a JSON document and returns the result. Returns NULL if any argument is NULL. An error
@@ -461,7 +445,6 @@ func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONRemove) FunctionName() string {
 	return "json_remove"
 }
-
 
 // JSON_REPLACE(json_doc, path, val[, path, val] ...)
 //
@@ -488,7 +471,6 @@ func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONReplace) FunctionName() string {
 	return "json_replace"
 }
-
 
 // JSON_SET(json_doc, path, val[, path, val] ...)
 //
@@ -521,7 +503,6 @@ func (j JSONSet) FunctionName() string {
 	return "json_set"
 }
 
-
 // JSON_DEPTH(json_doc)
 //
 // JSONDepth Returns the maximum depth of a JSON document. Returns NULL if the argument is NULL. An error occurs if the
@@ -545,7 +526,6 @@ func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONDepth) FunctionName() string {
 	return "json_depth"
 }
-
 
 // JSON_LENGTH(json_doc[, path])
 //
@@ -575,7 +555,6 @@ func (j JSONLength) FunctionName() string {
 	return "json_length"
 }
 
-
 // JSON_TYPE(json_val)
 //
 // Returns a utf8mb4 string indicating the type of a JSON value. This can be an object, an array, or a scalar type.
@@ -598,7 +577,6 @@ func (j JSONType) FunctionName() string {
 	return "json_type"
 }
 
-
 // JSON_VALID(val)
 //
 // Returns 0 or 1 to indicate whether a value is valid JSON. Returns NULL if the argument is NULL.
@@ -619,7 +597,6 @@ func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONValid) FunctionName() string {
 	return "json_valid"
 }
-
 
 // JSON_TABLE(expr, path COLUMNS (column_list) [AS] alias)
 //
@@ -643,7 +620,6 @@ func (j JSONTable) FunctionName() string {
 	return "json_table"
 }
 
-
 // JSON_SCHEMA_VALID(schema,document)
 //
 // JSONSchemaValid Validates a JSON document against a JSON schema. Both schema and document are required. The schema
@@ -665,8 +641,6 @@ func NewJSONSchemaValid(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONSchemaValid) FunctionName() string {
 	return "json_schema_valid"
 }
-
-
 
 // JSON_SCHEMA_VALIDATION_REPORT(schema,document)
 //
@@ -702,8 +676,6 @@ func (j JSONSchemaValidationReport) FunctionName() string {
 	return "json_schema_validation_report"
 }
 
-
-
 // JSON_PRETTY(json_val)
 //
 // JSONPretty Provides pretty-printing of JSON values similar to that implemented in PHP and by other languages and
@@ -737,8 +709,6 @@ func (j JSONPretty) FunctionName() string {
 	return "json_pretty"
 }
 
-
-
 // JSON_STORAGE_FREE(json_val)
 //
 // JSONStorageFree For a JSON column value, this function shows how much storage space was freed in its binary
@@ -767,7 +737,6 @@ func NewJSONStorageFree(args ...sql.Expression) (sql.Expression, error) {
 func (j JSONStorageFree) FunctionName() string {
 	return "json_storage_free"
 }
-
 
 // JSON_STORAGE_SIZE(json_val)
 //

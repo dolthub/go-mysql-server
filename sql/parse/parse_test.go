@@ -2231,19 +2231,19 @@ var fixtures = map[string]sql.Node{
 				expression.NewStar(),
 			},
 			plan.NewUnresolvedTable("cte1", "")),
-			[]*plan.CommonTableExpression{
-				plan.NewCommonTableExpression(
-					plan.NewSubqueryAlias("cte1", "select a from b",
-						plan.NewProject(
-							[]sql.Expression{
-								expression.NewUnresolvedColumn("a"),
-							},
-							plan.NewUnresolvedTable("b", ""),
-							),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select a from b",
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewUnresolvedTable("b", ""),
 					),
-					[]string{},
 				),
-			},
+				[]string{},
+			),
+		},
 	),
 	`with cte1 as (select a from b), cte2 as (select c from d) select * from cte1`: plan.NewWith(
 		plan.NewProject(
@@ -2333,10 +2333,10 @@ var fixtures = map[string]sql.Node{
 						},
 					),
 					"with cte2 as (select c from d) select e from cte2",
-					),
+				),
 			},
 			plan.NewUnresolvedTable("cte1", ""),
-			),
+		),
 		[]*plan.CommonTableExpression{
 			plan.NewCommonTableExpression(
 				plan.NewSubqueryAlias("cte1", "select a from b",
