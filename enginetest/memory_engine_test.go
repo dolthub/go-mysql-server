@@ -232,6 +232,18 @@ func TestInsertIntoErrors(t *testing.T) {
 	enginetest.TestInsertIntoErrors(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestLoadData(t *testing.T) {
+	enginetest.TestLoadData(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestLoadDataErrors(t *testing.T) {
+	enginetest.TestLoadDataErrors(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestLoadDataFailing(t *testing.T) {
+	enginetest.TestLoadDataFailing(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestReplaceInto(t *testing.T) {
 	enginetest.TestReplaceInto(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -354,6 +366,10 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 
 func TestColumnDefaults(t *testing.T) {
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestJsonScripts(t *testing.T) {
+	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

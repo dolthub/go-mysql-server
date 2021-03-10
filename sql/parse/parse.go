@@ -194,6 +194,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDelete(ctx, n)
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
+	case *sqlparser.Load:
+		return convertLoad(ctx, n)
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	}
@@ -1282,6 +1284,29 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	return plan.NewUpdate(node, updateExprs), nil
 }
 
+func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
+	unresolvedTable := tableNameToUnresolvedTable(d.Table)
+
+	var ignoreNumVal int64 = 0
+	var err error
+	if d.IgnoreNum != nil {
+		ignoreNumVal, err = getInt64Value(ctx, d.IgnoreNum, "Cannot parse ignore Value")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
+
+	return plan.NewInsertInto(
+		tableNameToUnresolvedTable(d.Table),
+		ld,
+		false,
+		ld.ColumnNames,
+		nil,
+	), nil
+}
+
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
 	err := validateIndexes(tableSpec)
@@ -2300,6 +2325,10 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		}
 
 		return expression.NewArithmetic(l, r, be.Operator), nil
+	case
+		sqlparser.JSONExtractOp,
+		sqlparser.JSONUnquoteExtractOp:
+		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
 
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)

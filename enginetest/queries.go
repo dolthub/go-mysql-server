@@ -1968,6 +1968,9 @@ var QueryTests = []QueryTest{
 			{"character_set_connection", sql.Collation_Default.CharacterSet().String()},
 			{"character_set_results", sql.Collation_Default.CharacterSet().String()},
 			{"collation_connection", sql.Collation_Default.String()},
+			{"tmpdir", sql.GetTmpdirSessionVar()},
+			{"local_infile", int8(0)},
+			{"secure_file_priv", nil},
 		},
 	},
 	{
@@ -4179,6 +4182,87 @@ var BrokenQueries = []QueryTest{
 			{nil, nil, 5},
 			{nil, nil, 6},
 		},
+	},
+	{
+		Query: "SELECT json_array() FROM dual;",
+	},
+	{
+		Query: "SELECT json_array_append() FROM dual;",
+	},
+	{
+		Query: "SELECT json_array_insert() FROM dual;",
+	},
+	{
+		Query: "SELECT json_contains() FROM dual;",
+	},
+	{
+		Query: "SELECT json_contains_path() FROM dual;",
+	},
+	{
+		Query: "SELECT json_depth() FROM dual;",
+	},
+	{
+		Query: "SELECT json_insert() FROM dual;",
+	},
+	{
+		Query: "SELECT json_keys() FROM dual;",
+	},
+	{
+		Query: "SELECT json_length() FROM dual;",
+	},
+	{
+		Query: "SELECT json_merge_patch() FROM dual;",
+	},
+	{
+		Query: "SELECT json_merge_preserve() FROM dual;",
+	},
+	{
+		Query: "SELECT json_object() FROM dual;",
+	},
+	{
+		Query: "SELECT json_overlaps() FROM dual;",
+	},
+	{
+		Query: "SELECT json_pretty() FROM dual;",
+	},
+	{
+		Query: "SELECT json_quote() FROM dual;",
+	},
+	{
+		Query: "SELECT json_remove() FROM dual;",
+	},
+	{
+		Query: "SELECT json_replace() FROM dual;",
+	},
+	{
+		Query: "SELECT json_schema_valid() FROM dual;",
+	},
+	{
+		Query: "SELECT json_schema_validation_report() FROM dual;",
+	},
+	{
+		Query: "SELECT json_set() FROM dual;",
+	},
+	{
+		Query: "SELECT json_search() FROM dual;",
+	},
+	{
+		Query: "SELECT json_storage_free() FROM dual;",
+	},
+	{
+		Query: "SELECT json_storage_size() FROM dual;",
+	},
+	{
+		Query: "SELECT json_type() FROM dual;",
+	},
+	{
+		Query: "SELECT json_table() FROM dual;",
+	},
+	{
+		Query: "SELECT json_valid() FROM dual;",
+	},
+	{
+		Query: "SELECT json_value() FROM dual;",
 	},
 }
 
