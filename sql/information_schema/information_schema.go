@@ -377,10 +377,10 @@ var userPrivilegesSchema = Schema{
 	{Name: "is_grantable", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
 }
 
-var CharacterSetSchema = Schema{
+var characterSetSchema = Schema{
 	{Name: "character_set_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
-	{Name: "description", Type:  MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: CharacterSetsTableName},
 	{Name: "default_collate_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "description", Type:  MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: CharacterSetsTableName},
 	{Name: "maxlen", Type: Uint8, Default: nil, Nullable: false, Source: CharacterSetsTableName},
 }
 
@@ -552,8 +552,8 @@ func CharsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	for _, c := range CharsetToMySQLVals {
 		rows = append(rows, Row{
 			c.String(),
-			c.Description(),
 			c.DefaultCollation().String(),
+			c.Description(),
 			c.MaxLength(),
 		})
 	}
@@ -695,7 +695,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 			},
 			CharacterSetsTableName: &informationSchemaTable{
 				name:    CharacterSetsTableName,
-				schema:  CharacterSetSchema,
+				schema:  characterSetSchema,
 				catalog: cat,
 				rowIter: CharsetRowIter,
 			},

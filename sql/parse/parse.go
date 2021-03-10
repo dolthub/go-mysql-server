@@ -502,7 +502,28 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return infoSchemaSelect, nil
 	case sqlparser.KeywordString(sqlparser.CHARSET):
-		return plan.NewShowCharset(""), nil
+		var filter sql.Expression
+
+		if s.ProcFuncFilter != nil {
+			if s.ProcFuncFilter.Filter != nil {
+				var err error
+				filter, err = exprToExpression(ctx, s.ProcFuncFilter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.ProcFuncFilter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn( "character_set_name"),
+					expression.NewLiteral(s.ProcFuncFilter.Like, sql.LongText),
+				)
+			}
+		}
+
+		var node sql.Node = plan.NewShowCharset("")
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
 	case sqlparser.KeywordString(sqlparser.STATUS):
 		return plan.NewShowStatus(""), nil
 	case sqlparser.KeywordString(sqlparser.ENGINES):

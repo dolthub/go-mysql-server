@@ -244,7 +244,7 @@ const (
 	Collation_utf32_croatian_ci           Collation = "utf32_croatian_ci"
 	Collation_utf32_unicode_520_ci        Collation = "utf32_unicode_520_ci"
 	Collation_utf32_vietnamese_ci         Collation = "utf32_vietnamese_ci"
-	Collation_utf8_general_ci             Collation = "utf8"
+	Collation_utf8_general_ci             Collation = "utf8_general_ci"
 	Collation_utf8_tolower_ci                       = Collation_utf8mb3_tolower_ci
 	Collation_utf8_bin                              = Collation_utf8mb3_bin
 	Collation_utf8_unicode_ci                       = Collation_utf8mb3_unicode_ci

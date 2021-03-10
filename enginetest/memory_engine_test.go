@@ -85,8 +85,6 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
-
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
 		Query: `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,

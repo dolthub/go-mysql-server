@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 type ShowCharset struct {
@@ -54,14 +55,48 @@ func (sc *ShowCharset) String() string {
 	return fmt.Sprintf("SHOW CHARSET%s", like)
 }
 
+// Note how this Schema differs in order from the information_schema.character_sets table.
 func (sc *ShowCharset) Schema() sql.Schema {
-	return sc.CharacterSetTable.Schema()
+	return sql.Schema{
+		{Name: "Charset", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Description", Type:  sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: "Default collation", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
+		{Name: "Maxlen", Type: sql.Uint8, Default: nil, Nullable: false},
+	}
 }
 
 func (sc *ShowCharset) Children() []sql.Node { return nil }
 
 func (sc *ShowCharset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return sc.CharacterSetTable.RowIter(ctx, row)
+	ri, err := sc.CharacterSetTable.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return &showCharsetIter{originalIter: ri}, nil
+}
+
+type showCharsetIter struct {
+	originalIter sql.RowIter
+}
+
+func (sci *showCharsetIter) Next() (sql.Row, error){
+	row, err := sci.originalIter.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	// switch the ordering (see notes on Schema())
+	defaultCollationName := row[1]
+
+	row[1] = row[2]
+	row[2] = defaultCollationName
+
+	return row, nil
+}
+
+func (sci *showCharsetIter) Close(ctx *sql.Context) error {
+	return sci.originalIter.Close(ctx)
 }
 
 
