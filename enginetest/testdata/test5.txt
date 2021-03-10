@@ -1,0 +1,8 @@
+# This test cases runs through a series of ESCAPE BY tests. Last one fails. (use IGNORE 1 in your queries)
+"hi"
+"\hello"
+"\N"
+"Try\\N"
+"\Z"
+"\0"
+"new\ns"

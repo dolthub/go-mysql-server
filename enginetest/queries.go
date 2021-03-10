@@ -152,7 +152,142 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT a.s,b.i FROM mt a join mt b on a.i = b.i order by 2;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i, s from mt1)
+			SELECT mt1.i, concat(mt2.s, '!') FROM mt1 join mt2 on mt1.i = mt2.i + 1 order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable order by i limit 2), mt2 as (select i, s from mt1)
+			SELECT mt1.i, concat(mt2.s, '!') FROM mt1 join mt2 on mt1.i = mt2.i + 1 order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1 as i, concat(s, '!') as s from mt1)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1 as i, concat(s, '!') as s from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 (i,s) as (select i+1, concat(s, '!') from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select concat(s, '!') as s, i+1 as i from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i,s FROM mytable) SELECT s,i FROM mt;",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i+1, concat(s,'!') FROM mytable) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+			{4, "third row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i+1 as x, concat(s,'!') as y FROM mytable) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+			{4, "third row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i+1, concat(s,'!') FROM mytable order by 1 limit 1) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{2, "first row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select char_length(s), sum(i) FROM mytable group by 1) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{9, 4.0},
+			{10, 2.0},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i, row_number() over (order by i desc) FROM mytable) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, (select s from mt1 where i = mtouter.i+1) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
+		Expected: []sql.Row{
+			{2, "third row"},
+			{3, nil},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, 
+				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1) 
+			FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
+		Expected: []sql.Row{
+			{2, "third row"},
+			{3, nil},
+		},
 	},
 	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
@@ -1833,6 +1968,9 @@ var QueryTests = []QueryTest{
 			{"character_set_connection", sql.Collation_Default.CharacterSet().String()},
 			{"character_set_results", sql.Collation_Default.CharacterSet().String()},
 			{"collation_connection", sql.Collation_Default.String()},
+			{"tmpdir", sql.GetTmpdirSessionVar()},
+			{"local_infile", int8(0)},
+			{"secure_file_priv", nil},
 		},
 	},
 	{
@@ -4042,6 +4180,87 @@ var BrokenQueries = []QueryTest{
 			{1, 1, 4},
 		},
 	},
+	{
+		Query: "SELECT json_array() FROM dual;",
+	},
+	{
+		Query: "SELECT json_array_append() FROM dual;",
+	},
+	{
+		Query: "SELECT json_array_insert() FROM dual;",
+	},
+	{
+		Query: "SELECT json_contains() FROM dual;",
+	},
+	{
+		Query: "SELECT json_contains_path() FROM dual;",
+	},
+	{
+		Query: "SELECT json_depth() FROM dual;",
+	},
+	{
+		Query: "SELECT json_insert() FROM dual;",
+	},
+	{
+		Query: "SELECT json_keys() FROM dual;",
+	},
+	{
+		Query: "SELECT json_length() FROM dual;",
+	},
+	{
+		Query: "SELECT json_merge_patch() FROM dual;",
+	},
+	{
+		Query: "SELECT json_merge_preserve() FROM dual;",
+	},
+	{
+		Query: "SELECT json_object() FROM dual;",
+	},
+	{
+		Query: "SELECT json_overlaps() FROM dual;",
+	},
+	{
+		Query: "SELECT json_pretty() FROM dual;",
+	},
+	{
+		Query: "SELECT json_quote() FROM dual;",
+	},
+	{
+		Query: "SELECT json_remove() FROM dual;",
+	},
+	{
+		Query: "SELECT json_replace() FROM dual;",
+	},
+	{
+		Query: "SELECT json_schema_valid() FROM dual;",
+	},
+	{
+		Query: "SELECT json_schema_validation_report() FROM dual;",
+	},
+	{
+		Query: "SELECT json_set() FROM dual;",
+	},
+	{
+		Query: "SELECT json_search() FROM dual;",
+	},
+	{
+		Query: "SELECT json_storage_free() FROM dual;",
+	},
+	{
+		Query: "SELECT json_storage_size() FROM dual;",
+	},
+	{
+		Query: "SELECT json_type() FROM dual;",
+	},
+	{
+		Query: "SELECT json_table() FROM dual;",
+	},
+	{
+		Query: "SELECT json_valid() FROM dual;",
+	},
+	{
+		Query: "SELECT json_value() FROM dual;",
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -4614,6 +4833,53 @@ var errorQueries = []QueryErrorTest{
 		Query:       "SELECT pk FROM one_pk WHERE pk > :pk",
 		ExpectedErr: sql.ErrUnboundPreparedStatementVariable,
 	},
+	{
+		Query:       "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query: `WITH mt1 (x,y) as (select i,s FROM mytable)
+			SELECT mt1.i, mt1.s FROM mt1`,
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query: `WITH mt1 (x,y) as (select i,s FROM mytable)
+			SELECT i, s FROM mt1`,
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query: `WITH mt1 (x,y,z) as (select i,s FROM mytable)
+			SELECT i, s FROM mt1`,
+		ExpectedErr: sql.ErrColumnCountMismatch,
+	},
+	// TODO: this results in a stack overflow, need to check for this
+	// {
+	// 	Query: `WITH mt1 as (select i,s FROM mt2), mt2 as (select i,s from mt1)
+	// 		SELECT i, s FROM mt1`,
+	// 	ExpectedErr: sql.ErrColumnCountMismatch,
+	// },
+	// TODO: related to the above issue, CTEs are only allowed to mentioned previously defined CTEs (to prevent cycles).
+	//  This query works, but shouldn't
+	// {
+	// 	Query: `WITH mt1 as (select i,s FROM mt2), mt2 as (select i,s from mytable)
+	// 		SELECT i, s FROM mt1`,
+	// 	ExpectedErr: sql.ErrColumnCountMismatch,
+	// },
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1, concat(s, '!') from mytable)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i;`,
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	// TODO: this should be an error, as every table alias (including subquery aliases) must be unique
+	// {
+	// 	Query: "SELECT s,i FROM (select i,s FROM mytable) mt join (select i,s FROM mytable) mt;",
+	// 	ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	// },
+	// TODO: this should be an error, as every table alias must be unique.
+	// {
+	// 	Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt join mt;",
+	// 	ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	// },
 	// TODO: Bug: the having column must appear in the select list
 	// {
 	// 	Query:       "SELECT pk1, sum(c1) FROM two_pk GROUP BY 1 having c1 > 10;",

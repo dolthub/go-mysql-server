@@ -25,8 +25,8 @@ import (
 
 type CreateProcedure struct {
 	*Procedure
-	BodyString            string
-	Db                    sql.Database
+	BodyString string
+	Db         sql.Database
 }
 
 var _ sql.Node = (*CreateProcedure)(nil)
