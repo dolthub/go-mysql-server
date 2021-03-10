@@ -22,21 +22,83 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+const maxCteDepth = 5
+
 // resolveCommonTableExpressions operates on With nodes. It replaces any matching UnresolvedTable references in the
 // tree with the subqueries defined in the CTEs.
 func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	with, ok := n.(*plan.With)
+	_, ok := n.(*plan.With)
 	if !ok {
 		return n, nil
 	}
 
-	ctes := make(map[string]sql.Node)
-	child, err := stripWith(ctx, a, with, ctes)
+	return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node))
+}
+
+func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, ctes map[string]sql.Node) (sql.Node, error) {
+	with, ok := n.(*plan.With)
+	if ok {
+		var err error
+		n, err = stripWith(ctx, a, with, ctes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
+	n, err := plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+		sq, ok := e.(*plan.Subquery)
+		if !ok {
+			return e, nil
+		}
+
+		query, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes)
+		if err != nil {
+			return nil, err
+		}
+
+		return sq.WithQuery(query), nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return resolveCtesInNode(ctx, a, child, scope, ctes)
+	// Second pass to catch any uses of CTEs as tables, and CTEs in subqueries (caused by CTEs defined in terms of
+	// other CTEs). Because we transform bottom up, CTEs that themselves contain references to other CTEs will have to
+	// be resolved in multiple passes. For two CTEs, cte1 and cte2, where cte2 is defined in terms of cte1 it works like
+	// this: cte2 gets replaced with the Subquery alias of its definition, which contains a reference to cte1. On the
+	// second pass, that reference gets resolved to the subquery alias of cte1's definition. Then we're done.
+	// We iterate until the tree stops changing, or until we hit our limit.
+	var cur, prev sql.Node
+	cur = n
+	for i := 0; i < maxCteDepth && !nodesEqual(prev, cur); i++ {
+		prev = cur
+		cur, err = transformUpWithOpaque(prev, func(n sql.Node) (sql.Node, error) {
+			switch n := n.(type) {
+			case *plan.UnresolvedTable:
+				lowerName := strings.ToLower(n.Name())
+				if ctes[lowerName] != nil {
+					return ctes[lowerName], nil
+				}
+				return n, nil
+			case *plan.SubqueryAlias:
+				newChild, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes)
+				if err != nil {
+					return nil, err
+				}
+
+				return n.WithChildren(newChild)
+			default:
+				return n, nil
+			}
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return cur, nil
 }
 
 func unalias(p sql.Expression) sql.Expression {
@@ -109,39 +171,33 @@ func stripWith(ctx *sql.Context, a *Analyzer, n sql.Node, ctes map[string]sql.No
 	return with.Child, nil
 }
 
-func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, ctes map[string]sql.Node) (sql.Node, error) {
-	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	n, err := plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
-		sq, ok := e.(*plan.Subquery)
-		if !ok {
-			return e, nil
-		}
+// transformUpWithOpaque applies a transformation function to the given tree from the, including through opaque nodes.
+// This method is generally not safe to use for a transformation. Opaque nodes need to be considered in isolation except
+// for very specific exceptions.
+// TODO: a better way to do this might be to keep the WITH nodes around until the very end of anlysis, so that
+//  resolve_subqueries can get at this info during that stage. But we couldn't use the existing scope mechanism for
+//  that, so it's a bit of a headache.
+func transformUpWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
+	children := node.Children()
+	if len(children) == 0 {
+		return f(node)
+	}
 
-		query, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes)
+	newChildren := make([]sql.Node, len(children))
+	for i, c := range children {
+		c, err := transformUpWithOpaque(c, f)
 		if err != nil {
 			return nil, err
 		}
+		newChildren[i] = c
+	}
 
-		return sq.WithQuery(query), nil
-	})
+	node, err := node.WithChildren(newChildren...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Second pass to catch any uses of CTEs as tables
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		t, ok := n.(*plan.UnresolvedTable)
-		if !ok {
-			return n, nil
-		}
-
-		lowerName := strings.ToLower(t.Name())
-		if ctes[lowerName] != nil {
-			return ctes[lowerName], nil
-		}
-
-		return n, nil
-	})
+	return f(node)
 }
 
 // schemaLength returns the length of a node's schema without actually accessing it, useful when

@@ -88,12 +88,14 @@ func TestSingleQuery(t *testing.T) {
 	//t.Skip()
 
 	var test enginetest.QueryTest
-	test = enginetest.QueryTest{
-		Query: "WITH mt (s,i) as (select i,s FROM mytable) SELECT s,i FROM mt;",
+	test = enginetest.QueryTest	{
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, 
+				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1) 
+			FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
+			{2, "third row"},
+			{3, nil},
 		},
 	}
 	fmt.Sprintf("%v", test)

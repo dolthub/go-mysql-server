@@ -172,6 +172,29 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i, s from mt1)
+			SELECT mt1.i, concat(mt2.s, '!') FROM mt1 join mt2 on mt1.i = mt2.i + 1 order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable order by i limit 2), mt2 as (select i, s from mt1)
+			SELECT mt1.i, concat(mt2.s, '!') FROM mt1 join mt2 on mt1.i = mt2.i + 1 order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1 as i, concat(s, '!') as s from mt1)
+			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1 as i, concat(s, '!') as s from mytable)
 			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i order by 1;`,
 		Expected: []sql.Row{
@@ -204,6 +227,43 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "WITH mt (s,i) as (select i+1, concat(s,'!') FROM mytable) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+			{4, "third row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i+1 as x, concat(s,'!') as y FROM mytable) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{2, "first row!"},
+			{3, "second row!"},
+			{4, "third row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i+1, concat(s,'!') FROM mytable order by 1 limit 1) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{2, "first row!"},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select char_length(s), sum(i) FROM mytable group by 1) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{9, 4.0},
+			{10, 2.0},
+		},
+	},
+	{
+		Query: "WITH mt (s,i) as (select i, row_number() over (order by i desc) FROM mytable) SELECT s,i FROM mt order by 1",
+		Expected: []sql.Row{
+			{1, 3},
+			{2, 2},
+			{3, 1},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
@@ -214,6 +274,16 @@ var QueryTests = []QueryTest{
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where i = mtouter.i+1) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
+		Expected: []sql.Row{
+			{2, "third row"},
+			{3, nil},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, 
+				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1) 
+			FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
 			{2, "third row"},
 			{3, nil},
