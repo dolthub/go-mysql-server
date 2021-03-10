@@ -171,9 +171,9 @@ func stripWith(ctx *sql.Context, a *Analyzer, n sql.Node, ctes map[string]sql.No
 	return with.Child, nil
 }
 
-// transformUpWithOpaque applies a transformation function to the given tree from the, including through opaque nodes.
-// This method is generally not safe to use for a transformation. Opaque nodes need to be considered in isolation except
-// for very specific exceptions.
+// transformUpWithOpaque applies a transformation function to the given tree from the bottom up, including through
+// opaque nodes. This method is generally not safe to use for a transformation. Opaque nodes need to be considered in
+// isolation except for very specific exceptions.
 // TODO: a better way to do this might be to keep the WITH nodes around until the very end of anlysis, so that
 //  resolve_subqueries can get at this info during that stage. But we couldn't use the existing scope mechanism for
 //  that, so it's a bit of a headache.
@@ -200,7 +200,8 @@ func transformUpWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, er
 	return f(node)
 }
 
-// schemaLength returns the length of a node's schema without actually accessing it, useful when
+// schemaLength returns the length of a node's schema without actually accessing it. Useful when a node isn't yet
+// resolved, so Schema() could fail.
 func schemaLength(node sql.Node) int {
 	schemaLen := 0
 	plan.Inspect(node, func(node sql.Node) bool {
