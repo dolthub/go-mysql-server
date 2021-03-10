@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -24,23 +25,71 @@ import (
 
 func TestJsonCompare(t *testing.T) {
 	tests := []struct {
-		val1        interface{}
-		val2        interface{}
-		expectedCmp int
+		left  string
+		right string
+		cmp   int
 	}{
-		{nil, 0, -1},
-		{0, nil, 1},
-		{nil, nil, 0},
-		{[]byte("A"), []byte("B"), -1},
-		{[]byte("A"), []byte("A"), 0},
-		{[]byte("C"), []byte("B"), 1},
+		// type precedence hierarchy: BOOLEAN, ARRAY, OBJECT, STRING, DOUBLE, NULL
+		{`true`, `[0]`, 1},
+		{`[0]`, `{"a": 0}`, 1},
+		{`{"a": 0}`, `"a"`, 1},
+		{ `"a"`, `0`, 1},
+		{`0`, `null`, 1},
+
+		// null
+		{`null`, `0`, -1},
+		{`0`, `null`, 1},
+		{`null`, `null`, 0},
+
+		// boolean
+		{`true`, `false`, 1},
+		{`true`, `true`, 0},
+		{`false`, `false`, 0},
+
+		// strings
+		{`"A"`, `"B"`, -1},
+		{`"A"`, `"A"`, 0},
+		{`"C"`, `"B"`, 1},
+
+		// numbers
+		{`0`, `0.0`, 0},
+		{`0`, `-1`, 1},
+		{`0`, `3.14`, -1},
+
+		// arrays
+		{`[1,2]`, `[1,2]`, 0},
+		{`[1,9]`, `[1,2]`, 1},
+		{`[1,2]`, `[1,2,3]`, -1},
+
+		// objects
+		{`{"a": 0}`, `{"a": 0}`, 0},
+		// deterministic object ordering with arbitrary rules
+		{`{"a": 1}`, `{"a": 0}`, 1}, 				 // 1 > 0
+		{`{"a": 0}`, `{"a": 0, "b": 1}`, -1},		 // longer
+		{`{"a": 0, "c": 2}`, `{"a": 0, "b": 1}`, 1}, // "c" > "b"
+
+		// nested
+		{
+			left:  `{"one": ["x", "y", "z"], "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
+			right: `{"one": ["x", "y", "z"], "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
+			cmp: 0,
+		},
+		{
+			left:  `{"one": ["x", "y"],      "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
+			right: `{"one": ["x", "y", "z"], "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
+			cmp: -1,
+		},
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%v %v", test.val1, test.val2), func(t *testing.T) {
-			cmp, err := JSON.Compare(test.val1, test.val2)
+		name := fmt.Sprintf("%v_%v__%d", test.left, test.right, test.cmp)
+		t.Run(name, func(t *testing.T) {
+			cmp, err := JSON.Compare(
+				mustJSON(test.left),
+				mustJSON(test.right),
+			)
 			require.NoError(t, err)
-			assert.Equal(t, test.expectedCmp, cmp)
+			assert.Equal(t, test.cmp, cmp)
 		})
 	}
 }
@@ -71,4 +120,11 @@ func TestJsonConvert(t *testing.T) {
 
 func TestJsonString(t *testing.T) {
 	require.Equal(t, "JSON", JSON.String())
+}
+
+func mustJSON(s string) (doc interface{}) {
+	if err := json.Unmarshal([]byte(s), &doc); err != nil {
+		panic(err)
+	}
+	return doc
 }
