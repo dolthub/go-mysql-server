@@ -587,7 +587,50 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		node = plan.NewLimit(limit, node)
 	}
 
+	// Finally, if common table expressions were provided, wrap the top-level node in a With node to capture them
+	if len(s.CommonTableExprs) > 0 {
+		node, err = ctesToWith(ctx, s.CommonTableExprs, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return node, nil
+}
+
+func ctesToWith(ctx *sql.Context, cteExprs sqlparser.TableExprs, node sql.Node) (sql.Node, error) {
+	ctes := make([]*plan.CommonTableExpression, len(cteExprs))
+	for i, cteExpr := range cteExprs {
+		var err error
+		ctes[i], err = cteExprToCte(ctx, cteExpr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewWith(node, ctes), nil
+}
+
+func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
+	cte, ok := expr.(*sqlparser.CommonTableExpr)
+	if !ok {
+		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("Unsupported type of common table expression %T", expr))
+	}
+
+	ate := cte.AliasedTableExpr
+	_, ok = ate.Expr.(*sqlparser.Subquery)
+	if !ok {
+		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("Unsupported type of common table expression %T", ate.Expr))
+	}
+
+	subquery, err := tableExprToTable(ctx, ate)
+	if err != nil {
+		return nil, err
+	}
+
+	columns := columnsToStrings(cte.Columns)
+
+	return plan.NewCommonTableExpression(subquery.(*plan.SubqueryAlias), columns), nil
 }
 
 func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {

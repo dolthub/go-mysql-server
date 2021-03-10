@@ -166,6 +166,10 @@ var (
 	// ErrCannotDropDatabaseDoesntExist is returned when a DROP DATABASE is callend when a table is dropped that doesn't exist.
 	ErrCannotDropDatabaseDoesntExist = errors.NewKind("can't drop database %s; database doesn't exist")
 
+	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
+	// list with a different number of columns than the schema of the table.
+	ErrColumnCountMismatch = errors.NewKind("In definition of view, derived table or common table expression, SELECT list and column names list have different column counts")
+
 	// ErrSecureFileDirNotSet is returned when LOAD DATA INFILE is called but the secure_file_priv system variable is not set.
 	ErrSecureFileDirNotSet = errors.NewKind("secure_file_priv needs to be set to a directory")
 )

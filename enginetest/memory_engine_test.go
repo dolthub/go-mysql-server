@@ -89,11 +89,14 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT i as x, row_number() over (order by i DESC) FROM mytable ORDER BY x`,
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, 
+				(with mt2 as (select i,s FROM mt1) select s from mt2 where i = mtouter.i+1) 
+			FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
-			{1, 3},
-			{2, 2},
-			{3, 1}},
+			{2, "third row"},
+			{3, nil},
+		},
 	}
 	fmt.Sprintf("%v", test)
 
