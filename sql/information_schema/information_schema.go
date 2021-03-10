@@ -17,6 +17,7 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"io"
 	"strings"
 	"time"
@@ -62,6 +63,8 @@ const (
 	ViewsTableName = "views"
 	// UserPrivilegesTableName is the name of the user_privileges table
 	UserPrivilegesTableName = "user_privileges"
+	// CharacterSetsTableName is the name of the character_sets table
+	CharacterSetsTableName = "character_sets"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -374,6 +377,13 @@ var userPrivilegesSchema = Schema{
 	{Name: "is_grantable", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
 }
 
+var characterSetSchema = Schema{
+	{Name: "character_set_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "description", Type:  MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "default_collate_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "maxlen", Type: Uint8, Default: nil, Nullable: false, Source: CharacterSetsTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -537,6 +547,19 @@ func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, c := range CharsetToMySQLVals {
+		rows = append(rows, Row{
+			c.String(),
+			c.Description(),
+			c.DefaultCollation().String(),
+			c.MaxLength(),
+		})
+	}
+	return RowsToRowIter(rows...), nil
+}
+
 func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
@@ -669,6 +692,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  collationsSchema,
 				catalog: cat,
 				rowIter: collationsRowIter,
+			},
+			CharacterSetsTableName: &informationSchemaTable{
+				name: CharacterSetsTableName,
+				schema: characterSetSchema,
+				catalog: cat,
+				rowIter: charsetRowIter,
 			},
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
