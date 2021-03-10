@@ -4838,17 +4838,51 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query: "with cte1 as (SELECT c3 FROM one_pk WHERE c4 < opk.c2 ORDER BY 1 DESC LIMIT 1)  SELECT pk, (select c3 from cte1) FROM one_pk opk ORDER BY 1",
+		ExpectedErr: sql.ErrTableNotFound,
+	},
+	{
+		Query: `WITH mt1 (x,y) as (select i,s FROM mytable)
+			SELECT mt1.i, mt1.s FROM mt1`,
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query: `WITH mt1 (x,y) as (select i,s FROM mytable)
+			SELECT i, s FROM mt1`,
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
-		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt join mt;",
-		ExpectedErr: sql.ErrDuplicateAliasOrTable,
+		Query: `WITH mt1 (x,y,z) as (select i,s FROM mytable)
+			SELECT i, s FROM mt1`,
+		ExpectedErr: sql.ErrColumnCountMismatch,
 	},
+	// TODO: this results in a stack overflow, need to check for this
+	// {
+	// 	Query: `WITH mt1 as (select i,s FROM mt2), mt2 as (select i,s from mt1)
+	// 		SELECT i, s FROM mt1`,
+	// 	ExpectedErr: sql.ErrColumnCountMismatch,
+	// },
+	// TODO: related to the above issue, CTEs are only allowed to mentioned previously defined CTEs (to prevent cycles).
+	//  This query works, but shouldn't
+	// {
+	// 	Query: `WITH mt1 as (select i,s FROM mt2), mt2 as (select i,s from mytable)
+	// 		SELECT i, s FROM mt1`,
+	// 	ExpectedErr: sql.ErrColumnCountMismatch,
+	// },
 	{
 		Query: `WITH mt1 as (select i,s FROM mytable), mt2 as (select i+1, concat(s, '!') from mytable)
 			SELECT mt1.i, mt2.s FROM mt1 join mt2 on mt1.i = mt2.i;`,
-		ExpectedErr: sql.ErrColumnNotFound,
+		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
+	// TODO: this should be an error, as every table alias (including subquery aliases) must be unique
+	// {
+	// 	Query: "SELECT s,i FROM (select i,s FROM mytable) mt join (select i,s FROM mytable) mt;",
+	// 	ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	// },
+	// TODO: this should be an error, as every table alias must be unique.
+	// {
+	// 	Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt join mt;",
+	// 	ExpectedErr: sql.ErrDuplicateAliasOrTable,
+	// },
 	// TODO: Bug: the having column must appear in the select list
 	// {
 	// 	Query:       "SELECT pk1, sum(c1) FROM two_pk GROUP BY 1 having c1 > 10;",
