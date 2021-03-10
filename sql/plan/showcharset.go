@@ -21,6 +21,7 @@ import (
 
 type ShowCharset struct {
 	pattern string
+	CharacterSetTable sql.Node
 }
 
 // NewShowCharset returns a new ShowCharset reference.
@@ -54,31 +55,13 @@ func (sc *ShowCharset) String() string {
 }
 
 func (sc *ShowCharset) Schema() sql.Schema {
-	return sql.Schema{
-		&sql.Column{Name: "Charset", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Description", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Default collation", Type: sql.LongText, Nullable: false},
-		&sql.Column{Name: "Maxlen", Type: sql.Uint8, Nullable: false},
-	}
+	return sc.CharacterSetTable.Schema()
 }
 
 func (sc *ShowCharset) Children() []sql.Node { return nil }
 
 func (sc *ShowCharset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var (
-		rows []sql.Row
-		//like sql.Expression
-	)
-	//if sc.pattern != "" {
-	//	like = expression.NewLike(
-	//		expression.NewGetField(0, sql.LongText, "", false),
-	//		expression.NewGetField(1, sql.LongText, sc.pattern, false),
-	//	)
-	//}
-
-	rows = append(rows, sql.Row{"utf8mb4", "UTF-8 Unicode", "utf8mb4_0900_ai_ci", 4})
-
-	return sql.RowsToRowIter(rows...), nil
+	return sc.CharacterSetTable.RowIter(ctx, row)
 }
 
 

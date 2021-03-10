@@ -51,6 +51,13 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			}
 
 			x.Indexes = tableIndexes
+		case *plan.ShowCharset:
+			rt, err := getInformationSchemaTable(ctx, a, "character_sets")
+			if err != nil {
+				return nil, err
+			}
+
+			x.CharacterSetTable = rt
 		}
 
 		return n, nil
@@ -73,4 +80,15 @@ func getIndexesForTable(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Ind
 	// TODO: get the DB out of the table, don't just use the current DB
 	tableIndexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), tableName)
 	return tableIndexes, nil
+}
+
+// getInformationSchemaTable returns a table that is present in the information_schema.
+func getInformationSchemaTable(ctx *sql.Context, a *Analyzer, tableName string) (sql.Node, error) {
+	rt, database, err := a.Catalog.Table(ctx, "information_schema", tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	a.Log("table resolved: %s", rt.Name())
+	return plan.NewResolvedTable(rt, database, nil), nil
 }
