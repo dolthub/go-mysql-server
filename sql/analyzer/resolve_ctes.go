@@ -27,10 +27,32 @@ import (
 func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	with, ok := n.(*plan.With)
 	if !ok {
-		return nil, nil
+		return n, nil
 	}
 
 	ctes := make(map[string]sql.Node)
+	child, err := stripWith(ctx, a, with, ctes)
+	if err != nil {
+		return nil, err
+	}
+
+	return resolveCtesInNode(ctx, a, child, scope, ctes)
+}
+
+func unalias(p sql.Expression) sql.Expression {
+	a, ok := p.(*expression.Alias)
+	if !ok {
+		return p
+	}
+	return a.Child
+}
+
+func stripWith(ctx *sql.Context, a *Analyzer, n sql.Node, ctes map[string]sql.Node) (sql.Node, error) {
+	with, ok := n.(*plan.With)
+	if !ok {
+		return n, nil
+	}
+
 	for _, cte := range with.CTEs {
 		cteName := cte.Subquery.Name()
 		subquery := cte.Subquery
@@ -50,24 +72,23 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 			}
 
 			child, err := plan.TransformUpWithSelector(subquery.Child, selector, func(n sql.Node) (sql.Node, error) {
-				// TODO: unwrap aliases here
 				switch n := n.(type) {
 				case *plan.Project:
 					projections := make([]sql.Expression, len(cte.Columns))
 					for i, p := range n.Projections {
-						projections[i] = expression.NewAlias(cte.Columns[i], p)
+						projections[i] = expression.NewAlias(cte.Columns[i], unalias(p))
 					}
 					return n.WithExpressions(projections...)
 				case *plan.GroupBy:
 					projections := make([]sql.Expression, len(cte.Columns))
 					for i, p := range n.SelectedExprs {
-						projections[i] = expression.NewAlias(cte.Columns[i], p)
+						projections[i] = expression.NewAlias(cte.Columns[i], unalias(p))
 					}
 					return plan.NewGroupBy(projections, n.GroupByExprs, n.Child), nil
 				case *plan.Window:
 					projections := make([]sql.Expression, len(cte.Columns))
 					for i, p := range n.SelectExprs {
-						projections[i] = expression.NewAlias(cte.Columns[i], p)
+						projections[i] = expression.NewAlias(cte.Columns[i], unalias(p))
 					}
 					return n.WithExpressions(projections...)
 				default:
@@ -85,15 +106,18 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 		ctes[strings.ToLower(cteName)] = subquery
 	}
 
+	return with.Child, nil
+}
+
+func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, ctes map[string]sql.Node) (sql.Node, error) {
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	child, err := plan.TransformExpressionsUp(with.Child, func(e sql.Expression) (sql.Expression, error) {
+	n, err := plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		sq, ok := e.(*plan.Subquery)
 		if !ok {
 			return e, nil
 		}
 
-		// TODO: needs some form of scope
-		query, err := resolveCommonTableExpressions(ctx, a, sq.Query, scope)
+		query, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +129,7 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	}
 
 	// Second pass to catch any uses of CTEs as tables
-	return plan.TransformUp(child, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		t, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, nil

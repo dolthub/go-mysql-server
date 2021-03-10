@@ -204,6 +204,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `WITH mt1 as (select i,s FROM mytable)
+			SELECT mtouter.i, (select s from mt1 where i = mtouter.i+1) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
+		Expected: []sql.Row{
+			{2, "third row"},
+			{3, nil},
+		},
+	},
+	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
