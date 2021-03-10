@@ -139,3 +139,24 @@ func replaceExpressionsForNaturalJoin(
 		return e, nil
 	})
 }
+
+func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	scopeLen := len(scope.Schema())
+	if scopeLen == 0 {
+		return n, nil
+	}
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if j, ok := n.(plan.JoinNode); ok {
+			nj := j.WithScopeLen(scopeLen)
+			if _, ok := nj.Left().(*plan.StripRowNode); !ok {
+				return nj.WithChildren(
+					plan.NewStripRowNode(nj.Left(), scopeLen),
+					plan.NewStripRowNode(nj.Right(), scopeLen),
+				)
+			} else {
+				return nj, nil
+			}
+		}
+		return n, nil
+	})
+}

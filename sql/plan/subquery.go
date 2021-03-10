@@ -56,6 +56,57 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
 
+type StripRowNode struct {
+	UnaryNode
+	numCols int
+}
+
+type stripRowIter struct {
+	sql.RowIter
+	numCols int
+}
+
+func (sri *stripRowIter) Next() (sql.Row, error) {
+	r, err := sri.RowIter.Next()
+	if err != nil {
+		return nil, err
+	}
+	return r[sri.numCols:], nil
+}
+
+func NewStripRowNode(child sql.Node, numCols int) sql.Node {
+	return &StripRowNode{UnaryNode: UnaryNode{child}, numCols: numCols}
+}
+
+func (srn *StripRowNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	childIter, err := srn.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return &stripRowIter{
+		childIter,
+		srn.numCols,
+	}, nil
+}
+
+func (srn *StripRowNode) String() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("StripRowNode(%d)", srn.numCols)
+	_ = tp.WriteChildren(srn.Child.String())
+	return tp.String()
+}
+
+func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(srn, len(children), 1)
+	}
+	return &StripRowNode{
+		UnaryNode: UnaryNode{Child: children[0]},
+		numCols:   srn.numCols,
+	}, nil
+}
+
 // prependNode wraps its child by prepending column values onto any result rows
 type prependNode struct {
 	UnaryNode
