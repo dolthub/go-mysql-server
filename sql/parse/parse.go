@@ -524,8 +524,6 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			node = plan.NewFilter(filter, node)
 		}
 		return node, nil
-	case sqlparser.KeywordString(sqlparser.STATUS):
-		return plan.NewShowStatus(""), nil
 	case sqlparser.KeywordString(sqlparser.ENGINES):
 		infoSchemaSelect, err := Parse(ctx, "select * from information_schema.engines")
 		if err != nil {
