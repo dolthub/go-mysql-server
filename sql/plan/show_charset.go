@@ -15,22 +15,17 @@
 package plan
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 type ShowCharset struct {
-	pattern string
 	CharacterSetTable sql.Node
 }
 
 // NewShowCharset returns a new ShowCharset reference.
-// like is a "like pattern". If like is an empty string it will return all variables.
-func NewShowCharset(like string) *ShowCharset {
-	return &ShowCharset{
-		pattern: like,
-	}
+func NewShowCharset() *ShowCharset {
+	return &ShowCharset{}
 }
 
 // Resolved implements sql.Node interface. The function always returns true.
@@ -48,11 +43,7 @@ func (sc *ShowCharset) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func (sc *ShowCharset) String() string {
-	var like string
-	if sc.pattern != "" {
-		like = fmt.Sprintf(" LIKE '%s'", sc.pattern)
-	}
-	return fmt.Sprintf("SHOW CHARSET%s", like)
+	return "SHOW CHARSET"
 }
 
 // Note how this Schema differs in order from the information_schema.character_sets table.
