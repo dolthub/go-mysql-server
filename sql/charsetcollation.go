@@ -1206,13 +1206,6 @@ var CollationToMySQLVals = map[Collation]mysqlCollationRow{
 	Collation_utf8mb4_0900_ai_ci: {255, Y, Y, 0, NoPad},
 }
 
-type mysqlCharsetRow struct {
-	CharacterSetName         string
-	Description string
-	DefaultCollateName  string
-	Maxlen    uint8
-}
-
 var CharsetToMySQLVals = []CharacterSet{
 	CharacterSet_utf8,
 	CharacterSet_utf8mb4,

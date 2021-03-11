@@ -65,6 +65,8 @@ const (
 	UserPrivilegesTableName = "user_privileges"
 	// CharacterSetsTableName is the name of the character_sets table
 	CharacterSetsTableName = "character_sets"
+	// EnginesTableName is the name of the engines table
+	EnginesTableName = "engines"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -380,8 +382,17 @@ var userPrivilegesSchema = Schema{
 var characterSetSchema = Schema{
 	{Name: "character_set_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
 	{Name: "default_collate_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
-	{Name: "description", Type:  MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "description", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: CharacterSetsTableName},
 	{Name: "maxlen", Type: Uint8, Default: nil, Nullable: false, Source: CharacterSetsTableName},
+}
+
+var enginesSchema = Schema{
+	{Name: "engine", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "support", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 8), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "comment", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 80), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "transactions", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "xa", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "savepoints", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
 }
 
 func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
@@ -547,7 +558,7 @@ func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func CharsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range CharsetToMySQLVals {
 		rows = append(rows, Row{
@@ -555,6 +566,21 @@ func CharsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 			c.DefaultCollation().String(),
 			c.Description(),
 			c.MaxLength(),
+		})
+	}
+	return RowsToRowIter(rows...), nil
+}
+
+func engineRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, c := range EngineToMySQLVals {
+		rows = append(rows, Row{
+			c.String(),
+			c.Support(),
+			c.Comment(),
+			c.Transactions(),
+			c.XA(),
+			c.Savepoints(),
 		})
 	}
 	return RowsToRowIter(rows...), nil
@@ -697,7 +723,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				name:    CharacterSetsTableName,
 				schema:  characterSetSchema,
 				catalog: cat,
-				rowIter: CharsetRowIter,
+				rowIter: charsetRowIter,
 			},
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
@@ -752,6 +778,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  userPrivilegesSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
+			},
+			EnginesTableName: &informationSchemaTable{
+				name: EnginesTableName,
+				schema: enginesSchema,
+				catalog: cat,
+				rowIter: engineRowIter,
 			},
 		},
 	}

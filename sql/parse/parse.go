@@ -527,7 +527,12 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.STATUS):
 		return plan.NewShowStatus(""), nil
 	case sqlparser.KeywordString(sqlparser.ENGINES):
-		return plan.NewShowEngines(""), nil
+		infoSchemaSelect, err := Parse(ctx, "select * from information_schema.engines")
+		if err != nil {
+			return nil, err
+		}
+
+		return infoSchemaSelect, nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
