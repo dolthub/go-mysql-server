@@ -17,17 +17,17 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 const (
@@ -780,8 +780,8 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				rowIter: emptyRowIter,
 			},
 			EnginesTableName: &informationSchemaTable{
-				name: EnginesTableName,
-				schema: enginesSchema,
+				name:    EnginesTableName,
+				schema:  enginesSchema,
 				catalog: cat,
 				rowIter: engineRowIter,
 			},

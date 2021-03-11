@@ -513,7 +513,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				}
 			} else if s.ProcFuncFilter.Like != "" {
 				filter = expression.NewLike(
-					expression.NewUnresolvedColumn( "Charset"),
+					expression.NewUnresolvedColumn("Charset"),
 					expression.NewLiteral(s.ProcFuncFilter.Like, sql.LongText),
 				)
 			}

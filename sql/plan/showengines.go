@@ -15,8 +15,9 @@
 package plan
 
 import (
-"fmt"
-"github.com/dolthub/go-mysql-server/sql"
+	"fmt"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type ShowEngines struct {
@@ -82,7 +83,3 @@ func (se *ShowEngines) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 
 	return sql.RowsToRowIter(rows...), nil
 }
-
-
-
-

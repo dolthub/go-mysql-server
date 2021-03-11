@@ -15,8 +15,9 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type ShowCharset struct {
@@ -50,7 +51,7 @@ func (sc *ShowCharset) String() string {
 func (sc *ShowCharset) Schema() sql.Schema {
 	return sql.Schema{
 		{Name: "Charset", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Description", Type:  sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{Name: "Description", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
 		{Name: "Default collation", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Maxlen", Type: sql.Uint8, Default: nil, Nullable: false},
 	}
@@ -71,7 +72,7 @@ type showCharsetIter struct {
 	originalIter sql.RowIter
 }
 
-func (sci *showCharsetIter) Next() (sql.Row, error){
+func (sci *showCharsetIter) Next() (sql.Row, error) {
 	row, err := sci.originalIter.Next()
 	if err != nil {
 		return nil, err
@@ -89,7 +90,3 @@ func (sci *showCharsetIter) Next() (sql.Row, error){
 func (sci *showCharsetIter) Close(ctx *sql.Context) error {
 	return sci.originalIter.Close(ctx)
 }
-
-
-
-
