@@ -1088,8 +1088,10 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	qualifier := c.Table.Qualifier.String()
+
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs), nil
+		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs), nil
 }
 
 type namedConstraint struct {

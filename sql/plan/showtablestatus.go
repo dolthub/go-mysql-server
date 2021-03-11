@@ -143,6 +143,7 @@ func tableToStatusRow(table string) sql.Row {
 		nil,                            // Update_time
 		nil,                            // Check_time
 		sql.Collation_Default.String(), // Collation
+		nil, 							// Checksum
 		nil,                            // Create_options
 		nil,                            // Comments
 	)
