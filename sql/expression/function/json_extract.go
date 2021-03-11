@@ -15,8 +15,8 @@
 package function
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	"github.com/oliveagle/jsonpath"
@@ -41,7 +41,24 @@ func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_EXTRACT", 2, len(args))
 	}
 
+	// TODO(andy) make this an analysis step
+	args, err := maybeConvertLiteral(args...)
+	if err != nil {
+		return nil, err
+	}
+
 	return &JSONExtract{args[0], args[1:]}, nil
+}
+
+func maybeConvertLiteral(args ...sql.Expression) ([]sql.Expression, error) {
+	if lit, ok := args[0].(*expression.Literal); ok {
+		json, err := expression.JSONLiteralFromLiteral(lit)
+		if err != nil {
+			return nil, err
+		}
+		args[0] = json
+	}
+	return args, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -67,12 +84,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.JSONExtract")
 	defer span.Finish()
 
-	js, err := j.JSON.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	doc, err := unmarshalVal(js)
+	doc, err := j.JSON.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -102,20 +114,6 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return result, nil
-}
-
-func unmarshalVal(v interface{}) (interface{}, error) {
-	v, err := sql.JSON.Convert(v)
-	if err != nil {
-		return nil, err
-	}
-
-	var doc interface{}
-	if err := json.Unmarshal(v.([]byte), &doc); err != nil {
-		return nil, err
-	}
-
-	return doc, nil
 }
 
 // IsNullable implements the sql.Expression interface.

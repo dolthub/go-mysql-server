@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -3306,6 +3307,13 @@ func MustConvert(val interface{}, err error) interface{} {
 		panic(err)
 	}
 	return val
+}
+
+func MustJSON(s string) (doc interface{}) {
+	if err := json.Unmarshal([]byte(s), &doc); err != nil {
+		panic(err)
+	}
+	return doc
 }
 
 var pid uint64

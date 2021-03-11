@@ -1993,7 +1993,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT JSON_EXTRACT("foo", "$")`,
+		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
 		Expected: []sql.Row{{"foo"}},
 	},
 	{

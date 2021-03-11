@@ -88,7 +88,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), MustConvert(sql.Date.Convert("2231-11-07")),
-			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
+			"random text", sql.True, MustJSON(`{"key":"value"}`), "blobdata",
 		}},
 	},
 	{
@@ -106,7 +106,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
 			MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), MustConvert(sql.Date.Convert("2231-11-07")),
-			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
+			"random text", sql.True, MustJSON(`{"key":"value"}`), "blobdata",
 		}},
 	},
 	{
@@ -124,7 +124,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, ([]byte)(`""`), "",
+			"", sql.False, MustJSON(`""`), "",
 		}},
 	},
 	{
@@ -142,7 +142,7 @@ var InsertQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, ([]byte)(`""`), "",
+			"", sql.False, MustJSON(`""`), "",
 		}},
 	},
 	{

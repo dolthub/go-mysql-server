@@ -100,9 +100,9 @@ func TestJsonConvert(t *testing.T) {
 		expectedVal interface{}
 		expectedErr bool
 	}{
-		{"", []byte(`""`), false},
-		{[]int{1, 2}, []byte("[1,2]"), false},
-		{`{"a": true, "b": 3}`, []byte(`{"a":true,"b":3}`), false},
+		{"", mustJSON(`""`), false},
+		{[]int{1, 2}, []int{1, 2}, false},
+		{`{"a": true, "b": 3}`, mustJSON(`{"a":true,"b":3}`), false},
 	}
 
 	for _, test := range tests {

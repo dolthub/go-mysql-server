@@ -47,14 +47,14 @@ func TestJSONExtract(t *testing.T) {
 	require.NoError(t, err)
 
 	json := map[string]interface{}{
-		"a": []interface{}{1, 2, 3, 4},
+		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
 		"b": map[string]interface{}{
 			"c": "foo",
 			"d": true,
 		},
 		"e": []interface{}{
-			[]interface{}{1, 2},
-			[]interface{}{3, 4},
+			[]interface{}{float64(1), float64(2)},
+			[]interface{}{float64(3), float64(4)},
 		},
 	}
 

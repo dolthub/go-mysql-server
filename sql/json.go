@@ -48,6 +48,12 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	switch v := v.(type) {
 	case []byte:
 		err = json.Unmarshal(v, &doc)
+	case string:
+		if err = json.Unmarshal([]byte(v), &doc); err != nil {
+			// if |v| does not encode a valid JSON document
+			// return it as a naked string value
+			return v, nil
+		}
 	default:
 		// validate that |v| can be marshalled
 		if _, err = json.Marshal(v); err == nil {

@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -518,18 +517,7 @@ func UnderlyingType(t Type) Type {
 func convertForJSON(t Type, v interface{}) (interface{}, error) {
 	switch t := t.(type) {
 	case jsonType:
-		val, err := t.Convert(v)
-		if err != nil {
-			return nil, err
-		}
-
-		var doc interface{}
-		err = json.Unmarshal(val.([]byte), &doc)
-		if err != nil {
-			return nil, err
-		}
-
-		return doc, nil
+		return t.Convert(v)
 	case arrayType:
 		return convertArrayForJSON(t, v)
 	default:
