@@ -2447,7 +2447,7 @@ func parseShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, error)
 	}
 
 	db := s.Database
-	var node sql.Node = plan.NewShowTableStatus()
+	var node sql.Node = plan.NewShowTableStatus(ctx.GetCurrentDatabase())
 	if db != "" {
 		node = plan.NewShowTableStatus(db)
 	}
