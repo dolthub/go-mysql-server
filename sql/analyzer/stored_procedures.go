@@ -215,7 +215,21 @@ func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string
 
 // resolveProcedureParams resolves all of the named parameters and declared variables inside of a stored procedure.
 func resolveProcedureParams(paramNames map[string]struct{}, proc *plan.Procedure) (*plan.Procedure, error) {
-	newProcNode, err := plan.TransformExpressionsUp(proc, func(e sql.Expression) (sql.Expression, error) {
+	newProcNode, err := resolveProcedureParamsTransform(paramNames, proc)
+	if err != nil {
+		return nil, err
+	}
+	newProc, ok := newProcNode.(*plan.Procedure)
+	if !ok {
+		return nil, fmt.Errorf("expected `*plan.Procedure` but got `%T`", newProcNode)
+	}
+	return newProc, nil
+}
+
+// resolveProcedureParamsTransform resolves all of the named parameters and declared variables inside of a node.
+// In cases where an expression contains nodes, this will also walk those nodes.
+func resolveProcedureParamsTransform(paramNames map[string]struct{}, n sql.Node) (sql.Node, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "" {
@@ -231,18 +245,18 @@ func resolveProcedureParams(paramNames map[string]struct{}, proc *plan.Procedure
 				}
 			}
 			return e, nil
+		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
+			newQuery, err := resolveProcedureParamsTransform(paramNames, e.Query)
+			if err != nil {
+				return nil, err
+			}
+			ne := *e
+			ne.Query = newQuery
+			return &ne, nil
 		default:
 			return e, nil
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
-	newProc, ok := newProcNode.(*plan.Procedure)
-	if !ok {
-		return nil, fmt.Errorf("expected `*plan.Procedure` but got `%T`", newProcNode)
-	}
-	return newProc, nil
 }
 
 // applyProcedures applies the relevant stored procedures to the node given (if necessary).
@@ -274,17 +288,29 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	if procedure == nil {
 		return nil, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
 	}
-	transformedProcedure, err := plan.TransformExpressionsUp(procedure, func(e sql.Expression) (sql.Expression, error) {
+
+	var procParamTransformFunc sql.TransformExprFunc
+	procParamTransformFunc = func(e sql.Expression) (sql.Expression, error) {
 		switch expr := e.(type) {
 		case *expression.ProcedureParam:
 			return expr.WithParamReference(pRef), nil
+		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
+			newQuery, err := plan.TransformExpressionsUp(expr.Query, procParamTransformFunc)
+			if err != nil {
+				return nil, err
+			}
+			ne := *expr
+			ne.Query = newQuery
+			return &ne, nil
 		default:
 			return e, nil
 		}
-	})
+	}
+	transformedProcedure, err := plan.TransformExpressionsUp(procedure, procParamTransformFunc)
 	if err != nil {
 		return nil, err
 	}
+
 	transformedProcedure, err = plan.TransformUpWithParent(transformedProcedure, func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error) {
 		rt, ok := n.(*plan.ResolvedTable)
 		if !ok {
