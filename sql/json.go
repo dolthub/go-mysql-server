@@ -49,13 +49,15 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	case []byte:
 		err = json.Unmarshal(v, &doc)
 	case string:
+		// First try to decode a JSON document from |v|
 		if err = json.Unmarshal([]byte(v), &doc); err != nil {
 			// if |v| does not encode a valid JSON document
 			// return it as a naked string value
 			return v, nil
 		}
 	default:
-		// validate that |v| can be marshalled
+		// if |v| can be marshalled, it contains
+		// a valid JSON document representation
 		if _, err = json.Marshal(v); err == nil {
 			return v, nil
 		}

@@ -15,7 +15,6 @@
 package aggregation
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -113,25 +112,7 @@ func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	// If this is a JSON type there's no need to remarshal anything.
-	if j.Child.Type() == sql.JSON {
-		return fmt.Sprintf("%s", buffer[0]), nil
-	}
-
-	// Marshal to JSON
-	val, err := json.Marshal(buffer[0])
-	if err != nil {
-		return nil, err
-	}
-
-	sval := string(val)
-
-	// If the value is null explicitly return nil.
-	if sval == "null" {
-		return nil, nil
-	}
-
-	return sval, nil
+	return buffer[0], nil
 }
 
 // JSON_OBJECTAGG(key, value) [over_clause]

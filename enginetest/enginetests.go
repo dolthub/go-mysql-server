@@ -3415,14 +3415,14 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, bindings map[string]sql.Expression) {
 	require := require.New(t)
 
-	_, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)
 
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err, "Unexpected error for query %s", q)
 
-	widenedRows := WidenRows(rows)
-	widenedExpected := WidenRows(expected)
+	widenedRows := WidenRows(sch, rows)
+	widenedExpected := WidenRows(sch, expected)
 
 	upperQuery := strings.ToUpper(q)
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
@@ -3443,6 +3443,7 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 		require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	} else {
 		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+		//require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	}
 }
 
@@ -3456,19 +3457,25 @@ func TestJsonScripts(t *testing.T, harness Harness) {
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
 // widest value in actual and expected results.
-func WidenRows(rows []sql.Row) []sql.Row {
+func WidenRows(sch sql.Schema, rows []sql.Row) []sql.Row {
 	widened := make([]sql.Row, len(rows))
 	for i, row := range rows {
-		widened[i] = WidenRow(row)
+		widened[i] = WidenRow(sch, row)
 	}
 	return widened
 }
 
 // See WidenRows
-func WidenRow(row sql.Row) sql.Row {
+func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
+
 		var vw interface{}
+		if i < len(sch) && sch[i].Type == sql.JSON {
+			widened[i] = widenJSON(v)
+			continue
+		}
+
 		switch x := v.(type) {
 		case int:
 			vw = int64(x)
@@ -3494,4 +3501,53 @@ func WidenRow(row sql.Row) sql.Row {
 		widened[i] = vw
 	}
 	return widened
+}
+
+func widenJSON(val interface{}) interface{} {
+	switch x := val.(type) {
+	case int:
+		return float64(x)
+	case int8:
+		return float64(x)
+	case int16:
+		return float64(x)
+	case int32:
+		return float64(x)
+	case int64:
+		return float64(x)
+	case uint:
+		return float64(x)
+	case uint8:
+		return float64(x)
+	case uint16:
+		return float64(x)
+	case uint32:
+		return float64(x)
+	case uint64:
+		return float64(x)
+	case float32:
+		return float64(x)
+	case []interface{}:
+		return widenJSONArray(x)
+	case map[string]interface{}:
+		return widenJSONObject(x)
+	default:
+		return x
+	}
+}
+
+func widenJSONObject(narrow map[string]interface{}) (wide map[string]interface{}) {
+	wide = make(map[string]interface{}, len(narrow))
+	for k, v := range narrow {
+		wide[k] = widenJSON(v)
+	}
+	return
+}
+
+func widenJSONArray(narrow []interface{}) (wide []interface{}) {
+	wide = make([]interface{}, len(narrow))
+	for i, v := range narrow {
+		wide[i] = widenJSON(v)
+	}
+	return
 }
