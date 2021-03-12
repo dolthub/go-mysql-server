@@ -16,7 +16,6 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	"github.com/oliveagle/jsonpath"
@@ -41,24 +40,7 @@ func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_EXTRACT", 2, len(args))
 	}
 
-	// TODO(andy) make this an analysis step
-	args, err := maybeConvertLiteral(args...)
-	if err != nil {
-		return nil, err
-	}
-
 	return &JSONExtract{args[0], args[1:]}, nil
-}
-
-func maybeConvertLiteral(args ...sql.Expression) ([]sql.Expression, error) {
-	if lit, ok := args[0].(*expression.Literal); ok {
-		json, err := expression.JSONLiteralFromLiteral(lit)
-		if err != nil {
-			return nil, err
-		}
-		args[0] = json
-	}
-	return args, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -89,6 +71,11 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	doc, err = sql.JSON.Convert(doc)
+	if err != nil {
+		return nil, err
+	}
+
 	var result = make([]interface{}, len(j.Paths))
 	for i, p := range j.Paths {
 		path, err := p.Eval(ctx, row)
@@ -106,6 +93,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
+		// TODO(andy) handle error
 		result[i], _ = c.Lookup(doc) // err ignored
 	}
 

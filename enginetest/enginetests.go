@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -3302,20 +3301,6 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 }
 
-func MustConvert(val interface{}, err error) interface{} {
-	if err != nil {
-		panic(err)
-	}
-	return val
-}
-
-func MustJSON(s string) (doc interface{}) {
-	if err := json.Unmarshal([]byte(s), &doc); err != nil {
-		panic(err)
-	}
-	return doc
-}
-
 var pid uint64
 
 func NewContext(harness Harness) *sql.Context {
@@ -3443,7 +3428,6 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 		require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	} else {
 		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
-		//require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	}
 }
 
