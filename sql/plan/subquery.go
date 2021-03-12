@@ -91,9 +91,13 @@ func (srn *StripRowNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 }
 
 func (srn *StripRowNode) String() string {
+	return srn.Child.String()
+}
+
+func (srn *StripRowNode) DebugString() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("StripRowNode(%d)", srn.numCols)
-	_ = tp.WriteChildren(srn.Child.String())
+	_ = tp.WriteChildren(sql.DebugString(srn.Child))
 	return tp.String()
 }
 
