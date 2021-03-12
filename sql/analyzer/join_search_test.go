@@ -531,6 +531,66 @@ func TestBuildJoinTree(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:       "explicit subtree, A((EB)(DC))",
+			tableOrder: tableOrder("A", &joinOrderNode{
+				left: tableOrder("E", "B"),
+				right: tableOrder("D", "C"),
+			}),
+			joinConds: []*joinCond{
+				jc("A", "E"),
+				jc("B", "D"),
+				jc("B", "E"),
+				jc("D", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "E"),
+				left:     jt("A"),
+				right: &joinSearchNode{
+					joinCond: jc("B", "D"),
+					left: &joinSearchNode{
+						joinCond: jc("B", "E"),
+						left:     jt("E"),
+						right:    jt("B"),
+					},
+					right: &joinSearchNode{
+						joinCond: jc("D", "C"),
+						left:     jt("D"),
+						right:    jt("C"),
+					},
+				},
+			},
+		},
+		{
+			name:       "explicit subtree, A((EB)(D))C",
+			tableOrder: tableOrder("A", &joinOrderNode{
+				left: tableOrder("E", "B"),
+				right: tableOrder("D"),
+			}, "C"),
+			joinConds: []*joinCond{
+				jc("A", "E"),
+				jc("B", "D"),
+				jc("B", "E"),
+				jc("D", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "E"),
+				left:     jt("A"),
+				right: &joinSearchNode{
+					joinCond: jc("D", "C"),
+					left: &joinSearchNode{
+						joinCond: jc("B", "D"),
+						left: &joinSearchNode{
+							joinCond: jc("B", "E"),
+							left:     jt("E"),
+							right:    jt("B"),
+						},
+						right: jt("D"),
+					},
+					right: jt("C"),
+				},
+			},
+		},
 	}
 
 	for _, tt := range testCases {
@@ -569,10 +629,17 @@ func jt(name string) *joinSearchNode {
 	}
 }
 
-func tableOrder(tables ...string) *joinOrderNode {
+func tableOrder(tables ...interface{}) *joinOrderNode {
 	jo := &joinOrderNode{}
-	for i, s := range tables {
-		jo.commutes = append(jo.commutes, joinOrderNode{node: plan.NewUnresolvedTable(s, "")})
+	for i, table := range tables {
+		switch t := table.(type) {
+		case string:
+			jo.commutes = append(jo.commutes, joinOrderNode{node: plan.NewUnresolvedTable(t, "")})
+		case *joinOrderNode:
+			jo.commutes = append(jo.commutes, *t)
+		default:
+			panic("unknown type for argument to tableOrder")
+		}
 		jo.order = append(jo.order, i)
 	}
 	return jo

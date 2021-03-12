@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -158,7 +159,7 @@ func (jo *joinOrderNode) String() string {
 
 // applyJoinHint will set the `jo.order` fields of the root node and
 // the internal nodes of the joinOrderNode to the order in the
-// provided `hint`, presuming that order to valid. If it is not valid,
+// provided `hint`, presuming that order is valid. If it is not valid,
 // `jo.order` remains `nil`.
 func (jo *joinOrderNode) applyJoinHint(hint QueryHint) error {
 	switch hint := hint.(type) {
@@ -401,6 +402,43 @@ func visitCommutableJoinSearchNodes(indexes []int, nodes []joinOrderNode, cb fun
 		})
 	}
 }
+
+// newJoinOrderNode builds a joinOrderNode for the given `sql.Node`. A
+// table, table alias or subquery alias gets a leaf node, a sequence
+// of commutable joins get coalesced into a single node with children
+// set in `commutes`, and a left or right join gets a node with a
+// `left` and a `right` child.  original on the left and the new table
+// being joined on the right.
+func newJoinOrderNode(node sql.Node) *joinOrderNode {
+	switch node := node.(type) {
+	case *plan.TableAlias:
+		return &joinOrderNode{node: node}
+	case *plan.ResolvedTable:
+		return &joinOrderNode{node: node}
+	case *plan.SubqueryAlias:
+		return &joinOrderNode{node: node}
+	case plan.JoinNode:
+		ljo := newJoinOrderNode(node.Left())
+		rjo := newJoinOrderNode(node.Right())
+		if node.JoinType() == plan.JoinTypeLeft {
+			return &joinOrderNode{left: ljo, right: rjo}
+		} else if node.JoinType() == plan.JoinTypeRight {
+			return &joinOrderNode{left: rjo, right: ljo}
+		} else {
+			commutes := append(ljo.commutes, rjo.commutes...)
+			if ljo.left != nil || ljo.node != nil {
+				commutes = append(commutes, *ljo)
+			}
+			if rjo.left != nil || rjo.node != nil {
+				commutes = append(commutes, *rjo)
+			}
+			return &joinOrderNode{commutes: commutes}
+		}
+	default:
+		panic(fmt.Sprintf("unexpected node type: %t", node))
+	}
+}
+
 
 // A joinSearchNode is a simplified type representing a join tree node, which is either an internal node (a join) or a
 // leaf node (a table). The top level node in a join tree is always an internal node. Every internal node has both a

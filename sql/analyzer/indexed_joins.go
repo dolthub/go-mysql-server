@@ -345,42 +345,6 @@ func (j JoinOrder) HintType() string {
 	return "JOIN_ORDER"
 }
 
-// newJoinOrderNode builds a joinOrderNode for the given `sql.Node`. A
-// table, table alias or subquery alias gets a leaf node, a sequence
-// of commutable joins get coalesced into a single node with children
-// set in `commutes`, and a left or right join gets a node with a
-// `left` and a `right` child.  original on the left and the new table
-// being joined on the right.
-func newJoinOrderNode(node sql.Node) *joinOrderNode {
-	switch node := node.(type) {
-	case *plan.TableAlias:
-		return &joinOrderNode{node: node}
-	case *plan.ResolvedTable:
-		return &joinOrderNode{node: node}
-	case *plan.SubqueryAlias:
-		return &joinOrderNode{node: node}
-	case plan.JoinNode:
-		ljo := newJoinOrderNode(node.Left())
-		rjo := newJoinOrderNode(node.Right())
-		if node.JoinType() == plan.JoinTypeLeft {
-			return &joinOrderNode{left: ljo, right: rjo}
-		} else if node.JoinType() == plan.JoinTypeRight {
-			return &joinOrderNode{left: rjo, right: ljo}
-		} else {
-			commutes := append(ljo.commutes, rjo.commutes...)
-			if ljo.left != nil || ljo.node != nil {
-				commutes = append(commutes, *ljo)
-			}
-			if rjo.left != nil || rjo.node != nil {
-				commutes = append(commutes, *rjo)
-			}
-			return &joinOrderNode{commutes: commutes}
-		}
-	default:
-		panic(fmt.Sprintf("unexpected node type: %t", node))
-	}
-}
-
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode) sql.Node {
 	if tree.isLeaf() {
