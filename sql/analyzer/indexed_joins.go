@@ -76,7 +76,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 				return n, nil
 			}
 
-			return replanJoin(ctx, n, a, joinIndexes)
+			return replanJoin(ctx, n, a, joinIndexes, scope)
 		default:
 			return n, nil
 		}
@@ -158,10 +158,18 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, false, err
 		}
 
+		if scope != nil {
+			left = plan.NewStripRowNode(left, len(scope.Schema()))
+		}
+
 		// then the right side, appending the schema from the left
 		right, replacedRight, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, left.Schema()...), scope, joinIndexes, tableAliases)
 		if err != nil {
 			return nil, false, err
+		}
+
+		if scope != nil {
+			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 
 		// the condition's field indexes might need adjusting if the order of tables changed
@@ -170,7 +178,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, false, err
 		}
 
-		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), replacedLeft || replacedRight, nil
+		return plan.NewIndexedJoin(left, right, node.JoinType(), cond, len(scope.Schema())), replacedLeft || replacedRight, nil
 	case *plan.Limit:
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
 	case *plan.Sort:
@@ -228,7 +236,7 @@ func replaceIndexedAccessInUnaryNode(
 	return newNode, replaced, nil
 }
 
-func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable) (sql.Node, error) {
+func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable, scope *Scope) (sql.Node, error) {
 	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
 	// only certain nodes can be below it.
 	eligible := true
@@ -281,7 +289,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	}
 
 	tablesByName := byLowerCaseName(tableJoinOrder.tables())
-	joinNode := joinTreeToNodes(joinTree, tablesByName)
+	joinNode := joinTreeToNodes(joinTree, tablesByName, scope)
 
 	return joinNode, nil
 }
@@ -346,14 +354,14 @@ func (j JoinOrder) HintType() string {
 }
 
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
-func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode) sql.Node {
+func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
 	if tree.isLeaf() {
 		return tablesByName[tree.table]
 	}
 
-	left := joinTreeToNodes(tree.left, tablesByName)
-	right := joinTreeToNodes(tree.right, tablesByName)
-	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond)
+	left := joinTreeToNodes(tree.left, tablesByName, scope)
+	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
