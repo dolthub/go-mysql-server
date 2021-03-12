@@ -63,7 +63,7 @@ type Session interface {
 	// SetDefaultDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
 	// CommitTransaction commits the current transaction for this session for the current database
-	CommitTransaction(*Context) error
+	CommitTransaction(ctx *Context, dbName string) error
 	// GetAll returns a copy of session configuration
 	GetAll() map[string]TypedValue
 	// ID returns the unique ID of the connection.
@@ -98,7 +98,7 @@ type BaseSession struct {
 }
 
 // CommitTransaction commits the current transaction for the current database.
-func (s *BaseSession) CommitTransaction(*Context) error {
+func (s *BaseSession) CommitTransaction(*Context, string) error {
 	// no-op on BaseSession
 	return nil
 }

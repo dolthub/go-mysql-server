@@ -33,7 +33,7 @@ var (
 	}
 
 	engineTransaction = map[Engine]string{
-		InnoDB: "YES",
+		InnoDB: "NO",
 	}
 
 	engineXA = map[Engine]string{
