@@ -24,18 +24,9 @@ import (
 )
 
 type CreateProcedure struct {
-	Name                  string
-	Definer               string
-	Params                []sql.ProcedureParam
-	CreatedAt             time.Time
-	ModifiedAt            time.Time
-	SecurityContext       sql.ProcedureSecurityContext
-	Characteristics       []sql.Characteristic
-	Comment               string
-	CreateProcedureString string
-	Body                  sql.Node
-	BodyString            string
-	Db                    sql.Database
+	*Procedure
+	BodyString string
+	Db         sql.Database
 }
 
 var _ sql.Node = (*CreateProcedure)(nil)
@@ -46,25 +37,27 @@ var _ sql.DebugStringer = (*CreateProcedure)(nil)
 func NewCreateProcedure(
 	name,
 	definer string,
-	params []sql.ProcedureParam,
+	params []ProcedureParam,
 	createdAt, modifiedAt time.Time,
-	securityContext sql.ProcedureSecurityContext,
-	characteristics []sql.Characteristic,
+	securityContext ProcedureSecurityContext,
+	characteristics []Characteristic,
 	body sql.Node,
 	comment, createString, bodyString string,
 ) *CreateProcedure {
+	procedure := NewProcedure(
+		name,
+		definer,
+		params,
+		securityContext,
+		comment,
+		characteristics,
+		createString,
+		body,
+		createdAt,
+		modifiedAt)
 	return &CreateProcedure{
-		Name:                  name,
-		Definer:               definer,
-		Params:                params,
-		CreatedAt:             createdAt,
-		ModifiedAt:            modifiedAt,
-		SecurityContext:       securityContext,
-		Characteristics:       characteristics,
-		Comment:               comment,
-		CreateProcedureString: createString,
-		Body:                  body,
-		BodyString:            bodyString,
+		Procedure:  procedure,
+		BodyString: bodyString,
 	}
 }
 
@@ -82,7 +75,7 @@ func (c *CreateProcedure) WithDatabase(database sql.Database) (sql.Node, error) 
 
 // Resolved implements the sql.Node interface.
 func (c *CreateProcedure) Resolved() bool {
-	return c.Body.Resolved()
+	return c.Procedure.Resolved()
 }
 
 // Schema implements the sql.Node interface.
@@ -92,7 +85,7 @@ func (c *CreateProcedure) Schema() sql.Schema {
 
 // Children implements the sql.Node interface.
 func (c *CreateProcedure) Children() []sql.Node {
-	return []sql.Node{c.Body}
+	return []sql.Node{c.Procedure}
 }
 
 // WithChildren implements the sql.Node interface.
@@ -100,9 +93,13 @@ func (c *CreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
+	procedure, ok := children[0].(*Procedure)
+	if !ok {
+		return nil, fmt.Errorf("expected `*Procedure` but got `%T`", children[0])
+	}
 
 	nc := *c
-	nc.Body = children[0]
+	nc.Procedure = procedure
 	return &nc, nil
 }
 
@@ -128,7 +125,7 @@ func (c *CreateProcedure) String() string {
 		characteristics += fmt.Sprintf(" %s", characteristic.String())
 	}
 	return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
-		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, c.Body.String())
+		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, c.Procedure.String())
 }
 
 // DebugString implements the sql.DebugStringer interface.
@@ -153,19 +150,7 @@ func (c *CreateProcedure) DebugString() string {
 		characteristics += fmt.Sprintf(" %s", characteristic.String())
 	}
 	return fmt.Sprintf("CREATE%s PROCEDURE %s (%s) %s%s%s %s",
-		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, sql.DebugString(c.Body))
-}
-
-// AsProcedure returns this *CreateProcedure as a *sql.Procedure.
-func (c *CreateProcedure) AsProcedure() *sql.Procedure {
-	return sql.NewProcedure(
-		c.Name,
-		c.Definer,
-		c.Params,
-		c.SecurityContext,
-		c.Characteristics,
-		c.CreateProcedureString,
-		c.Body)
+		definer, c.Name, params, c.SecurityContext.String(), comment, characteristics, sql.DebugString(c.Procedure))
 }
 
 // RowIter implements the sql.Node interface.

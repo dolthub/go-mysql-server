@@ -126,10 +126,10 @@ func TestIsUnary(t *testing.T) {
 	require := require.New(t)
 	table := memory.NewTable("foo", nil)
 
-	require.True(IsUnary(NewFilter(nil, NewResolvedTable(table))))
+	require.True(IsUnary(NewFilter(nil, NewResolvedTable(table, nil, nil))))
 	require.False(IsUnary(NewCrossJoin(
-		NewResolvedTable(table),
-		NewResolvedTable(table),
+		NewResolvedTable(table, nil, nil),
+		NewResolvedTable(table, nil, nil),
 	)))
 }
 
@@ -137,9 +137,9 @@ func TestIsBinary(t *testing.T) {
 	require := require.New(t)
 	table := memory.NewTable("foo", nil)
 
-	require.False(IsBinary(NewFilter(nil, NewResolvedTable(table))))
+	require.False(IsBinary(NewFilter(nil, NewResolvedTable(table, nil, nil))))
 	require.True(IsBinary(NewCrossJoin(
-		NewResolvedTable(table),
-		NewResolvedTable(table),
+		NewResolvedTable(table, nil, nil),
+		NewResolvedTable(table, nil, nil),
 	)))
 }

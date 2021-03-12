@@ -144,7 +144,7 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 			return plan.Nothing, nil
 		}
-		return nil, err
+		return nil, sql.ErrSyntaxError.New(err.Error())
 	}
 
 	return convert(ctx, stmt, s)
@@ -159,6 +159,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
 	case *sqlparser.BeginEndBlock:
 		return convertBeginEndBlock(ctx, n, query)
+	case *sqlparser.IfStatement:
+		return convertIfBlock(ctx, n)
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -194,21 +196,62 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDelete(ctx, n)
 	case *sqlparser.Update:
 		return convertUpdate(ctx, n)
+	case *sqlparser.Load:
+		return convertLoad(ctx, n)
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	}
 }
 
-func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
+func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query string) (*plan.Block, error) {
+	if query == "" {
+		query = "compound statement in block"
+	}
 	var statements []sql.Node
-	for _, s := range n.Statements {
-		statement, err := convert(ctx, s, "compound statement in begin..end block")
+	for _, s := range parserStatements {
+		statement, err := convert(ctx, s, query)
 		if err != nil {
 			return nil, err
 		}
 		statements = append(statements, statement)
 	}
-	return plan.NewBeginEndBlock(statements), nil
+	return plan.NewBlock(statements), nil
+}
+
+func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
+	block, err := convertBlock(ctx, n.Statements, "compound statement in begin..end block")
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewBeginEndBlock(block), nil
+}
+
+func convertIfBlock(ctx *sql.Context, n *sqlparser.IfStatement) (sql.Node, error) {
+	ifConditionals := make([]*plan.IfConditional, len(n.Conditions))
+	for i, ic := range n.Conditions {
+		ifConditional, err := convertIfConditional(ctx, ic)
+		if err != nil {
+			return nil, err
+		}
+		ifConditionals[i] = ifConditional
+	}
+	elseBlock, err := convertBlock(ctx, n.Else, "compound statement in else block")
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewIfElse(ifConditionals, elseBlock), nil
+}
+
+func convertIfConditional(ctx *sql.Context, n sqlparser.IfStatementCondition) (*plan.IfConditional, error) {
+	block, err := convertBlock(ctx, n.Statements, "compound statement in if block")
+	if err != nil {
+		return nil, err
+	}
+	condition, err := ExprToExpression(ctx, n.Expr)
+	if err != nil {
+		return nil, err
+	}
+	return plan.NewIfConditional(condition, block), nil
 }
 
 func convertSelectStatement(ctx *sql.Context, ss sqlparser.SelectStatement) (sql.Node, error) {
@@ -341,6 +384,29 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
+	case "procedure status":
+		var filter sql.Expression
+
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Name"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+				)
+			}
+		}
+
+		var node sql.Node = plan.NewShowProcedureStatus(sql.UnresolvedDatabase(""))
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
@@ -437,6 +503,36 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return infoSchemaSelect, nil
+	case sqlparser.KeywordString(sqlparser.CHARSET):
+		var filter sql.Expression
+
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Charset"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+				)
+			}
+		}
+
+		var node sql.Node = plan.NewShowCharset()
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
+	case sqlparser.KeywordString(sqlparser.ENGINES):
+		infoSchemaSelect, err := Parse(ctx, "select * from information_schema.engines")
+		if err != nil {
+			return nil, err
+		}
+
+		return infoSchemaSelect, nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
@@ -523,7 +619,50 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		node = plan.NewLimit(limit, node)
 	}
 
+	// Finally, if common table expressions were provided, wrap the top-level node in a With node to capture them
+	if len(s.CommonTableExprs) > 0 {
+		node, err = ctesToWith(ctx, s.CommonTableExprs, node)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return node, nil
+}
+
+func ctesToWith(ctx *sql.Context, cteExprs sqlparser.TableExprs, node sql.Node) (sql.Node, error) {
+	ctes := make([]*plan.CommonTableExpression, len(cteExprs))
+	for i, cteExpr := range cteExprs {
+		var err error
+		ctes[i], err = cteExprToCte(ctx, cteExpr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewWith(node, ctes), nil
+}
+
+func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
+	cte, ok := expr.(*sqlparser.CommonTableExpr)
+	if !ok {
+		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("Unsupported type of common table expression %T", expr))
+	}
+
+	ate := cte.AliasedTableExpr
+	_, ok = ate.Expr.(*sqlparser.Subquery)
+	if !ok {
+		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("Unsupported type of common table expression %T", ate.Expr))
+	}
+
+	subquery, err := tableExprToTable(ctx, ate)
+	if err != nil {
+		return nil, err
+	}
+
+	columns := columnsToStrings(cte.Columns)
+
+	return plan.NewCommonTableExpression(subquery.(*plan.SubqueryAlias), columns), nil
 }
 
 func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
@@ -542,6 +681,9 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	case sqlparser.DropStr:
 		if c.TriggerSpec != nil {
 			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
+		}
+		if c.ProcedureSpec != nil {
+			return plan.NewDropProcedure(sql.UnresolvedDatabase(""), c.ProcedureSpec.Name, c.IfExists), nil
 		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
@@ -594,16 +736,16 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
-	var params []sql.ProcedureParam
+	var params []plan.ProcedureParam
 	for _, param := range c.ProcedureSpec.Params {
-		var direction sql.ProcedureParamDirection
+		var direction plan.ProcedureParamDirection
 		switch param.Direction {
 		case sqlparser.ProcedureParamDirection_In:
-			direction = sql.ProcedureParamDirection_In
+			direction = plan.ProcedureParamDirection_In
 		case sqlparser.ProcedureParamDirection_Inout:
-			direction = sql.ProcedureParamDirection_Inout
+			direction = plan.ProcedureParamDirection_Inout
 		case sqlparser.ProcedureParamDirection_Out:
-			direction = sql.ProcedureParamDirection_Out
+			direction = plan.ProcedureParamDirection_Out
 		default:
 			return nil, fmt.Errorf("unknown procedure parameter direction: `%s`", string(param.Direction))
 		}
@@ -611,38 +753,38 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 		if err != nil {
 			return nil, err
 		}
-		params = append(params, sql.ProcedureParam{
+		params = append(params, plan.ProcedureParam{
 			Direction: direction,
 			Name:      param.Name,
 			Type:      internalTyp,
 		})
 	}
 
-	var characteristics []sql.Characteristic
-	securityType := sql.ProcedureSecurityContext_Definer // Default Security Context
+	var characteristics []plan.Characteristic
+	securityType := plan.ProcedureSecurityContext_Definer // Default Security Context
 	comment := ""
 	for _, characteristic := range c.ProcedureSpec.Characteristics {
 		switch characteristic.Type {
 		case sqlparser.CharacteristicValue_Comment:
 			comment = characteristic.Comment
 		case sqlparser.CharacteristicValue_LanguageSql:
-			characteristics = append(characteristics, sql.Characteristic_LanguageSql)
+			characteristics = append(characteristics, plan.Characteristic_LanguageSql)
 		case sqlparser.CharacteristicValue_Deterministic:
-			characteristics = append(characteristics, sql.Characteristic_Deterministic)
+			characteristics = append(characteristics, plan.Characteristic_Deterministic)
 		case sqlparser.CharacteristicValue_NotDeterministic:
-			characteristics = append(characteristics, sql.Characteristic_NotDeterministic)
+			characteristics = append(characteristics, plan.Characteristic_NotDeterministic)
 		case sqlparser.CharacteristicValue_ContainsSql:
-			characteristics = append(characteristics, sql.Characteristic_ContainsSql)
+			characteristics = append(characteristics, plan.Characteristic_ContainsSql)
 		case sqlparser.CharacteristicValue_NoSql:
-			characteristics = append(characteristics, sql.Characteristic_NoSql)
+			characteristics = append(characteristics, plan.Characteristic_NoSql)
 		case sqlparser.CharacteristicValue_ReadsSqlData:
-			characteristics = append(characteristics, sql.Characteristic_ReadsSqlData)
+			characteristics = append(characteristics, plan.Characteristic_ReadsSqlData)
 		case sqlparser.CharacteristicValue_ModifiesSqlData:
-			characteristics = append(characteristics, sql.Characteristic_ModifiesSqlData)
+			characteristics = append(characteristics, plan.Characteristic_ModifiesSqlData)
 		case sqlparser.CharacteristicValue_SqlSecurityDefiner:
 			// This is already the default value, so this prevents the default switch case
 		case sqlparser.CharacteristicValue_SqlSecurityInvoker:
-			securityType = sql.ProcedureSecurityContext_Invoker
+			securityType = plan.ProcedureSecurityContext_Invoker
 		default:
 			return nil, fmt.Errorf("unknown procedure characteristic: `%s`", string(characteristic.Type))
 		}
@@ -1034,7 +1176,7 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
 		}, nil
-	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
+	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinitiong); ok {
 		var c sql.Expression
 		var err error
 		if chConstraint.Expr != nil {
@@ -1205,6 +1347,30 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 	}
 
 	return plan.NewUpdate(node, updateExprs), nil
+}
+
+func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
+	unresolvedTable := tableNameToUnresolvedTable(d.Table)
+
+	var ignoreNumVal int64 = 0
+	var err error
+	if d.IgnoreNum != nil {
+		ignoreNumVal, err = getInt64Value(ctx, d.IgnoreNum, "Cannot parse ignore Value")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
+
+	return plan.NewInsertInto(
+		tableNameToUnresolvedTable(d.Table),
+		ld,
+		false,
+		ld.ColumnNames,
+		nil,
+		nil,
+	), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
@@ -2225,6 +2391,10 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		}
 
 		return expression.NewArithmetic(l, r, be.Operator), nil
+	case
+		sqlparser.JSONExtractOp,
+		sqlparser.JSONUnquoteExtractOp:
+		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
 
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)

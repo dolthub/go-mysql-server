@@ -16,8 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
-	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -26,7 +24,7 @@ import (
 type Call struct {
 	Name   string
 	Params []sql.Expression
-	proc   *sql.Procedure
+	proc   *Procedure
 	pRef   *expression.ProcedureParamReference
 }
 
@@ -53,6 +51,9 @@ func (c *Call) Resolved() bool {
 
 // Schema implements the sql.Node interface.
 func (c *Call) Schema() sql.Schema {
+	if c.proc != nil {
+		return c.proc.Schema()
+	}
 	return nil
 }
 
@@ -83,7 +84,7 @@ func (c *Call) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 // WithProcedure returns a new *Call containing the given *sql.Procedure.
-func (c *Call) WithProcedure(proc *sql.Procedure) *Call {
+func (c *Call) WithProcedure(proc *Procedure) *Call {
 	nc := *c
 	nc.proc = proc
 	return &nc
@@ -115,68 +116,55 @@ func (c *Call) String() string {
 
 // RowIter implements the sql.Node interface.
 func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	for i, paramExpr := range c.Params {
+		val, err := paramExpr.Eval(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		paramName := c.proc.Params[i].Name
+		paramType := c.proc.Params[i].Type
+		err = c.pRef.Initialize(paramName, paramType, val)
+		if err != nil {
+			return nil, err
+		}
+	}
+	innerIter, err := c.proc.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
 	return &callIter{
-		call: c,
-		ctx:  ctx,
+		call:      c,
+		innerIter: innerIter,
 	}, nil
 }
 
 // callIter is the row iterator for *Call.
 type callIter struct {
-	once sync.Once
-	call *Call
-	ctx  *sql.Context
+	call      *Call
+	innerIter sql.RowIter
 }
 
 // Next implements the sql.RowIter interface.
 func (iter *callIter) Next() (sql.Row, error) {
-	run := false
-	iter.once.Do(func() {
-		run = true
-	})
-	if !run {
-		return nil, io.EOF
-	}
-
-	for i, paramExpr := range iter.call.Params {
-		val, err := paramExpr.Eval(iter.ctx, nil)
-		if err != nil {
-			return nil, err
-		}
-		paramName := iter.call.proc.Params[i].Name
-		paramType := iter.call.proc.Params[i].Type
-		iter.call.pRef.Initialize(paramName, paramType, val)
-	}
-
-	bodyIter, err := iter.call.proc.Body.RowIter(iter.ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var fullRow sql.Row //TODO: figure out something better to do
-	var row sql.Row
-	for row, err = bodyIter.Next(); err == nil; row, err = bodyIter.Next() {
-		if !sql.IsOkResult(row) {
-			fullRow = append(fullRow, row...)
-		}
-	}
-	if err != io.EOF {
-		return nil, err
-	}
-	return fullRow, nil
+	return iter.innerIter.Next()
 }
 
 // Close implements the sql.RowIter interface.
-func (c *callIter) Close(ctx *sql.Context) error {
+func (iter *callIter) Close(ctx *sql.Context) error {
+	err := iter.innerIter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Set all user and system variables from INOUT and OUT params
-	for i, param := range c.call.proc.Params {
-		if param.Direction == sql.ProcedureParamDirection_Inout ||
-			(param.Direction == sql.ProcedureParamDirection_Out && c.call.pRef.HasBeenSet(param.Name)) {
-			val, err := c.call.pRef.Get(param.Name)
+	for i, param := range iter.call.proc.Params {
+		if param.Direction == ProcedureParamDirection_Inout ||
+			(param.Direction == ProcedureParamDirection_Out && iter.call.pRef.HasBeenSet(param.Name)) {
+			val, err := iter.call.pRef.Get(param.Name)
 			if err != nil {
 				return err
 			}
-			switch callParam := c.call.Params[i].(type) {
+			switch callParam := iter.call.Params[i].(type) {
 			case *expression.UserVar:
 				err = ctx.Set(ctx, callParam.Name, param.Type, val)
 				if err != nil {
@@ -193,10 +181,10 @@ func (c *callIter) Close(ctx *sql.Context) error {
 					return err
 				}
 			}
-		} else if param.Direction == sql.ProcedureParamDirection_Out { // HasBeenSet was false
+		} else if param.Direction == ProcedureParamDirection_Out { // HasBeenSet was false
 			// For OUT only, if a var was not set within the procedure body, then we set the vars to nil.
 			// If the var had a value before the call then it is basically removed.
-			switch callParam := c.call.Params[i].(type) {
+			switch callParam := iter.call.Params[i].(type) {
 			case *expression.UserVar:
 				err := ctx.Set(ctx, callParam.Name, param.Type, nil)
 				if err != nil {

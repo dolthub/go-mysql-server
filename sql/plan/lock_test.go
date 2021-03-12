@@ -30,8 +30,8 @@ func TestLockTables(t *testing.T) {
 	t1 := newLockableTable(memory.NewTable("foo", nil))
 	t2 := newLockableTable(memory.NewTable("bar", nil))
 	node := NewLockTables([]*TableLock{
-		{NewResolvedTable(t1), true},
-		{NewResolvedTable(t2), false},
+		{NewResolvedTable(t1, nil, nil), true},
+		{NewResolvedTable(t2, nil, nil), false},
 	})
 	node.Catalog = sql.NewCatalog()
 

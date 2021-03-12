@@ -52,6 +52,9 @@ func getFiltersByTable(n sql.Node) (filtersByTable, error) {
 			}
 			filters.merge(fs)
 		}
+		if o, ok := node.(sql.OpaqueNode); ok {
+			return !o.Opaque()
+		}
 		return true
 	})
 
@@ -70,6 +73,7 @@ func exprToTableFilters(expr sql.Expression) (filtersByTable, error) {
 	for _, expr := range splitConjunction(expr) {
 		var seenTables = make(map[string]bool)
 		var lastTable string
+		hasSubquery := false
 		sql.Inspect(expr, func(e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
 			if ok {
@@ -77,11 +81,17 @@ func exprToTableFilters(expr sql.Expression) (filtersByTable, error) {
 					seenTables[f.Table()] = true
 					lastTable = f.Table()
 				}
+			} else if _, isSubquery := e.(*plan.Subquery); isSubquery {
+				hasSubquery = true
+				return false
 			}
 
 			return true
 		})
 
+		if hasSubquery {
+			return nil, fmt.Errorf("cannot factor tables in expression because it contains a subquery: %s", expr.String())
+		}
 		if len(seenTables) == 1 {
 			filtersByTable[lastTable] = append(filtersByTable[lastTable], expr)
 		} else {

@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -455,6 +456,25 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 		})
 	}
 	for _, script := range InsertErrorScripts {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestLoadData(t *testing.T, harness Harness) {
+	for _, script := range LoadDataScripts {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestLoadDataErrors(t *testing.T, harness Harness) {
+	for _, script := range LoadDataErrorScripts {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestLoadDataFailing(t *testing.T, harness Harness) {
+	t.Skip()
+	for _, script := range LoadDataFailingScripts {
 		TestScript(t, harness, script)
 	}
 }
@@ -991,7 +1011,16 @@ func TestTriggers(t *testing.T, harness Harness) {
 }
 
 func TestStoredProcedures(t *testing.T, harness Harness) {
-	for _, script := range ProcedureTests {
+	for _, script := range ProcedureLogicTests {
+		TestScript(t, harness, script)
+	}
+	for _, script := range ProcedureCallTests {
+		TestScript(t, harness, script)
+	}
+	for _, script := range ProcedureDropTests {
+		TestScript(t, harness, script)
+	}
+	for _, script := range ProcedureShowStatus {
 		TestScript(t, harness, script)
 	}
 }
@@ -1044,6 +1073,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 	for _, assertion := range assertions {
 		if assertion.ExpectedErr != nil {
 			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+		} else if assertion.RequiredErr {
+			AssertErr(t, e, harness, assertion.Query, nil)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil)
 		}
@@ -3317,7 +3348,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		)
 
 		ctx := NewContext(harness)
-		t28, err := e.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
+		t28, _, err := e.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
 		require.NoError(err)
 		sch := t28.Schema()
 		require.Len(sch, 2)
@@ -3595,13 +3626,31 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	widenedRows := WidenRows(rows)
 	widenedExpected := WidenRows(expected)
 
-	orderBy := strings.Contains(strings.ToUpper(q), "ORDER BY ")
+	upperQuery := strings.ToUpper(q)
+	orderBy := strings.Contains(upperQuery, "ORDER BY ")
+
+	// We replace all times for SHOW statements with the Unix epoch
+	if strings.HasPrefix(upperQuery, "SHOW ") {
+		for _, widenedRow := range widenedRows {
+			for i, val := range widenedRow {
+				if _, ok := val.(time.Time); ok {
+					widenedRow[i] = time.Unix(0, 0).UTC()
+				}
+			}
+		}
+	}
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
 	if orderBy || len(expected) <= 1 {
 		require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	} else {
 		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+	}
+}
+
+func TestJsonScripts(t *testing.T, harness Harness) {
+	for _, script := range JsonScripts {
+		TestScript(t, harness, script)
 	}
 }
 

@@ -57,8 +57,8 @@ func TestUnion(t *testing.T) {
 	}{
 		{
 			NewUnion(
-				NewProject(name, NewResolvedTable(child)),
-				NewProject(name, NewResolvedTable(child))),
+				NewProject(name, NewResolvedTable(child, nil, nil)),
+				NewProject(name, NewResolvedTable(child, nil, nil))),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 				"john", "jane", "john", "martha", "martha",
@@ -66,16 +66,16 @@ func TestUnion(t *testing.T) {
 		},
 		{
 			NewUnion(
-				NewProject(name, NewResolvedTable(empty)),
-				NewProject(name, NewResolvedTable(child))),
+				NewProject(name, NewResolvedTable(empty, nil, nil)),
+				NewProject(name, NewResolvedTable(child, nil, nil))),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},
 		},
 		{
 			NewUnion(
-				NewProject(name, NewResolvedTable(child)),
-				NewProject(name, NewResolvedTable(empty))),
+				NewProject(name, NewResolvedTable(child, nil, nil)),
+				NewProject(name, NewResolvedTable(empty, nil, nil))),
 			[]string{
 				"john", "jane", "john", "martha", "martha",
 			},

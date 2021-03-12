@@ -125,6 +125,8 @@ func getLockable(node sql.Node) (sql.Lockable, error) {
 	switch node := node.(type) {
 	case *ResolvedTable:
 		return getLockableTable(node.Table)
+	case sql.TableWrapper:
+		return getLockableTable(node.Underlying())
 	default:
 		return nil, ErrTableNotLockable.New("unknown")
 	}

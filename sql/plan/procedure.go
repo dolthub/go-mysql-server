@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package plan
 
 import (
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // ProcedureSecurityContext determines whether the stored procedure is executed using the privileges of the definer or
@@ -48,7 +51,7 @@ const (
 type ProcedureParam struct {
 	Direction ProcedureParamDirection // Direction is the direction of the parameter.
 	Name      string                  // Name is the name of the parameter.
-	Type      Type                    // Type is the SQL type of the parameter.
+	Type      sql.Type                // Type is the SQL type of the parameter.
 }
 
 // Characteristic represents a characteristic that is defined on either a stored procedure or stored function.
@@ -64,65 +67,22 @@ const (
 	Characteristic_ModifiesSqlData
 )
 
-// ProcedureCache contains all of the stored procedures for each database.
-type ProcedureCache struct {
-	dbToProcedureMap map[string]map[string]*Procedure
-	isPopulating     bool
-}
-
-// NewProcedureCache returns a *ProcedureCache. If you will be adding procedures immediately to the cache, then set
-// the parameter to true.
-func NewProcedureCache(willImmediatelyRegister bool) *ProcedureCache {
-	return &ProcedureCache{
-		dbToProcedureMap: make(map[string]map[string]*Procedure),
-		isPopulating:     willImmediatelyRegister,
-	}
-}
-
-// Get returns the stored procedure with the given name from the given database. All names are case-insensitive. If the
-// procedure does not exist, then this returns nil.
-func (pc *ProcedureCache) Get(dbName, procedureName string) *Procedure {
-	pc.isPopulating = false
-	dbName = strings.ToLower(dbName)
-	procedureName = strings.ToLower(procedureName)
-	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
-		if procedure, ok := procMap[procedureName]; ok {
-			return procedure
-		}
-	}
-	return nil
-}
-
-// Register adds the given stored procedure to the cache. Will overwrite any procedures that already exist with the
-// same name for the given database name.
-func (pc *ProcedureCache) Register(dbName string, procedure *Procedure) {
-	pc.isPopulating = true
-	dbName = strings.ToLower(dbName)
-	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
-		procMap[strings.ToLower(procedure.Name)] = procedure
-	} else {
-		pc.dbToProcedureMap[dbName] = map[string]*Procedure{strings.ToLower(procedure.Name): procedure}
-	}
-}
-
-// IsPopulating returns whether the cache is being populated with procedures.
-func (pc *ProcedureCache) IsPopulating() bool {
-	if pc == nil {
-		return false
-	}
-	return pc.isPopulating
-}
-
 // Procedure is a stored procedure that may be executed using the CALL statement.
 type Procedure struct {
 	Name                  string
 	Definer               string
 	Params                []ProcedureParam
 	SecurityContext       ProcedureSecurityContext
+	Comment               string
 	Characteristics       []Characteristic
 	CreateProcedureString string
-	Body                  Node
+	Body                  sql.Node
+	CreatedAt             time.Time
+	ModifiedAt            time.Time
 }
+
+var _ sql.Node = (*Procedure)(nil)
+var _ sql.DebugStringer = (*Procedure)(nil)
 
 // NewProcedure returns a *Procedure. All names contained within are lowercase, and all methods are case-insensitive.
 func NewProcedure(
@@ -130,9 +90,12 @@ func NewProcedure(
 	definer string,
 	params []ProcedureParam,
 	securityContext ProcedureSecurityContext,
+	comment string,
 	characteristics []Characteristic,
 	createProcedureString string,
-	body Node,
+	body sql.Node,
+	createdAt time.Time,
+	modifiedAt time.Time,
 ) *Procedure {
 	lowercasedParams := make([]ProcedureParam, len(params))
 	for i, param := range params {
@@ -147,22 +110,54 @@ func NewProcedure(
 		Definer:               definer,
 		Params:                lowercasedParams,
 		SecurityContext:       securityContext,
+		Comment:               comment,
 		Characteristics:       characteristics,
 		CreateProcedureString: createProcedureString,
 		Body:                  body,
+		CreatedAt:             createdAt,
+		ModifiedAt:            modifiedAt,
 	}
 }
 
-// ParamIndex returns the index of the parameter with the given name. The name is case-insensitive. If the parameter
-// does not exist, returns -1.
-func (p *Procedure) ParamIndex(name string) int {
-	name = strings.ToLower(name)
-	for i, param := range p.Params {
-		if param.Name == name {
-			return i
-		}
+// Resolved implements the sql.Node interface.
+func (p *Procedure) Resolved() bool {
+	return p.Body.Resolved()
+}
+
+// String implements the sql.Node interface.
+func (p *Procedure) String() string {
+	return p.Body.String()
+}
+
+// DebugString implements the sql.DebugStringer interface.
+func (p *Procedure) DebugString() string {
+	return sql.DebugString(p.Body)
+}
+
+// Schema implements the sql.Node interface.
+func (p *Procedure) Schema() sql.Schema {
+	return p.Body.Schema()
+}
+
+// Children implements the sql.Node interface.
+func (p *Procedure) Children() []sql.Node {
+	return []sql.Node{p.Body}
+}
+
+// WithChildren implements the sql.Node interface.
+func (p *Procedure) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return -1
+
+	np := *p
+	np.Body = children[0]
+	return &np, nil
+}
+
+// RowIter implements the sql.Node interface.
+func (p *Procedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return p.Body.RowIter(ctx, row)
 }
 
 // String returns the original SQL representation.

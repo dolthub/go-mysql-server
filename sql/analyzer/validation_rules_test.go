@@ -94,7 +94,7 @@ func TestValidateGroupBy(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Text, "col1", true),
 		},
-		plan.NewResolvedTable(child),
+		plan.NewResolvedTable(child, nil, nil),
 	)
 
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil)
@@ -138,7 +138,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Text, "col1", true),
 		},
-		plan.NewResolvedTable(child),
+		plan.NewResolvedTable(child, nil, nil),
 	)
 
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil)
@@ -158,37 +158,31 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(
-				memory.NewTable(
-					"mytable",
-					sql.Schema{
-						{Name: "foo", Source: "mytable"},
-						{Name: "bar", Source: "mytable"},
-					},
-				),
-			),
+			plan.NewResolvedTable(memory.NewTable(
+				"mytable",
+				sql.Schema{
+					{Name: "foo", Source: "mytable"},
+					{Name: "bar", Source: "mytable"},
+				},
+			), nil, nil),
 			true,
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(
-				memory.NewTable(
-					"mytable",
-					sql.Schema{
-						{Name: "foo", Source: ""},
-						{Name: "bar", Source: "something"},
-					},
-				),
-			),
+			plan.NewResolvedTable(memory.NewTable(
+				"mytable",
+				sql.Schema{
+					{Name: "foo", Source: ""},
+					{Name: "bar", Source: "something"},
+				},
+			), nil, nil),
 			false,
 		},
 		{
 			"table alias with table",
-			plan.NewTableAlias("foo", plan.NewResolvedTable(
-				memory.NewTable("mytable", sql.Schema{
-					{Name: "foo", Source: "mytable"},
-				}),
-			)),
+			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable("mytable", sql.Schema{
+				{Name: "foo", Source: "mytable"},
+			}), nil, nil)),
 			true,
 		},
 		{
@@ -223,18 +217,16 @@ func TestValidateSchemaSource(t *testing.T) {
 }
 
 func TestValidateUnionSchemasMatch(t *testing.T) {
-	table := plan.NewResolvedTable(
-		memory.NewTable(
-			"mytable",
-			sql.Schema{
-				{Name: "foo", Source: "mytable", Type: sql.Text},
-				{Name: "bar", Source: "mytable", Type: sql.Int64},
-				{Name: "rab", Source: "mytable", Type: sql.Text},
-				{Name: "zab", Source: "mytable", Type: sql.Int64},
-				{Name: "quuz", Source: "mytable", Type: sql.Boolean},
-			},
-		),
-	)
+	table := plan.NewResolvedTable(memory.NewTable(
+		"mytable",
+		sql.Schema{
+			{Name: "foo", Source: "mytable", Type: sql.Text},
+			{Name: "bar", Source: "mytable", Type: sql.Int64},
+			{Name: "rab", Source: "mytable", Type: sql.Text},
+			{Name: "zab", Source: "mytable", Type: sql.Int64},
+			{Name: "quuz", Source: "mytable", Type: sql.Boolean},
+		},
+	), nil, nil)
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -486,7 +478,7 @@ func TestValidateIndexCreation(t *testing.T) {
 		{
 			"columns from another table",
 			plan.NewCreateIndex(
-				"idx", plan.NewResolvedTable(table),
+				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "bar", "b", false),
@@ -499,7 +491,7 @@ func TestValidateIndexCreation(t *testing.T) {
 		{
 			"columns that don't exist",
 			plan.NewCreateIndex(
-				"idx", plan.NewResolvedTable(table),
+				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", false),
@@ -512,7 +504,7 @@ func TestValidateIndexCreation(t *testing.T) {
 		{
 			"columns only from table",
 			plan.NewCreateIndex(
-				"idx", plan.NewResolvedTable(table),
+				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
@@ -622,7 +614,7 @@ func TestValidateCaseResultTypes(t *testing.T) {
 			require := require.New(t)
 			_, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewProject(
 				[]sql.Expression{tt.expr},
-				plan.NewResolvedTable(dualTable),
+				plan.NewResolvedTable(dualTable, nil, nil),
 			), nil)
 
 			if tt.ok {
@@ -868,9 +860,9 @@ func TestValidateSubqueryColumns(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetField(1, sql.Boolean, "bar", false),
 			},
-			plan.NewResolvedTable(subTable),
+			plan.NewResolvedTable(subTable, nil, nil),
 		)), "select bar from subtest where foo > 1"),
-	}, plan.NewResolvedTable(table))
+	}, plan.NewResolvedTable(table, nil, nil))
 
 	_, err = validateSubqueryColumns(ctx, nil, node, nil)
 	require.NoError(err)
@@ -883,9 +875,9 @@ func TestValidateSubqueryColumns(t *testing.T) {
 			[]sql.Expression{
 				expression.NewGetField(2, sql.Boolean, "bar", false),
 			},
-			plan.NewResolvedTable(subTable),
+			plan.NewResolvedTable(subTable, nil, nil),
 		)), "select bar from subtest where foo > 1"),
-	}, plan.NewResolvedTable(table))
+	}, plan.NewResolvedTable(table, nil, nil))
 
 	_, err = validateSubqueryColumns(ctx, nil, node, nil)
 	require.NoError(err)

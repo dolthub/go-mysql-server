@@ -171,6 +171,9 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 			triggerTable := getTableName(ct.Table)
 			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
+				if block, ok := ct.Body.(*plan.BeginEndBlock); ok {
+					ct.Body = plan.NewTriggerBeginEndBlock(block)
+				}
 				affectedTriggers = append(affectedTriggers, ct)
 			}
 		}

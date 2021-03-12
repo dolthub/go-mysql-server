@@ -24,7 +24,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// JSON_EXTRACT(json_doc, path[, path] ...)
+//
 // JSONExtract extracts data from a json document using json paths.
+// https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-extract
 type JSONExtract struct {
 	JSON  sql.Expression
 	Paths []sql.Expression

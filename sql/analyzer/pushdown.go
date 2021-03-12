@@ -172,11 +172,12 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliase
 					return nil, err
 				}
 				return FixFieldIndexesForExpressions(n, scope)
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias:
 				table, err := pushdownFiltersToTable(a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, err
 				}
+				return table, nil
 				return FixFieldIndexesForExpressions(table, scope)
 			default:
 				return FixFieldIndexesForExpressions(node, scope)
@@ -223,18 +224,15 @@ func convertFiltersToIndexedAccess(
 			return false
 		}
 
-		switch parent := parent.(type) {
+		switch parent.(type) {
 		// For IndexedJoins, if we are already using indexed access during query execution for the secondary table,
 		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but
 		// *will* inappropriately remove the filter from the predicate.
 		// TODO: the analyzer should combine these indexed lookups better
 		case *plan.IndexedJoin:
-			if parent.JoinType() == plan.JoinTypeLeft || parent.JoinType() == plan.JoinTypeRight {
-				return childNum == 0
-			}
-			return true
-		// Left and right joins can push down indexes for the primary table, but not the secondary. See comment
-		// on transformPushdownFilters
+			// Left and right joins can push down indexes for the primary table, but not the secondary. See comment
+			// on transformPushdownFilters
+			return childNum == 0
 		case *plan.LeftJoin:
 			return childNum == 0
 		case *plan.RightJoin:
@@ -356,7 +354,7 @@ func pushdownFiltersToTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.SubqueryAlias:
 		node, err := withTable(newTableNode, table)
 		if err != nil {
 			return nil, err

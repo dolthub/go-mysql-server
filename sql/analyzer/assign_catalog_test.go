@@ -40,7 +40,7 @@ func TestAssignCatalog(t *testing.T) {
 	tbl := memory.NewTable("foo", nil)
 
 	node, err := f.Apply(ctx, a,
-		plan.NewCreateIndex("", plan.NewResolvedTable(tbl), nil, "", make(map[string]string)), nil)
+		plan.NewCreateIndex("", plan.NewResolvedTable(tbl, nil, nil), nil, "", make(map[string]string)), nil)
 	require.NoError(err)
 
 	ci, ok := node.(*plan.CreateIndex)
@@ -49,7 +49,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal("foo", ci.CurrentDatabase)
 
 	node, err = f.Apply(ctx, a,
-		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl)), nil)
+		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl, nil, nil)), nil)
 	require.NoError(err)
 
 	di, ok := node.(*plan.DropIndex)
@@ -83,7 +83,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.True(ok)
 	require.Equal(c, ut.Catalog)
 
-	mockSubquery := plan.NewSubqueryAlias("mock", "", plan.NewResolvedTable(tbl))
+	mockSubquery := plan.NewSubqueryAlias("mock", "", plan.NewResolvedTable(tbl, nil, nil))
 	mockView := plan.NewCreateView(db, "", nil, mockSubquery, false)
 	node, err = f.Apply(ctx, a, mockView, nil)
 	require.NoError(err)

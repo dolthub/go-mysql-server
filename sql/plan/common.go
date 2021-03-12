@@ -77,3 +77,38 @@ func (n BinaryNode) Children() []sql.Node {
 func (n BinaryNode) Resolved() bool {
 	return n.left.Resolved() && n.right.Resolved()
 }
+
+// BlockRowIter is an iterator that produces rows. It is an extended interface over RowIter. This is primarily used
+// by block statements. In order to track the schema of a sql.RowIter from nested blocks, this extended row iter returns
+// the relevant information inside of the iter itself. In addition, the most specific top-level Node for that iter is
+// returned, as stored procedures use that Node to determine whether the iter represents a SELECT statement.
+type BlockRowIter interface {
+	sql.RowIter
+	// RepresentingNode returns the Node that most directly represents this RowIter. For example, in the case of
+	// an IF/ELSE block, the RowIter represents the Node where the condition evaluated to true.
+	RepresentingNode() sql.Node
+	// Schema returns the schema of this RowIter.
+	Schema() sql.Schema
+}
+
+// nodeRepresentsSelect attempts to walk a sql.Node to determine if it represents a SELECT statement.
+func nodeRepresentsSelect(s sql.Node) bool {
+	if s == nil {
+		return false
+	}
+	isSelect := false
+	// All SELECT statements, including those that do not specify a table (using "dual"), have a ResolvedTable.
+	Inspect(s, func(node sql.Node) bool {
+		switch node.(type) {
+		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
+			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update:
+			return false
+		case *ResolvedTable, *ProcedureResolvedTable:
+			isSelect = true
+			return false
+		default:
+			return true
+		}
+	})
+	return isSelect
+}

@@ -42,14 +42,14 @@ func TestExpandStars(t *testing.T) {
 			name: "unqualified star",
 			node: plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 		},
 		{
@@ -57,8 +57,8 @@ func TestExpandStars(t *testing.T) {
 			node: plan.NewProject(
 				[]sql.Expression{expression.NewQualifiedStar("mytable2")},
 				plan.NewCrossJoin(
-					plan.NewResolvedTable(table),
-					plan.NewResolvedTable(table2),
+					plan.NewResolvedTable(table, nil, nil),
+					plan.NewResolvedTable(table2, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
@@ -67,8 +67,8 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewResolvedTable(table),
-					plan.NewResolvedTable(table2),
+					plan.NewResolvedTable(table, nil, nil),
+					plan.NewResolvedTable(table2, nil, nil),
 				),
 			),
 		},
@@ -80,8 +80,8 @@ func TestExpandStars(t *testing.T) {
 					expression.NewQualifiedStar("mytable2"),
 				},
 				plan.NewCrossJoin(
-					plan.NewResolvedTable(table),
-					plan.NewResolvedTable(table2),
+					plan.NewResolvedTable(table, nil, nil),
+					plan.NewResolvedTable(table2, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
@@ -94,8 +94,8 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewResolvedTable(table),
-					plan.NewResolvedTable(table2),
+					plan.NewResolvedTable(table, nil, nil),
+					plan.NewResolvedTable(table2, nil, nil),
 				),
 			),
 		},
@@ -108,8 +108,8 @@ func TestExpandStars(t *testing.T) {
 					expression.NewQualifiedStar("mytable2"),
 				},
 				plan.NewCrossJoin(
-					plan.NewResolvedTable(table),
-					plan.NewResolvedTable(table2),
+					plan.NewResolvedTable(table, nil, nil),
+					plan.NewResolvedTable(table2, nil, nil),
 				),
 			),
 			expected: plan.NewProject(
@@ -123,8 +123,8 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "d", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewResolvedTable(table),
-					plan.NewResolvedTable(table2),
+					plan.NewResolvedTable(table, nil, nil),
+					plan.NewResolvedTable(table2, nil, nil),
 				),
 			),
 		},
@@ -135,7 +135,7 @@ func TestExpandStars(t *testing.T) {
 					expression.NewStar(),
 				},
 				nil,
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewGroupBy(
 				[]sql.Expression{
@@ -143,7 +143,7 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
 				nil,
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 		},
 		{
@@ -165,7 +165,7 @@ func TestExpandStars(t *testing.T) {
 						),
 					)),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewWindow(
 				[]sql.Expression{
@@ -185,7 +185,7 @@ func TestExpandStars(t *testing.T) {
 						),
 					)),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 		},
 		{ // note that this behaviour deviates from MySQL
@@ -195,7 +195,7 @@ func TestExpandStars(t *testing.T) {
 					expression.NewUnresolvedColumn("foo"),
 					expression.NewStar(),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
@@ -203,7 +203,7 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 		},
 		{ // note that this behaviour deviates from MySQL
@@ -213,7 +213,7 @@ func TestExpandStars(t *testing.T) {
 					expression.NewStar(),
 					expression.NewStar(),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
@@ -222,7 +222,7 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 				},
-				plan.NewResolvedTable(table),
+				plan.NewResolvedTable(table, nil, nil),
 			),
 		},
 	}

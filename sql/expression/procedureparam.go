@@ -33,14 +33,19 @@ type procedureParamReferenceValue struct {
 }
 
 // Initialize sets the initial value for the parameter.
-func (ppr *ProcedureParamReference) Initialize(name string, sqlType sql.Type, val interface{}) {
+func (ppr *ProcedureParamReference) Initialize(name string, sqlType sql.Type, val interface{}) error {
 	name = strings.ToLower(name)
+	convertedVal, err := sqlType.Convert(val)
+	if err != nil {
+		return err
+	}
 	ppr.nameToParam[name] = &procedureParamReferenceValue{
 		Name:       name,
-		Value:      val,
+		Value:      convertedVal,
 		SqlType:    sqlType,
 		HasBeenSet: false,
 	}
+	return nil
 }
 
 // Get returns the value of the given parameter. Name is case-insensitive.
@@ -51,6 +56,20 @@ func (ppr *ProcedureParamReference) Get(name string) (interface{}, error) {
 		return nil, fmt.Errorf("cannot find value for parameter `%s`", name)
 	}
 	return paramRefVal.Value, nil
+}
+
+// GetType returns the type of the given parameter. Name is case-insensitive. Returns the NULL type if the type cannot
+// be found.
+func (ppr *ProcedureParamReference) GetType(name string) sql.Type {
+	if ppr == nil {
+		return sql.Null
+	}
+	name = strings.ToLower(name)
+	paramRefVal, ok := ppr.nameToParam[name]
+	if !ok {
+		return sql.Null
+	}
+	return paramRefVal.SqlType
 }
 
 // Set updates the value of the given parameter. Name is case-insensitive.
@@ -112,8 +131,8 @@ func (*ProcedureParam) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (*ProcedureParam) Type() sql.Type {
-	return sql.Null
+func (pp *ProcedureParam) Type() sql.Type {
+	return pp.pRef.GetType(pp.name)
 }
 
 // Name implements the Nameable interface.

@@ -32,7 +32,7 @@ var testingTableSize int
 func TestLimitPlan(t *testing.T) {
 	require := require.New(t)
 	table, _ := getTestingTable(t)
-	limitPlan := NewLimit(0, NewResolvedTable(table))
+	limitPlan := NewLimit(0, NewResolvedTable(table, nil, nil))
 	require.Equal(1, len(limitPlan.Children()))
 
 	iterator, err := getLimitedIterator(t, 1)
@@ -43,7 +43,7 @@ func TestLimitPlan(t *testing.T) {
 func TestLimitImplementsNode(t *testing.T) {
 	require := require.New(t)
 	table, _ := getTestingTable(t)
-	limitPlan := NewLimit(0, NewResolvedTable(table))
+	limitPlan := NewLimit(0, NewResolvedTable(table, nil, nil))
 	childSchema := table.Schema()
 	nodeSchema := limitPlan.Schema()
 	require.True(reflect.DeepEqual(childSchema, nodeSchema))
@@ -122,7 +122,7 @@ func getLimitedIterator(t *testing.T, limitSize int64) (sql.RowIter, error) {
 	t.Helper()
 	ctx := sql.NewEmptyContext()
 	table, _ := getTestingTable(t)
-	limitPlan := NewLimit(limitSize, NewResolvedTable(table))
+	limitPlan := NewLimit(limitSize, NewResolvedTable(table, nil, nil))
 	return limitPlan.RowIter(ctx, nil)
 }
 

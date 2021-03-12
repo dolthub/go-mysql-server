@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -268,7 +269,30 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"character_set_connection": TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"character_set_results":    TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"collation_connection":     TypedValue{LongText, Collation_Default.String()},
+		"tmpdir":                   TypedValue{LongText, GetTmpdirSessionVar()},
+		"local_infile":             TypedValue{Int8, int8(0)},
+		"secure_file_priv":         TypedValue{LongText, nil},
 	}
+}
+
+// cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html
+func GetTmpdirSessionVar() string {
+	ret := os.Getenv("TMPDIR")
+	if ret != "" {
+		return ret
+	}
+
+	ret = os.Getenv("TEMP")
+	if ret != "" {
+		return ret
+	}
+
+	ret = os.Getenv("TMP")
+	if ret != "" {
+		return ret
+	}
+
+	return ""
 }
 
 // HasDefaultValue checks if session variable value is the default one.
@@ -309,13 +333,12 @@ type Context struct {
 	Session
 	*IndexRegistry
 	*ViewRegistry
-	ProcedureCache *ProcedureCache
-	Memory         *MemoryManager
-	pid            uint64
-	query          string
-	queryTime      time.Time
-	tracer         opentracing.Tracer
-	rootSpan       opentracing.Span
+	Memory    *MemoryManager
+	pid       uint64
+	query     string
+	queryTime time.Time
+	tracer    opentracing.Tracer
+	rootSpan  opentracing.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -400,7 +423,7 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
+	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -411,10 +434,6 @@ func NewContext(
 
 	if c.ViewRegistry == nil {
 		c.ViewRegistry = NewViewRegistry()
-	}
-
-	if c.ProcedureCache == nil {
-		c.ProcedureCache = NewProcedureCache(false)
 	}
 
 	if c.Memory == nil {
@@ -459,17 +478,16 @@ func (c *Context) Span(
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
 	return span, &Context{
-		Context:        ctx,
-		Session:        c.Session,
-		IndexRegistry:  c.IndexRegistry,
-		ViewRegistry:   c.ViewRegistry,
-		ProcedureCache: c.ProcedureCache,
-		Memory:         c.Memory,
-		pid:            c.Pid(),
-		query:          c.Query(),
-		queryTime:      c.queryTime,
-		tracer:         c.tracer,
-		rootSpan:       c.rootSpan,
+		Context:       ctx,
+		Session:       c.Session,
+		IndexRegistry: c.IndexRegistry,
+		ViewRegistry:  c.ViewRegistry,
+		Memory:        c.Memory,
+		pid:           c.Pid(),
+		query:         c.Query(),
+		queryTime:     c.queryTime,
+		tracer:        c.tracer,
+		rootSpan:      c.rootSpan,
 	}
 }
 
@@ -478,17 +496,16 @@ func (c *Context) Span(
 func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(c.Context)
 	return &Context{
-		Context:        ctx,
-		Session:        c.Session,
-		IndexRegistry:  c.IndexRegistry,
-		ViewRegistry:   c.ViewRegistry,
-		ProcedureCache: c.ProcedureCache,
-		Memory:         c.Memory,
-		pid:            c.Pid(),
-		query:          c.Query(),
-		queryTime:      c.queryTime,
-		tracer:         c.tracer,
-		rootSpan:       c.rootSpan,
+		Context:       ctx,
+		Session:       c.Session,
+		IndexRegistry: c.IndexRegistry,
+		ViewRegistry:  c.ViewRegistry,
+		Memory:        c.Memory,
+		pid:           c.Pid(),
+		query:         c.Query(),
+		queryTime:     c.queryTime,
+		tracer:        c.tracer,
+		rootSpan:      c.rootSpan,
 	}, cancelFunc
 }
 
@@ -500,17 +517,16 @@ func (c *Context) WithCurrentDB(db string) *Context {
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
 	return &Context{
-		Context:        ctx,
-		Session:        c.Session,
-		IndexRegistry:  c.IndexRegistry,
-		ViewRegistry:   c.ViewRegistry,
-		ProcedureCache: c.ProcedureCache,
-		Memory:         c.Memory,
-		pid:            c.Pid(),
-		query:          c.Query(),
-		queryTime:      c.queryTime,
-		tracer:         c.tracer,
-		rootSpan:       c.rootSpan,
+		Context:       ctx,
+		Session:       c.Session,
+		IndexRegistry: c.IndexRegistry,
+		ViewRegistry:  c.ViewRegistry,
+		Memory:        c.Memory,
+		pid:           c.Pid(),
+		query:         c.Query(),
+		queryTime:     c.queryTime,
+		tracer:        c.tracer,
+		rootSpan:      c.rootSpan,
 	}
 }
 

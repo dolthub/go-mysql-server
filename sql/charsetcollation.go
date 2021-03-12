@@ -244,7 +244,7 @@ const (
 	Collation_utf32_croatian_ci           Collation = "utf32_croatian_ci"
 	Collation_utf32_unicode_520_ci        Collation = "utf32_unicode_520_ci"
 	Collation_utf32_vietnamese_ci         Collation = "utf32_vietnamese_ci"
-	Collation_utf8_general_ci             Collation = "utf8"
+	Collation_utf8_general_ci             Collation = "utf8_general_ci"
 	Collation_utf8_tolower_ci                       = Collation_utf8mb3_tolower_ci
 	Collation_utf8_bin                              = Collation_utf8mb3_bin
 	Collation_utf8_unicode_ci                       = Collation_utf8mb3_unicode_ci
@@ -768,6 +768,7 @@ var (
 		CharacterSet_utf32:    Collation_utf32_general_ci,
 		CharacterSet_utf8mb3:  Collation_utf8mb3_general_ci,
 		CharacterSet_utf8mb4:  Collation_utf8mb4_0900_ai_ci,
+		CharacterSet_utf8:     Collation_utf8_general_ci,
 	}
 
 	characterSetDefaultBinaryColl = map[CharacterSet]Collation{
@@ -1130,6 +1131,7 @@ var (
 		CharacterSet_utf16:    "UTF-16 Unicode",
 		CharacterSet_utf16le:  "UTF-16LE Unicode",
 		CharacterSet_utf32:    "UTF-32 Unicode",
+		CharacterSet_utf8:     "UTF-8 Unicode",
 		CharacterSet_utf8mb3:  "UTF-8 Unicode",
 		CharacterSet_utf8mb4:  "UTF-8 Unicode",
 	}
@@ -1176,6 +1178,7 @@ var (
 		CharacterSet_utf32:    4,
 		CharacterSet_utf8mb3:  3,
 		CharacterSet_utf8mb4:  4,
+		CharacterSet_utf8:     3,
 	}
 
 	ErrCharacterSetNotSupported = errors.NewKind("Unknown character set: %v")
@@ -1201,6 +1204,10 @@ var CollationToMySQLVals = map[Collation]mysqlCollationRow{
 	Collation_binary:             {63, Y, Y, 0, NoPad},
 	Collation_utf8_general_ci:    {33, Y, Y, 1, PadSpace},
 	Collation_utf8mb4_0900_ai_ci: {255, Y, Y, 0, NoPad},
+}
+
+var SupportedCharsets = []CharacterSet{
+	CharacterSet_utf8mb4,
 }
 
 // ParseCharacterSet takes in a string representing a CharacterSet and

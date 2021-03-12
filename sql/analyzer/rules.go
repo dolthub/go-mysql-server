@@ -23,6 +23,7 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_views", resolveViews},
+	{"resolve_common_table_expressions", resolveCommonTableExpressions},
 	{"resolve_tables", resolveTables},
 	{"load_check_constraints", loadChecks},
 	{"resolve_set_variables", resolveSetVariables},
@@ -33,7 +34,9 @@ var OnceBeforeDefault = []Rule{
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
 	{"validate_stored_procedure", validateStoredProcedure},
+	{"validate_create_procedure", validateCreateProcedure},
 	{"validate_check_constraint", validateCreateCheck},
+	{"assign_info_schema", assignInfoSchema},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -67,18 +70,19 @@ var OnceAfterDefault = []Rule{
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
 	{"assign_catalog", assignCatalog},
-	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
 	{"optimize_joins", constructJoinPlan},
 	{"pushdown_filters", pushdownFilters},
 	{"subquery_indexes", applyIndexesFromOuterScope},
 	{"in_subquery_indexes", applyIndexesForSubqueryComparisons},
 	{"pushdown_projections", pushdownProjections},
+	{"set_join_scope_len", setJoinScopeLen},
 	{"erase_projection", eraseProjection},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"cache_subquery_results", cacheSubqueryResults},
+	{"cache_subquery_aliases_in_joins", cacheSubqueryAlisesInJoins},
 	{"resolve_insert_rows", resolveInsertRows},
 	{"apply_triggers", applyTriggers},
 	{"apply_procedures", applyProcedures},

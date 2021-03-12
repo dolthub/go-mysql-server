@@ -34,8 +34,8 @@ func TestTrackProcess(t *testing.T) {
 	a := NewDefault(catalog)
 
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&table{memory.NewPartitionedTable("foo", nil, 2)}),
-		plan.NewResolvedTable(memory.NewPartitionedTable("bar", nil, 4)),
+		plan.NewResolvedTable(&table{memory.NewPartitionedTable("foo", nil, 2)}, nil, nil),
+		plan.NewResolvedTable(memory.NewPartitionedTable("bar", nil, 4), nil, nil),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 
@@ -101,7 +101,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 		nil,
 		plan.NewSubqueryAlias("f", "",
 			plan.NewQueryProcess(
-				plan.NewResolvedTable(memory.NewTable("foo", nil)),
+				plan.NewResolvedTable(memory.NewTable("foo", nil), nil, nil),
 				nil,
 			),
 		),
@@ -113,7 +113,7 @@ func TestTrackProcessSubquery(t *testing.T) {
 	expectedChild := plan.NewProject(
 		nil,
 		plan.NewSubqueryAlias("f", "",
-			plan.NewResolvedTable(memory.NewTable("foo", nil)),
+			plan.NewResolvedTable(memory.NewTable("foo", nil), nil, nil),
 		),
 	)
 

@@ -76,7 +76,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 				return n, nil
 			}
 
-			return replanJoin(ctx, n, a, joinIndexes)
+			return replanJoin(ctx, n, a, joinIndexes, scope)
 		default:
 			return n, nil
 		}
@@ -158,10 +158,18 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, false, err
 		}
 
+		if scope != nil {
+			left = plan.NewStripRowNode(left, len(scope.Schema()))
+		}
+
 		// then the right side, appending the schema from the left
 		right, replacedRight, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, left.Schema()...), scope, joinIndexes, tableAliases)
 		if err != nil {
 			return nil, false, err
+		}
+
+		if scope != nil {
+			right = plan.NewStripRowNode(right, len(scope.Schema()))
 		}
 
 		// the condition's field indexes might need adjusting if the order of tables changed
@@ -170,7 +178,7 @@ func replaceTableAccessWithIndexedAccess(
 			return nil, false, err
 		}
 
-		return plan.NewIndexedJoin(left, right, node.JoinType(), cond), replacedLeft || replacedRight, nil
+		return plan.NewIndexedJoin(left, right, node.JoinType(), cond, len(scope.Schema())), replacedLeft || replacedRight, nil
 	case *plan.Limit:
 		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
 	case *plan.Sort:
@@ -228,7 +236,7 @@ func replaceIndexedAccessInUnaryNode(
 	return newNode, replaced, nil
 }
 
-func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable) (sql.Node, error) {
+func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable, scope *Scope) (sql.Node, error) {
 	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
 	// only certain nodes can be below it.
 	eligible := true
@@ -254,23 +262,34 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 
 	joinHint := extractJoinHint(node)
 
-	// Collect all tables and find an access order for them
-	tables := lexicalTableOrder(node)
-	tablesByName := byLowerCaseName(tables)
-	tableOrder, err := orderTables(ctx, tables, tablesByName, joinIndexes, joinHint)
-	if err != nil {
-		return nil, err
+	// Collect all tables
+	tableJoinOrder := newJoinOrderNode(node)
+
+	// Find a hinted or cost optimized access order for them
+	if joinHint != nil {
+		err := tableJoinOrder.applyJoinHint(joinHint)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Then use that order to construct a join tree
-	joinTree := buildJoinTree(tableOrder, joinIndexes.flattenJoinConds(tableOrder))
+	if tableJoinOrder.order == nil {
+		err := tableJoinOrder.estimateCost(ctx, joinIndexes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Use the order in tableJoinOrder to construct a join tree
+	joinTree := buildJoinTree(tableJoinOrder, joinIndexes.flattenJoinConds(tableJoinOrder.tableNames()))
 
 	// This shouldn't happen, but better to fail gracefully if it does
 	if joinTree == nil {
 		return node, nil
 	}
 
-	joinNode := joinTreeToNodes(joinTree, tablesByName)
+	tablesByName := byLowerCaseName(tableJoinOrder.tables())
+	joinNode := joinTreeToNodes(joinTree, tablesByName, scope)
 
 	return joinNode, nil
 }
@@ -334,34 +353,15 @@ func (j JoinOrder) HintType() string {
 	return "JOIN_ORDER"
 }
 
-// lexicalTableOrder returns the names of the tables under the join node given, in the original lexical order. This is
-// possible to reconstruct because the parser assembles joins in left-bound fashion, so that the first two tables are
-// the most deeply nested node on the left branch. Each additional join wraps this original join node, with the
-// original on the left and the new table being joined on the right.
-func lexicalTableOrder(node sql.Node) []NameableNode {
-	switch node := node.(type) {
-	case *plan.TableAlias:
-		return []NameableNode{node}
-	case *plan.ResolvedTable:
-		return []NameableNode{node}
-	case *plan.SubqueryAlias:
-		return []NameableNode{node}
-	case plan.JoinNode:
-		return append(lexicalTableOrder(node.Left()), lexicalTableOrder(node.Right())...)
-	default:
-		panic(fmt.Sprintf("unexpected node type: %t", node))
-	}
-}
-
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
-func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode) sql.Node {
+func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
 	if tree.isLeaf() {
 		return tablesByName[tree.table]
 	}
 
-	left := joinTreeToNodes(tree.left, tablesByName)
-	right := joinTreeToNodes(tree.right, tablesByName)
-	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond)
+	left := joinTreeToNodes(tree.left, tablesByName, scope)
+	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
@@ -535,7 +535,7 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 // that the order of the conditions returned is deterministic for a given table order.
 func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	if len(tableOrder) != len(ji) {
-		panic("Inconsistent table order for flattenJoinConds")
+		panic(fmt.Sprintf("Inconsistent table order for flattenJoinConds: tableOrder: %v, ji: %v", tableOrder, ji))
 	}
 
 	joinConditions := make([]*joinCond, 0)
@@ -681,7 +681,19 @@ func getJoinIndex(
 	exprsByTable := joinExprsByTable(joinCondPredicates)
 	indexesByTable := make(joinIndexesByTable)
 	for table, cols := range exprsByTable {
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, extractExpressions(cols)...)...)
+		exprs := extractExpressions(cols)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, exprs...)...)
+		// If we do not find a perfect index, we take the first single column partial index if there is one.
+		// This currently only finds single column indexes. A better search would look for the most complete
+		// index available, covering the columns with the most specificity / highest cardinality.
+		if idx == nil && len(exprs) > 1 {
+			for _, e := range exprs {
+				idx = ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, e)...)
+				if idx != nil {
+					break
+				}
+			}
+		}
 		indexesByTable[table] = append(indexesByTable[table], colExprsToJoinIndex(table, idx, joinCond, cols))
 	}
 

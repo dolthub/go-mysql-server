@@ -47,6 +47,8 @@ func GetTruncatable(node sql.Node) (sql.TruncateableTable, error) {
 		return GetTruncatable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getTruncatableTable(node.Table)
+	case sql.TableWrapper:
+		return getTruncatableTable(node.Underlying())
 	}
 	for _, child := range node.Children() {
 		truncater, _ := GetTruncatable(child)

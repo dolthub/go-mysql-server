@@ -18,33 +18,38 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/parse"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // loadStoredProcedures loads stored procedures for all databases on relevant calls.
 func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	if ctx.ProcedureCache.IsPopulating() {
+	if a.ProcedureCache.IsPopulating {
 		return n, nil
 	}
-	hasCall := false
+	referencesProcedures := false
 	plan.Inspect(n, func(n sql.Node) bool {
-		_, ok := n.(*plan.Call)
-		if ok {
-			hasCall = true
+		if _, ok := n.(*plan.Call); ok {
+			referencesProcedures = true
+			return false
+		} else if _, ok := n.(*plan.ShowProcedureStatus); ok {
+			referencesProcedures = true
 			return false
 		}
 		return true
 	})
-	if !hasCall {
+	if !referencesProcedures {
 		return n, nil
 	}
-	ctx.ProcedureCache = sql.NewProcedureCache(true)
+	a.ProcedureCache = NewProcedureCache()
+	a.ProcedureCache.IsPopulating = true
+	defer func() {
+		a.ProcedureCache.IsPopulating = false
+	}()
 
 	for _, database := range a.Catalog.AllDatabases() {
 		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
@@ -63,36 +68,92 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 					return nil, sql.ErrProcedureCreateStatementInvalid.New(procedure.CreateStatement)
 				}
 
-				analyzedNode, err := a.Analyze(ctx, cp, nil)
+				paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
 				if err != nil {
 					return nil, err
 				}
-				analyzedNode = stripQueryProcess(analyzedNode)
-				analyzedCp, ok := analyzedNode.(*plan.CreateProcedure)
+				procNode, err := resolveProcedureParams(paramNames, cp.Procedure)
+				if err != nil {
+					return nil, err
+				}
+				analyzedNode, err := analyzeProcedureBodies(ctx, a, procNode, false, nil)
+				if err != nil {
+					return nil, err
+				}
+				analyzedProc, ok := analyzedNode.(*plan.Procedure)
 				if !ok {
-					return nil, fmt.Errorf("analyzed node %T and expected *plan.CreateProcedure", analyzedNode)
+					return nil, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
 				}
 
-				ctx.ProcedureCache.Register(database.Name(), analyzedCp.AsProcedure())
+				a.ProcedureCache.Register(database.Name(), analyzedProc)
 			}
 		}
 	}
 	return n, nil
 }
 
-// validateStoredProcedure handles CreateProcedure nodes, resolving references to the parameters, along with ensuring
+// analyzeProcedureBodies analyzes each statement in a procedure's body individually, as the analyzer is designed to
+// inspect single statements rather than a collection of statements, which is usually the body of a stored procedure.
+func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCall bool, scope *Scope) (sql.Node, error) {
+	children := node.Children()
+	newChildren := make([]sql.Node, len(children))
+	var err error
+	for i, child := range children {
+		var newChild sql.Node
+		switch child := child.(type) {
+		// Anything that may represent a collection of statements should go here
+		case *plan.Procedure, *plan.BeginEndBlock, *plan.Block, *plan.IfElseBlock, *plan.IfConditional:
+			newChild, err = analyzeProcedureBodies(ctx, a, child, skipCall, scope)
+		case *plan.Call:
+			if skipCall {
+				newChild = child
+			} else {
+				newChild, err = a.Analyze(ctx, child, scope)
+			}
+		default:
+			newChild, err = a.Analyze(ctx, child, scope)
+		}
+		if err != nil {
+			return nil, err
+		}
+		newChildren[i] = stripQueryProcess(newChild)
+	}
+	return node.WithChildren(newChildren...)
+}
+
+// validateCreateProcedure handles CreateProcedure nodes, resolving references to the parameters, along with ensuring
 // that all logic contained within the stored procedure body is valid.
-func validateStoredProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	cp, ok := node.(*plan.CreateProcedure)
 	if !ok {
 		return node, nil
 	}
 
+	paramNames, err := validateStoredProcedure(ctx, cp.Procedure)
+	if err != nil {
+		return nil, err
+	}
+	proc, err := resolveProcedureParams(paramNames, cp.Procedure)
+	if err != nil {
+		return nil, err
+	}
+	newProc, err := analyzeProcedureBodies(ctx, a, proc, true, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return cp.WithChildren(stripQueryProcess(newProc))
+}
+
+// validateStoredProcedure handles Procedure nodes, resolving references to the parameters, along with ensuring
+// that all logic contained within the stored procedure body is valid.
+func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string]struct{}, error) {
+	//TODO: handle declared variables here as well
 	paramNames := make(map[string]struct{})
-	for _, param := range cp.Params {
+	for _, param := range proc.Params {
 		paramName := strings.ToLower(param.Name)
 		if _, ok := paramNames[paramName]; ok {
-			return nil, fmt.Errorf("duplicate parameter name `%s` on stored procedure `%s`", param.Name, cp.Name)
+			return nil, sql.ErrProcedureDuplicateParameterName.New(param.Name, proc.Name)
 		}
 		paramNames[paramName] = struct{}{}
 	}
@@ -102,7 +163,7 @@ func validateStoredProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	var err error
 	spUnsupportedErr := errors.NewKind("creating %s in stored procedures is currently unsupported " +
 		"and will be added in a future release")
-	plan.Inspect(cp.Body, func(n sql.Node) bool {
+	plan.Inspect(proc, func(n sql.Node) bool {
 		switch n.(type) {
 		case *plan.CreateTable:
 			err = spUnsupportedErr.New("tables")
@@ -127,75 +188,157 @@ func validateStoredProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		return nil, err
 	}
 
-	body, err := plan.TransformExpressionsUp(cp.Body, func(e sql.Expression) (sql.Expression, error) {
+	plan.Inspect(proc, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.Call:
+			if proc.Name == strings.ToLower(n.Name) {
+				err = sql.ErrProcedureRecursiveCall.New(proc.Name)
+			}
+		//TODO: add LOAD DATA
+		case *plan.LockTables: // Blocked in vitess, but this is for safety
+			err = sql.ErrProcedureInvalidBodyStatement.New("LOCK TABLES")
+		case *plan.UnlockTables: // Blocked in vitess, but this is for safety
+			err = sql.ErrProcedureInvalidBodyStatement.New("UNLOCK TABLES")
+		case *plan.Use: // Blocked in vitess, but this is for safety
+			err = sql.ErrProcedureInvalidBodyStatement.New("USE")
+		default:
+			return true
+		}
+		return false
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return paramNames, nil
+}
+
+// resolveProcedureParams resolves all of the named parameters and declared variables inside of a stored procedure.
+func resolveProcedureParams(paramNames map[string]struct{}, proc *plan.Procedure) (*plan.Procedure, error) {
+	newProcNode, err := resolveProcedureParamsTransform(paramNames, proc)
+	if err != nil {
+		return nil, err
+	}
+	newProc, ok := newProcNode.(*plan.Procedure)
+	if !ok {
+		return nil, fmt.Errorf("expected `*plan.Procedure` but got `%T`", newProcNode)
+	}
+	return newProc, nil
+}
+
+// resolveProcedureParamsTransform resolves all of the named parameters and declared variables inside of a node.
+// In cases where an expression contains nodes, this will also walk those nodes.
+func resolveProcedureParamsTransform(paramNames map[string]struct{}, n sql.Node) (sql.Node, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "" {
-				if _, ok := paramNames[strings.ToLower(e.Name())]; !ok {
-					return nil, fmt.Errorf("unknown parameter name `%s` on stored procedure `%s`", e.Name(), cp.Name)
+				if _, ok := paramNames[strings.ToLower(e.Name())]; ok {
+					return expression.NewProcedureParam(e.Name()), nil
 				}
-				return expression.NewProcedureParam(e.Name()), nil
 			}
 			return e, nil
 		case *deferredColumn:
 			if strings.ToLower(e.Table()) == "" {
-				if _, ok := paramNames[strings.ToLower(e.Name())]; !ok {
-					return nil, fmt.Errorf("unknown parameter name `%s` on stored procedure `%s`", e.Name(), cp.Name)
+				if _, ok := paramNames[strings.ToLower(e.Name())]; ok {
+					return expression.NewProcedureParam(e.Name()), nil
 				}
-				return expression.NewProcedureParam(e.Name()), nil
 			}
 			return e, nil
+		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
+			newQuery, err := resolveProcedureParamsTransform(paramNames, e.Query)
+			if err != nil {
+				return nil, err
+			}
+			ne := *e
+			ne.Query = newQuery
+			return &ne, nil
 		default:
 			return e, nil
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	//TODO: check the procedure body and verify that only valid statements are contained within
-	//TODO: check the procedure body and ensure that no recursive procedure calls are made
-
-	analyzedBody, err := a.Analyze(ctx, body, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	return cp.WithChildren(stripQueryProcess(analyzedBody))
 }
 
+// applyProcedures applies the relevant stored procedures to the node given (if necessary).
 func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	if a.ProcedureCache.IsPopulating {
+		return n, nil
+	}
+	if _, ok := n.(*plan.CreateProcedure); ok {
+		return n, nil
+	}
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		call, ok := n.(*plan.Call)
+		switch n := n.(type) {
+		case *plan.Call:
+			return applyProceduresCall(ctx, a, n, scope)
+		case *plan.ShowProcedureStatus:
+			return applyProceduresShowProcedure(ctx, a, n, scope)
+		default:
+			return n, nil
+		}
+	})
+}
+
+// applyProceduresCall applies the relevant stored procedure to the given *plan.Call.
+func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *Scope) (sql.Node, error) {
+	pRef := expression.NewProcedureParamReference()
+	call = call.WithParamReference(pRef)
+
+	procedure := a.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name)
+	if procedure == nil {
+		return nil, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+	}
+
+	var procParamTransformFunc sql.TransformExprFunc
+	procParamTransformFunc = func(e sql.Expression) (sql.Expression, error) {
+		switch expr := e.(type) {
+		case *expression.ProcedureParam:
+			return expr.WithParamReference(pRef), nil
+		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
+			newQuery, err := plan.TransformExpressionsUp(expr.Query, procParamTransformFunc)
+			if err != nil {
+				return nil, err
+			}
+			ne := *expr
+			ne.Query = newQuery
+			return &ne, nil
+		default:
+			return e, nil
+		}
+	}
+	transformedProcedure, err := plan.TransformExpressionsUp(procedure, procParamTransformFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	transformedProcedure, err = plan.TransformUpWithParent(transformedProcedure, func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error) {
+		rt, ok := n.(*plan.ResolvedTable)
 		if !ok {
 			return n, nil
 		}
-
-		pRef := expression.NewProcedureParamReference()
-		call = call.WithParamReference(pRef)
-
-		procedure := ctx.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name)
-		if procedure == nil {
-			return nil, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
-		}
-		procedureBody, err := plan.TransformExpressionsUp(procedure.Body, func(e sql.Expression) (sql.Expression, error) {
-			switch expr := e.(type) {
-			case *expression.ProcedureParam:
-				return expr.WithParamReference(pRef), nil
-			default:
-				return e, nil
-			}
-		})
-		if err != nil {
-			return nil, err
-		}
-		procedureBody, err = applyProcedures(ctx, a, procedureBody, scope)
-		if err != nil {
-			return nil, err
-		}
-
-		procedure.Body = procedureBody
-		call = call.WithProcedure(procedure)
-		return call, nil
+		return plan.NewProcedureResolvedTable(rt), nil
 	})
+	transformedProcedure, err = applyProcedures(ctx, a, transformedProcedure, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	var ok bool
+	procedure, ok = transformedProcedure.(*plan.Procedure)
+	if !ok {
+		return nil, fmt.Errorf("expected `*plan.Procedure` but got `%T`", transformedProcedure)
+	}
+
+	if len(procedure.Params) != len(call.Params) {
+		return nil, sql.ErrCallIncorrectParameterCount.New(procedure.Name, len(procedure.Params), len(call.Params))
+	}
+
+	call = call.WithProcedure(procedure)
+	return call, nil
+}
+
+// applyProceduresShowProcedure applies all of the stored procedures to the given *plan.ShowProcedureStatus.
+func applyProceduresShowProcedure(ctx *sql.Context, a *Analyzer, n *plan.ShowProcedureStatus, scope *Scope) (sql.Node, error) {
+	n.Procedures = a.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase())
+	return n, nil
 }

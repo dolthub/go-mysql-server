@@ -155,6 +155,22 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM othertable ot LEFT JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 WHERE CONVERT(s2, signed) <> 0) sub ON sub.i = ot.i2 WHERE ot.i2 > 0",
+		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
+			" └─ LeftJoin(sub.i = ot.i2)\n" +
+			"     ├─ Filter(ot.i2 > 0)\n" +
+			"     │   └─ TableAlias(ot)\n" +
+			"     │       └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias(sub)\n" +
+			"             └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"                 └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"                     ├─ Table(mytable)\n" +
+			"                     └─ Filter(NOT(convert(othertable.s2, signed) = 0))\n" +
+			"                         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
 		Query: "INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2",
 		ExpectedPlan: "Insert()\n" +
 			" ├─ Table(mytable)\n" +
@@ -168,6 +184,18 @@ var PlanTests = []QueryPlanTest{
 			"             │           └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"             └─ TableAlias(ot)\n" +
 			"                 └─ IndexedTableAccess(othertable on [othertable.i2])\n",
+	},
+	{
+		Query: "SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)",
+		ExpectedPlan: "Project(mytable.i, selfjoin.i)\n" +
+			" └─ Filter(selfjoin.i IN (Project(1)\n" +
+			"     └─ Table(dual)\n" +
+			"    ))\n" +
+			"     └─ IndexedJoin(mytable.i = selfjoin.i)\n" +
+			"         ├─ Table(mytable)\n" +
+			"         └─ TableAlias(selfjoin)\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
 	},
 	{
 		Query: "SELECT s2, i2, i FROM mytable INNER JOIN othertable ON i = i2",
@@ -227,6 +255,54 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: "SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ InnerJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias(othertable)\n" +
+			"             └─ Table(othertable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT s2, i2, i FROM mytable LEFT JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ LeftJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias(othertable)\n" +
+			"             └─ Table(othertable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT s2, i2, i FROM mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ RightIndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: "SELECT s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: "SELECT othertable.s2, othertable.i2, mytable.i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON othertable.i2 = mytable.i WHERE othertable.s2 > 'a'",
+		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ Filter(othertable.s2 > \"a\")\n" +
+			"     │   └─ SubqueryAlias(othertable)\n" +
+			"     │       └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: "SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i = (SELECT i2 FROM othertable LIMIT 1)",
 		ExpectedPlan: "IndexedInSubqueryFilter(mytable.i IN ((Limit(1)\n" +
 			" └─ Project(othertable.i2)\n" +
@@ -260,6 +336,15 @@ var PlanTests = []QueryPlanTest{
 			" │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			" └─ TableAlias(ot)\n" +
 			"     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: "SELECT /*+ JOIN_ORDER(mt, o) */ * FROM mytable mt INNER JOIN one_pk o ON mt.i = o.pk AND mt.s = o.c2",
+		ExpectedPlan: "IndexedJoin(mt.i = o.pk AND mt.s = o.c2)\n" +
+			" ├─ TableAlias(mt)\n" +
+			" │   └─ Table(mytable)\n" +
+			" └─ TableAlias(o)\n" +
+			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
@@ -400,28 +485,27 @@ var PlanTests = []QueryPlanTest{
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-			" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-			"         └─ TableAlias(tpk2)\n" +
-			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			" └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"     ├─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ Table(one_pk)\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"     └─ TableAlias(tpk2)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
-	// TODO: this query actually produces an incorrect result, but the plan looks reasonable.
 	{
 		Query: `SELECT pk FROM one_pk
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-			" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-			"         └─ TableAlias(tpk2)\n" +
-			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			" └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"     ├─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ Table(one_pk)\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"     └─ TableAlias(tpk2)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -429,13 +513,13 @@ var PlanTests = []QueryPlanTest{
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-			" └─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-			"         └─ TableAlias(tpk2)\n" +
-			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			" └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"     ├─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ Table(one_pk)\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"     └─ TableAlias(tpk2)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -489,11 +573,11 @@ var PlanTests = []QueryPlanTest{
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i + 1`,
 		ExpectedPlan: "Project(one_pk.pk, nt.i, nt2.i)\n" +
-			" └─ RightIndexedJoin(one_pk.pk = nt.i)\n" +
-			"     ├─ TableAlias(nt)\n" +
+			" └─ RightIndexedJoin(one_pk.pk = nt2.i + 1)\n" +
+			"     ├─ TableAlias(nt2)\n" +
 			"     │   └─ Table(niltable)\n" +
-			"     └─ RightIndexedJoin(one_pk.pk = nt2.i + 1)\n" +
-			"         ├─ TableAlias(nt2)\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = nt.i)\n" +
+			"         ├─ TableAlias(nt)\n" +
 			"         │   └─ Table(niltable)\n" +
 			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
