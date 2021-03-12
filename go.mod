@@ -4,7 +4,7 @@ require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c
-	github.com/dolthub/vitess v0.0.0-20210306002241-df17fc5cd13d
+	github.com/dolthub/vitess v0.0.0-20210312050304-80c341057da7
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/go-kit/kit v0.9.0
 	github.com/go-sql-driver/mysql v1.4.1
@@ -28,7 +28,5 @@ require (
 	google.golang.org/grpc v1.27.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 )
-
-replace github.com/dolthub/vitess => /Users/vinairachakonda/go/src/dolthub/vitess
 
 go 1.13

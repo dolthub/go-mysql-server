@@ -1206,10 +1206,8 @@ var CollationToMySQLVals = map[Collation]mysqlCollationRow{
 	Collation_utf8mb4_0900_ai_ci: {255, Y, Y, 0, NoPad},
 }
 
-var CharsetToMySQLVals = []CharacterSet{
-	CharacterSet_utf8,
+var SupportedCharsets = []CharacterSet{
 	CharacterSet_utf8mb4,
-	CharacterSet_binary,
 }
 
 // ParseCharacterSet takes in a string representing a CharacterSet and
