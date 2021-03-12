@@ -21,12 +21,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 const (
@@ -62,6 +63,10 @@ const (
 	ViewsTableName = "views"
 	// UserPrivilegesTableName is the name of the user_privileges table
 	UserPrivilegesTableName = "user_privileges"
+	// CharacterSetsTableName is the name of the character_sets table
+	CharacterSetsTableName = "character_sets"
+	// EnginesTableName is the name of the engines table
+	EnginesTableName = "engines"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -374,6 +379,22 @@ var userPrivilegesSchema = Schema{
 	{Name: "is_grantable", Type: LongText, Default: nil, Nullable: false, Source: UserPrivilegesTableName},
 }
 
+var characterSetSchema = Schema{
+	{Name: "character_set_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "default_collate_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "description", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "maxlen", Type: Uint8, Default: nil, Nullable: false, Source: CharacterSetsTableName},
+}
+
+var enginesSchema = Schema{
+	{Name: "engine", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "support", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 8), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "comment", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 80), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "transactions", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "xa", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "savepoints", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -537,6 +558,34 @@ func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, c := range SupportedCharsets {
+		rows = append(rows, Row{
+			c.String(),
+			c.DefaultCollation().String(),
+			c.Description(),
+			c.MaxLength(),
+		})
+	}
+	return RowsToRowIter(rows...), nil
+}
+
+func engineRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, c := range SupportedEngines {
+		rows = append(rows, Row{
+			c.String(),
+			c.Support(),
+			c.Comment(),
+			c.Transactions(),
+			c.XA(),
+			c.Savepoints(),
+		})
+	}
+	return RowsToRowIter(rows...), nil
+}
+
 func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
@@ -670,6 +719,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				catalog: cat,
 				rowIter: collationsRowIter,
 			},
+			CharacterSetsTableName: &informationSchemaTable{
+				name:    CharacterSetsTableName,
+				schema:  characterSetSchema,
+				catalog: cat,
+				rowIter: charsetRowIter,
+			},
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
 				schema:  statisticsSchema,
@@ -723,6 +778,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  userPrivilegesSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
+			},
+			EnginesTableName: &informationSchemaTable{
+				name:    EnginesTableName,
+				schema:  enginesSchema,
+				catalog: cat,
+				rowIter: engineRowIter,
 			},
 		},
 	}

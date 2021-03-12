@@ -385,17 +385,17 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "procedure status":
 		var filter sql.Expression
 
-		if s.ProcFuncFilter != nil {
-			if s.ProcFuncFilter.Filter != nil {
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
 				var err error
-				filter, err = exprToExpression(ctx, s.ProcFuncFilter.Filter)
+				filter, err = exprToExpression(ctx, s.Filter.Filter)
 				if err != nil {
 					return nil, err
 				}
-			} else if s.ProcFuncFilter.Like != "" {
+			} else if s.Filter.Like != "" {
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Name"),
-					expression.NewLiteral(s.ProcFuncFilter.Like, sql.LongText),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
 				)
 			}
 		}
@@ -498,6 +498,36 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				return nil, err
 			}
 			return plan.NewFilter(filterExpr, infoSchemaSelect), nil
+		}
+
+		return infoSchemaSelect, nil
+	case sqlparser.KeywordString(sqlparser.CHARSET):
+		var filter sql.Expression
+
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				var err error
+				filter, err = exprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Charset"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+				)
+			}
+		}
+
+		var node sql.Node = plan.NewShowCharset()
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
+	case sqlparser.KeywordString(sqlparser.ENGINES):
+		infoSchemaSelect, err := Parse(ctx, "select * from information_schema.engines")
+		if err != nil {
+			return nil, err
 		}
 
 		return infoSchemaSelect, nil

@@ -2319,6 +2319,47 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SHOW CHARSET",
+		Expected: []sql.Row{
+			{
+				sql.CharacterSet_utf8mb4.String(),
+				sql.CharacterSet_utf8mb4.Description(),
+				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
+				sql.CharacterSet_utf8mb4.MaxLength(),
+			},
+		},
+	},
+	{
+		Query: "SHOW CHARACTER SET",
+		Expected: []sql.Row{
+			{
+				sql.CharacterSet_utf8mb4.String(),
+				sql.CharacterSet_utf8mb4.Description(),
+				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
+				sql.CharacterSet_utf8mb4.MaxLength(),
+			},
+		},
+	},
+	{
+		Query: "SHOW CHARSET LIKE 'utf8%'",
+		Expected: []sql.Row{
+			{
+				sql.CharacterSet_utf8mb4.String(),
+				sql.CharacterSet_utf8mb4.Description(),
+				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
+				sql.CharacterSet_utf8mb4.MaxLength(),
+			},
+		},
+	},
+	{
+		Query:    "show charset where charset='binary'",
+		Expected: nil,
+	},
+	{
+		Query:    `SHOW CHARSET WHERE Charset = 'foo'`,
+		Expected: nil,
+	},
+	{
 		Query:    "ROLLBACK",
 		Expected: nil,
 	},

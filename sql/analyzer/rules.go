@@ -33,6 +33,7 @@ var OnceBeforeDefault = []Rule{
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
 	{"validate_create_procedure", validateCreateProcedure},
+	{"assign_info_schema", assignInfoSchema},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -66,7 +67,6 @@ var OnceAfterDefault = []Rule{
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
 	{"assign_catalog", assignCatalog},
-	{"assign_info_schema", assignInfoSchema},
 	{"prune_columns", pruneColumns},
 	{"optimize_joins", constructJoinPlan},
 	{"pushdown_filters", pushdownFilters},
