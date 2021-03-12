@@ -485,28 +485,27 @@ var PlanTests = []QueryPlanTest{
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-			" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-			"         └─ TableAlias(tpk2)\n" +
-			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			" └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"     ├─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ Table(one_pk)\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"     └─ TableAlias(tpk2)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
-	// TODO: this query actually produces an incorrect result, but the plan looks reasonable.
 	{
 		Query: `SELECT pk FROM one_pk
 						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-			" └─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-			"         └─ TableAlias(tpk2)\n" +
-			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			" └─ IndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"     ├─ LeftIndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ Table(one_pk)\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"     └─ TableAlias(tpk2)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -514,13 +513,13 @@ var PlanTests = []QueryPlanTest{
 						JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
 						LEFT JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
 		ExpectedPlan: "Project(one_pk.pk)\n" +
-			" └─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
-			"     ├─ Table(one_pk)\n" +
-			"     └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
-			"         └─ TableAlias(tpk2)\n" +
-			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			" └─ LeftIndexedJoin(tpk2.pk1 = tpk.pk2 AND tpk2.pk2 = tpk.pk1)\n" +
+			"     ├─ IndexedJoin(one_pk.pk = tpk.pk1 AND one_pk.pk = tpk.pk2)\n" +
+			"     │   ├─ Table(one_pk)\n" +
+			"     │   └─ TableAlias(tpk)\n" +
+			"     │       └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"     └─ TableAlias(tpk2)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -574,11 +573,11 @@ var PlanTests = []QueryPlanTest{
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i + 1`,
 		ExpectedPlan: "Project(one_pk.pk, nt.i, nt2.i)\n" +
-			" └─ RightIndexedJoin(one_pk.pk = nt.i)\n" +
-			"     ├─ TableAlias(nt)\n" +
+			" └─ RightIndexedJoin(one_pk.pk = nt2.i + 1)\n" +
+			"     ├─ TableAlias(nt2)\n" +
 			"     │   └─ Table(niltable)\n" +
-			"     └─ RightIndexedJoin(one_pk.pk = nt2.i + 1)\n" +
-			"         ├─ TableAlias(nt2)\n" +
+			"     └─ RightIndexedJoin(one_pk.pk = nt.i)\n" +
+			"         ├─ TableAlias(nt)\n" +
 			"         │   └─ Table(niltable)\n" +
 			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",

@@ -4072,6 +4072,47 @@ var QueryTests = []QueryTest{
 			{3, 1},
 		},
 	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		Expected: []sql.Row{
+			{0, 0, 0, 0, 0},
+			{1, 1, 1, 1, 1},
+		},
+	},
+	{
+		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+		Expected: []sql.Row{
+			{nil, nil, 1},
+			{1, 1, 2},
+			{2, 2, 3},
+			{3, 3, 4},
+			{nil, nil, 5},
+			{nil, nil, 6},
+		},
+	},
+	{
+		Query: `SELECT pk,pk2,
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1)
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		Expected: []sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
+		},
+	},
+	{
+		Query: `SELECT pk,pk2,
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1)
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		Expected: []sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -4176,52 +4217,6 @@ var BrokenQueries = []QueryTest{
 			{1, 50.0, 10.0},
 			{2, 30.0, 15.0},
 			{3, nil, 15.0},
-		},
-	},
-	// Indexed joins in subqueries are broken
-	{
-		Query: `SELECT pk,pk2, 
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1) 
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	// Non-indexed joins in subqueries are broken
-	{
-		Query: `SELECT pk,pk2, 
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1) 
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	// 3+ table joins with one LEFT join, one INNER join, have the wrong semantics according to MySQL. Should be 2 rows,
-	// but get 4.
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2 
-						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		Expected: []sql.Row{
-			{0, 0, 0, 0, 0},
-			{1, 1, 1, 1, 1},
-		},
-	},
-	// More broken RIGHT / LEFT semantics. Mysql gives these results, we give different ones.
-	{
-		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		Expected: []sql.Row{
-			{nil, nil, 1},
-			{1, 1, 2},
-			{2, 2, 3},
-			{3, 3, 4},
-			{nil, nil, 5},
-			{nil, nil, 6},
 		},
 	},
 	{
