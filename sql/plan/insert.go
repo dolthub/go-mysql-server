@@ -46,17 +46,18 @@ type InsertInto struct {
 	ColumnNames []string
 	IsReplace   bool
 	OnDupExprs  []sql.Expression
-	Checks      []*sql.CheckConstraint
+	Checks      []sql.Expression
 }
 
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
+func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, checks []sql.Expression) *InsertInto {
 	return &InsertInto{
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,
 		IsReplace:   isReplace,
 		OnDupExprs:  onDupExprs,
+		Checks:      checks,
 	}
 }
 
@@ -82,8 +83,8 @@ type insertIter struct {
 	rowSource   sql.RowIter
 	ctx         *sql.Context
 	updateExprs []sql.Expression
+	checks      []sql.Expression
 	tableNode   sql.Node
-	checks      []*sql.CheckConstraint
 	closed      bool
 }
 
@@ -119,7 +120,7 @@ func newInsertIter(
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
-	checks []*sql.CheckConstraint,
+	checks []sql.Expression,
 	row sql.Row,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
@@ -156,6 +157,7 @@ func newInsertIter(
 		updater:     updater,
 		rowSource:   rowIter,
 		updateExprs: onDupUpdateExpr,
+		checks:      checks,
 		ctx:         ctx,
 	}, nil
 }
@@ -181,6 +183,19 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 	if err != nil {
 		_ = i.rowSource.Close(i.ctx)
 		return nil, err
+	}
+
+	// apply check constraints
+	var res interface{}
+	for _, check := range i.checks {
+		res, err = check.Eval(i.ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if val, ok := res.(bool); !ok || !val {
+			i.ctx.Warn(3819, "Check constraint '%s' is violated", check.String())
+			return nil, nil
+		}
 	}
 
 	// Do any necessary type conversions to the target schema
@@ -383,15 +398,15 @@ func validateNullability(dstSchema sql.Schema, row sql.Row) error {
 }
 
 func (p *InsertInto) Expressions() []sql.Expression {
-	return p.OnDupExprs
+	return append(p.OnDupExprs, p.Checks...)
 }
 
 func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(p.OnDupExprs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs), 1)
+	if len(newExprs) != len(p.OnDupExprs)+len(p.Checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs)+len(p.Checks), 1)
 	}
 
-	return NewInsertInto(p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs), nil
+	return NewInsertInto(p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs[:len(p.OnDupExprs)], newExprs[len(p.OnDupExprs):]), nil
 }
 
 // Resolved implements the Resolvable interface.
@@ -401,6 +416,11 @@ func (p *InsertInto) Resolved() bool {
 	}
 	for _, updateExpr := range p.OnDupExprs {
 		if !updateExpr.Resolved() {
+			return false
+		}
+	}
+	for _, checkExpr := range p.Checks {
+		if !checkExpr.Resolved() {
 			return false
 		}
 	}

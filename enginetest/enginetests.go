@@ -2187,7 +2187,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	checks, err := cht.GetChecks(NewContext(harness))
 	require.NoError(err)
 
-	cmp := sql.CheckConstraint{
+	con := sql.CheckConstraint{
 		Name: "chk2",
 		Expr: expression.NewGreaterThan(
 			expression.NewUnresolvedColumn("t1.b"),
@@ -2195,7 +2195,8 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		),
 		Enforced: true,
 	}
-	expected := []sql.CheckDefinition{*plan.NewCheckDefinition(&cmp)}
+	cmp, _ := plan.NewCheckDefinition(&con)
+	expected := []sql.CheckDefinition{*cmp}
 
 	assert.Equal(t, expected, checks)
 
@@ -2207,6 +2208,55 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)")
 	require.Error(err)
 	assert.True(t, sql.ErrTableColumnNotFound.Is(err))
+}
+
+func TestChecksOnInsert(t *testing.T, harness Harness) {
+
+	//require := require.New(t)
+
+	e := NewEngine(t, harness)
+	//e.Analyzer.Debug = true
+	//e.Analyzer.Verbose = true
+
+	TestQuery(t, harness, e,
+		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)",
+		[]sql.Row(nil),
+		nil,
+	)
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
+	TestQuery(t, harness, e, `SELECT * FROM t1`,
+		[]sql.Row{
+			{1, 1},
+		},
+		nil,
+	)
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0)")
+	TestQuery(t, harness, e, `SELECT * FROM t1`,
+		[]sql.Row{
+			{1, 1},
+		},
+		nil,
+	)
+
+	ctx := NewContext(harness)
+	require.True(t, len(ctx.Warnings()) > 0)
+
+	expectedCode := 3819
+	condition := false
+	for _, warning := range ctx.Warnings() {
+		if warning.Code == expectedCode {
+			condition = true
+			break
+		}
+	}
+
+	require.True(t, condition)
+
 }
 
 func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
@@ -2280,7 +2330,7 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 	checks, err := cht.GetChecks(NewContext(harness))
 	require.NoError(err)
 
-	cmp := sql.CheckConstraint{
+	con := sql.CheckConstraint{
 		Name: "chk2",
 		Expr: expression.NewGreaterThan(
 			expression.NewUnresolvedColumn("t1.b"),
@@ -2288,7 +2338,9 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 		),
 		Enforced: true,
 	}
-	expected := []sql.CheckDefinition{*plan.NewCheckDefinition(&cmp)}
+	cmp, _ := plan.NewCheckDefinition(&con)
+	expected := []sql.CheckDefinition{*cmp}
+
 	assert.Equal(t, expected, checks)
 
 	// Some faulty create statements

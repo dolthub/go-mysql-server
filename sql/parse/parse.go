@@ -1121,6 +1121,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		isReplace,
 		columnsToStrings(i.Columns),
 		onDupExprs,
+		nil,
 	), nil
 }
 

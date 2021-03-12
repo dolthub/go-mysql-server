@@ -83,28 +83,54 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		switch node := n.(type) {
 		case *plan.InsertInto:
 			nc := *node
-			table, ok := nc.Destination.(sql.CheckTable)
-			if !ok {
-				return node, nil
+			table, err := plan.GetCheckTable(nc.Destination)
+
+			if err != nil {
+				return node, err
 			}
+
 			loadedChecks, err := loadChecksFromTable(ctx, table)
+
 			if err != nil {
 				return nil, err
 			}
+
 			if len(loadedChecks) != 0 {
 				nc.Checks = loadedChecks
 			} else {
-				nc.Checks = make([]*sql.CheckConstraint, 0)
+				nc.Checks = make([]sql.Expression, 0)
 			}
+
 			return &nc, nil
+		//case *plan.RenameColumn:
+		//	nc := *node
+		//	table, err := plan.GetCheckTable(nc.)
+		//
+		//	if err != nil {
+		//		return node, err
+		//	}
+		//
+		//	loadedChecks, err := loadChecksFromTable(ctx, table)
+		//
+		//	if err != nil {
+		//		return nil, err
+		//	}
+		//
+		//	if len(loadedChecks) != 0 {
+		//		nc.Checks = loadedChecks
+		//	} else {
+		//		nc.Checks = make([]sql.Expression, 0)
+		//	}
+		//
+		//	return &nc, nil
 		default:
 			return node, nil
 		}
 	})
 }
 
-func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstraint, error) {
-	var loadedChecks []*sql.CheckConstraint
+func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]sql.Expression, error) {
+	var loadedChecks []sql.Expression
 	if checkTable, ok := table.(sql.CheckTable); ok {
 		checks, err := checkTable.GetChecks(ctx)
 		if err != nil {
@@ -115,7 +141,9 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 			if err != nil {
 				return nil, err
 			}
-			loadedChecks = append(loadedChecks, constraint)
+			if constraint.Enforced {
+				loadedChecks = append(loadedChecks, constraint.Expr)
+			}
 		}
 	}
 	return loadedChecks, nil

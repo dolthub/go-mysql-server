@@ -321,6 +321,10 @@ func TestCreateCheckConstraints(t *testing.T) {
 	enginetest.TestCreateCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestChecksOnInsert(t *testing.T) {
+	enginetest.TestChecksOnInsert(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestTestDisallowedCheckConstraints(t *testing.T) {
 	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }

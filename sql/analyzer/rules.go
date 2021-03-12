@@ -22,9 +22,9 @@ import (
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{"load_stored_procedures", loadStoredProcedures},
-	{"load_check_constraints", loadChecks},
 	{"resolve_views", resolveViews},
 	{"resolve_tables", resolveTables},
+	{"load_check_constraints", loadChecks},
 	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_create_like", resolveCreateLike},
 	{"resolve_subqueries", resolveSubqueries},
@@ -62,7 +62,6 @@ var DefaultRules = []Rule{
 // DefaultRules.
 var OnceAfterDefault = []Rule{
 	{"load_triggers", loadTriggers},
-	{"load_checks", loadChecks},
 	{"process_truncate", processTruncate},
 	{"resolve_column_defaults", resolveColumnDefaults},
 	{"resolve_generators", resolveGenerators},

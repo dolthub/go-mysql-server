@@ -26,8 +26,8 @@ var (
 	// ErrNoCheckConstraintSupport is returned when the table does not support CONSTRAINT CHECK operations.
 	ErrNoCheckConstraintSupport = errors.NewKind("the table does not support check constraint operations: %s")
 
-	// ErrNoCheckFailed is returned when the check constraint evaluates to false
-	ErrNoCheckFailed = errors.NewKind("check failed: %s, %s")
+	// ErrCheckFailed is returned when the check constraint evaluates to false
+	ErrCheckFailed = errors.NewKind("check failed: %s, %s")
 )
 
 type CreateCheck struct {
@@ -71,8 +71,33 @@ func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
 		return t, nil
 	case sql.TableWrapper:
 		return getCheckAlterableTable(t.Underlying())
+	case *ResolvedTable:
+		return getCheckAlterableTable(t.Table)
 	default:
 		return nil, ErrNoCheckConstraintSupport.New(t.Name())
+	}
+}
+
+func GetCheckTable(node sql.Node) (sql.CheckTable, error) {
+	switch node := node.(type) {
+	case sql.CheckTable:
+		return node, nil
+	case *ResolvedTable:
+		return getCheckTable(node.Table), nil
+	default:
+		return nil, ErrNoCheckConstraintSupport.New(node.String())
+	}
+}
+
+// getCheckTable returns the underlying getCheckTable for the table given, or nil if it isn't a getCheckTable
+func getCheckTable(t sql.Table) sql.CheckTable {
+	switch t := t.(type) {
+	case sql.CheckTable:
+		return t
+	case sql.TableWrapper:
+		return getCheckTable(t.Underlying())
+	default:
+		return nil
 	}
 }
 
@@ -121,7 +146,6 @@ func (p *CreateCheck) Execute(ctx *sql.Context) error {
 		return err
 	}
 
-	//check, err := ConvertCheckDefToConstraint(ctx, p.ChDef)
 	if err != nil {
 		return err
 	}
@@ -141,51 +165,17 @@ func (p *CreateCheck) Execute(ctx *sql.Context) error {
 			return err
 		}
 		if val, ok := res.(bool); !ok || !val {
-			return ErrNoCheckFailed.New(p.ChDef.Expr.String(), row)
+			return ErrCheckFailed.New(p.ChDef.Expr.String(), row)
 		}
 	}
 
-	// Make sure that all columns are valid, in the table, and there are no duplicates
-	//cols := make(map[string]bool)
-	//for _, col := range chAlterable.Schema() {
-	//	cols[col.Name] = true
-	//}
-	//
-	//sql.Inspect(p.ChDef.Expr, func(expr sql.Expression) bool {
-	//	switch expr := expr.(type) {
-	//	case *expression.UnresolvedColumn:
-	//		if _, ok := cols[expr.Name()]; !ok {
-	//			err = sql.ErrTableColumnNotFound.New(expr.Name())
-	//			return false
-	//		}
-	//	case *expression.UnresolvedFunction:
-	//		err = sql.ErrInvalidConstraintFunctionsNotSupported.New(expr.String())
-	//		return false
-	//	case *Subquery:
-	//		err = sql.ErrInvalidConstraintSubqueryNotSupported.New(expr.String())
-	//		return falseErrInvalidCheckConstraint
-	//	}
-	//	return true
-	//})
-	//if err != nil {
-	//	return err
-	//}
-	//switch p.ChDef.Expr.(type):
+	check, err := NewCheckDefinition(p.ChDef)
 
-	//	case expression.BinaryExpression:
-	//for _, chCol := range p.ChDef.Expr. {
-	//	if seen, ok := seenCols[fkCol]; ok {
-	//		if !seen {
-	//			seenCols[fkCol] = true
-	//		} else {
-	//			return ErrAddForeignKe yDuplicateColumn.New(fkCol)
-	//		}
-	//	} else {
-	//		return sql.ErrTableColumnNotFound.New(fkCol)
-	//	}
-	//}
+	if err != nil {
+		return err
+	}
 
-	return chAlterable.CreateCheck(ctx, NewCheckDefinition(p.ChDef))
+	return chAlterable.CreateCheck(ctx, check)
 }
 
 // WithChildren implements the Node interface.
@@ -250,14 +240,33 @@ func (p DropCheck) String() string {
 	return pr.String()
 }
 
-func NewCheckDefinition(check *sql.CheckConstraint) *sql.CheckDefinition {
+func NewCheckDefinition(check *sql.CheckConstraint) (*sql.CheckDefinition, error) {
+	//var new sql.Node
+	//cleaned, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+	//	switch expr := e.(type) {
+	//	case *expression.GetField:
+	//		return expr.WithTable(""), nil
+	//	default:
+	//		return expr, nil
+	//	}
+	//	//return new, nil
+	//})
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	enforced := ""
+	if !check.Enforced {
+		enforced = " NOT ENFORCED"
+	}
+
 	return &sql.CheckDefinition{
 		Name: check.Name,
 		AlterStatement: fmt.Sprintf(
-			"ALTER TABLE _ ADD CONSTRAINT %s CHECK %s ENFORCED %v",
+			"ALTER TABLE _ ADD CONSTRAINT %s CHECK (%s)%s",
 			check.Name,
 			check.Expr.String(),
-			check.Enforced,
+			enforced,
 		),
-	}
+	}, nil
 }

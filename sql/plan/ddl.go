@@ -223,7 +223,11 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 					return sql.RowsToRowIter(), ErrNoCheckConstraintSupport.New(c.name)
 				}
 				for _, ch := range c.chDefs {
-					err = chAlterable.CreateCheck(ctx, NewCheckDefinition(ch))
+					check, err := NewCheckDefinition(ch)
+					if err != nil {
+						return nil, err
+					}
+					err = chAlterable.CreateCheck(ctx, check)
 					if err != nil {
 						return sql.RowsToRowIter(), err
 					}

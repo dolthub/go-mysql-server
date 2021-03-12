@@ -1186,6 +1186,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+		nil,
 	),
 	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(
 		plan.NewUnresolvedTable("t1", ""),
@@ -1196,6 +1197,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+		nil,
 	),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
 		plan.NewFilter(
@@ -1216,6 +1218,7 @@ var fixtures = map[string]sql.Node{
 		true,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+		nil,
 	),
 	`SHOW TABLES`:                           plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	`SHOW FULL TABLES`:                      plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
@@ -2402,6 +2405,7 @@ var fixtures = map[string]sql.Node{
 					false,
 					[]string{"a", "b"},
 					[]sql.Expression{},
+					nil,
 				),
 			},
 		),
@@ -2429,6 +2433,7 @@ var fixtures = map[string]sql.Node{
 			false,
 			[]string{"a", "b"},
 			[]sql.Expression{},
+			nil,
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
@@ -2446,6 +2451,7 @@ var fixtures = map[string]sql.Node{
 			false,
 			[]string{"a", "b"},
 			[]sql.Expression{},
+			nil,
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
