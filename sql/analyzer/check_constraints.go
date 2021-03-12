@@ -102,27 +102,10 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			}
 
 			return &nc, nil
+		// TODO : reimplement modify column nodes and throw errors here to protect check columns
+		//case *plan.DropColumn:
 		//case *plan.RenameColumn:
-		//	nc := *node
-		//	table, err := plan.GetCheckTable(nc.)
-		//
-		//	if err != nil {
-		//		return node, err
-		//	}
-		//
-		//	loadedChecks, err := loadChecksFromTable(ctx, table)
-		//
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//
-		//	if len(loadedChecks) != 0 {
-		//		nc.Checks = loadedChecks
-		//	} else {
-		//		nc.Checks = make([]sql.Expression, 0)
-		//	}
-		//
-		//	return &nc, nil
+		//case *plan.ModifyColumn:
 		default:
 			return node, nil
 		}
