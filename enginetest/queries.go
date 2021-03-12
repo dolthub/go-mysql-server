@@ -2187,22 +2187,10 @@ var QueryTests = []QueryTest{
 		Query: "SHOW CHARSET",
 		Expected: []sql.Row{
 			{
-				sql.CharacterSet_utf8.String(),
-				sql.CharacterSet_utf8.Description(),
-				sql.CharacterSet_utf8.DefaultCollation().String(),
-				sql.CharacterSet_utf8.MaxLength(),
-			},
-			{
 				sql.CharacterSet_utf8mb4.String(),
 				sql.CharacterSet_utf8mb4.Description(),
 				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
 				sql.CharacterSet_utf8mb4.MaxLength(),
-			},
-			{
-				sql.CharacterSet_binary.String(),
-				sql.CharacterSet_binary.Description(),
-				sql.CharacterSet_binary.DefaultCollation().String(),
-				sql.CharacterSet_binary.MaxLength(),
 			},
 		},
 	},
@@ -2210,22 +2198,10 @@ var QueryTests = []QueryTest{
 		Query: "SHOW CHARACTER SET",
 		Expected: []sql.Row{
 			{
-				sql.CharacterSet_utf8.String(),
-				sql.CharacterSet_utf8.Description(),
-				sql.CharacterSet_utf8.DefaultCollation().String(),
-				sql.CharacterSet_utf8.MaxLength(),
-			},
-			{
 				sql.CharacterSet_utf8mb4.String(),
 				sql.CharacterSet_utf8mb4.Description(),
 				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
 				sql.CharacterSet_utf8mb4.MaxLength(),
-			},
-			{
-				sql.CharacterSet_binary.String(),
-				sql.CharacterSet_binary.Description(),
-				sql.CharacterSet_binary.DefaultCollation().String(),
-				sql.CharacterSet_binary.MaxLength(),
 			},
 		},
 	},
@@ -2233,12 +2209,6 @@ var QueryTests = []QueryTest{
 		Query: "SHOW CHARSET LIKE 'utf8%'",
 		Expected: []sql.Row{
 			{
-				sql.CharacterSet_utf8.String(),
-				sql.CharacterSet_utf8.Description(),
-				sql.CharacterSet_utf8.DefaultCollation().String(),
-				sql.CharacterSet_utf8.MaxLength(),
-			},
-			{
 				sql.CharacterSet_utf8mb4.String(),
 				sql.CharacterSet_utf8mb4.Description(),
 				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
@@ -2247,15 +2217,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "show charset where charset='binary'",
-		Expected: []sql.Row{
-			{
-				sql.CharacterSet_binary.String(),
-				sql.CharacterSet_binary.Description(),
-				sql.CharacterSet_binary.DefaultCollation().String(),
-				sql.CharacterSet_binary.MaxLength(),
-			},
-		},
+		Query:    "show charset where charset='binary'",
+		Expected: nil,
 	},
 	{
 		Query:    `SHOW CHARSET WHERE Charset = 'foo'`,

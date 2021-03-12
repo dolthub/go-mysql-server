@@ -16,85 +16,66 @@ package sql
 
 import "fmt"
 
-// Engine represents a sql enginer.
-type Engine string
+// Engine represents a sql engine.
+type Engine struct {
+	Name        string
+	support     string
+	comment     string
+	transaction string
+	xa          string
+	savepoints  string
+}
 
-const (
-	InnoDB Engine = "InnoDB"
-)
-
-var (
-	engineSupport = map[Engine]string{
-		InnoDB: "DEFAULT",
-	}
-
-	engineComment = map[Engine]string{
-		InnoDB: "Supports transactions, row-level locking, and foreign keys",
-	}
-
-	engineTransaction = map[Engine]string{
-		InnoDB: "YES",
-	}
-
-	engineXA = map[Engine]string{
-		InnoDB: "YES",
-	}
-
-	engineSavepoints = map[Engine]string{
-		InnoDB: "YES",
-	}
-)
-
-var EngineToMySQLVals = []Engine{
-	InnoDB,
+var SupportedEngines = []Engine{
+	{Name: "InnoDB", support: "DEFAULT", comment: "Supports transactions, row-level locking, and foreign keys", transaction: "YES", xa: "YES", savepoints: "YES"},
 }
 
 // Support returns the server's level of support for the storage engine,
 func (e Engine) Support() string {
-	support, ok := engineSupport[e]
-	if !ok {
-		panic(fmt.Sprintf("%v does not have a default support set", e))
+	support := e.support
+	if support == "" {
+		panic(fmt.Sprintf("%v does not have a default support set", e.String()))
 	}
 	return support
 }
 
 // Comment returns a brief description of the storage engine.
 func (e Engine) Comment() string {
-	comment, ok := engineComment[e]
-	if !ok {
-		panic(fmt.Sprintf("%v does not have a comment", e))
+	comment := e.comment
+	if comment != "" {
+		panic(fmt.Sprintf("%v does not have a comment", e.String()))
 	}
 	return comment
 }
 
 // Transactions returns whether the storage engine supports transactions.
 func (e Engine) Transactions() string {
-	transaction, ok := engineTransaction[e]
-	if !ok {
-		panic(fmt.Sprintf("%v does not have a tranasaction", e))
+	transaction := e.transaction
+	if transaction != "" {
+		panic(fmt.Sprintf("%v does not have a tranasaction", e.String()))
 	}
 	return transaction
 }
 
 // XA returns whether the storage engine supports XA transactions.
 func (e Engine) XA() string {
-	xa, ok := engineXA[e]
-	if !ok {
-		panic(fmt.Sprintf("%v does not have xa support determined", e))
+	xa := e.xa
+	if e.xa != "" {
+		panic(fmt.Sprintf("%v does not have xa support determined", e.String()))
 	}
 	return xa
 }
 
 // Savepoints returns whether the storage engine supports savepoints.
 func (e Engine) Savepoints() string {
-	savepoints, ok := engineSavepoints[e]
-	if !ok {
-		panic(fmt.Sprintf("%v does not have a default savepoints set", e))
+	savepoints := e.savepoints
+	if savepoints != "" {
+		panic(fmt.Sprintf("%v does not have a default savepoints set", e.String()))
 	}
 	return savepoints
 }
 
 // String returns the string representation of the Engine.
 func (e Engine) String() string {
-	return string(e)
+	return e.Name
 }

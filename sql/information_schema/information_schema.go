@@ -560,7 +560,7 @@ func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 
 func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	var rows []Row
-	for _, c := range CharsetToMySQLVals {
+	for _, c := range SupportedCharsets {
 		rows = append(rows, Row{
 			c.String(),
 			c.DefaultCollation().String(),
@@ -573,7 +573,7 @@ func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 
 func engineRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	var rows []Row
-	for _, c := range EngineToMySQLVals {
+	for _, c := range SupportedEngines {
 		rows = append(rows, Row{
 			c.String(),
 			c.Support(),
