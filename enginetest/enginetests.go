@@ -2159,8 +2159,6 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
-	//e.Analyzer.Debug = true
-	//e.Analyzer.Verbose = true
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
@@ -2168,7 +2166,12 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		nil,
 	)
 	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)",
+		"ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 0)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED",
 		[]sql.Row(nil),
 		nil,
 	)
@@ -2187,16 +2190,27 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	checks, err := cht.GetChecks(NewContext(harness))
 	require.NoError(err)
 
-	con := sql.CheckConstraint{
-		Name: "chk2",
-		Expr: expression.NewGreaterThan(
-			expression.NewUnresolvedColumn("t1.b"),
-			expression.NewLiteral(int8(0), sql.Int8),
-		),
-		Enforced: true,
+	con := []sql.CheckConstraint{
+		{
+			Name: "chk1",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("t1.b"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		},
+		{
+			Name: "chk2",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("t1.b"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: false,
+		},
 	}
-	cmp, _ := plan.NewCheckDefinition(&con)
-	expected := []sql.CheckDefinition{*cmp}
+	cmp1, _ := plan.NewCheckDefinition(&con[0])
+	cmp2, _ := plan.NewCheckDefinition(&con[1])
+	expected := []sql.CheckDefinition{*cmp1, *cmp2}
 
 	assert.Equal(t, expected, checks)
 
@@ -2212,11 +2226,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 
 func TestChecksOnInsert(t *testing.T, harness Harness) {
 
-	//require := require.New(t)
-
 	e := NewEngine(t, harness)
-	//e.Analyzer.Debug = true
-	//e.Analyzer.Verbose = true
 
 	TestQuery(t, harness, e,
 		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
@@ -2224,7 +2234,17 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 		nil,
 	)
 	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 1) NOT ENFORCED",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
 		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)",
+		[]sql.Row(nil),
+		nil,
+	)
+	TestQuery(t, harness, e,
+		"ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (b > -1) ENFORCED",
 		[]sql.Row(nil),
 		nil,
 	)
@@ -2296,7 +2316,7 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 		nil,
 	)
 	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)",
+		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED",
 		[]sql.Row(nil),
 		nil,
 	)
@@ -2306,7 +2326,7 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 		nil,
 	)
 	TestQuery(t, harness, e,
-		"ALTER TABLE t1 DROP CONSTRAINT chk3",
+		"ALTER TABLE t1 DROP CONSTRAINT chk2",
 		[]sql.Row(nil),
 		nil,
 	)
@@ -2331,9 +2351,9 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 	require.NoError(err)
 
 	con := sql.CheckConstraint{
-		Name: "chk2",
+		Name: "chk3",
 		Expr: expression.NewGreaterThan(
-			expression.NewUnresolvedColumn("t1.b"),
+			expression.NewUnresolvedColumn("t1.c"),
 			expression.NewLiteral(int8(0), sql.Int8),
 		),
 		Enforced: true,

@@ -614,6 +614,48 @@ var fixtures = map[string]sql.Node{
 			}},
 		},
 	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0) ENFORCED)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			ChDefs: []*sql.CheckConstraint{{
+				Name: "",
+				Expr: expression.NewGreaterThan(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(int8(0), sql.Int8),
+				),
+				Enforced: true,
+			}},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0) NOT ENFORCED)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			ChDefs: []*sql.CheckConstraint{{
+				Name: "",
+				Expr: expression.NewGreaterThan(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(int8(0), sql.Int8),
+				),
+				Enforced: false,
+			}},
+		},
+	),
 	`DROP TABLE foo;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), false, "foo",
 	),
