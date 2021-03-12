@@ -4383,6 +4383,12 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
+		Expected: []sql.Row{
+			{"othertable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+		},
+	},
+	{
 		Query: `SHOW TABLE STATUS WHERE Name = 'mytable'`,
 		Expected: []sql.Row{
 			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
@@ -4401,6 +4407,12 @@ var InfoSchemaQueries = []QueryTest{
 			{"niltable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 			{"people", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
+		},
+	},
+	{
+		Query: `SHOW TABLE SATUS FROM mydb LIKE 'othertable'`,
+		Expected: []sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
 		},
 	},
 	{
