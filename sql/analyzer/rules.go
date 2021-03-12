@@ -33,7 +33,6 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_describe_query", resolveDescribeQuery},
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
-	{"validate_stored_procedure", validateStoredProcedure},
 	{"validate_create_procedure", validateCreateProcedure},
 	{"validate_check_constraint", validateCreateCheck},
 	{"assign_info_schema", assignInfoSchema},

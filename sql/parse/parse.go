@@ -1176,7 +1176,7 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
 		}, nil
-	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinitiong); ok {
+	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
 		var c sql.Expression
 		var err error
 		if chConstraint.Expr != nil {
