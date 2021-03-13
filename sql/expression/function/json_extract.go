@@ -71,7 +71,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	doc, err = sql.JSON.Convert(doc)
+	doc, err = j.Type().Convert(doc)
 	if err != nil {
 		return nil, err
 	}

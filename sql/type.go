@@ -429,6 +429,11 @@ func IsInteger(t Type) bool {
 	return IsSigned(t) || IsUnsigned(t)
 }
 
+func IsJSON(t Type) bool {
+	_, ok := t.(jsonType)
+	return ok
+}
+
 // IsNull returns true if expression is nil or is Null Type, otherwise false.
 func IsNull(ex Expression) bool {
 	return ex == nil || ex.Type() == Null
@@ -451,7 +456,7 @@ func IsSigned(t Type) bool {
 // IsText checks if t is a text type.
 func IsText(t Type) bool {
 	_, ok := t.(stringType)
-	return ok || t == JSON
+	return ok
 }
 
 // IsTextBlob checks if t is one of the TEXTs or BLOBs.

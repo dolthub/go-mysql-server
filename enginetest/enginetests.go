@@ -3455,7 +3455,7 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	for i, v := range row {
 
 		var vw interface{}
-		if i < len(sch) && sch[i].Type == sql.JSON {
+		if i < len(sch) && sql.IsJSON(sch[i].Type) {
 			widened[i] = widenJSON(v)
 			continue
 		}

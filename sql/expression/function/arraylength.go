@@ -57,7 +57,7 @@ func (f *ArrayLength) WithChildren(children ...sql.Expression) (sql.Expression, 
 
 // Eval implements the Expression interface.
 func (f *ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if t := f.Child.Type(); !sql.IsArray(t) && t != sql.JSON {
+	if t := f.Child.Type(); !sql.IsArray(t) && !sql.IsJSON(t){
 		return nil, nil
 	}
 
