@@ -2293,12 +2293,38 @@ func selectExprToExpression(ctx *sql.Context, se sqlparser.SelectExpr) (sql.Expr
 			return nil, err
 		}
 
-		if e.As.String() == "" {
-			return expr, nil
+		if !e.As.IsEmpty() {
+			return expression.NewAlias(e.As.String(), expr), nil
 		}
 
-		return expression.NewAlias(e.As.String(), expr), nil
+		if selectExprNeedsAlias(e, expr) {
+			return expression.NewAlias(e.InputExpression, expr), nil
+		}
+
+		return expr, nil
 	}
+}
+
+func selectExprNeedsAlias(e *sqlparser.AliasedExpr, expr sql.Expression) bool {
+	if len(e.InputExpression) == 0 {
+		return false
+	}
+
+	// We want to avoid unnecessary wrapping of aliases, but not at the cost of blowing up parse time. So we examine
+	// the expression tree to see if is likely to need an alias without first serializing the expression being
+	// examined, which can be very expensive in memory.
+	complex := false
+	sql.Inspect(expr, func(expr sql.Expression) bool {
+		switch expr.(type) {
+		case *plan.Subquery, *expression.UnresolvedFunction, *expression.Case, *expression.InTuple, *plan.InSubquery:
+			complex = true
+			return false
+		default:
+			return true
+		}
+	})
+
+	return complex || e.InputExpression != expr.String()
 }
 
 func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expression, error) {
