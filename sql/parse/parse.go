@@ -1781,10 +1781,17 @@ func selectToSelectionNode(
 		}
 		for _, e := range selectExprs {
 			if isAggregateExpr(e) {
-				if uf, ok := e.(*expression.UnresolvedFunction); ok {
-					if uf.Window == nil || len(uf.Window.PartitionBy) > 0 || len(uf.Window.OrderBy) > 0 {
-						return nil, ErrUnsupportedFeature.New("aggregate functions appearing alongside window functions must have an empty OVER () clause")
+				sql.Inspect(e, func(e sql.Expression) bool {
+					if uf, ok := e.(*expression.UnresolvedFunction); ok {
+						if uf.Window == nil || len(uf.Window.PartitionBy) > 0 || len(uf.Window.OrderBy) > 0 {
+							err = ErrUnsupportedFeature.New("aggregate functions appearing alongside window functions must have an empty OVER () clause")
+							return false
+						}
 					}
+					return true
+				})
+				if err != nil {
+					return nil, err
 				}
 			}
 		}
