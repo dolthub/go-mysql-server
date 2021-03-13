@@ -18,10 +18,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// ShowTableStatus returns the status of the tables in the databases.
+// ShowTableStatus returns the status of the tables in a database.
 type ShowTableStatus struct {
 	Database string
-	Catalog   *sql.Catalog
+	Catalog  *sql.Catalog
 }
 
 // NewShowTableStatus creates a new ShowTableStatus node.
@@ -97,7 +97,7 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			if err != nil {
 				return nil, err
 			}
-			if aiVal >= 0 {
+			if aiVal > 0 {
 				nextAIVal = aiVal
 			}
 
@@ -141,7 +141,7 @@ func tableToStatusRow(table string, numRows uint64, nextAIVal interface{}, dataL
 		"10",                           // Version
 		"Fixed",                        // Row_format
 		numRows,                        // Rows
-		avgLength,    					// Avg_row_length
+		avgLength,                      // Avg_row_length
 		dataLength,                     // Data_length
 		uint64(0),                      // Max_data_length (Unused for InnoDB)
 		int64(0),                       // Index_length
@@ -151,7 +151,7 @@ func tableToStatusRow(table string, numRows uint64, nextAIVal interface{}, dataL
 		nil,                            // Update_time
 		nil,                            // Check_time
 		sql.Collation_Default.String(), // Collation
-		nil, 							// Checksum
+		nil,                            // Checksum
 		nil,                            // Create_options
 		nil,                            // Comments
 	)
