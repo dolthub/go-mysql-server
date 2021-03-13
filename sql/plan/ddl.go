@@ -112,10 +112,10 @@ type CreateTable struct {
 	ddlNode
 	name        string
 	schema      sql.Schema
+	ifNotExists bool
 	fkDefs      []*sql.ForeignKeyConstraint
 	chDefs      []*sql.CheckConstraint
 	idxDefs     []*IndexDefinition
-	ifNotExists bool
 	like        sql.Node
 }
 

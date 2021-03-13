@@ -25,9 +25,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
-// the trigger body. Also validates that these old and new references are being used appropriately -- they are only
-// valid for certain kinds of triggers and certain statements.
+// validateCreateCheck handles CreateCheck nodes, resolving references to "old" and "new" table references in
+// the check body. Also validates that these old and new references are being used appropriately -- they are only
+// valid for certain kinds of checks and certain statements.
 func validateCreateCheck(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	ct, ok := node.(*plan.CreateCheck)
 	if !ok {
@@ -38,6 +38,7 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Sc
 	if !ok {
 		return node, nil
 	}
+
 	checkCols := make(map[string]bool)
 	for _, col := range chAlterable.Schema() {
 		checkCols[col.Name] = true
@@ -73,8 +74,8 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Sc
 	return ct, nil
 }
 
-// loadChecks loads any triggers that are required for a plan node to operate properly (except for nodes dealing with
-// trigger execution).
+// loadChecks loads any checks that are required for a plan node to operate properly (except for nodes dealing with
+// check execution).
 func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("loadChecks")
 	defer span.Finish()
@@ -84,13 +85,11 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.InsertInto:
 			nc := *node
 			table, err := plan.GetCheckTable(nc.Destination)
-
 			if err != nil {
 				return node, err
 			}
 
 			loadedChecks, err := loadChecksFromTable(ctx, table)
-
 			if err != nil {
 				return nil, err
 			}

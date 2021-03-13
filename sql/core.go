@@ -370,7 +370,7 @@ type CheckTable interface {
 	GetChecks(ctx *Context) ([]CheckDefinition, error)
 }
 
-// ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
+// CheckAlterableTable represents a table that supports check constraints.
 type CheckAlterableTable interface {
 	Table
 	// CreateCheck creates an check constraint for this table, using the provided parameters.
