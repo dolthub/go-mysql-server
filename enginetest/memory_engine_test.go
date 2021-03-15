@@ -83,10 +83,10 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `CREATE TABLE mydb.NewTable ( Column1 varchar(100) NULL )`,
+		Query: `INSERT INTO mydb.NewTable ( Column1 varchar(100) NULL )`,
 		Expected: []sql.Row{},
 	}
 	fmt.Sprintf("%v", test)
@@ -108,10 +108,11 @@ func TestSingleScript(t *testing.T) {
 			Name: "show create triggers",
 			SetUpScript: []string{
 				"CREATE TABLE mydb.NewTable ( Column1 varchar(100) NULL )",
+				"SET @@autocommit = 1",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: "show tables",
+					Query: "INSERT INTO mydb.NewTable VALUES ('hi')",
 					Expected: []sql.Row{
 						{},
 					},

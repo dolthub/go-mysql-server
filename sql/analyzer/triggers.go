@@ -124,17 +124,27 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 	var affectedTables []string
 	var triggerEvent plan.TriggerEvent
+	db := ctx.GetCurrentDatabase()
 	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.InsertTrigger
+			if n.Database() != nil {
+				db = n.Database().Name()
+			}
 		case *plan.Update:
 			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.UpdateTrigger
+			if n.Database() != nil {
+				db = n.Database().Name()
+			}
 		case *plan.DeleteFrom:
 			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.DeleteTrigger
+			if n.Database() != nil {
+				db = n.Database().Name()
+			}
 		}
 		return true
 	})
@@ -145,7 +155,6 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 	// TODO: database should be dependent on the table being inserted / updated, but we don't have that info available
 	//  from the table object yet.
-	db := ctx.GetCurrentDatabase()
 	database, err := a.Catalog.Database(db)
 	if err != nil {
 		return nil, err

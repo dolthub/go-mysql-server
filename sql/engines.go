@@ -43,7 +43,7 @@ func (e Engine) Support() string {
 // Comment returns a brief description of the storage engine.
 func (e Engine) Comment() string {
 	comment := e.comment
-	if comment != "" {
+	if comment == "" {
 		panic(fmt.Sprintf("%v does not have a comment", e.String()))
 	}
 	return comment
@@ -52,7 +52,7 @@ func (e Engine) Comment() string {
 // Transactions returns whether the storage engine supports transactions.
 func (e Engine) Transactions() string {
 	transaction := e.transaction
-	if transaction != "" {
+	if transaction == "" {
 		panic(fmt.Sprintf("%v does not have a tranasaction", e.String()))
 	}
 	return transaction
@@ -61,7 +61,7 @@ func (e Engine) Transactions() string {
 // XA returns whether the storage engine supports XA transactions.
 func (e Engine) XA() string {
 	xa := e.xa
-	if e.xa != "" {
+	if e.xa == "" {
 		panic(fmt.Sprintf("%v does not have xa support determined", e.String()))
 	}
 	return xa
@@ -70,7 +70,7 @@ func (e Engine) XA() string {
 // Savepoints returns whether the storage engine supports savepoints.
 func (e Engine) Savepoints() string {
 	savepoints := e.savepoints
-	if savepoints != "" {
+	if savepoints == "" {
 		panic(fmt.Sprintf("%v does not have a default savepoints set", e.String()))
 	}
 	return savepoints

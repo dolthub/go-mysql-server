@@ -63,6 +63,27 @@ func getDeletableTable(t sql.Table) (sql.DeletableTable, error) {
 	}
 }
 
+func deleteDatabaseHelper(node sql.Node) sql.Database {
+	switch node := node.(type) {
+	case sql.DeletableTable:
+		return nil
+	case *IndexedTableAccess:
+		return deleteDatabaseHelper(node.ResolvedTable)
+	case *ResolvedTable:
+		return node.Database
+	}
+
+	for _, child := range node.Children() {
+		return deleteDatabaseHelper(child)
+	}
+
+	return nil
+}
+
+func (p *DeleteFrom) Database() sql.Database {
+	return deleteDatabaseHelper(p.Child)
+}
+
 // RowIter implements the Node interface.
 func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	deletable, err := getDeletable(p.Child)

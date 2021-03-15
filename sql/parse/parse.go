@@ -1223,6 +1223,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	return plan.NewInsertInto(
+		sql.UnresolvedDatabase(i.Table.Qualifier.String()),
 		tableNameToUnresolvedTable(i.Table),
 		src,
 		isReplace,
@@ -1328,6 +1329,7 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
 
 	return plan.NewInsertInto(
+		sql.UnresolvedDatabase(d.Table.Qualifier.String()),
 		tableNameToUnresolvedTable(d.Table),
 		ld,
 		false,

@@ -173,7 +173,7 @@ func (e *Engine) QueryWithBindings(
 	var perm = auth.ReadPerm
 	var typ = sql.QueryProcess
 	var db = ctx.GetCurrentDatabase()
-	switch n := parsed.(type) {
+	switch parsed.(type) {
 	case *plan.CreateIndex:
 		typ = sql.CreateIndexProcess
 		perm = auth.ReadPerm | auth.WritePerm
@@ -182,7 +182,22 @@ func (e *Engine) QueryWithBindings(
 		*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
 		*plan.Update:
 		perm = auth.ReadPerm | auth.WritePerm
+	}
+
+	switch n := parsed.(type) {
 	case *plan.CreateTable:
+		if n.Database() != nil {
+			db = n.Database().Name()
+		}
+	case *plan.InsertInto:
+		if n.Database() != nil {
+			db = n.Database().Name()
+		}
+	case *plan.DeleteFrom:
+		if n.Database() != nil {
+			db = n.Database().Name()
+		}
+	case *plan.Update:
 		if n.Database() != nil {
 			db = n.Database().Name()
 		}
