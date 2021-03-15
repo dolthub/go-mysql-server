@@ -23,10 +23,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	errors "gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var (
@@ -355,29 +352,6 @@ func readRemaining(val *string) parseFunc {
 		*val = string(bytes)
 		return nil
 	}
-}
-
-func parseExpr(ctx *sql.Context, str string) (sql.Expression, error) {
-	stmt, err := sqlparser.Parse("SELECT " + str)
-	if err != nil {
-		return nil, err
-	}
-
-	selectStmt, ok := stmt.(*sqlparser.Select)
-	if !ok {
-		return nil, errInvalidIndexExpression.New(str)
-	}
-
-	if len(selectStmt.SelectExprs) != 1 {
-		return nil, errInvalidIndexExpression.New(str)
-	}
-
-	selectExpr, ok := selectStmt.SelectExprs[0].(*sqlparser.AliasedExpr)
-	if !ok {
-		return nil, errInvalidIndexExpression.New(str)
-	}
-
-	return exprToExpression(ctx, selectExpr.Expr)
 }
 
 func readQuotableIdent(ident *string) parseFunc {

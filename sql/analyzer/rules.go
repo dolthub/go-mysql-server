@@ -23,6 +23,7 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_views", resolveViews},
+	{"resolve_common_table_expressions", resolveCommonTableExpressions},
 	{"resolve_tables", resolveTables},
 	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_create_like", resolveCreateLike},
