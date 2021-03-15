@@ -4705,6 +4705,12 @@ var InfoSchemaQueries = []QueryTest{
 			{"tabletest", nil},
 		},
 	},
+	{
+		Query: "SHOW ENGINES",
+		Expected: []sql.Row{
+			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
+		},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
