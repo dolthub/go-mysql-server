@@ -130,20 +130,20 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		case *plan.InsertInto:
 			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.InsertTrigger
-			if n.Database() != nil {
+			if n.Database() != nil && n.Database().Name() != "" {
 				db = n.Database().Name()
 			}
 		case *plan.Update:
 			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.UpdateTrigger
-			if n.Database() != nil {
-				db = n.Database().Name()
+			if n.Database() != "" {
+				db = n.Database()
 			}
 		case *plan.DeleteFrom:
 			affectedTables = append(affectedTables, getTableName(n))
 			triggerEvent = plan.DeleteTrigger
-			if n.Database() != nil {
-				db = n.Database().Name()
+			if n.Database() != "" {
+				db = n.Database()
 			}
 		}
 		return true

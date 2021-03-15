@@ -66,13 +66,15 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	}
 }
 
-func updateDatabaseHelper(node sql.Node) sql.Database {
+func updateDatabaseHelper(node sql.Node) string {
 	switch node := node.(type) {
 	case sql.UpdatableTable:
-		return nil
+		return ""
 	case *IndexedTableAccess:
 		return updateDatabaseHelper(node.ResolvedTable)
 	case *ResolvedTable:
+		return node.Database.Name()
+	case *UnresolvedTable:
 		return node.Database
 	}
 
@@ -80,10 +82,10 @@ func updateDatabaseHelper(node sql.Node) sql.Database {
 		return updateDatabaseHelper(child)
 	}
 
-	return nil
+	return ""
 }
 
-func (p *Update) Database() sql.Database {
+func (p *Update) Database() string {
 	return updateDatabaseHelper(p.Child)
 }
 

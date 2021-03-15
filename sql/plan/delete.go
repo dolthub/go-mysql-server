@@ -63,13 +63,15 @@ func getDeletableTable(t sql.Table) (sql.DeletableTable, error) {
 	}
 }
 
-func deleteDatabaseHelper(node sql.Node) sql.Database {
+func deleteDatabaseHelper(node sql.Node) string {
 	switch node := node.(type) {
 	case sql.DeletableTable:
-		return nil
+		return ""
 	case *IndexedTableAccess:
 		return deleteDatabaseHelper(node.ResolvedTable)
 	case *ResolvedTable:
+		return node.Database.Name()
+	case *UnresolvedTable:
 		return node.Database
 	}
 
@@ -77,10 +79,10 @@ func deleteDatabaseHelper(node sql.Node) sql.Database {
 		return deleteDatabaseHelper(child)
 	}
 
-	return nil
+	return ""
 }
 
-func (p *DeleteFrom) Database() sql.Database {
+func (p *DeleteFrom) Database() string {
 	return deleteDatabaseHelper(p.Child)
 }
 

@@ -186,20 +186,20 @@ func (e *Engine) QueryWithBindings(
 
 	switch n := parsed.(type) {
 	case *plan.CreateTable:
-		if n.Database() != nil {
+		if n.Database() != nil && n.Database().Name() != "" {
 			db = n.Database().Name()
 		}
 	case *plan.InsertInto:
-		if n.Database() != nil {
+		if n.Database() != nil && n.Database().Name() != "" {
 			db = n.Database().Name()
 		}
 	case *plan.DeleteFrom:
-		if n.Database() != nil {
-			db = n.Database().Name()
+		if n.Database() != "" {
+			db = n.Database()
 		}
 	case *plan.Update:
-		if n.Database() != nil {
-			db = n.Database().Name()
+		if n.Database() != "" {
+			db = n.Database()
 		}
 	}
 
