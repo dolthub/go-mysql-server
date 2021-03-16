@@ -532,6 +532,8 @@ func convertForJSON(t Type, v interface{}) (interface{}, error) {
 
 func convertArrayForJSON(t arrayType, v interface{}) (interface{}, error) {
 	switch v := v.(type) {
+	case JSONValue:
+		return v, nil
 	case []interface{}:
 		var result = make([]interface{}, len(v))
 		for i, v := range v {

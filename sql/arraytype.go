@@ -129,9 +129,19 @@ func (t arrayType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val, err := json.Marshal(v)
-	if err != nil {
-		return sqltypes.Value{}, err
+	var val []byte
+	js, ok := v.(JSONValue)
+	if ok {
+		s, err := js.ToString()
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
+		val = []byte(s)
+	} else {
+		val, err = json.Marshal(v)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
 	}
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil

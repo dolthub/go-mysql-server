@@ -3495,7 +3495,6 @@ func widenJSONValues(val interface{}) sql.JSONValue {
 
 	js, ok := val.(sql.JSONValue)
 	if !ok {
-		//fmt.Println("not json")
 		panic(fmt.Sprintf("%v is not json", val))
 	}
 

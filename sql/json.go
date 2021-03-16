@@ -52,9 +52,6 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	case []byte:
 		err = json.Unmarshal(v, &doc)
 	case string:
-		if len(v) == 0 {
-			return nil, nil
-		}
 		err = json.Unmarshal([]byte(v), &doc)
 	default:
 		// if |v| can be marshalled, it contains
@@ -80,12 +77,17 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	bb, err := json.Marshal(v)
-	if err != nil {
-		return sqltypes.Value{}, err
+	js, ok := v.(JSONValue)
+	if !ok {
+		return sqltypes.NULL, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.TypeJSON, bb), nil
+	s, err := js.ToString()
+	if err != nil {
+		return sqltypes.NULL, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, []byte(s)), nil
 }
 
 // String implements Type interface.
