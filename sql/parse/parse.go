@@ -15,10 +15,7 @@
 package parse
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -480,8 +477,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
-	case sqlparser.KeywordString(sqlparser.TABLE):
-		return parseShowTableStatus(ctx, query)
+	case "table status":
+		return convertShowTableStatus(ctx, s)
 	case sqlparser.KeywordString(sqlparser.COLLATION):
 		// show collation statements are functionally identical to selecting from the collations table in
 		// information_schema, with slightly different syntax and with some columns aliased.
@@ -2432,70 +2429,35 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expres
 	return res, nil
 }
 
-func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
-	buf := bufio.NewReader(strings.NewReader(query))
-	err := parseFuncs{
-		expect("show"),
-		skipSpaces,
-		expect("table"),
-		skipSpaces,
-		expect("status"),
-		skipSpaces,
-	}.exec(buf)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err = buf.Peek(1); err == io.EOF {
-		return plan.NewShowTableStatus(), nil
-	}
-
-	var clause string
-	if err := readIdent(&clause)(buf); err != nil {
-		return nil, err
-	}
-
-	if err := skipSpaces(buf); err != nil {
-		return nil, err
-	}
-
-	switch strings.ToLower(clause) {
-	case "from", "in":
-		var db string
-		if err := readQuotableIdent(&db)(buf); err != nil {
-			return nil, err
-		}
-
-		return plan.NewShowTableStatus(db), nil
-	case "where", "like":
-		bs, err := ioutil.ReadAll(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		expr, err := parseExpr(ctx, string(bs))
-		if err != nil {
-			return nil, err
-		}
-
-		var filter sql.Expression
-		if strings.ToLower(clause) == "like" {
+func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, error) {
+	var filter sql.Expression
+	if s.Filter != nil {
+		if s.Filter.Filter != nil {
+			var err error
+			filter, err = exprToExpression(ctx, s.Filter.Filter)
+			if err != nil {
+				return nil, err
+			}
+		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewUnresolvedColumn("Name"),
-				expr,
+				expression.NewLiteral(s.Filter.Like, sql.LongText),
 			)
-		} else {
-			filter = expr
 		}
-
-		return plan.NewFilter(
-			filter,
-			plan.NewShowTableStatus(),
-		), nil
-	default:
-		return nil, errUnexpectedSyntax.New("one of: FROM, IN, LIKE or WHERE", clause)
 	}
+
+	db := ctx.GetCurrentDatabase()
+	if s.Database != "" {
+		db = s.Database
+	}
+
+	var node sql.Node = plan.NewShowTableStatus(sql.UnresolvedDatabase(db))
+
+	if filter != nil {
+		node = plan.NewFilter(filter, node)
+	}
+
+	return node, nil
 }
 
 var fixSessionRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(SESSION|session)\s+([a-zA-Z0-9_]+)\s*=`)

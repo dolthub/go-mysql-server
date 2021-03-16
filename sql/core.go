@@ -259,6 +259,8 @@ type StatisticsTable interface {
 	Table
 	// NumRows returns the unfiltered count of rows contained in the table
 	NumRows(*Context) (uint64, error)
+	// DataLength returns the length of the data file (varies by engine).
+	DataLength(ctx *Context) (uint64, error)
 }
 
 // IndexUsing is the desired storage type.
@@ -407,6 +409,8 @@ type AutoIncrementTable interface {
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
 }
+
+var ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
 
 // AutoIncrementSetter provides support for altering a table's
 // AUTO_INCREMENT sequence, eg 'ALTER TABLE t AUTO_INCREMENT = 10;'
