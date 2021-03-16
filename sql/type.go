@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -53,8 +52,6 @@ type Type interface {
 	Compare(interface{}, interface{}) (int, error)
 	// Convert a value of a compatible type to a most accurate type.
 	Convert(interface{}) (interface{}, error)
-	// MustConvert converts a value of a compatible type to a most accurate type, causing a panic on failure.
-	MustConvert(interface{}) interface{}
 	// Promote will promote the current type to the largest representing type of the same kind, such as Int8 to Int64.
 	Promote() Type
 	// SQL returns the sqltypes.Value for the given value.
@@ -432,6 +429,11 @@ func IsInteger(t Type) bool {
 	return IsSigned(t) || IsUnsigned(t)
 }
 
+func IsJSON(t Type) bool {
+	_, ok := t.(jsonType)
+	return ok
+}
+
 // IsNull returns true if expression is nil or is Null Type, otherwise false.
 func IsNull(ex Expression) bool {
 	return ex == nil || ex.Type() == Null
@@ -454,7 +456,7 @@ func IsSigned(t Type) bool {
 // IsText checks if t is a text type.
 func IsText(t Type) bool {
 	_, ok := t.(stringType)
-	return ok || t == JSON
+	return ok
 }
 
 // IsTextBlob checks if t is one of the TEXTs or BLOBs.
@@ -520,18 +522,7 @@ func UnderlyingType(t Type) Type {
 func convertForJSON(t Type, v interface{}) (interface{}, error) {
 	switch t := t.(type) {
 	case jsonType:
-		val, err := t.Convert(v)
-		if err != nil {
-			return nil, err
-		}
-
-		var doc interface{}
-		err = json.Unmarshal(val.([]byte), &doc)
-		if err != nil {
-			return nil, err
-		}
-
-		return doc, nil
+		return t.Convert(v)
 	case arrayType:
 		return convertArrayForJSON(t, v)
 	default:
@@ -541,6 +532,8 @@ func convertForJSON(t Type, v interface{}) (interface{}, error) {
 
 func convertArrayForJSON(t arrayType, v interface{}) (interface{}, error) {
 	switch v := v.(type) {
+	case JSONValue:
+		return v, nil
 	case []interface{}:
 		var result = make([]interface{}, len(v))
 		for i, v := range v {

@@ -1993,8 +1993,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `SELECT JSON_EXTRACT("foo", "$")`,
-		Expected: []sql.Row{{"foo"}},
+		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
+		Expected: []sql.Row{{sql.MustJSON(`"foo"`)}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
@@ -2555,8 +2555,9 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT JSON_EXTRACT('[1, 2, 3]', '$.[0]')`,
-		Expected: []sql.Row{{float64(1)}},
+		Expected: []sql.Row{{sql.MustJSON(`1`)}},
 	},
+	// TODO(andy)
 	{
 		Query:    `SELECT ARRAY_LENGTH(JSON_EXTRACT('[1, 2, 3]', '$'))`,
 		Expected: []sql.Row{{int32(3)}},

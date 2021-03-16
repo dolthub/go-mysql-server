@@ -92,10 +92,7 @@ func TestArraySQL(t *testing.T) {
 	}
 
 	require := require.New(t)
-	val, err := CreateArray(JSON).SQL([]interface{}{
-		testJSONStruct{1, "foo"},
-		testJSONStruct{2, "bar"},
-	})
+	val, err := CreateArray(JSON).SQL(MustJSON(`[{"A":1,"B":"foo"},{"A":2,"B":"bar"}]`))
 	require.NoError(err)
 	expected := `[{"A":1,"B":"foo"},{"A":2,"B":"bar"}]`
 	require.Equal(expected, string(val.Raw()))
