@@ -478,7 +478,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return node, nil
 	case "table status":
-		return parseShowTableStatus(ctx, s)
+		return convertShowTableStatus(ctx, s)
 	case sqlparser.KeywordString(sqlparser.COLLATION):
 		// show collation statements are functionally identical to selecting from the collations table in
 		// information_schema, with slightly different syntax and with some columns aliased.
@@ -2429,7 +2429,7 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expres
 	return res, nil
 }
 
-func parseShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, error) {
+func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, error) {
 	var filter sql.Expression
 	if s.Filter != nil {
 		if s.Filter.Filter != nil {
@@ -2446,11 +2446,12 @@ func parseShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, error)
 		}
 	}
 
-	db := s.Database
-	var node sql.Node = plan.NewShowTableStatus(ctx.GetCurrentDatabase())
-	if db != "" {
-		node = plan.NewShowTableStatus(db)
+	db := ctx.GetCurrentDatabase()
+	if s.Database != "" {
+		db = s.Database
 	}
+
+	var node sql.Node = plan.NewShowTableStatus(sql.UnresolvedDatabase(db))
 
 	if filter != nil {
 		node = plan.NewFilter(filter, node)

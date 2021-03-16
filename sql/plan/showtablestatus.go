@@ -15,18 +15,32 @@
 package plan
 
 import (
+	"errors"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // ShowTableStatus returns the status of the tables in a database.
 type ShowTableStatus struct {
-	Database string
-	Catalog  *sql.Catalog
+	db      sql.Database
+	Catalog *sql.Catalog
 }
 
+var _ sql.Databaser = (*ShowTableStatus)(nil)
+
 // NewShowTableStatus creates a new ShowTableStatus node.
-func NewShowTableStatus(db string) *ShowTableStatus {
-	return &ShowTableStatus{Database: db}
+func NewShowTableStatus(db sql.Database) *ShowTableStatus {
+	return &ShowTableStatus{db: db}
+}
+
+func (s *ShowTableStatus) Database() sql.Database {
+	return s.db
+}
+
+func (s *ShowTableStatus) WithDatabase(db sql.Database) (sql.Node, error) {
+	ns := *s
+	ns.db = db
+	return &ns, nil
 }
 
 var showTableStatusSchema = sql.Schema{
@@ -61,17 +75,7 @@ func (s *ShowTableStatus) Schema() sql.Schema { return showTableStatusSchema }
 
 // RowIter implements the sql.Node interface.
 func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	dbName := s.Database
-	if dbName == "" {
-		return nil, sql.ErrNoDatabaseSelected.New()
-	}
-
-	db, err := s.Catalog.Database(dbName)
-	if err != nil {
-		return nil, err
-	}
-
-	tables, err := db.GetTableNames(ctx)
+	tables, err := s.db.GetTableNames(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -79,13 +83,12 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	var rows = make([]sql.Row, len(tables))
 
 	for i, tName := range tables {
-		table, _, err := s.Catalog.Table(ctx, s.Database, tName)
+		table, _, err := s.Catalog.Table(ctx, s.db.Name(), tName)
 		if err != nil {
 			return nil, err
 		}
 
 		var numRows uint64 = 0
-		var nextAIVal interface{} = nil
 		var dataLength uint64 = 0
 		if st, ok := table.(sql.StatisticsTable); ok {
 			numRows, err = st.NumRows(ctx)
@@ -93,18 +96,15 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 				return nil, err
 			}
 
-			aiVal, err := st.NextAutoIncrementValue(ctx)
-			if err != nil {
-				return nil, err
-			}
-			if aiVal > 0 {
-				nextAIVal = aiVal
-			}
-
 			dataLength, err = st.DataLength(ctx)
 			if err != nil {
 				return nil, err
 			}
+		}
+
+		nextAIVal, err := getAutoIncrementValue(ctx, table)
+		if err != nil {
+			return nil, err
 		}
 
 		rows[i] = tableToStatusRow(tName, numRows, nextAIVal, dataLength)
@@ -124,6 +124,50 @@ func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return s, nil
+}
+
+// getAutoIncrementValue takes in a ctx and table and returns the next autoincrement value.
+func getAutoIncrementValue(ctx *sql.Context, table sql.Table) (interface{}, error) {
+	if autoTbl, ok := table.(sql.AutoIncrementTable); ok {
+		next, err := autoTbl.GetAutoIncrementValue(ctx)
+		if errors.Is(err, sql.ErrNoAutoIncrementCol) {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		} else {
+			num := sqlValToInt64(next)
+			if ok {
+				return num, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+// sqlValToInt64 takes an interface that is expected to be a numeric type and converts it to an appropriate int64.
+func sqlValToInt64(val interface{}) int64 {
+	switch n := val.(type) {
+	case uint8:
+		return int64(n)
+	case uint16:
+		return int64(n)
+	case uint32:
+		return int64(n)
+	case uint64:
+		return int64(n)
+	case int8:
+		return int64(n)
+	case int16:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	default:
+		return 0
+	}
 }
 
 // cc here: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html
