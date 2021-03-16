@@ -54,7 +54,7 @@ func TestShowTableStatus(t *testing.T) {
 	}
 
 	require.Equal(expected, rows)
-
+	sqlValToInt64
 	node = NewShowTableStatus(db2)
 	node.Catalog = catalog
 

@@ -134,6 +134,8 @@ func getAutoIncrementValue(ctx *sql.Context, table sql.Table) (interface{}, erro
 			return nil, nil
 		} else if err != nil {
 			return nil, err
+		} else if next == nil {
+			return nil, nil
 		} else {
 			num := sqlValToInt64(next)
 			if ok {
