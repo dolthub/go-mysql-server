@@ -335,6 +335,10 @@ func TestJsonScripts(t *testing.T) {
 	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestShowTableStatus(t *testing.T) {
+	enginetest.TestShowTableStatus(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {

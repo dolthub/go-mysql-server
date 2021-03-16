@@ -4072,6 +4072,47 @@ var QueryTests = []QueryTest{
 			{3, 1},
 		},
 	},
+	{
+		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk
+						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2
+						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
+		Expected: []sql.Row{
+			{0, 0, 0, 0, 0},
+			{1, 1, 1, 1, 1},
+		},
+	},
+	{
+		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+		Expected: []sql.Row{
+			{nil, nil, 1},
+			{1, 1, 2},
+			{2, 2, 3},
+			{3, 3, 4},
+			{nil, nil, 5},
+			{nil, nil, 6},
+		},
+	},
+	{
+		Query: `SELECT pk,pk2,
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1)
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		Expected: []sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
+		},
+	},
+	{
+		Query: `SELECT pk,pk2,
+							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1)
+							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
+		Expected: []sql.Row{
+			{1, 1, 4},
+			{1, 1, 4},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -4176,52 +4217,6 @@ var BrokenQueries = []QueryTest{
 			{1, 50.0, 10.0},
 			{2, 30.0, 15.0},
 			{3, nil, 15.0},
-		},
-	},
-	// Indexed joins in subqueries are broken
-	{
-		Query: `SELECT pk,pk2, 
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1) 
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	// Non-indexed joins in subqueries are broken
-	{
-		Query: `SELECT pk,pk2, 
-							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON opk.c5=tpk.c5 ORDER BY 1 LIMIT 1) 
-							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
-		Expected: []sql.Row{
-			{1, 1, 4},
-			{1, 1, 4},
-		},
-	},
-	// 3+ table joins with one LEFT join, one INNER join, have the wrong semantics according to MySQL. Should be 2 rows,
-	// but get 4.
-	{
-		Query: `SELECT pk,tpk.pk1,tpk2.pk1,tpk.pk2,tpk2.pk2 FROM one_pk 
-						LEFT JOIN two_pk tpk ON one_pk.pk=tpk.pk1 AND one_pk.pk=tpk.pk2 
-						JOIN two_pk tpk2 ON tpk2.pk1=TPK.pk2 AND TPK2.pk2=tpk.pk1`,
-		Expected: []sql.Row{
-			{0, 0, 0, 0, 0},
-			{1, 1, 1, 1, 1},
-		},
-	},
-	// More broken RIGHT / LEFT semantics. Mysql gives these results, we give different ones.
-	{
-		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		Expected: []sql.Row{
-			{nil, nil, 1},
-			{1, 1, 2},
-			{2, 2, 3},
-			{3, 3, 4},
-			{nil, nil, 5},
-			{nil, nil, 6},
 		},
 	},
 	{
@@ -4356,65 +4351,6 @@ var VersionedQueries = []QueryTest{
 }
 
 var InfoSchemaQueries = []QueryTest{
-	{
-		Query: `SHOW TABLE STATUS FROM mydb`,
-		Expected: []sql.Row{
-			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"mytable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"people", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS LIKE '%table'`,
-		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
-		Expected: []sql.Row{
-			{"othertable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS WHERE Name = 'mytable'`,
-		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS`,
-		Expected: []sql.Row{
-			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"mytable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-			{"people", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE SATUS FROM mydb LIKE 'othertable'`,
-		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil},
-		},
-	},
 	{
 		Query: "SHOW TABLES",
 		Expected: []sql.Row{
@@ -4705,6 +4641,12 @@ var InfoSchemaQueries = []QueryTest{
 			{"tabletest", nil},
 		},
 	},
+	{
+		Query: "SHOW ENGINES",
+		Expected: []sql.Row{
+			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
+		},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
@@ -4941,6 +4883,10 @@ var errorQueries = []QueryErrorTest{
 	// 	Query:       "SELECT pk1, sum(c1) FROM two_pk GROUP BY 1 having c1 > 10;",
 	// 	ExpectedErr: sql.ErrColumnNotFound,
 	// },
+	{
+		Query:       `SHOW TABLE STATUS FROM baddb`,
+		ExpectedErr: sql.ErrDatabaseNotFound,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
@@ -5145,6 +5091,68 @@ var VersionedViewTests = []QueryTest{
 			sql.NewRow("myview"),
 			sql.NewRow("myview1"),
 			sql.NewRow("myview2"),
+		},
+	},
+}
+
+var ShowTableStatusQueries = []QueryTest{
+	{
+		Query: `SHOW TABLE STATUS FROM mydb`,
+		Expected: []sql.Row{
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(96), uint64(288), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+		},
+	},
+	{
+		Query: `SHOW TABLE STATUS LIKE '%table'`,
+		Expected: []sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+		},
+	},
+	{
+		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
+		Expected: []sql.Row{
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+		},
+	},
+	{
+		Query: `SHOW TABLE STATUS WHERE Name = 'mytable'`,
+		Expected: []sql.Row{
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+		},
+	},
+	{
+		Query: `SHOW TABLE STATUS`,
+		Expected: []sql.Row{
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(96), uint64(288), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+		},
+	},
+	{
+		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
+		Expected: []sql.Row{
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 		},
 	},
 }

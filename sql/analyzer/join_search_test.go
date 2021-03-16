@@ -21,12 +21,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 func TestBuildJoinTree(t *testing.T) {
 	type joinTreeTest struct {
 		name       string
-		tableOrder []string
+		tableOrder *joinOrderNode
 		joinConds  []*joinCond
 		joinTree   *joinSearchNode
 	}
@@ -39,7 +40,7 @@ func TestBuildJoinTree(t *testing.T) {
 	testCases := []joinTreeTest{
 		{
 			name:       "linear join, ABC",
-			tableOrder: []string{"A", "B", "C"},
+			tableOrder: tableOrder("A", "B", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -56,7 +57,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, ACB", // 👩‍⚖️
-			tableOrder: []string{"A", "C", "B"},
+			tableOrder: tableOrder("A", "C", "B"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -73,7 +74,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, BAC",
-			tableOrder: []string{"B", "A", "C"},
+			tableOrder: tableOrder("B", "A", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -90,7 +91,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, BCA",
-			tableOrder: []string{"B", "C", "A"},
+			tableOrder: tableOrder("B", "C", "A"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -107,7 +108,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, CAB",
-			tableOrder: []string{"C", "A", "B"},
+			tableOrder: tableOrder("C", "A", "B"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -124,7 +125,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, CBA",
-			tableOrder: []string{"C", "B", "A"},
+			tableOrder: tableOrder("C", "B", "A"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -141,7 +142,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "all joined to A, ABC",
-			tableOrder: []string{"A", "B", "C"},
+			tableOrder: tableOrder("A", "B", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("A", "C"),
@@ -158,7 +159,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "all joined to A, CBA",
-			tableOrder: []string{"C", "B", "A"},
+			tableOrder: tableOrder("C", "B", "A"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("A", "C"),
@@ -175,7 +176,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "all joined to A, BAC",
-			tableOrder: []string{"B", "A", "C"},
+			tableOrder: tableOrder("B", "A", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("A", "C"),
@@ -192,7 +193,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "A to B, A+B to C",
-			tableOrder: []string{"A", "B", "C"},
+			tableOrder: tableOrder("A", "B", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jce(and(jceq("A", "C"), jceq("B", "C"))),
@@ -209,7 +210,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "B to A, A+B to C",
-			tableOrder: []string{"B", "A", "C"},
+			tableOrder: tableOrder("B", "A", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jce(and(jceq("A", "C"), jceq("B", "C"))),
@@ -226,7 +227,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, ABCD",
-			tableOrder: []string{"A", "B", "C", "D"},
+			tableOrder: tableOrder("A", "B", "C", "D"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -248,7 +249,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, BCDA",
-			tableOrder: []string{"B", "C", "D", "A"},
+			tableOrder: tableOrder("B", "C", "D", "A"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -270,7 +271,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, DABC",
-			tableOrder: []string{"D", "A", "B", "C"},
+			tableOrder: tableOrder("D", "A", "B", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -292,7 +293,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, CDBA",
-			tableOrder: []string{"C", "D", "B", "A"},
+			tableOrder: tableOrder("C", "D", "B", "A"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -314,7 +315,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "all joined to A, ABCD",
-			tableOrder: []string{"A", "B", "C", "D"},
+			tableOrder: tableOrder("A", "B", "C", "D"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("A", "C"),
@@ -336,7 +337,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "all joined to A, BDAC",
-			tableOrder: []string{"B", "D", "A", "C"},
+			tableOrder: tableOrder("B", "D", "A", "C"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("A", "C"),
@@ -358,7 +359,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "all joined to A, CABD",
-			tableOrder: []string{"C", "A", "B", "D"},
+			tableOrder: tableOrder("C", "A", "B", "D"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("A", "C"),
@@ -380,7 +381,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "all joined to A, DCBA",
-			tableOrder: []string{"D", "C", "B", "A"},
+			tableOrder: tableOrder("D", "C", "B", "A"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("A", "C"),
@@ -402,7 +403,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "A to B, A+B to C, A+B+C to D",
-			tableOrder: []string{"A", "B", "C", "D"},
+			tableOrder: tableOrder("A", "B", "C", "D"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jce(and(jceq("A", "C"), jceq("B", "C"))),
@@ -424,7 +425,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, ABCDE",
-			tableOrder: []string{"A", "B", "C", "D", "E"},
+			tableOrder: tableOrder("A", "B", "C", "D", "E"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -451,7 +452,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "linear join, ECBAD",
-			tableOrder: []string{"E", "C", "B", "A", "D"},
+			tableOrder: tableOrder("E", "C", "B", "A", "D"),
 			joinConds: []*joinCond{
 				jc("A", "B"),
 				jc("B", "C"),
@@ -478,7 +479,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "star join with C in middle, BDACE",
-			tableOrder: []string{"B", "D", "A", "C", "E"},
+			tableOrder: tableOrder("B", "D", "A", "C", "E"),
 			joinConds: []*joinCond{
 				jc("A", "C"),
 				jc("B", "C"),
@@ -505,7 +506,7 @@ func TestBuildJoinTree(t *testing.T) {
 		},
 		{
 			name:       "branching join, EBDCA",
-			tableOrder: []string{"E", "B", "D", "C", "A"},
+			tableOrder: tableOrder("E", "B", "D", "C", "A"),
 			joinConds: []*joinCond{
 				jc("A", "C"),
 				jc("B", "C"),
@@ -527,6 +528,66 @@ func TestBuildJoinTree(t *testing.T) {
 						left:     jt("C"),
 						right:    jt("A"),
 					},
+				},
+			},
+		},
+		{
+			name:       "explicit subtree, A((EB)(DC))",
+			tableOrder: tableOrder("A", &joinOrderNode{
+				left: tableOrder("E", "B"),
+				right: tableOrder("D", "C"),
+			}),
+			joinConds: []*joinCond{
+				jc("A", "E"),
+				jc("B", "D"),
+				jc("B", "E"),
+				jc("D", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "E"),
+				left:     jt("A"),
+				right: &joinSearchNode{
+					joinCond: jc("B", "D"),
+					left: &joinSearchNode{
+						joinCond: jc("B", "E"),
+						left:     jt("E"),
+						right:    jt("B"),
+					},
+					right: &joinSearchNode{
+						joinCond: jc("D", "C"),
+						left:     jt("D"),
+						right:    jt("C"),
+					},
+				},
+			},
+		},
+		{
+			name:       "explicit subtree, A((EB)(D))C",
+			tableOrder: tableOrder("A", &joinOrderNode{
+				left: tableOrder("E", "B"),
+				right: tableOrder("D"),
+			}, "C"),
+			joinConds: []*joinCond{
+				jc("A", "E"),
+				jc("B", "D"),
+				jc("B", "E"),
+				jc("D", "C"),
+			},
+			joinTree: &joinSearchNode{
+				joinCond: jc("A", "E"),
+				left:     jt("A"),
+				right: &joinSearchNode{
+					joinCond: jc("D", "C"),
+					left: &joinSearchNode{
+						joinCond: jc("B", "D"),
+						left: &joinSearchNode{
+							joinCond: jc("B", "E"),
+							left:     jt("E"),
+							right:    jt("B"),
+						},
+						right: jt("D"),
+					},
+					right: jt("C"),
 				},
 			},
 		},
@@ -566,4 +627,20 @@ func jt(name string) *joinSearchNode {
 	return &joinSearchNode{
 		table: name,
 	}
+}
+
+func tableOrder(tables ...interface{}) *joinOrderNode {
+	jo := &joinOrderNode{}
+	for i, table := range tables {
+		switch t := table.(type) {
+		case string:
+			jo.commutes = append(jo.commutes, joinOrderNode{node: plan.NewUnresolvedTable(t, "")})
+		case *joinOrderNode:
+			jo.commutes = append(jo.commutes, *t)
+		default:
+			panic("unknown type for argument to tableOrder")
+		}
+		jo.order = append(jo.order, i)
+	}
+	return jo
 }

@@ -400,6 +400,30 @@ END;`,
 		},
 	},
 	{
+		Name: "Subquery on SET user variable captures parameter",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(x VARCHAR(20))
+BEGIN
+	SET @randomvar = (SELECT LENGTH(x));
+	SELECT @randomvar;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1('hi')",
+				Expected: []sql.Row{
+					{int64(2)},
+				},
+			},
+			{
+				Query: "CALL p1('hello')",
+				Expected: []sql.Row{
+					{int64(5)},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
 		ExpectedErr: sql.ErrProcedureDuplicateParameterName,

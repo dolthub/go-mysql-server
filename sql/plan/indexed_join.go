@@ -34,6 +34,7 @@ type IndexedJoin struct {
 	// The type of join. Left and right refer to the lexical position in the written query, not primary / secondary. In
 	// the case of a right join, the right table will always be the primary.
 	joinType JoinType
+	scopeLen int
 }
 
 // JoinType returns the join type for this indexed join
@@ -41,11 +42,12 @@ func (ij *IndexedJoin) JoinType() JoinType {
 	return ij.joinType
 }
 
-func NewIndexedJoin(left, right sql.Node, joinType JoinType, cond sql.Expression) *IndexedJoin {
+func NewIndexedJoin(left, right sql.Node, joinType JoinType, cond sql.Expression, scopeLen int) *IndexedJoin {
 	return &IndexedJoin{
 		BinaryNode: BinaryNode{left, right},
 		joinType:   joinType,
 		Cond:       cond,
+		scopeLen:   scopeLen,
 	}
 }
 
@@ -82,14 +84,14 @@ func (ij *IndexedJoin) Schema() sql.Schema {
 }
 
 func (ij *IndexedJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return indexedJoinRowIter(ctx, row, ij.left, ij.right, ij.Cond, ij.joinType)
+	return indexedJoinRowIter(ctx, row, ij.left, ij.right, ij.Cond, ij.joinType, ij.scopeLen)
 }
 
 func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ij, len(children), 2)
 	}
-	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond), nil
+	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond, ij.scopeLen), nil
 }
 
 func indexedJoinRowIter(
@@ -99,6 +101,7 @@ func indexedJoinRowIter(
 	right sql.Node,
 	cond sql.Expression,
 	joinType JoinType,
+	scopeLen int,
 ) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
@@ -131,6 +134,7 @@ func indexedJoinRowIter(
 		cond:              cond,
 		joinType:          joinType,
 		rowSize:           len(parentRow) + len(left.Schema()) + len(right.Schema()),
+		scopeLen:          scopeLen,
 	}), nil
 }
 
@@ -148,6 +152,7 @@ type indexedJoinIter struct {
 	ctx        *sql.Context
 	foundMatch bool
 	rowSize    int
+	scopeLen   int
 }
 
 func (i *indexedJoinIter) loadPrimary() error {
@@ -199,7 +204,7 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 			if err == io.EOF {
 				if !i.foundMatch && (i.joinType == JoinTypeLeft || i.joinType == JoinTypeRight) {
 					row := i.buildRow(primary, nil)
-					return row[len(i.parentRow):], nil
+					return i.removeParentRow(row), nil
 				}
 				continue
 			}
@@ -217,8 +222,14 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		}
 
 		i.foundMatch = true
-		return row[len(i.parentRow):], nil
+		return i.removeParentRow(row), nil
 	}
+}
+
+func (i *indexedJoinIter) removeParentRow(r sql.Row) sql.Row {
+	copy(r[i.scopeLen:], r[len(i.parentRow):])
+	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
+	return r
 }
 
 func conditionIsTrue(ctx *sql.Context, row sql.Row, cond sql.Expression) (bool, error) {

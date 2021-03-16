@@ -67,6 +67,7 @@ var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.ForeignKeyAlterableTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
+var _ sql.StatisticsTable = (*Table)(nil)
 
 // PushdownTable is an extension to Table that implements sql.FilteredTable and sql.ProjectedTable. This is mostly just
 // for demonstration and testing purposes -- these new interfaces do not significantly speed up query execution.
@@ -213,6 +214,52 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 		rows:        rowsCopy,
 		indexValues: values,
 	}, nil
+}
+
+func (t *Table) NumRows(ctx *sql.Context) (uint64, error) {
+	var count uint64 = 0
+	for _, rows := range t.partitions {
+		count += uint64(len(rows))
+	}
+
+	return count, nil
+}
+
+func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
+	var numBytesPerRow uint64 = 0
+	for _, col := range t.schema {
+		switch n := col.Type.(type) {
+		case sql.NumberType:
+			numBytesPerRow += 8
+		case sql.StringType:
+			numBytesPerRow += uint64(n.MaxByteLength())
+		case sql.BitType:
+			numBytesPerRow += 1
+		case sql.DatetimeType:
+			numBytesPerRow += 8
+		case sql.DecimalType:
+			numBytesPerRow += uint64(n.MaximumScale())
+		case sql.EnumType:
+			numBytesPerRow += 2
+		case sql.JsonType:
+			numBytesPerRow += 20
+		case sql.NullType:
+			numBytesPerRow += 1
+		case sql.TimeType:
+			numBytesPerRow += 16
+		case sql.YearType:
+			numBytesPerRow += 8
+		default:
+			numBytesPerRow += 0
+		}
+	}
+
+	numRows, err := t.NumRows(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return numBytesPerRow * numRows, nil
 }
 
 func (t *PushdownTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
