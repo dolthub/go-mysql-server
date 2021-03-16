@@ -85,8 +85,8 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
-			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
+			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
+			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), "blobdata",
 		}},
 	},
 	{
@@ -103,8 +103,8 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.Timestamp.MustConvert("2037-04-05 12:51:36"), sql.Date.MustConvert("2231-11-07"),
-			"random text", sql.True, ([]byte)(`{"key":"value"}`), "blobdata",
+			sql.MustConvert(sql.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(sql.Date.Convert("2231-11-07")),
+			"random text", sql.True, sql.MustJSON(`{"key":"value"}`), "blobdata",
 		}},
 	},
 	{
@@ -113,7 +113,7 @@ var ReplaceQueries = []WriteQueryTest{
 			0, 0, 0, 0,
 			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
 			'0000-00-00 00:00:00', '0000-00-00',
-			'', false, '', ''
+			'', false, '""', ''
 			);`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -122,7 +122,7 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, ([]byte)(`""`), "",
+			"", sql.False, sql.MustJSON(`""`), "",
 		}},
 	},
 	{
@@ -131,7 +131,7 @@ var ReplaceQueries = []WriteQueryTest{
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
 			ti = '0000-00-00 00:00:00', da = '0000-00-00',
-			te = '', bo = false, js = '', bl = ''
+			te = '', bo = false, js = '""', bl = ''
 			;`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -140,7 +140,7 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			sql.Timestamp.Zero(), sql.Date.Zero(),
-			"", sql.False, ([]byte)(`""`), "",
+			"", sql.False, sql.MustJSON(`""`), "",
 		}},
 	},
 	{

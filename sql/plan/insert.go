@@ -41,7 +41,7 @@ var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
-	db 			ddlNode
+	db 			sql.Database
 	Destination sql.Node
 	Source      sql.Node
 	ColumnNames []string
@@ -54,7 +54,7 @@ var _ sql.Databaser = (*InsertInto)(nil)
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
 	return &InsertInto{
-		db: ddlNode{db},
+		db: 		 db,
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,
@@ -78,12 +78,12 @@ func (p *InsertInto) Children() []sql.Node {
 }
 
 func (p *InsertInto) Database() sql.Database {
-	return p.db.Database()
+	return p.db
 }
 
 func (p *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *p
-	nc.db.db = database
+	nc.db = database
 	return &nc, nil
 }
 
@@ -404,7 +404,7 @@ func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, erro
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs), 1)
 	}
 
-	return NewInsertInto(p.db.db, p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs), nil
+	return NewInsertInto(p.db, p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs), nil
 }
 
 // Resolved implements the Resolvable interface.

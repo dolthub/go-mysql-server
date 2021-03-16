@@ -15,13 +15,11 @@
 package expression
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/spf13/cast"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -196,18 +194,11 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 		}
 		return d, nil
 	case ConvertToJSON:
-		s, err := cast.ToStringE(val)
+		js, err := sql.JSON.Convert(val)
 		if err != nil {
 			return nil, err
 		}
-
-		var jsn interface{}
-		err = json.Unmarshal([]byte(s), &jsn)
-		if err != nil {
-			return nil, err
-		}
-
-		return []byte(s), nil
+		return js, nil
 	case ConvertToSigned:
 		num, err := sql.Int64.Convert(val)
 		if err != nil {
