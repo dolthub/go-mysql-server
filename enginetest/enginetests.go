@@ -2602,7 +2602,6 @@ func TestTracing(t *testing.T, harness Harness) {
 	require.Equal(expectedSpans, spanOperations)
 }
 
-
 // Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)

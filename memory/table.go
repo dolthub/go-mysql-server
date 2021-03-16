@@ -225,7 +225,7 @@ func (t *Table) NumRows(ctx *sql.Context) (uint64, error) {
 	return count, nil
 }
 
-func (t* Table) DataLength(ctx *sql.Context) (uint64, error) {
+func (t *Table) DataLength(ctx *sql.Context) (uint64, error) {
 	var numBytesPerRow uint64 = 0
 	for _, col := range t.schema {
 		switch n := col.Type.(type) {
