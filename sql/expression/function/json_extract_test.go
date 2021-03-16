@@ -65,15 +65,15 @@ func TestJSONExtract(t *testing.T) {
 		err      error
 	}{
 		{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
-		{f2, sql.Row{nil, "$.b.c"}, nil, nil},
-		{f2, sql.Row{json, "$.foo"}, nil, nil},
-		{f2, sql.Row{json, "$.b.c"}, "foo", nil},
-		{f3, sql.Row{json, "$.b.c", "$.b.d"}, []interface{}{"foo", true}, nil},
-		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, []interface{}{
+		{f2, sql.Row{nil, "$.b.c"}, sql.JSONDocument{Val: nil}, nil},
+		{f2, sql.Row{json, "$.foo"}, sql.JSONDocument{Val: nil}, nil},
+		{f2, sql.Row{json, "$.b.c"}, sql.JSONDocument{Val: "foo"}, nil},
+		{f3, sql.Row{json, "$.b.c", "$.b.d"}, sql.JSONDocument{Val: []interface{}{"foo", true}}, nil},
+		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, sql.JSONDocument{Val: []interface{}{
 			"foo",
 			true,
 			[]interface{}{1., 2.},
-		}, nil},
+		}}, nil},
 	}
 
 	for _, tt := range testCases {

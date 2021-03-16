@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/oliveagle/jsonpath"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -66,17 +64,25 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.JSONExtract")
 	defer span.Finish()
 
-	doc, err := j.JSON.Eval(ctx, row)
+	js, err := j.JSON.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	doc, err = j.Type().Convert(doc)
+	js, err = j.Type().Convert(js)
 	if err != nil {
 		return nil, err
 	}
 
-	var result = make([]interface{}, len(j.Paths))
+	searchable, ok := js.(sql.SearchableJSONValue)
+	if !ok {
+		searchable, err = js.(sql.JSONValue).Unmarshall()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var results = make([]sql.JSONValue, len(j.Paths))
 	for i, p := range j.Paths {
 		path, err := p.Eval(ctx, row)
 		if err != nil {
@@ -88,20 +94,17 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		c, err := jsonpath.Compile(path.(string))
+		results[i], err = searchable.Extract(path.(string))
 		if err != nil {
 			return nil, err
 		}
-
-		// TODO(andy) handle error
-		result[i], _ = c.Lookup(doc) // err ignored
 	}
 
-	if len(result) == 1 {
-		return result[0], nil
+	if len(results) == 1 {
+		return results[0], nil
 	}
 
-	return result, nil
+	return sql.ConcatenateJSONValues(results...)
 }
 
 // IsNullable implements the sql.Expression interface.

@@ -37,12 +37,12 @@ func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	j := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
 	b := j.NewBuffer()
 
-	j.Update(ctx, b, sql.NewRow(int32(7)))
-	j.Update(ctx, b, sql.NewRow(int32(2)))
+	j.Update(ctx, b, sql.NewRow(float64(7)))
+	j.Update(ctx, b, sql.NewRow(float64(2)))
 
 	v, err := j.Eval(ctx, b)
 	assert.NoError(err)
-	assert.Equal([]interface{}{int32(7), int32(2)}, v)
+	assert.Equal(sql.MustJSON(`[7, 2]`), v)
 }
 
 func TestJsonArrayAgg_Strings(t *testing.T) {
@@ -57,7 +57,7 @@ func TestJsonArrayAgg_Strings(t *testing.T) {
 
 	v, err := j.Eval(ctx, b)
 	assert.NoError(err)
-	assert.Equal([]interface{}{"hi","hello"}, v)
+	assert.Equal(sql.MustJSON(`["hi","hello"]`), v)
 }
 
 func TestJsonArrayAgg_Empty(t *testing.T) {
@@ -69,7 +69,7 @@ func TestJsonArrayAgg_Empty(t *testing.T) {
 
 	v, err := j.Eval(ctx, b)
 	assert.NoError(err)
-	assert.Equal([]interface{}(nil), v)
+	assert.Equal(sql.JSONDocument{Val:[]interface{}(nil)}, v)
 }
 
 func TestJsonArrayAgg_JSON(t *testing.T) {
@@ -78,9 +78,9 @@ func TestJsonArrayAgg_JSON(t *testing.T) {
 
 	j := NewJSONArrayAgg(expression.NewGetField(0, sql.JSON, "field", true))
 	b := j.NewBuffer()
-	j.Update(ctx, b, sql.NewRow(map[string]interface{}{"key1": "value1", "key2": "value2"}))
+	j.Update(ctx, b, sql.NewRow(sql.MustJSON(`{"key1": "value1", "key2": "value2"}`)))
 
 	v, err := j.Eval(ctx, b)
 	assert.NoError(err)
-	assert.Equal([]interface{}{map[string]interface{}{"key1": "value1", "key2": "value2"}}, v)
+	assert.Equal(sql.MustJSON(`[{"key1": "value1", "key2": "value2"}]`), v)
 }

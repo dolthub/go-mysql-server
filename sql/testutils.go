@@ -23,10 +23,11 @@ func MustConvert(val interface{}, err error) interface{} {
 	return val
 }
 
-func MustJSON(s string) (doc interface{}) {
+func MustJSON(s string) JSONDocument {
+	var doc interface{}
 	if err := json.Unmarshal([]byte(s), &doc); err != nil {
 		panic(err)
 	}
-	return doc
+	return JSONDocument{Val: doc}
 }
 

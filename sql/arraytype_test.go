@@ -86,6 +86,7 @@ func TestArrayType(t *testing.T) {
 }
 
 func TestArraySQL(t *testing.T) {
+	t.Skip()
 	type testJSONStruct struct {
 		A int
 		B string

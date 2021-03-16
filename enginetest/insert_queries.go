@@ -115,7 +115,7 @@ var InsertQueries = []WriteQueryTest{
 			0, 0, 0, 0,
 			1.401298464324817070923729583289916131280e-45, 4.940656458412465441765687928682213723651e-324,
 			'0000-00-00 00:00:00', '0000-00-00',
-			'', false, '', ''
+			'', false, '""', ''
 			);`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",
@@ -133,7 +133,7 @@ var InsertQueries = []WriteQueryTest{
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
 			f32 = 1.401298464324817070923729583289916131280e-45, f64 = 4.940656458412465441765687928682213723651e-324,
 			ti = '0000-00-00 00:00:00', da = '0000-00-00',
-			te = '', bo = false, js = '', bl = ''
+			te = '', bo = false, js = '""', bl = ''
 			;`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM typestable WHERE id = 999;",

@@ -95,6 +95,15 @@ func (j *JSONArrayAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return err
 	}
 
+	// unwrap JSON values
+	if js, ok := v.(sql.JSONValue); ok {
+		doc, err := js.Unmarshall()
+		if err != nil {
+			return err
+		}
+		v = doc.Val
+	}
+
 	buffer[0] = append(buffer[0].([]interface{}), v)
 
 	return nil
@@ -112,7 +121,7 @@ func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	return buffer[0], nil
+	return sql.JSONDocument{Val: buffer[0]}, nil
 }
 
 // JSON_OBJECTAGG(key, value) [over_clause]

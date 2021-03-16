@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -3456,7 +3457,7 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 
 		var vw interface{}
 		if i < len(sch) && sql.IsJSON(sch[i].Type) {
-			widened[i] = widenJSON(v)
+			widened[i] = widenJSONValues(v)
 			continue
 		}
 
@@ -3485,6 +3486,26 @@ func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 		widened[i] = vw
 	}
 	return widened
+}
+
+func widenJSONValues(val interface{}) sql.JSONValue {
+	if val == nil {
+		return nil
+	}
+
+	js, ok := val.(sql.JSONValue)
+	if !ok {
+		//fmt.Println("not json")
+		panic(fmt.Sprintf("%v is not json", val))
+	}
+
+	doc, err := js.Unmarshall()
+	if err != nil {
+		panic(err)
+	}
+
+	doc.Val = widenJSON(doc.Val)
+	return doc
 }
 
 func widenJSON(val interface{}) interface{} {

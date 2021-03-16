@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -85,8 +84,8 @@ func TestJsonCompare(t *testing.T) {
 		name := fmt.Sprintf("%v_%v__%d", test.left, test.right, test.cmp)
 		t.Run(name, func(t *testing.T) {
 			cmp, err := JSON.Compare(
-				mustJSON(test.left),
-				mustJSON(test.right),
+				MustJSON(test.left),
+				MustJSON(test.right),
 			)
 			require.NoError(t, err)
 			assert.Equal(t, test.cmp, cmp)
@@ -100,9 +99,9 @@ func TestJsonConvert(t *testing.T) {
 		expectedVal interface{}
 		expectedErr bool
 	}{
-		{"", mustJSON(`""`), false},
-		{[]int{1, 2}, []int{1, 2}, false},
-		{`{"a": true, "b": 3}`, mustJSON(`{"a":true,"b":3}`), false},
+		{`""`, MustJSON(`""`), false},
+		{[]int{1, 2}, JSONDocument{Val: []int{1, 2}}, false},
+		{`{"a": true, "b": 3}`, MustJSON(`{"a":true,"b":3}`), false},
 	}
 
 	for _, test := range tests {
@@ -120,11 +119,4 @@ func TestJsonConvert(t *testing.T) {
 
 func TestJsonString(t *testing.T) {
 	require.Equal(t, "JSON", JSON.String())
-}
-
-func mustJSON(s string) (doc interface{}) {
-	if err := json.Unmarshal([]byte(s), &doc); err != nil {
-		panic(err)
-	}
-	return doc
 }

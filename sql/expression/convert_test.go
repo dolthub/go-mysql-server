@@ -141,18 +141,17 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(2, sql.Int32),
-			expected:    2,
+			expected:    sql.JSONDocument{Val: 2},
 			expectedErr: false,
 		},
-		// TODO(andy) create JSON value wrapper
-		//{
-		//	name:        "impossible conversion string to json",
-		//	row:         nil,
-		//	castTo:      ConvertToJSON,
-		//	expression:  NewLiteral("3>2", sql.LongText),
-		//	expected:    nil,
-		//	expectedErr: true,
-		//},
+		{
+			name:        "impossible conversion string to json",
+			row:         nil,
+			castTo:      ConvertToJSON,
+			expression:  NewLiteral("3>2", sql.LongText),
+			expected:    nil,
+			expectedErr: true,
+		},
 		{
 			name:        "bool to signed",
 			row:         nil,
