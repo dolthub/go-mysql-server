@@ -53,8 +53,7 @@ func TestShowTableStatus(t *testing.T) {
 		{"t2", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
 	}
 
-	require.Equal(expected, rows)
-	sqlValToInt64
+	require.ElementsMatch(expected, rows)
 	node = NewShowTableStatus(db2)
 	node.Catalog = catalog
 
@@ -69,5 +68,5 @@ func TestShowTableStatus(t *testing.T) {
 		{"t4", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
 	}
 
-	require.Equal(expected, rows)
+	require.ElementsMatch(expected, rows)
 }
