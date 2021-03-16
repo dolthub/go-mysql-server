@@ -57,6 +57,9 @@ var (
 	// node or expression is called with an invalid child type. This error is indicative of a bug.
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
+	// ErrInvalidJSONText is returned when a JSON string cannot be parsed or unmarshalled
+	ErrInvalidJSONText = errors.NewKind("Invalid JSON text: %s")
+
 	// ErrDeleteRowNotFound
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 

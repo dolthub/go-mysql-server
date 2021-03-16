@@ -47,14 +47,14 @@ func TestJSONExtract(t *testing.T) {
 	require.NoError(t, err)
 
 	json := map[string]interface{}{
-		"a": []interface{}{1, 2, 3, 4},
+		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
 		"b": map[string]interface{}{
 			"c": "foo",
 			"d": true,
 		},
 		"e": []interface{}{
-			[]interface{}{1, 2},
-			[]interface{}{3, 4},
+			[]interface{}{float64(1), float64(2)},
+			[]interface{}{float64(3), float64(4)},
 		},
 	}
 
@@ -65,15 +65,15 @@ func TestJSONExtract(t *testing.T) {
 		err      error
 	}{
 		{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
-		{f2, sql.Row{nil, "$.b.c"}, nil, nil},
-		{f2, sql.Row{json, "$.foo"}, nil, nil},
-		{f2, sql.Row{json, "$.b.c"}, "foo", nil},
-		{f3, sql.Row{json, "$.b.c", "$.b.d"}, []interface{}{"foo", true}, nil},
-		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, []interface{}{
+		{f2, sql.Row{nil, "$.b.c"}, sql.JSONDocument{Val: nil}, nil},
+		{f2, sql.Row{json, "$.foo"}, sql.JSONDocument{Val: nil}, nil},
+		{f2, sql.Row{json, "$.b.c"}, sql.JSONDocument{Val: "foo"}, nil},
+		{f3, sql.Row{json, "$.b.c", "$.b.d"}, sql.JSONDocument{Val: []interface{}{"foo", true}}, nil},
+		{f4, sql.Row{json, "$.b.c", "$.b.d", "$.e[0][*]"}, sql.JSONDocument{Val: []interface{}{
 			"foo",
 			true,
 			[]interface{}{1., 2.},
-		}, nil},
+		}}, nil},
 	}
 
 	for _, tt := range testCases {

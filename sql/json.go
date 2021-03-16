@@ -15,12 +15,13 @@
 package sql
 
 import (
-	"bytes"
 	"encoding/json"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"gopkg.in/src-d/go-errors.v1"
 )
+
+var ErrConvertingToJSON = errors.NewKind("value %v is not valid JSON")
 
 var JSON JsonType = jsonType{}
 
@@ -30,42 +31,39 @@ type JsonType interface {
 
 type jsonType struct{}
 
+
 // Compare implements Type interface.
 func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
+	var err error
+	if a, err = t.Convert(a); err != nil {
+		return 0, err
 	}
-	//TODO: this won't work if a JSON has two fields in a different order
-	return bytes.Compare(a.([]byte), b.([]byte)), nil
+	if b, err = t.Convert(b); err != nil {
+		return 0, err
+	}
+	return a.(JSONValue).Compare(b.(JSONValue))
 }
 
 // Convert implements Type interface.
-func (t jsonType) Convert(v interface{}) (interface{}, error) {
+func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	switch v := v.(type) {
-	case string:
-		var doc interface{}
-		if err := json.Unmarshal([]byte(v), &doc); err != nil {
-			return json.Marshal(v)
-		}
-		return json.Marshal(doc)
+	case JSONValue:
+		return v, nil
 	case []byte:
-		var doc interface{}
-		if err := json.Unmarshal(v, &doc); err != nil {
-			return json.Marshal(v)
-		}
-		return json.Marshal(doc)
+		err = json.Unmarshal(v, &doc)
+	case string:
+		err = json.Unmarshal([]byte(v), &doc)
 	default:
-		return json.Marshal(v)
+		// if |v| can be marshalled, it contains
+		// a valid JSON document representation
+		if _, err = json.Marshal(v); err == nil {
+			return JSONDocument{Val: v}, nil
+		}
 	}
-}
-
-// MustConvert implements the Type interface.
-func (t jsonType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return value
+	return JSONDocument{Val: doc}, nil
 }
 
 // Promote implements the Type interface.
@@ -79,12 +77,17 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.Value{}, err
+	js, ok := v.(JSONValue)
+	if !ok {
+		return sqltypes.NULL, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.TypeJSON, v.([]byte)), nil
+	s, err := js.ToString()
+	if err != nil {
+		return sqltypes.NULL, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, []byte(s)), nil
 }
 
 // String implements Type interface.
@@ -99,5 +102,6 @@ func (t jsonType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t jsonType) Zero() interface{} {
-	return []byte(`""`)
+	// JSON Null
+	return nil
 }

@@ -26,6 +26,8 @@ type Literal struct {
 	fieldType sql.Type
 }
 
+var _ sql.Expression = &Literal{}
+
 // NewLiteral creates a new Literal expression.
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 	// TODO(juanjux): we should probably check here if the type is sql.VarChar and the
