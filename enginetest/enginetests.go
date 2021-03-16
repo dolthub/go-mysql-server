@@ -2602,6 +2602,19 @@ func TestTracing(t *testing.T, harness Harness) {
 	require.Equal(expectedSpans, spanOperations)
 }
 
+
+// Runs tests on SHOW TABLE STATUS queries.
+func TestShowTableStatus(t *testing.T, harness Harness) {
+	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
+	engine := NewEngineWithDbs(t, harness, dbs, nil)
+	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range ShowTableStatusQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+	}
+}
+
 // RunQuery runs the query given and asserts that it doesn't result in an error.
 func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 	ctx := NewContext(harness)
