@@ -1078,6 +1078,7 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral("a", sql.LongText),
@@ -1087,7 +1088,19 @@ var fixtures = map[string]sql.Node{
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
 	),
+	`INSERT INTO mydb.t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase("mydb"),
+		plan.NewUnresolvedTable("t1", "mydb"),
+		plan.NewValues([][]sql.Expression{{
+			expression.NewLiteral("a", sql.LongText),
+			expression.NewLiteral(int8(1), sql.Int8),
+		}}),
+		false,
+		[]string{"col1", "col2"},
+		[]sql.Expression{},
+	),
 	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewBindVar("v1"),
@@ -1108,6 +1121,7 @@ var fixtures = map[string]sql.Node{
 		},
 	),
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral("a", sql.LongText),
@@ -2419,6 +2433,7 @@ var fixtures = map[string]sql.Node{
 					),
 				),
 				plan.NewInsertInto(
+					sql.UnresolvedDatabase(""),
 					plan.NewUnresolvedTable("zzz", ""),
 					plan.NewValues([][]sql.Expression{{
 						expression.NewUnresolvedQualifiedColumn("old", "a"),
@@ -2446,6 +2461,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewInsertInto(
+			sql.UnresolvedDatabase(""),
 			plan.NewUnresolvedTable("zzz", ""),
 			plan.NewValues([][]sql.Expression{{
 				expression.NewUnresolvedQualifiedColumn("old", "a"),
@@ -2463,6 +2479,7 @@ var fixtures = map[string]sql.Node{
 		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewInsertInto(
+			sql.UnresolvedDatabase(""),
 			plan.NewUnresolvedTable("zzz", ""),
 			plan.NewValues([][]sql.Expression{{
 				expression.NewUnresolvedQualifiedColumn("old", "a"),
