@@ -69,7 +69,7 @@ func TestJsonArrayAgg_Empty(t *testing.T) {
 
 	v, err := j.Eval(ctx, b)
 	assert.NoError(err)
-	assert.Equal(sql.JSONDocument{Val:[]interface{}(nil)}, v)
+	assert.Equal(sql.JSONDocument{Val: []interface{}(nil)}, v)
 }
 
 func TestJsonArrayAgg_JSON(t *testing.T) {

@@ -34,7 +34,6 @@ var OnceBeforeDefault = []Rule{
 	{"check_unique_table_names", checkUniqueTableNames},
 	{"validate_create_trigger", validateCreateTrigger},
 	{"validate_create_procedure", validateCreateProcedure},
-	{"validate_check_constraint", validateCreateCheck},
 	{"assign_info_schema", assignInfoSchema},
 }
 
@@ -46,6 +45,7 @@ var DefaultRules = []Rule{
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
+	{"validate_check_constraint", validateCreateCheck},
 	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
 	{"resolve_database", resolveDatabase},
 	{"expand_stars", expandStars},

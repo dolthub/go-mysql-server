@@ -875,6 +875,17 @@ var fixtures = map[string]sql.Node{
 			Enforced: true,
 		},
 	),
+	`ALTER TABLE t1 ADD CONSTRAINT CHECK (a > 0)`: plan.NewAlterAddCheck(
+		plan.NewUnresolvedTable("t1", ""),
+		&sql.CheckConstraint{
+			Name: "",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		},
+	),
 	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
 		&sql.ForeignKeyConstraint{

@@ -52,7 +52,12 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Sc
 
 		// Make sure that all columns are valid, in the table, and there are no duplicates
 		switch expr := e.(type) {
-		case *expression.UnresolvedColumn:
+		case *deferredColumn:
+			if _, ok := checkCols[expr.Name()]; !ok {
+				err = sql.ErrTableColumnNotFound.New(expr.Name())
+				return false
+			}
+		case *expression.GetField:
 			if _, ok := checkCols[expr.Name()]; !ok {
 				err = sql.ErrTableColumnNotFound.New(expr.Name())
 				return false
@@ -84,9 +89,15 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		switch node := n.(type) {
 		case *plan.InsertInto:
 			nc := *node
-			table, err := plan.GetCheckTable(nc.Destination)
-			if err != nil {
-				return node, err
+
+			rtable, ok := nc.Destination.(*plan.ResolvedTable)
+			if !ok {
+				return node, nil
+			}
+
+			table, ok := rtable.Table.(sql.CheckAlterableTable)
+			if !ok {
+				return node, nil
 			}
 
 			loadedChecks, err := loadChecksFromTable(ctx, table)

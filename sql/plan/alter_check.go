@@ -78,29 +78,6 @@ func getCheckAlterableTable(t sql.Table) (sql.CheckAlterableTable, error) {
 	}
 }
 
-func GetCheckTable(node sql.Node) (sql.CheckTable, error) {
-	switch node := node.(type) {
-	case sql.CheckTable:
-		return node, nil
-	case *ResolvedTable:
-		return getCheckTable(node.Table), nil
-	default:
-		return nil, ErrNoCheckConstraintSupport.New(node.String())
-	}
-}
-
-// getCheckTable returns the underlying getCheckTable for the table given, or nil if it isn't a getCheckTable
-func getCheckTable(t sql.Table) sql.CheckTable {
-	switch t := t.(type) {
-	case sql.CheckTable:
-		return t
-	case sql.TableWrapper:
-		return getCheckTable(t.Underlying())
-	default:
-		return nil
-	}
-}
-
 // Expressions implements the sql.Expressioner interface.
 func (c *CreateCheck) Expressions() []sql.Expression {
 	return []sql.Expression{c.Check.Expr}

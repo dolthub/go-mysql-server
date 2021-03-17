@@ -2192,21 +2192,10 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 0)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED",
-		[]sql.Row(nil),
-		nil,
-	)
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT CHECK (b > 1)")
 
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
@@ -2239,10 +2228,19 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 			),
 			Enforced: false,
 		},
+		{
+			Name: "",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("t1.b"),
+				expression.NewLiteral(int8(1), sql.Int8),
+			),
+			Enforced: true,
+		},
 	}
 	cmp1, _ := plan.NewCheckDefinition(&con[0])
 	cmp2, _ := plan.NewCheckDefinition(&con[1])
-	expected := []sql.CheckDefinition{*cmp1, *cmp2}
+	cmp3, _ := plan.NewCheckDefinition(&con[2])
+	expected := []sql.CheckDefinition{*cmp1, *cmp2, *cmp3}
 
 	assert.Equal(t, expected, checks)
 
@@ -2260,26 +2258,10 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 1) NOT ENFORCED",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (b > -1) ENFORCED",
-		[]sql.Row(nil),
-		nil,
-	)
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 1) NOT ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (b > -1) ENFORCED")
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
 	TestQuery(t, harness, e, `SELECT * FROM t1`,
 		[]sql.Row{
@@ -2316,11 +2298,7 @@ func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	var err error
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)",
-		[]sql.Row(nil),
-		nil,
-	)
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
 
 	// functions, UDFs, procedures
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")")
@@ -2337,36 +2315,12 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 DROP CONSTRAINT chk2",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE t1 DROP CHECK chk1",
-		[]sql.Row(nil),
-		nil,
-	)
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT chk2")
+	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CHECK chk1")
 
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)

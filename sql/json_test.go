@@ -32,7 +32,7 @@ func TestJsonCompare(t *testing.T) {
 		{`true`, `[0]`, 1},
 		{`[0]`, `{"a": 0}`, 1},
 		{`{"a": 0}`, `"a"`, 1},
-		{ `"a"`, `0`, 1},
+		{`"a"`, `0`, 1},
 		{`0`, `null`, 1},
 
 		// null
@@ -63,20 +63,20 @@ func TestJsonCompare(t *testing.T) {
 		// objects
 		{`{"a": 0}`, `{"a": 0}`, 0},
 		// deterministic object ordering with arbitrary rules
-		{`{"a": 1}`, `{"a": 0}`, 1}, 				 // 1 > 0
-		{`{"a": 0}`, `{"a": 0, "b": 1}`, -1},		 // longer
+		{`{"a": 1}`, `{"a": 0}`, 1},                 // 1 > 0
+		{`{"a": 0}`, `{"a": 0, "b": 1}`, -1},        // longer
 		{`{"a": 0, "c": 2}`, `{"a": 0, "b": 1}`, 1}, // "c" > "b"
 
 		// nested
 		{
 			left:  `{"one": ["x", "y", "z"], "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
 			right: `{"one": ["x", "y", "z"], "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
-			cmp: 0,
+			cmp:   0,
 		},
 		{
 			left:  `{"one": ["x", "y"],      "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
 			right: `{"one": ["x", "y", "z"], "two": { "a": 0, "b": 1}, "three": false, "four": null, "five": " "}`,
-			cmp: -1,
+			cmp:   -1,
 		},
 	}
 

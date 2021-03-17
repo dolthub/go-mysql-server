@@ -66,15 +66,6 @@ type ForeignKeyHarness interface {
 	SupportsForeignKeys() bool
 }
 
-// CheckConstraintHarness is an extension to Harness that lets an integrator test their implementation with check constraints.
-// Integrator tables must implement sql.CheckAlterableTable and sql.CheckTable.
-type CheckConstraintHarness interface {
-	Harness
-	// SupportsCheckConstraint returns whether this harness should accept CREATE CHECK statements as part of test
-	// setup.
-	SupportsCheckConstraint() bool
-}
-
 // VersionedDBHarness is an extension to Harness that lets an integrator test their implementation of versioned (AS OF)
 // queries. Integrators must implement sql.VersionedDatabase. For each table version being created, there will be a
 // call to NewTableAsOf, some number of Delete and Insert operations, and then a call to SnapshotTable.
