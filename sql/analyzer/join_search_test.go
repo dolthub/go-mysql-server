@@ -532,9 +532,9 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 		},
 		{
-			name:       "explicit subtree, A((EB)(DC))",
+			name: "explicit subtree, A((EB)(DC))",
 			tableOrder: tableOrder("A", &joinOrderNode{
-				left: tableOrder("E", "B"),
+				left:  tableOrder("E", "B"),
 				right: tableOrder("D", "C"),
 			}),
 			joinConds: []*joinCond{
@@ -562,9 +562,9 @@ func TestBuildJoinTree(t *testing.T) {
 			},
 		},
 		{
-			name:       "explicit subtree, A((EB)(D))C",
+			name: "explicit subtree, A((EB)(D))C",
 			tableOrder: tableOrder("A", &joinOrderNode{
-				left: tableOrder("E", "B"),
+				left:  tableOrder("E", "B"),
 				right: tableOrder("D"),
 			}, "C"),
 			joinConds: []*joinCond{

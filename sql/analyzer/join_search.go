@@ -207,7 +207,8 @@ func (jo *joinOrderNode) applyJoinHintTables(tables []string) ([]string, error) 
 	assigned := make(map[int]struct{})
 	order := []int{}
 	remaining := tables
-START:	for {
+START:
+	for {
 		var i int
 		for i = range jo.commutes {
 			if _, ok := assigned[i]; ok {
@@ -368,7 +369,7 @@ func (jo *joinOrderNode) visitJoinSearchNodes(cb func(n *joinSearchNode) bool) {
 	} else if jo.left != nil {
 		stop := false
 		jo.left.visitJoinSearchNodes(func(l *joinSearchNode) bool {
-			jo.right.visitJoinSearchNodes(func (r *joinSearchNode) bool {
+			jo.right.visitJoinSearchNodes(func(r *joinSearchNode) bool {
 				if !cb(&joinSearchNode{left: l, right: r}) {
 					stop = true
 				}
@@ -438,7 +439,6 @@ func newJoinOrderNode(node sql.Node) *joinOrderNode {
 		panic(fmt.Sprintf("unexpected node type: %t", node))
 	}
 }
-
 
 // A joinSearchNode is a simplified type representing a join tree node, which is either an internal node (a join) or a
 // leaf node (a table). The top level node in a join tree is always an internal node. Every internal node has both a

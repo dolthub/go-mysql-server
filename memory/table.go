@@ -37,6 +37,7 @@ type Table struct {
 	columns          []int
 	indexes          map[string]sql.Index
 	foreignKeys      []sql.ForeignKeyConstraint
+	checks           []sql.CheckDefinition
 	pkIndexesEnabled bool
 
 	// Data storage
@@ -66,6 +67,8 @@ var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexedTable = (*Table)(nil)
 var _ sql.ForeignKeyAlterableTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
+var _ sql.CheckAlterableTable = (*Table)(nil)
+var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
 
@@ -1103,6 +1106,12 @@ func (t *Table) CreateForeignKey(_ *sql.Context, fkName string, columns []string
 		}
 	}
 
+	for _, key := range t.checks {
+		if key.Name == fkName {
+			return fmt.Errorf("constraint %s already exists", fkName)
+		}
+	}
+
 	t.foreignKeys = append(t.foreignKeys, sql.ForeignKeyConstraint{
 		Name:              fkName,
 		Columns:           columns,
@@ -1117,13 +1126,52 @@ func (t *Table) CreateForeignKey(_ *sql.Context, fkName string, columns []string
 
 // DropForeignKey implements sql.ForeignKeyAlterableTable.
 func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
+	return t.dropConstraint(ctx, fkName)
+}
+
+func (t *Table) dropConstraint(ctx *sql.Context, name string) error {
 	for i, key := range t.foreignKeys {
-		if key.Name == fkName {
+		if key.Name == name {
 			t.foreignKeys = append(t.foreignKeys[:i], t.foreignKeys[i+1:]...)
 			return nil
 		}
 	}
+	for i, key := range t.checks {
+		if key.Name == name {
+			t.checks = append(t.checks[:i], t.checks[i+1:]...)
+			return nil
+		}
+	}
 	return nil
+}
+
+// GetChecks implements sql.CheckTable
+func (t *Table) GetChecks(_ *sql.Context) ([]sql.CheckDefinition, error) {
+	return t.checks, nil
+}
+
+// CreateCheck implements sql.CheckAlterableTable
+func (t *Table) CreateCheck(_ *sql.Context, check *sql.CheckDefinition) error {
+	for _, key := range t.checks {
+		if key.Name == check.Name {
+			return fmt.Errorf("constraint %s already exists", check.Name)
+		}
+	}
+
+	for _, key := range t.foreignKeys {
+		if key.Name == check.Name {
+			return fmt.Errorf("constraint %s already exists", check.Name)
+		}
+	}
+
+	t.checks = append(t.checks, *check)
+
+	return nil
+}
+
+// func (t *Table) DropCheck(ctx *sql.Context, chName string) error {} implements sql.CheckAlterableTable.
+func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
+	return t.dropConstraint(ctx, chName)
 }
 
 func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {

@@ -31,7 +31,6 @@ type JsonType interface {
 
 type jsonType struct{}
 
-
 // Compare implements Type interface.
 func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
 	var err error
