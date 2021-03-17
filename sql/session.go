@@ -238,10 +238,12 @@ func (s *BaseSession) IterLocks(cb func(name string) error) error {
 	return nil
 }
 
+// GetQueriedDatabase implements the Session interface.
 func (s *BaseSession) GetQueriedDatabase() string {
 	return s.queriedDb
 }
 
+// SetQueriedDatabase implements the Session interface.
 func (s *BaseSession) SetQueriedDatabase(dbName string) {
 	s.queriedDb = dbName
 }
