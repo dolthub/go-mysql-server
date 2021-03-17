@@ -41,7 +41,7 @@ var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
-	db 			sql.Database
+	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
 	ColumnNames []string
@@ -54,7 +54,7 @@ var _ sql.Databaser = (*InsertInto)(nil)
 // NewInsertInto creates an InsertInto node.
 func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
 	return &InsertInto{
-		db: 		 db,
+		db:          db,
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,

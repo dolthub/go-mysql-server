@@ -320,4 +320,26 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "CrossDB Queries",
+		SetUpScript: []string{
+			"CREATE DATABASE test",
+			"CREATE TABLE test.x (pk int primary key)",
+			"insert into test.x values (1),(2),(3)",
+			"DELETE FROM test.x WHERE pk=2",
+			"UPDATE test.x set pk=300 where pk=3",
+			"create table a (xa int primary key, ya int, za int)",
+			"insert into a values (1,2,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk from test.x",
+				Expected: []sql.Row{{1}, {300}},
+			},
+			{
+				Query:    "SELECT * from a",
+				Expected: []sql.Row{{1, 2, 3}},
+			},
+		},
+	},
 }

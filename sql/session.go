@@ -82,7 +82,9 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
+	// GetQueriedDatabase represents the database the user is running a query on that is NOT the current database.
 	GetQueriedDatabase() string
+	// SetQueriedDatabase sets the queried database.
 	SetQueriedDatabase(dbName string)
 }
 

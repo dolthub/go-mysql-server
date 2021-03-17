@@ -16,10 +16,11 @@ package enginetest_test
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"testing"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"

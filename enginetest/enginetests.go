@@ -213,7 +213,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 
 	require.Equal(expected, rows)
 
-	 _, _, err = e.Query(
+	_, _, err = e.Query(
 		NewContext(harness),
 		"SELECT team, COUNT(*) FROM members GROUP BY team ORDER BY columndoesnotexist",
 	)
@@ -238,7 +238,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	a := analyzer.NewBuilder(catalog).Build()
 	e := sqle.New(catalog, a, cfg)
 
-	 _, _, err = e.Query(NewContext(harness), `SELECT i FROM mytable`)
+	_, _, err = e.Query(NewContext(harness), `SELECT i FROM mytable`)
 	require.NoError(err)
 
 	writingQueries := []string{
@@ -1109,7 +1109,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
-	 _, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
+	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
 	iter.Close(ctx)
 

@@ -16,7 +16,6 @@ package sql
 
 import "fmt"
 
-
 // Engine represents a sql engine.
 type Engine struct {
 	Name        string
