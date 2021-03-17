@@ -147,7 +147,7 @@ func (e *Engine) AnalyzeQuery(
 func (e *Engine) Query(
 	ctx *sql.Context,
 	query string,
-) (string, sql.Schema, sql.RowIter, error) {
+) (sql.Schema, sql.RowIter, error) {
 	return e.QueryWithBindings(ctx, query, nil)
 }
 
@@ -155,7 +155,7 @@ func (e *Engine) QueryWithBindings(
 	ctx *sql.Context,
 	query string,
 	bindings map[string]sql.Expression,
-) (string, sql.Schema, sql.RowIter, error) {
+) (sql.Schema, sql.RowIter, error) {
 	var (
 		parsed, analyzed sql.Node
 		iter             sql.RowIter
@@ -167,12 +167,11 @@ func (e *Engine) QueryWithBindings(
 
 	parsed, err = parse.Parse(ctx, query)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	var perm = auth.ReadPerm
 	var typ = sql.QueryProcess
-	var db = ctx.GetCurrentDatabase()
 	switch parsed.(type) {
 	case *plan.CreateIndex:
 		typ = sql.CreateIndexProcess
@@ -187,25 +186,25 @@ func (e *Engine) QueryWithBindings(
 	switch n := parsed.(type) {
 	case *plan.CreateTable:
 		if n.Database() != nil && n.Database().Name() != "" {
-			db = n.Database().Name()
+			ctx.SetQueriedDatabase(n.Database().Name())
 		}
 	case *plan.InsertInto:
 		if n.Database() != nil && n.Database().Name() != "" {
-			db = n.Database().Name()
+			ctx.SetQueriedDatabase(n.Database().Name())
 		}
 	case *plan.DeleteFrom:
 		if n.Database() != "" {
-			db = n.Database()
+			ctx.SetQueriedDatabase(n.Database())
 		}
 	case *plan.Update:
 		if n.Database() != "" {
-			db = n.Database()
+			ctx.SetQueriedDatabase(n.Database())
 		}
 	}
 
 	err = e.Auth.Allowed(ctx, perm)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	ctx, err = e.Catalog.AddProcess(ctx, typ, query)
@@ -215,27 +214,27 @@ func (e *Engine) QueryWithBindings(
 		}
 	}()
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
 	if len(bindings) > 0 {
 		analyzed, err = plan.ApplyBindings(analyzed, bindings)
 		if err != nil {
-			return "", nil, nil, err
+			return nil, nil, err
 		}
 	}
 
 	iter, err = analyzed.RowIter(ctx, nil)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, nil, err
 	}
 
-	return db, analyzed.Schema(), iter, nil
+	return analyzed.Schema(), iter, nil
 }
 
 // ParseDefaults takes in a schema, along with each column's default value in a string form, and returns the schema

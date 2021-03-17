@@ -165,7 +165,7 @@ func testAuthorization(
 				sql.WithIndexRegistry(idxReg),
 				sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("test")
 
-			_, _, _, err := e.Query(ctx, c.query)
+			_, _, err := e.Query(ctx, c.query)
 
 			if c.success {
 				req.NoError(err)

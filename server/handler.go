@@ -319,15 +319,14 @@ func (h *Handler) doQuery(
 
 	var schema sql.Schema
 	var rows sql.RowIter
-	var dbName string
 	if len(bindings) == 0 {
-		dbName, schema, rows, err = h.e.Query(ctx, query)
+		schema, rows, err = h.e.Query(ctx, query)
 	} else {
 		sqlBindings, err := bindingsToExprs(bindings)
 		if err != nil {
 			return err
 		}
-		dbName, schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
+		schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
 	}
 	defer func() {
 		if q, ok := h.e.Auth.(*auth.Audit); ok {
@@ -454,7 +453,7 @@ rowLoop:
 
 	_, statementIsCommit := parsedQuery.(*sqlparser.Commit)
 	if statementIsCommit || (autoCommit && statementNeedsCommit(parsedQuery, parseErr)) {
-		if err := ctx.Session.CommitTransaction(ctx, dbName); err != nil {
+		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
 			return err
 		}
 	}
@@ -578,6 +577,18 @@ func isOkResult(row sql.Row) bool {
 		return ok
 	}
 	return false
+}
+
+func getTransactionDbName(ctx *sql.Context) string {
+	currentDbInUse := ctx.GetCurrentDatabase()
+	queriedDatabase := ctx.GetQueriedDatabase()
+
+	if queriedDatabase != "" {
+		ctx.SetQueriedDatabase("") // reset the queried database variable
+		return queriedDatabase
+	} else {
+		return currentDbInUse
+	}
 }
 
 // WarningCount is called at the end of each query to obtain

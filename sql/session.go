@@ -82,6 +82,8 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
+	GetQueriedDatabase() string
+	SetQueriedDatabase(dbName string)
 }
 
 // BaseSession is the basic session type.
@@ -95,6 +97,7 @@ type BaseSession struct {
 	warnings  []*Warning
 	warncnt   uint16
 	locks     map[string]bool
+	queriedDb string
 }
 
 // CommitTransaction commits the current transaction for the current database.
@@ -231,6 +234,14 @@ func (s *BaseSession) IterLocks(cb func(name string) error) error {
 	}
 
 	return nil
+}
+
+func (s *BaseSession) GetQueriedDatabase() string {
+	return s.queriedDb
+}
+
+func (s *BaseSession) SetQueriedDatabase(dbName string) {
+	s.queriedDb = dbName
 }
 
 type (
