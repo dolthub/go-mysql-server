@@ -335,6 +335,10 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
 			},
 			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid, 1), 1)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
 				Query:    `SELECT UUID_TO_BIN(NULL)`,
 				Expected: []sql.Row{{nil}},
 			},

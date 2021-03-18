@@ -89,7 +89,15 @@ func TestUUIDToBinValid(t *testing.T) {
 	}
 
 	for _, tt := range validTestCases {
-		f, err := NewUUIDToBin(expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+		var f sql.Expression
+		var err error
+
+		if tt.hasSwap {
+			f, err = NewUUIDToBin(expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+		} else {
+			f, err = NewUUIDToBin(expression.NewLiteral(tt.uuid, tt.uuidType))
+		}
+
 		require.NoError(t, err)
 
 		// Convert to hex to make testing easier
@@ -141,7 +149,63 @@ func TestBinToUUID(t *testing.T) {
 
 	require.Equal(t, uuidE, eval(t, retUUID, sql.Row{nil}))
 
-	retUUID, err = NewBinToUUID(expression.NewLiteral([]byte("lxºº & d[e`$Û"), sql.MustCreateBinary(query.Type_VARBINARY, int64(16))))
-	require.NoError(t, err)
-	require.Equal(t, "6c78c2ba-c2ba-2026-2064-5b656024c39b", eval(t, retUUID, sql.Row{nil}))
+	// Run UUID_TO_BIN through a series of test cases.
+	validTestCases := []struct {
+		name      string
+		uuidType  sql.Type
+		binary    interface{}
+		hasSwap   bool
+		swapType  sql.Type
+		swapValue interface{}
+		expected  interface{}
+	}{
+		{"valid uuid; swap=0", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("lxºº & d[e`$Û"), true, sql.Int8, int8(0), "6c78c2ba-c2ba-2026-2064-5b656024c39b"},
+		{"valid uuid; swap=1", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("&ººlÍxd[e`$Û"), true, sql.Int8, int8(1), "ba6cc38d-bac2-26c2-7864-5b656024c39b"},
+		{"valid uuid; no swap", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("lxºº & d[e`$Û"), false, nil, nil, "6c78c2ba-c2ba-2026-2064-5b656024c39b"},
+		{"null input", sql.Null, nil, false, nil, nil, nil},
+	}
+
+	for _, tt := range validTestCases {
+		var f sql.Expression
+		var err error
+
+		if tt.hasSwap {
+			f, err = NewBinToUUID(expression.NewLiteral(tt.binary, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+		} else {
+			f, err = NewBinToUUID(expression.NewLiteral(tt.binary, tt.uuidType))
+		}
+		require.NoError(t, err)
+
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, eval(t, f, sql.Row{nil}))
+		})
+
+		req := require.New(t)
+		req.False(f.IsNullable())
+	}
+}
+
+func TestBinToUUIDFailing(t *testing.T) {
+	failingTestCases := []struct {
+		name      string
+		uuidType  sql.Type
+		uuid      interface{}
+		swapType  sql.Type
+		swapValue interface{}
+	}{
+		{"bad swap value", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), "helo", sql.Int8, int8(2)},
+		{"bad binary value", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), "sdasdsad", sql.Int8, int8(0)},
+		{"bad input value", sql.Int8, int8(0), sql.Int8, int8(0)},
+	}
+
+	for _, tt := range failingTestCases {
+		f, err := NewBinToUUID(expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+		require.NoError(t, err)
+
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			_, err := f.Eval(ctx, sql.Row{nil})
+			require.Error(t, err)
+		})
+	}
 }
