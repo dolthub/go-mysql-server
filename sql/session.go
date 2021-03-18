@@ -83,8 +83,9 @@ type Session interface {
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
 	// GetQueriedDatabase represents the database the user is running a query on that is NOT the current database.
+	// Should only be used internally by the engine.
 	GetQueriedDatabase() string
-	// SetQueriedDatabase sets the queried database.
+	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
 	SetQueriedDatabase(dbName string)
 }
 

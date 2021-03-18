@@ -583,8 +583,9 @@ func getTransactionDbName(ctx *sql.Context) string {
 	currentDbInUse := ctx.GetCurrentDatabase()
 	queriedDatabase := ctx.GetQueriedDatabase()
 
+	ctx.SetQueriedDatabase("") // reset the queried database variable
+
 	if queriedDatabase != "" {
-		ctx.SetQueriedDatabase("") // reset the queried database variable
 		return queriedDatabase
 	} else {
 		return currentDbInUse
