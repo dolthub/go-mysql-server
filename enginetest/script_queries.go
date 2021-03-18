@@ -320,4 +320,36 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "UUIDs used in the wild.",
+		SetUpScript: []string{
+			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT IS_UUID(@uuid)`,
+				Expected: []sql.Row{{int8(1)}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid))`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT UUID_TO_BIN(NULL)`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `SELECT HEX(UUID_TO_BIN(@uuid))`,
+				Expected: []sql.Row{{"6CCD780CBABA102695645B8C656024DB"}},
+			},
+			{
+				Query:       `SELECT UUID_TO_BIN(123)`,
+				RequiredErr: true,
+			},
+			{
+				Query:       `SELECT BIN_TO_UUID(123)`,
+				RequiredErr: true,
+			},
+		},
+	},
 }

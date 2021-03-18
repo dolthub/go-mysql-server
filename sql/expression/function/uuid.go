@@ -16,10 +16,12 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/google/uuid"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // UUID()
@@ -49,11 +51,11 @@ import (
 // MySQL uses a randomly generated 48-bit number.
 // https://dev.mysql.com/doc/refman/8.0/en/miscellaneous-functions.html#function_uuid
 
-type UUIDFunc struct {}
+type UUIDFunc struct{}
 
 var _ sql.FunctionExpression = &UUIDFunc{}
 
-func NewUUIDFunc() sql.Expression{
+func NewUUIDFunc() sql.Expression {
 	return UUIDFunc{}
 }
 
@@ -127,6 +129,10 @@ func (U IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 0, err
 	}
 
+	if str == nil {
+		return nil, nil
+	}
+
 	switch str := str.(type) {
 	case string:
 		_, err := uuid.Parse(str)
@@ -136,7 +142,7 @@ func (U IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		return int8(1), nil
 	default:
-		return 0, nil
+		return int8(0), nil
 	}
 }
 
@@ -194,7 +200,7 @@ type UUIDToBin struct {
 	swapFlag  sql.Expression
 }
 
-var _ sql.FunctionExpression =  (*UUIDToBin)(nil)
+var _ sql.FunctionExpression = (*UUIDToBin)(nil)
 
 func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
@@ -231,6 +237,11 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// If the UUID argument is NULL, the return value is NULL.
+	if converted == nil {
+		return nil, nil
+	}
+
 	uuidAsStr, ok := converted.(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid data format passed to UUID_TO_BIN")
@@ -261,7 +272,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If the swap flag is 0 we can return uuid's byte format as is.
-	if sf.(int8) == 0 {
+	if sf == nil || sf.(int8) == 0 {
 		bt, err := parsed.MarshalBinary()
 		if err != nil {
 			return nil, err
@@ -340,7 +351,7 @@ type BinToUUID struct {
 	swapFlag    sql.Expression
 }
 
-var _ sql.FunctionExpression =  (*BinToUUID)(nil)
+var _ sql.FunctionExpression = (*BinToUUID)(nil)
 
 func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
@@ -371,6 +382,10 @@ func (ub BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 0, err
 	}
 
+	if str == nil {
+		return nil, nil
+	}
+
 	// Get the inputted uuid as a string.
 	converted, err := sql.MustCreateBinary(query.Type_VARBINARY, int64(16)).Convert(str)
 	if err != nil {
@@ -388,7 +403,7 @@ func (ub BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If no swap flag is passed we can return uuid's byte format as is.
+	// If no swap flag is passed we can return uuid's string format as is.
 	if ub.swapFlag == nil {
 		return parsed.String(), nil
 	}
@@ -403,7 +418,7 @@ func (ub BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If the swap flag is 0 we can return uuid's byte format as is.
+	// If the swap flag is 0 we can return uuid's string format as is.
 	if sf.(int8) == 0 {
 		return parsed.String(), nil
 	} else if sf.(int8) == 1 {

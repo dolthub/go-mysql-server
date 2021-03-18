@@ -30,4 +30,3 @@ func MustJSON(s string) JSONDocument {
 	}
 	return JSONDocument{Val: doc}
 }
-

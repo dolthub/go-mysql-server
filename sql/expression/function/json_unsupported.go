@@ -27,7 +27,6 @@ var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 // JSON search functions //
 ///////////////////////////
 
-
 // JSON_CONTAINS_PATH(json_doc, one_or_all, path[, path] ...)
 //
 // JSONContainsPath Returns 0 or 1 to indicate whether a JSON document contains data at a given path or paths. Returns
@@ -185,11 +184,9 @@ func (j JSONValue) FunctionName() string {
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#operator_member-of
 // TODO(andy): relocate
 
-
 /////////////////////////////
 // JSON creation functions //
 /////////////////////////////
-
 
 // JSON_ARRAY([val[, val] ...])
 //
@@ -260,11 +257,9 @@ func (j JSONQuote) FunctionName() string {
 	return "json_quote"
 }
 
-
 /////////////////////////////////
 // JSON modification functions //
 /////////////////////////////////
-
 
 // JSON_ARRAY_APPEND(json_doc, path, val[, path, val] ...)
 //
@@ -520,11 +515,9 @@ func (j JSONSet) FunctionName() string {
 	return "json_set"
 }
 
-
 //////////////////////////////
 // JSON attribute functions //
 //////////////////////////////
-
 
 // JSON_DEPTH(json_doc)
 //
@@ -621,11 +614,9 @@ func (j JSONValid) FunctionName() string {
 	return "json_valid"
 }
 
-
 //////////////////////////
 // JSON table functions //
 //////////////////////////
-
 
 // JSON_TABLE(expr, path COLUMNS (column_list) [AS] alias)
 //
@@ -649,11 +640,9 @@ func (j JSONTable) FunctionName() string {
 	return "json_table"
 }
 
-
 ///////////////////////////////
 // JSON validation functions //
 ///////////////////////////////
-
 
 // JSON_SCHEMA_VALID(schema,document)
 //
@@ -711,11 +700,9 @@ func (j JSONSchemaValidationReport) FunctionName() string {
 	return "json_schema_validation_report"
 }
 
-
 ////////////////////////////
 // JSON utility functions //
 ////////////////////////////
-
 
 // JSON_PRETTY(json_val)
 //

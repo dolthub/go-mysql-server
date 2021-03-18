@@ -16,6 +16,7 @@ package sql
 
 import (
 	"encoding/json"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -30,7 +31,6 @@ type JsonType interface {
 }
 
 type jsonType struct{}
-
 
 // Compare implements Type interface.
 func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {

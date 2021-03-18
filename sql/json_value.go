@@ -16,9 +16,10 @@ package sql
 
 import (
 	"encoding/json"
-	"github.com/oliveagle/jsonpath"
 	"sort"
 	"strings"
+
+	"github.com/oliveagle/jsonpath"
 )
 
 // JSONValue is an integrator specific implementation of a JSON field value.
@@ -45,7 +46,6 @@ type SearchableJSONValue interface {
 	Search() (path string, err error)
 }
 
-
 type JSONDocument struct {
 	Val interface{}
 }
@@ -68,7 +68,6 @@ func (doc JSONDocument) ToString() (string, error) {
 	bb, err := json.Marshal(doc.Val)
 	return string(bb), err
 }
-
 
 var _ SearchableJSONValue = JSONDocument{}
 
@@ -111,7 +110,6 @@ func ConcatenateJSONValues(vals ...JSONValue) (JSONValue, error) {
 	}
 	return JSONDocument{Val: arr}, nil
 }
-
 
 // JSON values can be compared using the =, <, <=, >, >=, <>, !=, and <=> operators. BETWEEN IN() GREATEST() LEAST() are
 // not yet supported with JSON values.
@@ -252,8 +250,8 @@ func compareJSONArray(a []interface{}, b interface{}) (int, error) {
 func compareJSONObject(a map[string]interface{}, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			[]interface{}:
+		bool,
+		[]interface{}:
 		// a is lower precedence
 		return -1, nil
 
@@ -284,9 +282,9 @@ func compareJSONObject(a map[string]interface{}, b interface{}) (int, error) {
 func compareJSONString(a string, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			[]interface{},
-			map[string]interface{}:
+		bool,
+		[]interface{},
+		map[string]interface{}:
 		// a is lower precedence
 		return -1, nil
 
@@ -302,10 +300,10 @@ func compareJSONString(a string, b interface{}) (int, error) {
 func compareJSONNumber(a float64, b interface{}) (int, error) {
 	switch b := b.(type) {
 	case
-			bool,
-			[]interface{},
-			map[string]interface{},
-			string:
+		bool,
+		[]interface{},
+		map[string]interface{},
+		string:
 		// a is lower precedence
 		return -1, nil
 
@@ -324,7 +322,6 @@ func compareJSONNumber(a float64, b interface{}) (int, error) {
 	}
 }
 
-
 func jsonObjectKeyIntersection(a, b map[string]interface{}) (ks []string) {
 	for key := range a {
 		if _, ok := b[key]; ok {
@@ -339,7 +336,7 @@ func jsonObjectDeterministicOrder(a, b map[string]interface{}, inter []string) (
 	if len(a) > len(b) {
 		return 1, nil
 	}
-	if len(a) < len(b){
+	if len(a) < len(b) {
 		return -1, nil
 	}
 
