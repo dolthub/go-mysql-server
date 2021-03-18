@@ -74,3 +74,10 @@ func (h *Having) String() string {
 	_ = p.WriteChildren(h.Child.String())
 	return p.String()
 }
+
+func (h *Having) DebugString() string {
+	p := sql.NewTreePrinter()
+	_ = p.WriteNode("Having(%s)", sql.DebugString(h.Cond))
+	_ = p.WriteChildren(sql.DebugString(h.Child))
+	return p.String()
+}

@@ -17,9 +17,6 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -28,15 +25,10 @@ import (
 )
 
 func TestResolveHaving(t *testing.T) {
-	testCases := []struct {
-		name     string
-		input    sql.Node
-		expected sql.Node
-		err      *errors.Kind
-	}{
+	testCases := []analyzerFnTestCase{
 		{
 			name: "replace existing aggregation in group by",
-			input: plan.NewHaving(
+			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -66,8 +58,39 @@ func TestResolveHaving(t *testing.T) {
 			),
 		},
 		{
+			name: "replace existing aggregation in group by, deferred column",
+			node: plan.NewHaving(
+				expression.NewGreaterThan(
+					aggregation.NewAvg(&deferredColumn{expression.NewUnresolvedColumn("foo")}),
+					expression.NewLiteral(int64(5), sql.Int64),
+				),
+				plan.NewGroupBy(
+					[]sql.Expression{
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+						expression.NewGetField(0, sql.Int64, "foo", false),
+					},
+					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+					plan.NewResolvedTable(memory.NewTable("t", nil), nil, nil),
+				),
+			),
+			expected: plan.NewHaving(
+				expression.NewGreaterThan(
+					expression.NewGetField(0, sql.Float64, "x", true),
+					expression.NewLiteral(int64(5), sql.Int64),
+				),
+				plan.NewGroupBy(
+					[]sql.Expression{
+						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+						expression.NewGetField(0, sql.Int64, "foo", false),
+					},
+					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
+					plan.NewResolvedTable(memory.NewTable("t", nil), nil, nil),
+				),
+			),
+		},
+		{
 			name: "push down aggregation to group by",
-			input: plan.NewHaving(
+			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -106,7 +129,7 @@ func TestResolveHaving(t *testing.T) {
 		// TODO: this should be an error in most cases -- the having clause must only reference columns in the select clause.
 		{
 			name: "pull up missing column",
-			input: plan.NewHaving(
+			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedColumn("i"),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -147,7 +170,7 @@ func TestResolveHaving(t *testing.T) {
 		},
 		{
 			name: "pull up missing column with nodes in between",
-			input: plan.NewHaving(
+			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					expression.NewUnresolvedColumn("i"),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -199,7 +222,7 @@ func TestResolveHaving(t *testing.T) {
 		},
 		{
 			name: "push down aggregations with nodes in between",
-			input: plan.NewHaving(
+			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -250,7 +273,7 @@ func TestResolveHaving(t *testing.T) {
 		},
 		{
 			name: "replace existing aggregation in group by with nodes in between",
-			input: plan.NewHaving(
+			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -293,7 +316,7 @@ func TestResolveHaving(t *testing.T) {
 		},
 		{
 			name: "missing groupby",
-			input: plan.NewHaving(
+			node: plan.NewHaving(
 				expression.NewGreaterThan(
 					aggregation.NewCount(expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
@@ -304,17 +327,6 @@ func TestResolveHaving(t *testing.T) {
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-			result, err := resolveHaving(sql.NewEmptyContext(), nil, tt.input, nil)
-			if tt.err != nil {
-				require.Error(err)
-				require.True(tt.err.Is(err))
-			} else {
-				require.NoError(err)
-				require.Equal(tt.expected, result)
-			}
-		})
-	}
+	rule := getRule("resolve_having")
+	runTestCases(t, nil, testCases, nil, rule)
 }

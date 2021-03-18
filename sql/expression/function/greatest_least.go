@@ -201,12 +201,7 @@ var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/least arg
 
 // NewGreatest creates a new Greatest UDF
 func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
-	retType, err := compRetType(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Greatest{args, retType}, nil
+	return &Greatest{Args: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -215,7 +210,12 @@ func (f *Greatest) FunctionName() string {
 }
 
 // Type implements the Expression interface.
-func (f *Greatest) Type() sql.Type { return f.returnType }
+func (f *Greatest) Type() sql.Type {
+	if f.returnType != nil {
+		return f.returnType
+	}
+	return f.Args[0].Type()
+}
 
 // IsNullable implements the Expression interface.
 func (f *Greatest) IsNullable() bool {
@@ -285,6 +285,14 @@ func lessThan(a, b interface{}) bool {
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if f.returnType == nil {
+		retType, err := compRetType(f.Args...)
+		if err != nil {
+			return nil, err
+		}
+		f.returnType = retType
+	}
+
 	return compEval(f.returnType, f.Args, ctx, row, greaterThan)
 }
 
@@ -302,12 +310,7 @@ var _ sql.FunctionExpression = (*Least)(nil)
 
 // NewLeast creates a new Least UDF
 func NewLeast(args ...sql.Expression) (sql.Expression, error) {
-	retType, err := compRetType(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Least{args, retType}, nil
+	return &Least{Args: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -316,7 +319,12 @@ func (f *Least) FunctionName() string {
 }
 
 // Type implements the Expression interface.
-func (f *Least) Type() sql.Type { return f.returnType }
+func (f *Least) Type() sql.Type {
+	if f.returnType != nil {
+		return f.returnType
+	}
+	return f.Args[0].Type()
+}
 
 // IsNullable implements the Expression interface.
 func (f *Least) IsNullable() bool {
@@ -356,5 +364,13 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if f.returnType == nil {
+		retType, err := compRetType(f.Args...)
+		if err != nil {
+			return nil, err
+		}
+		f.returnType = retType
+	}
+
 	return compEval(f.returnType, f.Args, ctx, row, lessThan)
 }

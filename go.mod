@@ -25,7 +25,6 @@ require (
 	github.com/src-d/go-oniguruma v1.1.0
 	github.com/stretchr/testify v1.4.0
 	github.com/tebeka/strftime v0.1.4 // indirect
-	google.golang.org/genproto v0.0.0-20190926190326-7ee9db18f195
 	google.golang.org/grpc v1.27.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 )

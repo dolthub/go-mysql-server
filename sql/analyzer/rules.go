@@ -41,6 +41,7 @@ var OnceBeforeDefault = []Rule{
 var DefaultRules = []Rule{
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
+	{"resolve_functions", resolveFunctions},
 	{"pushdown_sort", pushdownSort},
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
 	{"qualify_columns", qualifyColumns},
@@ -49,7 +50,6 @@ var DefaultRules = []Rule{
 	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
 	{"resolve_database", resolveDatabase},
 	{"expand_stars", expandStars},
-	{"resolve_functions", resolveFunctions},
 	{"resolve_having", resolveHaving},
 	{"merge_union_schemas", mergeUnionSchemas},
 	{"flatten_aggregation_exprs", flattenAggregationExpressions},
