@@ -478,7 +478,7 @@ func aggregationChildEquals(a, b sql.Expression) bool {
 	a, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, error) {
 		var table, name string
 		switch e := e.(type) {
-		case *expression.UnresolvedColumn:
+		case column:
 			table = strings.ToLower(e.Table())
 			name = strings.ToLower(e.Name())
 		case *expression.GetField:

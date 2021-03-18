@@ -2772,6 +2772,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(2)}, {float64(3)}},
 	},
 	{
+		Query:    "SELECT avg(i) as `avg(i)` FROM mytable GROUP BY i HAVING avg(i) > 1",
+		Expected: []sql.Row{{float64(2)}, {float64(3)}},
+	},
+	{
+		Query:    "SELECT avg(i) as `AVG(i)` FROM mytable GROUP BY i HAVING AVG(i) > 1",
+		Expected: []sql.Row{{float64(2)}, {float64(3)}},
+	},
+	{
 		Query: `SELECT s AS s, COUNT(*) AS count,  AVG(i) AS ` + "`AVG(i)`" + `
 		FROM  (
 			SELECT * FROM mytable
