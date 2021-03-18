@@ -1252,6 +1252,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+		nil,
 	),
 	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(
 		sql.UnresolvedDatabase(""),
