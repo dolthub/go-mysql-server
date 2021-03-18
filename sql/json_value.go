@@ -16,9 +16,10 @@ package sql
 
 import (
 	"encoding/json"
-	"github.com/oliveagle/jsonpath"
 	"sort"
 	"strings"
+
+	"github.com/oliveagle/jsonpath"
 )
 
 // JSONValue is an integrator specific implementation of a JSON field value.

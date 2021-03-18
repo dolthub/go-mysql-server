@@ -88,7 +88,7 @@ func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
 	var test enginetest.QueryTest
-	test = enginetest.QueryTest	{
+	test = enginetest.QueryTest{
 		Query: "SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY sum(i) DESC",
 		Expected: []sql.Row{
 			{int64(3), float64(3)},

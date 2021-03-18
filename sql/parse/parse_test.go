@@ -951,7 +951,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewIsNull(expression.NewUnresolvedColumn("foo")),
 			expression.NewAlias("bar IS NOT NULL",
-			expression.NewNot(expression.NewIsNull(expression.NewUnresolvedColumn("bar"))),
+				expression.NewNot(expression.NewIsNull(expression.NewUnresolvedColumn("bar"))),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -960,7 +960,7 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewIsTrue(expression.NewUnresolvedColumn("foo")),
 			expression.NewAlias("bar IS NOT FALSE",
-			expression.NewNot(expression.NewIsFalse(expression.NewUnresolvedColumn("bar"))),
+				expression.NewNot(expression.NewIsFalse(expression.NewUnresolvedColumn("bar"))),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -1192,8 +1192,8 @@ var fixtures = map[string]sql.Node{
 	`SELECT COUNT(*) FROM t1;`: plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewAlias("COUNT(*)",
-			expression.NewUnresolvedFunction("count", true, nil,
-				expression.NewStar()),
+				expression.NewUnresolvedFunction("count", true, nil,
+					expression.NewStar()),
 			),
 		},
 		[]sql.Expression{},
@@ -1494,16 +1494,16 @@ var fixtures = map[string]sql.Node{
 	`SELECT 0x01AF`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("0x01AF",
-			expression.NewLiteral(int16(431), sql.Int16),
-		),
+				expression.NewLiteral(int16(431), sql.Int16),
+			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT X'41'`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("X'41'",
-			expression.NewLiteral([]byte{'A'}, sql.LongBlob),
-		),
+				expression.NewLiteral([]byte{'A'}, sql.LongBlob),
+			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
@@ -1578,7 +1578,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT CAST(-3 AS UNSIGNED) FROM foo`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("CAST(-3 AS UNSIGNED)",
-			expression.NewConvert(expression.NewLiteral(int8(-3), sql.Int8), expression.ConvertToUnsigned),
+				expression.NewConvert(expression.NewLiteral(int8(-3), sql.Int8), expression.ConvertToUnsigned),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -1709,18 +1709,18 @@ var fixtures = map[string]sql.Node{
 	`SELECT +i FROM mytable`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("+i",
-			expression.NewUnresolvedColumn("i"),
-		),
+				expression.NewUnresolvedColumn("i"),
+			),
 		},
 		plan.NewUnresolvedTable("mytable", ""),
 	),
 	`SELECT - 4 - - 80`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("- 4 - - 80",
-			expression.NewMinus(
-				expression.NewLiteral(int8(-4), sql.Int8),
-				expression.NewLiteral(int8(-80), sql.Int8),
-			),
+				expression.NewMinus(
+					expression.NewLiteral(int8(-4), sql.Int8),
+					expression.NewLiteral(int8(-80), sql.Int8),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -1728,11 +1728,11 @@ var fixtures = map[string]sql.Node{
 	`SELECT + - - i FROM mytable`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("+ - - i",
-			expression.NewUnaryMinus(
 				expression.NewUnaryMinus(
-					expression.NewUnresolvedColumn("i"),
+					expression.NewUnaryMinus(
+						expression.NewUnresolvedColumn("i"),
+					),
 				),
-			),
 			),
 		},
 		plan.NewUnresolvedTable("mytable", ""),
@@ -1753,8 +1753,8 @@ var fixtures = map[string]sql.Node{
 	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("1 * (2 + 1)",
-			expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
-				expression.NewPlus(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+				expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewPlus(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -1762,10 +1762,10 @@ var fixtures = map[string]sql.Node{
 	`SELECT (0 - 1) * (1 | 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("(0 - 1) * (1 | 1)",
-			expression.NewMult(
-				expression.NewMinus(expression.NewLiteral(int8(0), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
-				expression.NewBitOr(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
-			),
+				expression.NewMult(
+					expression.NewMinus(expression.NewLiteral(int8(0), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+					expression.NewBitOr(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -1773,20 +1773,20 @@ var fixtures = map[string]sql.Node{
 	`SELECT (1 << 3) % (2 div 1);`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("(1 << 3) % (2 div 1)",
-			expression.NewMod(
-				expression.NewShiftLeft(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(3), sql.Int8)),
-				expression.NewIntDiv(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
-				),
+				expression.NewMod(
+					expression.NewShiftLeft(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(3), sql.Int8)),
+					expression.NewIntDiv(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT 1.0 * a + 2.0 * b FROM t;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("1.0 * a + 2.0 * b",
-			expression.NewPlus(
-				expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
-				expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
-			),
+				expression.NewPlus(
+					expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
+					expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("t", ""),
@@ -1794,9 +1794,9 @@ var fixtures = map[string]sql.Node{
 	`SELECT '1.0' + 2;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("'1.0' + 2",
-			expression.NewPlus(
-				expression.NewLiteral("1.0", sql.LongText), expression.NewLiteral(int8(2), sql.Int8),
-			),
+				expression.NewPlus(
+					expression.NewLiteral("1.0", sql.LongText), expression.NewLiteral(int8(2), sql.Int8),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -1804,9 +1804,9 @@ var fixtures = map[string]sql.Node{
 	`SELECT '1' + '2';`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("'1' + '2'",
-			expression.NewPlus(
-				expression.NewLiteral("1", sql.LongText), expression.NewLiteral("2", sql.LongText),
-			),
+				expression.NewPlus(
+					expression.NewLiteral("1", sql.LongText), expression.NewLiteral("2", sql.LongText),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -1869,13 +1869,13 @@ var fixtures = map[string]sql.Node{
 	`SELECT MAX(i)/2 FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewAlias("MAX(i)/2",
-			expression.NewArithmetic(
-				expression.NewUnresolvedFunction(
-					"max", true, nil, expression.NewUnresolvedColumn("i"),
+				expression.NewArithmetic(
+					expression.NewUnresolvedFunction(
+						"max", true, nil, expression.NewUnresolvedColumn("i"),
+					),
+					expression.NewLiteral(int8(2), sql.Int8),
+					"/",
 				),
-				expression.NewLiteral(int8(2), sql.Int8),
-				"/",
-			),
 			),
 		},
 		[]sql.Expression{},
@@ -2086,20 +2086,20 @@ var fixtures = map[string]sql.Node{
 	"SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' ELSE 'baz' END": plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' ELSE 'baz' END",
-			expression.NewCase(
-			expression.NewUnresolvedColumn("foo"),
-			[]expression.CaseBranch{
-				{
-					Cond:  expression.NewLiteral(int8(1), sql.Int8),
-					Value: expression.NewLiteral("foo", sql.LongText),
-				},
-				{
-					Cond:  expression.NewLiteral(int8(2), sql.Int8),
-					Value: expression.NewLiteral("bar", sql.LongText),
-				},
-			},
-			expression.NewLiteral("baz", sql.LongText),
-		),
+				expression.NewCase(
+					expression.NewUnresolvedColumn("foo"),
+					[]expression.CaseBranch{
+						{
+							Cond:  expression.NewLiteral(int8(1), sql.Int8),
+							Value: expression.NewLiteral("foo", sql.LongText),
+						},
+						{
+							Cond:  expression.NewLiteral(int8(2), sql.Int8),
+							Value: expression.NewLiteral("bar", sql.LongText),
+						},
+					},
+					expression.NewLiteral("baz", sql.LongText),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -2107,20 +2107,20 @@ var fixtures = map[string]sql.Node{
 	"SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' END": plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' END",
-			expression.NewCase(
-			expression.NewUnresolvedColumn("foo"),
-			[]expression.CaseBranch{
-				{
-					Cond:  expression.NewLiteral(int8(1), sql.Int8),
-					Value: expression.NewLiteral("foo", sql.LongText),
-				},
-				{
-					Cond:  expression.NewLiteral(int8(2), sql.Int8),
-					Value: expression.NewLiteral("bar", sql.LongText),
-				},
-			},
-			nil,
-		),
+				expression.NewCase(
+					expression.NewUnresolvedColumn("foo"),
+					[]expression.CaseBranch{
+						{
+							Cond:  expression.NewLiteral(int8(1), sql.Int8),
+							Value: expression.NewLiteral("foo", sql.LongText),
+						},
+						{
+							Cond:  expression.NewLiteral(int8(2), sql.Int8),
+							Value: expression.NewLiteral("bar", sql.LongText),
+						},
+					},
+					nil,
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -2128,26 +2128,26 @@ var fixtures = map[string]sql.Node{
 	"SELECT CASE WHEN foo = 1 THEN 'foo' WHEN foo = 2 THEN 'bar' ELSE 'baz' END": plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("CASE WHEN foo = 1 THEN 'foo' WHEN foo = 2 THEN 'bar' ELSE 'baz' END",
-			expression.NewCase(
-			nil,
-			[]expression.CaseBranch{
-				{
-					Cond: expression.NewEquals(
-						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral(int8(1), sql.Int8),
-					),
-					Value: expression.NewLiteral("foo", sql.LongText),
-				},
-				{
-					Cond: expression.NewEquals(
-						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral(int8(2), sql.Int8),
-					),
-					Value: expression.NewLiteral("bar", sql.LongText),
-				},
-			},
-			expression.NewLiteral("baz", sql.LongText),
-		),
+				expression.NewCase(
+					nil,
+					[]expression.CaseBranch{
+						{
+							Cond: expression.NewEquals(
+								expression.NewUnresolvedColumn("foo"),
+								expression.NewLiteral(int8(1), sql.Int8),
+							),
+							Value: expression.NewLiteral("foo", sql.LongText),
+						},
+						{
+							Cond: expression.NewEquals(
+								expression.NewUnresolvedColumn("foo"),
+								expression.NewLiteral(int8(2), sql.Int8),
+							),
+							Value: expression.NewLiteral("bar", sql.LongText),
+						},
+					},
+					expression.NewLiteral("baz", sql.LongText),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -2193,14 +2193,14 @@ var fixtures = map[string]sql.Node{
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("'2018-05-01' + INTERVAL 1 DAY",
-			expression.NewArithmetic(
-			expression.NewLiteral("2018-05-01", sql.LongText),
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
-			),
-			"+",
-		),
+				expression.NewArithmetic(
+					expression.NewLiteral("2018-05-01", sql.LongText),
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					"+",
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -2208,14 +2208,14 @@ var fixtures = map[string]sql.Node{
 	`SELECT '2018-05-01' - INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("'2018-05-01' - INTERVAL 1 DAY",
-			expression.NewArithmetic(
-			expression.NewLiteral("2018-05-01", sql.LongText),
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
-			),
-			"-",
-		),
+				expression.NewArithmetic(
+					expression.NewLiteral("2018-05-01", sql.LongText),
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					"-",
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -2223,14 +2223,14 @@ var fixtures = map[string]sql.Node{
 	`SELECT INTERVAL 1 DAY + '2018-05-01'`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("INTERVAL 1 DAY + '2018-05-01'",
-			expression.NewArithmetic(
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
-			),
-			expression.NewLiteral("2018-05-01", sql.LongText),
-			"+",
-		),
+				expression.NewArithmetic(
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					expression.NewLiteral("2018-05-01", sql.LongText),
+					"+",
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -2238,21 +2238,21 @@ var fixtures = map[string]sql.Node{
 	`SELECT '2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("'2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY",
-			expression.NewArithmetic(
-			expression.NewArithmetic(
-				expression.NewLiteral("2018-05-01", sql.LongText),
-				expression.NewInterval(
-					expression.NewLiteral(int8(1), sql.Int8),
-					"DAY",
+				expression.NewArithmetic(
+					expression.NewArithmetic(
+						expression.NewLiteral("2018-05-01", sql.LongText),
+						expression.NewInterval(
+							expression.NewLiteral(int8(1), sql.Int8),
+							"DAY",
+						),
+						"+",
+					),
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					"+",
 				),
-				"+",
-			),
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
-			),
-			"+",
-		),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -2266,7 +2266,7 @@ var fixtures = map[string]sql.Node{
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("bar"),
 				expression.NewAlias("AVG(baz)",
-				expression.NewUnresolvedFunction("avg", true, nil, expression.NewUnresolvedColumn("baz")),
+					expression.NewUnresolvedFunction("avg", true, nil, expression.NewUnresolvedColumn("baz")),
 				),
 			},
 			[]sql.Expression{expression.NewUnresolvedColumn("bar")},
@@ -2308,7 +2308,7 @@ var fixtures = map[string]sql.Node{
 			plan.NewGroupBy(
 				[]sql.Expression{
 					expression.NewAlias("COUNT(*)",
-					expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
+						expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
 					),
 				},
 				[]sql.Expression{expression.NewUnresolvedColumn("a")},
@@ -2363,7 +2363,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT FIRST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewAlias("FIRST(i)",
-			expression.NewUnresolvedFunction("first", true, nil, expression.NewUnresolvedColumn("i")),
+				expression.NewUnresolvedFunction("first", true, nil, expression.NewUnresolvedColumn("i")),
 			),
 		},
 		[]sql.Expression{},
@@ -2372,7 +2372,7 @@ var fixtures = map[string]sql.Node{
 	`SELECT LAST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
 			expression.NewAlias("LAST(i)",
-			expression.NewUnresolvedFunction("last", true, nil, expression.NewUnresolvedColumn("i")),
+				expression.NewUnresolvedFunction("last", true, nil, expression.NewUnresolvedColumn("i")),
 			),
 		},
 		[]sql.Expression{},
@@ -2389,18 +2389,18 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (partition by s order by x)",
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{
-					expression.NewUnresolvedColumn("s"),
-				},
-				sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("s"),
 					},
-				},
-			)),
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
+					},
+				)),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2409,10 +2409,10 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("count(i) over ()",
-			expression.NewUnresolvedFunction("count", true, sql.NewWindow(
-				[]sql.Expression{},
-				nil,
-			), expression.NewUnresolvedColumn("i")),
+				expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+					[]sql.Expression{},
+					nil,
+				), expression.NewUnresolvedColumn("i")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2421,24 +2421,24 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (order by x)",
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{},
-				sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{},
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
 					},
-				},
-			)),
+				)),
 			),
 			expression.NewAlias("row_number() over (partition by y)",
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{
-					expression.NewUnresolvedColumn("y"),
-				},
-				nil,
-			)),
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("y"),
+					},
+					nil,
+				)),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2447,24 +2447,24 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (order by x)",
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{},
-				sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{},
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
 					},
-				},
-			)),
+				)),
 			),
 			expression.NewAlias("max(b) over ()",
-			expression.NewUnresolvedFunction("max", true, sql.NewWindow(
-				[]sql.Expression{},
-				nil,
-			),
-				expression.NewUnresolvedColumn("b"),
-			),
+				expression.NewUnresolvedFunction("max", true, sql.NewWindow(
+					[]sql.Expression{},
+					nil,
+				),
+					expression.NewUnresolvedColumn("b"),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2556,30 +2556,30 @@ var fixtures = map[string]sql.Node{
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("c"),
 				expression.NewAlias("(with cte2 as (select c from d) select e from cte2)",
-				plan.NewSubquery(
-					plan.NewWith(
-						plan.NewProject(
-							[]sql.Expression{
-								expression.NewUnresolvedColumn("e"),
-							},
-							plan.NewUnresolvedTable("cte2", "")),
-						[]*plan.CommonTableExpression{
-							plan.NewCommonTableExpression(
-								plan.NewSubqueryAlias("cte2", "select c from d",
-									plan.NewProject(
-										[]sql.Expression{
-											expression.NewUnresolvedColumn("c"),
-										},
-										plan.NewUnresolvedTable("d", ""),
+					plan.NewSubquery(
+						plan.NewWith(
+							plan.NewProject(
+								[]sql.Expression{
+									expression.NewUnresolvedColumn("e"),
+								},
+								plan.NewUnresolvedTable("cte2", "")),
+							[]*plan.CommonTableExpression{
+								plan.NewCommonTableExpression(
+									plan.NewSubqueryAlias("cte2", "select c from d",
+										plan.NewProject(
+											[]sql.Expression{
+												expression.NewUnresolvedColumn("c"),
+											},
+											plan.NewUnresolvedTable("d", ""),
+										),
 									),
+									[]string{},
 								),
-								[]string{},
-							),
-						},
+							},
+						),
+						"with cte2 as (select c from d) select e from cte2",
 					),
-					"with cte2 as (select c from d) select e from cte2",
 				),
-			),
 			},
 			plan.NewUnresolvedTable("cte1", ""),
 		),
