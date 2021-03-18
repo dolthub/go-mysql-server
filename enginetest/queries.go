@@ -1683,6 +1683,10 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT RAND(i) from mytable order by i`,
+		Expected: []sql.Row{{0.6046602879796196}, {0.16729663442585624}, {0.7199826688373036}},
+	},
+	{
 		Query: `SELECT RAND(100) = RAND(100)`,
 		Expected: []sql.Row{
 			{true},
@@ -2196,6 +2200,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT i, if(s = "first row", "first", "not first") from mytable order by i`,
+		Expected: []sql.Row{
+			{1, "first"},
+			{2, "not first"},
+			{3, "not first"},
+		},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE NULL > 10;",
 		Expected: nil,
 	},
@@ -2617,6 +2629,130 @@ var QueryTests = []QueryTest{
 	{
 		Query:    `SELECT GREATEST(i, s) FROM mytable`,
 		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		Query:    "select abs(-i) from mytable order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select ceil(i + 0.5) from mytable order by 1",
+		Expected: []sql.Row{{2.0}, {3.0}, {4.0}},
+	},
+	{
+		Query:    "select floor(i + 0.5) from mytable order by 1",
+		Expected: []sql.Row{{1.0}, {2.0}, {3.0}},
+	},
+	{
+		Query:    "select round(i + 0.55, 1) from mytable order by 1",
+		Expected: []sql.Row{{1.6}, {2.6}, {3.6}},
+	},
+	{
+		Query:    "select date_format(da, '%s') from typestable order by 1",
+		Expected: []sql.Row{{"00"}},
+	},
+	{
+		Query:    "select md5(i) from mytable order by 1",
+		Expected: []sql.Row{
+			{"c4ca4238a0b923820dcc509a6f75849b"},
+			{"c81e728d9d4c2f636f067f89cc14862c"},
+			{"eccbc87e4b5ce2fe28308fd9f2a7baf3"},
+		},
+	},
+	{
+		Query:    "select sha1(i) from mytable order by 1",
+		Expected: []sql.Row{
+			{"356a192b7913b04c54574d18c28d46e6395428ab"},
+			{"77de68daecd823babbb58edb1c8e14d7106e83bb"},
+			{"da4b9237bacccdf19c0760cab7aec4a8359010b0"},
+		},
+	},
+	{
+		Query:    "select sha2(i, 256) from mytable order by 1",
+		Expected: []sql.Row{
+			{"4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce"},
+			{"6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"},
+			{"d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35"},
+		},
+	},
+	{
+		Query:    "select length(s) from mytable order by i",
+		Expected: []sql.Row{{9}, {10}, {9}},
+	},
+	{
+		Query:    "select char_length(s) from mytable order by i",
+		Expected: []sql.Row{{9}, {10}, {9}},
+	},
+	{
+		Query:    "select log2(i) from mytable order by i",
+		Expected: []sql.Row{{0.0}, {1.0}, {1.5849625007211563}},
+	},
+	{
+		Query:    "select ln(i) from mytable order by i",
+		Expected: []sql.Row{{0.0}, {0.6931471805599453}, {1.0986122886681096}},
+	},
+	{
+		Query:    "select log10(i) from mytable order by i",
+		Expected: []sql.Row{{0.0}, {0.3010299956639812}, {0.4771212547196624}},
+	},
+	{
+		Query:    "select log(3, i) from mytable order by i",
+		Expected: []sql.Row{{0.0}, {0.6309297535714575}, {1.0}},
+	},
+	{
+		Query:    "select lower(s) from mytable order by i",
+		Expected: []sql.Row{
+			{"first row"},
+			{"second row"},
+			{"third row"},
+		},
+	},
+	{
+		Query:    "select upper(s) from mytable order by i",
+		Expected: []sql.Row{
+			{"FIRST ROW"},
+			{"SECOND ROW"},
+			{"THIRD ROW"},
+		},
+	},
+	{
+		Query:    "select reverse(s) from mytable order by i",
+		Expected: []sql.Row{{"wor tsrif"}, {"wor dnoces"}, {"wor driht"}},
+	},
+	{
+		Query:    "select repeat(s, 2) from mytable order by i",
+		Expected: []sql.Row{{"first rowfirst row"}, {"second rowsecond row"}, {"third rowthird row"}},
+	},
+	{
+		Query:    "select replace(s, 'row', '') from mytable order by i",
+		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
+	},
+	{
+		Query:    "select rpad(s, 13, ' ') from mytable order by i",
+		Expected: []sql.Row{{"first row    "}, {"second row   "}, {"third row    "}},
+	},
+	{
+		Query:    "select lpad(s, 13, ' ') from mytable order by i",
+		Expected: []sql.Row{{"    first row"}, {"   second row"}, {"    third row"}},
+	},
+	{
+		Query:    "select sqrt(i) from mytable order by i",
+		Expected: []sql.Row{{1.0}, {1.4142135623730951}, {1.7320508075688772}},
+	},
+	{
+		Query:    "select pow(2, i) from mytable order by i",
+		Expected: []sql.Row{{2.0}, {4.0}, {8.0}},
+	},
+	{
+		Query:    "select ltrim(concat(' ', concat(s, ' '))) from mytable order by i",
+		Expected: []sql.Row{{"first row "}, {"second row "}, {"third row "}},
+	},
+	{
+		Query:    "select rtrim(concat(' ', concat(s, ' '))) from mytable order by i",
+		Expected: []sql.Row{{" first row"}, {" second row"}, {" third row"}},
+	},
+	{
+		Query:    "select trim(concat(' ', concat(s, ' '))) from mytable order by i",
+		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
 		Query:    `SELECT GREATEST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
@@ -4341,6 +4477,12 @@ var BrokenQueries = []QueryTest{
 	{
 		Query: "SELECT json_value() FROM dual;",
 	},
+	// This isn't broken, it's just difficult to test this. We want to evaluate date_format with a column argument.
+	// FROM_UNIXTIME() would be great to have here.
+	{
+		Query:    "select date_format(unix_timestamp(i), '%s') from mytable order by 1",
+	},
+
 }
 
 var VersionedQueries = []QueryTest{
