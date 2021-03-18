@@ -38,11 +38,12 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2 
 				from mytable join othertable on i = i2 order by 1`,
-		ExpectedPlan: "Sort(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) ASC)\n" +
-			" └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
-			"     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"         ├─ Table(mytable)\n" +
-			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+		ExpectedPlan: "Sort(row_number() over (order by i desc) ASC)\n" +
+			" └─ Project(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) as row_number() over (order by i desc), i2)\n" +
+			"     └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
+			"         └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"             ├─ Table(mytable)\n" +
+			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{
@@ -50,12 +51,13 @@ var PlanTests = []QueryPlanTest{
 				from mytable join othertable on i = i2
 				where mytable.i = 2
 				order by 1`,
-		ExpectedPlan: "Sort(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) ASC)\n" +
-			" └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
-			"     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"         ├─ Filter(mytable.i = 2)\n" +
-			"         │   └─ IndexedTableAccess(mytable on [mytable.i])\n" +
-			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+		ExpectedPlan: "Sort(row_number() over (order by i desc) ASC)\n" +
+			" └─ Project(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC) as row_number() over (order by i desc), i2)\n" +
+			"     └─ Window(row_number() over ( order by [mytable.i, idx=0, type=BIGINT, nullable=false] DESC), mytable.i as i2)\n" +
+			"         └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"             ├─ Filter(mytable.i = 2)\n" +
+			"             │   └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{
@@ -1029,7 +1031,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Project(one_pk.pk)\n" +
 			"         └─ Filter(one_pk.pk = 1)\n" +
 			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
-			"    ))\n" +
+			"    ) as (SELECT pk from one_pk where pk = 1 limit 1))\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +
 			"         │   └─ TableAlias(t1)\n" +

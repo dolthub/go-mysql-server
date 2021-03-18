@@ -1813,7 +1813,39 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY SUM(i) DESC",
+		Query: "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		Expected: []sql.Row{
+			{float64(1), int64(1)},
+			{float64(2), int64(2)},
+			{float64(3), int64(3)},
+		},
+	},
+	{
+		Query: "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY sum ASC",
+		Expected: []sql.Row{
+			{float64(1), int64(1)},
+			{float64(2), int64(2)},
+			{float64(3), int64(3)},
+		},
+	},
+	{
+		Query: "SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY sum(i) DESC",
+		Expected: []sql.Row{
+			{int64(3), float64(3)},
+			{int64(2), float64(2)},
+			{int64(1), float64(1)},
+		},
+	},
+	{
+		Query: "SELECT i, SUM(i) as b FROM mytable GROUP BY i ORDER BY b DESC",
+		Expected: []sql.Row{
+			{int64(3), float64(3)},
+			{int64(2), float64(2)},
+			{int64(1), float64(1)},
+		},
+	},
+	{
+		Query: "SELECT i, SUM(i) as `sum(i)` FROM mytable GROUP BY i ORDER BY sum(i) DESC",
 		Expected: []sql.Row{
 			{int64(3), float64(3)},
 			{int64(2), float64(2)},
