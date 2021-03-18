@@ -1881,6 +1881,22 @@ var fixtures = map[string]sql.Node{
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT current_user FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias("current_user",
+				expression.NewUnresolvedFunction("current_user", false, nil),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT current_USER(    ) FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias("current_USER(    )",
+				expression.NewUnresolvedFunction("current_user", false, nil),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	`SHOW INDEX FROM foo`:   plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
 	`SHOW KEYS FROM foo`:    plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
