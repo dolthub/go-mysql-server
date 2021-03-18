@@ -15,10 +15,7 @@
 package parse
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -59,6 +56,8 @@ var (
 	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
 
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
+
+	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 )
 
 var (
@@ -245,7 +244,7 @@ func convertIfConditional(ctx *sql.Context, n sqlparser.IfStatementCondition) (*
 	if err != nil {
 		return nil, err
 	}
-	condition, err := exprToExpression(ctx, n.Expr)
+	condition, err := ExprToExpression(ctx, n.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +362,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			if s.ShowTablesOpt.Filter != nil {
 				if s.ShowTablesOpt.Filter.Filter != nil {
 					var err error
-					filter, err = exprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
+					filter, err = ExprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
 					if err != nil {
 						return nil, err
 					}
@@ -388,7 +387,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		if s.Filter != nil {
 			if s.Filter.Filter != nil {
 				var err error
-				filter, err = exprToExpression(ctx, s.Filter.Filter)
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
 				if err != nil {
 					return nil, err
 				}
@@ -420,7 +419,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			if s.ShowTablesOpt.Filter != nil {
 				if s.ShowTablesOpt.Filter.Filter != nil {
 					var err error
-					filter, err = exprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
+					filter, err = ExprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
 					if err != nil {
 						return nil, err
 					}
@@ -434,7 +433,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 			if s.ShowTablesOpt.AsOf != nil {
 				var err error
-				asOf, err = exprToExpression(ctx, s.ShowTablesOpt.AsOf)
+				asOf, err = ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
 				if err != nil {
 					return nil, err
 				}
@@ -470,7 +469,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 
 			if s.ShowTablesOpt.Filter.Filter != nil {
-				filter, err := exprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
+				filter, err := ExprToExpression(ctx, s.ShowTablesOpt.Filter.Filter)
 				if err != nil {
 					return nil, err
 				}
@@ -480,8 +479,8 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
-	case sqlparser.KeywordString(sqlparser.TABLE):
-		return parseShowTableStatus(ctx, query)
+	case "table status":
+		return convertShowTableStatus(ctx, s)
 	case sqlparser.KeywordString(sqlparser.COLLATION):
 		// show collation statements are functionally identical to selecting from the collations table in
 		// information_schema, with slightly different syntax and with some columns aliased.
@@ -493,7 +492,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		if s.ShowCollationFilterOpt != nil {
-			filterExpr, err := exprToExpression(ctx, *s.ShowCollationFilterOpt)
+			filterExpr, err := ExprToExpression(ctx, *s.ShowCollationFilterOpt)
 			if err != nil {
 				return nil, err
 			}
@@ -507,7 +506,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		if s.Filter != nil {
 			if s.Filter.Filter != nil {
 				var err error
-				filter, err = exprToExpression(ctx, s.Filter.Filter)
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
 				if err != nil {
 					return nil, err
 				}
@@ -812,7 +811,7 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 	params := make([]sql.Expression, len(c.Params))
 	for i, param := range c.Params {
-		expr, err := exprToExpression(ctx, param)
+		expr, err := ExprToExpression(ctx, param)
 		if err != nil {
 			return nil, err
 		}
@@ -850,21 +849,30 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		}
 		switch strings.ToLower(ddl.ConstraintAction) {
 		case sqlparser.AddStr:
-			if fkConstraint, ok := parsedConstraint.(*sql.ForeignKeyConstraint); ok {
+			switch c := parsedConstraint.(type) {
+			case *sql.ForeignKeyConstraint:
 				return plan.NewAlterAddForeignKey(
 					table,
-					plan.NewUnresolvedTable(fkConstraint.ReferencedTable, ddl.Table.Qualifier.String()),
-					fkConstraint), nil
-			} else {
+					plan.NewUnresolvedTable(c.ReferencedTable, ddl.Table.Qualifier.String()),
+					c), nil
+
+			case *sql.CheckConstraint:
+				return plan.NewAlterAddCheck(table, c), nil
+			default:
 				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+
 			}
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
 				return plan.NewAlterDropForeignKey(table, c), nil
+			case *sql.CheckConstraint:
+				return plan.NewAlterDropCheck(table, c), nil
 			case namedConstraint:
 				// For simple named constraint drops, fill in a partial foreign key constraint. This will need to be changed if
 				// we ever support other kinds of constraints than foreign keys (e.g. CHECK)
+				// TODO: this fails if check constraint delete desired but not indicated
+				// It works for memory engine right now but won't for Dolt
 				return plan.NewAlterDropForeignKey(table, &sql.ForeignKeyConstraint{
 					Name: c.name,
 				}), nil
@@ -1055,6 +1063,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	var fkDefs []*sql.ForeignKeyConstraint
+	var chDefs []*sql.CheckConstraint
 	for _, unknownConstraint := range c.TableSpec.Constraints {
 		parsedConstraint, err := convertConstraintDefinition(ctx, unknownConstraint)
 		if err != nil {
@@ -1063,6 +1072,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
 			fkDefs = append(fkDefs, constraint)
+		case *sql.CheckConstraint:
+			chDefs = append(chDefs, constraint)
 		default:
 			return nil, ErrUnknownConstraintDefinition.New(unknownConstraint.Name, unknownConstraint)
 		}
@@ -1131,8 +1142,15 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	tableSpec := &plan.TableSpec{
+		Schema:  schema,
+		IdxDefs: idxDefs,
+		FkDefs:  fkDefs,
+		ChDefs:  chDefs,
+	}
+
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), schema, c.IfNotExists, idxDefs, fkDefs), nil
+		sql.UnresolvedDatabase(""), c.Table.Name.String(), c.IfNotExists, tableSpec), nil
 }
 
 type namedConstraint struct {
@@ -1156,6 +1174,21 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 			ReferencedColumns: refColumns,
 			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
 			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
+		}, nil
+	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
+		var c sql.Expression
+		var err error
+		if chConstraint.Expr != nil {
+			c, err = ExprToExpression(ctx, chConstraint.Expr)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return &sql.CheckConstraint{
+			Name:     cd.Name,
+			Expr:     c,
+			Enforced: chConstraint.Enforced,
 		}, nil
 	} else if len(cd.Name) > 0 && cd.Details == nil {
 		return namedConstraint{cd.Name}, nil
@@ -1229,6 +1262,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		isReplace,
 		columnsToStrings(i.Columns),
 		onDupExprs,
+		nil,
 	), nil
 }
 
@@ -1334,6 +1368,7 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 		false,
 		ld.ColumnNames,
 		nil,
+		nil,
 	), nil
 }
 
@@ -1435,7 +1470,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 
 	var defaultVal *sql.ColumnDefaultValue
 	if cd.Type.Default != nil {
-		parsedExpr, err := exprToExpression(ctx, cd.Type.Default)
+		parsedExpr, err := ExprToExpression(ctx, cd.Type.Default)
 		if err != nil {
 			return nil, err
 		}
@@ -1492,7 +1527,7 @@ func valuesToValues(ctx *sql.Context, v sqlparser.Values) (sql.Node, error) {
 		exprs := make([]sql.Expression, len(vt))
 		exprTuples[i] = exprs
 		for j, e := range vt {
-			expr, err := exprToExpression(ctx, e)
+			expr, err := ExprToExpression(ctx, e)
 			if err != nil {
 				return nil, err
 			}
@@ -1547,7 +1582,7 @@ func tableExprToTable(
 		case sqlparser.TableName:
 			var node *plan.UnresolvedTable
 			if t.AsOf != nil {
-				asOfExpr, err := exprToExpression(ctx, t.AsOf.Time)
+				asOfExpr, err := ExprToExpression(ctx, t.AsOf.Time)
 				if err != nil {
 					return nil, err
 				}
@@ -1600,7 +1635,7 @@ func tableExprToTable(
 			return plan.NewCrossJoin(left, right), nil
 		}
 
-		cond, err := exprToExpression(ctx, t.Condition.On)
+		cond, err := ExprToExpression(ctx, t.Condition.On)
 		if err != nil {
 			return nil, err
 		}
@@ -1619,7 +1654,7 @@ func tableExprToTable(
 }
 
 func whereToFilter(ctx *sql.Context, w *sqlparser.Where, child sql.Node) (*plan.Filter, error) {
-	c, err := exprToExpression(ctx, w.Expr)
+	c, err := ExprToExpression(ctx, w.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -1639,7 +1674,7 @@ func orderByToSort(ctx *sql.Context, ob sqlparser.OrderBy, child sql.Node) (*pla
 func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) ([]sql.SortField, error) {
 	var sortFields []sql.SortField
 	for _, o := range ob {
-		e, err := exprToExpression(ctx, o.Expr)
+		e, err := ExprToExpression(ctx, o.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -1678,7 +1713,7 @@ func limitToLimit(
 }
 
 func havingToHaving(ctx *sql.Context, having *sqlparser.Where, node sql.Node) (sql.Node, error) {
-	cond, err := exprToExpression(ctx, having.Expr)
+	cond, err := ExprToExpression(ctx, having.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -1706,7 +1741,7 @@ func offsetToOffset(
 // getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
 // given if the expression doesn't represent an integer literal.
 func getInt64Literal(ctx *sql.Context, expr sqlparser.Expr, errStr string) (*expression.Literal, error) {
-	e, err := exprToExpression(ctx, expr)
+	e, err := ExprToExpression(ctx, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -1883,7 +1918,7 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	if !ok {
 		return nil, fmt.Errorf("DefaultStringToExpression expected *sqlparser.AliasedExpr but received %T", parserSelect.SelectExprs[0])
 	}
-	parsedExpr, err := exprToExpression(ctx, aliasedExpr.Expr)
+	parsedExpr, err := ExprToExpression(ctx, aliasedExpr.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -1913,7 +1948,7 @@ func MustStringToColumnDefaultValue(ctx *sql.Context, exprStr string, outType sq
 	return expr
 }
 
-func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error) {
+func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error) {
 	switch v := e.(type) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(e))
@@ -1925,14 +1960,14 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			err  error
 		)
 		if v.Name != nil {
-			name, err = exprToExpression(ctx, v.Name)
+			name, err = ExprToExpression(ctx, v.Name)
 		} else {
-			name, err = exprToExpression(ctx, v.StrVal)
+			name, err = ExprToExpression(ctx, v.StrVal)
 		}
 		if err != nil {
 			return nil, err
 		}
-		from, err := exprToExpression(ctx, v.From)
+		from, err := ExprToExpression(ctx, v.From)
 		if err != nil {
 			return nil, err
 		}
@@ -1940,7 +1975,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if v.To == nil {
 			return function.NewSubstring(name, from)
 		}
-		to, err := exprToExpression(ctx, v.To)
+		to, err := ExprToExpression(ctx, v.To)
 		if err != nil {
 			return nil, err
 		}
@@ -1950,7 +1985,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	case *sqlparser.IsExpr:
 		return isExprToExpression(ctx, v)
 	case *sqlparser.NotExpr:
-		c, err := exprToExpression(ctx, v.Expr)
+		c, err := ExprToExpression(ctx, v.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -1991,50 +2026,50 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
 			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
 	case *sqlparser.ParenExpr:
-		return exprToExpression(ctx, v.Expr)
+		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:
-		lhs, err := exprToExpression(ctx, v.Left)
+		lhs, err := ExprToExpression(ctx, v.Left)
 		if err != nil {
 			return nil, err
 		}
 
-		rhs, err := exprToExpression(ctx, v.Right)
+		rhs, err := ExprToExpression(ctx, v.Right)
 		if err != nil {
 			return nil, err
 		}
 
 		return expression.NewAnd(lhs, rhs), nil
 	case *sqlparser.OrExpr:
-		lhs, err := exprToExpression(ctx, v.Left)
+		lhs, err := ExprToExpression(ctx, v.Left)
 		if err != nil {
 			return nil, err
 		}
 
-		rhs, err := exprToExpression(ctx, v.Right)
+		rhs, err := ExprToExpression(ctx, v.Right)
 		if err != nil {
 			return nil, err
 		}
 
 		return expression.NewOr(lhs, rhs), nil
 	case *sqlparser.ConvertExpr:
-		expr, err := exprToExpression(ctx, v.Expr)
+		expr, err := ExprToExpression(ctx, v.Expr)
 		if err != nil {
 			return nil, err
 		}
 
 		return expression.NewConvert(expr, v.Type.Type), nil
 	case *sqlparser.RangeCond:
-		val, err := exprToExpression(ctx, v.Left)
+		val, err := ExprToExpression(ctx, v.Left)
 		if err != nil {
 			return nil, err
 		}
 
-		lower, err := exprToExpression(ctx, v.From)
+		lower, err := ExprToExpression(ctx, v.From)
 		if err != nil {
 			return nil, err
 		}
 
-		upper, err := exprToExpression(ctx, v.To)
+		upper, err := ExprToExpression(ctx, v.To)
 		if err != nil {
 			return nil, err
 		}
@@ -2050,7 +2085,7 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	case sqlparser.ValTuple:
 		var exprs = make([]sql.Expression, len(v))
 		for i, e := range v {
-			expr, err := exprToExpression(ctx, e)
+			expr, err := ExprToExpression(ctx, e)
 			if err != nil {
 				return nil, err
 			}
@@ -2077,9 +2112,9 @@ func exprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		return intervalExprToExpression(ctx, v)
 	case *sqlparser.CollateExpr:
 		// TODO: handle collation
-		return exprToExpression(ctx, v.Expr)
+		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.ValuesFuncExpr:
-		col, err := exprToExpression(ctx, v.Name)
+		col, err := ExprToExpression(ctx, v.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -2100,7 +2135,7 @@ func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
 	partitions := make([]sql.Expression, len(over.PartitionBy))
 	for i, expr := range over.PartitionBy {
 		var err error
-		partitions[i], err = exprToExpression(ctx, expr)
+		partitions[i], err = ExprToExpression(ctx, expr)
 		if err != nil {
 			return nil
 		}
@@ -2189,7 +2224,7 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 }
 
 func isExprToExpression(ctx *sql.Context, c *sqlparser.IsExpr) (sql.Expression, error) {
-	e, err := exprToExpression(ctx, c.Expr)
+	e, err := ExprToExpression(ctx, c.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -2213,12 +2248,12 @@ func isExprToExpression(ctx *sql.Context, c *sqlparser.IsExpr) (sql.Expression, 
 }
 
 func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (sql.Expression, error) {
-	left, err := exprToExpression(ctx, c.Left)
+	left, err := ExprToExpression(ctx, c.Left)
 	if err != nil {
 		return nil, err
 	}
 
-	right, err := exprToExpression(ctx, c.Right)
+	right, err := ExprToExpression(ctx, c.Right)
 	if err != nil {
 		return nil, err
 	}
@@ -2274,7 +2309,7 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 func groupByToExpressions(ctx *sql.Context, g sqlparser.GroupBy) ([]sql.Expression, error) {
 	es := make([]sql.Expression, len(g))
 	for i, ve := range g {
-		e, err := exprToExpression(ctx, ve)
+		e, err := ExprToExpression(ctx, ve)
 		if err != nil {
 			return nil, err
 		}
@@ -2295,7 +2330,7 @@ func selectExprToExpression(ctx *sql.Context, se sqlparser.SelectExpr) (sql.Expr
 		}
 		return expression.NewQualifiedStar(e.TableName.Name.String()), nil
 	case *sqlparser.AliasedExpr:
-		expr, err := exprToExpression(ctx, e.Expr)
+		expr, err := ExprToExpression(ctx, e.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -2337,7 +2372,7 @@ func selectExprNeedsAlias(e *sqlparser.AliasedExpr, expr sql.Expression) bool {
 func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expression, error) {
 	switch strings.ToLower(e.Operator) {
 	case sqlparser.MinusStr:
-		expr, err := exprToExpression(ctx, e.Expr)
+		expr, err := ExprToExpression(ctx, e.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -2345,7 +2380,7 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 		return expression.NewUnaryMinus(expr), nil
 	case sqlparser.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expression.
-		return exprToExpression(ctx, e.Expr)
+		return ExprToExpression(ctx, e.Expr)
 
 	default:
 		return nil, ErrUnsupportedFeature.New("unary operator: " + e.Operator)
@@ -2367,12 +2402,12 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		sqlparser.IntDivStr,
 		sqlparser.ModStr:
 
-		l, err := exprToExpression(ctx, be.Left)
+		l, err := ExprToExpression(ctx, be.Left)
 		if err != nil {
 			return nil, err
 		}
 
-		r, err := exprToExpression(ctx, be.Right)
+		r, err := ExprToExpression(ctx, be.Right)
 		if err != nil {
 			return nil, err
 		}
@@ -2403,7 +2438,7 @@ func caseExprToExpression(ctx *sql.Context, e *sqlparser.CaseExpr) (sql.Expressi
 	var err error
 
 	if e.Expr != nil {
-		expr, err = exprToExpression(ctx, e.Expr)
+		expr, err = ExprToExpression(ctx, e.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -2412,13 +2447,13 @@ func caseExprToExpression(ctx *sql.Context, e *sqlparser.CaseExpr) (sql.Expressi
 	var branches []expression.CaseBranch
 	for _, w := range e.Whens {
 		var cond sql.Expression
-		cond, err = exprToExpression(ctx, w.Cond)
+		cond, err = ExprToExpression(ctx, w.Cond)
 		if err != nil {
 			return nil, err
 		}
 
 		var val sql.Expression
-		val, err = exprToExpression(ctx, w.Val)
+		val, err = ExprToExpression(ctx, w.Val)
 		if err != nil {
 			return nil, err
 		}
@@ -2431,7 +2466,7 @@ func caseExprToExpression(ctx *sql.Context, e *sqlparser.CaseExpr) (sql.Expressi
 
 	var elseExpr sql.Expression
 	if e.Else != nil {
-		elseExpr, err = exprToExpression(ctx, e.Else)
+		elseExpr, err = ExprToExpression(ctx, e.Else)
 		if err != nil {
 			return nil, err
 		}
@@ -2441,7 +2476,7 @@ func caseExprToExpression(ctx *sql.Context, e *sqlparser.CaseExpr) (sql.Expressi
 }
 
 func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.Expression, error) {
-	expr, err := exprToExpression(ctx, e.Expr)
+	expr, err := ExprToExpression(ctx, e.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -2452,11 +2487,11 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expression, error) {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
-		colName, err := exprToExpression(ctx, updateExpr.Name)
+		colName, err := ExprToExpression(ctx, updateExpr.Name)
 		if err != nil {
 			return nil, err
 		}
-		innerExpr, err := exprToExpression(ctx, updateExpr.Expr)
+		innerExpr, err := ExprToExpression(ctx, updateExpr.Expr)
 		if err != nil {
 			return nil, err
 		}
@@ -2465,70 +2500,35 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expres
 	return res, nil
 }
 
-func parseShowTableStatus(ctx *sql.Context, query string) (sql.Node, error) {
-	buf := bufio.NewReader(strings.NewReader(query))
-	err := parseFuncs{
-		expect("show"),
-		skipSpaces,
-		expect("table"),
-		skipSpaces,
-		expect("status"),
-		skipSpaces,
-	}.exec(buf)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err = buf.Peek(1); err == io.EOF {
-		return plan.NewShowTableStatus(), nil
-	}
-
-	var clause string
-	if err := readIdent(&clause)(buf); err != nil {
-		return nil, err
-	}
-
-	if err := skipSpaces(buf); err != nil {
-		return nil, err
-	}
-
-	switch strings.ToLower(clause) {
-	case "from", "in":
-		var db string
-		if err := readQuotableIdent(&db)(buf); err != nil {
-			return nil, err
-		}
-
-		return plan.NewShowTableStatus(db), nil
-	case "where", "like":
-		bs, err := ioutil.ReadAll(buf)
-		if err != nil {
-			return nil, err
-		}
-
-		expr, err := parseExpr(ctx, string(bs))
-		if err != nil {
-			return nil, err
-		}
-
-		var filter sql.Expression
-		if strings.ToLower(clause) == "like" {
+func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, error) {
+	var filter sql.Expression
+	if s.Filter != nil {
+		if s.Filter.Filter != nil {
+			var err error
+			filter, err = ExprToExpression(ctx, s.Filter.Filter)
+			if err != nil {
+				return nil, err
+			}
+		} else if s.Filter.Like != "" {
 			filter = expression.NewLike(
 				expression.NewUnresolvedColumn("Name"),
-				expr,
+				expression.NewLiteral(s.Filter.Like, sql.LongText),
 			)
-		} else {
-			filter = expr
 		}
-
-		return plan.NewFilter(
-			filter,
-			plan.NewShowTableStatus(),
-		), nil
-	default:
-		return nil, errUnexpectedSyntax.New("one of: FROM, IN, LIKE or WHERE", clause)
 	}
+
+	db := ctx.GetCurrentDatabase()
+	if s.Database != "" {
+		db = s.Database
+	}
+
+	var node sql.Node = plan.NewShowTableStatus(sql.UnresolvedDatabase(db))
+
+	if filter != nil {
+		node = plan.NewFilter(filter, node)
+	}
+
+	return node, nil
 }
 
 var fixSessionRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(SESSION|session)\s+([a-zA-Z0-9_]+)\s*=`)

@@ -28,7 +28,7 @@ var JsonScripts = []ScriptTest{
 				Query: "SELECT JSON_ARRAYAGG(o_id) FROM t",
 				Expected: []sql.Row{
 					{
-						"[1,2]",
+						sql.MustJSON(`[1,2]`),
 					},
 				},
 			},
@@ -45,8 +45,8 @@ var JsonScripts = []ScriptTest{
 				Query: "SELECT JSON_ARRAYAGG(o_id), JSON_ARRAYAGG(attribute) FROM t",
 				Expected: []sql.Row{
 					{
-						"[2,2]",
-						"[\"color\",\"fabric\"]",
+						sql.MustJSON(`[2,2]`),
+						sql.MustJSON(`["color","fabric"]`),
 					},
 				},
 			},
@@ -64,7 +64,7 @@ var JsonScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{
 						2,
-						"[\"color\",\"fabric\"]",
+						sql.MustJSON(`["color","fabric"]`),
 					},
 				},
 			},
@@ -73,7 +73,7 @@ var JsonScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{
 						2,
-						"[\"red\",\"silk\"]",
+						sql.MustJSON(`["red","silk"]`),
 					},
 				},
 			},
@@ -91,7 +91,7 @@ var JsonScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{
 						1,
-						"[1,2,3]",
+						sql.MustJSON(`[1,2,3]`),
 					},
 				},
 			},
@@ -111,7 +111,7 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "JSON_ARRAYAGG on column with now rows returns NULL",
+		Name: "JSON_ARRAYAGG on column with no rows returns NULL",
 		SetUpScript: []string{
 			"create table t2 (o_id int)",
 		},
@@ -120,7 +120,7 @@ var JsonScripts = []ScriptTest{
 				Query: "SELECT JSON_ARRAYAGG(o_id) FROM t2",
 				Expected: []sql.Row{
 					{
-						nil,
+						sql.MustJSON(`[]`),
 					},
 				},
 			},
@@ -138,7 +138,7 @@ var JsonScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{
 						1,
-						"[null]",
+						sql.MustJSON(`[null]`),
 					},
 				},
 			},
@@ -146,7 +146,7 @@ var JsonScripts = []ScriptTest{
 				Query: "SELECT JSON_ARRAYAGG(c1) FROM x",
 				Expected: []sql.Row{
 					{
-						"[null]",
+						sql.MustJSON(`[null]`),
 					},
 				},
 			},
@@ -167,13 +167,13 @@ var JsonScripts = []ScriptTest{
 				Query: "SELECT JSON_ARRAYAGG(pk) FROM x GROUP BY pk",
 				Expected: []sql.Row{
 					{
-						"[1,1]",
+						sql.MustJSON(`[1,1]`),
 					},
 					{
-						"[2,2]",
+						sql.MustJSON(`[2,2]`),
 					},
 					{
-						"[3]",
+						sql.MustJSON(`[3]`),
 					},
 				},
 			},
@@ -193,16 +193,16 @@ var JsonScripts = []ScriptTest{
 				Query: "SELECT JSON_ARRAYAGG(field) FROM j GROUP BY field",
 				Expected: []sql.Row{
 					{
-						"[{\"key1\":\"value1\",\"key2\":\"value2\"}]",
+						sql.MustJSON(`[{"key1": "value1", "key2": "value2"}]`),
 					},
 					{
-						"[{\"key1\":{\"key\":\"value\"}}]",
+						sql.MustJSON(`[{"key1": {"key": "value"}}]`),
 					},
 					{
-						"[{\"key1\":{\"key\":[2,3]}}]",
+						sql.MustJSON(`[{"key1":{"key":[2,3]}}]`),
 					},
 					{
-						"[[\"a\",1]]",
+						sql.MustJSON(`[["a",1]]`),
 					},
 				},
 			},

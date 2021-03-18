@@ -38,7 +38,7 @@ func TestShowTableStatus(t *testing.T) {
 	db2.AddTable("t4", memory.NewTable("t4", nil))
 	catalog.AddDatabase(db2)
 
-	node := NewShowTableStatus()
+	node := NewShowTableStatus(db1)
 	node.Catalog = catalog
 
 	ctx := sql.NewEmptyContext().WithCurrentDB("a")
@@ -49,13 +49,12 @@ func TestShowTableStatus(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"t1", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
-		{"t2", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
+		{"t1", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
+		{"t2", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
 	}
 
-	require.Equal(expected, rows)
-
-	node = NewShowTableStatus("a")
+	require.ElementsMatch(expected, rows)
+	node = NewShowTableStatus(db2)
 	node.Catalog = catalog
 
 	iter, err = node.RowIter(ctx, nil)
@@ -65,9 +64,9 @@ func TestShowTableStatus(t *testing.T) {
 	require.NoError(err)
 
 	expected = []sql.Row{
-		{"t1", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
-		{"t2", "InnoDB", "10", "Fixed", int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), int64(0), nil, nil, nil, sql.Collation_Default.String(), nil, nil},
+		{"t3", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
+		{"t4", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
 	}
 
-	require.Equal(expected, rows)
+	require.ElementsMatch(expected, rows)
 }

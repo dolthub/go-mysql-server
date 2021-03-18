@@ -57,6 +57,9 @@ var (
 	// node or expression is called with an invalid child type. This error is indicative of a bug.
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
+	// ErrInvalidJSONText is returned when a JSON string cannot be parsed or unmarshalled
+	ErrInvalidJSONText = errors.NewKind("Invalid JSON text: %s")
+
 	// ErrDeleteRowNotFound
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
@@ -165,6 +168,12 @@ var (
 
 	// ErrCannotDropDatabaseDoesntExist is returned when a DROP DATABASE is callend when a table is dropped that doesn't exist.
 	ErrCannotDropDatabaseDoesntExist = errors.NewKind("can't drop database %s; database doesn't exist")
+
+	// ErrInvalidConstraintFunctionsNotSupported is returned when a CONSTRAINT CHECK is called with a sub-function expression.
+	ErrInvalidConstraintFunctionsNotSupported = errors.NewKind("Invalid constraint expression, functions not supported: %s")
+
+	// ErrInvalidConstraintSubqueryNotSupported is returned when a CONSTRAINT CHECK is called with a sub-query expression.
+	ErrInvalidConstraintSubqueryNotSupported = errors.NewKind("Invalid constraint expression, sub-queries not supported: %s")
 
 	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
 	// list with a different number of columns than the schema of the table.

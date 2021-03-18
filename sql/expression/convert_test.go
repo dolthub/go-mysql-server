@@ -133,7 +133,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(`{"a":2}`, sql.LongText),
-			expected:    []byte(`{"a":2}`),
+			expected:    sql.MustJSON(`{"a":2}`),
 			expectedErr: false,
 		},
 		{
@@ -141,7 +141,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToJSON,
 			expression:  NewLiteral(2, sql.Int32),
-			expected:    []byte("2"),
+			expected:    sql.JSONDocument{Val: 2},
 			expectedErr: false,
 		},
 		{

@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -2186,6 +2187,177 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	assert.True(t, sql.ErrTableNotFound.Is(err))
 }
 
+func TestCreateCheckConstraints(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT CHECK (b > 1)")
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewContext(harness)
+	table, ok, err := db.GetTableInsensitive(ctx, "t1")
+	require.NoError(err)
+	require.True(ok)
+
+	cht, ok := table.(sql.CheckTable)
+	require.True(ok)
+
+	checks, err := cht.GetChecks(NewContext(harness))
+	require.NoError(err)
+
+	con := []sql.CheckConstraint{
+		{
+			Name: "chk1",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("t1.b"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		},
+		{
+			Name: "chk2",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("t1.b"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: false,
+		},
+		{
+			Name: "",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("t1.b"),
+				expression.NewLiteral(int8(1), sql.Int8),
+			),
+			Enforced: true,
+		},
+	}
+	cmp1, _ := plan.NewCheckDefinition(&con[0])
+	cmp2, _ := plan.NewCheckDefinition(&con[1])
+	cmp3, _ := plan.NewCheckDefinition(&con[2])
+	expected := []sql.CheckDefinition{*cmp1, *cmp2, *cmp3}
+
+	assert.Equal(t, expected, checks)
+
+	// Some faulty create statements
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t2 ADD CONSTRAINT chk2 CHECK (c > 0)")
+	require.Error(err)
+	assert.True(t, sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)")
+	require.Error(err)
+	assert.True(t, sql.ErrTableColumnNotFound.Is(err))
+}
+
+func TestChecksOnInsert(t *testing.T, harness Harness) {
+
+	e := NewEngine(t, harness)
+
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 1) NOT ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (b > -1) ENFORCED")
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
+	TestQuery(t, harness, e, `SELECT * FROM t1`,
+		[]sql.Row{
+			{1, 1},
+		},
+		nil,
+	)
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0)")
+	TestQuery(t, harness, e, `SELECT * FROM t1`,
+		[]sql.Row{
+			{1, 1},
+		},
+		nil,
+	)
+
+	ctx := NewContext(harness)
+	require.True(t, len(ctx.Warnings()) > 0)
+
+	expectedCode := 3819
+	condition := false
+	for _, warning := range ctx.Warnings() {
+		if warning.Code == expectedCode {
+			condition = true
+			break
+		}
+	}
+
+	require.True(t, condition)
+
+}
+
+func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
+	require := require.New(t)
+	e := NewEngine(t, harness)
+	var err error
+
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
+
+	// functions, UDFs, procedures
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")")
+	require.Error(err)
+	assert.True(t, sql.ErrInvalidConstraintFunctionsNotSupported.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK ((select count(*) from t1) = 0)")
+	require.Error(err)
+	assert.True(t, sql.ErrInvalidConstraintSubqueryNotSupported.Is(err))
+}
+
+func TestDropCheckConstraints(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT chk2")
+	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CHECK chk1")
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewContext(harness)
+	table, ok, err := db.GetTableInsensitive(ctx, "t1")
+	require.NoError(err)
+	require.True(ok)
+
+	cht, ok := table.(sql.CheckTable)
+	require.True(ok)
+
+	checks, err := cht.GetChecks(NewContext(harness))
+	require.NoError(err)
+
+	con := sql.CheckConstraint{
+		Name: "chk3",
+		Expr: expression.NewGreaterThan(
+			expression.NewUnresolvedColumn("t1.c"),
+			expression.NewLiteral(int8(0), sql.Int8),
+		),
+		Enforced: true,
+	}
+	cmp, _ := plan.NewCheckDefinition(&con)
+	expected := []sql.CheckDefinition{*cmp}
+
+	assert.Equal(t, expected, checks)
+
+	// Some faulty create statements
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t2 DROP CONSTRAINT chk2")
+	require.Error(err)
+	assert.True(t, sql.ErrTableNotFound.Is(err))
+
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 DROP CHECK chk3")
+	require.NoError(err)
+}
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -2600,6 +2772,18 @@ func TestTracing(t *testing.T, harness Harness) {
 	}
 
 	require.Equal(expectedSpans, spanOperations)
+}
+
+// Runs tests on SHOW TABLE STATUS queries.
+func TestShowTableStatus(t *testing.T, harness Harness) {
+	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
+	engine := NewEngineWithDbs(t, harness, dbs, nil)
+	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range ShowTableStatusQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+	}
 }
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.
@@ -3400,14 +3584,14 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, bindings map[string]sql.Expression) {
 	require := require.New(t)
 
-	_, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)
 
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err, "Unexpected error for query %s", q)
 
-	widenedRows := WidenRows(rows)
-	widenedExpected := WidenRows(expected)
+	widenedRows := WidenRows(sch, rows)
+	widenedExpected := WidenRows(sch, expected)
 
 	upperQuery := strings.ToUpper(q)
 	orderBy := strings.Contains(upperQuery, "ORDER BY ")
@@ -3441,19 +3625,25 @@ func TestJsonScripts(t *testing.T, harness Harness) {
 // (and different database implementations). We may eventually decide that this undefined behavior is a problem, but
 // for now it's mostly just an issue when comparing results in tests. To get around this, we widen every type to its
 // widest value in actual and expected results.
-func WidenRows(rows []sql.Row) []sql.Row {
+func WidenRows(sch sql.Schema, rows []sql.Row) []sql.Row {
 	widened := make([]sql.Row, len(rows))
 	for i, row := range rows {
-		widened[i] = WidenRow(row)
+		widened[i] = WidenRow(sch, row)
 	}
 	return widened
 }
 
 // See WidenRows
-func WidenRow(row sql.Row) sql.Row {
+func WidenRow(sch sql.Schema, row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
+
 		var vw interface{}
+		if i < len(sch) && sql.IsJSON(sch[i].Type) {
+			widened[i] = widenJSONValues(v)
+			continue
+		}
+
 		switch x := v.(type) {
 		case int:
 			vw = int64(x)
@@ -3479,4 +3669,72 @@ func WidenRow(row sql.Row) sql.Row {
 		widened[i] = vw
 	}
 	return widened
+}
+
+func widenJSONValues(val interface{}) sql.JSONValue {
+	if val == nil {
+		return nil
+	}
+
+	js, ok := val.(sql.JSONValue)
+	if !ok {
+		panic(fmt.Sprintf("%v is not json", val))
+	}
+
+	doc, err := js.Unmarshall()
+	if err != nil {
+		panic(err)
+	}
+
+	doc.Val = widenJSON(doc.Val)
+	return doc
+}
+
+func widenJSON(val interface{}) interface{} {
+	switch x := val.(type) {
+	case int:
+		return float64(x)
+	case int8:
+		return float64(x)
+	case int16:
+		return float64(x)
+	case int32:
+		return float64(x)
+	case int64:
+		return float64(x)
+	case uint:
+		return float64(x)
+	case uint8:
+		return float64(x)
+	case uint16:
+		return float64(x)
+	case uint32:
+		return float64(x)
+	case uint64:
+		return float64(x)
+	case float32:
+		return float64(x)
+	case []interface{}:
+		return widenJSONArray(x)
+	case map[string]interface{}:
+		return widenJSONObject(x)
+	default:
+		return x
+	}
+}
+
+func widenJSONObject(narrow map[string]interface{}) (wide map[string]interface{}) {
+	wide = make(map[string]interface{}, len(narrow))
+	for k, v := range narrow {
+		wide[k] = widenJSON(v)
+	}
+	return
+}
+
+func widenJSONArray(narrow []interface{}) (wide []interface{}) {
+	wide = make([]interface{}, len(narrow))
+	for i, v := range narrow {
+		wide[i] = widenJSON(v)
+	}
+	return
 }

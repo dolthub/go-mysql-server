@@ -330,6 +330,22 @@ func TestDropForeignKeys(t *testing.T) {
 	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestCreateCheckConstraints(t *testing.T) {
+	enginetest.TestCreateCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestChecksOnInsert(t *testing.T) {
+	enginetest.TestChecksOnInsert(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestTestDisallowedCheckConstraints(t *testing.T) {
+	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestDropCheckConstraints(t *testing.T) {
+	enginetest.TestDropCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestExplode(t *testing.T) {
 	enginetest.TestExplode(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -368,6 +384,10 @@ func TestColumnDefaults(t *testing.T) {
 
 func TestJsonScripts(t *testing.T) {
 	enginetest.TestJsonScripts(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestShowTableStatus(t *testing.T) {
+	enginetest.TestShowTableStatus(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {

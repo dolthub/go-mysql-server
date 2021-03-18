@@ -225,6 +225,20 @@ type ForeignKeyConstraint struct {
 	OnDelete          ForeignKeyReferenceOption
 }
 
+// CheckDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
+// but must store and return them when asked.
+type CheckDefinition struct {
+	Name           string // The name of this check. Check names in a database are unique.
+	AlterStatement string // Reference for expression body
+}
+
+// CheckConstraint declares a boolean-eval constraint.
+type CheckConstraint struct {
+	Name     string
+	Expr     Expression
+	Enforced bool
+}
+
 // TableWrapper is a node that wraps the real table. This is needed because
 // wrappers cannot implement some methods the table may implement.
 type TableWrapper interface {
@@ -259,6 +273,8 @@ type StatisticsTable interface {
 	Table
 	// NumRows returns the unfiltered count of rows contained in the table
 	NumRows(*Context) (uint64, error)
+	// DataLength returns the length of the data file (varies by engine).
+	DataLength(ctx *Context) (uint64, error)
 }
 
 // IndexUsing is the desired storage type.
@@ -349,6 +365,23 @@ type ForeignKeyAlterableTable interface {
 	DropForeignKey(ctx *Context, fkName string) error
 }
 
+// CheckTable is a table that can declare its check constraints.
+type CheckTable interface {
+	Table
+	// GetChecks returns the check constraints on this table.
+	GetChecks(ctx *Context) ([]CheckDefinition, error)
+}
+
+// CheckAlterableTable represents a table that supports check constraints.
+type CheckAlterableTable interface {
+	Table
+	// CreateCheck creates an check constraint for this table, using the provided parameters.
+	// Returns an error if the constraint name already exists.
+	CreateCheck(ctx *Context, check *CheckDefinition) error
+	// DropCheck removes a check constraint from the database.
+	DropCheck(ctx *Context, chName string) error
+}
+
 // InsertableTable is a table that can process insertion of new rows.
 type InsertableTable interface {
 	Table
@@ -407,6 +440,8 @@ type AutoIncrementTable interface {
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
 }
+
+var ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns")
 
 // AutoIncrementSetter provides support for altering a table's
 // AUTO_INCREMENT sequence, eg 'ALTER TABLE t AUTO_INCREMENT = 10;'
