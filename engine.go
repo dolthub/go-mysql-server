@@ -183,6 +183,25 @@ func (e *Engine) QueryWithBindings(
 		perm = auth.ReadPerm | auth.WritePerm
 	}
 
+	switch n := parsed.(type) {
+	case *plan.CreateTable:
+		if n.Database() != nil && n.Database().Name() != "" {
+			ctx.SetQueriedDatabase(n.Database().Name())
+		}
+	case *plan.InsertInto:
+		if n.Database() != nil && n.Database().Name() != "" {
+			ctx.SetQueriedDatabase(n.Database().Name())
+		}
+	case *plan.DeleteFrom:
+		if n.Database() != "" {
+			ctx.SetQueriedDatabase(n.Database())
+		}
+	case *plan.Update:
+		if n.Database() != "" {
+			ctx.SetQueriedDatabase(n.Database())
+		}
+	}
+
 	err = e.Auth.Allowed(ctx, perm)
 	if err != nil {
 		return nil, nil, err

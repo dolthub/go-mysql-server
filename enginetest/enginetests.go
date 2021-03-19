@@ -3583,7 +3583,6 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, bindings map[string]sql.Expression) {
 	require := require.New(t)
-
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)
 

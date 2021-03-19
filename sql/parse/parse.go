@@ -1142,6 +1142,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	qualifier := c.Table.Qualifier.String()
+
 	tableSpec := &plan.TableSpec{
 		Schema:  schema,
 		IdxDefs: idxDefs,
@@ -1150,7 +1152,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(""), c.Table.Name.String(), c.IfNotExists, tableSpec), nil
+		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), c.IfNotExists, tableSpec), nil
 }
 
 type namedConstraint struct {
@@ -1257,6 +1259,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	return plan.NewInsertInto(
+		sql.UnresolvedDatabase(i.Table.Qualifier.String()),
 		tableNameToUnresolvedTable(i.Table),
 		src,
 		isReplace,
@@ -1363,6 +1366,7 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
 
 	return plan.NewInsertInto(
+		sql.UnresolvedDatabase(d.Table.Qualifier.String()),
 		tableNameToUnresolvedTable(d.Table),
 		ld,
 		false,

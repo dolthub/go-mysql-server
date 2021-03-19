@@ -41,6 +41,7 @@ var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
+	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
 	ColumnNames []string
@@ -49,9 +50,12 @@ type InsertInto struct {
 	Checks      []sql.Expression
 }
 
+var _ sql.Databaser = (*InsertInto)(nil)
+
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, checks []sql.Expression) *InsertInto {
+func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, checks []sql.Expression) *InsertInto {
 	return &InsertInto{
+		db:          db,
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,
@@ -73,6 +77,16 @@ func (p *InsertInto) Schema() sql.Schema {
 
 func (p *InsertInto) Children() []sql.Node {
 	return []sql.Node{p.Destination}
+}
+
+func (p *InsertInto) Database() sql.Database {
+	return p.db
+}
+
+func (p *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
+	nc := *p
+	nc.db = database
+	return &nc, nil
 }
 
 type insertIter struct {
@@ -408,7 +422,7 @@ func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, erro
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs)+len(p.Checks), 1)
 	}
 
-	return NewInsertInto(p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs[:len(p.OnDupExprs)], newExprs[len(p.OnDupExprs):]), nil
+	return NewInsertInto(p.db, p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs[:len(p.OnDupExprs)], newExprs[len(p.OnDupExprs):]), nil
 }
 
 // Resolved implements the Resolvable interface.
