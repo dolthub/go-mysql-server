@@ -135,7 +135,7 @@ func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, erro
 //
 // see also: https://dev.mysql.com/doc/refman/8.0/en/json.html#json-normalization
 type JSONObjectAgg struct {
-	key sql.Expression
+	key   sql.Expression
 	value sql.Expression
 }
 
@@ -194,7 +194,7 @@ func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 	// An error occurs if any key name is NULL
 	if key == nil {
-		return fmt.Errorf("JSON documents may not contain NULL member names")
+		return sql.ErrJSONObjectAggNullKey.New()
 	}
 
 	val, err := j.value.Eval(ctx, row)
@@ -211,10 +211,13 @@ func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		val = doc.Val
 	}
 
-	keyAsString, err := sql.LongText.Convert(key)
-
+	// Update the map.
 	mp := buffer[0].(map[string]interface{})
 
+	keyAsString, err := sql.LongText.Convert(key)
+	if err != nil {
+		return nil
+	}
 	mp[keyAsString.(string)] = val
 
 	return nil
@@ -241,5 +244,3 @@ func (j JSONObjectAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, erro
 
 	return sql.MustJSON(string(val)), nil
 }
-
-

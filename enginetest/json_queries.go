@@ -344,28 +344,28 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT JSON_OBJECTAGG(pk, notval) from test`,
+				Query:       `SELECT JSON_OBJECTAGG(pk, notval) from test`,
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query: `SELECT JSON_OBJECTAGG(notpk, val) from test`,
+				Query:       `SELECT JSON_OBJECTAGG(notpk, val) from test`,
 				ExpectedErr: sql.ErrColumnNotFound,
 			},
 			{
-				Query: `SELECT JSON_OBJECTAGG(pk, val) from nottest`,
+				Query:       `SELECT JSON_OBJECTAGG(pk, val) from nottest`,
 				ExpectedErr: sql.ErrTableNotFound,
 			},
 			{
-				Query: `SELECT JSON_OBJECTAGG(pk, val, badarg) from test`,
+				Query:       `SELECT JSON_OBJECTAGG(pk, val, badarg) from test`,
 				RequiredErr: true,
 			},
 			{
-				Query: `SELECT JSON_OBJECTAGG(pk) from test`,
+				Query:       `SELECT JSON_OBJECTAGG(pk) from test`,
 				RequiredErr: true,
 			},
 			{
-				Query: `SELECT JSON_OBJECTAGG(pk, val) from test`,
-				RequiredErr: true,
+				Query:       `SELECT JSON_OBJECTAGG(pk, val) from test`,
+				ExpectedErr: sql.ErrJSONObjectAggNullKey,
 			},
 		},
 	},
