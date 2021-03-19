@@ -59,15 +59,15 @@ func NewUUIDFunc() sql.Expression {
 	return UUIDFunc{}
 }
 
-func (U UUIDFunc) String() string {
+func (u UUIDFunc) String() string {
 	return "UUID()"
 }
 
-func (U UUIDFunc) Type() sql.Type {
+func (u UUIDFunc) Type() sql.Type {
 	return sql.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
-func (U UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	nUUID, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
@@ -76,29 +76,29 @@ func (U UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return nUUID.String(), nil
 }
 
-func (U UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(U, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
 	}
 
-	return &UUIDFunc{}, nil
+	return UUIDFunc{}, nil
 }
 
-func (U UUIDFunc) FunctionName() string {
+func (u UUIDFunc) FunctionName() string {
 	return "uuid"
 }
 
-func (U UUIDFunc) Resolved() bool {
+func (u UUIDFunc) Resolved() bool {
 	return true
 }
 
 // Children returns the children expressions of this expression.
-func (U UUIDFunc) Children() []sql.Expression {
+func (u UUIDFunc) Children() []sql.Expression {
 	return nil
 }
 
 // IsNullable returns whether the expression can be null.
-func (U UUIDFunc) IsNullable() bool {
+func (u UUIDFunc) IsNullable() bool {
 	return false
 }
 
@@ -117,18 +117,18 @@ type IsUUID struct {
 var _ sql.FunctionExpression = &IsUUID{}
 
 func NewIsUUID(arg sql.Expression) sql.Expression {
-	return &IsUUID{child: arg}
+	return IsUUID{child: arg}
 }
 
-func (u *IsUUID) String() string {
+func (u IsUUID) String() string {
 	return fmt.Sprintf("IS_UUID(%s)", u.child)
 }
 
-func (u *IsUUID) Type() sql.Type {
+func (u IsUUID) Type() sql.Type {
 	return sql.Int8
 }
 
-func (u *IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := u.child.Eval(ctx, row)
 	if err != nil {
 		return 0, err
@@ -158,29 +158,29 @@ func (u *IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-func (u *IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return &IsUUID{child: children[0]}, nil
+	return IsUUID{child: children[0]}, nil
 }
 
-func (u *IsUUID) FunctionName() string {
+func (u IsUUID) FunctionName() string {
 	return "is_uuid"
 }
 
-func (u *IsUUID) Resolved() bool {
+func (u IsUUID) Resolved() bool {
 	return u.child.Resolved()
 }
 
 // Children returns the children expressions of this expression.
-func (u *IsUUID) Children() []sql.Expression {
+func (u IsUUID) Children() []sql.Expression {
 	return []sql.Expression{u.child}
 }
 
 // IsNullable returns whether the expression can be null.
-func (u *IsUUID) IsNullable() bool {
+func (u IsUUID) IsNullable() bool {
 	return false
 }
 
@@ -320,7 +320,7 @@ func (ub UUIDToBin) FunctionName() string {
 }
 
 func (ub UUIDToBin) Resolved() bool {
-	return true
+	return ub.inputUUID.Resolved()
 }
 
 // Children returns the children expressions of this expression.
@@ -375,20 +375,20 @@ func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	}
 }
 
-func (ub BinToUUID) String() string {
-	if ub.swapFlag != nil {
-		return fmt.Sprintf("BIN_TO_UUID(%s, %s)", ub.inputBinary, ub.swapFlag)
+func (bu BinToUUID) String() string {
+	if bu.swapFlag != nil {
+		return fmt.Sprintf("BIN_TO_UUID(%s, %s)", bu.inputBinary, bu.swapFlag)
 	} else {
-		return fmt.Sprintf("BIN_TO_UUID(%s)", ub.inputBinary)
+		return fmt.Sprintf("BIN_TO_UUID(%s)", bu.inputBinary)
 	}
 }
 
-func (ub BinToUUID) Type() sql.Type {
+func (bu BinToUUID) Type() sql.Type {
 	return sql.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
-func (ub BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	str, err := ub.inputBinary.Eval(ctx, row)
+func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := bu.inputBinary.Eval(ctx, row)
 	if err != nil {
 		return 0, err
 	}
@@ -415,11 +415,11 @@ func (ub BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If no swap flag is passed we can return uuid's string format as is.
-	if ub.swapFlag == nil {
+	if bu.swapFlag == nil {
 		return parsed.String(), nil
 	}
 
-	sf, err := ub.swapFlag.Eval(ctx, row)
+	sf, err := bu.swapFlag.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -458,28 +458,28 @@ func unswapUUIDBytes(cur uuid.UUID) []byte {
 	return ret
 }
 
-func (ub BinToUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (bu BinToUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewBinToUUID(children...)
 }
 
-func (ub BinToUUID) FunctionName() string {
+func (bu BinToUUID) FunctionName() string {
 	return "bin_to_uuid"
 }
 
-func (ub BinToUUID) Resolved() bool {
-	return true
+func (bu BinToUUID) Resolved() bool {
+	return bu.inputBinary.Resolved()
 }
 
 // Children returns the children expressions of this expression.
-func (ub BinToUUID) Children() []sql.Expression {
-	if ub.swapFlag == nil {
-		return []sql.Expression{ub.inputBinary}
+func (bu BinToUUID) Children() []sql.Expression {
+	if bu.swapFlag == nil {
+		return []sql.Expression{bu.inputBinary}
 	}
 
-	return []sql.Expression{ub.inputBinary, ub.swapFlag}
+	return []sql.Expression{bu.inputBinary, bu.swapFlag}
 }
 
 // IsNullable returns whether the expression can be null.
-func (ub BinToUUID) IsNullable() bool {
+func (bu BinToUUID) IsNullable() bool {
 	return false
 }

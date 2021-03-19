@@ -324,6 +324,7 @@ var ScriptTests = []ScriptTest{
 		Name: "UUIDs used in the wild.",
 		SetUpScript: []string{
 			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
+			"SET @binuuid = '0011223344556677'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -364,6 +365,10 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID('0011223344556677')`,
+				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(@binuuid)`,
 				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
 			},
 		},
