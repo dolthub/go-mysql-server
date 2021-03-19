@@ -321,6 +321,59 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "UUIDs used in the wild.",
+		SetUpScript: []string{
+			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
+			"SET @binuuid = '0011223344556677'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT IS_UUID(UUID())`,
+				Expected: []sql.Row{{int8(1)}},
+			},
+			{
+				Query:    `SELECT IS_UUID(@uuid)`,
+				Expected: []sql.Row{{int8(1)}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid))`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(UUID_TO_BIN(@uuid, 1), 1)`,
+				Expected: []sql.Row{{"6ccd780c-baba-1026-9564-5b8c656024db"}},
+			},
+			{
+				Query:    `SELECT UUID_TO_BIN(NULL)`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    `SELECT HEX(UUID_TO_BIN(@uuid))`,
+				Expected: []sql.Row{{"6CCD780CBABA102695645B8C656024DB"}},
+			},
+			{
+				Query:       `SELECT UUID_TO_BIN(123)`,
+				RequiredErr: true,
+			},
+			{
+				Query:       `SELECT BIN_TO_UUID(123)`,
+				RequiredErr: true,
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(X'00112233445566778899aabbccddeeff')`,
+				Expected: []sql.Row{{"00112233-4455-6677-8899-aabbccddeeff"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID('0011223344556677')`,
+				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+			},
+			{
+				Query:    `SELECT BIN_TO_UUID(@binuuid)`,
+				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+			},
+		},
+	},
+	{
 		Name: "CrossDB Queries",
 		SetUpScript: []string{
 			"CREATE DATABASE test",

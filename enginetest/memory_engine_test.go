@@ -17,7 +17,6 @@ package enginetest_test
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -112,45 +111,14 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "show create triggers",
+			Name: "UUIDs used in the wild.",
 			SetUpScript: []string{
-				"create table a (x int primary key)",
-				"create trigger a1 before insert on a for each row set new.x = new.x + 1",
-				"create table b (y int primary key)",
-				"create trigger b1 before insert on b for each row set new.x = new.x + 2",
+				"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: "show create trigger a1",
-					Expected: []sql.Row{
-						{
-							"a1", // Trigger
-							"",   // sql_mode
-							"create trigger a1 before insert on a for each row set new.x = new.x + 1", // SQL Original Statement
-							sql.Collation_Default.CharacterSet().String(),                             // character_set_client
-							sql.Collation_Default.String(),                                            // collation_connection
-							sql.Collation_Default.String(),                                            // Database Collation
-							time.Unix(0, 0).UTC(),                                                     // Created
-						},
-					},
-				},
-				{
-					Query: "show create trigger b1",
-					Expected: []sql.Row{
-						{
-							"b1", // Trigger
-							"",   // sql_mode
-							"create trigger b1 before insert on b for each row set new.x = new.x + 2", // SQL Original Statement
-							sql.Collation_Default.CharacterSet().String(),                             // character_set_client
-							sql.Collation_Default.String(),                                            // collation_connection
-							sql.Collation_Default.String(),                                            // Database Collation
-							time.Unix(0, 0).UTC(),                                                     // Created
-						},
-					},
-				},
-				{
-					Query:       "show create trigger b2",
-					ExpectedErr: sql.ErrTriggerDoesNotExist,
+					Query:    `SELECT IS_UUID(@uuid)`,
+					Expected: []sql.Row{{int8(1)}},
 				},
 			},
 		},

@@ -91,6 +91,10 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select max(pk),c2 from one_pk group by c1 order by 1",
+		Expected: []sql.Row{{0, 1}, {1, 11}, {2, 21}, {3, 31}},
+	},
+	{
 		Query:    "SELECT pk1, SUM(c1) FROM two_pk WHERE pk1 = 0",
 		Expected: []sql.Row{{0, 10.0}},
 	},
