@@ -68,7 +68,12 @@ func (U UUIDFunc) Type() sql.Type {
 }
 
 func (U UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return uuid.New().String(), nil
+	nUUID, err := uuid.NewUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	return nUUID.String(), nil
 }
 
 func (U UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -136,6 +141,13 @@ func (U IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch str := str.(type) {
 	case string:
 		_, err := uuid.Parse(str)
+		if err != nil {
+			return int8(0), nil
+		}
+
+		return int8(1), nil
+	case []byte:
+		_, err := uuid.ParseBytes(str)
 		if err != nil {
 			return int8(0), nil
 		}
@@ -294,8 +306,7 @@ func swapUUIDBytes(cur uuid.UUID) []byte {
 	copy(ret[0:2], cur[6:8])
 	copy(ret[2:4], cur[4:6])
 	copy(ret[4:8], cur[0:4])
-	copy(ret[8:10], cur[8:10])
-	copy(ret[10:], cur[10:])
+	copy(ret[8:],  cur[8:])
 
 	return ret
 }
@@ -442,8 +453,7 @@ func unswapUUIDBytes(cur uuid.UUID) []byte {
 	copy(ret[0:4], cur[4:8])
 	copy(ret[4:6], cur[2:4])
 	copy(ret[6:8], cur[0:2])
-	copy(ret[8:10], cur[8:10])
-	copy(ret[10:], cur[10:])
+	copy(ret[8:],  cur[8:])
 
 	return ret
 }

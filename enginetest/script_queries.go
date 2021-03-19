@@ -327,6 +327,10 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    `SELECT IS_UUID(UUID())`,
+				Expected: []sql.Row{{int8(1)}},
+			},
+			{
 				Query:    `SELECT IS_UUID(@uuid)`,
 				Expected: []sql.Row{{int8(1)}},
 			},
@@ -354,6 +358,15 @@ var ScriptTests = []ScriptTest{
 				Query:       `SELECT BIN_TO_UUID(123)`,
 				RequiredErr: true,
 			},
+			{
+				Query:		 `SELECT BIN_TO_UUID(X'00112233445566778899aabbccddeeff')`,
+				Expected: []sql.Row{{"00112233-4455-6677-8899-aabbccddeeff"}},
+			},
+			{
+				Query: `SELECT BIN_TO_UUID('0011223344556677')`,
+				Expected: []sql.Row{{"30303131-3232-3333-3434-353536363737"}},
+			},
+
 		},
 	},
 }

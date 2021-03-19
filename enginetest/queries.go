@@ -4114,10 +4114,6 @@ var QueryTests = []QueryTest{
 			{1, 1, 4},
 		},
 	},
-	{
-		Query:    `SELECT IS_UUID(UUID())`,
-		Expected: []sql.Row{{int8(1)}},
-	},
 }
 
 var KeylessQueries = []QueryTest{

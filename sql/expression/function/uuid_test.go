@@ -15,6 +15,7 @@
 package function
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -40,6 +41,10 @@ func TestUUID(t *testing.T) {
 	// validate that generated uuid is legitimate for IsUUID
 	val := NewIsUUID(uuidE)
 	require.Equal(t, int8(1), eval(t, val, sql.Row{nil}))
+
+	// Use a UUID regex as a sanity check
+	re2 := regexp.MustCompile(`\b[0-9a-f]{8}\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\b[0-9a-f]{12}\b`)
+	require.True(t, re2.MatchString(myUUID))
 }
 
 func TestIsUUID(t *testing.T) {
