@@ -111,25 +111,25 @@ func (U UUIDFunc) IsNullable() bool {
 // the permitted characters (hexadecimal digits in any lettercase and, optionally, dashes and curly braces).
 
 type IsUUID struct {
-	inputStr sql.Expression
+	child sql.Expression
 }
 
 var _ sql.FunctionExpression = &IsUUID{}
 
 func NewIsUUID(arg sql.Expression) sql.Expression {
-	return IsUUID{inputStr: arg}
+	return &IsUUID{child: arg}
 }
 
-func (U IsUUID) String() string {
-	return fmt.Sprintf("IS_UUID(%s)", U.inputStr)
+func (u *IsUUID) String() string {
+	return fmt.Sprintf("IS_UUID(%s)", u.child)
 }
 
-func (U IsUUID) Type() sql.Type {
+func (u *IsUUID) Type() sql.Type {
 	return sql.Int8
 }
 
-func (U IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	str, err := U.inputStr.Eval(ctx, row)
+func (u *IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := u.child.Eval(ctx, row)
 	if err != nil {
 		return 0, err
 	}
@@ -158,29 +158,29 @@ func (U IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-func (U IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u *IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(U, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return &IsUUID{inputStr: children[0]}, nil
+	return &IsUUID{child: children[0]}, nil
 }
 
-func (U IsUUID) FunctionName() string {
+func (u *IsUUID) FunctionName() string {
 	return "is_uuid"
 }
 
-func (U IsUUID) Resolved() bool {
-	return true
+func (u *IsUUID) Resolved() bool {
+	return u.child.Resolved()
 }
 
 // Children returns the children expressions of this expression.
-func (U IsUUID) Children() []sql.Expression {
-	return []sql.Expression{U.inputStr}
+func (u *IsUUID) Children() []sql.Expression {
+	return []sql.Expression{u.child}
 }
 
 // IsNullable returns whether the expression can be null.
-func (U IsUUID) IsNullable() bool {
+func (u *IsUUID) IsNullable() bool {
 	return false
 }
 
