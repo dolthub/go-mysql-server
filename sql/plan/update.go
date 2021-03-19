@@ -66,6 +66,29 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	}
 }
 
+func updateDatabaseHelper(node sql.Node) string {
+	switch node := node.(type) {
+	case sql.UpdatableTable:
+		return ""
+	case *IndexedTableAccess:
+		return updateDatabaseHelper(node.ResolvedTable)
+	case *ResolvedTable:
+		return node.Database.Name()
+	case *UnresolvedTable:
+		return node.Database
+	}
+
+	for _, child := range node.Children() {
+		return updateDatabaseHelper(child)
+	}
+
+	return ""
+}
+
+func (p *Update) Database() string {
+	return updateDatabaseHelper(p.Child)
+}
+
 // UpdateInfo is the Info for OKResults returned by Update nodes.
 type UpdateInfo struct {
 	Matched, Updated, Warnings int

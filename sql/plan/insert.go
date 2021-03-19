@@ -41,21 +41,27 @@ var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
+	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
 	ColumnNames []string
 	IsReplace   bool
 	OnDupExprs  []sql.Expression
+	Checks      []sql.Expression
 }
 
+var _ sql.Databaser = (*InsertInto)(nil)
+
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
+func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, checks []sql.Expression) *InsertInto {
 	return &InsertInto{
+		db:          db,
 		Destination: dst,
 		Source:      src,
 		ColumnNames: cols,
 		IsReplace:   isReplace,
 		OnDupExprs:  onDupExprs,
+		Checks:      checks,
 	}
 }
 
@@ -73,6 +79,16 @@ func (p *InsertInto) Children() []sql.Node {
 	return []sql.Node{p.Destination}
 }
 
+func (p *InsertInto) Database() sql.Database {
+	return p.db
+}
+
+func (p *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
+	nc := *p
+	nc.db = database
+	return &nc, nil
+}
+
 type insertIter struct {
 	schema      sql.Schema
 	inserter    sql.RowInserter
@@ -81,6 +97,7 @@ type insertIter struct {
 	rowSource   sql.RowIter
 	ctx         *sql.Context
 	updateExprs []sql.Expression
+	checks      []sql.Expression
 	tableNode   sql.Node
 	closed      bool
 }
@@ -119,6 +136,7 @@ func newInsertIter(
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
+	checks []sql.Expression,
 	row sql.Row,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
@@ -155,6 +173,7 @@ func newInsertIter(
 		updater:     updater,
 		rowSource:   rowIter,
 		updateExprs: onDupUpdateExpr,
+		checks:      checks,
 		ctx:         ctx,
 	}, nil
 }
@@ -180,6 +199,19 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 	if err != nil {
 		_ = i.rowSource.Close(i.ctx)
 		return nil, err
+	}
+
+	// apply check constraints
+	var res interface{}
+	for _, check := range i.checks {
+		res, err = check.Eval(i.ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if val, ok := res.(bool); !ok || !val {
+			i.ctx.Warn(3819, "Check constraint '%s' is violated", check.String())
+			return nil, nil
+		}
 	}
 
 	// Do any necessary type conversions to the target schema
@@ -328,7 +360,7 @@ func (i insertIter) Close(ctx *sql.Context) error {
 
 // RowIter implements the Node interface.
 func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Destination, p.Source, p.IsReplace, p.OnDupExprs, row)
+	return newInsertIter(ctx, p.Destination, p.Source, p.IsReplace, p.OnDupExprs, p.Checks, row)
 }
 
 // WithChildren implements the Node interface.
@@ -382,15 +414,15 @@ func validateNullability(dstSchema sql.Schema, row sql.Row) error {
 }
 
 func (p *InsertInto) Expressions() []sql.Expression {
-	return p.OnDupExprs
+	return append(p.OnDupExprs, p.Checks...)
 }
 
 func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(p.OnDupExprs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs), 1)
+	if len(newExprs) != len(p.OnDupExprs)+len(p.Checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs)+len(p.Checks), 1)
 	}
 
-	return NewInsertInto(p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs), nil
+	return NewInsertInto(p.db, p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs[:len(p.OnDupExprs)], newExprs[len(p.OnDupExprs):]), nil
 }
 
 // Resolved implements the Resolvable interface.
@@ -400,6 +432,11 @@ func (p *InsertInto) Resolved() bool {
 	}
 	for _, updateExpr := range p.OnDupExprs {
 		if !updateExpr.Resolved() {
+			return false
+		}
+	}
+	for _, checkExpr := range p.Checks {
+		if !checkExpr.Resolved() {
 			return false
 		}
 	}

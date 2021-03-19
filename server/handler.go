@@ -453,7 +453,7 @@ rowLoop:
 
 	_, statementIsCommit := parsedQuery.(*sqlparser.Commit)
 	if statementIsCommit || (autoCommit && statementNeedsCommit(parsedQuery, parseErr)) {
-		if err := ctx.Session.CommitTransaction(ctx); err != nil {
+		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
 			return err
 		}
 	}
@@ -577,6 +577,19 @@ func isOkResult(row sql.Row) bool {
 		return ok
 	}
 	return false
+}
+
+func getTransactionDbName(ctx *sql.Context) string {
+	currentDbInUse := ctx.GetCurrentDatabase()
+	queriedDatabase := ctx.GetQueriedDatabase()
+
+	ctx.SetQueriedDatabase("") // reset the queried database variable
+
+	if queriedDatabase != "" {
+		return queriedDatabase
+	} else {
+		return currentDbInUse
+	}
 }
 
 // WarningCount is called at the end of each query to obtain

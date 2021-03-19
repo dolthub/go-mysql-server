@@ -17,6 +17,7 @@ package parse
 import (
 	"fmt"
 	"math"
+	"sort"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -48,493 +49,613 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, g DATETIME, h CHAR(40))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:     "a",
-			Type:     sql.Int32,
-			Nullable: true,
-		}, {
-			Name:     "b",
-			Type:     sql.Text,
-			Nullable: true,
-		}, {
-			Name:     "c",
-			Type:     sql.Date,
-			Nullable: true,
-		}, {
-			Name:     "d",
-			Type:     sql.Timestamp,
-			Nullable: true,
-		}, {
-			Name:     "e",
-			Type:     sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
-			Nullable: true,
-		}, {
-			Name:     "f",
-			Type:     sql.Blob,
-			Nullable: false,
-		}, {
-			Name:     "g",
-			Type:     sql.Datetime,
-			Nullable: true,
-		}, {
-			Name:     "h",
-			Type:     sql.MustCreateStringWithDefaults(sqltypes.Char, 40),
-			Nullable: true,
-		}},
 		false,
-		nil,
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:     "a",
+				Type:     sql.Int32,
+				Nullable: true,
+			}, {
+				Name:     "b",
+				Type:     sql.Text,
+				Nullable: true,
+			}, {
+				Name:     "c",
+				Type:     sql.Date,
+				Nullable: true,
+			}, {
+				Name:     "d",
+				Type:     sql.Timestamp,
+				Nullable: true,
+			}, {
+				Name:     "e",
+				Type:     sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+				Nullable: true,
+			}, {
+				Name:     "f",
+				Type:     sql.Blob,
+				Nullable: false,
+			}, {
+				Name:     "g",
+				Type:     sql.Datetime,
+				Nullable: true,
+			}, {
+				Name:     "h",
+				Type:     sql.MustCreateStringWithDefaults(sqltypes.Char, 40),
+				Nullable: true,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY, b TEXT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Text,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Text,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY COMMENT "hello", b TEXT COMMENT "goodbye")`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-			Comment:    "hello",
-		}, {
-			Name:       "b",
-			Type:       sql.Text,
-			Nullable:   true,
-			PrimaryKey: false,
-			Comment:    "goodbye",
-		}},
 		false,
-		nil,
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+				Comment:    "hello",
+			}, {
+				Name:       "b",
+				Type:       sql.Text,
+				Nullable:   true,
+				PrimaryKey: false,
+				Comment:    "goodbye",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Text,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Text,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Text,
-			Nullable:   false,
-			PrimaryKey: true,
-		}},
 		false,
-		nil,
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Text,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+		},
 	),
 	`CREATE TABLE IF NOT EXISTS t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Text,
-			Nullable:   false,
-			PrimaryKey: true,
-		}},
 		true,
-		nil,
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Text,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		[]*plan.IndexDefinition{{
-			IndexName:  "",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_None,
-			Columns:    []sql.IndexColumn{{"b", 0}},
-			Comment:    "",
-		}},
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			IdxDefs: []*plan.IndexDefinition{{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_None,
+				Columns:    []sql.IndexColumn{{"b", 0}},
+				Comment:    "",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		[]*plan.IndexDefinition{{
-			IndexName:  "idx_name",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_None,
-			Columns:    []sql.IndexColumn{{"b", 0}},
-			Comment:    "",
-		}},
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			IdxDefs: []*plan.IndexDefinition{{
+				IndexName:  "idx_name",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_None,
+				Columns:    []sql.IndexColumn{{"b", 0}},
+				Comment:    "",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b) COMMENT 'hi')`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		[]*plan.IndexDefinition{{
-			IndexName:  "idx_name",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_None,
-			Columns:    []sql.IndexColumn{{"b", 0}},
-			Comment:    "hi",
-		}},
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			IdxDefs: []*plan.IndexDefinition{{
+				IndexName:  "idx_name",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_None,
+				Columns:    []sql.IndexColumn{{"b", 0}},
+				Comment:    "hi",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE INDEX (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		[]*plan.IndexDefinition{{
-			IndexName:  "",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_Unique,
-			Columns:    []sql.IndexColumn{{"b", 0}},
-			Comment:    "",
-		}},
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			IdxDefs: []*plan.IndexDefinition{{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_Unique,
+				Columns:    []sql.IndexColumn{{"b", 0}},
+				Comment:    "",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		[]*plan.IndexDefinition{{
-			IndexName:  "",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_Unique,
-			Columns:    []sql.IndexColumn{{"b", 0}},
-			Comment:    "",
-		}},
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			IdxDefs: []*plan.IndexDefinition{{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_Unique,
+				Columns:    []sql.IndexColumn{{"b", 0}},
+				Comment:    "",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b, a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		[]*plan.IndexDefinition{{
-			IndexName:  "",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_None,
-			Columns:    []sql.IndexColumn{{"b", 0}, {"a", 0}},
-			Comment:    "",
-		}},
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			IdxDefs: []*plan.IndexDefinition{{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_None,
+				Columns:    []sql.IndexColumn{{"b", 0}, {"a", 0}},
+				Comment:    "",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b), INDEX (b, a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		[]*plan.IndexDefinition{{
-			IndexName:  "",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_None,
-			Columns:    []sql.IndexColumn{{"b", 0}},
-			Comment:    "",
-		}, {
-			IndexName:  "",
-			Using:      sql.IndexUsing_Default,
-			Constraint: sql.IndexConstraint_None,
-			Columns:    []sql.IndexColumn{{"b", 0}, {"a", 0}},
-			Comment:    "",
-		}},
-		nil,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			IdxDefs: []*plan.IndexDefinition{{
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_None,
+				Columns:    []sql.IndexColumn{{"b", 0}},
+				Comment:    "",
+			}, {
+				IndexName:  "",
+				Using:      sql.IndexUsing_Default,
+				Constraint: sql.IndexConstraint_None,
+				Columns:    []sql.IndexColumn{{"b", 0}, {"a", 0}},
+				Comment:    "",
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b_id",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
-			Columns:           []string{"b_id"},
-			ReferencedTable:   "t0",
-			ReferencedColumns: []string{"b"},
-			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
-			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
-		}},
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b_id",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			FkDefs: []*sql.ForeignKeyConstraint{{
+				Name:              "",
+				Columns:           []string{"b_id"},
+				ReferencedTable:   "t0",
+				ReferencedColumns: []string{"b"},
+				OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
+				OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, CONSTRAINT fk_name FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b_id",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		[]*sql.ForeignKeyConstraint{{
-			Name:              "fk_name",
-			Columns:           []string{"b_id"},
-			ReferencedTable:   "t0",
-			ReferencedColumns: []string{"b"},
-			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
-			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
-		}},
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b_id",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			FkDefs: []*sql.ForeignKeyConstraint{{
+				Name:              "fk_name",
+				Columns:           []string{"b_id"},
+				ReferencedTable:   "t0",
+				ReferencedColumns: []string{"b"},
+				OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
+				OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE CASCADE)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b_id",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
-			Columns:           []string{"b_id"},
-			ReferencedTable:   "t0",
-			ReferencedColumns: []string{"b"},
-			OnUpdate:          sql.ForeignKeyReferenceOption_Cascade,
-			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
-		}},
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b_id",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			FkDefs: []*sql.ForeignKeyConstraint{{
+				Name:              "",
+				Columns:           []string{"b_id"},
+				ReferencedTable:   "t0",
+				ReferencedColumns: []string{"b"},
+				OnUpdate:          sql.ForeignKeyReferenceOption_Cascade,
+				OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON DELETE RESTRICT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b_id",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
-			Columns:           []string{"b_id"},
-			ReferencedTable:   "t0",
-			ReferencedColumns: []string{"b"},
-			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
-			OnDelete:          sql.ForeignKeyReferenceOption_Restrict,
-		}},
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b_id",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			FkDefs: []*sql.ForeignKeyConstraint{{
+				Name:              "",
+				Columns:           []string{"b_id"},
+				ReferencedTable:   "t0",
+				ReferencedColumns: []string{"b"},
+				OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
+				OnDelete:          sql.ForeignKeyReferenceOption_Restrict,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE SET NULL ON DELETE NO ACTION)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b_id",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
-			Columns:           []string{"b_id"},
-			ReferencedTable:   "t0",
-			ReferencedColumns: []string{"b"},
-			OnUpdate:          sql.ForeignKeyReferenceOption_SetNull,
-			OnDelete:          sql.ForeignKeyReferenceOption_NoAction,
-		}},
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b_id",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+
+			FkDefs: []*sql.ForeignKeyConstraint{{
+				Name:              "",
+				Columns:           []string{"b_id"},
+				ReferencedTable:   "t0",
+				ReferencedColumns: []string{"b"},
+				OnUpdate:          sql.ForeignKeyReferenceOption_SetNull,
+				OnDelete:          sql.ForeignKeyReferenceOption_NoAction,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, c_id BIGINT, FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b_id",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}, {
-			Name:       "c_id",
-			Type:       sql.Int64,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		[]*sql.ForeignKeyConstraint{{
-			Name:              "",
-			Columns:           []string{"b_id", "c_id"},
-			ReferencedTable:   "t0",
-			ReferencedColumns: []string{"b", "c"},
-			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
-			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
-		}},
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b_id",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}, {
+				Name:       "c_id",
+				Type:       sql.Int64,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			FkDefs: []*sql.ForeignKeyConstraint{{
+				Name:              "",
+				Columns:           []string{"b_id", "c_id"},
+				ReferencedTable:   "t0",
+				ReferencedColumns: []string{"b", "c"},
+				OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
+				OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
+			}},
+		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, c_id BIGINT, CONSTRAINT fk_name FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c) ON UPDATE RESTRICT ON DELETE CASCADE)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		sql.Schema{{
-			Name:       "a",
-			Type:       sql.Int32,
-			Nullable:   false,
-			PrimaryKey: true,
-		}, {
-			Name:       "b_id",
-			Type:       sql.Int32,
-			Nullable:   true,
-			PrimaryKey: false,
-		}, {
-			Name:       "c_id",
-			Type:       sql.Int64,
-			Nullable:   true,
-			PrimaryKey: false,
-		}},
 		false,
-		nil,
-		[]*sql.ForeignKeyConstraint{{
-			Name:              "fk_name",
-			Columns:           []string{"b_id", "c_id"},
-			ReferencedTable:   "t0",
-			ReferencedColumns: []string{"b", "c"},
-			OnUpdate:          sql.ForeignKeyReferenceOption_Restrict,
-			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
-		}},
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b_id",
+				Type:       sql.Int32,
+				Nullable:   true,
+				PrimaryKey: false,
+			}, {
+				Name:       "c_id",
+				Type:       sql.Int64,
+				Nullable:   true,
+				PrimaryKey: false,
+			}},
+			FkDefs: []*sql.ForeignKeyConstraint{{
+				Name:              "fk_name",
+				Columns:           []string{"b_id", "c_id"},
+				ReferencedTable:   "t0",
+				ReferencedColumns: []string{"b", "c"},
+				OnUpdate:          sql.ForeignKeyReferenceOption_Restrict,
+				OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
+			}},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, CHECK (a > 0))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			ChDefs: []*sql.CheckConstraint{{
+				Name: "",
+				Expr: expression.NewGreaterThan(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(int8(0), sql.Int8),
+				),
+				Enforced: true,
+			}},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			ChDefs: []*sql.CheckConstraint{{
+				Name: "",
+				Expr: expression.NewGreaterThan(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(int8(0), sql.Int8),
+				),
+				Enforced: true,
+			}},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY, CONSTRAINT ch1 CHECK (a > 0))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			ChDefs: []*sql.CheckConstraint{{
+				Name: "ch1",
+				Expr: expression.NewGreaterThan(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(int8(0), sql.Int8),
+				),
+				Enforced: true,
+			}},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0) ENFORCED)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			ChDefs: []*sql.CheckConstraint{{
+				Name: "",
+				Expr: expression.NewGreaterThan(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(int8(0), sql.Int8),
+				),
+				Enforced: true,
+			}},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0) NOT ENFORCED)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			ChDefs: []*sql.CheckConstraint{{
+				Name: "",
+				Expr: expression.NewGreaterThan(
+					expression.NewUnresolvedColumn("a"),
+					expression.NewLiteral(int8(0), sql.Int8),
+				),
+				Enforced: false,
+			}},
+		},
 	),
 	`DROP TABLE foo;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), false, "foo",
@@ -733,6 +854,39 @@ var fixtures = map[string]sql.Node{
 			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
 		},
 	),
+	`ALTER TABLE t1 ADD CHECK (a > 0)`: plan.NewAlterAddCheck(
+		plan.NewUnresolvedTable("t1", ""),
+		&sql.CheckConstraint{
+			Name: "",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		},
+	),
+	`ALTER TABLE t1 ADD CONSTRAINT ch1 CHECK (a > 0)`: plan.NewAlterAddCheck(
+		plan.NewUnresolvedTable("t1", ""),
+		&sql.CheckConstraint{
+			Name: "ch1",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		},
+	),
+	`ALTER TABLE t1 ADD CONSTRAINT CHECK (a > 0)`: plan.NewAlterAddCheck(
+		plan.NewUnresolvedTable("t1", ""),
+		&sql.CheckConstraint{
+			Name: "",
+			Expr: expression.NewGreaterThan(
+				expression.NewUnresolvedColumn("a"),
+				expression.NewLiteral(int8(0), sql.Int8),
+			),
+			Enforced: true,
+		},
+	),
 	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
 		&sql.ForeignKeyConstraint{
@@ -796,14 +950,18 @@ var fixtures = map[string]sql.Node{
 	`SELECT foo IS NULL, bar IS NOT NULL FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewIsNull(expression.NewUnresolvedColumn("foo")),
-			expression.NewNot(expression.NewIsNull(expression.NewUnresolvedColumn("bar"))),
+			expression.NewAlias("bar IS NOT NULL",
+				expression.NewNot(expression.NewIsNull(expression.NewUnresolvedColumn("bar"))),
+			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT foo IS TRUE, bar IS NOT FALSE FROM foo;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewIsTrue(expression.NewUnresolvedColumn("foo")),
-			expression.NewNot(expression.NewIsFalse(expression.NewUnresolvedColumn("bar"))),
+			expression.NewAlias("bar IS NOT FALSE",
+				expression.NewNot(expression.NewIsFalse(expression.NewUnresolvedColumn("bar"))),
+			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
@@ -1033,8 +1191,10 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT COUNT(*) FROM t1;`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("count", true, nil,
-				expression.NewStar()),
+			expression.NewAlias("COUNT(*)",
+				expression.NewUnresolvedFunction("count", true, nil,
+					expression.NewStar()),
+			),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("t1", ""),
@@ -1078,6 +1238,7 @@ var fixtures = map[string]sql.Node{
 		),
 	),
 	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral("a", sql.LongText),
@@ -1086,8 +1247,22 @@ var fixtures = map[string]sql.Node{
 		false,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+		nil,
+	),
+	`INSERT INTO mydb.t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase("mydb"),
+		plan.NewUnresolvedTable("t1", "mydb"),
+		plan.NewValues([][]sql.Expression{{
+			expression.NewLiteral("a", sql.LongText),
+			expression.NewLiteral(int8(1), sql.Int8),
+		}}),
+		false,
+		[]string{"col1", "col2"},
+		[]sql.Expression{},
+		nil,
 	),
 	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewBindVar("v1"),
@@ -1096,6 +1271,7 @@ var fixtures = map[string]sql.Node{
 		false,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+		nil,
 	),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
 		plan.NewFilter(
@@ -1108,6 +1284,7 @@ var fixtures = map[string]sql.Node{
 		},
 	),
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("t1", ""),
 		plan.NewValues([][]sql.Expression{{
 			expression.NewLiteral("a", sql.LongText),
@@ -1116,6 +1293,7 @@ var fixtures = map[string]sql.Node{
 		true,
 		[]string{"col1", "col2"},
 		[]sql.Expression{},
+		nil,
 	),
 	`SHOW TABLES`:                           plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	`SHOW FULL TABLES`:                      plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
@@ -1330,13 +1508,17 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT 0x01AF`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral(int16(431), sql.Int16),
+			expression.NewAlias("0x01AF",
+				expression.NewLiteral(int16(431), sql.Int16),
+			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT X'41'`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewLiteral([]byte{'A'}, sql.LongBlob),
+			expression.NewAlias("X'41'",
+				expression.NewLiteral([]byte{'A'}, sql.LongBlob),
+			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
@@ -1410,7 +1592,9 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT CAST(-3 AS UNSIGNED) FROM foo`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewConvert(expression.NewLiteral(int8(-3), sql.Int8), expression.ConvertToUnsigned),
+			expression.NewAlias("CAST(-3 AS UNSIGNED)",
+				expression.NewConvert(expression.NewLiteral(int8(-3), sql.Int8), expression.ConvertToUnsigned),
+			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
@@ -1539,24 +1723,30 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT +i FROM mytable`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedColumn("i"),
+			expression.NewAlias("+i",
+				expression.NewUnresolvedColumn("i"),
+			),
 		},
 		plan.NewUnresolvedTable("mytable", ""),
 	),
 	`SELECT - 4 - - 80`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewMinus(
-				expression.NewLiteral(int8(-4), sql.Int8),
-				expression.NewLiteral(int8(-80), sql.Int8),
+			expression.NewAlias("- 4 - - 80",
+				expression.NewMinus(
+					expression.NewLiteral(int8(-4), sql.Int8),
+					expression.NewLiteral(int8(-80), sql.Int8),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT + - - i FROM mytable`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnaryMinus(
+			expression.NewAlias("+ - - i",
 				expression.NewUnaryMinus(
-					expression.NewUnresolvedColumn("i"),
+					expression.NewUnaryMinus(
+						expression.NewUnresolvedColumn("i"),
+					),
 				),
 			),
 		},
@@ -1577,49 +1767,61 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT 1 * (2 + 1);`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
-				expression.NewPlus(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+			expression.NewAlias("1 * (2 + 1)",
+				expression.NewMult(expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewPlus(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT (0 - 1) * (1 | 1);`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewMult(
-				expression.NewMinus(expression.NewLiteral(int8(0), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
-				expression.NewBitOr(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewAlias("(0 - 1) * (1 | 1)",
+				expression.NewMult(
+					expression.NewMinus(expression.NewLiteral(int8(0), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+					expression.NewBitOr(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT (1 << 3) % (2 div 1);`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewMod(
-				expression.NewShiftLeft(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(3), sql.Int8)),
-				expression.NewIntDiv(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+			expression.NewAlias("(1 << 3) % (2 div 1)",
+				expression.NewMod(
+					expression.NewShiftLeft(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(3), sql.Int8)),
+					expression.NewIntDiv(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
+			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT 1.0 * a + 2.0 * b FROM t;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewPlus(
-				expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
-				expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
+			expression.NewAlias("1.0 * a + 2.0 * b",
+				expression.NewPlus(
+					expression.NewMult(expression.NewLiteral(float64(1.0), sql.Float64), expression.NewUnresolvedColumn("a")),
+					expression.NewMult(expression.NewLiteral(float64(2.0), sql.Float64), expression.NewUnresolvedColumn("b")),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("t", ""),
 	),
 	`SELECT '1.0' + 2;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewPlus(
-				expression.NewLiteral("1.0", sql.LongText), expression.NewLiteral(int8(2), sql.Int8),
+			expression.NewAlias("'1.0' + 2",
+				expression.NewPlus(
+					expression.NewLiteral("1.0", sql.LongText), expression.NewLiteral(int8(2), sql.Int8),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT '1' + '2';`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewPlus(
-				expression.NewLiteral("1", sql.LongText), expression.NewLiteral("2", sql.LongText),
+			expression.NewAlias("'1' + '2'",
+				expression.NewPlus(
+					expression.NewLiteral("1", sql.LongText), expression.NewLiteral("2", sql.LongText),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
@@ -1681,15 +1883,33 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT MAX(i)/2 FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewArithmetic(
-				expression.NewUnresolvedFunction(
-					"max", true, nil, expression.NewUnresolvedColumn("i"),
+			expression.NewAlias("MAX(i)/2",
+				expression.NewArithmetic(
+					expression.NewUnresolvedFunction(
+						"max", true, nil, expression.NewUnresolvedColumn("i"),
+					),
+					expression.NewLiteral(int8(2), sql.Int8),
+					"/",
 				),
-				expression.NewLiteral(int8(2), sql.Int8),
-				"/",
 			),
 		},
 		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT current_user FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias("current_user",
+				expression.NewUnresolvedFunction("current_user", false, nil),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT current_USER(    ) FROM foo`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewAlias("current_USER(    )",
+				expression.NewUnresolvedFunction("current_user", false, nil),
+			),
+		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SHOW INDEXES FROM foo`: plan.NewShowIndexes(plan.NewUnresolvedTable("foo", "")),
@@ -1895,60 +2115,72 @@ var fixtures = map[string]sql.Node{
 	"SHOW CREATE DATABASE IF NOT EXISTS `foo`": plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	"SHOW CREATE SCHEMA IF NOT EXISTS `foo`":   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	"SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' ELSE 'baz' END": plan.NewProject(
-		[]sql.Expression{expression.NewCase(
-			expression.NewUnresolvedColumn("foo"),
-			[]expression.CaseBranch{
-				{
-					Cond:  expression.NewLiteral(int8(1), sql.Int8),
-					Value: expression.NewLiteral("foo", sql.LongText),
-				},
-				{
-					Cond:  expression.NewLiteral(int8(2), sql.Int8),
-					Value: expression.NewLiteral("bar", sql.LongText),
-				},
-			},
-			expression.NewLiteral("baz", sql.LongText),
-		)},
+		[]sql.Expression{
+			expression.NewAlias("CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' ELSE 'baz' END",
+				expression.NewCase(
+					expression.NewUnresolvedColumn("foo"),
+					[]expression.CaseBranch{
+						{
+							Cond:  expression.NewLiteral(int8(1), sql.Int8),
+							Value: expression.NewLiteral("foo", sql.LongText),
+						},
+						{
+							Cond:  expression.NewLiteral(int8(2), sql.Int8),
+							Value: expression.NewLiteral("bar", sql.LongText),
+						},
+					},
+					expression.NewLiteral("baz", sql.LongText),
+				),
+			),
+		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	"SELECT CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' END": plan.NewProject(
-		[]sql.Expression{expression.NewCase(
-			expression.NewUnresolvedColumn("foo"),
-			[]expression.CaseBranch{
-				{
-					Cond:  expression.NewLiteral(int8(1), sql.Int8),
-					Value: expression.NewLiteral("foo", sql.LongText),
-				},
-				{
-					Cond:  expression.NewLiteral(int8(2), sql.Int8),
-					Value: expression.NewLiteral("bar", sql.LongText),
-				},
-			},
-			nil,
-		)},
+		[]sql.Expression{
+			expression.NewAlias("CASE foo WHEN 1 THEN 'foo' WHEN 2 THEN 'bar' END",
+				expression.NewCase(
+					expression.NewUnresolvedColumn("foo"),
+					[]expression.CaseBranch{
+						{
+							Cond:  expression.NewLiteral(int8(1), sql.Int8),
+							Value: expression.NewLiteral("foo", sql.LongText),
+						},
+						{
+							Cond:  expression.NewLiteral(int8(2), sql.Int8),
+							Value: expression.NewLiteral("bar", sql.LongText),
+						},
+					},
+					nil,
+				),
+			),
+		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	"SELECT CASE WHEN foo = 1 THEN 'foo' WHEN foo = 2 THEN 'bar' ELSE 'baz' END": plan.NewProject(
-		[]sql.Expression{expression.NewCase(
-			nil,
-			[]expression.CaseBranch{
-				{
-					Cond: expression.NewEquals(
-						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral(int8(1), sql.Int8),
-					),
-					Value: expression.NewLiteral("foo", sql.LongText),
-				},
-				{
-					Cond: expression.NewEquals(
-						expression.NewUnresolvedColumn("foo"),
-						expression.NewLiteral(int8(2), sql.Int8),
-					),
-					Value: expression.NewLiteral("bar", sql.LongText),
-				},
-			},
-			expression.NewLiteral("baz", sql.LongText),
-		)},
+		[]sql.Expression{
+			expression.NewAlias("CASE WHEN foo = 1 THEN 'foo' WHEN foo = 2 THEN 'bar' ELSE 'baz' END",
+				expression.NewCase(
+					nil,
+					[]expression.CaseBranch{
+						{
+							Cond: expression.NewEquals(
+								expression.NewUnresolvedColumn("foo"),
+								expression.NewLiteral(int8(1), sql.Int8),
+							),
+							Value: expression.NewLiteral("foo", sql.LongText),
+						},
+						{
+							Cond: expression.NewEquals(
+								expression.NewUnresolvedColumn("foo"),
+								expression.NewLiteral(int8(2), sql.Int8),
+							),
+							Value: expression.NewLiteral("bar", sql.LongText),
+						},
+					},
+					expression.NewLiteral("baz", sql.LongText),
+				),
+			),
+		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	"SHOW COLLATION": showCollationProjection,
@@ -1990,54 +2222,70 @@ var fixtures = map[string]sql.Node{
 	"SHOW CREATE VIEW ````":                  plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), true),
 	"SHOW CREATE VIEW `.`":                   plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), true),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
-		[]sql.Expression{expression.NewArithmetic(
-			expression.NewLiteral("2018-05-01", sql.LongText),
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
+		[]sql.Expression{
+			expression.NewAlias("'2018-05-01' + INTERVAL 1 DAY",
+				expression.NewArithmetic(
+					expression.NewLiteral("2018-05-01", sql.LongText),
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					"+",
+				),
 			),
-			"+",
-		)},
+		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT '2018-05-01' - INTERVAL 1 DAY`: plan.NewProject(
-		[]sql.Expression{expression.NewArithmetic(
-			expression.NewLiteral("2018-05-01", sql.LongText),
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
+		[]sql.Expression{
+			expression.NewAlias("'2018-05-01' - INTERVAL 1 DAY",
+				expression.NewArithmetic(
+					expression.NewLiteral("2018-05-01", sql.LongText),
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					"-",
+				),
 			),
-			"-",
-		)},
+		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT INTERVAL 1 DAY + '2018-05-01'`: plan.NewProject(
-		[]sql.Expression{expression.NewArithmetic(
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
+		[]sql.Expression{
+			expression.NewAlias("INTERVAL 1 DAY + '2018-05-01'",
+				expression.NewArithmetic(
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					expression.NewLiteral("2018-05-01", sql.LongText),
+					"+",
+				),
 			),
-			expression.NewLiteral("2018-05-01", sql.LongText),
-			"+",
-		)},
+		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY`: plan.NewProject(
-		[]sql.Expression{expression.NewArithmetic(
-			expression.NewArithmetic(
-				expression.NewLiteral("2018-05-01", sql.LongText),
-				expression.NewInterval(
-					expression.NewLiteral(int8(1), sql.Int8),
-					"DAY",
+		[]sql.Expression{
+			expression.NewAlias("'2018-05-01' + INTERVAL 1 DAY + INTERVAL 1 DAY",
+				expression.NewArithmetic(
+					expression.NewArithmetic(
+						expression.NewLiteral("2018-05-01", sql.LongText),
+						expression.NewInterval(
+							expression.NewLiteral(int8(1), sql.Int8),
+							"DAY",
+						),
+						"+",
+					),
+					expression.NewInterval(
+						expression.NewLiteral(int8(1), sql.Int8),
+						"DAY",
+					),
+					"+",
 				),
-				"+",
 			),
-			expression.NewInterval(
-				expression.NewLiteral(int8(1), sql.Int8),
-				"DAY",
-			),
-			"+",
-		)},
+		},
 		plan.NewUnresolvedTable("dual", ""),
 	),
 	`SELECT bar, AVG(baz) FROM foo GROUP BY bar HAVING COUNT(*) > 5`: plan.NewHaving(
@@ -2048,7 +2296,10 @@ var fixtures = map[string]sql.Node{
 		plan.NewGroupBy(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("bar"),
-				expression.NewUnresolvedFunction("avg", true, nil, expression.NewUnresolvedColumn("baz"))},
+				expression.NewAlias("AVG(baz)",
+					expression.NewUnresolvedFunction("avg", true, nil, expression.NewUnresolvedColumn("baz")),
+				),
+			},
 			[]sql.Expression{expression.NewUnresolvedColumn("bar")},
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2070,7 +2321,11 @@ var fixtures = map[string]sql.Node{
 			expression.NewLiteral(int8(5), sql.Int8),
 		),
 		plan.NewGroupBy(
-			[]sql.Expression{expression.NewUnresolvedFunction("count", true, nil, expression.NewStar())},
+			[]sql.Expression{
+				expression.NewAlias("COUNT(*)",
+					expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
+				),
+			},
 			[]sql.Expression{expression.NewUnresolvedColumn("a")},
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2082,7 +2337,11 @@ var fixtures = map[string]sql.Node{
 				expression.NewLiteral(int8(5), sql.Int8),
 			),
 			plan.NewGroupBy(
-				[]sql.Expression{expression.NewUnresolvedFunction("count", true, nil, expression.NewStar())},
+				[]sql.Expression{
+					expression.NewAlias("COUNT(*)",
+						expression.NewUnresolvedFunction("count", true, nil, expression.NewStar()),
+					),
+				},
 				[]sql.Expression{expression.NewUnresolvedColumn("a")},
 				plan.NewUnresolvedTable("foo", ""),
 			),
@@ -2134,14 +2393,18 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT FIRST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("first", true, nil, expression.NewUnresolvedColumn("i")),
+			expression.NewAlias("FIRST(i)",
+				expression.NewUnresolvedFunction("first", true, nil, expression.NewUnresolvedColumn("i")),
+			),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT LAST(i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewUnresolvedFunction("last", true, nil, expression.NewUnresolvedColumn("i")),
+			expression.NewAlias("LAST(i)",
+				expression.NewUnresolvedFunction("last", true, nil, expression.NewUnresolvedColumn("i")),
+			),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2156,71 +2419,83 @@ var fixtures = map[string]sql.Node{
 	`SELECT a, row_number() over (partition by s order by x) FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{
-					expression.NewUnresolvedColumn("s"),
-				},
-				sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
+			expression.NewAlias("row_number() over (partition by s order by x)",
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("s"),
 					},
-				},
-			)),
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
+					},
+				)),
+			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT a, count(i) over () FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedFunction("count", true, sql.NewWindow(
-				[]sql.Expression{},
-				nil,
-			), expression.NewUnresolvedColumn("i")),
+			expression.NewAlias("count(i) over ()",
+				expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+					[]sql.Expression{},
+					nil,
+				), expression.NewUnresolvedColumn("i")),
+			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT a, row_number() over (order by x), row_number() over (partition by y) FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{},
-				sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
+			expression.NewAlias("row_number() over (order by x)",
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{},
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
 					},
-				},
-			)),
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{
-					expression.NewUnresolvedColumn("y"),
-				},
-				nil,
-			)),
+				)),
+			),
+			expression.NewAlias("row_number() over (partition by y)",
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("y"),
+					},
+					nil,
+				)),
+			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
 	`SELECT a, row_number() over (order by x), max(b) over () FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
-			expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
-				[]sql.Expression{},
-				sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
+			expression.NewAlias("row_number() over (order by x)",
+				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+					[]sql.Expression{},
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
 					},
-				},
-			)),
-			expression.NewUnresolvedFunction("max", true, sql.NewWindow(
-				[]sql.Expression{},
-				nil,
+				)),
 			),
-				expression.NewUnresolvedColumn("b"),
+			expression.NewAlias("max(b) over ()",
+				expression.NewUnresolvedFunction("max", true, sql.NewWindow(
+					[]sql.Expression{},
+					nil,
+				),
+					expression.NewUnresolvedColumn("b"),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2311,28 +2586,30 @@ var fixtures = map[string]sql.Node{
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("c"),
-				plan.NewSubquery(
-					plan.NewWith(
-						plan.NewProject(
-							[]sql.Expression{
-								expression.NewUnresolvedColumn("e"),
-							},
-							plan.NewUnresolvedTable("cte2", "")),
-						[]*plan.CommonTableExpression{
-							plan.NewCommonTableExpression(
-								plan.NewSubqueryAlias("cte2", "select c from d",
-									plan.NewProject(
-										[]sql.Expression{
-											expression.NewUnresolvedColumn("c"),
-										},
-										plan.NewUnresolvedTable("d", ""),
+				expression.NewAlias("(with cte2 as (select c from d) select e from cte2)",
+					plan.NewSubquery(
+						plan.NewWith(
+							plan.NewProject(
+								[]sql.Expression{
+									expression.NewUnresolvedColumn("e"),
+								},
+								plan.NewUnresolvedTable("cte2", "")),
+							[]*plan.CommonTableExpression{
+								plan.NewCommonTableExpression(
+									plan.NewSubqueryAlias("cte2", "select c from d",
+										plan.NewProject(
+											[]sql.Expression{
+												expression.NewUnresolvedColumn("c"),
+											},
+											plan.NewUnresolvedTable("d", ""),
+										),
 									),
+									[]string{},
 								),
-								[]string{},
-							),
-						},
+							},
+						),
+						"with cte2 as (select c from d) select e from cte2",
 					),
-					"with cte2 as (select c from d) select e from cte2",
 				),
 			},
 			plan.NewUnresolvedTable("cte1", ""),
@@ -2419,6 +2696,7 @@ var fixtures = map[string]sql.Node{
 					),
 				),
 				plan.NewInsertInto(
+					sql.UnresolvedDatabase(""),
 					plan.NewUnresolvedTable("zzz", ""),
 					plan.NewValues([][]sql.Expression{{
 						expression.NewUnresolvedQualifiedColumn("old", "a"),
@@ -2428,6 +2706,7 @@ var fixtures = map[string]sql.Node{
 					false,
 					[]string{"a", "b"},
 					[]sql.Expression{},
+					nil,
 				),
 			}),
 		),
@@ -2446,6 +2725,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewInsertInto(
+			sql.UnresolvedDatabase(""),
 			plan.NewUnresolvedTable("zzz", ""),
 			plan.NewValues([][]sql.Expression{{
 				expression.NewUnresolvedQualifiedColumn("old", "a"),
@@ -2455,6 +2735,7 @@ var fixtures = map[string]sql.Node{
 			false,
 			[]string{"a", "b"},
 			[]sql.Expression{},
+			nil,
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
@@ -2463,6 +2744,7 @@ var fixtures = map[string]sql.Node{
 		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewInsertInto(
+			sql.UnresolvedDatabase(""),
 			plan.NewUnresolvedTable("zzz", ""),
 			plan.NewValues([][]sql.Expression{{
 				expression.NewUnresolvedQualifiedColumn("old", "a"),
@@ -2472,6 +2754,7 @@ var fixtures = map[string]sql.Node{
 			false,
 			[]string{"a", "b"},
 			[]sql.Expression{},
+			nil,
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
@@ -2605,23 +2888,22 @@ var fixtures = map[string]sql.Node{
 }
 
 func TestParse(t *testing.T) {
-	for query, expectedPlan := range fixtures {
+	var queriesInOrder []string
+	for q := range fixtures {
+		queriesInOrder = append(queriesInOrder, q)
+	}
+	sort.Strings(queriesInOrder)
+
+	for _, query := range queriesInOrder {
+		expectedPlan := fixtures[query]
 		t.Run(query, func(t *testing.T) {
 			require := require.New(t)
 			ctx := sql.NewEmptyContext()
 			p, err := Parse(ctx, query)
 			require.NoError(err)
-			if len(expectedPlan.Children()) > 0 {
-				ex := expectedPlan.Children()[0]
-				ac := p.Children()[0]
-				assert.Equal(t, ex, ac)
-				if len(expectedPlan.Children()[0].Children()) > 0 {
-					ex := expectedPlan.Children()[0].Children()[0]
-					ac := p.Children()[0].Children()[0]
-					require.Equal(ex, ac)
-				}
+			if !assertNodesEqualWithDiff(t, expectedPlan, p) {
+				t.Logf("Unexpected result for query %s", query)
 			}
-			assertNodesEqualWithDiff(t, expectedPlan, p)
 		})
 	}
 }

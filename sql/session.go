@@ -63,7 +63,7 @@ type Session interface {
 	// SetDefaultDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
 	// CommitTransaction commits the current transaction for this session for the current database
-	CommitTransaction(*Context) error
+	CommitTransaction(ctx *Context, dbName string) error
 	// GetAll returns a copy of session configuration
 	GetAll() map[string]TypedValue
 	// ID returns the unique ID of the connection.
@@ -82,6 +82,11 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
+	// GetQueriedDatabase represents the database the user is running a query on that is NOT the current database.
+	// Should only be used internally by the engine.
+	GetQueriedDatabase() string
+	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
+	SetQueriedDatabase(dbName string)
 }
 
 // BaseSession is the basic session type.
@@ -95,10 +100,11 @@ type BaseSession struct {
 	warnings  []*Warning
 	warncnt   uint16
 	locks     map[string]bool
+	queriedDb string
 }
 
 // CommitTransaction commits the current transaction for the current database.
-func (s *BaseSession) CommitTransaction(*Context) error {
+func (s *BaseSession) CommitTransaction(*Context, string) error {
 	// no-op on BaseSession
 	return nil
 }
@@ -231,6 +237,16 @@ func (s *BaseSession) IterLocks(cb func(name string) error) error {
 	}
 
 	return nil
+}
+
+// GetQueriedDatabase implements the Session interface.
+func (s *BaseSession) GetQueriedDatabase() string {
+	return s.queriedDb
+}
+
+// SetQueriedDatabase implements the Session interface.
+func (s *BaseSession) SetQueriedDatabase(dbName string) {
+	s.queriedDb = dbName
 }
 
 type (
