@@ -15,7 +15,6 @@
 package aggregation
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -237,10 +236,5 @@ func (j JSONObjectAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, erro
 		return nil, nil
 	}
 
-	val, err := json.Marshal(mp)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.MustJSON(string(val)), nil
+	return sql.JSONDocument{Val: mp}, nil
 }
