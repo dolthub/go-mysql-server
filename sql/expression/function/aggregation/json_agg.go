@@ -134,17 +134,107 @@ func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, erro
 //
 // see also: https://dev.mysql.com/doc/refman/8.0/en/json.html#json-normalization
 type JSONObjectAgg struct {
-	sql.Expression
+	key   sql.Expression
+	value sql.Expression
 }
 
 var _ sql.FunctionExpression = JSONObjectAgg{}
 
 // NewJSONObjectAgg creates a new JSONArrayAgg function.
-func NewJSONObjectAgg(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONObjectAgg{}.FunctionName())
+func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
+	return JSONObjectAgg{key: key, value: value}
 }
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONObjectAgg) FunctionName() string {
 	return "json_objectagg"
+}
+
+func (j JSONObjectAgg) Resolved() bool {
+	return j.key.Resolved() && j.value.Resolved()
+}
+
+func (j JSONObjectAgg) String() string {
+	return fmt.Sprintf("JSON_OBJECTAGG(%s, %s)", j.key, j.value)
+}
+
+func (j JSONObjectAgg) Type() sql.Type {
+	return sql.JSON
+}
+
+func (j JSONObjectAgg) IsNullable() bool {
+	return false
+}
+
+func (j JSONObjectAgg) Children() []sql.Expression {
+	return []sql.Expression{j.key, j.value}
+}
+
+func (j JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
+	}
+
+	return NewJSONObjectAgg(children[0], children[1]), nil
+}
+
+// NewBuffer implements the Aggregation interface.
+func (j JSONObjectAgg) NewBuffer() sql.Row {
+	row := make(map[string]interface{})
+	return sql.NewRow(row)
+}
+
+// Update implements the Aggregation interface.
+func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	key, err := j.key.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	// An error occurs if any key name is NULL
+	if key == nil {
+		return sql.ErrJSONObjectAggNullKey.New()
+	}
+
+	val, err := j.value.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	// unwrap JSON values
+	if js, ok := val.(sql.JSONValue); ok {
+		doc, err := js.Unmarshall()
+		if err != nil {
+			return err
+		}
+		val = doc.Val
+	}
+
+	// Update the map.
+	mp := buffer[0].(map[string]interface{})
+
+	keyAsString, err := sql.LongText.Convert(key)
+	if err != nil {
+		return nil
+	}
+	mp[keyAsString.(string)] = val
+
+	return nil
+}
+
+// Merge implements the Aggregation interface.
+func (j JSONObjectAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
+	return j.Update(ctx, buffer, partial)
+}
+
+// Eval implements the Aggregation interface.
+func (j JSONObjectAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
+	mp := buffer[0].(map[string]interface{})
+
+	// When no rows are present return NULL
+	if len(mp) == 0 {
+		return nil, nil
+	}
+
+	return sql.JSONDocument{Val: mp}, nil
 }

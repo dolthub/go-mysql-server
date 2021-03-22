@@ -1687,7 +1687,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT RAND(i) from mytable order by i`,
+		Query:    `SELECT RAND(i) from mytable order by i`,
 		Expected: []sql.Row{{0.6046602879796196}, {0.16729663442585624}, {0.7199826688373036}},
 	},
 	{
@@ -2655,7 +2655,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"00"}},
 	},
 	{
-		Query:    "select md5(i) from mytable order by 1",
+		Query: "select md5(i) from mytable order by 1",
 		Expected: []sql.Row{
 			{"c4ca4238a0b923820dcc509a6f75849b"},
 			{"c81e728d9d4c2f636f067f89cc14862c"},
@@ -2663,7 +2663,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "select sha1(i) from mytable order by 1",
+		Query: "select sha1(i) from mytable order by 1",
 		Expected: []sql.Row{
 			{"356a192b7913b04c54574d18c28d46e6395428ab"},
 			{"77de68daecd823babbb58edb1c8e14d7106e83bb"},
@@ -2671,7 +2671,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "select sha2(i, 256) from mytable order by 1",
+		Query: "select sha2(i, 256) from mytable order by 1",
 		Expected: []sql.Row{
 			{"4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce"},
 			{"6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"},
@@ -2703,7 +2703,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{0.0}, {0.6309297535714575}, {1.0}},
 	},
 	{
-		Query:    "select lower(s) from mytable order by i",
+		Query: "select lower(s) from mytable order by i",
 		Expected: []sql.Row{
 			{"first row"},
 			{"second row"},
@@ -2711,7 +2711,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    "select upper(s) from mytable order by i",
+		Query: "select upper(s) from mytable order by i",
 		Expected: []sql.Row{
 			{"FIRST ROW"},
 			{"SECOND ROW"},
@@ -4484,9 +4484,8 @@ var BrokenQueries = []QueryTest{
 	// This isn't broken, it's just difficult to test this. We want to evaluate date_format with a column argument.
 	// FROM_UNIXTIME() would be great to have here.
 	{
-		Query:    "select date_format(unix_timestamp(i), '%s') from mytable order by 1",
+		Query: "select date_format(unix_timestamp(i), '%s') from mytable order by 1",
 	},
-
 }
 
 var VersionedQueries = []QueryTest{

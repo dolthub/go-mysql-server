@@ -181,6 +181,9 @@ var (
 
 	// ErrSecureFileDirNotSet is returned when LOAD DATA INFILE is called but the secure_file_priv system variable is not set.
 	ErrSecureFileDirNotSet = errors.NewKind("secure_file_priv needs to be set to a directory")
+
+	// ErrJSONObjectAggNullKey is returned when JSON_OBJECTAGG is run on a table with NULL keys
+	ErrJSONObjectAggNullKey = errors.NewKind("JSON documents may not contain NULL member names")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

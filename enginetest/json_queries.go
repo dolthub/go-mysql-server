@@ -208,4 +208,165 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Simple JSON_OBJECTAGG with GROUP BY",
+		SetUpScript: []string{
+			"create table t2 (o_id int, val int)",
+			"INSERT INTO t2 VALUES (1,1), (1,2), (1,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT JSON_OBJECTAGG(o_id, val) FROM t2 GROUP BY o_id",
+				Expected: []sql.Row{
+					{
+						sql.MustJSON(`{"1": 3}`),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "More complex JSON_OBJECTAGG WITH GROUP BY",
+		SetUpScript: []string{
+			"create table t (o_id int, attribute longtext, value longtext)",
+			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT o_id, JSON_OBJECTAGG(attribute, value) FROM t GROUP BY o_id`,
+				Expected: []sql.Row{
+					{
+						2, sql.MustJSON(`{"color": "red", "fabric": "silk"}`),
+					},
+					{
+						3, sql.MustJSON(`{"color": "green", "shape": "square"}`),
+					},
+				},
+			},
+			{
+				Query: `SELECT o_id, JSON_OBJECTAGG(o_id, value) FROM t GROUP BY o_id`,
+				Expected: []sql.Row{
+					{
+						2, sql.MustJSON(`{"2": "silk"}`),
+					},
+					{
+						3, sql.MustJSON(`{"3": "square"}`),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "3 column table that uses JSON_OBJECTAGG without groupby",
+		SetUpScript: []string{
+			"create table t (o_id int, attribute longtext, value longtext)",
+			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select JSON_OBJECTAGG(o_id, value) from t`,
+				Expected: []sql.Row{
+					{
+						sql.MustJSON(`{"2": "silk", "3": "square"}`),
+					},
+				},
+			},
+			{
+				Query: `select JSON_OBJECTAGG(attribute, value) from t`,
+				Expected: []sql.Row{
+					{
+						sql.MustJSON(`{"color": "green", "fabric": "silk", "shape": "square"}`),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "JSON_OBJECTAGG and null values",
+		SetUpScript: []string{
+			`create table test (pk int primary key, val longtext)`,
+			`insert into test values (1, NULL)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT JSON_OBJECTAGG(pk, val) from test`,
+				Expected: []sql.Row{
+					{
+						sql.MustJSON(`{"1": null}`),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "JSON_OBJECTAGG and nested json values",
+		SetUpScript: []string{
+			"create table j(pk int, val JSON)",
+			`INSERT INTO j VALUES(1, '{"key1": "value1", "key2": "value2"}')`,
+			`INSERT INTO j VALUES(1, '{"key1": {"key": [2,3]}}')`,
+			`INSERT INTO j VALUES(2, '["a", 1]')`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT JSON_OBJECTAGG(pk, val) from j`,
+				Expected: []sql.Row{
+					{
+						sql.MustJSON(`{"1": {"key1": {"key": [2, 3]}}, "2": ["a", 1]}`),
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "JSON_OBJECTAGG correctly returns null when no rows are present",
+		SetUpScript: []string{
+			`create table test (pk int primary key, val longtext)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT JSON_OBJECTAGG(pk, val) from test`,
+				Expected: []sql.Row{
+					{
+						nil,
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "JSON_OBJECTAGG handles errors appropriately",
+		SetUpScript: []string{
+			`create table test (pk int, val longtext)`,
+			`insert into test values (1, NULL)`,
+			`insert into test values (NULL, 1)`, // NULL keys are not allowed in JSON_OBJECTAGG
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `SELECT JSON_OBJECTAGG(pk, notval) from test`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       `SELECT JSON_OBJECTAGG(notpk, val) from test`,
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query:       `SELECT JSON_OBJECTAGG(pk, val) from nottest`,
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query:       `SELECT JSON_OBJECTAGG(pk, val, badarg) from test`,
+				RequiredErr: true,
+			},
+			{
+				Query:       `SELECT JSON_OBJECTAGG(pk) from test`,
+				RequiredErr: true,
+			},
+			{
+				Query:       `SELECT JSON_OBJECTAGG(pk, val) from test`,
+				ExpectedErr: sql.ErrJSONObjectAggNullKey,
+			},
+		},
+	},
 }
