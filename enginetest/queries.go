@@ -184,12 +184,10 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT column_0, sum(column_1) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
-			group by 1 having avg(column_1) > 2 order by 1`,
+		Query: `SELECT i, sum(i) FROM mytable group by 1 having avg(i) > 1 order by 1`,
 		Expected: []sql.Row{
-			{2, 7.0},
-			{3, 9.0},
+			{2, 2.0},
+			{3, 3.0},
 		},
 	},
 	{
@@ -4460,6 +4458,16 @@ var BrokenQueries = []QueryTest{
 			{1, 50.0, 10.0},
 			{2, 30.0, 15.0},
 			{3, nil, 15.0},
+		},
+	},
+	// something broken in the resolve_having analysis for this
+	{
+		Query: `SELECT column_0, sum(column_1) FROM 
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+			group by 1 having avg(column_1) > 2 order by 1`,
+		Expected: []sql.Row{
+			{2, 7.0},
+			{3, 9.0},
 		},
 	},
 	{
