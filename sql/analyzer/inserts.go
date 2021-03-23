@@ -21,67 +21,79 @@ import (
 )
 
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	insert, ok := n.(*plan.InsertInto)
-	if !ok {
+	if _, ok := n.(*plan.TriggerExecutor); ok {
+		return n, nil
+	} else if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, nil
 	}
-
-	insertable, err := plan.GetInsertable(insert.Destination)
-	if err != nil {
-		return nil, err
-	}
-
-	if insert.IsReplace {
-		var ok bool
-		_, ok = insertable.(sql.ReplaceableTable)
+	// We capture all INSERTs along the tree, such as those inside of block statements.
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		insert, ok := n.(*plan.InsertInto)
 		if !ok {
-			return nil, plan.ErrReplaceIntoNotSupported.New()
+			return n, nil
 		}
-	}
 
-	if len(insert.OnDupExprs) > 0 {
-		var ok bool
-		_, ok = insertable.(sql.UpdatableTable)
-		if !ok {
-			return nil, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
-		}
-	}
-
-	// Analyze the source of the insert independently
-	source, err := a.Analyze(ctx, insert.Source, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	source = stripQueryProcess(source)
-
-	dstSchema := insertable.Schema()
-
-	// If no columns are given, use the full schema
-	columnNames := insert.ColumnNames
-	if len(columnNames) == 0 {
-		columnNames = make([]string, len(dstSchema))
-		for i, f := range dstSchema {
-			columnNames[i] = f.Name
-		}
-	} else {
-		err = validateColumns(columnNames, dstSchema)
+		insertable, err := plan.GetInsertable(insert.Destination)
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	err = validateValueCount(columnNames, source)
-	if err != nil {
-		return nil, err
-	}
+		if insert.IsReplace {
+			var ok bool
+			_, ok = insertable.(sql.ReplaceableTable)
+			if !ok {
+				return nil, plan.ErrReplaceIntoNotSupported.New()
+			}
+		}
 
-	project, err := wrapRowSource(ctx, source, insertable, columnNames)
-	if err != nil {
-		return nil, err
-	}
+		if len(insert.OnDupExprs) > 0 {
+			var ok bool
+			_, ok = insertable.(sql.UpdatableTable)
+			if !ok {
+				return nil, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
+			}
+		}
 
-	return insert.WithSource(project), nil
+		source := insert.Source
+		// TriggerExecutor has already been analyzed
+		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
+			// Analyze the source of the insert independently
+			source, err = a.Analyze(ctx, insert.Source, scope)
+			if err != nil {
+				return nil, err
+			}
+
+			source = stripQueryProcess(source)
+		}
+
+		dstSchema := insertable.Schema()
+
+		// If no columns are given, use the full schema
+		columnNames := insert.ColumnNames
+		if len(columnNames) == 0 {
+			columnNames = make([]string, len(dstSchema))
+			for i, f := range dstSchema {
+				columnNames[i] = f.Name
+			}
+		} else {
+			err = validateColumns(columnNames, dstSchema)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		err = validateValueCount(columnNames, source)
+		if err != nil {
+			return nil, err
+		}
+
+		project, err := wrapRowSource(ctx, source, insertable, columnNames)
+		if err != nil {
+			return nil, err
+		}
+
+		return insert.WithSource(project), nil
+	})
 }
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the

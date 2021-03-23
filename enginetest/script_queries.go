@@ -39,8 +39,10 @@ type ScriptTestAssertion struct {
 	Query       string
 	Expected    []sql.Row
 	ExpectedErr *errors.Kind
-	// For tests that just require a particular error but are not linked to a custom error, RequiredError can be set.
-	RequiredErr bool
+	// ExpectedErrStr should be set for tests that expect a specific error string this is not linked to a custom error.
+	// In most cases, errors should be linked to a custom error, however there are exceptions where this is not possible,
+	// such as the use of the SIGNAL statement.
+	ExpectedErrStr string
 }
 
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
@@ -353,11 +355,11 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       `SELECT UUID_TO_BIN(123)`,
-				RequiredErr: true,
+				ExpectedErr: sql.ErrUuidUnableToParse,
 			},
 			{
 				Query:       `SELECT BIN_TO_UUID(123)`,
-				RequiredErr: true,
+				ExpectedErr: sql.ErrUuidUnableToParse,
 			},
 			{
 				Query:    `SELECT BIN_TO_UUID(X'00112233445566778899aabbccddeeff')`,
@@ -392,6 +394,32 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT * from a",
 				Expected: []sql.Row{{1, 2, 3}},
+			},
+		},
+	},
+	{
+		// All DECLARE statements are only allowed under BEGIN/END blocks
+		Name: "Top-level DECLARE statements",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "DECLARE no_such_table CONDITION FOR SQLSTATE '42S02'",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE no_such_table CONDITION FOR 1051",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE a CHAR(16)",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE cur2 CURSOR FOR SELECT i FROM test.t2",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
+				ExpectedErr: sql.ErrSyntaxError,
 			},
 		},
 	},

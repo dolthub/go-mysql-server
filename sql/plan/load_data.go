@@ -118,7 +118,7 @@ func (l *LoadData) setParsingValues() error {
 
 		if lf.EscapedBy != nil {
 			if len(string(lf.EscapedBy.Val)) > 1 {
-				return fmt.Errorf("error: LOAD DATA ESCAPED BY %s must be 1 character long", lf.EscapedBy)
+				return sql.ErrLoadDataCharacterLength.New(fmt.Sprintf("LOAD DATA ESCAPED BY %s", lf.EscapedBy))
 			}
 
 			l.fieldsEscapedByDelim = string(lf.EscapedBy.Val)
@@ -133,7 +133,7 @@ func (l *LoadData) setParsingValues() error {
 
 			if lfe.Delim != nil {
 				if len(string(lfe.Delim.Val)) > 1 {
-					return fmt.Errorf("error: LOAD DATA ENCLOSED BY must be 1 character long")
+					return sql.ErrLoadDataCharacterLength.New("LOAD DATA ENCLOSED BY")
 				}
 
 				l.fieldsEnclosedByDelim = string(lfe.Delim.Val)
@@ -171,7 +171,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		return nil, err
+		return nil, sql.ErrLoadDataCannotOpen.New(err.Error())
 	}
 
 	scanner := bufio.NewScanner(file)

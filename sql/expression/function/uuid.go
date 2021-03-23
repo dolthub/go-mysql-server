@@ -261,7 +261,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	parsed, err := uuid.Parse(uuidAsStr)
 	if err != nil {
-		return nil, err
+		return nil, sql.ErrUuidUnableToParse.New(uuidAsStr, err.Error())
 	}
 
 	// If no swap flag is passed we can return uuid's byte format as is.
@@ -306,7 +306,7 @@ func swapUUIDBytes(cur uuid.UUID) []byte {
 	copy(ret[0:2], cur[6:8])
 	copy(ret[2:4], cur[4:6])
 	copy(ret[4:8], cur[0:4])
-	copy(ret[8:],  cur[8:])
+	copy(ret[8:], cur[8:])
 
 	return ret
 }
@@ -411,6 +411,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	asBytes := []byte(uuidAsByteString)
 	parsed, err := uuid.FromBytes(asBytes)
 	if err != nil {
+		return nil, sql.ErrUuidUnableToParse.New(uuidAsByteString, err.Error())
 		return nil, err
 	}
 
@@ -453,7 +454,7 @@ func unswapUUIDBytes(cur uuid.UUID) []byte {
 	copy(ret[0:4], cur[4:8])
 	copy(ret[4:6], cur[2:4])
 	copy(ret[6:8], cur[0:2])
-	copy(ret[8:],  cur[8:])
+	copy(ret[8:], cur[8:])
 
 	return ret
 }

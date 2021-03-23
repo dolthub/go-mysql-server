@@ -107,7 +107,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
-				RequiredErr: true, // path error
+				ExpectedErr: sql.ErrLoadDataCannotOpen,
 			},
 		},
 	},
@@ -133,7 +133,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ESCAPED BY 'xx' (pk)",
-				RequiredErr: true,
+				ExpectedErr: sql.ErrLoadDataCharacterLength,
 			},
 		},
 	},
@@ -146,7 +146,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY 'xx' (pk)",
-				RequiredErr: true,
+				ExpectedErr: sql.ErrLoadDataCharacterLength,
 			},
 		},
 	},
