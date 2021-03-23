@@ -30,10 +30,23 @@ func (v *ValueDerivedTable) Schema() sql.Schema {
 	// TODO: get type by examining all rows
 	schema := v.Values.Schema()
 	for i := range schema {
+		schema[i].Source = v.name
 		schema[i].Name = fmt.Sprintf("column_%d", i)
 	}
 
 	return schema
+}
+
+// WithExpressions implements the Expressioner interface.
+func (v *ValueDerivedTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	newValues, err := v.Values.WithExpressions(exprs...)
+	if err != nil {
+		return nil, err
+	}
+
+	nv := *v
+	nv.Values = newValues.(*Values)
+	return &nv, nil
 }
 
 func (v *ValueDerivedTable) String() string {

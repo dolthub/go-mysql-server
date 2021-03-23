@@ -275,6 +275,16 @@ func (jo *joinOrderNode) tables() []NameableNode {
 // `jo.order` for commutable nodes.
 func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesByTable) error {
 	if jo.node != nil {
+		// Subqueries are considered opaque in this analysis, so give them the opaque table cost.
+		switch node := jo.node.(type) {
+		case *plan.SubqueryAlias:
+			jo.cost = uint64(1000)
+			return nil
+		case *plan.ValueDerivedTable:
+			jo.cost = uint64(len(node.ExpressionTuples))
+			return nil
+		}
+
 		rt := getResolvedTable(jo.node)
 		// TODO: also consider indexes which could be pushed down to this table, if it's the first one
 		if st, ok := rt.Table.(sql.StatisticsTable); ok {
@@ -323,6 +333,7 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		jo.order = accessOrders[lowestCostIdx]
 		jo.cost = lowestCost
 	}
+
 	return nil
 }
 
@@ -337,7 +348,8 @@ func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder [
 		if jo.commutes[idx].node != nil {
 			indexes := joinIndexes[strings.ToLower(jo.commutes[idx].node.Name())]
 			_, isSubquery := jo.commutes[idx].node.(*plan.SubqueryAlias)
-			if i == 0 || isSubquery || indexes.getUsableIndex(availableSchemaForKeys) == nil {
+			_, isValuesTable := jo.commutes[idx].node.(*plan.ValueDerivedTable)
+			if i == 0 || isSubquery || isValuesTable || indexes.getUsableIndex(availableSchemaForKeys) == nil {
 				cost *= jo.commutes[idx].cost
 			} else {
 				cost += 1

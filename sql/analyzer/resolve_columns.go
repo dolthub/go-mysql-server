@@ -200,7 +200,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
-				case *plan.ResolvedTable, *plan.UnresolvedTable:
+				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					names.indexTable(alias, name, i)
