@@ -1074,8 +1074,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 	for _, assertion := range assertions {
 		if assertion.ExpectedErr != nil {
 			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-		} else if assertion.RequiredErr {
-			AssertErr(t, e, harness, assertion.Query, nil)
+		} else if assertion.ExpectedErrStr != "" {
+			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil)
 		}
@@ -2796,7 +2796,7 @@ func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 }
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
-func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind) {
+func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx := NewContext(harness)
 	_, iter, err := e.Query(ctx, query)
 	if err == nil {
@@ -2805,6 +2805,10 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+	}
+	// If there are multiple error strings then we only match against the first
+	if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
 	}
 }
 

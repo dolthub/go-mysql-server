@@ -1091,6 +1091,53 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger with signal",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create table c (z int primary key)",
+			"insert into c values (-1)",
+			`create trigger trig_with_signal before insert on a for each row
+begin
+	declare cond_name condition for sqlstate '45000';
+	if new.x = 5 then signal cond_name set message_text = 'trig err';
+	end if;
+	insert into b values (new.x + 1);
+	update c set z = new.x;
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (3)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query:          "insert into a values (5)",
+				ExpectedErrStr: "trig err (errno 1644) (sqlstate 45000)",
+			},
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{1}, {3},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4},
+				},
+			},
+			{
+				Query: "select z from c order by 1",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+		},
+	},
 	// Information schema scripts
 	{
 		Name: "infoschema for multiple triggers before and after insert, with precedes / follows",

@@ -91,7 +91,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select max(pk),c2 from one_pk group by c1 order by 1",
+		Query:    "select max(pk),c2 from one_pk group by c1 order by 1",
 		Expected: []sql.Row{{0, 1}, {1, 11}, {2, 21}, {3, 31}},
 	},
 	{

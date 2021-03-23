@@ -357,11 +357,11 @@ var JsonScripts = []ScriptTest{
 			},
 			{
 				Query:       `SELECT JSON_OBJECTAGG(pk, val, badarg) from test`,
-				RequiredErr: true,
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
 			},
 			{
 				Query:       `SELECT JSON_OBJECTAGG(pk) from test`,
-				RequiredErr: true,
+				ExpectedErr: sql.ErrInvalidArgumentNumber,
 			},
 			{
 				Query:       `SELECT JSON_OBJECTAGG(pk, val) from test`,
