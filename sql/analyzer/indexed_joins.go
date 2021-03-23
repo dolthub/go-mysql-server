@@ -266,14 +266,16 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	tableJoinOrder := newJoinOrderNode(node)
 
 	// Find a hinted or cost optimized access order for them
+	ordered := false
 	if joinHint != nil {
-		err := tableJoinOrder.applyJoinHint(joinHint)
+		var err error
+		ordered, err = tableJoinOrder.applyJoinHint(joinHint)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if tableJoinOrder.order == nil {
+	if !ordered {
 		err := tableJoinOrder.estimateCost(ctx, joinIndexes)
 		if err != nil {
 			return nil, err
