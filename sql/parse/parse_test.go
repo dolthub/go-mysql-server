@@ -1045,6 +1045,67 @@ var fixtures = map[string]sql.Node{
 			),
 		),
 	),
+	`SELECT * FROM (values row(1,2), row(3,4)) a;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewValueDerivedTable(
+			plan.NewValues([][]sql.Expression{
+				{
+					expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewLiteral(int8(2), sql.Int8),
+				},
+				{
+					expression.NewLiteral(int8(3), sql.Int8),
+					expression.NewLiteral(int8(4), sql.Int8),
+				},
+			}),
+			"a"),
+	),
+	`SELECT * FROM (values row(1+1,2+2), row(rand(),concat("a","b"))) a;`: plan.NewProject(
+		[]sql.Expression{
+			expression.NewStar(),
+		},
+		plan.NewValueDerivedTable(
+			plan.NewValues([][]sql.Expression{
+				{
+					expression.NewArithmetic(
+					expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), sql.Int8),
+					"+",
+					),
+					expression.NewArithmetic(
+						expression.NewLiteral(int8(2), sql.Int8),
+						expression.NewLiteral(int8(2), sql.Int8),
+						"+",
+					),
+				},
+				{
+					expression.NewUnresolvedFunction("rand", false, nil),
+					expression.NewUnresolvedFunction("concat", false, nil, expression.NewLiteral("a", sql.LongText), expression.NewLiteral("b", sql.LongText)),
+				},
+			}),
+			"a"),
+	),
+	`SELECT column_0 FROM (values row(1,2), row(3,4)) a limit 1`: plan.NewLimit(1,
+		plan.NewProject(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("column_0"),
+		},
+		plan.NewValueDerivedTable(
+			plan.NewValues([][]sql.Expression{
+				{
+					expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewLiteral(int8(2), sql.Int8),
+				},
+				{
+					expression.NewLiteral(int8(3), sql.Int8),
+					expression.NewLiteral(int8(4), sql.Int8),
+				},
+			}),
+			"a"),
+	),
+	),
 	`SELECT foo, bar FROM foo WHERE foo <=> bar;`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("foo"),

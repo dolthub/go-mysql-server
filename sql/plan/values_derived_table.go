@@ -67,7 +67,7 @@ func (v *ValueDerivedTable) DebugString() string {
 			if j > 0 {
 				sb.WriteString(",")
 			}
-			sb.WriteString(sql.DebugString(e.String()))
+			sb.WriteString(sql.DebugString(e))
 		}
 		sb.WriteRune(')')
 		children[i] = sb.String()
