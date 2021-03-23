@@ -194,13 +194,13 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
 		plan.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
-			case *plan.SubqueryAlias, *plan.ResolvedTable:
+			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				name := strings.ToLower(n.(sql.Nameable).Name())
 				names.indexTable(name, name, i)
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
-				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias:
+				case *plan.ResolvedTable, *plan.UnresolvedTable:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					names.indexTable(alias, name, i)
@@ -333,7 +333,7 @@ func getColumnsInNodes(nodes []sql.Node, names availableNames, nestingLevel int)
 
 	for _, node := range nodes {
 		switch n := node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias:
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable:
 			for _, col := range n.Schema() {
 				names.indexColumn(col.Source, col.Name, nestingLevel)
 			}
