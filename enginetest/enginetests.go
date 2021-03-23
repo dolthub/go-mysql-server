@@ -3680,7 +3680,7 @@ func widenJSONValues(val interface{}) sql.JSONValue {
 		panic(fmt.Sprintf("%v is not json", val))
 	}
 
-	doc, err := js.Unmarshall()
+	doc, err := js.Unmarshall(context.Background())
 	if err != nil {
 		panic(err)
 	}
