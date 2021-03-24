@@ -312,6 +312,11 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 
 			var schema sql.Schema
 			for _, c := range n.Children() {
+				// Values nodes are an exception to this analysis, since their schema columns don't have a Source field
+				// like other sources of rows
+				if _, ok := c.(*plan.Values); ok {
+					continue
+				}
 				schema = append(schema, c.Schema()...)
 			}
 
@@ -335,8 +340,7 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 					return nil, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
 				}
 
-				return gf.WithIndex(idx), nil
-			})
+				return gf.WithIndex(idx), nil})
 		}
 	})
 }
