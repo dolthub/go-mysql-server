@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"context"
 	"encoding/json"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -42,7 +41,7 @@ func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
 	if b, err = t.Convert(b); err != nil {
 		return 0, err
 	}
-	return a.(JSONValue).Compare(context.Background(), b.(JSONValue))
+	return a.(JSONValue).Compare(NewEmptyContext(), b.(JSONValue))
 }
 
 // Convert implements Type interface.
@@ -83,7 +82,7 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	s, err := js.ToString(context.Background())
+	s, err := js.ToString(NewEmptyContext())
 	if err != nil {
 		return sqltypes.NULL, err
 	}

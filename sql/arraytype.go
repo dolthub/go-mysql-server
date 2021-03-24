@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -133,7 +132,7 @@ func (t arrayType) SQL(v interface{}) (sqltypes.Value, error) {
 	var val []byte
 	js, ok := v.(JSONValue)
 	if ok {
-		s, err := js.ToString(context.Background())
+		s, err := js.ToString(NewEmptyContext())
 		if err != nil {
 			return sqltypes.Value{}, err
 		}

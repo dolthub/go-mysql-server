@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"context"
 	"encoding/json"
 	"sort"
 	"strings"
@@ -26,12 +25,12 @@ import (
 // JSONValue is an integrator specific implementation of a JSON field value.
 type JSONValue interface {
 	// Unmarshall converts a JSONValue to a JSONDocument
-	Unmarshall(ctx context.Context) (val JSONDocument, err error)
+	Unmarshall(ctx *Context) (val JSONDocument, err error)
 	// Compare compares two JSONValues. It maintains the same return value
 	// semantics as Type.Compare()
-	Compare(ctx context.Context, v JSONValue) (cmp int, err error)
+	Compare(ctx *Context, v JSONValue) (cmp int, err error)
 	// ToString marshalls a JSONValue to a valid JSON-encoded string.
-	ToString(ctx context.Context) (string, error)
+	ToString(ctx *Context) (string, error)
 }
 
 // SearchableJSONValue is JSONValue supporting in-place access operations.
@@ -41,15 +40,15 @@ type SearchableJSONValue interface {
 	JSONValue
 
 	// Contains is value-specific implementation of JSON_Contains()
-	Contains(ctx context.Context, path string) (ok bool, err error)
+	Contains(ctx *Context, path string) (ok bool, err error)
 	// Extract is value-specific implementation of JSON_Extract()
-	Extract(ctx context.Context, path string) (val JSONValue, err error)
+	Extract(ctx *Context, path string) (val JSONValue, err error)
 	// Keys is value-specific implementation of JSON_Keys()
-	Keys(ctx context.Context, path string) (val JSONValue, err error)
+	Keys(ctx *Context, path string) (val JSONValue, err error)
 	// Overlaps is value-specific implementation of JSON_Overlaps()
-	Overlaps(ctx context.Context, val SearchableJSONValue) (ok bool, err error)
+	Overlaps(ctx *Context, val SearchableJSONValue) (ok bool, err error)
 	// Search is value-specific implementation of JSON_Search()
-	Search(ctx context.Context) (path string, err error)
+	Search(ctx *Context) (path string, err error)
 }
 
 type JSONDocument struct {
@@ -58,11 +57,11 @@ type JSONDocument struct {
 
 var _ JSONValue = JSONDocument{}
 
-func (doc JSONDocument) Unmarshall(_ context.Context) (JSONDocument, error) {
+func (doc JSONDocument) Unmarshall(_ *Context) (JSONDocument, error) {
 	return doc, nil
 }
 
-func (doc JSONDocument) Compare(ctx context.Context, v JSONValue) (int, error) {
+func (doc JSONDocument) Compare(ctx *Context, v JSONValue) (int, error) {
 	other, err := v.Unmarshall(ctx)
 	if err != nil {
 		return 0, err
@@ -70,18 +69,18 @@ func (doc JSONDocument) Compare(ctx context.Context, v JSONValue) (int, error) {
 	return compareJSON(doc.Val, other.Val)
 }
 
-func (doc JSONDocument) ToString(_ context.Context) (string, error) {
+func (doc JSONDocument) ToString(_ *Context) (string, error) {
 	bb, err := json.Marshal(doc.Val)
 	return string(bb), err
 }
 
 var _ SearchableJSONValue = JSONDocument{}
 
-func (doc JSONDocument) Contains(ctx context.Context, path string) (ok bool, err error) {
+func (doc JSONDocument) Contains(ctx *Context, path string) (ok bool, err error) {
 	panic("not implemented")
 }
 
-func (doc JSONDocument) Extract(ctx context.Context, path string) (JSONValue, error) {
+func (doc JSONDocument) Extract(ctx *Context, path string) (JSONValue, error) {
 	c, err := jsonpath.Compile(path)
 	if err != nil {
 		return nil, err
@@ -93,19 +92,19 @@ func (doc JSONDocument) Extract(ctx context.Context, path string) (JSONValue, er
 	return JSONDocument{Val: val}, nil
 }
 
-func (doc JSONDocument) Keys(ctx context.Context, path string) (val JSONValue, err error) {
+func (doc JSONDocument) Keys(ctx *Context, path string) (val JSONValue, err error) {
 	panic("not implemented")
 }
 
-func (doc JSONDocument) Overlaps(ctx context.Context, val SearchableJSONValue) (ok bool, err error) {
+func (doc JSONDocument) Overlaps(ctx *Context, val SearchableJSONValue) (ok bool, err error) {
 	panic("not implemented")
 }
 
-func (doc JSONDocument) Search(ctx context.Context) (path string, err error) {
+func (doc JSONDocument) Search(ctx *Context) (path string, err error) {
 	panic("not implemented")
 }
 
-func ConcatenateJSONValues(ctx context.Context, vals ...JSONValue) (JSONValue, error) {
+func ConcatenateJSONValues(ctx *Context, vals ...JSONValue) (JSONValue, error) {
 	arr := make([]interface{}, len(vals))
 	for i, v := range vals {
 		d, err := v.Unmarshall(ctx)
