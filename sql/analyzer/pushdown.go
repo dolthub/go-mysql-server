@@ -172,7 +172,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliase
 					return nil, err
 				}
 				return FixFieldIndexesForExpressions(n, scope)
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.ValueDerivedTable:
 				table, err := pushdownFiltersToTable(a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, err
@@ -354,7 +354,7 @@ func pushdownFiltersToTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.SubqueryAlias:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.ValueDerivedTable:
 		node, err := withTable(newTableNode, table)
 		if err != nil {
 			return nil, err

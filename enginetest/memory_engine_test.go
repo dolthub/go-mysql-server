@@ -88,11 +88,12 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY sum(i) DESC",
+		Query: `SELECT column_0, sum(column_1) FROM 
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+			group by 1 having avg(column_1) > 2 order by 1`,
 		Expected: []sql.Row{
-			{int64(3), float64(3)},
-			{int64(2), float64(2)},
-			{int64(1), float64(1)},
+			{2, 7.0},
+			{3, 9.0},
 		},
 	}
 	fmt.Sprintf("%v", test)

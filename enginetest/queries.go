@@ -160,6 +160,66 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
+		Expected: []sql.Row{
+			{1.0, "ab"},
+			{2, 4},
+		},
+	},
+	{
+		Query: `SELECT column_0 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
+		Expected: []sql.Row{
+			{1.0},
+			{2},
+		},
+	},
+	{
+		Query: `SELECT column_0, sum(column_1) FROM 
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+			group by 1 order by 1`,
+		Expected: []sql.Row{
+			{1, 4.0},
+			{2, 7.0},
+			{3, 9.0},
+		},
+	},
+	{
+		Query: `SELECT i, sum(i) FROM mytable group by 1 having avg(i) > 1 order by 1`,
+		Expected: []sql.Row{
+			{2, 2.0},
+			{3, 3.0},
+		},
+	},
+	{
+		Query: `SELECT a.column_0, b.column_1 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a
+			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
+			order by 1`,
+		Expected: []sql.Row{
+			{1.0, "ab"},
+			{2, 4},
+		},
+	},
+	{
+		Query: `SELECT a.column_0, mt.s from (values row(1,"1"), row(2,"2"), row(4,"4")) a
+			left join mytable mt on column_0 = mt.i
+			order by 1`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{4, nil},
+		},
+	},
+	{
+		Query: `SELECT * FROM (select * from mytable) a
+			join (select * from mytable) b on a.i = b.i
+			order by 1`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "first row"},
+			{2, "second row", 2, "second row"},
+			{3, "third row", 3, "third row"},
+		},
+	},
+	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -4398,6 +4458,16 @@ var BrokenQueries = []QueryTest{
 			{1, 50.0, 10.0},
 			{2, 30.0, 15.0},
 			{3, nil, 15.0},
+		},
+	},
+	// something broken in the resolve_having analysis for this
+	{
+		Query: `SELECT column_0, sum(column_1) FROM 
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+			group by 1 having avg(column_1) > 2 order by 1`,
+		Expected: []sql.Row{
+			{2, 7.0},
+			{3, 9.0},
 		},
 	},
 	{

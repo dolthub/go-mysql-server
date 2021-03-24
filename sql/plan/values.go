@@ -53,7 +53,7 @@ func (p *Values) Schema() sql.Schema {
 		}
 	}
 
-	return nil
+	return s
 }
 
 // Children implements the Node interface.
