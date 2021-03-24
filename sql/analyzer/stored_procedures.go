@@ -72,11 +72,15 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 				if err != nil {
 					return nil, err
 				}
-				procNode, err := resolveProcedureParams(paramNames, cp.Procedure)
+				analyzedNode, err := resolveDeclarations(ctx, a, cp.Procedure, scope)
 				if err != nil {
 					return nil, err
 				}
-				analyzedNode, err := analyzeProcedureBodies(ctx, a, procNode, false, nil)
+				analyzedNode, err = resolveProcedureParams(paramNames, analyzedNode)
+				if err != nil {
+					return nil, err
+				}
+				analyzedNode, err = analyzeProcedureBodies(ctx, a, analyzedNode, false, scope)
 				if err != nil {
 					return nil, err
 				}
@@ -194,13 +198,14 @@ func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string
 			if proc.Name == strings.ToLower(n.Name) {
 				err = sql.ErrProcedureRecursiveCall.New(proc.Name)
 			}
-		//TODO: add LOAD DATA
 		case *plan.LockTables: // Blocked in vitess, but this is for safety
 			err = sql.ErrProcedureInvalidBodyStatement.New("LOCK TABLES")
 		case *plan.UnlockTables: // Blocked in vitess, but this is for safety
 			err = sql.ErrProcedureInvalidBodyStatement.New("UNLOCK TABLES")
 		case *plan.Use: // Blocked in vitess, but this is for safety
 			err = sql.ErrProcedureInvalidBodyStatement.New("USE")
+		case *plan.LoadData:
+			err = sql.ErrProcedureInvalidBodyStatement.New("LOAD DATA")
 		default:
 			return true
 		}
@@ -214,7 +219,7 @@ func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string
 }
 
 // resolveProcedureParams resolves all of the named parameters and declared variables inside of a stored procedure.
-func resolveProcedureParams(paramNames map[string]struct{}, proc *plan.Procedure) (*plan.Procedure, error) {
+func resolveProcedureParams(paramNames map[string]struct{}, proc sql.Node) (sql.Node, error) {
 	newProcNode, err := resolveProcedureParamsTransform(paramNames, proc)
 	if err != nil {
 		return nil, err

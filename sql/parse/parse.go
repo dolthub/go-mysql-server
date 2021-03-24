@@ -197,6 +197,10 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertLoad(ctx, n)
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
+	case *sqlparser.Declare:
+			return convertDeclare(ctx, n)
+	case *sqlparser.Signal:
+		return convertSignal(ctx, n)
 	}
 }
 
@@ -818,6 +822,116 @@ func convertCall(ctx *sql.Context, c *sqlparser.Call) (sql.Node, error) {
 		params[i] = expr
 	}
 	return plan.NewCall(c.FuncName, params), nil
+}
+
+func convertDeclare(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
+	if d.Condition != nil {
+		return convertDeclareCondition(ctx, d)
+	}
+	return nil, ErrUnsupportedSyntax.New(sqlparser.String(d))
+}
+
+func convertDeclareCondition(ctx *sql.Context, d *sqlparser.Declare) (sql.Node, error) {
+	dc := d.Condition
+	if dc.SqlStateValue != "" {
+		if len(dc.SqlStateValue) != 5 {
+			return nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+		}
+		if dc.SqlStateValue[0:2] == "00" {
+			return nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", dc.SqlStateValue)
+		}
+	} else {
+		number, err := strconv.ParseUint(string(dc.MysqlErrorCode.Val), 10, 64)
+		if err != nil || number == 0 {
+			// We use our own error instead
+			return nil, fmt.Errorf("invalid value '%s' for MySQL error code", string(dc.MysqlErrorCode.Val))
+		}
+		//TODO: implement MySQL error code support
+		return nil, ErrUnsupportedSyntax.New(sqlparser.String(d))
+	}
+	return plan.NewDeclareCondition(strings.ToLower(dc.Name), 0, dc.SqlStateValue), nil
+}
+
+func convertSignal(ctx *sql.Context, s *sqlparser.Signal) (sql.Node, error) {
+	// https://dev.mysql.com/doc/refman/8.0/en/signal.html#signal-condition-information-items
+	var err error
+	signalInfo := make(map[plan.SignalConditionItemName]plan.SignalInfo)
+	for _, info := range s.Info {
+		si := plan.SignalInfo{}
+		si.ConditionItemName, err = convertSignalConditionItemName(info.ConditionItemName)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := signalInfo[si.ConditionItemName]; ok {
+			return nil, fmt.Errorf("duplicate signal condition item")
+		}
+
+		if si.ConditionItemName == plan.SignalConditionItemName_MysqlErrno {
+			number, err := strconv.ParseUint(string(info.Value.Val), 10, 16)
+			if err != nil || number == 0 {
+				// We use our own error instead
+				return nil, fmt.Errorf("invalid value '%s' for signal condition information item MYSQL_ERRNO", string(info.Value.Val))
+			}
+			si.IntValue = int64(number)
+		} else if si.ConditionItemName == plan.SignalConditionItemName_MessageText {
+			val := string(info.Value.Val)
+			if len(val) > 128 {
+				return nil, fmt.Errorf("signal condition information item MESSAGE_TEXT has max length of 128")
+			}
+			si.StrValue = val
+		} else {
+			val := string(info.Value.Val)
+			if len(val) > 64 {
+				return nil, fmt.Errorf("signal condition information item %s has max length of 64", strings.ToUpper(string(si.ConditionItemName)))
+			}
+			si.StrValue = val
+		}
+		signalInfo[si.ConditionItemName] = si
+	}
+
+	if s.ConditionName != "" {
+		return plan.NewSignalName(strings.ToLower(s.ConditionName), signalInfo), nil
+	} else {
+		if len(s.SqlStateValue) != 5 {
+			return nil, fmt.Errorf("SQLSTATE VALUE must be a string with length 5 consisting of only integers")
+		}
+		if s.SqlStateValue[0:2] == "00" {
+			return nil, fmt.Errorf("invalid SQLSTATE VALUE: '%s'", s.SqlStateValue)
+		}
+		return plan.NewSignal(s.SqlStateValue, signalInfo), nil
+	}
+}
+
+func convertSignalConditionItemName(name sqlparser.SignalConditionItemName) (plan.SignalConditionItemName, error) {
+	// We convert to our own plan equivalents to keep a separation between the parser and implementation
+	switch name {
+	case sqlparser.SignalConditionItemName_ClassOrigin:
+		return plan.SignalConditionItemName_ClassOrigin, nil
+	case sqlparser.SignalConditionItemName_SubclassOrigin:
+		return plan.SignalConditionItemName_SubclassOrigin, nil
+	case sqlparser.SignalConditionItemName_MessageText:
+		return plan.SignalConditionItemName_MessageText, nil
+	case sqlparser.SignalConditionItemName_MysqlErrno:
+		return plan.SignalConditionItemName_MysqlErrno, nil
+	case sqlparser.SignalConditionItemName_ConstraintCatalog:
+		return plan.SignalConditionItemName_ConstraintCatalog, nil
+	case sqlparser.SignalConditionItemName_ConstraintSchema:
+		return plan.SignalConditionItemName_ConstraintSchema, nil
+	case sqlparser.SignalConditionItemName_ConstraintName:
+		return plan.SignalConditionItemName_ConstraintName, nil
+	case sqlparser.SignalConditionItemName_CatalogName:
+		return plan.SignalConditionItemName_CatalogName, nil
+	case sqlparser.SignalConditionItemName_SchemaName:
+		return plan.SignalConditionItemName_SchemaName, nil
+	case sqlparser.SignalConditionItemName_TableName:
+		return plan.SignalConditionItemName_TableName, nil
+	case sqlparser.SignalConditionItemName_ColumnName:
+		return plan.SignalConditionItemName_ColumnName, nil
+	case sqlparser.SignalConditionItemName_CursorName:
+		return plan.SignalConditionItemName_CursorName, nil
+	default:
+		return "", fmt.Errorf("unknown signal condition item name: %s", string(name))
+	}
 }
 
 func convertRenameTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {

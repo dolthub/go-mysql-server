@@ -179,13 +179,40 @@ var (
 	// list with a different number of columns than the schema of the table.
 	ErrColumnCountMismatch = errors.NewKind("In definition of view, derived table or common table expression, SELECT list and column names list have different column counts")
 
+	// ErrUuidUnableToParse is returned when a UUID is unable to be parsed.
+	ErrUuidUnableToParse = errors.NewKind("unable to parse '%s' to UUID: %s")
+
+	// ErrLoadDataCannotOpen is returned when a LOAD DATA operation is unable to open the file specified.
+	ErrLoadDataCannotOpen = errors.NewKind("LOAD DATA is unable to open file: %s")
+
+	// ErrLoadDataCharacterLength is returned when a symbol is of the wrong character length for a LOAD DATA operation.
+	ErrLoadDataCharacterLength = errors.NewKind("%s must be 1 character long")
+
 	// ErrSecureFileDirNotSet is returned when LOAD DATA INFILE is called but the secure_file_priv system variable is not set.
 	ErrSecureFileDirNotSet = errors.NewKind("secure_file_priv needs to be set to a directory")
+
+	// ErrJSONObjectAggNullKey is returned when JSON_OBJECTAGG is run on a table with NULL keys
+	ErrJSONObjectAggNullKey = errors.NewKind("JSON documents may not contain NULL member names")
+
+	// ErrDeclareOrderInvalid is returned when a DECLARE statement is at an invalid location.
+	ErrDeclareOrderInvalid = errors.NewKind("DECLARE may only exist at the beginning of a BEGIN/END block")
+
+	// ErrDeclareConditionNotFound is returned when SIGNAL/RESIGNAL references a non-existent DECLARE CONDITION.
+	ErrDeclareConditionNotFound = errors.NewKind("condition %s does not exist")
+
+	// ErrDeclareConditionDuplicate is returned when a DECLARE CONDITION statement with the same name was declared in the current scope.
+	ErrDeclareConditionDuplicate = errors.NewKind("duplicate condition '%s'")
+
+	// ErrSignalOnlySqlState is returned when SIGNAL/RESIGNAL references a DECLARE CONDITION for a MySQL error code.
+	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
 	if err == nil {
 		return nil, true
+	}
+	if mysqlErr, ok := err.(*mysql.SQLError); ok {
+		return mysqlErr, false
 	}
 
 	var code int

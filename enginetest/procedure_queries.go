@@ -17,6 +17,8 @@ package enginetest
 import (
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/parse"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -424,6 +426,104 @@ END;`,
 		},
 	},
 	{
+		Name: "DECLARE CONDITION",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(x INT)
+BEGIN
+	DECLARE specialty CONDITION FOR SQLSTATE '45000';
+	DECLARE specialty2 CONDITION FOR SQLSTATE '02000';
+	IF x = 0 THEN
+		SIGNAL SQLSTATE '01000';
+	ELSEIF x = 1 THEN
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'A custom error occurred 1';
+	ELSEIF x = 2 THEN
+		SIGNAL specialty
+			SET MESSAGE_TEXT = 'A custom error occurred 2', MYSQL_ERRNO = 1002;
+	ELSEIF x = 3 THEN
+		SIGNAL specialty;
+	ELSEIF x = 4 THEN
+		SIGNAL specialty2;
+	ELSE
+		SIGNAL SQLSTATE '01000'
+			SET MESSAGE_TEXT = 'A warning occurred', MYSQL_ERRNO = 1000;
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'An error occurred', MYSQL_ERRNO = 1001;
+	END IF;
+	BEGIN
+		DECLARE specialty3 CONDITION FOR SQLSTATE '45000';
+	END;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "CALL p1(0)",
+				ExpectedErrStr: "warnings not yet implemented",
+			},
+			{
+				Query:          "CALL p1(1)",
+				ExpectedErrStr: "A custom error occurred 1 (errno 1644) (sqlstate 45000)",
+			},
+			{
+				Query:          "CALL p1(2)",
+				ExpectedErrStr: "A custom error occurred 2 (errno 1002) (sqlstate 45000)",
+			},
+			{
+				Query:          "CALL p1(3)",
+				ExpectedErrStr: "Unhandled user-defined exception condition (errno 1644) (sqlstate 45000)",
+			},
+			{
+				Query:          "CALL p1(4)",
+				ExpectedErrStr: "Unhandled user-defined not found condition (errno 1643) (sqlstate 02000)",
+			},
+		},
+	},
+	{
+		Name: "DECLARE CONDITION nesting priority",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(x INT)
+BEGIN
+	DECLARE cond_name CONDITION FOR SQLSTATE '02000';
+	BEGIN
+		DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+		IF x = 0 THEN
+			SIGNAL cond_name;
+		END IF;
+	END;
+	SIGNAL cond_name;
+END;`,
+			`CREATE PROCEDURE p2(x INT)
+BEGIN
+	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	BEGIN
+		DECLARE cond_name CONDITION FOR SQLSTATE '02000';
+		IF x = 0 THEN
+			SIGNAL cond_name;
+		END IF;
+	END;
+	SIGNAL cond_name;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "CALL p1(0)",
+				ExpectedErrStr: "Unhandled user-defined exception condition (errno 1644) (sqlstate 45000)",
+			},
+			{
+				Query:          "CALL p1(1)",
+				ExpectedErrStr: "Unhandled user-defined not found condition (errno 1643) (sqlstate 02000)",
+			},
+			{
+				Query:          "CALL p2(0)",
+				ExpectedErrStr: "Unhandled user-defined not found condition (errno 1643) (sqlstate 02000)",
+			},
+			{
+				Query:          "CALL p2(1)",
+				ExpectedErrStr: "Unhandled user-defined exception condition (errno 1644) (sqlstate 45000)",
+			},
+		},
+	},
+	{
 		Name:        "Duplicate parameter names",
 		Query:       "CREATE PROCEDURE p1(abc DATETIME, abc DOUBLE) SELECT abc",
 		ExpectedErr: sql.ErrProcedureDuplicateParameterName,
@@ -458,6 +558,76 @@ END;`,
 				ExpectedErr: sql.ErrSyntaxError,
 			},
 		},
+	},
+	{
+		Name: "DECLARE CONDITION wrong positions",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE PROCEDURE p1(x INT)
+BEGIN
+	SELECT x;
+	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+END;`,
+				ExpectedErr: sql.ErrDeclareOrderInvalid,
+			},
+			{
+				Query: `CREATE PROCEDURE p1(x INT)
+BEGIN
+	BEGIN
+		SELECT x;
+		DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	END;
+END;`,
+				ExpectedErr: sql.ErrDeclareOrderInvalid,
+			},
+			{
+				Query: `CREATE PROCEDURE p1(x INT)
+BEGIN
+	IF x = 0 THEN
+		DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	END IF;
+END;`,
+				ExpectedErr: sql.ErrDeclareOrderInvalid,
+			},
+			{
+				Query: `CREATE PROCEDURE p1(x INT)
+BEGIN
+	IF x = 0 THEN
+		SELECT x;
+	ELSE
+		DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	END IF;
+END;`,
+				ExpectedErr: sql.ErrDeclareOrderInvalid,
+			},
+		},
+	},
+	{
+		Name: "DECLARE CONDITION duplicate name",
+		Query: `CREATE PROCEDURE p1()
+BEGIN
+	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+	DECLARE cond_name CONDITION FOR SQLSTATE '45000';
+END;`,
+		ExpectedErr: sql.ErrDeclareConditionDuplicate,
+	},
+	{ //TODO: change this test when we implement DECLARE CONDITION for MySQL error codes
+		Name: "SIGNAL references condition name for MySQL error code",
+		Query: `CREATE PROCEDURE p1(x INT)
+BEGIN
+	DECLARE mysql_err_code CONDITION FOR 1000;
+	SIGNAL mysql_err_code;
+END;`,
+		ExpectedErr: parse.ErrUnsupportedSyntax,
+	},
+	{
+		Name: "SIGNAL non-existent condition name",
+		Query: `CREATE PROCEDURE p1(x INT)
+BEGIN
+	DECLARE abcdefg CONDITION FOR SQLSTATE '45000';
+	SIGNAL abcdef;
+END;`,
+		ExpectedErr: sql.ErrDeclareConditionNotFound,
 	},
 }
 

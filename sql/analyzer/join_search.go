@@ -161,14 +161,11 @@ func (jo *joinOrderNode) String() string {
 // the internal nodes of the joinOrderNode to the order in the
 // provided `hint`, presuming that order is valid. If it is not valid,
 // `jo.order` remains `nil`.
-func (jo *joinOrderNode) applyJoinHint(hint QueryHint) error {
+func (jo *joinOrderNode) applyJoinHint(hint QueryHint) (bool, error) {
 	switch hint := hint.(type) {
 	case JoinOrder:
 		remaining, err := jo.applyJoinHintTables(hint.tables)
-		if len(remaining) != 0 {
-			jo.order = nil
-		}
-		return err
+		return len(remaining) == 0, err
 	default:
 		panic("unrecognized hint type")
 	}
@@ -232,7 +229,7 @@ START:
 		// If we didn't assign the front of the `remaining`
 		// list on that loop through, then we can't apply this
 		// hint to this joinOrderNode.
-		return nil, nil
+		return tables, nil
 	}
 }
 
