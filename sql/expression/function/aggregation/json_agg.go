@@ -97,7 +97,7 @@ func (j *JSONArrayAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 	// unwrap JSON values
 	if js, ok := v.(sql.JSONValue); ok {
-		doc, err := js.Unmarshall()
+		doc, err := js.Unmarshall(ctx)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 	// unwrap JSON values
 	if js, ok := val.(sql.JSONValue); ok {
-		doc, err := js.Unmarshall()
+		doc, err := js.Unmarshall(ctx)
 		if err != nil {
 			return err
 		}

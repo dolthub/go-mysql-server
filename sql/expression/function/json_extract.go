@@ -76,7 +76,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	searchable, ok := js.(sql.SearchableJSONValue)
 	if !ok {
-		searchable, err = js.(sql.JSONValue).Unmarshall()
+		searchable, err = js.(sql.JSONValue).Unmarshall(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -94,7 +94,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		results[i], err = searchable.Extract(path.(string))
+		results[i], err = searchable.Extract(ctx, path.(string))
 		if err != nil {
 			return nil, err
 		}
@@ -104,7 +104,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return results[0], nil
 	}
 
-	return sql.ConcatenateJSONValues(results...)
+	return sql.ConcatenateJSONValues(ctx, results...)
 }
 
 // IsNullable implements the sql.Expression interface.
