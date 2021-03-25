@@ -15,23 +15,39 @@
 package expression
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
+	"testing"
+
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestBinary(t *testing.T) {
 	require := require.New(t)
 
-	e := NewBinary(NewGetField(0, sql.Text, "foo", true))
-
 	// Validate Binary is reflexive
+	e := NewBinary(NewGetField(0, sql.Text, "foo", true))
 	require.Equal(eval(t, e, sql.NewRow("hi")), eval(t, e, sql.NewRow("hi")))
 
+	// Go through assorted test cases
+	testCases := []struct {
+		val      interface{}
+		valType  sql.Type
+		expected string
+	}{
+		{"hi", sql.MustCreateBinary(query.Type_VARBINARY, int64(16)), "hi"},
+		{int8(1), sql.Int8, "1"},
+		{true, sql.Boolean, "true"},
+		{"hello", sql.LongText, "hello"},
+	}
 
-	x := NewBinary(NewLiteral([]byte("hi"), sql.MustCreateBinary(query.Type_VARBINARY, int64(16))))
-	require.Equal([]byte("hi"), eval(t, x, sql.Row{nil}))
+	for _, tt := range testCases {
+		f := NewBinary(NewLiteral(tt.val, tt.valType))
+		require.Equal(tt.expected, eval(t, f, sql.Row{nil}))
+	}
 
-	// Validate Binary is not equal for two terms that look equal but are the same in a collation
+	// Try with nil case
+	e = NewBinary(NewLiteral(nil, sql.Null))
+	require.Equal(nil, eval(t, e, sql.Row{nil}))
 }

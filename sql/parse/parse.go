@@ -198,7 +198,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
-			return convertDeclare(ctx, n)
+		return convertDeclare(ctx, n)
 	case *sqlparser.Signal:
 		return convertSignal(ctx, n)
 	}
@@ -2511,12 +2511,12 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expression.
 		return ExprToExpression(ctx, e.Expr)
 	case sqlparser.BinaryStr:
-		 expr, err := ExprToExpression(ctx, e.Expr)
-		 if err != nil {
+		expr, err := ExprToExpression(ctx, e.Expr)
+		if err != nil {
 			return nil, err
 		}
 
-		 return expression.NewBinary(expr), nil
+		return expression.NewBinary(expr), nil
 	default:
 		return nil, ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}
