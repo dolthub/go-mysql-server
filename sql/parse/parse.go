@@ -2510,7 +2510,13 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 	case sqlparser.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expression.
 		return ExprToExpression(ctx, e.Expr)
+	case sqlparser.BinaryStr:
+		 expr, err := ExprToExpression(ctx, e.Expr)
+		 if err != nil {
+			return nil, err
+		}
 
+		 return expression.NewBinary(expr), nil
 	default:
 		return nil, ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}
