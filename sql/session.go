@@ -87,6 +87,10 @@ type Session interface {
 	GetQueriedDatabase() string
 	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
 	SetQueriedDatabase(dbName string)
+    // SetLastQueryInfo sets session-level query info for the key given, applying to the query just executed.
+	SetLastQueryInfo(key string, value uint64)
+	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.
+	GetLastQueryInfo(key string) uint64
 }
 
 // BaseSession is the basic session type.
@@ -101,6 +105,7 @@ type BaseSession struct {
 	warncnt   uint16
 	locks     map[string]bool
 	queriedDb string
+	lastQueryInfo map[string]uint64
 }
 
 // CommitTransaction commits the current transaction for the current database.
@@ -291,6 +296,30 @@ func DefaultSessionConfig() map[string]TypedValue {
 	}
 }
 
+const (
+	RowCount = "row_count"
+  	FoundRows = "found_rows"
+    LastInsertId = "last_insert_id"
+)
+
+func defaultLastQueryInfo() map[string]uint64 {
+	return map[string]uint64{
+		RowCount:     0,
+		FoundRows:    0,
+		LastInsertId: 0,
+	}
+}
+
+func (s *BaseSession) SetLastQueryInfo(key string, value uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastQueryInfo[key] = value
+}
+
+func (s *BaseSession) GetLastQueryInfo(key string) uint64 {
+	return s.lastQueryInfo[key]
+}
+
 // cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html
 func GetTmpdirSessionVar() string {
 	ret := os.Getenv("TMPDIR")
@@ -330,6 +359,7 @@ func NewSession(server, client, user string, id uint32) Session {
 			User:    user,
 		},
 		config: DefaultSessionConfig(),
+		lastQueryInfo: defaultLastQueryInfo(),
 		mu:     &sync.RWMutex{},
 		locks:  make(map[string]bool),
 	}
@@ -340,7 +370,7 @@ var autoSessionIDs uint32 = 1
 
 // NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
-	return &BaseSession{id: atomic.AddUint32(&autoSessionIDs, 1), config: DefaultSessionConfig(), mu: &sync.RWMutex{}, locks: make(map[string]bool)}
+	return &BaseSession{id: atomic.AddUint32(&autoSessionIDs, 1), config: DefaultSessionConfig(), mu: &sync.RWMutex{}, locks: make(map[string]bool), lastQueryInfo: defaultLastQueryInfo()}
 }
 
 // Context of the query execution.

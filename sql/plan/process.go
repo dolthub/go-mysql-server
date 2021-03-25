@@ -188,6 +188,9 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 type trackedRowIter struct {
 	node   sql.Node
 	iter   sql.RowIter
+	numRows uint64
+	updateFoundRows bool
+	isSelect bool
 	onDone NotifyFunc
 	onNext NotifyFunc
 }
@@ -235,8 +238,15 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 
 func (i *trackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
+
+	i.updateSessionVars(ctx)
+	
 	i.done()
 	return err
+}
+
+func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
+	ctx.SetLastQueryInfo(sql.RowCount, i.numRows)
 }
 
 type trackedPartitionIndexKeyValueIter struct {
@@ -291,6 +301,7 @@ func (i *trackedIndexKeyValueIter) Close(ctx *sql.Context) (err error) {
 	if i.iter != nil {
 		err = i.iter.Close(ctx)
 	}
+
 	i.done()
 	return err
 }

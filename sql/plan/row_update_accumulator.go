@@ -221,7 +221,14 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 }
 
 func (a *accumulatorIter) Close(ctx *sql.Context) error {
-	return a.iter.Close(ctx)
+	err := a.iter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	result := a.updateRowHandler.okResult()
+	ctx.SetLastQueryInfo(sql.RowCount, result.RowsAffected)
+	return nil
 }
 
 func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
