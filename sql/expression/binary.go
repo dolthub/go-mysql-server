@@ -34,15 +34,15 @@ func NewBinary(e sql.Expression) sql.Expression {
 	return &Binary{UnaryExpression{Child: e}}
 }
 
-func (b Binary) String() string {
+func (b *Binary) String() string {
 	return fmt.Sprintf("BINARY(%s)", b.Child.String())
 }
 
-func (b Binary) Type() sql.Type {
+func (b *Binary) Type() sql.Type {
 	return sql.LongBlob
 }
 
-func (b Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	expr, err := b.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (b Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return convertValue(expr, ConvertToBinary)
 }
 
-func (b Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("BINARY", "1", len(children))
 	}
@@ -59,8 +59,3 @@ func (b Binary) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewBinary(children[0]), nil
 }
 
-func (b Binary) FunctionName() string {
-	return "binary"
-}
-
-var _ sql.FunctionExpression = (*Binary)(nil)
