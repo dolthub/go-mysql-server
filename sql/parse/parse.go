@@ -2155,15 +2155,15 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
 			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
 	case *sqlparser.GroupConcatExpr:
-		//exprs, err := selectExprsToExpressions(ctx, v.Exprs)
-		//if err != nil {
-		//	return nil, err
-		//}
+		exprs, err := selectExprsToExpressions(ctx, v.Exprs)
+		if err != nil {
+			return nil, err
+		}
 
-		distinct := expression.NewLiteral(v.Distinct, sql.LongText)
+		// distinct := expression.NewLiteral(v.Distinct, sql.LongText)
 		separator := expression.NewLiteral(v.Separator, sql.LongText)
 
-		return aggregation.NewGroupConcat(distinct, separator)
+		return aggregation.NewGroupConcat(separator, exprs...)
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:

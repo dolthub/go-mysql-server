@@ -19,16 +19,16 @@ import (
 )
 
 type GroupConcat struct {
-	distinct sql.Expression
-	// selectExprs []sql.Expression
+	// distinct sql.Expression
+	selectExprs []sql.Expression
 	// TODO: Evaluate ORDER BY
 	separator sql.Expression
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
 
-func NewGroupConcat(distinct sql.Expression, separator sql.Expression) (sql.Expression, error) {
-	return &GroupConcat{distinct: distinct, separator: separator}, nil
+func NewGroupConcat (separator sql.Expression, selectExprs ...sql.Expression) (sql.Expression, error) {
+	return &GroupConcat{selectExprs: selectExprs, separator: separator}, nil
 }
 
 // NewBuffer creates a new buffer for the aggregation.
@@ -84,7 +84,7 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 3)
 	}
 
-	return NewGroupConcat(children[0], children[1])
+	return NewGroupConcat(children[0], children[1:]...)
 }
 
 func (g *GroupConcat) FunctionName() string {
