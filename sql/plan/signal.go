@@ -16,13 +16,16 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/vitess/go/mysql"
 	"strings"
+
+	"github.com/dolthub/vitess/go/mysql"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // SignalConditionItemName represents the item name for the set conditions of a SIGNAL statement.
 type SignalConditionItemName string
+
 const (
 	SignalConditionItemName_ClassOrigin       SignalConditionItemName = "class_origin"
 	SignalConditionItemName_SubclassOrigin    SignalConditionItemName = "subclass_origin"

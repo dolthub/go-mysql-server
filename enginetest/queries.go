@@ -4354,6 +4354,36 @@ var QueryTests = []QueryTest{
 			{1, 1, 4},
 		},
 	},
+	{
+		Query: "SELECT BINARY 'hi'",
+		Expected: []sql.Row{
+			{"hi"},
+		},
+	},
+	{
+		Query: "SELECT BINARY 1",
+		Expected: []sql.Row{
+			{"1"},
+		},
+	},
+	{
+		Query: "SELECT BINARY 1 = 1",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "SELECT BINARY 'hello' = 'hello'",
+		Expected: []sql.Row{
+			{true},
+		},
+	},
+	{
+		Query: "SELECT BINARY NULL",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

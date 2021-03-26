@@ -340,7 +340,8 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 					return nil, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
 				}
 
-				return gf.WithIndex(idx), nil})
+				return gf.WithIndex(idx), nil
+			})
 		}
 	})
 }

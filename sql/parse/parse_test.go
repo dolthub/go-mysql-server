@@ -1070,9 +1070,9 @@ var fixtures = map[string]sql.Node{
 			plan.NewValues([][]sql.Expression{
 				{
 					expression.NewArithmetic(
-					expression.NewLiteral(int8(1), sql.Int8),
 						expression.NewLiteral(int8(1), sql.Int8),
-					"+",
+						expression.NewLiteral(int8(1), sql.Int8),
+						"+",
 					),
 					expression.NewArithmetic(
 						expression.NewLiteral(int8(2), sql.Int8),
@@ -1089,22 +1089,22 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT column_0 FROM (values row(1,2), row(3,4)) a limit 1`: plan.NewLimit(1,
 		plan.NewProject(
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("column_0"),
-		},
-		plan.NewValueDerivedTable(
-			plan.NewValues([][]sql.Expression{
-				{
-					expression.NewLiteral(int8(1), sql.Int8),
-					expression.NewLiteral(int8(2), sql.Int8),
-				},
-				{
-					expression.NewLiteral(int8(3), sql.Int8),
-					expression.NewLiteral(int8(4), sql.Int8),
-				},
-			}),
-			"a"),
-	),
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("column_0"),
+			},
+			plan.NewValueDerivedTable(
+				plan.NewValues([][]sql.Expression{
+					{
+						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(2), sql.Int8),
+					},
+					{
+						expression.NewLiteral(int8(3), sql.Int8),
+						expression.NewLiteral(int8(4), sql.Int8),
+					},
+				}),
+				"a"),
+		),
 	),
 	`SELECT foo, bar FROM foo WHERE foo <=> bar;`: plan.NewProject(
 		[]sql.Expression{
