@@ -33,7 +33,7 @@ func NewGroupConcat (separator sql.Expression, selectExprs ...sql.Expression) (s
 
 // NewBuffer creates a new buffer for the aggregation.
 func (g *GroupConcat) NewBuffer() sql.Row {
-	return sql.NewRow(int64(0))
+	return sql.NewRow("")
 }
 
 // Update implements the Aggregation interface.
