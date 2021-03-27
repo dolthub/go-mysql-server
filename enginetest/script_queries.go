@@ -423,4 +423,41 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "last_insert_id() behavior",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y int)",
+			"create table b (x int primary key)",
+		},
+		Assertions:  []ScriptTestAssertion{
+			{
+				Query:          "select last_insert_id()",
+				Expected:       []sql.Row{{uint64(0)}},
+			},
+			{
+				Query:          "insert into a (y) values (1)",
+				Expected:       []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:          "select last_insert_id()",
+				Expected:       []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:          "insert into a (y) values (2), (3)",
+				Expected:       []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:          "select last_insert_id()",
+				Expected:       []sql.Row{{uint64(2)}},
+			},
+			{
+				Query:          "insert into b (x) values (1), (2)",
+				Expected:       []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:          "select last_insert_id()",
+				Expected:       []sql.Row{{uint64(2)}},
+			},
+		},
+	},
 }

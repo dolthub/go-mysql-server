@@ -86,6 +86,8 @@ func (i *insertRowHandler) handleRowUpdate(_ sql.Row) error {
 }
 
 func (i *insertRowHandler) okResult() sql.OkResult {
+	// TODO: the auto inserted id should be in this result. Needs to be passed up by the insert iter, which is a larger
+	//  change.
 	return sql.NewOkResult(i.rowsAffected)
 }
 
