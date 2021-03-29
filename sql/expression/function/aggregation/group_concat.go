@@ -26,8 +26,9 @@ type GroupConcat struct {
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
+var _ sql.Aggregation = &GroupConcat{}
 
-func NewGroupConcat (separator sql.Expression, selectExprs ...sql.Expression) (sql.Expression, error) {
+func NewGroupConcat(separator sql.Expression, selectExprs ...sql.Expression) (sql.Expression, error) {
 	return &GroupConcat{selectExprs: selectExprs, separator: separator}, nil
 }
 

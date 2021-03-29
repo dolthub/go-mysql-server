@@ -108,18 +108,19 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "UUIDs used in the wild.",
+			Name: "Group concat",
 			SetUpScript: []string{
-				"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
+				"CREATE TABLE x (pk int)",
+				"INSERT INTO x VALUES (1),(2),(3),(4)",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    `SELECT IS_UUID(@uuid)`,
-					Expected: []sql.Row{{int8(1)}},
+					Query:    `SELECT group_concat(pk) FROM x;`,
+					Expected: []sql.Row{{"1,2,3,4"}},
 				},
 			},
 		},
