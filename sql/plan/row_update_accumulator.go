@@ -229,7 +229,7 @@ func (a *accumulatorIter) Close(ctx *sql.Context) error {
 	}
 
 	result := a.updateRowHandler.okResult()
-	ctx.SetLastQueryInfo(sql.RowCount, result.RowsAffected)
+	ctx.SetLastQueryInfo(sql.RowCount, int64(result.RowsAffected))
 	return nil
 }
 

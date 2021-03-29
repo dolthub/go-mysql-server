@@ -34,7 +34,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	if isDdlNode(n) {
+	if plan.IsDdlNode(n) {
 		return n, nil
 	}
 

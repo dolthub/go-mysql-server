@@ -88,9 +88,9 @@ type Session interface {
 	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
 	SetQueriedDatabase(dbName string)
     // SetLastQueryInfo sets session-level query info for the key given, applying to the query just executed.
-	SetLastQueryInfo(key string, value uint64)
+	SetLastQueryInfo(key string, value int64)
 	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.
-	GetLastQueryInfo(key string) uint64
+	GetLastQueryInfo(key string) int64
 }
 
 // BaseSession is the basic session type.
@@ -105,7 +105,7 @@ type BaseSession struct {
 	warncnt   uint16
 	locks     map[string]bool
 	queriedDb string
-	lastQueryInfo map[string]uint64
+	lastQueryInfo map[string]int64
 }
 
 // CommitTransaction commits the current transaction for the current database.
@@ -302,21 +302,21 @@ const (
     LastInsertId = "last_insert_id"
 )
 
-func defaultLastQueryInfo() map[string]uint64 {
-	return map[string]uint64{
+func defaultLastQueryInfo() map[string]int64 {
+	return map[string]int64{
 		RowCount:     0,
 		FoundRows:    0,
 		LastInsertId: 0,
 	}
 }
 
-func (s *BaseSession) SetLastQueryInfo(key string, value uint64) {
+func (s *BaseSession) SetLastQueryInfo(key string, value int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastQueryInfo[key] = value
 }
 
-func (s *BaseSession) GetLastQueryInfo(key string) uint64 {
+func (s *BaseSession) GetLastQueryInfo(key string) int64 {
 	return s.lastQueryInfo[key]
 }
 

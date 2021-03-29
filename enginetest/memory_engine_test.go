@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -107,18 +108,89 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "UUIDs used in the wild.",
+			Name:        "row_count() behavior",
 			SetUpScript: []string{
-				"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
+				"create table b (x int primary key)",
+				"insert into b values (1), (2), (3), (4)",
 			},
-			Assertions: []enginetest.ScriptTestAssertion{
+			Assertions:  []enginetest.ScriptTestAssertion{
 				{
-					Query:    `SELECT IS_UUID(@uuid)`,
-					Expected: []sql.Row{{int8(1)}},
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{4}},
+				},
+				{
+					Query:          "replace into b values (1)",
+					Expected:       []sql.Row{{sql.NewOkResult(2)}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{2}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{-1}},
+				},
+				{
+					Query:          "select count(*) from b",
+					Expected:       []sql.Row{{4}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{-1}},
+				},
+				{
+					Query:          "update b set x = x + 10 where x <> 2",
+					Expected:       []sql.Row{{sql.OkResult{
+						RowsAffected: 3,
+						Info:         plan.UpdateInfo{
+							Matched:  3,
+							Updated:  3,
+						},
+					}}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{3}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{-1}},
+				},
+				{
+					Query:          "delete from b where x <> 2",
+					Expected:       []sql.Row{{sql.NewOkResult(3)}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{3}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{-1}},
+				},
+				{
+					Query:          "replace into b values (1)",
+					Expected:       []sql.Row{{sql.NewOkResult(1)}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{1}},
+				},
+				{
+					Query: "alter table b add column y int null",
+					Expected:       []sql.Row{},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{0}},
+				},
+				{
+					Query:          "select row_count()",
+					Expected:       []sql.Row{{-1}},
 				},
 			},
 		},

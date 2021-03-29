@@ -49,7 +49,30 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, err
 	}
 
-	return &trackedRowIter{node: p.Child, iter: iter, onDone: p.Notify}, nil
+	qType := getQueryType(p.Child)
+
+	return &trackedRowIter{node: p.Child, iter: iter, onDone: p.Notify, queryType: qType}, nil
+}
+
+func getQueryType(child sql.Node) queryType {
+	var queryType queryType = queryTypeSelect
+	Inspect(child, func(node sql.Node) bool {
+		if IsDdlNode(node) {
+			queryType = queryTypeDdl
+			return false
+		}
+
+		switch node.(type) {
+		case nil:
+			return false
+		case *TriggerExecutor, *InsertInto, *Update, *DeleteFrom:
+			queryType = queryTypeUpdate
+			return false
+		}
+		return true
+	})
+
+	return queryType
 }
 
 func (p *QueryProcess) String() string { return p.Child.String() }
@@ -185,12 +208,17 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
 }
 
+type queryType byte
+const (
+	queryTypeSelect = iota
+	queryTypeDdl
+	queryTypeUpdate
+)
+
 type trackedRowIter struct {
 	node   sql.Node
 	iter   sql.RowIter
-	numRows uint64
-	updateFoundRows bool
-	isSelect bool
+	queryType queryType
 	onDone NotifyFunc
 	onNext NotifyFunc
 }
@@ -240,13 +268,20 @@ func (i *trackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
 
 	i.updateSessionVars(ctx)
-	
+
 	i.done()
 	return err
 }
 
 func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
-	ctx.SetLastQueryInfo(sql.RowCount, i.numRows)
+	switch i.queryType {
+	case queryTypeSelect:
+		ctx.SetLastQueryInfo(sql.RowCount, -1)
+	case queryTypeDdl:
+		ctx.SetLastQueryInfo(sql.RowCount, 0)
+	case queryTypeUpdate:
+		// This is handled by RowUpdateAccumulator
+	}
 }
 
 type trackedPartitionIndexKeyValueIter struct {
@@ -325,3 +360,27 @@ func partitionName(p sql.Partition) string {
 	}
 	return string(p.Key())
 }
+
+// IsDdlNode returns whether the node given is a DDL operation, which includes things like SHOW commands. In general,
+// these are nodes that interact only with schema and the catalog, not with any table rows.
+func IsDdlNode(node sql.Node) bool {
+	switch node.(type) {
+	case *CreateTable, *DropTable, *Truncate,
+		*AddColumn, *ModifyColumn, *DropColumn,
+		*CreateDB, *DropDB,
+		*RenameTable, *RenameColumn,
+		*CreateIndex, *AlterIndex, *DropIndex,
+		*CreateForeignKey, *DropForeignKey,
+		*CreateTrigger, *DropTrigger,
+		*ShowTables, *ShowCreateTable,
+		*ShowTriggers, *ShowCreateTrigger,
+		*ShowDatabases, *ShowCreateDatabase,
+		*ShowColumns, *ShowIndexes,
+		*ShowProcessList, *ShowTableStatus,
+		*ShowVariables, *ShowWarnings:
+		return true
+	default:
+		return false
+	}
+}
+

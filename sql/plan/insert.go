@@ -387,11 +387,11 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 		return
 	}
 
-	var autoIncVal uint64
+	var autoIncVal int64
 	var found bool
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
-			autoIncVal = toUint64(row[i])
+			autoIncVal = toInt64(row[i])
 			found = true
 			break
 		}
@@ -403,28 +403,28 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
-func toUint64(x interface{}) uint64 {
+func toInt64(x interface{}) int64 {
 	switch x := x.(type) {
 	case int8:
-		return uint64(x)
+		return int64(x)
 	case uint8:
-		return uint64(x)
+		return int64(x)
 	case int16:
-		return uint64(x)
+		return int64(x)
 	case uint16:
-		return uint64(x)
+		return int64(x)
 	case int32:
-		return uint64(x)
+		return int64(x)
 	case uint32:
-		return uint64(x)
+		return int64(x)
 	case int64:
-		return uint64(x)
-	case uint64:
 		return x
+	case uint64:
+		return int64(x)
 	case float32:
-		return uint64(x)
+		return int64(x)
 	case float64:
-		return uint64(x)
+		return int64(x)
 	default:
 		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
 	}
