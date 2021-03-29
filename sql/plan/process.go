@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -51,7 +53,13 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 
 	qType := getQueryType(p.Child)
 
-	return &trackedRowIter{node: p.Child, iter: iter, onDone: p.Notify, queryType: qType}, nil
+	return &trackedRowIter{
+		node: p.Child,
+		iter: iter,
+		onDone: p.Notify,
+		queryType: qType,
+		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
+	}, nil
 }
 
 func getQueryType(child sql.Node) queryType {
@@ -82,6 +90,17 @@ func (p *QueryProcess) DebugString() string {
 	_ = tp.WriteNode("QueryProcess")
 	_ = tp.WriteChildren(sql.DebugString(p.Child))
 	return tp.String()
+}
+
+// shouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
+// any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
+func (p *QueryProcess) shouldSetFoundRows() bool {
+	limit, ok := p.Child.(*Limit)
+	if !ok {
+		return true
+	}
+
+	return !limit.CalcFoundRows
 }
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
@@ -218,7 +237,9 @@ const (
 type trackedRowIter struct {
 	node   sql.Node
 	iter   sql.RowIter
+	numRows int64
 	queryType queryType
+	shouldSetFoundRows bool
 	onDone NotifyFunc
 	onNext NotifyFunc
 }
@@ -257,6 +278,8 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
+	i.numRows++
+
 	if i.onNext != nil {
 		i.onNext()
 	}
@@ -281,6 +304,12 @@ func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
 		ctx.SetLastQueryInfo(sql.RowCount, 0)
 	case queryTypeUpdate:
 		// This is handled by RowUpdateAccumulator
+	default:
+		panic(fmt.Sprintf("Unexpected query type %v", i.queryType))
+	}
+
+	if i.shouldSetFoundRows {
+		ctx.SetLastQueryInfo(sql.FoundRows, i.numRows)
 	}
 }
 

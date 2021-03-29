@@ -18,12 +18,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -108,89 +106,75 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name:        "row_count() behavior",
+			Name: "found_rows() behavior",
 			SetUpScript: []string{
 				"create table b (x int primary key)",
 				"insert into b values (1), (2), (3), (4)",
 			},
-			Assertions:  []enginetest.ScriptTestAssertion{
+			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{4}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
 				},
 				{
-					Query:          "replace into b values (1)",
-					Expected:       []sql.Row{{sql.NewOkResult(2)}},
+					Query:    "select * from b",
+					Expected: []sql.Row{{1}, {2}, {3}, {4}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{2}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{4}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{-1}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
 				},
 				{
-					Query:          "select count(*) from b",
-					Expected:       []sql.Row{{4}},
+					Query:    "select * from b order by x  limit 3",
+					Expected: []sql.Row{{1}, {2}, {3}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{-1}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{3}},
 				},
 				{
-					Query:          "update b set x = x + 10 where x <> 2",
-					Expected:       []sql.Row{{sql.OkResult{
-						RowsAffected: 3,
-						Info:         plan.UpdateInfo{
-							Matched:  3,
-							Updated:  3,
-						},
-					}}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{3}},
+					Query:    "select sql_calc_found_rows * from b order by x limit 3",
+					Expected: []sql.Row{{1}, {2}, {3}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{-1}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{4}},
 				},
 				{
-					Query:          "delete from b where x <> 2",
-					Expected:       []sql.Row{{sql.NewOkResult(3)}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{3}},
+					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+					Expected: []sql.Row{{1}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{-1}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{2}},
 				},
 				{
-					Query:          "replace into b values (1)",
-					Expected:       []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+					Expected: []sql.Row{{1}},
 				},
 				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{1}},
+					Query:    "insert into b values (10), (11), (12), (13)",
+					Expected: []sql.Row{{sql.NewOkResult(4)}},
 				},
 				{
-					Query: "alter table b add column y int null",
-					Expected:       []sql.Row{},
-				},
-				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{0}},
-				},
-				{
-					Query:          "select row_count()",
-					Expected:       []sql.Row{{-1}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{2}},
 				},
 			},
 		},

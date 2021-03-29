@@ -305,7 +305,7 @@ const (
 func defaultLastQueryInfo() map[string]int64 {
 	return map[string]int64{
 		RowCount:     0,
-		FoundRows:    0,
+		FoundRows:    1, // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
 		LastInsertId: 0,
 	}
 }

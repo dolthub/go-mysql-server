@@ -25,7 +25,8 @@ import (
 // Limit is a node that only allows up to N rows to be retrieved.
 type Limit struct {
 	UnaryNode
-	Limit int64
+	Limit         int64
+	CalcFoundRows bool
 }
 
 // NewLimit creates a new Limit node with the given size.
@@ -50,7 +51,7 @@ func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &limitIter{l, 0, li}), nil
+	return sql.NewSpanIter(span, &limitIter{l: l, childIter: li, calcFoundRows: l.CalcFoundRows}), nil
 }
 
 // WithChildren implements the Node interface.
@@ -58,7 +59,10 @@ func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLimit(l.Limit, children[0]), nil
+
+	nl := *l
+	nl.Child = children[0]
+	return &nl, nil
 }
 
 func (l Limit) String() string {
@@ -79,10 +83,23 @@ type limitIter struct {
 	l          *Limit
 	currentPos int64
 	childIter  sql.RowIter
+	calcFoundRows bool
 }
 
 func (li *limitIter) Next() (sql.Row, error) {
 	if li.currentPos >= li.l.Limit {
+		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
+		// result set to count it
+		if li.calcFoundRows {
+			for {
+				_, err := li.childIter.Next()
+				if err != nil {
+					return nil, err
+				}
+				li.currentPos++
+			}
+		}
+
 		return nil, io.EOF
 	}
 
@@ -96,5 +113,13 @@ func (li *limitIter) Next() (sql.Row, error) {
 }
 
 func (li *limitIter) Close(ctx *sql.Context) error {
-	return li.childIter.Close(ctx)
+	err := li.childIter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	if li.calcFoundRows {
+		ctx.SetLastQueryInfo(sql.FoundRows, li.currentPos)
+	}
+	return nil
 }

@@ -544,4 +544,73 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+		{
+			Name: "found_rows() behavior",
+			SetUpScript: []string{
+				"create table b (x int primary key)",
+				"insert into b values (1), (2), (3), (4)",
+			},
+			Assertions: []ScriptTestAssertion{
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select * from b",
+					Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{4}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select * from b order by x  limit 3",
+					Expected: []sql.Row{{1}, {2}, {3}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{3}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select sql_calc_found_rows * from b order by x limit 3",
+					Expected: []sql.Row{{1}, {2}, {3}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{4}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{2}},
+				},
+				{
+					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "insert into b values (10), (11), (12), (13)",
+					Expected: []sql.Row{{sql.NewOkResult(4)}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{2}},
+				},
+			},
+		},
 }
