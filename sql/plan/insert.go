@@ -90,18 +90,18 @@ func (p *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 type insertIter struct {
-	schema       sql.Schema
-	inserter     sql.RowInserter
-	replacer     sql.RowReplacer
-	updater      sql.RowUpdater
-	rowSource    sql.RowIter
+	schema              sql.Schema
+	inserter            sql.RowInserter
+	replacer            sql.RowReplacer
+	updater             sql.RowUpdater
+	rowSource           sql.RowIter
 	lastInsertIdUpdated bool
-	ctx          *sql.Context
-	insertExprs  []sql.Expression
-	updateExprs  []sql.Expression
-	checks       []sql.Expression
-	tableNode    sql.Node
-	closed       bool
+	ctx                 *sql.Context
+	insertExprs         []sql.Expression
+	updateExprs         []sql.Expression
+	checks              []sql.Expression
+	tableNode           sql.Node
+	closed              bool
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {

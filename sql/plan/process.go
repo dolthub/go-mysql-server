@@ -54,10 +54,10 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	qType := getQueryType(p.Child)
 
 	return &trackedRowIter{
-		node: p.Child,
-		iter: iter,
-		onDone: p.Notify,
-		queryType: qType,
+		node:               p.Child,
+		iter:               iter,
+		onDone:             p.Notify,
+		queryType:          qType,
 		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
 	}, nil
 }
@@ -228,6 +228,7 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 }
 
 type queryType byte
+
 const (
 	queryTypeSelect = iota
 	queryTypeDdl
@@ -235,13 +236,13 @@ const (
 )
 
 type trackedRowIter struct {
-	node   sql.Node
-	iter   sql.RowIter
-	numRows int64
-	queryType queryType
+	node               sql.Node
+	iter               sql.RowIter
+	numRows            int64
+	queryType          queryType
 	shouldSetFoundRows bool
-	onDone NotifyFunc
-	onNext NotifyFunc
+	onDone             NotifyFunc
+	onNext             NotifyFunc
 }
 
 func (i *trackedRowIter) done() {
@@ -412,4 +413,3 @@ func IsDdlNode(node sql.Node) bool {
 		return false
 	}
 }
-

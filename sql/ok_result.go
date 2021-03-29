@@ -58,4 +58,3 @@ func IsOkResult(row Row) bool {
 func GetOkResult(row Row) OkResult {
 	return row[0].(OkResult)
 }
-

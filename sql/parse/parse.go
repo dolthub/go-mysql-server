@@ -198,7 +198,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
-			return convertDeclare(ctx, n)
+		return convertDeclare(ctx, n)
 	case *sqlparser.Signal:
 		return convertSignal(ctx, n)
 	}

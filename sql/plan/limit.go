@@ -51,7 +51,10 @@ func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &limitIter{l: l, childIter: li, calcFoundRows: l.CalcFoundRows}), nil
+	return sql.NewSpanIter(span, &limitIter{
+		l: l,
+		childIter: li,
+	}), nil
 }
 
 // WithChildren implements the Node interface.
@@ -80,17 +83,16 @@ func (l Limit) DebugString() string {
 }
 
 type limitIter struct {
-	l          *Limit
-	currentPos int64
-	childIter  sql.RowIter
-	calcFoundRows bool
+	l             *Limit
+	currentPos    int64
+	childIter     sql.RowIter
 }
 
 func (li *limitIter) Next() (sql.Row, error) {
 	if li.currentPos >= li.l.Limit {
 		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
 		// result set to count it
-		if li.calcFoundRows {
+		if li.l.CalcFoundRows {
 			for {
 				_, err := li.childIter.Next()
 				if err != nil {
@@ -118,7 +120,7 @@ func (li *limitIter) Close(ctx *sql.Context) error {
 		return err
 	}
 
-	if li.calcFoundRows {
+	if li.l.CalcFoundRows {
 		ctx.SetLastQueryInfo(sql.FoundRows, li.currentPos)
 	}
 	return nil

@@ -3,7 +3,7 @@ package function
 import "github.com/dolthub/go-mysql-server/sql"
 
 // RowCount implements the ROW_COUNT() function
-type RowCount struct {}
+type RowCount struct{}
 
 func NewRowCount() sql.Expression {
 	return RowCount{}
@@ -52,7 +52,7 @@ func (r RowCount) FunctionName() string {
 }
 
 // LastInsertId implements the LAST_INSERT_ID() function
-type LastInsertId struct {}
+type LastInsertId struct{}
 
 func NewLastInsertId() sql.Expression {
 	return LastInsertId{}
@@ -101,7 +101,7 @@ func (r LastInsertId) FunctionName() string {
 }
 
 // FoundRows implements the FOUND_ROWS() function
-type FoundRows struct {}
+type FoundRows struct{}
 
 func NewFoundRows() sql.Expression {
 	return FoundRows{}

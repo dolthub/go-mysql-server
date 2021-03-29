@@ -87,7 +87,7 @@ type Session interface {
 	GetQueriedDatabase() string
 	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
 	SetQueriedDatabase(dbName string)
-    // SetLastQueryInfo sets session-level query info for the key given, applying to the query just executed.
+	// SetLastQueryInfo sets session-level query info for the key given, applying to the query just executed.
 	SetLastQueryInfo(key string, value int64)
 	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.
 	GetLastQueryInfo(key string) int64
@@ -95,16 +95,16 @@ type Session interface {
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	id        uint32
-	addr      string
-	currentDB string
-	client    Client
-	mu        *sync.RWMutex
-	config    map[string]TypedValue
-	warnings  []*Warning
-	warncnt   uint16
-	locks     map[string]bool
-	queriedDb string
+	id            uint32
+	addr          string
+	currentDB     string
+	client        Client
+	mu            *sync.RWMutex
+	config        map[string]TypedValue
+	warnings      []*Warning
+	warncnt       uint16
+	locks         map[string]bool
+	queriedDb     string
 	lastQueryInfo map[string]int64
 }
 
@@ -297,9 +297,9 @@ func DefaultSessionConfig() map[string]TypedValue {
 }
 
 const (
-	RowCount = "row_count"
-  	FoundRows = "found_rows"
-    LastInsertId = "last_insert_id"
+	RowCount     = "row_count"
+	FoundRows    = "found_rows"
+	LastInsertId = "last_insert_id"
 )
 
 func defaultLastQueryInfo() map[string]int64 {
@@ -358,10 +358,10 @@ func NewSession(server, client, user string, id uint32) Session {
 			Address: client,
 			User:    user,
 		},
-		config: DefaultSessionConfig(),
+		config:        DefaultSessionConfig(),
 		lastQueryInfo: defaultLastQueryInfo(),
-		mu:     &sync.RWMutex{},
-		locks:  make(map[string]bool),
+		mu:            &sync.RWMutex{},
+		locks:         make(map[string]bool),
 	}
 }
 
