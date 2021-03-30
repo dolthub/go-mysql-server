@@ -1911,7 +1911,7 @@ func isAggregateExpr(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedFunction:
 			isAgg = isAgg || e.IsAggregate
-		case *aggregation.CountDistinct:
+		case *aggregation.CountDistinct, *aggregation.GroupConcat:
 			isAgg = true
 		}
 

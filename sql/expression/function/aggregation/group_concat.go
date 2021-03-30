@@ -39,18 +39,32 @@ func (g *GroupConcat) NewBuffer() sql.Row {
 
 // Update implements the Aggregation interface.
 func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	v, err := sql.LongText.Convert(row[0])
+	if err != nil {
+		return err
+	}
+
+	vs := v.(string)
+	bs := buffer[0].(string)
+
+	bs = bs + vs + ","
+
+	buffer[0] = bs
+
 	return nil
 }
 
 // Merge implements the Aggregation interface.
 func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	buffer[0] = buffer[0].(int64) + partial[0].(int64)
-	return nil
+	return g.Update(ctx, buffer, partial)
 }
 
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	rs := row[0].(string)
 
-	return nil, nil
+	rs = rs[:len(rs)-1]
+
+	return rs, nil
 }
 
 func (g *GroupConcat) Resolved() bool {
