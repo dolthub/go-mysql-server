@@ -46,12 +46,12 @@ func TestQueries(t *testing.T, harness Harness) {
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range QueryTests {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	}
 
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range KeylessQueries {
-			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
+			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 		}
 	}
 }
@@ -64,7 +64,7 @@ func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range queries {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	}
 }
 
@@ -93,7 +93,7 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range InfoSchemaQueries {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, nil)
 	}
 	for _, script := range InfoSchemaScripts {
 		TestScript(t, harness, script)
@@ -110,9 +110,7 @@ func createIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
 func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	if fkh, ok := harness.(ForeignKeyHarness); ok && fkh.SupportsForeignKeys() {
 		ctx := NewContextWithEngine(harness, engine)
-		TestQueryWithContext(t, ctx, engine,
-			"ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE",
-			nil, nil)
+		TestQueryWithContext(t, ctx, engine, "ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE", nil, nil, nil)
 	}
 }
 
@@ -135,7 +133,7 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 
 	engine := NewEngine(t, harness)
 	for _, tt := range VersionedQueries {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.Bindings)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, tt.Bindings)
 	}
 }
 
@@ -272,7 +270,7 @@ func TestExplode(t *testing.T, harness Harness) {
 	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
 
 	for _, q := range ExplodeQueries {
-		TestQuery(t, harness, e, q.Query, q.Expected, q.Bindings)
+		TestQuery(t, harness, e, q.Query, q.Expected, nil, q.Bindings)
 	}
 }
 
@@ -409,7 +407,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 		{int64(3), "qux", "baz"},
 	}
 
-	TestQuery(t, harness, e, `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c order by 1`, expected, nil)
+	TestQuery(t, harness, e, `SELECT f.a, bar.b, f.b FROM foo f INNER JOIN bar ON f.a = bar.c order by 1`, expected, nil, nil)
 }
 
 func TestQueryErrors(t *testing.T, harness Harness) {
@@ -430,7 +428,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 func TestInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range InsertQueries {
 		e := NewEngine(t, harness)
-		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, insertion.Bindings)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
 		// If we skipped the insert, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(insertion.WriteQuery) {
@@ -438,7 +436,7 @@ func TestInsertInto(t *testing.T, harness Harness) {
 				continue
 			}
 		}
-		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, insertion.Bindings)
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil, insertion.Bindings)
 	}
 	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
@@ -483,7 +481,7 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 func TestReplaceInto(t *testing.T, harness Harness) {
 	for _, insertion := range ReplaceQueries {
 		e := NewEngine(t, harness)
-		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, insertion.Bindings)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
 		// If we skipped the insert, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(insertion.WriteQuery) {
@@ -491,7 +489,7 @@ func TestReplaceInto(t *testing.T, harness Harness) {
 				continue
 			}
 		}
-		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, insertion.Bindings)
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil, insertion.Bindings)
 	}
 }
 
@@ -511,7 +509,7 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 func TestUpdate(t *testing.T, harness Harness) {
 	for _, update := range UpdateTests {
 		e := NewEngine(t, harness)
-		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, update.Bindings)
+		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil, update.Bindings)
 		// If we skipped the update, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(update.WriteQuery) {
@@ -519,7 +517,7 @@ func TestUpdate(t *testing.T, harness Harness) {
 				continue
 			}
 		}
-		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect, update.Bindings)
+		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect, nil, update.Bindings)
 	}
 }
 
@@ -539,7 +537,7 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
 		e := NewEngine(t, harness)
-		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, delete.Bindings)
+		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, delete.Bindings)
 		// If we skipped the delete, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(delete.WriteQuery) {
@@ -547,7 +545,7 @@ func TestDelete(t *testing.T, harness Harness) {
 				continue
 			}
 		}
-		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, delete.Bindings)
+		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil, delete.Bindings)
 	}
 }
 
@@ -571,38 +569,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 	t.Run("Standard TRUNCATE", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t1 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX(v1))")
 		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1), (2,2), (3,3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t1 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"TRUNCATE t1",
-			[]sql.Row{{sql.NewOkResult(3)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t1 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}, {int64(3), int64(3)}}, nil, nil)
+		TestQuery(t, harness, e, "TRUNCATE t1", []sql.Row{{sql.NewOkResult(3)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row(nil), nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,4), (5,5)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1",
-			[]sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"TRUNCATE TABLE t1",
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t1 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t1 WHERE v1 > 0 ORDER BY 1", []sql.Row{{int64(4), int64(4)}, {int64(5), int64(5)}}, nil, nil)
+		TestQuery(t, harness, e, "TRUNCATE TABLE t1", []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t1 ORDER BY 1", []sql.Row(nil), nil, nil)
 	})
 
 	t.Run("Foreign Key References", func(t *testing.T) {
@@ -618,62 +592,26 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE t3i (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "CREATE TRIGGER trig_t3 BEFORE DELETE ON t3 FOR EACH ROW INSERT INTO t3i VALUES (old.pk, old.v1)")
 		RunQuery(t, e, harness, "INSERT INTO t3 VALUES (1,1), (3,3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t3 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"TRUNCATE t3",
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t3 ORDER BY 1",
-			[]sql.Row{},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t3i ORDER BY 1",
-			[]sql.Row{},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t3 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}}, nil, nil)
+		TestQuery(t, harness, e, "TRUNCATE t3", []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t3 ORDER BY 1", []sql.Row{}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t3i ORDER BY 1", []sql.Row{}, nil, nil)
 	})
 
 	t.Run("auto_increment column", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t4 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (5), (6)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t4 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(5)}, {int64(2), int64(6)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"TRUNCATE t4",
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t4 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(5)}, {int64(2), int64(6)}}, nil, nil)
+		TestQuery(t, harness, e, "TRUNCATE t4", []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t4 ORDER BY 1", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t4(v1) VALUES (7)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t4 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(7)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t4 ORDER BY 1", []sql.Row{{int64(1), int64(7)}}, nil, nil)
 	})
 
 	t.Run("Naked DELETE", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t5 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "INSERT INTO t5 VALUES (1,1), (2,2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t5 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t5 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t5"
 		parsed, err := parse.Parse(ctx, deleteStr)
@@ -694,16 +632,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 				"Expected Truncate Node, got:\n%s", analyzed.String())
 		}
 
-		TestQuery(t, harness, e,
-			deleteStr,
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t5 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t5 ORDER BY 1", []sql.Row(nil), nil, nil)
 	})
 
 	t.Run("Naked DELETE with Foreign Key References", func(t *testing.T) {
@@ -737,16 +667,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TRIGGER trig_t7 BEFORE DELETE ON t7 FOR EACH ROW INSERT INTO t7i VALUES (old.pk, old.v1)")
 		RunQuery(t, e, harness, "INSERT INTO t7 VALUES (1,1), (3,3)")
 		RunQuery(t, e, harness, "DELETE FROM t7 WHERE pk = 3")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t7 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t7i ORDER BY 1",
-			[]sql.Row{{int64(3), int64(3)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t7 ORDER BY 1", []sql.Row{{int64(1), int64(1)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(3), int64(3)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t7"
 		parsed, err := parse.Parse(ctx, deleteStr)
@@ -766,31 +688,15 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with triggers to TRUNCATE")
 		}
 
-		TestQuery(t, harness, e,
-			deleteStr,
-			[]sql.Row{{sql.NewOkResult(1)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t7 ORDER BY 1",
-			[]sql.Row{},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t7i ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}},
-			nil,
-		)
+		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(1)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t7 ORDER BY 1", []sql.Row{}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t7i ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(3), int64(3)}}, nil, nil)
 	})
 
 	t.Run("Naked DELETE with auto_increment column", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t8 (pk BIGINT AUTO_INCREMENT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "INSERT INTO t8(v1) VALUES (4), (5)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t8 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(1), int64(4)}, {int64(2), int64(5)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t8"
 		parsed, err := parse.Parse(ctx, deleteStr)
@@ -810,32 +716,16 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with auto_increment cols to TRUNCATE")
 		}
 
-		TestQuery(t, harness, e,
-			deleteStr,
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t8 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t8 ORDER BY 1", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t8(v1) VALUES (6)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t8 ORDER BY 1",
-			[]sql.Row{{int64(3), int64(6)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t8 ORDER BY 1", []sql.Row{{int64(3), int64(6)}}, nil, nil)
 	})
 
 	t.Run("DELETE with WHERE clause", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t9 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "INSERT INTO t9 VALUES (7,7), (8,8)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t9 ORDER BY 1",
-			[]sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t9 ORDER BY 1", []sql.Row{{int64(7), int64(7)}, {int64(8), int64(8)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t9 WHERE pk > 0"
 		parsed, err := parse.Parse(ctx, deleteStr)
@@ -855,26 +745,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with WHERE clause to TRUNCATE")
 		}
 
-		TestQuery(t, harness, e,
-			deleteStr,
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t9 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t9 ORDER BY 1", []sql.Row(nil), nil, nil)
 	})
 
 	t.Run("DELETE with LIMIT clause", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t10 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "INSERT INTO t10 VALUES (8,8), (9,9)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t10 ORDER BY 1",
-			[]sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t10 ORDER BY 1", []sql.Row{{int64(8), int64(8)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t10 LIMIT 1000"
 		parsed, err := parse.Parse(ctx, deleteStr)
@@ -894,26 +772,14 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with LIMIT clause to TRUNCATE")
 		}
 
-		TestQuery(t, harness, e,
-			deleteStr,
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t10 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t10 ORDER BY 1", []sql.Row(nil), nil, nil)
 	})
 
 	t.Run("DELETE with ORDER BY clause", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t11 (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "INSERT INTO t11 VALUES (1,1), (9,9)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t11 ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t11 ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(9), int64(9)}}, nil, nil)
 
 		deleteStr := "DELETE FROM t11 ORDER BY 1"
 		parsed, err := parse.Parse(ctx, deleteStr)
@@ -933,16 +799,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with ORDER BY clause to TRUNCATE")
 		}
 
-		TestQuery(t, harness, e,
-			deleteStr,
-			[]sql.Row{{sql.NewOkResult(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t11 ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t11 ORDER BY 1", []sql.Row(nil), nil, nil)
 	})
 
 	t.Run("Multi-table DELETE", func(t *testing.T) {
@@ -952,16 +810,8 @@ func TestTruncate(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE t12b (pk BIGINT PRIMARY KEY, v1 BIGINT)")
 		RunQuery(t, e, harness, "INSERT INTO t12a VALUES (1,1), (2,2)")
 		RunQuery(t, e, harness, "INSERT INTO t12b VALUES (1,1), (2,2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t12a ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t12b ORDER BY 1",
-			[]sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t12a ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t12b ORDER BY 1", []sql.Row{{int64(1), int64(1)}, {int64(2), int64(2)}}, nil, nil)
 
 		deleteStr := "DELETE t12a, t12b FROM t12a INNER JOIN t12b WHERE t12a.pk=t12b.pk"
 		parsed, err := parse.Parse(ctx, deleteStr)
@@ -981,21 +831,9 @@ func TestTruncate(t *testing.T, harness Harness) {
 			require.FailNow(t, "Incorrectly converted DELETE with WHERE clause to TRUNCATE")
 		}
 
-		TestQuery(t, harness, e,
-			deleteStr,
-			[]sql.Row{{sql.NewOkResult(4)}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t12a ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t12b ORDER BY 1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, deleteStr, []sql.Row{{sql.NewOkResult(4)}}, nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t12a ORDER BY 1", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t12b ORDER BY 1", []sql.Row(nil), nil, nil)
 	})
 }
 
@@ -1077,7 +915,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 		} else if assertion.ExpectedErrStr != "" {
 			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 		} else {
-			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil)
+			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
 		}
 	}
 }
@@ -1095,7 +933,7 @@ func TestViews(t *testing.T, harness Harness) {
 
 	for _, testCase := range ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
-			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, testCase.Bindings)
+			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, nil, testCase.Bindings)
 		})
 	}
 }
@@ -1120,7 +958,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 
 	for _, testCase := range VersionedViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
-			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, testCase.Bindings)
+			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, nil, testCase.Bindings)
 		})
 	}
 }
@@ -1130,13 +968,9 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 
 	t.Run("Assortment of types without pk", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
-				"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
-				"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1(a INTEGER, b TEXT, c DATE, "+
+			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
+			"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1163,12 +997,8 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Primary key declared in column", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
-				"b VARCHAR(10) NOT NULL)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
+			"b VARCHAR(10) NOT NULL)", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1186,13 +1016,9 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Multiple primary keys", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t3(a INTEGER NOT NULL,"+
-				"b TEXT NOT NULL,"+
-				"c bool, primary key (a,b))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t3(a INTEGER NOT NULL,"+
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a,b))", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1211,13 +1037,9 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Including comment", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t4(a INTEGER,"+
-				"b TEXT NOT NULL COMMENT 'comment',"+
-				"c bool, primary key (a))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t4(a INTEGER,"+
+			"b TEXT NOT NULL COMMENT 'comment',"+
+			"c bool, primary key (a))", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1236,13 +1058,9 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("If not exists", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
-				"b TEXT NOT NULL,"+
-				"c bool, primary key (a))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE IF NOT EXISTS t4(a INTEGER,"+
+			"b TEXT NOT NULL,"+
+			"c bool, primary key (a))", []sql.Row(nil), nil, nil)
 
 		_, _, err := e.Query(NewContext(harness), "CREATE TABLE t4(a INTEGER,"+
 			"b TEXT NOT NULL,"+
@@ -1260,11 +1078,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("CREATE LIKE assortment of types without primary key", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t6 LIKE t1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t6 LIKE t1", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1301,11 +1115,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		_, err = sql.RowIterToRows(ctx, iter)
 		require.NoError(t, err)
-		TestQuery(t, harness, e,
-			"CREATE TABLE t7 LIKE t7pre",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t7 LIKE t7pre", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1346,11 +1156,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		_, err = sql.RowIterToRows(ctx, iter)
 		require.NoError(t, err)
 		ctx.SetCurrentDatabase("mydb")
-		TestQuery(t, harness, e,
-			"CREATE TABLE t8 LIKE foo.t8pre",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t8 LIKE foo.t8pre", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1369,18 +1175,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	})
 
 	t.Run("UNIQUE constraint in column definition", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t9 (a INTEGER NOT NULL PRIMARY KEY, "+
-				"b VARCHAR(10) UNIQUE)",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"CREATE TABLE t9a (a INTEGER NOT NULL PRIMARY KEY, "+
-				"b VARCHAR(10) UNIQUE KEY)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t9 (a INTEGER NOT NULL PRIMARY KEY, "+
+			"b VARCHAR(10) UNIQUE)", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "CREATE TABLE t9a (a INTEGER NOT NULL PRIMARY KEY, "+
+			"b VARCHAR(10) UNIQUE KEY)", []sql.Row(nil), nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)
@@ -1442,11 +1240,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.True(ok)
 
-	TestQuery(t, harness, e,
-		"DROP TABLE IF EXISTS mytable, not_exist",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "DROP TABLE IF EXISTS mytable, not_exist", []sql.Row(nil), nil, nil)
 
 	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1460,11 +1254,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, harness, e,
-		"DROP TABLE IF EXISTS othertable, tabletest",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "DROP TABLE IF EXISTS othertable, tabletest", []sql.Row(nil), nil, nil)
 
 	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
 	require.NoError(err)
@@ -1490,11 +1280,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, harness, e,
-		"RENAME TABLE mytable TO newTableName",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "RENAME TABLE mytable TO newTableName", []sql.Row(nil), nil, nil)
 
 	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1504,11 +1290,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, harness, e,
-		"RENAME TABLE othertable to othertable2, newTableName to mytable",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "RENAME TABLE othertable to othertable2, newTableName to mytable", []sql.Row(nil), nil, nil)
 
 	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
 	require.NoError(err)
@@ -1526,11 +1308,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable RENAME newTableName",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME newTableName", []sql.Row(nil), nil, nil)
 
 	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1557,11 +1335,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable RENAME COLUMN i TO i2",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME COLUMN i TO i2", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1588,11 +1362,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1603,21 +1373,13 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
 	}, tbl.Schema())
 
-	TestQuery(t, harness, e,
-		"SELECT * FROM mytable ORDER BY i",
-		[]sql.Row{
-			sql.NewRow(int64(1), "first row", int32(42)),
-			sql.NewRow(int64(2), "second row", int32(42)),
-			sql.NewRow(int64(3), "third row", int32(42)),
-		},
-		nil,
-	)
+	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+		sql.NewRow(int64(1), "first row", int32(42)),
+		sql.NewRow(int64(2), "second row", int32(42)),
+		sql.NewRow(int64(3), "third row", int32(42)),
+	}, nil, nil)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1629,21 +1391,13 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
 	}, tbl.Schema())
 
-	TestQuery(t, harness, e,
-		"SELECT * FROM mytable ORDER BY i",
-		[]sql.Row{
-			sql.NewRow(int64(1), nil, "first row", int32(42)),
-			sql.NewRow(int64(2), nil, "second row", int32(42)),
-			sql.NewRow(int64(3), nil, "third row", int32(42)),
-		},
-		nil,
-	)
+	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+		sql.NewRow(int64(1), nil, "first row", int32(42)),
+		sql.NewRow(int64(2), nil, "second row", int32(42)),
+		sql.NewRow(int64(3), nil, "third row", int32(42)),
+	}, nil, nil)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1656,15 +1410,11 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
 	}, tbl.Schema())
 
-	TestQuery(t, harness, e,
-		"SELECT * FROM mytable ORDER BY i",
-		[]sql.Row{
-			sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
-			sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
-			sql.NewRow("yay", int64(3), nil, "third row", int32(42)),
-		},
-		nil,
-	)
+	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
+		sql.NewRow("yay", int64(1), nil, "first row", int32(42)),
+		sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
+		sql.NewRow("yay", int64(3), nil, "third row", int32(42)),
+	}, nil, nil)
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
 	require.Error(err)
@@ -1691,11 +1441,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1705,11 +1451,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable MODIFY COLUMN i TINYINT NULL COMMENT 'yes' AFTER s",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TINYINT NULL COMMENT 'yes' AFTER s", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1719,11 +1461,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", Nullable: true},
 	}, tbl.Schema())
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1754,11 +1492,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE mytable DROP COLUMN s",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE mytable DROP COLUMN s", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1781,29 +1515,17 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 
 	t.Run("CREATE DATABASE and create table", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE DATABASE testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		db, err := e.Catalog.Database("testdb")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e,
-			"USE testdb",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "USE testdb", []sql.Row(nil), nil, nil)
 
 		require.Equal(t, ctx.GetCurrentDatabase(), "testdb")
 
 		ctx = NewContext(harness)
-		TestQuery(t, harness, e,
-			"CREATE TABLE test (pk int primary key)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE test (pk int primary key)", []sql.Row(nil), nil, nil)
 
 		db, err = e.Catalog.Database("testdb")
 		require.NoError(t, err)
@@ -1815,29 +1537,17 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("CREATE DATABASE IF NOT EXISTS", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE DATABASE IF NOT EXISTS testdb2",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE DATABASE IF NOT EXISTS testdb2", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		db, err := e.Catalog.Database("testdb2")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e,
-			"USE testdb2",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "USE testdb2", []sql.Row(nil), nil, nil)
 
 		require.Equal(t, ctx.GetCurrentDatabase(), "testdb2")
 
 		ctx = NewContext(harness)
-		TestQuery(t, harness, e,
-			"CREATE TABLE test (pk int primary key)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE test (pk int primary key)", []sql.Row(nil), nil, nil)
 
 		db, err = e.Catalog.Database("testdb2")
 		require.NoError(t, err)
@@ -1849,29 +1559,17 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("CREATE SCHEMA", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE SCHEMA testdb3",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE SCHEMA testdb3", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		db, err := e.Catalog.Database("testdb3")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e,
-			"USE testdb3",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "USE testdb3", []sql.Row(nil), nil, nil)
 
 		require.Equal(t, ctx.GetCurrentDatabase(), "testdb3")
 
 		ctx = NewContext(harness)
-		TestQuery(t, harness, e,
-			"CREATE TABLE test (pk int primary key)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE test (pk int primary key)", []sql.Row(nil), nil, nil)
 
 		db, err = e.Catalog.Database("testdb3")
 		require.NoError(t, err)
@@ -1893,11 +1591,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 
 	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"DROP DATABASE mydb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("mydb")
 		require.Error(t, err)
@@ -1907,39 +1601,23 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DROP DATABASE works on newly created databases.", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE DATABASE testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("testdb")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e,
-			"DROP DATABASE testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "DROP DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
 
 	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE SCHEMA testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE SCHEMA testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("testdb")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e,
-			"DROP SCHEMA testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "DROP SCHEMA testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
@@ -1947,20 +1625,12 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
 		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS mydb", mysql.ERDbDropExists)
 
-		TestQuery(t, harness, e,
-			"CREATE DATABASE testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("testdb")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e,
-			"DROP DATABASE IF EXISTS testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}},
-			nil,
-		)
+		TestQuery(t, harness, e, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 
@@ -1973,28 +1643,12 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE parent ADD INDEX pb (b)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
-			"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
-			")",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (d) REFERENCES child(c)",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE parent ADD INDEX pb (b)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
+		"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
+		")", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (d) REFERENCES child(c)", []sql.Row(nil), nil, nil)
 
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
@@ -2030,21 +1684,9 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	}
 	assert.Equal(t, expected, fks)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL", []sql.Row(nil), nil, nil)
 
 	child, ok, err = db.GetTableInsensitive(ctx, "child2")
 	require.NoError(err)
@@ -2098,44 +1740,16 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE parent ADD INDEX pb (b)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
-			"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
-			")",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE parent ADD INDEX pb (b)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
+		"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
+		")", []sql.Row(nil), nil, nil)
 
-	TestQuery(t, harness, e,
-		"CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL",
-		[]sql.Row(nil),
-		nil,
-	)
-	TestQuery(t, harness, e,
-		"ALTER TABLE child2 DROP CONSTRAINT fk2",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child2 DROP CONSTRAINT fk2", []sql.Row(nil), nil, nil)
 
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
@@ -2162,11 +1776,7 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	}
 	assert.Equal(t, expected, fks)
 
-	TestQuery(t, harness, e,
-		"ALTER TABLE child2 DROP FOREIGN KEY fk3",
-		[]sql.Row(nil),
-		nil,
-	)
+	TestQuery(t, harness, e, "ALTER TABLE child2 DROP FOREIGN KEY fk3", []sql.Row(nil), nil, nil)
 
 	child, ok, err = db.GetTableInsensitive(NewContext(harness), "child2")
 	require.NoError(err)
@@ -2263,19 +1873,13 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (b > -1) ENFORCED")
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
-	TestQuery(t, harness, e, `SELECT * FROM t1`,
-		[]sql.Row{
-			{1, 1},
-		},
-		nil,
-	)
+	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+		{1, 1},
+	}, nil, nil)
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0)")
-	TestQuery(t, harness, e, `SELECT * FROM t1`,
-		[]sql.Row{
-			{1, 1},
-		},
-		nil,
-	)
+	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+		{1, 1},
+	}, nil, nil)
 
 	ctx := NewContext(harness)
 	require.True(t, len(ctx.Warnings()) > 0)
@@ -2389,14 +1993,11 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`,
-		[]sql.Row{
-			{"a_1", "b_1", "c_1", "d_1"},
-			{"a_2", "b_2", "c_2", "d_2"},
-			{"a_3", "b_3", "c_3", "d_3"},
-		},
-		nil,
-	)
+	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
+		{"a_1", "b_1", "c_1", "d_1"},
+		{"a_2", "b_2", "c_2", "d_2"},
+		{"a_3", "b_3", "c_3", "d_3"},
+	}, nil, nil)
 }
 
 func TestNaturalJoinEqual(t *testing.T, harness Harness) {
@@ -2434,9 +2035,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 		{"a_1", "b_1", "c_1"},
 		{"a_2", "b_2", "c_2"},
 		{"a_3", "b_3", "c_3"},
-	},
-		nil,
-	)
+	}, nil, nil)
 }
 
 func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
@@ -2475,9 +2074,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 		{"a3", "b1"},
 		{"a3", "b2"},
 		{"a3", "b3"},
-	},
-		nil,
-	)
+	}, nil, nil)
 }
 
 func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
@@ -2526,15 +2123,12 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	TestQuery(t, harness, e, `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`,
-		[]sql.Row{
-			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
-			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
-			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
-			{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
-		},
-		nil,
-	)
+	TestQuery(t, harness, e, `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`, []sql.Row{
+		{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+		{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+		{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+		{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
+	}, nil, nil)
 }
 
 func TestVariables(t *testing.T, harness Harness) {
@@ -2623,7 +2217,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 	ctx.Session.Warn(&sql.Warning{Code: 3})
 
 	for _, tt := range queries {
-		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.Bindings)
+		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, tt.Bindings)
 	}
 }
 
@@ -2726,7 +2320,7 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	require.NoError(t, err)
 
 	for _, tt := range q {
-		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, tt.Bindings)
+		TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, tt.Bindings)
 	}
 }
 
@@ -2782,7 +2376,7 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range ShowTableStatusQueries {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil)
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, nil)
 	}
 }
 
@@ -2867,456 +2461,188 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	require.NoError(err)
 
 	t.Run("Standard default literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t1 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t1",
-			[]sql.Row{{1, 2}, {2, 2}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t1", []sql.Row{{1, 2}, {2, 2}}, nil, nil)
 	})
 
 	t.Run("Default expression with function and referenced column", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t2(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t2(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t2 (pk) VALUES (1), (2), (3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t2",
-			[]sql.Row{{1, 2}, {2, 2}, {3, 3}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t2", []sql.Row{{1, 2}, {2, 2}, {3, 3}}, nil, nil)
 	})
 
 	t.Run("Default expression converting to proper column type", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t3(pk BIGINT PRIMARY KEY, v1 VARCHAR(20) DEFAULT (GREATEST(pk, 2)))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t3(pk BIGINT PRIMARY KEY, v1 VARCHAR(20) DEFAULT (GREATEST(pk, 2)))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t3 (pk) VALUES (1), (2), (3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t3",
-			[]sql.Row{{1, "2"}, {2, "2"}, {3, "3"}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t3", []sql.Row{{1, "2"}, {2, "2"}, {3, "3"}}, nil, nil)
 	})
 
 	t.Run("Default literal of different type but implicitly converts", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t4(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t4(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t4 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t4",
-			[]sql.Row{{1, 4}, {2, 4}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t4", []sql.Row{{1, 4}, {2, 4}}, nil, nil)
 	})
 
 	t.Run("Back reference to default literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t5(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT 7)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t5(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT DEFAULT 7)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t5 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t5",
-			[]sql.Row{{1, 7, 7}, {2, 7, 7}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t5", []sql.Row{{1, 7, 7}, {2, 7, 7}}, nil, nil)
 	})
 
 	t.Run("Forward reference to default literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t6(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 9, v2 BIGINT DEFAULT (v1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t6(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 9, v2 BIGINT DEFAULT (v1))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t6 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t6",
-			[]sql.Row{{1, 9, 9}, {2, 9, 9}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t6", []sql.Row{{1, 9, 9}, {2, 9, 9}}, nil, nil)
 	})
 
 	t.Run("Forward reference to default expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t7(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (8), v2 BIGINT DEFAULT (v1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t7(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (8), v2 BIGINT DEFAULT (v1))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t7 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t7",
-			[]sql.Row{{1, 8, 8}, {2, 8, 8}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t7", []sql.Row{{1, 8, 8}, {2, 8, 8}}, nil, nil)
 	})
 
 	t.Run("Back reference to value", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t8(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2 + 1), v2 BIGINT)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t8(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2 + 1), v2 BIGINT)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t8 (pk, v2) VALUES (1, 4), (2, 6)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t8",
-			[]sql.Row{{1, 5, 4}, {2, 7, 6}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t8", []sql.Row{{1, 5, 4}, {2, 7, 6}}, nil, nil)
 	})
 
 	t.Run("TEXT expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t9(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT (77))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t9(pk BIGINT PRIMARY KEY, v1 LONGTEXT DEFAULT (77))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t9 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t9",
-			[]sql.Row{{1, "77"}, {2, "77"}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t9", []sql.Row{{1, "77"}, {2, "77"}}, nil, nil)
 	})
 
 	// TODO: test that the correct values are set once we set the clock
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
-				"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
+			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row(nil), nil, nil)
 	})
 
 	// TODO: test that the correct values are set once we set the clock
 	t.Run("Non-DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))", []sql.Row(nil), nil, nil)
 	})
 
 	t.Run("REPLACE INTO with default expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t12(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t12(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t12 (pk) VALUES (1), (2)")
 		RunQuery(t, e, harness, "REPLACE INTO t12 (pk) VALUES (2), (3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t12",
-			[]sql.Row{{1, 2}, {2, 2}, {3, 3}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t12", []sql.Row{{1, 2}, {2, 2}, {3, 3}}, nil, nil)
 	})
 
 	t.Run("Add column last default literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t13(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t13(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t13 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t13 ADD COLUMN v2 BIGINT DEFAULT 5",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t13",
-			[]sql.Row{{1, 4, 5}, {2, 4, 5}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t13 ADD COLUMN v2 BIGINT DEFAULT 5", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t13", []sql.Row{{1, 4, 5}, {2, 4, 5}}, nil, nil)
 	})
 
 	t.Run("Add column implicit last default expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t14(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t14(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t14 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t14 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2)",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t14",
-			[]sql.Row{{1, 2, 4}, {2, 3, 5}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t14 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2)", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t14", []sql.Row{{1, 2, 4}, {2, 3, 5}}, nil, nil)
 	})
 
 	t.Run("Add column explicit last default expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t15(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t15(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t15 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t15 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) AFTER v1",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t15",
-			[]sql.Row{{1, 2, 4}, {2, 3, 5}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t15 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) AFTER v1", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t15", []sql.Row{{1, 2, 4}, {2, 3, 5}}, nil, nil)
 	})
 
 	t.Run("Add column first default literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t16(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t16(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t16 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t16 ADD COLUMN v2 BIGINT DEFAULT 5 FIRST",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t16",
-			[]sql.Row{{5, 1, 4}, {5, 2, 4}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t16 ADD COLUMN v2 BIGINT DEFAULT 5 FIRST", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t16", []sql.Row{{5, 1, 4}, {5, 2, 4}}, nil, nil)
 	})
 
 	t.Run("Add column first default expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t17(pk BIGINT PRIMARY KEY, v1 BIGINT)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t17(pk BIGINT PRIMARY KEY, v1 BIGINT)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t17 VALUES (1, 3), (2, 4)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t17 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) FIRST",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t17",
-			[]sql.Row{{5, 1, 3}, {6, 2, 4}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t17 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) FIRST", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t17", []sql.Row{{5, 1, 3}, {6, 2, 4}}, nil, nil)
 	})
 
 	t.Run("Add column forward reference to default expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t18(pk BIGINT DEFAULT (v1) PRIMARY KEY, v1 BIGINT)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t18(pk BIGINT DEFAULT (v1) PRIMARY KEY, v1 BIGINT)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t18 (v1) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t18 ADD COLUMN v2 BIGINT DEFAULT (pk + 1) AFTER pk",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t18",
-			[]sql.Row{{1, 2, 1}, {2, 3, 2}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t18 ADD COLUMN v2 BIGINT DEFAULT (pk + 1) AFTER pk", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t18", []sql.Row{{1, 2, 1}, {2, 3, 2}}, nil, nil)
 	})
 
 	t.Run("Add column back reference to default literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t19(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 5)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t19(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 5)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t19 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t19 ADD COLUMN v2 BIGINT DEFAULT (v1 - 1) AFTER pk",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t19",
-			[]sql.Row{{1, 4, 5}, {2, 4, 5}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t19 ADD COLUMN v2 BIGINT DEFAULT (v1 - 1) AFTER pk", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t19", []sql.Row{{1, 4, 5}, {2, 4, 5}}, nil, nil)
 	})
 
 	t.Run("Add column first with existing defaults still functioning", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t20(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 10))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t20(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 10))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t20 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t20 ADD COLUMN v2 BIGINT DEFAULT (-pk) FIRST",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t20 ADD COLUMN v2 BIGINT DEFAULT (-pk) FIRST", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t20 (pk) VALUES (3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t20",
-			[]sql.Row{{-1, 1, 11}, {-2, 2, 12}, {-3, 3, 13}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t20", []sql.Row{{-1, 1, 11}, {-2, 2, 12}, {-3, 3, 13}}, nil, nil)
 	})
 
 	t.Run("Drop column referencing other column", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t21(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT)",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"ALTER TABLE t21 DROP COLUMN v1",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t21(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (v2), v2 BIGINT)", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE t21 DROP COLUMN v1", []sql.Row(nil), nil, nil)
 	})
 
 	t.Run("Modify column move first forward reference default literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t22(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 2), v2 BIGINT DEFAULT (pk + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t22(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 2), v2 BIGINT DEFAULT (pk + 1))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t22 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t22 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 2) FIRST",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SELECT * FROM t22",
-			[]sql.Row{{3, 1, 2}, {4, 2, 3}},
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t22 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 2) FIRST", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t22", []sql.Row{{3, 1, 2}, {4, 2, 3}}, nil, nil)
 	})
 
 	t.Run("Modify column move first add reference", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t23(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t23(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t23 (pk, v1) VALUES (1, 2), (2, 3)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t23 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 5) FIRST",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t23 MODIFY COLUMN v1 BIGINT DEFAULT (pk + 5) FIRST", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t23 (pk) VALUES (3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t23",
-			[]sql.Row{{2, 1, 3}, {3, 2, 4}, {8, 3, 9}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t23", []sql.Row{{2, 1, 3}, {3, 2, 4}, {8, 3, 9}}, nil, nil)
 	})
 
 	t.Run("Modify column move last being referenced", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t24(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t24(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t24 (pk, v1) VALUES (1, 2), (2, 3)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t24 MODIFY COLUMN v1 BIGINT AFTER v2",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t24 MODIFY COLUMN v1 BIGINT AFTER v2", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t24 (pk, v1) VALUES (3, 4)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t24",
-			[]sql.Row{{1, 3, 2}, {2, 4, 3}, {3, 5, 4}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t24", []sql.Row{{1, 3, 2}, {2, 4, 3}, {3, 5, 4}}, nil, nil)
 	})
 
 	t.Run("Modify column move last add reference", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t25(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (pk * 2))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t25(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (pk * 2))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t25 (pk, v1) VALUES (1, 2), (2, 3)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t25 MODIFY COLUMN v1 BIGINT DEFAULT (-pk) AFTER v2",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t25 MODIFY COLUMN v1 BIGINT DEFAULT (-pk) AFTER v2", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t25 (pk) VALUES (3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t25",
-			[]sql.Row{{1, 2, 2}, {2, 4, 3}, {3, 6, -3}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t25", []sql.Row{{1, 2, 2}, {2, 4, 3}, {3, 6, -3}}, nil, nil)
 	})
 
 	t.Run("Modify column no move add reference", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t26(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (pk * 2))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t26(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (pk * 2))", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t26 (pk, v1) VALUES (1, 2), (2, 3)")
-		TestQuery(t, harness, e,
-			"ALTER TABLE t26 MODIFY COLUMN v1 BIGINT DEFAULT (-pk)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "ALTER TABLE t26 MODIFY COLUMN v1 BIGINT DEFAULT (-pk)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t26 (pk) VALUES (3)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t26",
-			[]sql.Row{{1, 2, 2}, {2, 3, 4}, {3, -3, 6}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t26", []sql.Row{{1, 2, 2}, {2, 3, 4}, {3, -3, 6}}, nil, nil)
 	})
 
 	t.Run("Negative float literal", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t27(pk BIGINT PRIMARY KEY, v1 DOUBLE DEFAULT -1.1)",
-			[]sql.Row(nil),
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"DESCRIBE t27",
-			[]sql.Row{{"pk", "bigint", "NO", "PRI", "", ""}, {"v1", "double", "YES", "", "-1.1", ""}},
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t27(pk BIGINT PRIMARY KEY, v1 DOUBLE DEFAULT -1.1)", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "DESCRIBE t27", []sql.Row{{"pk", "bigint", "NO", "PRI", "", ""}, {"v1", "double", "YES", "", "-1.1", ""}}, nil, nil)
 	})
 
 	t.Run("Table referenced with column", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t28(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (t28.pk))", []sql.Row(nil), nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t28 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e,
-			"SELECT * FROM t28",
-			[]sql.Row{{1, 1}, {2, 2}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t28", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
 
 		ctx := NewContext(harness)
 		t28, _, err := e.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
@@ -3328,11 +2654,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Column referenced with name change", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t29(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t29(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))", []sql.Row(nil), nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t29 (pk, v1) VALUES (1, 2)")
 		RunQuery(t, e, harness, "ALTER TABLE t29 RENAME COLUMN v1 to v1x")
@@ -3340,21 +2662,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "ALTER TABLE t29 CHANGE COLUMN v1x v1y BIGINT")
 		RunQuery(t, e, harness, "INSERT INTO t29 (pk, v1y) VALUES (3, 4)")
 
-		TestQuery(t, harness, e,
-			"SELECT * FROM t29 ORDER BY 1",
-			[]sql.Row{{1, 2, 3}, {2, 3, 4}, {3, 4, 5}},
-			nil,
-		)
-		TestQuery(t, harness, e,
-			"SHOW CREATE TABLE t29",
-			[]sql.Row{{"t29", "CREATE TABLE `t29` (\n" +
-				"  `pk` bigint NOT NULL,\n" +
-				"  `v1y` bigint,\n" +
-				"  `v2` bigint DEFAULT (v1y + 1),\n" +
-				"  PRIMARY KEY (`pk`)\n" +
-				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}},
-			nil,
-		)
+		TestQuery(t, harness, e, "SELECT * FROM t29 ORDER BY 1", []sql.Row{{1, 2, 3}, {2, 3, 4}, {3, 4, 5}}, nil, nil)
+		TestQuery(t, harness, e, "SHOW CREATE TABLE t29", []sql.Row{{"t29", "CREATE TABLE `t29` (\n" +
+			"  `pk` bigint NOT NULL,\n" +
+			"  `v1y` bigint,\n" +
+			"  `v2` bigint DEFAULT (v1y + 1),\n" +
+			"  PRIMARY KEY (`pk`)\n" +
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}}, nil, nil)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {
@@ -3399,92 +2713,52 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Expression contains invalid literal, fails on insertion", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1000(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT (-1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1000(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT (-1))", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "INSERT INTO t1000 (pk) VALUES (1)", nil)
 	})
 
 	t.Run("Expression contains null on NOT NULL, fails on insertion", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1001(pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT (NULL))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1001(pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT (NULL))", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "INSERT INTO t1001 (pk) VALUES (1)", sql.ErrColumnDefaultReturnedNull)
 	})
 
 	t.Run("Add column first back reference to expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1002(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1002(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1002 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) FIRST", sql.ErrInvalidDefaultValueOrder)
 	})
 
 	t.Run("Add column after back reference to expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1003(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1003(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1003 ADD COLUMN v2 BIGINT DEFAULT (v1 + 2) AFTER pk", sql.ErrInvalidDefaultValueOrder)
 	})
 
 	t.Run("Add column self reference", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1004(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1004(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk + 1))", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1004 ADD COLUMN v2 BIGINT DEFAULT (v2)", sql.ErrInvalidDefaultValueOrder)
 	})
 
 	t.Run("Drop column referenced by other column", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1005(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1005(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1))", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1005 DROP COLUMN v1", sql.ErrDropColumnReferencedInDefault)
 	})
 
 	t.Run("Modify column moving back creates back reference to expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1006(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT DEFAULT (v1))",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1006(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT DEFAULT (v1))", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1006 MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v2", sql.ErrInvalidDefaultValueOrder)
 	})
 
 	t.Run("Modify column moving forward creates back reference to expression", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1007(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1007(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1007 MODIFY COLUMN v1 BIGINT DEFAULT (pk) FIRST", sql.ErrInvalidDefaultValueOrder)
 	})
 
 	t.Run("Modify column invalid after", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1008(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1008(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1008 MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
 	})
 
 	t.Run("Add column invalid after", func(t *testing.T) {
-		TestQuery(t, harness, e,
-			"CREATE TABLE t1009(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)",
-			[]sql.Row(nil),
-			nil,
-		)
+		TestQuery(t, harness, e, "CREATE TABLE t1009(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1009 ADD COLUMN v1 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
 	})
 }
@@ -3572,7 +2846,7 @@ func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, d
 }
 
 // TestQuery runs a query on the engine given and asserts that results are as expected.
-func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row, bindings map[string]sql.Expression) {
+func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
 	t.Run(q, func(t *testing.T) {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(q) {
@@ -3581,11 +2855,11 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 		}
 
 		ctx := NewContextWithEngine(harness, e)
-		TestQueryWithContext(t, ctx, e, q, expected, bindings)
+		TestQueryWithContext(t, ctx, e, q, expected, expectedCols, bindings)
 	})
 }
 
-func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, bindings map[string]sql.Expression) {
+func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
 	require := require.New(t)
 	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
 	require.NoError(err, "Unexpected error for query %s", q)
@@ -3616,6 +2890,22 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	} else {
 		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	}
+
+	// If the expected schema was given, test it as well
+	if expectedCols != nil {
+		assert.Equal(t, expectedCols, stripSchema(sch))
+	}
+}
+
+func stripSchema(s sql.Schema) []*sql.Column {
+	fields := make([]*sql.Column, len(s))
+	for i, c := range s {
+		fields[i] = &sql.Column{
+			Name:    c.Name,
+			Type:    c.Type,
+		}
+	}
+	return fields
 }
 
 func TestJsonScripts(t *testing.T, harness Harness) {
