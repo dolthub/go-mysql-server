@@ -2901,8 +2901,8 @@ func stripSchema(s sql.Schema) []*sql.Column {
 	fields := make([]*sql.Column, len(s))
 	for i, c := range s {
 		fields[i] = &sql.Column{
-			Name:    c.Name,
-			Type:    c.Type,
+			Name: c.Name,
+			Type: c.Type,
 		}
 	}
 	return fields

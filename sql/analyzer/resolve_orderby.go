@@ -204,7 +204,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		schema := sort.Child.Schema()
 		var (
-			fields     = make([]sql.SortField, len(sort.SortFields))
+			fields = make([]sql.SortField, len(sort.SortFields))
 		)
 		for i, f := range sort.SortFields {
 			if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {

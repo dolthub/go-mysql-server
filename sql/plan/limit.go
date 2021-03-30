@@ -52,7 +52,7 @@ func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &limitIter{
-		l: l,
+		l:         l,
 		childIter: li,
 	}), nil
 }
@@ -83,9 +83,9 @@ func (l Limit) DebugString() string {
 }
 
 type limitIter struct {
-	l             *Limit
-	currentPos    int64
-	childIter     sql.RowIter
+	l          *Limit
+	currentPos int64
+	childIter  sql.RowIter
 }
 
 func (li *limitIter) Next() (sql.Row, error) {

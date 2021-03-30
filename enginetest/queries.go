@@ -26,10 +26,10 @@ import (
 )
 
 type QueryTest struct {
-	Query    string
-	Expected []sql.Row
+	Query           string
+	Expected        []sql.Row
 	ExpectedColumns sql.Schema // only Name and Type matter here, because that's what we send on the wire
-	Bindings map[string]sql.Expression
+	Bindings        map[string]sql.Expression
 }
 
 var QueryTests = []QueryTest{
@@ -150,12 +150,12 @@ var QueryTests = []QueryTest{
 		},
 		ExpectedColumns: sql.Schema{
 			{
-				Name:          "pk DIV 2",
-				Type:          sql.Int64,
+				Name: "pk DIV 2",
+				Type: sql.Int64,
 			},
 			{
-				Name:          "sum_and_min",
-				Type:          sql.Float64,
+				Name: "sum_and_min",
+				Type: sql.Float64,
 			},
 		},
 	},
@@ -167,12 +167,12 @@ var QueryTests = []QueryTest{
 		},
 		ExpectedColumns: sql.Schema{
 			{
-				Name:          "pk DIV 2",
-				Type:          sql.Int64,
+				Name: "pk DIV 2",
+				Type: sql.Int64,
 			},
 			{
-				Name:          "SUM(`c3`) +    min( c3 )",
-				Type:          sql.Float64,
+				Name: "SUM(`c3`) +    min( c3 )",
+				Type: sql.Float64,
 			},
 		},
 	},
@@ -5336,7 +5336,7 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrDatabaseNotFound,
 	},
 	{
-		Query: `SELECT s as i, i as i from mytable order by 1`,
+		Query:       `SELECT s as i, i as i from mytable order by 1`,
 		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
 	},
 	{
