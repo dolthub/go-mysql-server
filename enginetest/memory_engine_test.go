@@ -17,6 +17,7 @@ package enginetest_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -87,11 +88,8 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT mt.s,mt.i FROM MyTable MT ORDER BY 2;",
-		Expected: []sql.Row{
-			{"first row", int64(1)},
-			{"second row", int64(2)},
-			{"third row", int64(3)}},
+		Query:    `SELECT t.date_col as date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	}
 	fmt.Sprintf("%v", test)
 

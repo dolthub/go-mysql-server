@@ -637,7 +637,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			}
 		}
 
-		var aggregateColumns = make(map[string]struct{})
+		var selectedColumns = make(map[string]struct{})
 		for _, agg := range g.SelectedExprs {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
@@ -648,23 +648,24 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			}
 
 			for _, n := range findAllColumns(agg) {
-				aggregateColumns[strings.ToLower(n)] = struct{}{}
+				selectedColumns[strings.ToLower(n)] = struct{}{}
 			}
 		}
 
-		var newAggregate []sql.Expression
+		var newSelectedExprs []sql.Expression
+		replacements := make(map[string]string)
 		var projection []sql.Expression
 		// Aliases will keep the aliases that have been pushed down and their
 		// index in the new aggregate.
 		var aliases = make(map[string]int)
 
 		var needsReorder bool
-		for _, a := range g.SelectedExprs {
-			alias, ok := a.(*expression.Alias)
+		for _, expr := range g.SelectedExprs {
+			alias, ok := expr.(*expression.Alias)
 			// Note that aliases of aggregations cannot be used in the grouping
 			// because the grouping is needed before computing the aggregation.
 			if !ok || containsAggregation(alias) {
-				newAggregate = append(newAggregate, a)
+				newSelectedExprs = append(newSelectedExprs, expr)
 				continue
 			}
 
@@ -674,14 +675,15 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			// no other alias is required.
 			_, ok = groupingColumns[name]
 			if ok {
-				aliases[name] = len(newAggregate)
+				aliases[name] = len(newSelectedExprs)
 				needsReorder = true
 				delete(groupingColumns, name)
 
-				projection = append(projection, a)
-				newAggregate = append(newAggregate, expression.NewUnresolvedColumn(alias.Name()))
+				projection = append(projection, expr)
+				replacements[alias.Child.String()] = alias.Name()
+				newSelectedExprs = append(newSelectedExprs, expression.NewUnresolvedColumn(alias.Name()))
 			} else {
-				newAggregate = append(newAggregate, a)
+				newSelectedExprs = append(newSelectedExprs, expr)
 			}
 		}
 
@@ -689,10 +691,23 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			return n, nil
 		}
 
+		// Any replacements of aliases in the select expression must be mirrored in the group by, replacing any aliased
+		// expressions with a reference to that alias. This is so that we can directly compare the group by an select
+		// expressions for validation, which requires us to know that (table.column as col) and (table.column) are the
+		// same expressions. So if we replace one, replace both.
+		var newGroupBys []sql.Expression
+		for _, expr := range g.GroupByExprs {
+			if alias, ok := replacements[expr.String()]; ok {
+				newGroupBys = append(newGroupBys, expression.NewUnresolvedColumn(alias))
+			} else {
+				newGroupBys = append(newGroupBys, expr)
+			}
+		}
+
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
-		var missingCols = make([]string, 0, len(aggregateColumns)+len(groupingColumns))
-		for col := range aggregateColumns {
+		var missingCols = make([]string, 0, len(selectedColumns)+len(groupingColumns))
+		for col := range selectedColumns {
 			missingCols = append(missingCols, col)
 		}
 		for col := range groupingColumns {
@@ -729,9 +744,9 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// If there is any name conflict between columns we need to rename every
 		// usage inside the aggregate.
 		if len(renames) > 0 {
-			for i, expr := range newAggregate {
+			for i, expr := range newSelectedExprs {
 				var err error
-				newAggregate[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
+				newSelectedExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the
@@ -750,7 +765,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		return plan.NewGroupBy(
-			newAggregate, g.GroupByExprs,
+			newSelectedExprs, newGroupBys,
 			plan.NewProject(projection, g.Child),
 		), nil
 	})

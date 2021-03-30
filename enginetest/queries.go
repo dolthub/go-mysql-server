@@ -2605,6 +2605,18 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
+		Query:    `SELECT t.date_col as date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY date_col`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT t.date_col as date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY date_col`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
 		Query:    `SELECT i AS foo FROM mytable ORDER BY mytable.i`,
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
@@ -4271,6 +4283,20 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT pk,nt.i,nt2.i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+		Expected: []sql.Row{
+			{nil, nil, 1},
+			{1, 1, 2},
+			{2, 2, 3},
+			{3, 3, 4},
+			{nil, nil, 5},
+			{nil, nil, 6},
+		},
+	},
+	{
+		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
 						RIGHT JOIN niltable nt ON pk=nt.i
 						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
 						ORDER BY 3`,

@@ -1586,7 +1586,9 @@ var fixtures = map[string]sql.Node{
 	),
 	`SELECT foo.a FROM foo`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewUnresolvedQualifiedColumn("foo", "a"),
+			expression.NewAlias("a",
+				expression.NewUnresolvedQualifiedColumn("foo", "a"),
+			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
@@ -3012,7 +3014,7 @@ func TestPrintTree(t *testing.T) {
 	require.NoError(err)
 	require.Equal(`Limit(5)
  └─ Offset(2)
-     └─ Project(t.foo, bar.baz)
+     └─ Project(t.foo as foo, bar.baz as baz)
          └─ Filter(foo > qux)
              └─ InnerJoin(foo = baz)
                  ├─ TableAlias(t)
