@@ -202,6 +202,8 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			return n, nil
 		}
 
+		// indexColumns(ctx, a, sort.Child, scope)
+
 		schema := sort.Child.Schema()
 		var (
 			fields     = make([]sql.SortField, len(sort.SortFields))
@@ -230,7 +232,11 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				}
 
 				fields[i] = sql.SortField{
-					Column:       expression.NewUnresolvedQualifiedColumn(schemaCols[idx].Source, schemaCols[idx].Name),
+					// TODO: in order for this to be impervious to reordering in later parts of analysis, when there is
+					//  more than one child schema column with the same alias we need to refer to the underlying name,
+					//  not the alias. 
+					// Column:       expression.NewUnresolvedQualifiedColumn(schemaCols[idx].Source, schemaCols[idx].Name),
+					Column:       expression.NewGetFieldWithTable(idx, schemaCols[idx].Type, schemaCols[idx].Source, schemaCols[idx].Name, schemaCols[idx].Nullable),
 					Order:        f.Order,
 					NullOrdering: f.NullOrdering,
 				}
