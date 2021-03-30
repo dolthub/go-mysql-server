@@ -202,16 +202,10 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			return n, nil
 		}
 
-		// indexColumns(ctx, a, sort.Child, scope)
-
 		schema := sort.Child.Schema()
 		var (
 			fields     = make([]sql.SortField, len(sort.SortFields))
-			schemaCols = make([]*sql.Column, len(schema))
 		)
-		for i, col := range sort.Child.Schema() {
-			schemaCols[i] = col
-		}
 		for i, f := range sort.SortFields {
 			if lit, ok := f.Column.(*expression.Literal); ok && sql.IsNumber(f.Column.Type()) {
 				// it is safe to eval literals with no context and/or row
@@ -231,17 +225,21 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return nil, ErrOrderByColumnIndex.New(idx + 1)
 				}
 
+				// If there is more than one alias with this name, we can't handle it yet. This is because we rewrite
+				// field indexes based on names at various points during the analysis, and we might choose the wrong
+				// index at some later step based on name ambiguity.
+				// TODO: fix this by not rewriting field indexes based on names anymore
+				if columnAliasRepeated(schema, idx) {
+					return nil, sql.ErrAmbiguousColumnInOrderBy.New(schema[idx].Name)
+				}
+
 				fields[i] = sql.SortField{
-					// TODO: in order for this to be impervious to reordering in later parts of analysis, when there is
-					//  more than one child schema column with the same alias we need to refer to the underlying name,
-					//  not the alias. 
-					// Column:       expression.NewUnresolvedQualifiedColumn(schemaCols[idx].Source, schemaCols[idx].Name),
-					Column:       expression.NewGetFieldWithTable(idx, schemaCols[idx].Type, schemaCols[idx].Source, schemaCols[idx].Name, schemaCols[idx].Nullable),
+					Column:       expression.NewUnresolvedQualifiedColumn(schema[idx].Source, schema[idx].Name),
 					Order:        f.Order,
 					NullOrdering: f.NullOrdering,
 				}
 
-				a.Log("replaced order by column %d with %v", idx+1, schemaCols[idx])
+				a.Log("replaced order by column %d with %v", idx+1, schema[idx])
 			} else {
 				if agg, ok := f.Column.(sql.Aggregation); ok {
 					name := agg.String()
@@ -262,6 +260,28 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		return plan.NewSort(fields, sort.Child), nil
 	})
+}
+
+// columnAliasRepeated returns whether the column in the schema given with the index given is an alias that is repeated
+// elsewhere in the schema, making it ambiguous
+func columnAliasRepeated(cols sql.Schema, idx int) bool {
+	target := cols[idx]
+	// this analysis doesn't apply to qualified columns
+	if len(target.Source) > 0 {
+		return false
+	}
+	for i, col := range cols {
+		if i == idx {
+			continue
+		}
+		if len(col.Source) > 0 {
+			continue
+		}
+		if strings.ToLower(target.Name) == strings.ToLower(col.Name) {
+			return true
+		}
+	}
+	return false
 }
 
 func findExprNameables(e sql.Expression) []sql.Nameable {

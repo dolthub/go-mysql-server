@@ -4296,20 +4296,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
-						RIGHT JOIN niltable nt ON pk=nt.i
-						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-						ORDER BY 3`,
-		Expected: []sql.Row{
-			{nil, nil, 1},
-			{1, 1, 2},
-			{2, 2, 3},
-			{3, 3, 4},
-			{nil, nil, 5},
-			{nil, nil, 6},
-		},
-	},
-	{
 		Query: `SELECT pk,pk2,
 							(SELECT opk.c5 FROM one_pk opk JOIN two_pk tpk ON pk=pk1 ORDER BY 1 LIMIT 1)
 							FROM one_pk t1, two_pk t2 WHERE pk=1 AND pk2=1 ORDER BY 1,2`,
@@ -5105,6 +5091,13 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SHOW TABLE STATUS FROM baddb`,
 		ExpectedErr: sql.ErrDatabaseNotFound,
+	},
+	{
+		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
 	},
 }
 
