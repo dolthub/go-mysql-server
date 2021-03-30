@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -49,7 +51,42 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, err
 	}
 
-	return &trackedRowIter{node: p.Child, iter: iter, onDone: p.Notify}, nil
+	qType := getQueryType(p.Child)
+
+	return &trackedRowIter{
+		node:               p.Child,
+		iter:               iter,
+		onDone:             p.Notify,
+		queryType:          qType,
+		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
+	}, nil
+}
+
+func getQueryType(child sql.Node) queryType {
+	// TODO: behavior of CALL is not specified in the docs. Needs investigation
+	var queryType queryType = queryTypeSelect
+	Inspect(child, func(node sql.Node) bool {
+		if IsDdlNode(node) {
+			queryType = queryTypeDdl
+			return false
+		}
+
+		switch node.(type) {
+		case *Signal:
+			queryType = queryTypeDdl
+			return false
+		case nil:
+			return false
+		case *TriggerExecutor, *InsertInto, *Update, *DeleteFrom, *LoadData:
+			// TODO: AlterTable belongs here too, but we don't keep track of updated rows there so we can't return an
+			//  accurate ROW_COUNT() anyway.
+			queryType = queryTypeUpdate
+			return false
+		}
+		return true
+	})
+
+	return queryType
 }
 
 func (p *QueryProcess) String() string { return p.Child.String() }
@@ -59,6 +96,17 @@ func (p *QueryProcess) DebugString() string {
 	_ = tp.WriteNode("QueryProcess")
 	_ = tp.WriteChildren(sql.DebugString(p.Child))
 	return tp.String()
+}
+
+// shouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
+// any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
+func (p *QueryProcess) shouldSetFoundRows() bool {
+	limit, ok := p.Child.(*Limit)
+	if !ok {
+		return true
+	}
+
+	return !limit.CalcFoundRows
 }
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
@@ -185,11 +233,22 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
 }
 
+type queryType byte
+
+const (
+	queryTypeSelect = iota
+	queryTypeDdl
+	queryTypeUpdate
+)
+
 type trackedRowIter struct {
-	node   sql.Node
-	iter   sql.RowIter
-	onDone NotifyFunc
-	onNext NotifyFunc
+	node               sql.Node
+	iter               sql.RowIter
+	numRows            int64
+	queryType          queryType
+	shouldSetFoundRows bool
+	onDone             NotifyFunc
+	onNext             NotifyFunc
 }
 
 func (i *trackedRowIter) done() {
@@ -226,6 +285,8 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
+	i.numRows++
+
 	if i.onNext != nil {
 		i.onNext()
 	}
@@ -235,8 +296,28 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 
 func (i *trackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
+
+	i.updateSessionVars(ctx)
+
 	i.done()
 	return err
+}
+
+func (i *trackedRowIter) updateSessionVars(ctx *sql.Context) {
+	switch i.queryType {
+	case queryTypeSelect:
+		ctx.SetLastQueryInfo(sql.RowCount, -1)
+	case queryTypeDdl:
+		ctx.SetLastQueryInfo(sql.RowCount, 0)
+	case queryTypeUpdate:
+		// This is handled by RowUpdateAccumulator
+	default:
+		panic(fmt.Sprintf("Unexpected query type %v", i.queryType))
+	}
+
+	if i.shouldSetFoundRows {
+		ctx.SetLastQueryInfo(sql.FoundRows, i.numRows)
+	}
 }
 
 type trackedPartitionIndexKeyValueIter struct {
@@ -291,6 +372,7 @@ func (i *trackedIndexKeyValueIter) Close(ctx *sql.Context) (err error) {
 	if i.iter != nil {
 		err = i.iter.Close(ctx)
 	}
+
 	i.done()
 	return err
 }
@@ -313,4 +395,28 @@ func partitionName(p sql.Partition) string {
 		return n.Name()
 	}
 	return string(p.Key())
+}
+
+// IsDdlNode returns whether the node given is a DDL operation, which includes things like SHOW commands. In general,
+// these are nodes that interact only with schema and the catalog, not with any table rows.
+func IsDdlNode(node sql.Node) bool {
+	switch node.(type) {
+	case *CreateTable, *DropTable, *Truncate,
+		*AddColumn, *ModifyColumn, *DropColumn,
+		*CreateDB, *DropDB,
+		*RenameTable, *RenameColumn,
+		*CreateIndex, *AlterIndex, *DropIndex,
+		*CreateProcedure, *DropProcedure,
+		*CreateForeignKey, *DropForeignKey,
+		*CreateTrigger, *DropTrigger,
+		*ShowTables, *ShowCreateTable,
+		*ShowTriggers, *ShowCreateTrigger,
+		*ShowDatabases, *ShowCreateDatabase,
+		*ShowColumns, *ShowIndexes,
+		*ShowProcessList, *ShowTableStatus,
+		*ShowVariables, *ShowWarnings:
+		return true
+	default:
+		return false
+	}
 }

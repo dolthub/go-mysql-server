@@ -615,6 +615,10 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		if s.CalcFoundRows {
+			node.(*plan.Limit).CalcFoundRows = true
+		}
 	} else if ok, val := sql.HasDefaultValue(ctx.Session, "sql_select_limit"); !ok {
 		limit := mustCastNumToInt64(val)
 		node = plan.NewLimit(limit, node)
