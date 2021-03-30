@@ -83,16 +83,15 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT i, SUM(i) FROM mytable GROUP BY i ORDER BY sum(i) DESC",
+		Query: "SELECT mt.s,mt.i FROM MyTable MT ORDER BY 2;",
 		Expected: []sql.Row{
-			{int64(3), float64(3)},
-			{int64(2), float64(2)},
-			{int64(1), float64(1)},
-		},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
 	}
 	fmt.Sprintf("%v", test)
 

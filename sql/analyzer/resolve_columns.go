@@ -69,6 +69,13 @@ type tableCol struct {
 	col   string
 }
 
+func newTableCol(table, col string) tableCol {
+	return tableCol{
+		table: strings.ToLower(table),
+		col:   strings.ToLower(col),
+	}
+}
+
 type indexedCol struct {
 	*sql.Column
 	index int
@@ -381,7 +388,11 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			}
 		}
 
-		columns := indexColumns(ctx, a, n, scope)
+		columns, err := indexColumns(ctx, a, n, scope)
+		if err != nil {
+			return nil, err
+		}
+
 		return plan.TransformExpressionsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
@@ -402,19 +413,68 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol {
+func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
-
 	var idx int
+
+	indexColumn := func(col *sql.Column) {
+		columns[tableCol{
+			table: strings.ToLower(col.Source),
+			col:   strings.ToLower(col.Name),
+		}] = indexedCol{col, idx}
+		idx++
+	}
+
 	indexSchema := func(n sql.Schema) {
 		for _, col := range n {
-			columns[tableCol{
-				table: strings.ToLower(col.Source),
-				col:   strings.ToLower(col.Name),
-			}] = indexedCol{col, idx}
-			idx++
+			indexColumn(col)
 		}
 	}
+
+	var indexColumnExpr func(e sql.Expression)
+	indexColumnExpr = func(e sql.Expression) {
+		switch e := e.(type) {
+		case *expression.Alias:
+			// Aliases get indexed twice with the same index number: once with the aliased name and once with the
+			// underlying name
+			indexColumn(expression.ExpressionToColumn(e))
+			idx--
+			indexColumnExpr(e.Child)
+		default:
+			indexColumn(expression.ExpressionToColumn(e))
+		}
+	}
+
+	indexChildNode := func(n sql.Node) {
+		switch n := n.(type) {
+		case *plan.Project:
+			for _, e := range n.Projections {
+				indexColumnExpr(e)
+			}
+		case *plan.GroupBy:
+			for _, e := range n.SelectedExprs {
+				indexColumnExpr(e)
+			}
+		case *plan.Window:
+			for _, e := range n.SelectExprs {
+				indexColumnExpr(e)
+			}
+		default:
+			indexSchema(n.Schema())
+		}
+	}
+
+	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
+	// ones of the same name. This matches the MySQL scope precedence rules.
+	indexSchema(scope.Schema())
+
+	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
+	// itself.
+	for _, child := range n.Children() {
+		indexChildNode(child)
+	}
+
+	// For certain DDL nodes, we have to do more work
 	indexSchemaForDefaults := func(column *sql.Column, order *sql.ColumnOrder, sch sql.Schema) {
 		tblSch := make(sql.Schema, len(sch))
 		copy(tblSch, sch)
@@ -450,16 +510,6 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 		}
 	}
 
-	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
-	// ones of the same name. This matches the MySQL scope precedence rules.
-	indexSchema(scope.Schema())
-
-	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
-	// itself.
-	for _, child := range n.Children() {
-		indexSchema(child.Schema())
-	}
-
 	switch node := n.(type) {
 	case *plan.CreateTable: // For this node in particular, the columns will only come into existence after the analyzer step, so we forge them here.
 		for _, col := range node.Schema() {
@@ -480,6 +530,10 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 	case *plan.ModifyColumn:
 		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
 			colIdx := tbl.Schema().IndexOf(node.Column().Name, node.TableName())
+			if colIdx < 0 {
+				return nil, sql.ErrTableColumnNotFound.New(node.TableName(), node.Column())
+			}
+
 			var newSch sql.Schema
 			newSch = append(newSch, tbl.Schema()[:colIdx]...)
 			newSch = append(newSch, tbl.Schema()[colIdx+1:]...)
@@ -487,7 +541,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 		}
 	}
 
-	return columns
+	return columns, nil
 }
 
 func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {

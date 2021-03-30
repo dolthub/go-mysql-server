@@ -74,7 +74,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return nil, err
 	}
 
-	return fixRemainingFieldsIndexes(n, scope)
+	return fixRemainingFieldsIndexes(ctx, a, n, scope)
 }
 
 func pruneColumnsIsSafe(n sql.Node) bool {
@@ -295,11 +295,11 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	return !cols.has(gf.Table(), gf.Name())
 }
 
-func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
+func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUpWithSelector(n, canPruneChild, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			child, err := fixRemainingFieldsIndexes(n.Child, nil)
+			child, err := fixRemainingFieldsIndexes(ctx, a, n.Child, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -310,14 +310,9 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 				return n, nil
 			}
 
-			var schema sql.Schema
-			for _, c := range n.Children() {
-				schema = append(schema, c.Schema()...)
-			}
-
-			indexedCols := make(map[tableCol]int)
-			for i, col := range append(scope.Schema(), schema...) {
-				indexedCols[tableCol{col.Source, col.Name}] = i
+			indexedCols, err := indexColumns(ctx, a, n, scope)
+			if err != nil {
+				return nil, err
 			}
 
 			if len(indexedCols) == 0 {
@@ -330,12 +325,12 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 					return e, nil
 				}
 
-				idx, ok := indexedCols[tableCol{gf.Table(), gf.Name()}]
+				idx, ok := indexedCols[newTableCol(gf.Table(), gf.Name())]
 				if !ok {
 					return nil, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
 				}
 
-				return gf.WithIndex(idx), nil
+				return gf.WithIndex(idx.index), nil
 			})
 		}
 	})
