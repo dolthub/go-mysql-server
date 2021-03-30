@@ -529,7 +529,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		}
 	case *plan.ModifyColumn:
 		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
-			colIdx := tbl.Schema().IndexOf(node.Column().Name, node.TableName())
+			colIdx := tbl.Schema().IndexOf(node.Column(), node.TableName())
 			if colIdx < 0 {
 				return nil, sql.ErrTableColumnNotFound.New(node.TableName(), node.Column())
 			}
@@ -537,7 +537,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 			var newSch sql.Schema
 			newSch = append(newSch, tbl.Schema()[:colIdx]...)
 			newSch = append(newSch, tbl.Schema()[colIdx+1:]...)
-			indexSchemaForDefaults(node.Column(), node.Order(), newSch)
+			indexSchemaForDefaults(node.NewColumn(), node.Order(), newSch)
 		}
 	}
 
