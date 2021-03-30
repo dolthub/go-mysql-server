@@ -405,6 +405,10 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 
 func toInt64(x interface{}) int64 {
 	switch x := x.(type) {
+	case int:
+		return int64(x)
+	case uint:
+		return int64(x)
 	case int8:
 		return int64(x)
 	case uint8:

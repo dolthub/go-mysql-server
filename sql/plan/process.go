@@ -63,6 +63,7 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 }
 
 func getQueryType(child sql.Node) queryType {
+	// TODO: behavior of CALL is not specified in the docs. Needs investigation
 	var queryType queryType = queryTypeSelect
 	Inspect(child, func(node sql.Node) bool {
 		if IsDdlNode(node) {
@@ -71,9 +72,14 @@ func getQueryType(child sql.Node) queryType {
 		}
 
 		switch node.(type) {
+		case *Signal:
+			queryType = queryTypeDdl
+			return false
 		case nil:
 			return false
-		case *TriggerExecutor, *InsertInto, *Update, *DeleteFrom:
+		case *TriggerExecutor, *InsertInto, *Update, *DeleteFrom, *LoadData:
+			// TODO: AlterTable belongs here too, but we don't keep track of updated rows there so we can't return an
+			//  accurate ROW_COUNT() anyway.
 			queryType = queryTypeUpdate
 			return false
 		}
@@ -400,6 +406,7 @@ func IsDdlNode(node sql.Node) bool {
 		*CreateDB, *DropDB,
 		*RenameTable, *RenameColumn,
 		*CreateIndex, *AlterIndex, *DropIndex,
+		*CreateProcedure, *DropProcedure,
 		*CreateForeignKey, *DropForeignKey,
 		*CreateTrigger, *DropTrigger,
 		*ShowTables, *ShowCreateTable,
