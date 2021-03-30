@@ -4505,7 +4505,12 @@ var BrokenQueries = []QueryTest{
 	{
 		Query: "select date_format(unix_timestamp(i), '%s') from mytable order by 1",
 	},
-}
+	// This gets an error "unable to cast "second row" of type string to int64"
+	// Should throw sql.ErrAmbiguousColumnInOrderBy
+	{
+		Query: `SELECT s as i, i as i from mytable order by i`,
+	},
+} 
 
 var VersionedQueries = []QueryTest{
 	{
@@ -5091,6 +5096,10 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SHOW TABLE STATUS FROM baddb`,
 		ExpectedErr: sql.ErrDatabaseNotFound,
+	},
+	{
+		Query: `SELECT s as i, i as i from mytable order by 1`,
+		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
 	},
 	{
 		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
