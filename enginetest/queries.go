@@ -2027,7 +2027,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT DATABASE()`,
 		Expected: []sql.Row{
-			{"mydb"},
+			{"mydbw"},
 		},
 	},
 	{
