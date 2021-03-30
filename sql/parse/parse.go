@@ -1643,7 +1643,7 @@ func insertRowsToNode(ctx *sql.Context, ir sqlparser.InsertRows) (sql.Node, erro
 	}
 }
 
-func valuesToValues(ctx *sql.Context, v sqlparser.Values) (sql.Node, error) {
+func valuesToValues(ctx *sql.Context, v sqlparser.Values) (*plan.Values, error) {
 	exprTuples := make([][]sql.Expression, len(v))
 	for i, vt := range v {
 		exprs := make([]sql.Expression, len(vt))
@@ -1729,6 +1729,17 @@ func tableExprToTable(
 			}
 
 			return plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node), nil
+		case *sqlparser.ValuesStatement:
+			if t.As.IsEmpty() {
+				// Parser should enforce this, but just to be safe
+				return nil, ErrUnsupportedSyntax.New("every derived table must have an alias")
+			}
+			values, err := valuesToValues(ctx, e.Rows)
+			if err != nil {
+				return nil, err
+			}
+
+			return plan.NewValueDerivedTable(values, t.As.String()), nil
 		default:
 			return nil, ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}
@@ -2503,7 +2514,13 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 	case sqlparser.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expression.
 		return ExprToExpression(ctx, e.Expr)
+	case sqlparser.BinaryStr:
+		expr, err := ExprToExpression(ctx, e.Expr)
+		if err != nil {
+			return nil, err
+		}
 
+		return expression.NewBinary(expr), nil
 	default:
 		return nil, ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}

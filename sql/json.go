@@ -41,7 +41,7 @@ func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
 	if b, err = t.Convert(b); err != nil {
 		return 0, err
 	}
-	return a.(JSONValue).Compare(b.(JSONValue))
+	return a.(JSONValue).Compare(NewEmptyContext(), b.(JSONValue))
 }
 
 // Convert implements Type interface.
@@ -82,7 +82,7 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	s, err := js.ToString()
+	s, err := js.ToString(NewEmptyContext())
 	if err != nil {
 		return sqltypes.NULL, err
 	}

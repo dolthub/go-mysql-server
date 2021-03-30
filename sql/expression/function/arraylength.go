@@ -71,7 +71,7 @@ func (f *ArrayLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if val, ok := child.(sql.JSONValue); ok {
-		js, err := val.Unmarshall()
+		js, err := val.Unmarshall(ctx)
 		if err != nil {
 			return nil, err
 		}

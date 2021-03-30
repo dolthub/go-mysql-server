@@ -242,7 +242,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	eligible := true
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
-		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, nil:
+		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, nil:
 		case *plan.SubqueryAlias:
 			// The join planner can use the subquery alias as a
 			// table alias in join conditions, but the subquery
@@ -739,20 +739,8 @@ func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 	var tables []NameableNode
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
-		case *plan.SubqueryAlias:
-			tables = append(tables, node)
-			return false
-		case *plan.TableAlias:
-			tables = append(tables, node)
-			return false
-		case *plan.ResolvedTable:
-			tables = append(tables, node)
-			return false
-		case *plan.UnresolvedTable:
-			tables = append(tables, node)
-			return false
-		case *plan.IndexedTableAccess:
-			tables = append(tables, node)
+		case *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TableAlias, *plan.ResolvedTable, *plan.UnresolvedTable, *plan.IndexedTableAccess:
+			tables = append(tables, node.(NameableNode))
 			return false
 		}
 		return true

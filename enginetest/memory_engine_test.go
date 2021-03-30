@@ -83,29 +83,18 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT s,i FROM MyTable ORDER BY 2",
+		Query: `SELECT column_0, sum(column_1) FROM 
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+			group by 1 having avg(column_1) > 2 order by 1`,
 		Expected: []sql.Row{
-			{"first row", int64(1)},
-			{"second row", int64(2)},
-			{"third row", int64(3)}},
+			{2, 7.0},
+			{3, 9.0},
+		},
 	}
-	// 	Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
-	// 					RIGHT JOIN niltable nt ON pk=nt.i
-	// 					RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
-	// 					ORDER BY 3`,
-	// 	Expected: []sql.Row{
-	// 		{nil, nil, 1},
-	// 		{1, 1, 2},
-	// 		{2, 2, 3},
-	// 		{3, 3, 4},
-	// 		{nil, nil, 5},
-	// 		{nil, nil, 6},
-	// 	},
-	// }
 	fmt.Sprintf("%v", test)
 
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, mergableIndexDriver)
