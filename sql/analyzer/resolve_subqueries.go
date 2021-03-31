@@ -42,6 +42,25 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	})
 }
 
+func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, ctx := ctx.Span("flatten_table_aliases")
+	defer span.Finish()
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.TableAlias:
+			if sa, isSA := n.Children()[0].(*plan.SubqueryAlias); isSA {
+				return sa.WithName(n.Name()), nil
+			}
+			if ta, isTA := n.Children()[0].(*plan.TableAlias); isTA {
+				return ta.WithName(n.Name()), nil
+			}
+			return n, nil
+		default:
+			return n, nil
+		}
+	})
+}
+
 func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)

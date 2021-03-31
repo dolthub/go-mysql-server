@@ -76,6 +76,11 @@ func (n *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
+func (n SubqueryAlias) WithName(name string) *SubqueryAlias {
+	n.name = name
+	return &n
+}
+
 // Opaque implements the OpaqueNode interface.
 func (n *SubqueryAlias) Opaque() bool {
 	return true
