@@ -93,3 +93,8 @@ func (t TableAlias) DebugString() string {
 	_ = pr.WriteChildren(sql.DebugString(t.Child))
 	return pr.String()
 }
+
+func (t TableAlias) WithName(name string) *TableAlias {
+	t.name = name
+	return &t
+}

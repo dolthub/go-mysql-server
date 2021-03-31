@@ -103,9 +103,7 @@ func columnsUsedByNode(n sql.Node) usedColumns {
 
 func canPruneChild(parent, child sql.Node, idx int) bool {
 	_, isIndexedJoin := parent.(*plan.IndexedJoin)
-	_, parentIsTableAlias := parent.(*plan.TableAlias)
-	_, childIsSubqueryAlias := child.(*plan.SubqueryAlias)
-	return !isIndexedJoin && !(parentIsTableAlias && childIsSubqueryAlias)
+	return !isIndexedJoin
 }
 
 func pruneSubqueryColumns(
