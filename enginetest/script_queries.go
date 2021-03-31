@@ -423,4 +423,28 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Group Concat Queries",
+		SetUpScript: []string{
+			"CREATE TABLE x (pk int)",
+			"INSERT INTO x VALUES (1),(2),(3),(4)",
+			"create table t (o_id int, attribute longtext, value longtext)",
+			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT group_concat(pk) FROM x;`,
+				Expected: []sql.Row{{"1,2,3,4"}},
+			},
+			{
+				Query: 	 `SELECT group_concat(attribute) FROM t group by o_id`,
+				Expected: []sql.Row{{"color", "fabric"}, {"color","shape"}},
+			},
+			//{
+			//	Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
+			//	Expected: []sql.Row{{"2,2,2,2"}},
+			//},
+		},
+	},
 }

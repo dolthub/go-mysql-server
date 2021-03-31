@@ -119,8 +119,8 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    `SELECT group_concat(pk) FROM x;`,
-					Expected: []sql.Row{{"1,2,3,4"}},
+					Query:    `SELECT COUNT(DISTINCT pk) FROM x;`,
+					Expected: []sql.Row{{4}},
 				},
 			},
 		},

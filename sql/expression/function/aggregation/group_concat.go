@@ -15,7 +15,9 @@
 package aggregation
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
 )
 
 type GroupConcat struct {
@@ -34,22 +36,31 @@ func NewGroupConcat(separator sql.Expression, selectExprs ...sql.Expression) (sq
 
 // NewBuffer creates a new buffer for the aggregation.
 func (g *GroupConcat) NewBuffer() sql.Row {
-	return sql.NewRow("")
+	var values []string = nil
+	const nulls = false
+
+	return sql.NewRow(values, nulls)
 }
 
 // Update implements the Aggregation interface.
 func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
+	// row, err := evalExprs(ctx, g.selectExprs, row)
+	if buffer[1].(bool) {
+		return nil
+	}
+
 	v, err := sql.LongText.Convert(row[0])
 	if err != nil {
 		return err
 	}
 
+	// Get the value as string and append
 	vs := v.(string)
-	bs := buffer[0].(string)
+	ba := buffer[0].([]string)
 
-	bs = bs + vs + ","
+	ba = append(ba, vs)
 
-	buffer[0] = bs
+	buffer[0] = ba
 
 	return nil
 }
@@ -60,19 +71,32 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 }
 
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	rs := row[0].(string)
+	rs := row[0].([]string)
+	ret := fmt.Sprintf(strings.Join(rs[:], ","))
 
-	rs = rs[:len(rs)-1]
+	return ret, nil
+}
 
-	return rs, nil
+// TODO: Can this return more than one row.
+func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, error) {
+	result := make(sql.Row, len(exprs))
+	for i, expr := range exprs {
+		var err error
+		result[i], err = expr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
 }
 
 func (g *GroupConcat) Resolved() bool {
-	//for _, expr := range g.selectExprs {
-	//	if !expr.Resolved() {
-	//		return false
-	//	}
-	//}
+	for _, se := range g.selectExprs {
+		if !se.Resolved() {
+			return false
+		}
+	}
 
 	return true
 }
@@ -90,7 +114,7 @@ func (g *GroupConcat) IsNullable() bool {
 }
 
 func (g *GroupConcat) Children() []sql.Expression {
-	return nil
+	return g.selectExprs
 }
 
 // TODO: Reevaluate this when order by arises
