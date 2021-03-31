@@ -431,7 +431,9 @@ rowLoop:
 
 			logrus.Tracef("returning result row %s", outputRow)
 			r.Rows = append(r.Rows, outputRow)
-			r.RowsAffected++
+			if len(row) > 0 {
+				r.RowsAffected++
+			}
 		case <-timer.C:
 			if h.readTimeout != 0 {
 				// Cancel and return so Vitess can call the CloseConnection callback

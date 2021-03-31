@@ -70,7 +70,7 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	db := memory.NewDatabase(c.dbName)
 	c.Catalog.AddDatabase(db)
 
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 0}}}
 
 	return sql.RowsToRowIter(rows...), nil
 }

@@ -117,7 +117,9 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		resultRow = row.Append(newRow)
 	}
 
-	return sql.RowsToRowIter(resultRow), nil
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+
+	return sql.RowsToRowIter(rows...), nil
 }
 
 func setUserVar(ctx *sql.Context, userVar *expression.UserVar, right sql.Expression, row sql.Row) (interface{}, error) {
