@@ -18,6 +18,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,9 +26,10 @@ import (
 )
 
 type QueryTest struct {
-	Query    string
-	Expected []sql.Row
-	Bindings map[string]sql.Expression
+	Query           string
+	Expected        []sql.Row
+	ExpectedColumns sql.Schema // only Name and Type matter here, because that's what we send on the wire
+	Bindings        map[string]sql.Expression
 }
 
 var QueryTests = []QueryTest{
@@ -37,6 +39,70 @@ var QueryTests = []QueryTest{
 			{int64(1), "first row"},
 			{int64(2), "second row"},
 			{int64(3), "third row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "i",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+	},
+	{
+		Query: "SELECT mytable.* FROM mytable;",
+		Expected: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "i",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+	},
+	{
+		Query: "SELECT `mytable`.* FROM mytable;",
+		Expected: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "i",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+	},
+	{
+		Query: "SELECT `i`, `s` FROM mytable;",
+		Expected: []sql.Row{
+			{int64(1), "first row"},
+			{int64(2), "second row"},
+			{int64(3), "third row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "i",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
 		},
 	},
 	{
@@ -82,6 +148,33 @@ var QueryTests = []QueryTest{
 			{int64(0), float64(16)},
 			{int64(1), float64(76)},
 		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "pk DIV 2",
+				Type: sql.Int64,
+			},
+			{
+				Name: "sum_and_min",
+				Type: sql.Float64,
+			},
+		},
+	},
+	{
+		Query: "SELECT pk DIV 2, SUM(`c3`) +    min( c3 ) FROM one_pk GROUP BY 1 ORDER BY 1",
+		Expected: []sql.Row{
+			{int64(0), float64(16)},
+			{int64(1), float64(76)},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "pk DIV 2",
+				Type: sql.Int64,
+			},
+			{
+				Name: "SUM(`c3`) +    min( c3 )",
+				Type: sql.Float64,
+			},
+		},
 	},
 	{
 		Query: "SELECT pk1, SUM(c1) FROM two_pk GROUP BY pk1 ORDER BY pk1;",
@@ -112,6 +205,24 @@ var QueryTests = []QueryTest{
 			{3, "third row"},
 			{2, "second row"},
 			{1, "first row"},
+		},
+	},
+	{
+		Query: "SELECT i AS S, mt.s FROM mytable mt ORDER BY i DESC",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "S",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
 		},
 	},
 	{
@@ -454,6 +565,36 @@ var QueryTests = []QueryTest{
 			{"third row", int64(3)}},
 	},
 	{
+		Query: `SELECT "Hello!", CONcat(s, "!") FROM MyTable`,
+		Expected: []sql.Row{
+			{"Hello!", "first row!"},
+			{"Hello!", "second row!"},
+			{"Hello!", "third row!"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "Hello!",
+				Type: sql.LongText,
+			},
+			{
+				Name: "CONcat(s, \"!\")",
+				Type: sql.LongText,
+			},
+		},
+	},
+	{
+		Query: `SELECT "1" + '1'`,
+		Expected: []sql.Row{
+			{2.0},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: `"1" + '1'`,
+				Type: sql.Float64,
+			},
+		},
+	},
+	{
 		Query: "SELECT myTable.* FROM MYTABLE ORDER BY myTable.i;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},
@@ -462,6 +603,13 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: "SELECT MyTABLE.S,myTable.I FROM MyTable ORDER BY mytable.i;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)}},
+	},
+	{
+		Query: "SELECT MyTABLE.S as S, myTable.I as I FROM MyTable ORDER BY mytable.i;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
 			{"second row", int64(2)},
@@ -699,19 +847,16 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		`SELECT 'a' IN ('b','c',null,'d')`,
-		[]sql.Row{{nil}},
-		nil,
+		Query:    `SELECT 'a' IN ('b','c',null,'d')`,
+		Expected: []sql.Row{{nil}},
 	},
 	{
-		`SELECT 'a' IN ('a','b','c','d')`,
-		[]sql.Row{{true}},
-		nil,
+		Query:    `SELECT 'a' IN ('a','b','c','d')`,
+		Expected: []sql.Row{{true}},
 	},
 	{
-		`SELECT 'a' IN ('b','c','d')`,
-		[]sql.Row{{false}},
-		nil,
+		Query:    `SELECT 'a' IN ('b','c','d')`,
+		Expected: []sql.Row{{false}},
 	},
 	{
 		Query:    "SELECT 1 NOT IN (2,3,4,null)",
@@ -738,19 +883,22 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		`SELECT 'a' NOT IN ('b','c',null,'d')`,
-		[]sql.Row{{nil}},
-		nil,
+		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "'a' NOT IN ('b','c',null,'d')",
+				Type: sql.Boolean,
+			},
+		},
 	},
 	{
-		`SELECT 'a' NOT IN ('a','b','c','d')`,
-		[]sql.Row{{false}},
-		nil,
+		Query:    `SELECT 'a' NOT IN ('a','b','c','d')`,
+		Expected: []sql.Row{{false}},
 	},
 	{
-		`SELECT 'a' NOT IN ('b','c','d')`,
-		[]sql.Row{{true}},
-		nil,
+		Query:    `SELECT 'a' NOT IN ('b','c','d')`,
+		Expected: []sql.Row{{true}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i IN (1, 3)",
@@ -2047,6 +2195,24 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{"user"},
 		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "CURRENT_USER",
+				Type: sql.LongText,
+			},
+		},
+	},
+	{
+		Query: `SELECT CURRENT_user`,
+		Expected: []sql.Row{
+			{"user"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "CURRENT_user",
+				Type: sql.LongText,
+			},
+		},
 	},
 	{
 		Query: `SHOW VARIABLES`,
@@ -2655,6 +2821,18 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT t.date_col as date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY t.date_col`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY date_col`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    `SELECT t.date_col as date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) as date_col) t GROUP BY date_col`,
 		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
@@ -4586,6 +4764,90 @@ var BrokenQueries = []QueryTest{
 	{
 		Query: "select date_format(unix_timestamp(i), '%s') from mytable order by 1",
 	},
+	// This gets an error "unable to cast "second row" of type string to int64"
+	// Should throw sql.ErrAmbiguousColumnInOrderBy
+	{
+		Query: `SELECT s as i, i as i from mytable order by i`,
+	},
+	// These three queries return the right results, but the casing is wrong in the result schema.
+	{
+		Query: "SELECT i, I, s, S FROM mytable;",
+		Expected: []sql.Row{
+			{1, 1, "first row", "first row"},
+			{2, 2, "second row", "second row"},
+			{3, 3, "third row", "third row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "i",
+				Type: sql.Int64,
+			},
+			{
+				Name: "I",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+			{
+				Name: "S",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+	},
+	{
+		Query: "SELECT `i`, `I`, `s`, `S` FROM mytable;",
+		Expected: []sql.Row{
+			{1, 1, "first row", "first row"},
+			{2, 2, "second row", "second row"},
+			{3, 3, "third row", "third row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "i",
+				Type: sql.Int64,
+			},
+			{
+				Name: "I",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+			{
+				Name: "S",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+	},
+	{
+		Query: "SELECT `mytable`.`i`, `mytable`.`I`, `mytable`.`s`, `mytable`.`S` FROM mytable;",
+		Expected: []sql.Row{
+			{1, 1, "first row", "first row"},
+			{2, 2, "second row", "second row"},
+			{3, 3, "third row", "third row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "i",
+				Type: sql.Int64,
+			},
+			{
+				Name: "I",
+				Type: sql.Int64,
+			},
+			{
+				Name: "s",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+			{
+				Name: "S",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -5172,6 +5434,17 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SHOW TABLE STATUS FROM baddb`,
 		ExpectedErr: sql.ErrDatabaseNotFound,
+	},
+	{
+		Query:       `SELECT s as i, i as i from mytable order by 1`,
+		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
+	},
+	{
+		Query: `SELECT pk as pk, nt.i  as i, nt2.i as i FROM one_pk
+						RIGHT JOIN niltable nt ON pk=nt.i
+						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
+						ORDER BY 3`,
+		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
 	},
 }
 

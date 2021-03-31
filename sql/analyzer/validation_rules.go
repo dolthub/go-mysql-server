@@ -207,7 +207,7 @@ func isValidAgg(validAggs []string, expr sql.Expression) bool {
 	case sql.Aggregation:
 		return true
 	case *expression.Alias:
-		return isValidAgg(validAggs, expr.Child)
+		return stringContains(validAggs, expr.String()) || isValidAgg(validAggs, expr.Child)
 	default:
 		return stringContains(validAggs, expr.String())
 	}

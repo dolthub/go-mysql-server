@@ -46,6 +46,9 @@ var (
 	// is present in more than one table.
 	ErrAmbiguousColumnName = errors.NewKind("ambiguous column name %q, it's present in all these tables: %v")
 
+	// ErrAmbiguousColumnInOrderBy is returned when an order by column is ambiguous
+	ErrAmbiguousColumnInOrderBy = errors.NewKind("Column %q in order clause is ambiguous")
+
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 
