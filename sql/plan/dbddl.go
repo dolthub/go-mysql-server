@@ -136,6 +136,9 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		ctx.SetCurrentDatabase("")
 	}
 
+	// Sets the flag that a db was dropped
+	ctx.SetDbDropped()
+
 	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
 
 	return sql.RowsToRowIter(rows...), nil

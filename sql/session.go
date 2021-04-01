@@ -17,6 +17,7 @@ package sql
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"io"
 	"math"
 	"os"
@@ -86,7 +87,13 @@ type Session interface {
 	// Should only be used internally by the engine.
 	GetQueriedDatabase() string
 	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
+
+	// https://dev.mysql.com/doc/internals/en/status-flags.html
 	SetQueriedDatabase(dbName string)
+	GetServerStatusFlag() uint16
+	SetAutoCommit()
+	SetDbDropped()
+	ResetServerStatusFlag()
 }
 
 // BaseSession is the basic session type.
@@ -101,6 +108,7 @@ type BaseSession struct {
 	warncnt   uint16
 	locks     map[string]bool
 	queriedDb string
+	serverStatus uint16
 }
 
 // CommitTransaction commits the current transaction for the current database.
@@ -247,6 +255,24 @@ func (s *BaseSession) GetQueriedDatabase() string {
 // SetQueriedDatabase implements the Session interface.
 func (s *BaseSession) SetQueriedDatabase(dbName string) {
 	s.queriedDb = dbName
+}
+
+// GetServerStatusFlag implements the ServerStatusFlagManager interface.
+func (s *BaseSession) GetServerStatusFlag() uint16 {
+	return s.serverStatus
+}
+
+// ResetServerStatusFlag implements the ServerStatusFlagManager interface
+func (s *BaseSession) ResetServerStatusFlag() {
+	s.serverStatus = 0
+}
+
+func (s *BaseSession) SetAutoCommit()  {
+	s.serverStatus |= mysql.ServerStatusAutocommit
+}
+
+func (s *BaseSession) SetDbDropped() {
+	s.serverStatus |= mysql.ServerStatusDbDropped
 }
 
 type (

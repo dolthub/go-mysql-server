@@ -117,7 +117,7 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		resultRow = row.Append(newRow)
 	}
 
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 0}}}
 
 	return sql.RowsToRowIter(rows...), nil
 }
