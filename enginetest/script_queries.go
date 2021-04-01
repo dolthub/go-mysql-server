@@ -524,14 +524,6 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{-1}},
 			},
 			{
-				Query:    "replace into b values (1)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
-			},
-			{
-				Query:    "select row_count()",
-				Expected: []sql.Row{{1}},
-			},
-			{
 				Query:    "alter table b add column y int null",
 				Expected: []sql.Row{},
 			},
