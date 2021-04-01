@@ -29,8 +29,8 @@ type SubqueryAlias struct {
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
 	return &SubqueryAlias{
-		UnaryNode: UnaryNode{Child: node},
-		name: name,
+		UnaryNode:      UnaryNode{Child: node},
+		name:           name,
 		TextDefinition: textDefinition,
 	}
 }
@@ -108,6 +108,6 @@ func (sq SubqueryAlias) DebugString() string {
 }
 
 func (sq SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
-	sq.Columns =  columns
+	sq.Columns = columns
 	return &sq
 }

@@ -303,7 +303,6 @@ var QueryTests = []QueryTest{
 				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
 			},
 		},
-
 	},
 	{
 		Query: "SELECT a FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
@@ -5545,23 +5544,23 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
 	},
 	{
-		Query: "SELECT C FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		Query:       "SELECT C FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
-		Query: "SELECT i FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		Query:       "SELECT i FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
-		Query: "SELECT mt.i FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		Query:       "SELECT mt.i FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
 		ExpectedErr: sql.ErrTableColumnNotFound,
 	},
 	{
-		Query: "SELECT a FROM (select i,s FROM mytable) mt (a) order by a desc;",
+		Query:       "SELECT a FROM (select i,s FROM mytable) mt (a) order by a desc;",
 		ExpectedErr: sql.ErrColumnCountMismatch,
 	},
 	{
-		Query: "SELECT a FROM (select i,s FROM mytable) mt (a,b,c) order by a desc;",
+		Query:       "SELECT a FROM (select i,s FROM mytable) mt (a,b,c) order by a desc;",
 		ExpectedErr: sql.ErrColumnCountMismatch,
 	},
 }

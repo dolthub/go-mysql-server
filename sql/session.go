@@ -371,10 +371,10 @@ var autoSessionIDs uint32 = 1
 // NewBaseSession creates a new empty session.
 func NewBaseSession() Session {
 	return &BaseSession{
-		id: atomic.AddUint32(&autoSessionIDs, 1),
-		config: DefaultSessionConfig(),
-		mu: &sync.RWMutex{},
-		locks: make(map[string]bool),
+		id:            atomic.AddUint32(&autoSessionIDs, 1),
+		config:        DefaultSessionConfig(),
+		mu:            &sync.RWMutex{},
+		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
 	}
 }

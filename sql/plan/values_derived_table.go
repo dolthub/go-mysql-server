@@ -9,7 +9,7 @@ import (
 
 type ValueDerivedTable struct {
 	*Values
-	name string
+	name    string
 	columns []string
 }
 
