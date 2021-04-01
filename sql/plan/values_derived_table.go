@@ -10,6 +10,7 @@ import (
 type ValueDerivedTable struct {
 	*Values
 	name string
+	columns []string
 }
 
 func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
@@ -27,11 +28,18 @@ func (v *ValueDerivedTable) Schema() sql.Schema {
 		return nil
 	}
 
-	// TODO: get type by examining all rows
-	schema := v.Values.Schema()
-	for i := range schema {
-		schema[i].Source = v.name
-		schema[i].Name = fmt.Sprintf("column_%d", i)
+	// TODO: get type by examining all rows, use most permissive type and cast everything to it
+	childSchema := v.Values.Schema()
+	schema := make(sql.Schema, len(childSchema))
+	for i, col := range childSchema {
+		c := *col
+		c.Source = v.name
+		if len(v.columns) > 0 {
+			c.Name = v.columns[i]
+		} else {
+			c.Name = fmt.Sprintf("column_%d", i)
+		}
+		schema[i] = &c
 	}
 
 	return schema
@@ -91,4 +99,9 @@ func (v *ValueDerivedTable) DebugString() string {
 	_ = tp.WriteChildren(children...)
 
 	return tp.String()
+}
+
+func (v ValueDerivedTable) WithColumns(columns []string) *ValueDerivedTable {
+	v.columns = columns
+	return &v
 }

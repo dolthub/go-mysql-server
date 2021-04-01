@@ -271,6 +271,38 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by 1;",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
+		Query: "SELECT a,b FROM (select i,s FROM mytable order by i desc) mt (a,b);",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
+		Query: "SELECT a FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		Expected: []sql.Row{
+			{3},
+			{2},
+			{1},
+		},
+	},
+	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},

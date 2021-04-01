@@ -21,42 +21,49 @@ import (
 // SubqueryAlias is a node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
+	Columns        []string
 	name           string
-	schema         sql.Schema
 	TextDefinition string
 }
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
-	return &SubqueryAlias{UnaryNode{Child: node}, name, nil, textDefinition}
+	return &SubqueryAlias{
+		UnaryNode: UnaryNode{Child: node},
+		name: name,
+		TextDefinition: textDefinition,
+	}
 }
 
 // Returns the view wrapper for this subquery
-func (n *SubqueryAlias) AsView() sql.View {
-	return sql.NewView(n.Name(), n, n.TextDefinition)
+func (sq *SubqueryAlias) AsView() sql.View {
+	return sql.NewView(sq.Name(), sq, sq.TextDefinition)
 }
 
 // Name implements the Table interface.
-func (n *SubqueryAlias) Name() string { return n.name }
+func (sq *SubqueryAlias) Name() string { return sq.name }
 
 // Schema implements the Node interface.
-func (n *SubqueryAlias) Schema() sql.Schema {
-	schema := n.Child.Schema()
-	n.schema = make(sql.Schema, len(schema))
-	for i, col := range schema {
+func (sq *SubqueryAlias) Schema() sql.Schema {
+	childSchema := sq.Child.Schema()
+	schema := make(sql.Schema, len(childSchema))
+	for i, col := range childSchema {
 		c := *col
-		c.Source = n.name
-		n.schema[i] = &c
+		c.Source = sq.name
+		if len(sq.Columns) > 0 {
+			c.Name = sq.Columns[i]
+		}
+		schema[i] = &c
 	}
-	return n.schema
+	return schema
 }
 
 // RowIter implements the Node interface.
-func (n *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.SubqueryAlias")
 
 	// subqueries do not have access to outer scope
-	iter, err := n.Child.RowIter(ctx, nil)
+	iter, err := sq.Child.RowIter(ctx, nil)
 	if err != nil {
 		span.Finish()
 		return nil, err
@@ -66,36 +73,41 @@ func (n *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 }
 
 // WithChildren implements the Node interface.
-func (n *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(sq, len(children), 1)
 	}
 
-	nn := *n
+	nn := *sq
 	nn.Child = children[0]
 	return &nn, nil
 }
 
-func (n SubqueryAlias) WithName(name string) *SubqueryAlias {
-	n.name = name
-	return &n
+func (sq SubqueryAlias) WithName(name string) *SubqueryAlias {
+	sq.name = name
+	return &sq
 }
 
 // Opaque implements the OpaqueNode interface.
-func (n *SubqueryAlias) Opaque() bool {
+func (sq *SubqueryAlias) Opaque() bool {
 	return true
 }
 
-func (n SubqueryAlias) String() string {
+func (sq SubqueryAlias) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("SubqueryAlias(%s)", n.name)
-	_ = pr.WriteChildren(n.Child.String())
+	_ = pr.WriteNode("SubqueryAlias(%s)", sq.name)
+	_ = pr.WriteChildren(sq.Child.String())
 	return pr.String()
 }
 
-func (n SubqueryAlias) DebugString() string {
+func (sq SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("SubqueryAlias(%s)", n.name)
-	_ = pr.WriteChildren(sql.DebugString(n.Child))
+	_ = pr.WriteNode("SubqueryAlias(%s)", sq.name)
+	_ = pr.WriteChildren(sql.DebugString(sq.Child))
 	return pr.String()
+}
+
+func (sq SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
+	sq.Columns =  columns
+	return &sq
 }

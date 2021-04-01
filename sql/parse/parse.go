@@ -1725,10 +1725,18 @@ func tableExprToTable(
 			}
 
 			if t.As.IsEmpty() {
+				// This should be caught by the parser, but here just in case
 				return nil, ErrUnsupportedFeature.New("subquery without alias")
 			}
 
-			return plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node), nil
+			sq := plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node)
+
+			if len(e.Columns) > 0 {
+				columns := columnsToStrings(e.Columns)
+				sq = sq.WithColumns(columns)
+			}
+
+			return sq, nil
 		case *sqlparser.ValuesStatement:
 			if t.As.IsEmpty() {
 				// Parser should enforce this, but just to be safe
@@ -1739,7 +1747,14 @@ func tableExprToTable(
 				return nil, err
 			}
 
-			return plan.NewValueDerivedTable(values, t.As.String()), nil
+			vdt := plan.NewValueDerivedTable(values, t.As.String())
+
+			if len(e.Columns) > 0 {
+				columns := columnsToStrings(e.Columns)
+				vdt = vdt.WithColumns(columns)
+			}
+
+			return vdt, nil
 		default:
 			return nil, ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}
