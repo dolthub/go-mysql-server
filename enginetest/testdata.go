@@ -316,7 +316,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					t1,
 					t2,
 					"fourteen",
-					false,
+					0,
 					nil,
 					nil,
 				))
