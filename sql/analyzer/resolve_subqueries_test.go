@@ -27,14 +27,14 @@ import (
 )
 
 func TestResolveSubqueries(t *testing.T) {
-	foo := memory.NewPushdownTable("foo", sql.Schema{
+	foo := memory.NewFilteredTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 	})
-	bar := memory.NewPushdownTable("bar", sql.Schema{
+	bar := memory.NewFilteredTable("bar", sql.Schema{
 		{Name: "b", Type: sql.Int64, Source: "bar"},
 		{Name: "k", Type: sql.Int64, Source: "bar"},
 	})
-	baz := memory.NewPushdownTable("baz", sql.Schema{
+	baz := memory.NewFilteredTable("baz", sql.Schema{
 		{Name: "c", Type: sql.Int64, Source: "baz"},
 	})
 	db := memory.NewDatabase("mydb")

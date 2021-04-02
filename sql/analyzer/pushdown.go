@@ -460,7 +460,7 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		var nameable NameableNode
 
 		switch node.(type) {
-		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
+		case *plan.ResolvedTable, *plan.IndexedTableAccess:
 			nameable = node.(NameableNode)
 		}
 

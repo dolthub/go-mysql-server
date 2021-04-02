@@ -79,11 +79,15 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ InnerJoin(t1.i = t2.i + 1)\n" +
 			"     ├─ Filter(t1.i = 2)\n" +
-			"     │   └─ TableAlias(t1)\n" +
-			"     │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"     │   └─ Projected table access on [i]\n" +
+			"     │       └─ TableAlias(t1)\n" +
+			"     │           └─ Projected table access on [i]\n" +
+			"     │               └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"     └─ Filter(t2.i = 1)\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"         └─ Projected table access on [i]\n" +
+			"             └─ TableAlias(t2)\n" +
+			"                 └─ Projected table access on [i]\n" +
+			"                     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
 	{

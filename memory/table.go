@@ -75,7 +75,6 @@ var _ sql.CheckAlterableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
-//var _ sql.FilteredTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
@@ -801,9 +800,7 @@ func checkRow(schema sql.Schema, row sql.Row) error {
 
 // String implements the sql.Table interface.
 func (t *Table) String() string {
-	p := sql.NewTreePrinter()
-	_ = p.WriteNode("%s", t.name)
-	return p.String()
+	return t.name
 }
 
 func (t *Table) DebugString() string {
@@ -866,18 +863,40 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 	return handled
 }
 
+// sql.FilteredTable functionality in the Table type was disabled for a long period of time, and has developed major
+// issues with the current analyzer logic. It's only used in the pushdown unit tests, and sql.Filtered table should be
+// considered unstable until this situation is fixed.
+type FilteredTable struct {
+	*Table
+}
+
+var _ sql.FilteredTable = (*FilteredTable)(nil)
+
+func NewFilteredTable(name string, schema sql.Schema) *FilteredTable {
+	return &FilteredTable{
+		Table: NewTable(name, schema),
+	}
+}
+
 // WithFilters implements the sql.FilteredTable interface.
-// TODO: this was disabeld for a while and now breaks many engine tests. Any table that implements the
-//  sql.FilteredTable interface will run into this problem. Needs to be fixed.
-// func (t *Table) WithFilters(filters []sql.Expression) sql.Table {
-// 	if len(filters) == 0 {
-// 		return t
-// 	}
-//
-// 	nt := *t
-// 	nt.filters = filters
-// 	return &nt
-// }
+func (t *FilteredTable) WithFilters(filters []sql.Expression) sql.Table {
+	if len(filters) == 0 {
+		return t
+	}
+
+	nt := *t
+	nt.filters = filters
+	return &nt
+}
+
+// WithFilters implements the sql.FilteredTable interface.
+func (t *FilteredTable) WithProjection(colNames []string) sql.Table {
+	table := t.Table.WithProjection(colNames)
+
+	nt := *t
+	nt.Table = table.(*Table)
+	return &nt
+}
 
 // WithProjection implements the sql.ProjectedTable interface.
 func (t *Table) WithProjection(colNames []string) sql.Table {
