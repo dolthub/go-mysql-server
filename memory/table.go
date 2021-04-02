@@ -34,15 +34,15 @@ type Table struct {
 	// Schema and related info
 	name             string
 	schema           sql.Schema
-	columns          []int
 	indexes          map[string]sql.Index
 	foreignKeys      []sql.ForeignKeyConstraint
 	checks           []sql.CheckDefinition
 	pkIndexesEnabled bool
 
 	// pushdown info
-	filters    []sql.Expression
+	filters    []sql.Expression // currently unused, filter pushdown is significantly broken right now
 	projection []string
+	columns          []int
 
 	// Data storage
 	partitions map[string][]sql.Row
@@ -285,7 +285,23 @@ func (i *tableIter) Next() (sql.Row, error) {
 		}
 	}
 
-	return projectOnRow(i.columns, row), nil
+	resultRow := make(sql.Row, len(row))
+	for j := range row {
+		if len(i.columns) == 0 || i.colIsProjected(j) {
+			resultRow[j] = row[j]
+		}
+	}
+
+	return resultRow, nil
+}
+
+func (i *tableIter) colIsProjected(idx int) bool {
+	for _, colIdx := range i.columns {
+		if idx == colIdx {
+			return true
+		}
+	}
+	return false
 }
 
 func (i *tableIter) Close(ctx *sql.Context) error {
@@ -786,25 +802,7 @@ func checkRow(schema sql.Schema, row sql.Row) error {
 // String implements the sql.Table interface.
 func (t *Table) String() string {
 	p := sql.NewTreePrinter()
-
-	kind := ""
-	if len(t.columns) > 0 {
-		kind += "Projected "
-	}
-
-	if t.lookup != nil {
-		kind += "Indexed "
-	}
-
-	if kind != "" {
-		kind = ": " + kind
-	}
-
-	if len(kind) == 0 {
-		return t.name
-	}
-
-	_ = p.WriteNode("%s%s", t.name, kind)
+	_ = p.WriteNode("%s", t.name)
 	return p.String()
 }
 
@@ -812,13 +810,6 @@ func (t *Table) DebugString() string {
 	p := sql.NewTreePrinter()
 
 	kind := ""
-	if len(t.columns) > 0 {
-		var projections []string
-		for _, column := range t.columns {
-			projections = append(projections, fmt.Sprintf("%d", column))
-		}
-		kind += fmt.Sprintf("Projected on [%s] ", strings.Join(projections, ", "))
-	}
 
 	if t.lookup != nil {
 		kind += fmt.Sprintf("Indexed on %s", t.lookup)
@@ -895,42 +886,30 @@ func (t *Table) WithProjection(colNames []string) sql.Table {
 	}
 
 	nt := *t
-	columns, schema, err := nt.newColumnIndexesAndSchema(colNames)
+	columns, err := nt.columnIndexes(colNames)
 	if err != nil {
 		panic(err)
 	}
 
 	nt.columns = columns
 	nt.projection = colNames
-	nt.schema = schema
 
 	return &nt
 }
 
-func (t *Table) newColumnIndexesAndSchema(colNames []string) ([]int, sql.Schema, error) {
+func (t *Table) columnIndexes(colNames []string) ([]int, error) {
 	var columns []int
-	var schema []*sql.Column
 
 	for _, name := range colNames {
 		i := t.schema.IndexOf(name, t.name)
 		if i == -1 {
-			return nil, nil, errColumnNotFound.New(name)
+			return nil, errColumnNotFound.New(name)
 		}
 
-		if len(t.columns) == 0 {
-			// if the table hasn't been projected before
-			// match against the original schema
-			columns = append(columns, i)
-		} else {
-			// get indexes for the new projections from
-			// the original indexes.
-			columns = append(columns, t.columns[i])
-		}
-
-		schema = append(schema, t.schema[i])
+		columns = append(columns, i)
 	}
 
-	return columns, schema, nil
+	return columns, nil
 }
 
 // EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
@@ -1095,13 +1074,7 @@ func (t *Table) getField(col string) (int, *sql.Column) {
 		return -1, nil
 	}
 
-	if len(t.columns) == 0 {
-		// if the table hasn't been projected before
-		// match against the original schema
-		return i, t.schema[i]
-	} else {
-		return t.columns[i], t.schema[i]
-	}
+	return i, t.schema[i]
 }
 
 // CreateIndex implements sql.IndexAlterableTable
@@ -1162,7 +1135,7 @@ func (t *Table) IndexKeyValues(
 		return nil, err
 	}
 
-	columns, _, err := t.newColumnIndexesAndSchema(colNames)
+	columns, err := t.columnIndexes(colNames)
 	if err != nil {
 		return nil, err
 	}
@@ -1173,11 +1146,6 @@ func (t *Table) IndexKeyValues(
 		columns: columns,
 		ctx:     ctx,
 	}, nil
-}
-
-// Projection implements the sql.ProjectedTable interface.
-func (t *Table) Projection() []string {
-	return t.projection
 }
 
 // Filters implements the sql.FilteredTable interface.

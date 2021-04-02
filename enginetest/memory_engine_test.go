@@ -87,12 +87,11 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT i from mytable where i = :foo * 2",
+		Query: "SELECT mytable.s FROM mytable WHERE mytable.i IN (SELECT othertable.i2 FROM othertable) ORDER BY mytable.i ASC",
 		Expected: []sql.Row{
-			{2},
-		},
-		Bindings: map[string]sql.Expression{
-			"foo": expression.NewLiteral(int64(1), sql.Int64),
+			{"first row"},
+			{"second row"},
+			{"third row"},
 		},
 	}
 	fmt.Sprintf("%v", test)
