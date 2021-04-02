@@ -116,21 +116,22 @@ func pruneSubqueryColumns(
 
 	columns := make(usedColumns)
 
-	// The columns coming from the parent have the subquery alias name as the
-	// source. We need to find the real table in order to prune the subquery
-	// correctly.
+	// The columns coming from the parent have the subquery alias name as the source. We need to find the real table in
+	// order to prune the subquery correctly. The columns might also have been renamed.
 	tableByCol := make(map[string]string)
-	for _, col := range n.Child.Schema() {
-		tableByCol[col.Name] = col.Source
+	for i, col := range n.Child.Schema() {
+		name := col.Name
+		if len(n.Columns) > 0 {
+			name = n.Columns[i]
+		}
+		tableByCol[name] = col.Source
 	}
 
 	for col := range parentColumns[n.Name()] {
 		table, ok := tableByCol[col]
 		if !ok {
-			// This should never happen, but better be safe than sorry.
 			return nil, fmt.Errorf("this is likely a bug: missing projected column %q on subquery %q", col, n.Name())
 		}
-
 		columns.add(table, col)
 	}
 

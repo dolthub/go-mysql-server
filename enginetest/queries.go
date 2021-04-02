@@ -271,10 +271,79 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by 1;",
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: "SELECT a,b FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
+		Query: "SELECT a,b FROM (select i,s FROM mytable order by i desc) mt (a,b);",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "a",
+				Type: sql.Int64,
+			},
+			{
+				Name: "b",
+				Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20),
+			},
+		},
+	},
+	{
+		Query: "SELECT a FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		Expected: []sql.Row{
+			{3},
+			{2},
+			{1},
+		},
+	},
+	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
 			{1.0, "ab"},
 			{2, 4},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "column_0",
+				Type: sql.Int64,
+			},
+			{
+				Name: "column_1",
+				Type: sql.Int64,
+			},
+		},
+	},
+	{
+		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
+		Expected: []sql.Row{
+			{1.0, "ab"},
+			{2, 4},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "c",
+				Type: sql.Int64,
+			},
+			{
+				Name: "d",
+				Type: sql.Int64,
+			},
 		},
 	},
 	{
@@ -287,6 +356,16 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT column_0, sum(column_1) FROM 
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
+			group by 1 order by 1`,
+		Expected: []sql.Row{
+			{1, 4.0},
+			{2, 7.0},
+			{3, 9.0},
+		},
+	},
+	{
+		Query: `SELECT B, sum(C) FROM 
+			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a (b,c) 
 			group by 1 order by 1`,
 		Expected: []sql.Row{
 			{1, 4.0},
@@ -5463,6 +5542,26 @@ var errorQueries = []QueryErrorTest{
 						RIGHT JOIN niltable nt2 ON pk=nt2.i - 1
 						ORDER BY 3`,
 		ExpectedErr: sql.ErrAmbiguousColumnInOrderBy,
+	},
+	{
+		Query:       "SELECT C FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "SELECT i FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "SELECT mt.i FROM (select i,s FROM mytable) mt (a,b) order by a desc;",
+		ExpectedErr: sql.ErrTableColumnNotFound,
+	},
+	{
+		Query:       "SELECT a FROM (select i,s FROM mytable) mt (a) order by a desc;",
+		ExpectedErr: sql.ErrColumnCountMismatch,
+	},
+	{
+		Query:       "SELECT a FROM (select i,s FROM mytable) mt (a,b,c) order by a desc;",
+		ExpectedErr: sql.ErrColumnCountMismatch,
 	},
 }
 
