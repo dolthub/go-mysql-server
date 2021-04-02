@@ -206,17 +206,9 @@ var QueryTests = []QueryTest{
 			{2, "second row"},
 			{1, "first row"},
 		},
-	},
-	{
-		Query: "SELECT i AS S, mt.s FROM mytable mt ORDER BY i DESC",
-		Expected: []sql.Row{
-			{3, "third row"},
-			{2, "second row"},
-			{1, "first row"},
-		},
 		ExpectedColumns: sql.Schema{
 			{
-				Name: "S",
+				Name: "s",
 				Type: sql.Int64,
 			},
 			{

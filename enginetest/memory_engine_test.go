@@ -83,16 +83,16 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT column_0, sum(column_1) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
-			group by 1 having avg(column_1) > 2 order by 1`,
+		Query: "SELECT i from mytable where i = :foo * 2",
 		Expected: []sql.Row{
-			{2, 7.0},
-			{3, 9.0},
+			{2},
+		},
+		Bindings: map[string]sql.Expression{
+			"foo": expression.NewLiteral(int64(1), sql.Int64),
 		},
 	}
 	fmt.Sprintf("%v", test)
