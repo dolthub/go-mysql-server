@@ -166,6 +166,14 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		return nil, err
 	}
 
+	if varName == "character_set_client" || varName == "character_set_connection" || varName == "character_set_results" {
+		val := value.(string)
+
+		ctx.AddSessionVariableChanges(varName, val)
+	}
+
+	// ctx.SetServerSessionChanged()
+
 	return value, nil
 }
 

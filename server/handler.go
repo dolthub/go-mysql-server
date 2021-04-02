@@ -470,6 +470,7 @@ rowLoop:
 
 	// Set the final status flags
 	c.StatusFlags = h.ServerStatus(c, ctx)
+	c.SessionVariableChanges = h.SessionStatusVars(c)
 
 	return callback(r)
 }
@@ -621,12 +622,30 @@ func (h *Handler) ServerStatus(c *mysql.Conn, ctx *sql.Context) uint16 {
 		sess.SetAutoCommit()
 	}
 
+	// For SetNames Parity
+	if mp := sess.GetSessionVariableChanges(); mp != nil {
+		sess.SetServerSessionChanged()
+	}
+
 	ret := sess.GetServerStatusFlag()
 	// State: The current session server status (uint16)
 	// Gets updated on every query
 	// Should each plan change the server variable itself?
 
 	sess.ResetServerStatusFlag()
+	return ret
+}
+
+func (h *Handler) SessionStatusVars(c *mysql.Conn) map[string]string {
+	sess := h.sm.session(c)
+
+	if sess == nil {
+		return nil
+	}
+
+	ret := sess.GetSessionVariableChanges()
+	sess.ResetSessionVariableChanges()
+
 	return ret
 }
 

@@ -93,7 +93,12 @@ type Session interface {
 	GetServerStatusFlag() uint16
 	SetAutoCommit()
 	SetDbDropped()
+	SetServerSessionChanged()
 	ResetServerStatusFlag()
+
+	AddSessionVariableChanges(key string, val string)
+	GetSessionVariableChanges()  map[string]string
+	ResetSessionVariableChanges()
 }
 
 // BaseSession is the basic session type.
@@ -109,6 +114,7 @@ type BaseSession struct {
 	locks     map[string]bool
 	queriedDb string
 	serverStatus uint16
+	sessionVariableChanges map[string]string
 }
 
 // CommitTransaction commits the current transaction for the current database.
@@ -275,6 +281,23 @@ func (s *BaseSession) SetDbDropped() {
 	s.serverStatus |= mysql.ServerStatusDbDropped
 }
 
+func (s *BaseSession) SetServerSessionChanged() {
+	s.serverStatus |= mysql.ServerSessionStateChanged
+}
+
+func (s *BaseSession) GetSessionVariableChanges() map[string]string {
+	return s.sessionVariableChanges
+}
+
+func (s* BaseSession) AddSessionVariableChanges(key string, val string) {
+	s.sessionVariableChanges[key] = val
+}
+
+func (s* BaseSession) ResetSessionVariableChanges() {
+	s.sessionVariableChanges = make(map[string]string)
+}
+
+
 type (
 	// TypedValue is a value along with its type.
 	TypedValue struct {
@@ -360,6 +383,7 @@ func NewSession(server, client, user string, id uint32) Session {
 		config: DefaultSessionConfig(),
 		mu:     &sync.RWMutex{},
 		locks:  make(map[string]bool),
+		sessionVariableChanges: make(map[string]string),
 	}
 }
 
