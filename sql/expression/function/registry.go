@@ -69,7 +69,7 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "floor", Fn: NewFloor},
 	sql.Function1{Name: "from_base64", Fn: NewFromBase64},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
-	sql.FunctionN{Name: "group_concat", Fn: func(args ...sql.Expression) (sql.Expression, error) { return aggregation.NewGroupConcat(args[0], args[1:]...)}},
+	sql.FunctionN{Name: "group_concat", Fn: func(args ...sql.Expression) (sql.Expression, error) { return aggregation.NewGroupConcat(args[0], args[1], args[2:]...)}},
 	sql.Function1{Name: "hex", Fn: NewHex},
 	sql.Function1{Name: "hour", Fn: NewHour},
 	sql.Function3{Name: "if", Fn: NewIf},

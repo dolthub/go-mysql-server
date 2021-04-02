@@ -438,13 +438,21 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"1,2,3,4"}},
 			},
 			{
-				Query: 	 `SELECT group_concat(attribute) FROM t group by o_id`,
-				Expected: []sql.Row{{"color", "fabric"}, {"color","shape"}},
+				Query:    `SELECT group_concat(DISTINCT pk) FROM x;`,
+				Expected: []sql.Row{{"1,2,3,4"}},
 			},
-			//{
-			//	Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
-			//	Expected: []sql.Row{{"2,2,2,2"}},
-			//},
+			{
+				Query: 	 `SELECT group_concat(attribute) FROM t group by o_id`,
+				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
+				Expected: []sql.Row{{"2,2,2,2"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT (SELECT 2)) FROM x;`,
+				Expected: []sql.Row{{"2"}},
+			},
 		},
 	},
 }

@@ -21,46 +21,78 @@ import (
 )
 
 type GroupConcat struct {
-	// distinct sql.Expression
+	distinct sql.Expression
 	selectExprs []sql.Expression
 	// TODO: Evaluate ORDER BY
 	separator sql.Expression
 }
 
+
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
+var _ sql.Expression = &GroupConcat{}
 
-func NewGroupConcat(separator sql.Expression, selectExprs ...sql.Expression) (sql.Expression, error) {
-	return &GroupConcat{selectExprs: selectExprs, separator: separator}, nil
+func NewGroupConcat(distinct sql.Expression, separator sql.Expression, selectExprs ...sql.Expression) (sql.Expression, error) {
+	return &GroupConcat{distinct: distinct, selectExprs: selectExprs, separator: separator}, nil
 }
 
 // NewBuffer creates a new buffer for the aggregation.
 func (g *GroupConcat) NewBuffer() sql.Row {
-	var values []string = nil
+	var values []string
+	var distinctSet = make(map[string]bool)
 	const nulls = false
 
-	return sql.NewRow(values, nulls)
+	return sql.NewRow(values, distinctSet, nulls)
 }
 
 // Update implements the Aggregation interface.
 func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	// row, err := evalExprs(ctx, g.selectExprs, row)
-	if buffer[1].(bool) {
+	row, err := evalExprs(ctx, g.selectExprs, row)
+
+	// Skip if this is a null row
+	if buffer[2].(bool) {
 		return nil
 	}
 
+	// The length of the row should exceed 1.
+	if len(row) > 1 {
+		// TODO: Switch to mysql.EROperandColumns
+		return fmt.Errorf("Operand should contain 1 column")
+	}
+
+	// Get the distinct keyword
+	dv, err := g.distinct.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+	distinct := dv.(string)
+
+	// Get the current value as a string
 	v, err := sql.LongText.Convert(row[0])
 	if err != nil {
 		return err
 	}
 
-	// Get the value as string and append
 	vs := v.(string)
-	ba := buffer[0].([]string)
 
-	ba = append(ba, vs)
+	// Get the current array of values and the map
+	values := buffer[0].([]string)
+	distinctSet := buffer[1].(map[string]bool)
 
-	buffer[0] = ba
+	// Check if distinct is active if so look at and update our map
+	if distinct != "" {
+		// If this value exists go ahead and return nil
+		if _, ok := distinctSet[vs]; ok {
+			return nil
+		} else {
+			distinctSet[vs] = true
+		}
+	}
+
+	values = append(values, vs)
+
+	buffer[0] = values
+	buffer[1] = distinctSet
 
 	return nil
 }
@@ -70,14 +102,15 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 	return g.Update(ctx, buffer, partial)
 }
 
+// TODO: Reevaluate what's going with the retrn types
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rs := row[0].([]string)
+
 	ret := fmt.Sprintf(strings.Join(rs[:], ","))
 
 	return ret, nil
 }
 
-// TODO: Can this return more than one row.
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, error) {
 	result := make(sql.Row, len(exprs))
 	for i, expr := range exprs {
@@ -114,16 +147,18 @@ func (g *GroupConcat) IsNullable() bool {
 }
 
 func (g *GroupConcat) Children() []sql.Expression {
-	return g.selectExprs
+	arr := make([]sql.Expression, 2)
+	arr[0] = g.distinct
+	arr[1] = g.separator
+	return append(arr, g.selectExprs...)
 }
 
-// TODO: Reevaluate this when order by arises
 func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 || len(children) > 4 {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 3)
 	}
 
-	return NewGroupConcat(children[0], children[1:]...)
+	return NewGroupConcat(children[0], children[1], children[2:]...)
 }
 
 func (g *GroupConcat) FunctionName() string {

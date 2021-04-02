@@ -2160,10 +2160,15 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 
-		// distinct := expression.NewLiteral(v.Distinct, sql.LongText)
-		separator := expression.NewLiteral(v.Separator, sql.LongText)
+		separatorS := ","
+		if v.Separator != "" {
+			separatorS = v.Separator
+		}
 
-		return aggregation.NewGroupConcat(separator, exprs...)
+		distinct := expression.NewLiteral(v.Distinct, sql.LongText)
+		separator := expression.NewLiteral(separatorS, sql.LongText)
+
+		return aggregation.NewGroupConcat(distinct, separator, exprs...)
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:
