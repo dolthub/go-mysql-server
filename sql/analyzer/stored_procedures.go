@@ -224,6 +224,32 @@ func resolveProcedureParams(paramNames map[string]struct{}, proc sql.Node) (sql.
 	if err != nil {
 		return nil, err
 	}
+	// Some nodes do not expose all of their children, so we need to handle them here.
+	newProcNode, err = plan.TransformUp(newProcNode, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.InsertInto:
+			newSource, err := resolveProcedureParamsTransform(paramNames, n.Source)
+			if err != nil {
+				return nil, err
+			}
+			return n.WithSource(newSource), nil
+		case *plan.Union:
+			newLeft, err := resolveProcedureParamsTransform(paramNames, n.Left())
+			if err != nil {
+				return nil, err
+			}
+			newRight, err := resolveProcedureParamsTransform(paramNames, n.Right())
+			if err != nil {
+				return nil, err
+			}
+			return n.WithChildren(newLeft, newRight)
+		default:
+			return n, nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
 	newProc, ok := newProcNode.(*plan.Procedure)
 	if !ok {
 		return nil, fmt.Errorf("expected `*plan.Procedure` but got `%T`", newProcNode)
@@ -312,6 +338,32 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		}
 	}
 	transformedProcedure, err := plan.TransformExpressionsUp(procedure, procParamTransformFunc)
+	if err != nil {
+		return nil, err
+	}
+	// Some nodes do not expose all of their children, so we need to handle them here.
+	transformedProcedure, err = plan.TransformUp(transformedProcedure, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.InsertInto:
+			newSource, err := plan.TransformExpressionsUp(n.Source, procParamTransformFunc)
+			if err != nil {
+				return nil, err
+			}
+			return n.WithSource(newSource), nil
+		case *plan.Union:
+			newLeft, err := plan.TransformExpressionsUp(n.Left(), procParamTransformFunc)
+			if err != nil {
+				return nil, err
+			}
+			newRight, err := plan.TransformExpressionsUp(n.Right(), procParamTransformFunc)
+			if err != nil {
+				return nil, err
+			}
+			return n.WithChildren(newLeft, newRight)
+		default:
+			return n, nil
+		}
+	})
 	if err != nil {
 		return nil, err
 	}

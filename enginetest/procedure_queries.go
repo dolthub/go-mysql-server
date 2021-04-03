@@ -402,6 +402,119 @@ END;`,
 		},
 	},
 	{
+		Name: "Parameters resolve inside of INSERT",
+		SetUpScript: []string{
+			`CREATE TABLE items (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	item TEXT NOT NULL
+);`,
+			`CREATE PROCEDURE add_item (IN txt TEXT) MODIFIES SQL DATA
+INSERT INTO items (item) VALUES (txt)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL add_item('A test item');",
+				Expected: []sql.Row{
+					{sql.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT * FROM items;",
+				Expected: []sql.Row{
+					{1, "A test item"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Parameters resolve inside of SELECT UNION",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT)",
+			"INSERT INTO t1 VALUES (1, 2)",
+			"SELECT pk, v1 FROM t1 UNION SELECT 1, 2;",
+			`CREATE PROCEDURE p1(x BIGINT, y BIGINT)
+BEGIN
+	SELECT pk+x, v1+y FROM t1 UNION SELECT x, y;
+END;`,
+			`CREATE PROCEDURE p2(u BIGINT, v BIGINT) SELECT pk+u, v1+v FROM t1 UNION SELECT u, v;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(3, 4)",
+				Expected: []sql.Row{
+					{"4", "6"},
+					{"3", "4"},
+				},
+			},
+			{
+				Query: "CALL p2(5, 6)",
+				Expected: []sql.Row{
+					{"6", "8"},
+					{"5", "6"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Parameters resolve inside of REPLACE",
+		SetUpScript: []string{
+			`CREATE TABLE items (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	item INT NOT NULL
+);`,
+			`CREATE PROCEDURE add_item (IN num INT) MODIFIES SQL DATA
+BEGIN
+	REPLACE INTO items (item) VALUES (5), (num), (num+1);
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL add_item(6);",
+				Expected: []sql.Row{
+					{sql.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "SELECT * FROM items ORDER BY 1;",
+				Expected: []sql.Row{
+					{1, 5},
+					{2, 6},
+					{3, 7},
+				},
+			},
+		},
+	},
+	{
+		Name: "Parameters resolve inside of INSERT INTO SELECT",
+		SetUpScript: []string{
+			"CREATE TABLE t1(pk BIGINT PRIMARY KEY)",
+			"CREATE TABLE t2(pk BIGINT PRIMARY KEY)",
+			"INSERT INTO t1 VALUES (1), (2)",
+			`CREATE PROCEDURE p1(x BIGINT)
+BEGIN
+	TRUNCATE t2;
+	INSERT INTO t2 SELECT pk+x FROM t1;
+	SELECT * FROM t2;
+END;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CALL p1(0)",
+				Expected: []sql.Row{
+					{int64(1)},
+					{int64(2)},
+				},
+			},
+			{
+				Query: "CALL p1(5)",
+				Expected: []sql.Row{
+					{int64(6)},
+					{int64(7)},
+				},
+			},
+		},
+	},
+	{
 		Name: "Subquery on SET user variable captures parameter",
 		SetUpScript: []string{
 			`CREATE PROCEDURE p1(x VARCHAR(20))
