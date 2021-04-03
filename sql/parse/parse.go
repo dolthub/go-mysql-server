@@ -205,12 +205,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 }
 
 func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query string) (*plan.Block, error) {
-	if query == "" {
-		query = "compound statement in block"
-	}
 	var statements []sql.Node
 	for _, s := range parserStatements {
-		statement, err := convert(ctx, s, query)
+		statement, err := convert(ctx, s, sqlparser.String(s))
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +217,7 @@ func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query
 }
 
 func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
-	block, err := convertBlock(ctx, n.Statements, "compound statement in begin..end block")
+	block, err := convertBlock(ctx, n.Statements, query)
 	if err != nil {
 		return nil, err
 	}

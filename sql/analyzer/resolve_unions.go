@@ -29,6 +29,10 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	if n.Resolved() {
 		return n, nil
 	}
+	// Procedures explicitly handle unions
+	if _, ok := n.(*plan.CreateProcedure); ok {
+		return n, nil
+	}
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
