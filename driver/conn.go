@@ -18,14 +18,12 @@ import (
 	"context"
 	"database/sql/driver"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Conn is a connection to a database.
 type Conn struct {
-	procMgr ProcessManager
-	engine  *sqle.Engine
+	catalog *catalog
 	session sql.Session
 	indexes *sql.IndexRegistry
 	views   *sql.ViewRegistry
@@ -36,7 +34,7 @@ func (c *Conn) Prepare(query string) (driver.Stmt, error) {
 	ctx := c.newContextWithQuery(context.Background(), query)
 
 	// validate the query
-	_, err := c.engine.AnalyzeQuery(ctx, query)
+	_, err := c.catalog.engine.AnalyzeQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -58,8 +56,8 @@ func (c *Conn) newContextWithQuery(ctx context.Context, query string) *sql.Conte
 	return sql.NewContext(ctx,
 		sql.WithSession(c.session),
 		sql.WithQuery(query),
-		sql.WithPid(c.procMgr.NextProcessID()),
-		sql.WithMemoryManager(c.engine.Catalog.MemoryManager),
+		sql.WithPid(c.catalog.nextProcessID()),
+		sql.WithMemoryManager(c.catalog.engine.Catalog.MemoryManager),
 		sql.WithIndexRegistry(c.indexes),
 		sql.WithViewRegistry(c.views),
 	)

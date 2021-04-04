@@ -18,26 +18,31 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"sync"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
-// EngineFactory resolves SQL engines
-type EngineFactory interface {
-	Resolve(name string) (string, ProcessManager, *sqle.Engine, error)
+// Provider resolves SQL catalogs
+type Provider interface {
+	Resolve(name string) (string, *sql.Catalog, error)
 }
 
-// New returns a driver using the specified engine factory.
-func New(factory EngineFactory) *Driver {
+// New returns a driver using the specified provider.
+func New(provider Provider) *Driver {
 	return &Driver{
-		factory: factory,
+		provider: provider,
 	}
 }
 
 // Driver exposes an engine as a stdlib SQL driver.
 type Driver struct {
-	factory EngineFactory
+	provider Provider
+
+	mu       sync.Mutex
+	catalogs map[*sql.Catalog]*catalog
 }
 
 // Open returns a new connection to the database.
@@ -51,16 +56,51 @@ func (d *Driver) Open(name string) (driver.Conn, error) {
 
 // OpenConnector calls the driver factory and returns a new connector.
 func (d *Driver) OpenConnector(name string) (driver.Connector, error) {
-	server, pm, engine, err := d.factory.Resolve(name)
+	server, sqlCat, err := d.provider.Resolve(name)
 	if err != nil {
 		return nil, err
 	}
 
+	d.mu.Lock()
+	cat, ok := d.catalogs[sqlCat]
+	if !ok {
+		anlz := analyzer.NewDefault(sqlCat)
+		engine := sqle.New(sqlCat, anlz, nil)
+		cat = &catalog{engine: engine}
+		if d.catalogs == nil {
+			d.catalogs = map[*sql.Catalog]*catalog{}
+		}
+		d.catalogs[sqlCat] = cat
+	}
+	d.mu.Unlock()
+
 	return &Connector{
+		driver:  d,
 		server:  server,
-		procMgr: pm,
-		engine:  engine,
+		catalog: cat,
 	}, nil
+}
+
+type catalog struct {
+	engine *sqle.Engine
+
+	mu     sync.Mutex
+	connID uint32
+	procID uint64
+}
+
+func (c *catalog) nextConnectionID() uint32 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.connID++
+	return c.connID
+}
+
+func (c *catalog) nextProcessID() uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.procID++
+	return c.procID
 }
 
 // A Connector represents a driver in a fixed configuration
@@ -69,8 +109,7 @@ func (d *Driver) OpenConnector(name string) (driver.Connector, error) {
 type Connector struct {
 	driver  *Driver
 	server  string
-	procMgr ProcessManager
-	engine  *sqle.Engine
+	catalog *catalog
 }
 
 // Driver returns the driver.
@@ -80,14 +119,13 @@ func (c *Connector) Driver() driver.Driver {
 
 // Connect returns a connection to the database.
 func (c *Connector) Connect(context.Context) (driver.Conn, error) {
-	id := c.procMgr.NextConnectionID()
+	id := c.catalog.nextConnectionID()
 
 	session := sql.NewSession(c.server, fmt.Sprintf("#%d", id), "", id)
 	indexes := sql.NewIndexRegistry()
 	views := sql.NewViewRegistry()
 	return &Conn{
-		procMgr: c.procMgr,
-		engine:  c.engine,
+		catalog: c.catalog,
 		session: session,
 		indexes: indexes,
 		views:   views,

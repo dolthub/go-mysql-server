@@ -87,7 +87,7 @@ func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 
 func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (driver.Result, error) {
 	qctx := s.conn.newContextWithQuery(ctx, s.queryStr)
-	_, rows, err := s.conn.engine.QueryWithBindings(qctx, s.queryStr, bindings)
+	_, rows, err := s.conn.catalog.engine.QueryWithBindings(qctx, s.queryStr, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (dr
 
 func (s *Stmt) query(ctx context.Context, bindings map[string]sql.Expression) (driver.Rows, error) {
 	qctx := s.conn.newContextWithQuery(ctx, s.queryStr)
-	cols, rows, err := s.conn.engine.QueryWithBindings(qctx, s.queryStr, bindings)
+	cols, rows, err := s.conn.catalog.engine.QueryWithBindings(qctx, s.queryStr, bindings)
 	if err != nil {
 		return nil, err
 	}
