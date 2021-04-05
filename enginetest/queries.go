@@ -1968,7 +1968,7 @@ var QueryTests = []QueryTest{
 			sql.Collation_Default.CharacterSet().String() +
 			" */",
 		Expected: []sql.Row{
-			{},
+			{sql.OkResult{RowsAffected: 0}},
 		},
 	},
 	{
@@ -2033,19 +2033,19 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT USER()`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER()`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 	},
 	{

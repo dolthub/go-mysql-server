@@ -31,5 +31,3 @@ require (
 )
 
 go 1.13
-
-replace github.com/dolthub/vitess => /Users/vinairachakonda/go/src/dolthub/vitess

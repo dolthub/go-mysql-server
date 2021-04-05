@@ -101,8 +101,6 @@ type BaseSession struct {
 	warncnt   uint16
 	locks     map[string]bool
 	queriedDb string
-	serverStatus uint16
-	sessionVariableChanges map[string]string
 }
 
 // CommitTransaction commits the current transaction for the current database.
