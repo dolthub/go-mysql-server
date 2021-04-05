@@ -316,9 +316,6 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 					Name: sqlparser.NewColName("character_set_results"),
 					Expr: n.Exprs[0].Expr,
 				},
-
-				// Update the info
-
 				// TODO: this should also set the collation_connection to the default collation for the character set named
 			},
 		})

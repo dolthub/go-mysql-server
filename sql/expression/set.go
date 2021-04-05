@@ -70,7 +70,6 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	updatedRow := row.Copy()
 	updatedRow[getField.fieldIndex] = val
-
 	return updatedRow, nil
 }
 

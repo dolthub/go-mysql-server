@@ -17,7 +17,6 @@ package sql
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"io"
 	"math"
 	"os"
@@ -87,18 +86,7 @@ type Session interface {
 	// Should only be used internally by the engine.
 	GetQueriedDatabase() string
 	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
-
-	// https://dev.mysql.com/doc/internals/en/status-flags.html
 	SetQueriedDatabase(dbName string)
-	GetServerStatusFlag() uint16
-	SetAutoCommit()
-	SetDbDropped()
-	SetServerSessionChanged()
-	ResetServerStatusFlag()
-
-	AddSessionVariableChanges(key string, val string)
-	GetSessionVariableChanges()  map[string]string
-	ResetSessionVariableChanges()
 }
 
 // BaseSession is the basic session type.
@@ -263,41 +251,6 @@ func (s *BaseSession) SetQueriedDatabase(dbName string) {
 	s.queriedDb = dbName
 }
 
-// GetServerStatusFlag implements the ServerStatusFlagManager interface.
-func (s *BaseSession) GetServerStatusFlag() uint16 {
-	return s.serverStatus
-}
-
-// ResetServerStatusFlag implements the ServerStatusFlagManager interface
-func (s *BaseSession) ResetServerStatusFlag() {
-	s.serverStatus = 0
-}
-
-func (s *BaseSession) SetAutoCommit()  {
-	s.serverStatus |= mysql.ServerStatusAutocommit
-}
-
-func (s *BaseSession) SetDbDropped() {
-	s.serverStatus |= mysql.ServerStatusDbDropped
-}
-
-func (s *BaseSession) SetServerSessionChanged() {
-	s.serverStatus |= mysql.ServerSessionStateChanged
-}
-
-func (s *BaseSession) GetSessionVariableChanges() map[string]string {
-	return s.sessionVariableChanges
-}
-
-func (s* BaseSession) AddSessionVariableChanges(key string, val string) {
-	s.sessionVariableChanges[key] = val
-}
-
-func (s* BaseSession) ResetSessionVariableChanges() {
-	s.sessionVariableChanges = make(map[string]string)
-}
-
-
 type (
 	// TypedValue is a value along with its type.
 	TypedValue struct {
@@ -335,10 +288,10 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"character_set_results":    TypedValue{LongText, Collation_Default.CharacterSet().String()},
 		"collation_connection":     TypedValue{LongText, Collation_Default.String()},
 		"tmpdir":                   TypedValue{LongText, GetTmpdirSessionVar()},
-		"local_infile":             TypedValue{Int8, int8(1)},
+		"local_infile":             TypedValue{Int8, int8(1)}, // TODO: What to do here...
 		"secure_file_priv":         TypedValue{LongText, nil},
-		"foreign_key_checks":		TypedValue{Int64, int64(1)},
-		"unique_checks":   			TypedValue{Int64, int64(1)},
+		//"foreign_key_checks":		TypedValue{Int64, int64(1)},
+		//"unique_checks":   			TypedValue{Int64, int64(1)},
 	}
 }
 
@@ -383,7 +336,6 @@ func NewSession(server, client, user string, id uint32) Session {
 		config: DefaultSessionConfig(),
 		mu:     &sync.RWMutex{},
 		locks:  make(map[string]bool),
-		sessionVariableChanges: make(map[string]string),
 	}
 }
 

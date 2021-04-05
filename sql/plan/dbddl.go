@@ -117,11 +117,11 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := d.Catalog.HasDB(d.dbName)
 	if !exists {
 		if d.IfExists {
-			//ctx.Session.Warn(&sql.Warning{
-			//	Level:   "Note",
-			//	Code:    mysql.ERDbDropExists,
-			//	Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
-			//})
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    mysql.ERDbDropExists,
+				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
+			})
 
 			return sql.RowsToRowIter(), nil
 		} else {
@@ -135,9 +135,6 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if ctx.GetCurrentDatabase() == d.dbName {
 		ctx.SetCurrentDatabase("")
 	}
-
-	// Sets the flag that a db was dropped
-	ctx.SetDbDropped()
 
 	rows := []sql.Row{{sql.OkResult{RowsAffected: 0}}}
 

@@ -274,6 +274,7 @@ func (h *Handler) doQuery(
 	callback func(*sqltypes.Result) error,
 ) error {
 	logrus.Tracef("received query %s", query)
+
 	ctx, err := h.sm.NewContextWithQuery(c, query)
 
 	if err != nil {
@@ -430,9 +431,7 @@ rowLoop:
 
 			logrus.Tracef("returning result row %s", outputRow)
 			r.Rows = append(r.Rows, outputRow)
-			if len(row) > 0 {
-				r.RowsAffected++
-			}
+			r.RowsAffected++
 		case <-timer.C:
 			if h.readTimeout != 0 {
 				// Cancel and return so Vitess can call the CloseConnection callback
@@ -466,11 +465,6 @@ rowLoop:
 	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
 		return nil
 	}
-
-
-	// Set the final status flags
-	c.StatusFlags = h.ServerStatus(c, ctx)
-	c.SessionVariableChanges = h.SessionStatusVars(c)
 
 	return callback(r)
 }
@@ -609,44 +603,6 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	}
 
 	return 0
-}
-
-func (h *Handler) ServerStatus(c *mysql.Conn, ctx *sql.Context) uint16 {
-	sess := h.sm.session(c)
-
-	if sess == nil {
-		return 0
-	}
-
-	if isAutoCommit := isSessionAutocommit(ctx); isAutoCommit {
-		sess.SetAutoCommit()
-	}
-
-	// For SetNames Parity
-	if mp := sess.GetSessionVariableChanges(); mp != nil {
-		sess.SetServerSessionChanged()
-	}
-
-	ret := sess.GetServerStatusFlag()
-	// State: The current session server status (uint16)
-	// Gets updated on every query
-	// Should each plan change the server variable itself?
-
-	sess.ResetServerStatusFlag()
-	return ret
-}
-
-func (h *Handler) SessionStatusVars(c *mysql.Conn) map[string]string {
-	sess := h.sm.session(c)
-
-	if sess == nil {
-		return nil
-	}
-
-	ret := sess.GetSessionVariableChanges()
-	sess.ResetSessionVariableChanges()
-
-	return ret
 }
 
 func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
