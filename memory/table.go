@@ -42,7 +42,7 @@ type Table struct {
 	// pushdown info
 	filters    []sql.Expression // currently unused, filter pushdown is significantly broken right now
 	projection []string
-	columns          []int
+	columns    []int
 
 	// Data storage
 	partitions map[string][]sql.Row
@@ -108,12 +108,12 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Tab
 	}
 
 	return &Table{
-			name:       name,
-			schema:     schema,
-			partitions: partitions,
-			keys:       keys,
-			autoIncVal: autoIncVal,
-			autoColIdx: autoIncIdx,
+		name:       name,
+		schema:     schema,
+		partitions: partitions,
+		keys:       keys,
+		autoIncVal: autoIncVal,
+		autoColIdx: autoIncIdx,
 	}
 }
 

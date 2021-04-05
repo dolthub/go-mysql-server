@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -29,7 +31,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/stretchr/testify/require"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -234,53 +235,56 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
+// This test will write a new set of query plan expected results to a file that you can copy and paste over the existing
+// query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
+// how query plans have changed without a lot of manual copying and pasting.
 func TestWriteQueryPlans(t *testing.T) {
-//	t.Skip()
+	t.Skip()
 
-		harness := enginetest.NewDefaultMemoryHarness()
-		engine := enginetest.NewEngine(t, harness)
+	harness := enginetest.NewDefaultMemoryHarness()
+	engine := enginetest.NewEngine(t, harness)
 
-		outputPath := filepath.Join(t.TempDir(), "queryPlans.txt")
-		f, err := os.Create(outputPath)
+	outputPath := filepath.Join(t.TempDir(), "queryPlans.txt")
+	f, err := os.Create(outputPath)
+	require.NoError(t, err)
+
+	w := bufio.NewWriter(f)
+	w.WriteString("var PlanTests = []QueryPlanTest{\n")
+	for _, tt := range enginetest.PlanTests {
+		w.WriteString("\t{\n")
+		ctx := enginetest.NewContextWithEngine(harness, engine)
+		parsed, err := parse.Parse(ctx, tt.Query)
 		require.NoError(t, err)
 
-		w := bufio.NewWriter(f)
-		w.WriteString("var PlanTests = []QueryPlanTest{\n")
-		for _, tt := range enginetest.PlanTests {
-			w.WriteString("\t{\n")
-			ctx := enginetest.NewContextWithEngine(harness, engine)
-			parsed, err := parse.Parse(ctx, tt.Query)
-			require.NoError(t, err)
+		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		planString := extractQueryNode(node).String()
 
-			node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
-			require.NoError(t, err)
-			planString := extractQueryNode(node).String()
-
-			if strings.Contains(tt.Query, "`") {
-				w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
-			} else {
-				w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
-			}
-			w.WriteString("\n")
-
-			w.WriteString(`ExpectedPlan: `)
-			for i, line := range strings.Split(planString, "\n") {
-				if i > 0 {
-					w.WriteString(" + \n")
-				}
-				if len(line) > 0 {
-					w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
-				} else {
-					// final line with comma
-					w.WriteString("\"\",\n")
-				}
-			}
-			w.WriteString("\t},\n")
+		if strings.Contains(tt.Query, "`") {
+			w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
+		} else {
+			w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
 		}
-		w.WriteString("}")
-		w.Flush()
+		w.WriteString("\n")
 
-		t.Logf("Query plans in %s", outputPath)
+		w.WriteString(`ExpectedPlan: `)
+		for i, line := range strings.Split(planString, "\n") {
+			if i > 0 {
+				w.WriteString(" + \n")
+			}
+			if len(line) > 0 {
+				w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
+			} else {
+				// final line with comma
+				w.WriteString("\"\",\n")
+			}
+		}
+		w.WriteString("\t},\n")
+	}
+	w.WriteString("}")
+	w.Flush()
+
+	t.Logf("Query plans in %s", outputPath)
 }
 
 func extractQueryNode(node sql.Node) sql.Node {
