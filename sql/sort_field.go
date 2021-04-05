@@ -51,7 +51,7 @@ func (sf SortFields) FromExpressions(exprs []Expression) SortFields {
 		fields[i] = SortField{
 			Column:       expr,
 			NullOrdering: sf[i].NullOrdering,
-			Order:        sf[i].Order,
+			Order:        Descending,
 		}
 	}
 	return fields

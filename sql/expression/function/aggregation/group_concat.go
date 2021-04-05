@@ -107,7 +107,7 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rows := row[0].([]sql.Row)
 
-	var sf sql.SortFields
+	sf := make(sql.SortFields, len(g.orderBy))
 	sf = sf.FromExpressions(g.orderBy)
 	// Execute the order operation if it exists.
 	if sf != nil {
@@ -121,7 +121,21 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if sorter.LastError != nil {
 			return nil, sorter.LastError
 		}
+
+		originalOrderIdx := len(rows[0]) - 1
+		// And finally sort again by the original order
+		sort.SliceStable(rows, func(i, j int) bool {
+			return rows[i][originalOrderIdx].(string) > rows[j][originalOrderIdx].(string)
+		})
 	}
+
+	// evaluate the separator
+	sep, err := g.separator.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	separator := sep.(string)
 
 	ret := ""
 	for i, row := range rows {
@@ -129,7 +143,7 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if i == len(rows) - 1 {
 			ret += row[lastIdx].(string)
 		} else {
-			ret += row[lastIdx].(string) + ","
+			ret += row[lastIdx].(string) + separator
 		}
 	}
 
