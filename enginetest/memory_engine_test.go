@@ -15,13 +15,21 @@
 package enginetest_test
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/stretchr/testify/require"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -83,7 +91,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
@@ -223,6 +231,66 @@ func TestQueryPlans(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestQueryPlans(t, harness)
 		})
+	}
+}
+
+func TestWriteQueryPlans(t *testing.T) {
+//	t.Skip()
+
+		harness := enginetest.NewDefaultMemoryHarness()
+		engine := enginetest.NewEngine(t, harness)
+
+		outputPath := filepath.Join(t.TempDir(), "queryPlans.txt")
+		f, err := os.Create(outputPath)
+		require.NoError(t, err)
+
+		w := bufio.NewWriter(f)
+		w.WriteString("var PlanTests = []QueryPlanTest{\n")
+		for _, tt := range enginetest.PlanTests {
+			w.WriteString("\t{\n")
+			ctx := enginetest.NewContextWithEngine(harness, engine)
+			parsed, err := parse.Parse(ctx, tt.Query)
+			require.NoError(t, err)
+
+			node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
+			require.NoError(t, err)
+			planString := extractQueryNode(node).String()
+
+			if strings.Contains(tt.Query, "`") {
+				w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
+			} else {
+				w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
+			}
+			w.WriteString("\n")
+
+			w.WriteString(`ExpectedPlan: `)
+			for i, line := range strings.Split(planString, "\n") {
+				if i > 0 {
+					w.WriteString(" + \n")
+				}
+				if len(line) > 0 {
+					w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
+				} else {
+					// final line with comma
+					w.WriteString("\"\",\n")
+				}
+			}
+			w.WriteString("\t},\n")
+		}
+		w.WriteString("}")
+		w.Flush()
+
+		t.Logf("Query plans in %s", outputPath)
+}
+
+func extractQueryNode(node sql.Node) sql.Node {
+	switch node := node.(type) {
+	case *plan.QueryProcess:
+		return extractQueryNode(node.Child)
+	case *analyzer.Releaser:
+		return extractQueryNode(node.Child)
+	default:
+		return node
 	}
 }
 
