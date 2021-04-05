@@ -2302,7 +2302,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT CURRENT_user`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
