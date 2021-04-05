@@ -136,7 +136,7 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		ctx.SetCurrentDatabase("")
 	}
 
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 0}}}
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
 
 	return sql.RowsToRowIter(rows...), nil
 }

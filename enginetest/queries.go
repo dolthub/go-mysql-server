@@ -1968,7 +1968,7 @@ var QueryTests = []QueryTest{
 			sql.Collation_Default.CharacterSet().String() +
 			" */",
 		Expected: []sql.Row{
-			{sql.OkResult{RowsAffected: 0}},
+			{},
 		},
 	},
 	{
