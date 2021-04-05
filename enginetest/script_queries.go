@@ -461,6 +461,14 @@ var ScriptTests = []ScriptTest{
 				Query:    `SELECT group_concat(DISTINCT (SELECT 2)) FROM x;`,
 				Expected: []sql.Row{{"2"}},
 			},
+			{
+				Query: 	 `SELECT group_concat(DISTINCT attribute ORDER BY attribute ASC) FROM t`,
+				Expected: []sql.Row{{"color,fabric,shape"}},
+			},
+			{
+				Query: 	 `SELECT group_concat(DISTINCT attribute ORDER BY attribute DESC) FROM t`,
+				Expected: []sql.Row{{"shape,fabric,color"}},
+			},
 		},
 	},
 }

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"strings"
+	"sort"
 )
 
 type GroupConcat struct {
@@ -37,11 +37,11 @@ func NewGroupConcat(distinct sql.Expression, orderBy []sql.Expression, separator
 
 // NewBuffer creates a new buffer for the aggregation.
 func (g *GroupConcat) NewBuffer() sql.Row {
-	var values []string
 	var distinctSet = make(map[string]bool)
 	const nulls = false
+	var rows []sql.Row
 
-	return sql.NewRow(values, distinctSet, nulls)
+	return sql.NewRow(rows, distinctSet, nulls)
 }
 
 // Update implements the Aggregation interface.
@@ -53,7 +53,7 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	// The length of the row should exceed 1.
+	// The length of the row should not exceed 1.
 	if len(row) > 1 {
 		// TODO: Switch to mysql.EROperandColumns
 		return fmt.Errorf("Operand should contain 1 column")
@@ -74,8 +74,8 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 	vs := v.(string)
 
-	// Get the current array of values and the map
-	values := buffer[0].([]string)
+	// Get the current array of rows and the map
+	rows := buffer[0].([]sql.Row)
 	distinctSet := buffer[1].(map[string]bool)
 
 	// Check if distinct is active if so look at and update our map
@@ -88,9 +88,11 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		}
 	}
 
-	values = append(values, vs)
+	// Append the current value to the end of the row. We want to preserve the row's original structure for
+	// for sort ordering in the final step.
+	rows = append(rows, append(row, nil, vs))
 
-	buffer[0] = values
+	buffer[0] = rows
 	buffer[1] = distinctSet
 
 	return nil
@@ -103,9 +105,33 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // TODO: Reevaluate what's going with the return types
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	rs := row[0].([]string)
+	rows := row[0].([]sql.Row)
 
-	ret := fmt.Sprintf(strings.Join(rs[:], ","))
+	var sf sql.SortFields
+	sf = sf.FromExpressions(g.orderBy)
+	// Execute the order operation if it exists.
+	if sf != nil {
+		sorter := &expression.Sorter{
+			SortFields: sf,
+			Rows: rows,
+			Ctx: ctx,
+		}
+
+		sort.Stable(sorter)
+		if sorter.LastError != nil {
+			return nil, sorter.LastError
+		}
+	}
+
+	ret := ""
+	for i, row := range rows {
+		lastIdx := len(row) - 1
+		if i == len(rows) - 1 {
+			ret += row[lastIdx].(string)
+		} else {
+			ret += row[lastIdx].(string) + ","
+		}
+	}
 
 	return ret, nil
 }
