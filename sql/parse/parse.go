@@ -1800,8 +1800,8 @@ func orderByToSort(ctx *sql.Context, ob sqlparser.OrderBy, child sql.Node) (*pla
 	return plan.NewSort(sortFields, child), nil
 }
 
-func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) ([]sql.SortField, error) {
-	var sortFields []sql.SortField
+func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) (sql.SortFields, error) {
+	var sortFields sql.SortFields
 	for _, o := range ob {
 		e, err := ExprToExpression(ctx, o.Expr)
 		if err != nil {
@@ -2168,7 +2168,14 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		distinct := expression.NewLiteral(v.Distinct, sql.LongText)
 		separator := expression.NewLiteral(separatorS, sql.LongText)
 
-		return aggregation.NewGroupConcat(distinct, separator, exprs...)
+		sortFields, err := orderByToSortFields(ctx, v.OrderBy)
+		if err != nil {
+			return nil, err
+		}
+
+		orderByExpressions := sortFields.ToExpressions()
+
+		return aggregation.NewGroupConcat(distinct, orderByExpressions, separator, exprs)
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:

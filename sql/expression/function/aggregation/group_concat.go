@@ -17,23 +17,22 @@ package aggregation
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 )
 
 type GroupConcat struct {
 	distinct sql.Expression
-	selectExprs []sql.Expression
-	// TODO: Evaluate ORDER BY
+	orderBy []sql.Expression
 	separator sql.Expression
+	selectExprs []sql.Expression
 }
-
 
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
-var _ sql.Expression = &GroupConcat{}
 
-func NewGroupConcat(distinct sql.Expression, separator sql.Expression, selectExprs ...sql.Expression) (sql.Expression, error) {
-	return &GroupConcat{distinct: distinct, selectExprs: selectExprs, separator: separator}, nil
+func NewGroupConcat(distinct sql.Expression, orderBy []sql.Expression, separator sql.Expression, selectExprs []sql.Expression) (sql.Expression, error) {
+	return &GroupConcat{distinct: distinct, orderBy: orderBy, separator: separator, selectExprs: selectExprs}, nil
 }
 
 // NewBuffer creates a new buffer for the aggregation.
@@ -102,7 +101,7 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 	return g.Update(ctx, buffer, partial)
 }
 
-// TODO: Reevaluate what's going with the retrn types
+// TODO: Reevaluate what's going with the return types
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rs := row[0].([]string)
 
@@ -147,18 +146,47 @@ func (g *GroupConcat) IsNullable() bool {
 }
 
 func (g *GroupConcat) Children() []sql.Expression {
-	arr := make([]sql.Expression, 2)
+	arr := make([]sql.Expression, 1)
 	arr[0] = g.distinct
-	arr[1] = g.separator
+	arr = append(arr, g.orderBy...)
+	arr = append(arr, g.separator)
 	return append(arr, g.selectExprs...)
 }
 
 func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) == 0 || len(children) > 4 {
-		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 3)
+	return GroupConcatToChildren(children...)
+}
+
+func GroupConcatToChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) == 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(GroupConcat{}, len(children), 2)
 	}
 
-	return NewGroupConcat(children[0], children[1], children[2:]...)
+	distinct := children[0]
+	var orderByExpr []sql.Expression
+	var separator sql.Expression
+
+	var counter int
+Loop:
+	for i := 1; i < len(children); i++ {
+		expr := children[i]
+		switch expr.(type) {
+		case *expression.Literal:
+			// hit the separator case
+			separator = expr
+			counter = i
+			break Loop
+		default:
+			orderByExpr = append(orderByExpr, expr)
+		}
+	}
+
+	var selectExprs []sql.Expression
+	if counter < len(children) {
+		selectExprs = children[counter+1:]
+	}
+
+	return NewGroupConcat(distinct, orderByExpr, separator, selectExprs)
 }
 
 func (g *GroupConcat) FunctionName() string {
