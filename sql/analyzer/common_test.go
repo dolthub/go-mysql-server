@@ -25,7 +25,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 func not(e sql.Expression) sql.Expression {
@@ -167,22 +166,9 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 				expected = tt.node
 			}
 
-			ensureSubquerySchema(expected)
-			ensureSubquerySchema(result)
 			assertNodesEqualWithDiff(t, expected, result)
 		})
 	}
-}
-
-// Since SubqueryAlias nodes' schemas are loaded on demand, this method loads the schema of any such nodes for use in
-// test comparisons.
-func ensureSubquerySchema(n sql.Node) {
-	plan.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(*plan.SubqueryAlias); ok {
-			_ = n.Schema()
-		}
-		return true
-	})
 }
 
 // assertNodesEqualWithDiff asserts the two nodes given to be equal and prints any diff according to their DebugString

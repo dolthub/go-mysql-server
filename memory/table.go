@@ -864,7 +864,7 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 }
 
 // sql.FilteredTable functionality in the Table type was disabled for a long period of time, and has developed major
-// issues with the current analyzer logic. It's only used in the pushdown unit tests, and sql.Filtered table should be
+// issues with the current analyzer logic. It's only used in the pushdown unit tests, and sql.FilteredTable should be
 // considered unstable until this situation is fixed.
 type FilteredTable struct {
 	*Table
