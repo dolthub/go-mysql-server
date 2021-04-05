@@ -53,3 +53,8 @@ func IsOkResult(row Row) bool {
 	}
 	return false
 }
+
+// GetOkResult extracts the OkResult from the row given
+func GetOkResult(row Row) OkResult {
+	return row[0].(OkResult)
+}

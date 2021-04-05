@@ -58,4 +58,3 @@ func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error
 
 	return NewBinary(children[0]), nil
 }
-

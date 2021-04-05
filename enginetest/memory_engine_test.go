@@ -18,11 +18,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -103,7 +102,7 @@ func TestSingleQuery(t *testing.T) {
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
 
-	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, test.Bindings)
+	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil, test.Bindings)
 }
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
@@ -112,14 +111,71 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "UUIDs used in the wild.",
+			Name: "found_rows() behavior",
 			SetUpScript: []string{
-				"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
+				"create table b (x int primary key)",
+				"insert into b values (1), (2), (3), (4)",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    `SELECT IS_UUID(@uuid)`,
-					Expected: []sql.Row{{int8(1)}},
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select * from b",
+					Expected: []sql.Row{{1}, {2}, {3}, {4}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{4}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select * from b order by x  limit 3",
+					Expected: []sql.Row{{1}, {2}, {3}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{3}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select sql_calc_found_rows * from b order by x limit 3",
+					Expected: []sql.Row{{1}, {2}, {3}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{4}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{2}},
+				},
+				{
+					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "insert into b values (10), (11), (12), (13)",
+					Expected: []sql.Row{{sql.NewOkResult(4)}},
+				},
+				{
+					Query:    "select found_rows()",
+					Expected: []sql.Row{{2}},
 				},
 			},
 		},

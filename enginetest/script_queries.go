@@ -17,6 +17,8 @@ package enginetest
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/plan"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -420,6 +422,187 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:       "DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE",
 				ExpectedErr: sql.ErrSyntaxError,
+			},
+		},
+	},
+	{
+		Name: "last_insert_id() behavior",
+		SetUpScript: []string{
+			"create table a (x int primary key auto_increment, y int)",
+			"create table b (x int primary key)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "insert into a (y) values (1)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "insert into a (y) values (2), (3)",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "insert into b (x) values (1), (2)",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "select last_insert_id()",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		Name: "row_count() behavior",
+		SetUpScript: []string{
+			"create table b (x int primary key)",
+			"insert into b values (1), (2), (3), (4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "replace into b values (1)",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{-1}},
+			},
+			{
+				Query:    "select count(*) from b",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{-1}},
+			},
+			{
+				Query: "update b set x = x + 10 where x <> 2",
+				Expected: []sql.Row{{sql.OkResult{
+					RowsAffected: 3,
+					Info: plan.UpdateInfo{
+						Matched: 3,
+						Updated: 3,
+					},
+				}}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{-1}},
+			},
+			{
+				Query:    "delete from b where x <> 2",
+				Expected: []sql.Row{{sql.NewOkResult(3)}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{-1}},
+			},
+			{
+				Query:    "alter table b add column y int null",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "select row_count()",
+				Expected: []sql.Row{{-1}},
+			},
+		},
+	},
+	{
+		Name: "found_rows() behavior",
+		SetUpScript: []string{
+			"create table b (x int primary key)",
+			"insert into b values (1), (2), (3), (4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select * from b",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select * from b order by x  limit 3",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select sql_calc_found_rows * from b order by x limit 3",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "insert into b values (10), (11), (12), (13)",
+				Expected: []sql.Row{{sql.NewOkResult(4)}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{2}},
 			},
 		},
 	},

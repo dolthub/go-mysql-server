@@ -69,6 +69,13 @@ type tableCol struct {
 	col   string
 }
 
+func newTableCol(table, col string) tableCol {
+	return tableCol{
+		table: strings.ToLower(table),
+		col:   strings.ToLower(col),
+	}
+}
+
 type indexedCol struct {
 	*sql.Column
 	index int
@@ -381,7 +388,11 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			}
 		}
 
-		columns := indexColumns(ctx, a, n, scope)
+		columns, err := indexColumns(ctx, a, n, scope)
+		if err != nil {
+			return nil, err
+		}
+
 		return plan.TransformExpressionsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
@@ -402,19 +413,70 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 // indexColumns returns a map of column identifiers to their index in the node's schema. Columns from outer scopes are
 // included as well, with lower indexes (prepended to node schema) but lower precedence (overwritten by inner nodes in
 // map)
-func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[tableCol]indexedCol {
+func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[tableCol]indexedCol, error) {
 	var columns = make(map[tableCol]indexedCol)
-
 	var idx int
+
+	indexColumn := func(col *sql.Column) {
+		columns[tableCol{
+			table: strings.ToLower(col.Source),
+			col:   strings.ToLower(col.Name),
+		}] = indexedCol{col, idx}
+		idx++
+	}
+
 	indexSchema := func(n sql.Schema) {
 		for _, col := range n {
-			columns[tableCol{
-				table: strings.ToLower(col.Source),
-				col:   strings.ToLower(col.Name),
-			}] = indexedCol{col, idx}
-			idx++
+			indexColumn(col)
 		}
 	}
+
+	var indexColumnExpr func(e sql.Expression)
+	indexColumnExpr = func(e sql.Expression) {
+		switch e := e.(type) {
+		case *expression.Alias:
+			// Aliases get indexed twice with the same index number: once with the aliased name and once with the
+			// underlying name
+			indexColumn(expression.ExpressionToColumn(e))
+			idx--
+			indexColumnExpr(e.Child)
+		default:
+			indexColumn(expression.ExpressionToColumn(e))
+		}
+	}
+
+	indexChildNode := func(n sql.Node) {
+		switch n := n.(type) {
+		case *plan.Project:
+			for _, e := range n.Projections {
+				indexColumnExpr(e)
+			}
+		case *plan.GroupBy:
+			for _, e := range n.SelectedExprs {
+				indexColumnExpr(e)
+			}
+		case *plan.Window:
+			for _, e := range n.SelectExprs {
+				indexColumnExpr(e)
+			}
+		case *plan.Values:
+			// values nodes don't have a schema to index like other nodes that provide columns
+		default:
+			indexSchema(n.Schema())
+		}
+	}
+
+	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
+	// ones of the same name. This matches the MySQL scope precedence rules.
+	indexSchema(scope.Schema())
+
+	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
+	// itself.
+	for _, child := range n.Children() {
+		indexChildNode(child)
+	}
+
+	// For certain DDL nodes, we have to do more work
 	indexSchemaForDefaults := func(column *sql.Column, order *sql.ColumnOrder, sch sql.Schema) {
 		tblSch := make(sql.Schema, len(sch))
 		copy(tblSch, sch)
@@ -450,16 +512,6 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 		}
 	}
 
-	// Index the columns in the outer scope, outer to inner. This means inner scope columns will overwrite the outer
-	// ones of the same name. This matches the MySQL scope precedence rules.
-	indexSchema(scope.Schema())
-
-	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
-	// itself.
-	for _, child := range n.Children() {
-		indexSchema(child.Schema())
-	}
-
 	switch node := n.(type) {
 	case *plan.CreateTable: // For this node in particular, the columns will only come into existence after the analyzer step, so we forge them here.
 		for _, col := range node.Schema() {
@@ -479,15 +531,19 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) map[t
 		}
 	case *plan.ModifyColumn:
 		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
-			colIdx := tbl.Schema().IndexOf(node.Column().Name, node.TableName())
+			colIdx := tbl.Schema().IndexOf(node.Column(), node.TableName())
+			if colIdx < 0 {
+				return nil, sql.ErrTableColumnNotFound.New(node.TableName(), node.Column())
+			}
+
 			var newSch sql.Schema
 			newSch = append(newSch, tbl.Schema()[:colIdx]...)
 			newSch = append(newSch, tbl.Schema()[colIdx+1:]...)
-			indexSchemaForDefaults(node.Column(), node.Order(), newSch)
+			indexSchemaForDefaults(node.NewColumn(), node.Order(), newSch)
 		}
 	}
 
-	return columns
+	return columns, nil
 }
 
 func resolveSystemVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, error) {
@@ -583,7 +639,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			}
 		}
 
-		var aggregateColumns = make(map[string]struct{})
+		var selectedColumns = make(map[string]struct{})
 		for _, agg := range g.SelectedExprs {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
@@ -594,23 +650,24 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			}
 
 			for _, n := range findAllColumns(agg) {
-				aggregateColumns[strings.ToLower(n)] = struct{}{}
+				selectedColumns[strings.ToLower(n)] = struct{}{}
 			}
 		}
 
-		var newAggregate []sql.Expression
+		var newSelectedExprs []sql.Expression
+		replacements := make(map[string]string)
 		var projection []sql.Expression
 		// Aliases will keep the aliases that have been pushed down and their
 		// index in the new aggregate.
 		var aliases = make(map[string]int)
 
 		var needsReorder bool
-		for _, a := range g.SelectedExprs {
-			alias, ok := a.(*expression.Alias)
+		for _, expr := range g.SelectedExprs {
+			alias, ok := expr.(*expression.Alias)
 			// Note that aliases of aggregations cannot be used in the grouping
 			// because the grouping is needed before computing the aggregation.
 			if !ok || containsAggregation(alias) {
-				newAggregate = append(newAggregate, a)
+				newSelectedExprs = append(newSelectedExprs, expr)
 				continue
 			}
 
@@ -620,14 +677,15 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			// no other alias is required.
 			_, ok = groupingColumns[name]
 			if ok {
-				aliases[name] = len(newAggregate)
+				aliases[name] = len(newSelectedExprs)
 				needsReorder = true
 				delete(groupingColumns, name)
 
-				projection = append(projection, a)
-				newAggregate = append(newAggregate, expression.NewUnresolvedColumn(alias.Name()))
+				projection = append(projection, expr)
+				replacements[alias.Child.String()] = alias.Name()
+				newSelectedExprs = append(newSelectedExprs, expression.NewUnresolvedColumn(alias.Name()))
 			} else {
-				newAggregate = append(newAggregate, a)
+				newSelectedExprs = append(newSelectedExprs, expr)
 			}
 		}
 
@@ -635,10 +693,23 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			return n, nil
 		}
 
+		// Any replacements of aliases in the select expression must be mirrored in the group by, replacing any aliased
+		// expressions with a reference to that alias. This is so that we can directly compare the group by an select
+		// expressions for validation, which requires us to know that (table.column as col) and (table.column) are the
+		// same expressions. So if we replace one, replace both.
+		var newGroupBys []sql.Expression
+		for _, expr := range g.GroupByExprs {
+			if alias, ok := replacements[expr.String()]; ok {
+				newGroupBys = append(newGroupBys, expression.NewUnresolvedColumn(alias))
+			} else {
+				newGroupBys = append(newGroupBys, expr)
+			}
+		}
+
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
-		var missingCols = make([]string, 0, len(aggregateColumns)+len(groupingColumns))
-		for col := range aggregateColumns {
+		var missingCols = make([]string, 0, len(selectedColumns)+len(groupingColumns))
+		for col := range selectedColumns {
 			missingCols = append(missingCols, col)
 		}
 		for col := range groupingColumns {
@@ -675,9 +746,9 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// If there is any name conflict between columns we need to rename every
 		// usage inside the aggregate.
 		if len(renames) > 0 {
-			for i, expr := range newAggregate {
+			for i, expr := range newSelectedExprs {
 				var err error
-				newAggregate[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
+				newSelectedExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the
@@ -696,7 +767,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		return plan.NewGroupBy(
-			newAggregate, g.GroupByExprs,
+			newSelectedExprs, newGroupBys,
 			plan.NewProject(projection, g.Child),
 		), nil
 	})

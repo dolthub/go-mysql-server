@@ -79,3 +79,11 @@ func (f inspector) Visit(expr Expression) Visitor {
 func Inspect(expr Expression, f func(expr Expression) bool) {
 	Walk(inspector(f), expr)
 }
+
+// NillaryWithChildren is a common implementation of expression.WithChildren for expressions with no children.
+func NillaryWithChildren(expr Expression, children ...Expression) (Expression, error) {
+	if len(children) > 0 {
+		return nil, ErrInvalidChildrenNumber.New(expr, len(children), 0)
+	}
+	return expr, nil
+}

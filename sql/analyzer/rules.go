@@ -43,6 +43,7 @@ var DefaultRules = []Rule{
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"resolve_functions", resolveFunctions},
+	{"flatten_table_aliases", flattenTableAliases},
 	{"pushdown_sort", pushdownSort},
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
 	{"qualify_columns", qualifyColumns},

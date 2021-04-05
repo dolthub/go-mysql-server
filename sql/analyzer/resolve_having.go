@@ -259,7 +259,12 @@ func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		return plan.NewLimit(node.Limit, child), columns, nil
+
+		n, err := node.WithChildren(child)
+		if err != nil {
+			return nil, nil, err
+		}
+		return n, columns, nil
 	case *plan.Offset:
 		child, columns, err := pushColumnsUp(node.Child, columns)
 		if err != nil {

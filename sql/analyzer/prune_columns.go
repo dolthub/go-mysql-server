@@ -74,7 +74,7 @@ func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return nil, err
 	}
 
-	return fixRemainingFieldsIndexes(n, scope)
+	return fixRemainingFieldsIndexes(ctx, a, n, scope)
 }
 
 func pruneColumnsIsSafe(n sql.Node) bool {
@@ -116,21 +116,22 @@ func pruneSubqueryColumns(
 
 	columns := make(usedColumns)
 
-	// The columns coming from the parent have the subquery alias name as the
-	// source. We need to find the real table in order to prune the subquery
-	// correctly.
+	// The columns coming from the parent have the subquery alias name as the source. We need to find the real table in
+	// order to prune the subquery correctly. The columns might also have been renamed.
 	tableByCol := make(map[string]string)
-	for _, col := range n.Child.Schema() {
-		tableByCol[col.Name] = col.Source
+	for i, col := range n.Child.Schema() {
+		name := col.Name
+		if len(n.Columns) > 0 {
+			name = n.Columns[i]
+		}
+		tableByCol[name] = col.Source
 	}
 
 	for col := range parentColumns[n.Name()] {
 		table, ok := tableByCol[col]
 		if !ok {
-			// This should never happen, but better be safe than sorry.
 			return nil, fmt.Errorf("this is likely a bug: missing projected column %q on subquery %q", col, n.Name())
 		}
-
 		columns.add(table, col)
 	}
 
@@ -295,11 +296,11 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	return !cols.has(gf.Table(), gf.Name())
 }
 
-func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
+func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUpWithSelector(n, canPruneChild, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			child, err := fixRemainingFieldsIndexes(n.Child, nil)
+			child, err := fixRemainingFieldsIndexes(ctx, a, n.Child, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -310,19 +311,9 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 				return n, nil
 			}
 
-			var schema sql.Schema
-			for _, c := range n.Children() {
-				// Values nodes are an exception to this analysis, since their schema columns don't have a Source field
-				// like other sources of rows
-				if _, ok := c.(*plan.Values); ok {
-					continue
-				}
-				schema = append(schema, c.Schema()...)
-			}
-
-			indexedCols := make(map[tableCol]int)
-			for i, col := range append(scope.Schema(), schema...) {
-				indexedCols[tableCol{col.Source, col.Name}] = i
+			indexedCols, err := indexColumns(ctx, a, n, scope)
+			if err != nil {
+				return nil, err
 			}
 
 			if len(indexedCols) == 0 {
@@ -335,12 +326,12 @@ func fixRemainingFieldsIndexes(n sql.Node, scope *Scope) (sql.Node, error) {
 					return e, nil
 				}
 
-				idx, ok := indexedCols[tableCol{gf.Table(), gf.Name()}]
+				idx, ok := indexedCols[newTableCol(gf.Table(), gf.Name())]
 				if !ok {
 					return nil, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
 				}
 
-				return gf.WithIndex(idx), nil
+				return gf.WithIndex(idx.index), nil
 			})
 		}
 	})

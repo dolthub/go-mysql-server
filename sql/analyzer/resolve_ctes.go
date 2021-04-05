@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -101,14 +100,6 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	return cur, nil
 }
 
-func unalias(p sql.Expression) sql.Expression {
-	a, ok := p.(*expression.Alias)
-	if !ok {
-		return p
-	}
-	return a.Child
-}
-
 func stripWith(ctx *sql.Context, a *Analyzer, n sql.Node, ctes map[string]sql.Node) (sql.Node, error) {
 	with, ok := n.(*plan.With)
 	if !ok {
@@ -125,44 +116,7 @@ func stripWith(ctx *sql.Context, a *Analyzer, n sql.Node, ctes map[string]sql.No
 				return nil, sql.ErrColumnCountMismatch.New()
 			}
 
-			selector := func(parent sql.Node, child sql.Node, childNum int) bool {
-				switch parent.(type) {
-				case *plan.Project, *plan.GroupBy, *plan.Window:
-					return false
-				}
-				return true
-			}
-
-			child, err := plan.TransformUpWithSelector(subquery.Child, selector, func(n sql.Node) (sql.Node, error) {
-				switch n := n.(type) {
-				case *plan.Project:
-					projections := make([]sql.Expression, len(cte.Columns))
-					for i, p := range n.Projections {
-						projections[i] = expression.NewAlias(cte.Columns[i], unalias(p))
-					}
-					return n.WithExpressions(projections...)
-				case *plan.GroupBy:
-					projections := make([]sql.Expression, len(cte.Columns))
-					for i, p := range n.SelectedExprs {
-						projections[i] = expression.NewAlias(cte.Columns[i], unalias(p))
-					}
-					return plan.NewGroupBy(projections, n.GroupByExprs, n.Child), nil
-				case *plan.Window:
-					projections := make([]sql.Expression, len(cte.Columns))
-					for i, p := range n.SelectExprs {
-						projections[i] = expression.NewAlias(cte.Columns[i], unalias(p))
-					}
-					return n.WithExpressions(projections...)
-				default:
-					return n, nil
-				}
-			})
-
-			if err != nil {
-				return nil, err
-			}
-
-			subquery.Child = child
+			subquery = subquery.WithColumns(cte.Columns)
 		}
 
 		ctes[strings.ToLower(cteName)] = subquery
