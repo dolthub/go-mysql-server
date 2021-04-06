@@ -249,9 +249,9 @@ func TestWriteQueryPlans(t *testing.T) {
 	require.NoError(t, err)
 
 	w := bufio.NewWriter(f)
-	w.WriteString("var PlanTests = []QueryPlanTest{\n")
+	_, _ = w.WriteString("var PlanTests = []QueryPlanTest{\n")
 	for _, tt := range enginetest.PlanTests {
-		w.WriteString("\t{\n")
+		_, _ = w.WriteString("\t{\n")
 		ctx := enginetest.NewContextWithEngine(harness, engine)
 		parsed, err := parse.Parse(ctx, tt.Query)
 		require.NoError(t, err)
@@ -261,28 +261,30 @@ func TestWriteQueryPlans(t *testing.T) {
 		planString := extractQueryNode(node).String()
 
 		if strings.Contains(tt.Query, "`") {
-			w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
+			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
 		} else {
-			w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
+			_, _ = w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
 		}
-		w.WriteString("\n")
+		_, _ = w.WriteString("\n")
 
-		w.WriteString(`ExpectedPlan: `)
+		_, _ = w.WriteString(`ExpectedPlan: `)
 		for i, line := range strings.Split(planString, "\n") {
 			if i > 0 {
-				w.WriteString(" + \n")
+				_, _ = w.WriteString(" + \n")
 			}
 			if len(line) > 0 {
-				w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
+				_, _ = w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
 			} else {
 				// final line with comma
-				w.WriteString("\"\",\n")
+				_, _ = w.WriteString("\"\",\n")
 			}
 		}
-		w.WriteString("\t},\n")
+		_, _ = w.WriteString("\t},\n")
 	}
-	w.WriteString("}")
-	w.Flush()
+	_, _ = w.WriteString("}")
+
+	// We flush the file but leave it open, which means test cleanup will fail (so we can get the file contents after)
+	_ = w.Flush()
 
 	t.Logf("Query plans in %s", outputPath)
 }

@@ -129,10 +129,14 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
-	// don't do pushdown on certain queries
-	// TODO: we should definitely do pushdown to the SELECT of an INSERT if there is one
+	if plan.IsDdlNode(n) {
+		return false
+	}
+
+	// The values of an insert are analyzed in isolation, so they do get pushdown treatment. But no other DML
+	// statements should get pushdown to their target tables.
 	switch n.(type) {
-	case *plan.InsertInto, *plan.CreateIndex, *plan.CreateTrigger:
+	case *plan.InsertInto:
 		return false
 	}
 

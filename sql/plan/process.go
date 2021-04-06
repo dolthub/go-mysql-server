@@ -408,6 +408,7 @@ func IsDdlNode(node sql.Node) bool {
 		*CreateIndex, *AlterIndex, *DropIndex,
 		*CreateProcedure, *DropProcedure,
 		*CreateForeignKey, *DropForeignKey,
+		*CreateCheck, *DropCheck,
 		*CreateTrigger, *DropTrigger,
 		*ShowTables, *ShowCreateTable,
 		*ShowTriggers, *ShowCreateTrigger,
