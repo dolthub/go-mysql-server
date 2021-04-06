@@ -17,6 +17,7 @@ package driver
 import (
 	"database/sql/driver"
 	"encoding/json"
+	"io"
 	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -61,6 +62,13 @@ func (r *Rows) Next(dest []driver.Value) error {
 	if err != nil {
 		return err
 	}
+	if len(row) == 0 {
+		return nil
+	}
+
+	if _, ok := row[0].(sql.OkResult); ok {
+		return io.EOF
+	}
 
 	for i := range row {
 		dest[i] = convertRowValue(r.cols[i], row[i])
@@ -91,11 +99,11 @@ func convertRowValue(col *sql.Column, v driver.Value) interface{} {
 		case string, []byte:
 			return v
 		default:
-		b, err := json.Marshal(v)
-		if err == nil {
-			return b
+			b, err := json.Marshal(v)
+			if err == nil {
+				return b
+			}
 		}
-	}
 	}
 	return v
 }
