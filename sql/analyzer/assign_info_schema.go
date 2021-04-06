@@ -34,7 +34,7 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 				return nil, err
 			}
 
-			x.IndexesToShow = tableIndexes
+			x.IndexesToShow = filterGeneratedIndexes(tableIndexes)
 		case *plan.ShowCreateTable:
 			if !x.IsView {
 				tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
@@ -42,7 +42,7 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 					return nil, err
 				}
 
-				x.Indexes = tableIndexes
+				x.Indexes = filterGeneratedIndexes(tableIndexes)
 			}
 		case *plan.ShowColumns:
 			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
@@ -50,7 +50,7 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 				return nil, err
 			}
 
-			x.Indexes = tableIndexes
+			x.Indexes = filterGeneratedIndexes(tableIndexes)
 		case *plan.ShowCharset:
 			rt, err := getInformationSchemaTable(ctx, a, "character_sets")
 			if err != nil {
@@ -62,6 +62,17 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 		return n, nil
 	})
+}
+
+// filterGeneratedIndexes removes all generated indexes from a slice of indexes.
+func filterGeneratedIndexes(indexes []sql.Index) []sql.Index {
+	var newIndexes []sql.Index
+	for _, index := range indexes {
+		if !index.IsGenerated() {
+			newIndexes = append(newIndexes, index)
+		}
+	}
+	return newIndexes
 }
 
 // getIndexesForTable returns all indexes on the table represented by the node given. If the node isn't a
