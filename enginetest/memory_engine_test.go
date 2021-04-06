@@ -17,6 +17,7 @@ package enginetest_test
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -203,6 +204,16 @@ func TestBrokenQueries(t *testing.T) {
 	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)
 }
 
+func TestTestQueryPlanTODOs(t *testing.T) {
+	harness := enginetest.NewSkippingMemoryHarness()
+	engine := enginetest.NewEngine(t, harness)
+	for _, tt := range enginetest.QueryPlanTODOs {
+		t.Run(tt.Query, func(t *testing.T) {
+			enginetest.TestQueryPlan(t, enginetest.NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
+		})
+	}
+}
+
 func TestVersionedQueries(t *testing.T) {
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
@@ -244,7 +255,12 @@ func TestWriteQueryPlans(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	engine := enginetest.NewEngine(t, harness)
 
-	outputPath := filepath.Join(t.TempDir(), "queryPlans.txt")
+	tmp, err := ioutil.TempDir("", "*")
+	if err != nil {
+		return
+	}
+
+	outputPath := filepath.Join(tmp, "queryPlans.txt")
 	f, err := os.Create(outputPath)
 	require.NoError(t, err)
 
