@@ -17,7 +17,6 @@ package driver
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"io"
 	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -58,6 +57,7 @@ func (r *Rows) Close() error {
 // should be taken when closing Rows not to modify
 // a buffer held in dest.
 func (r *Rows) Next(dest []driver.Value) error {
+again:
 	row, err := r.rows.Next()
 	if err != nil {
 		return err
@@ -67,7 +67,8 @@ func (r *Rows) Next(dest []driver.Value) error {
 	}
 
 	if _, ok := row[0].(sql.OkResult); ok {
-		return io.EOF
+		// skip OK results
+		goto again
 	}
 
 	for i := range row {
