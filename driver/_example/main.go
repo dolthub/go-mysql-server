@@ -23,12 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/driver"
 )
 
-func must(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func main() {
 	sql.Register("sqle", driver.New(factory{}))
 
@@ -40,7 +34,16 @@ func main() {
 
 	rows, err := db.Query("SELECT * FROM mytable")
 	must(err)
+	dump(rows)
+}
 
+func must(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func dump(rows *sql.Rows) {
 	var name, email string
 	var phoneNumbers string
 	var created_at time.Time

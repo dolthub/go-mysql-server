@@ -48,9 +48,9 @@ func createTestDatabase() *memory.Database {
 
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
-	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
-	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, time.Now()))
+	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", `["555-555-555"]`, time.Now()))
+	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", `[]`, time.Now()))
+	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", `[]`, time.Now()))
+	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", `["555-666-555", "666-666-666"]`, time.Now()))
 	return db
 }
