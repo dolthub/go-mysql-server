@@ -91,7 +91,9 @@ func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (dr
 	if err != nil {
 		return nil, err
 	}
-	return &Result{qctx, rows, nil}, nil
+
+	res := &Result{qctx, rows, nil}
+	return res, res.ok()
 }
 
 func (s *Stmt) query(ctx context.Context, bindings map[string]sql.Expression) (driver.Rows, error) {
