@@ -16,17 +16,20 @@ package driver
 
 import (
 	"errors"
+	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, error) {
+func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, bool, error) {
 	var okr sql.OkResult
 	var found bool
 	for !found {
 		row, err := rows.Next()
-		if err != nil {
-			return okr, err
+		if errors.Is(err, io.EOF) {
+			break
+		} else if err != nil {
+			return okr, found, err
 		}
 
 		if len(row) != 1 {
@@ -37,7 +40,7 @@ func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, error) {
 	}
 
 	err := rows.Close(ctx)
-	return okr, err
+	return okr, found, err
 }
 
 // Result is the result of a query execution.
