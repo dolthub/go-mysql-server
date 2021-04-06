@@ -16,65 +16,59 @@ package driver
 
 import (
 	"errors"
-	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Result is the result of a query execution.
-type Result struct {
-	ctx    *sql.Context
-	rows   sql.RowIter
-	result *sql.OkResult
-}
-
-func (r *Result) ok() error {
-	if r.result != nil {
-		return nil
-	}
-
-	defer func() {
-		r.rows.Close(r.ctx)
-		r.rows = nil
-	}()
-
-	for {
-		row, err := r.rows.Next()
-		if errors.Is(err, io.EOF) {
-			r.result = new(sql.OkResult)
-			return nil
-		}
+func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, error) {
+	var okr sql.OkResult
+	var found bool
+	for !found {
+		row, err := rows.Next()
 		if err != nil {
-			return err
+			return okr, err
 		}
 
 		if len(row) != 1 {
 			continue
 		}
 
-		result, ok := row[0].(sql.OkResult)
-		if ok {
-			r.result = &result
-			return nil
-		}
+		okr, found = row[0].(sql.OkResult)
 	}
+
+	err := rows.Close(ctx)
+	return okr, err
+}
+
+// Result is the result of a query execution.
+type Result struct {
+	result sql.OkResult
 }
 
 // LastInsertId returns the database's auto-generated ID
 // after, for example, an INSERT into a table with primary
 // key.
+//
+// NOT IMPLEMENTED
 func (r *Result) LastInsertId() (int64, error) {
-	if err := r.ok(); err != nil {
-		return 0, err
-	}
-	return int64(r.result.InsertID), nil
+	return 0, errors.New("sql.Result.LastInsertId is not implemented")
 }
 
 // RowsAffected returns the number of rows affected by the
 // query.
 func (r *Result) RowsAffected() (int64, error) {
-	if err := r.ok(); err != nil {
-		return 0, err
-	}
 	return int64(r.result.RowsAffected), nil
+}
+
+// ResultNotFound is returned when a row iterator does not return a result.
+type ResultNotFound struct{}
+
+// LastInsertId returns an error
+func (r *ResultNotFound) LastInsertId() (int64, error) {
+	return 0, errors.New("no result")
+}
+
+// RowsAffected returns an error
+func (r *ResultNotFound) RowsAffected() (int64, error) {
+	return 0, errors.New("no result")
 }

@@ -17,6 +17,8 @@ package driver
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
+	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -92,8 +94,14 @@ func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (dr
 		return nil, err
 	}
 
-	res := &Result{qctx, rows, nil}
-	return res, res.ok()
+	okr, err := getOKResult(qctx, rows)
+	if errors.Is(err, io.EOF) {
+		return &ResultNotFound{}, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return &Result{okr}, nil
 }
 
 func (s *Stmt) query(ctx context.Context, bindings map[string]sql.Expression) (driver.Rows, error) {
