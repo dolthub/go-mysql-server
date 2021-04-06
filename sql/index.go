@@ -39,6 +39,9 @@ type Index interface {
 	Comment() string
 	// IndexType returns the type of this index, e.g. BTREE
 	IndexType() string
+	// IsGenerated returns whether this index was generated. Generated indexes
+	// are used for index access, but are not displayed (such as with SHOW INDEXES).
+	IsGenerated() bool
 }
 
 // AscendIndex is an index that is sorted in ascending order.
