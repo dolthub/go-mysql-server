@@ -42,6 +42,7 @@ func (i *MergeableIndex) Database() string                    { return i.DB }
 func (i *MergeableIndex) Driver() string                      { return i.DriverName }
 func (i *MergeableIndex) MemTable() *Table                    { return i.Tbl }
 func (i *MergeableIndex) ColumnExpressions() []sql.Expression { return i.Exprs }
+func (i *MergeableIndex) IsGenerated() bool                   { return false }
 
 func (i *MergeableIndex) Expressions() []string {
 	var exprs []string
