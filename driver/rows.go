@@ -87,10 +87,15 @@ func convertRowValue(col *sql.Column, v driver.Value) interface{} {
 		}
 
 	case query.Type_JSON:
+		switch v := v.(type) {
+		case string, []byte:
+			return v
+		default:
 		b, err := json.Marshal(v)
 		if err == nil {
 			return b
 		}
+	}
 	}
 	return v
 }
