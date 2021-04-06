@@ -71,38 +71,6 @@ func TestClearWarnings(t *testing.T) {
 	enginetest.TestClearWarnings(t, enginetest.NewDefaultMemoryHarness())
 }
 
-// TODO: this should be expanded and filled in (test of describe for lots of queries), and moved to enginetests, but
-//  first we need to standardize the explain output. Depends too much on integrators right now.
-func TestDescribe(t *testing.T) {
-	queries := []string{
-		`DESCRIBE FORMAT=TREE SELECT * FROM mytable`,
-		`EXPLAIN FORMAT=TREE SELECT * FROM mytable`,
-		`DESCRIBE SELECT * FROM mytable`,
-		`EXPLAIN SELECT * FROM mytable`,
-	}
-
-	harness := enginetest.NewDefaultMemoryHarness()
-	e := enginetest.NewEngine(t, harness)
-	t.Run("sequential", func(t *testing.T) {
-		for _, q := range queries {
-			enginetest.TestQuery(t, harness, e, q, []sql.Row{
-				sql.NewRow("Table(mytable)"),
-			}, nil, nil)
-		}
-	})
-
-	parallelHarness := enginetest.NewMemoryHarness("parallel", 2, testNumPartitions, false, nil)
-	ep := enginetest.NewEngine(t, parallelHarness)
-	t.Run("parallel", func(t *testing.T) {
-		for _, q := range queries {
-			enginetest.TestQuery(t, parallelHarness, ep, q, []sql.Row{
-				{"Exchange(parallelism=2)"},
-				{" └─ Table(mytable)"},
-			}, nil, nil)
-		}
-	})
-}
-
 func TestUse(t *testing.T) {
 	enginetest.TestUse(t, enginetest.NewDefaultMemoryHarness())
 }
