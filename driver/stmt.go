@@ -109,5 +109,5 @@ func (s *Stmt) query(ctx context.Context, bindings map[string]sql.Expression) (d
 		return nil, err
 	}
 
-	return &Rows{qctx, cols, rows}, nil
+	return &Rows{s.conn.options, qctx, cols, rows}, nil
 }

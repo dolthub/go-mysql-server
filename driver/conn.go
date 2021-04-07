@@ -23,6 +23,7 @@ import (
 
 // Conn is a connection to a database.
 type Conn struct {
+	options Options
 	catalog *catalog
 	session sql.Session
 	indexes *sql.IndexRegistry

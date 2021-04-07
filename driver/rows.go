@@ -16,7 +16,6 @@ package driver
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,9 +24,10 @@ import (
 
 // Rows is an iterator over an executed query's results.
 type Rows struct {
-	ctx  *sql.Context
-	cols sql.Schema
-	rows sql.RowIter
+	options Options
+	ctx     *sql.Context
+	cols    sql.Schema
+	rows    sql.RowIter
 }
 
 // Columns returns the names of the columns. The number of
@@ -72,13 +72,13 @@ again:
 	}
 
 	for i := range row {
-		dest[i] = convertRowValue(r.cols[i], row[i])
+		dest[i] = r.convert(i, row[i])
 	}
 	return nil
 }
 
-func convertRowValue(col *sql.Column, v driver.Value) interface{} {
-	switch col.Type.Type() {
+func (r *Rows) convert(col int, v driver.Value) interface{} {
+	switch r.cols[col].Type.Type() {
 	case query.Type_NULL_TYPE:
 		return nil
 
@@ -96,15 +96,39 @@ func convertRowValue(col *sql.Column, v driver.Value) interface{} {
 		}
 
 	case query.Type_JSON:
-		switch v := v.(type) {
-		case string, []byte:
+		var asObj, asStr bool
+		switch r.options.JSON {
+		case ScanAsObject:
+			asObj = true
+		case ScanAsString:
+			asStr = true
+		case ScanAsBytes:
+			// nothing to do
+		default: // unknown or ScanAsStored
 			return v
-		default:
-			b, err := json.Marshal(v)
-			if err == nil {
-				return b
-			}
 		}
+
+		sqlValue, err := r.cols[col].Type.Convert(v)
+		if err != nil {
+			break
+		}
+		doc, ok := sqlValue.(sql.JSONDocument)
+		if !ok {
+			break
+		}
+		if asObj {
+			return doc.Val
+		}
+
+		str, err := doc.ToString(r.ctx)
+		if err != nil {
+			break
+		}
+
+		if asStr {
+			return str
+		}
+		return []byte(str)
 	}
 	return v
 }

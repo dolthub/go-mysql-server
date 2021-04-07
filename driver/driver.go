@@ -25,24 +25,41 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
+type ScanKind int
+
+const (
+	ScanAsString ScanKind = iota
+	ScanAsBytes
+	ScanAsObject
+	ScanAsStored
+)
+
+// Options for the driver
+type Options struct {
+	// JSON indicates how JSON row values should be returned
+	JSON ScanKind
+}
+
 // Provider resolves SQL catalogs
 type Provider interface {
 	Resolve(name string) (string, *sql.Catalog, error)
 }
 
-// New returns a driver using the specified provider.
-func New(provider Provider) *Driver {
-	return &Driver{
-		provider: provider,
-	}
-}
-
 // Driver exposes an engine as a stdlib SQL driver.
 type Driver struct {
 	provider Provider
+	options  Options
 
 	mu       sync.Mutex
 	catalogs map[*sql.Catalog]*catalog
+}
+
+// New returns a driver using the specified provider.
+func New(provider Provider, options Options) *Driver {
+	return &Driver{
+		provider: provider,
+		options:  options,
+	}
 }
 
 // Open returns a new connection to the database.
@@ -55,8 +72,8 @@ func (d *Driver) Open(name string) (driver.Conn, error) {
 }
 
 // OpenConnector calls the driver factory and returns a new connector.
-func (d *Driver) OpenConnector(name string) (driver.Connector, error) {
-	server, sqlCat, err := d.provider.Resolve(name)
+func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
+	server, sqlCat, err := d.provider.Resolve(dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -74,8 +91,10 @@ func (d *Driver) OpenConnector(name string) (driver.Connector, error) {
 	}
 	d.mu.Unlock()
 
+	// TODO override options from DNS
 	return &Connector{
 		driver:  d,
+		options: d.options,
 		server:  server,
 		catalog: cat,
 	}, nil
@@ -108,6 +127,7 @@ func (c *catalog) nextProcessID() uint64 {
 // by multiple goroutines.
 type Connector struct {
 	driver  *Driver
+	options Options
 	server  string
 	catalog *catalog
 }
@@ -125,6 +145,7 @@ func (c *Connector) Connect(context.Context) (driver.Conn, error) {
 	indexes := sql.NewIndexRegistry()
 	views := sql.NewViewRegistry()
 	return &Conn{
+		options: c.options,
 		catalog: c.catalog,
 		session: session,
 		indexes: indexes,
