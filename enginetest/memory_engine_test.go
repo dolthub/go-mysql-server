@@ -297,7 +297,6 @@ func TestWriteQueryPlans(t *testing.T) {
 	}
 	_, _ = w.WriteString("}")
 
-	// We flush the file but leave it open, which means test cleanup will fail (so we can get the file contents after)
 	_ = w.Flush()
 
 	t.Logf("Query plans in %s", outputPath)

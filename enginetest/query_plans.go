@@ -80,12 +80,12 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Project(t1.i)\n" +
 			" └─ InnerJoin(t1.i = t2.i + 1)\n" +
 			"     ├─ Filter(t1.i = 2)\n" +
-			"     │   └─ TableAlias(t1)\n" +
-			"     │       └─ Projected table access on [i]\n" +
+			"     │   └─ Projected table access on [i]\n" +
+			"     │       └─ TableAlias(t1)\n" +
 			"     │           └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"     └─ Filter(t2.i = 1)\n" +
-			"         └─ TableAlias(t2)\n" +
-			"             └─ Projected table access on [i]\n" +
+			"         └─ Projected table access on [i]\n" +
+			"             └─ TableAlias(t2)\n" +
 			"                 └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
@@ -755,10 +755,12 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
 			"     └─ Filter(a.pk1 = b.pk1 AND a.pk2 = b.pk2)\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
-			"             │   └─ Table(two_pk)\n" +
-			"             └─ TableAlias(b)\n" +
-			"                 └─ Table(two_pk)\n" +
+			"             ├─ Projected table access on [pk1 pk2]\n" +
+			"             │   └─ TableAlias(a)\n" +
+			"             │       └─ Table(two_pk)\n" +
+			"             └─ Projected table access on [pk1 pk2]\n" +
+			"                 └─ TableAlias(b)\n" +
+			"                     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -767,10 +769,12 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
 			"     └─ Filter(a.pk1 = b.pk2 AND a.pk2 = b.pk1)\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
-			"             │   └─ Table(two_pk)\n" +
-			"             └─ TableAlias(b)\n" +
-			"                 └─ Table(two_pk)\n" +
+			"             ├─ Projected table access on [pk1 pk2]\n" +
+			"             │   └─ TableAlias(a)\n" +
+			"             │       └─ Table(two_pk)\n" +
+			"             └─ Projected table access on [pk1 pk2]\n" +
+			"                 └─ TableAlias(b)\n" +
+			"                     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -810,10 +814,12 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 			"     └─ Filter(opk.pk = tpk.pk1)\n" +
 			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(opk)\n" +
-			"             │   └─ Table(one_pk)\n" +
-			"             └─ TableAlias(tpk)\n" +
-			"                 └─ Table(two_pk)\n" +
+			"             ├─ Projected table access on [c5 pk]\n" +
+			"             │   └─ TableAlias(opk)\n" +
+			"             │       └─ Table(one_pk)\n" +
+			"             └─ Projected table access on [pk1 pk2]\n" +
+			"                 └─ TableAlias(tpk)\n" +
+			"                     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -1019,12 +1025,13 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(t1.pk, t2.pk2)\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +
-			"         │   └─ TableAlias(t1)\n" +
-			"         │       └─ Projected table access on [pk]\n" +
+			"         │   └─ Projected table access on [pk]\n" +
+			"         │       └─ TableAlias(t1)\n" +
 			"         │           └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"         └─ Filter(t2.pk2 = 1)\n" +
-			"             └─ TableAlias(t2)\n" +
-			"                 └─ Table(two_pk)\n" +
+			"             └─ Projected table access on [pk2]\n" +
+			"                 └─ TableAlias(t2)\n" +
+			"                     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -1033,12 +1040,13 @@ var PlanTests = []QueryPlanTest{
 			" └─ Project(t1.pk, t2.pk1, t2.pk2)\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Filter(t1.pk = 1)\n" +
-			"         │   └─ TableAlias(t1)\n" +
-			"         │       └─ Projected table access on [pk]\n" +
+			"         │   └─ Projected table access on [pk]\n" +
+			"         │       └─ TableAlias(t1)\n" +
 			"         │           └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"         └─ Filter(t2.pk2 = 1 AND t2.pk1 = 1)\n" +
-			"             └─ TableAlias(t2)\n" +
-			"                 └─ Table(two_pk)\n" +
+			"             └─ Projected table access on [pk1 pk2]\n" +
+			"                 └─ TableAlias(t2)\n" +
+			"                     └─ Table(two_pk)\n" +
 			"",
 	},
 	{
