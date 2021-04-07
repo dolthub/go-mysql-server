@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/driver"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -19,7 +20,7 @@ type memTable struct {
 	catalog *sql.Catalog
 }
 
-func (f *memTable) Resolve(name string) (string, *sql.Catalog, error) {
+func (f *memTable) Resolve(name string, _ *driver.Options) (string, *sql.Catalog, error) {
 	f.once.Do(func() {
 		table := memory.NewTable(f.TableName, f.Schema)
 

@@ -59,7 +59,7 @@ type Options struct {
 
 // Provider resolves SQL catalogs
 type Provider interface {
-	Resolve(name string) (string, *sql.Catalog, error)
+	Resolve(name string, options *Options) (string, *sql.Catalog, error)
 }
 
 // Driver exposes an engine as a stdlib SQL driver.
@@ -114,7 +114,7 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 		dsn = dsnURI.String()
 	}
 
-	server, sqlCat, err := d.provider.Resolve(dsn)
+	server, sqlCat, err := d.provider.Resolve(dsn, &options)
 	if err != nil {
 		return nil, err
 	}
