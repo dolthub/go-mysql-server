@@ -18,6 +18,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"net/url"
 	"sync"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -89,6 +90,30 @@ func (d *Driver) Open(name string) (driver.Conn, error) {
 
 // OpenConnector calls the driver factory and returns a new connector.
 func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
+	options := d.options // copy
+
+	dsnURI, err := url.Parse(dsn)
+	if err == nil {
+		query := dsnURI.Query()
+		qJSON := query.Get("jsonAs")
+		switch qJSON {
+		case "":
+			// default
+		case "object":
+			options.JSON = ScanAsObject
+		case "string":
+			options.JSON = ScanAsString
+		case "bytes":
+			options.JSON = ScanAsBytes
+		default:
+			return nil, fmt.Errorf("%q is not a valid option for 'jsonAs'", qJSON)
+		}
+
+		query.Del("jsonAs")
+		dsnURI.RawQuery = query.Encode()
+		dsn = dsnURI.String()
+	}
+
 	server, sqlCat, err := d.provider.Resolve(dsn)
 	if err != nil {
 		return nil, err
@@ -107,10 +132,9 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	}
 	d.mu.Unlock()
 
-	// TODO override options from DNS
 	return &Connector{
 		driver:  d,
-		options: d.options,
+		options: options,
 		server:  server,
 		catalog: cat,
 	}, nil
