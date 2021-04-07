@@ -25,18 +25,34 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
+// ScanKind indicates how values should be scanned.
 type ScanKind int
 
 const (
+	// ScanAsString indicates values should be scanned as strings.
+	//
+	// Applies to JSON columns.
 	ScanAsString ScanKind = iota
+
+	// ScanAsBytes indicates values should be scanned as byte arrays.
+	//
+	// Applies to JSON columns.
 	ScanAsBytes
+
+	// ScanAsObject indicates values should be scanned as objects.
+	//
+	// Applies to JSON columns.
 	ScanAsObject
+
+	// ScanAsStored indicates values should not be modified during scanning.
+	//
+	// Applies to JSON columns.
 	ScanAsStored
 )
 
 // Options for the driver
 type Options struct {
-	// JSON indicates how JSON row values should be returned
+	// JSON indicates how JSON row values should be scanned
 	JSON ScanKind
 }
 
