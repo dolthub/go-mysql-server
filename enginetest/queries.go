@@ -3923,6 +3923,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT t1.i, t2.i FROM mytable t1, mytable t2 WHERE t2.i=1 AND t1.s = t2.s ORDER BY 1,2",
+		Expected: []sql.Row{
+			{1, 1},
+		},
+	},
+	{
 		Query: "SELECT t1.c1,t2.c2 FROM one_pk t1, two_pk t2 WHERE t2.pk1=1 AND t2.pk2=1 ORDER BY 1,2",
 		Expected: []sql.Row{
 			{0, 31},
