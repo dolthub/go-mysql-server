@@ -27,6 +27,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Table represents an in-memory database table.
@@ -495,6 +496,32 @@ func increment(v interface{}) interface{} {
 	return v
 }
 
+func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (bool, error) {
+	if len(left) != len(right) || len(left) != len(schema) {
+		return false, nil
+	}
+
+	for index := range left {
+		typ := schema[index].Type
+		if typ.Type() != sqltypes.TypeJSON {
+			if left[index] != right[index] {
+				return false, nil
+			}
+			continue
+		}
+
+		// TODO should Type.Compare be used for all columns?
+		cmp, err := typ.Compare(left[index], right[index])
+		if err != nil {
+			return false, err
+		}
+		if cmp != 0 {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.table.schema, row); err != nil {
@@ -517,11 +544,10 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 			}
 
 			// If we had no primary key match (or have no primary key), check each row for a total match
-			for rIndex, val := range row {
-				if val != partitionRow[rIndex] {
-					matches = false
-					break
-				}
+			var err error
+			matches, err = rowsAreEqual(ctx, t.table.schema, row, partitionRow)
+			if err != nil {
+				return err
 			}
 
 			if matches {
@@ -558,12 +584,10 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	matches := false
 	for partitionIndex, partition := range t.table.partitions {
 		for partitionRowIndex, partitionRow := range partition {
-			matches = true
-			for rIndex, val := range oldRow {
-				if val != partitionRow[rIndex] {
-					matches = false
-					break
-				}
+			var err error
+			matches, err = rowsAreEqual(ctx, t.table.schema, oldRow, partitionRow)
+			if err != nil {
+				return err
 			}
 			if matches {
 				t.table.partitions[partitionIndex][partitionRowIndex] = newRow
