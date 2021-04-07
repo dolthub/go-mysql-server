@@ -224,6 +224,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 	switch {
 	case ErrTableNotFound.Is(err):
 		code = mysql.ERNoSuchTable
+	case ErrCannotCreateDatabaseExists.Is(err):
+		code = mysql.ERDbCreateExists
 	default:
 		code = mysql.ERUnknownError
 	}
