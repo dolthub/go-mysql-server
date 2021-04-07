@@ -1581,7 +1581,8 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
-		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrCannotCreateDatabaseExists)
+
+		AssertMySQLErr(t, e, harness, "CREATE DATABASE mydb", mysql.NewSQLError(mysql.ERDbCreateExists,"",""))
 
 		AssertWarning(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", mysql.ERDbCreateExists)
 	})
@@ -2399,6 +2400,25 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+	}
+	// If there are multiple error strings then we only match against the first
+	if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
+	}
+}
+
+// AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
+func AssertMySQLErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedMySQLErr *mysql.SQLError, errStrs ...string) {
+	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, query)
+	if err == nil {
+		_, err = sql.RowIterToRows(ctx, iter)
+	}
+	require.Error(t, err)
+	if expectedMySQLErr != nil {
+		mysqlErr, ok := err.(*mysql.SQLError)
+		require.True(t, ok)
+		require.True(t, expectedMySQLErr.Num == mysqlErr.Num, "Expected error of type %s but got %s", expectedMySQLErr, err)
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {

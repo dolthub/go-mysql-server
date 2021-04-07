@@ -54,17 +54,18 @@ func (c CreateDB) Children() []sql.Node {
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := c.Catalog.HasDB(c.dbName)
 	if exists {
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Note",
-			Code:    mysql.ERDbCreateExists,
-			Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
-		})
-
 		if c.IfNotExists {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    mysql.ERDbCreateExists,
+				Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
+			})
+
 			return sql.RowsToRowIter(), nil
 		}
 
-		return nil, sql.ErrCannotCreateDatabaseExists.New(c.dbName)
+		err := sql.ErrCannotCreateDatabaseExists.New(c.dbName)
+		return nil, mysql.NewSQLError(mysql.ERDbCreateExists, mysql.SSUnknownSQLState, err.Error())
 	}
 
 	db := memory.NewDatabase(c.dbName)
