@@ -17,6 +17,7 @@ package expression
 import (
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -139,6 +140,103 @@ func TestCase(t *testing.T) {
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
+		})
+	}
+}
+
+func TestCaseType(t *testing.T) {
+	caseExpr := func(values ...sql.Expression) *Case {
+		var branches []CaseBranch
+		for i := 0; i < len(values)-1; i++ {
+			branches = append(branches, CaseBranch{
+				Cond:  NewLiteral(int64(i), sql.Int64),
+				Value: values[i],
+			})
+		}
+		return &Case{
+			nil,
+			branches,
+			values[len(values)-1],
+		}
+	}
+
+	decimalType := sql.MustCreateDecimalType(65, 10)
+
+	testCases := []struct {
+		name string
+		c    *Case
+		t    sql.Type
+	}{
+		{
+			"standalone else clause",
+			caseExpr(NewLiteral(int64(0), sql.Int64)),
+			sql.Int64,
+		},
+		{
+			"unsigned promoted and unsigned",
+			caseExpr(NewLiteral(uint32(0), sql.Uint32), NewLiteral(uint32(1), sql.Uint32)),
+			sql.Uint64,
+		},
+		{
+			"signed promoted and signed",
+			caseExpr(NewLiteral(int8(0), sql.Int8), NewLiteral(int32(1), sql.Int32)),
+			sql.Int64,
+		},
+		{
+			"int and float to float",
+			caseExpr(NewLiteral(int64(0), sql.Int64), NewLiteral(float64(1.0), sql.Float64)),
+			sql.Float64,
+		},
+		{
+			"float and int to float",
+			caseExpr(NewLiteral(float64(1.0), sql.Float64), NewLiteral(int64(0), sql.Int64)),
+			sql.Float64,
+		},
+		{
+			"int and text to text",
+			caseExpr(NewLiteral(int64(0), sql.Int64), NewLiteral("Hello, world!", sql.Text)),
+			sql.LongText,
+		},
+		{
+			"text and blob to blob",
+			caseExpr(NewLiteral("Hello, world!", sql.Text), NewLiteral([]byte("0x480x650x6c0x6c0x6f"), sql.Blob)),
+			sql.LongBlob,
+		},
+		{
+			"int and null to int",
+			caseExpr(NewLiteral(int64(10), sql.Int64), NewLiteral(nil, sql.Null)),
+			sql.Int64,
+		},
+		{
+			"null and int to int",
+			caseExpr(NewLiteral(nil, sql.Null), NewLiteral(int64(10), sql.Int64)),
+			sql.Int64,
+		},
+		{
+			"uint64 and int8 to decimal",
+			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral(int8(0), sql.Int8)),
+			decimalType,
+		},
+		{
+			"int and text to text",
+			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", sql.LongText)),
+			sql.LongText,
+		},
+		{
+			"uint and decimal to decimal",
+			caseExpr(NewLiteral(uint64(10), sql.Uint64), NewLiteral("Hello, world!", sql.LongText)),
+			sql.LongText,
+		},
+		{
+			"int and decimal to decimal",
+			caseExpr(NewLiteral(int32(10), sql.Int32), NewLiteral(decimal.NewFromInt(1), decimalType)),
+			decimalType,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.t, tt.c.Type())
 		})
 	}
 }
