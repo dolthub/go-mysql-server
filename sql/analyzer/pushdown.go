@@ -129,10 +129,14 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
-	// don't do pushdown on certain queries
-	// TODO: we should definitely do pushdown to the SELECT of an INSERT if there is one
+	if plan.IsDdlNode(n) {
+		return false
+	}
+
+	// The values of an insert are analyzed in isolation, so they do get pushdown treatment. But no other DML
+	// statements should get pushdown to their target tables.
 	switch n.(type) {
-	case *plan.InsertInto, *plan.CreateIndex, *plan.CreateTrigger:
+	case *plan.InsertInto:
 		return false
 	}
 
@@ -456,7 +460,18 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 	usedFieldsByTable := make(fieldsByTable)
 	fieldsByTable := getFieldsByTable(ctx, n)
 
-	node, err := plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+		switch parent.(type) {
+		case *plan.TableAlias:
+			// When we hit a table alias, we don't want to descend farther into the tree for expression matches, which
+			// would give us the original (unaliased) names of columns
+			return false
+		default:
+			return true
+		}
+	}
+
+	node, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
 		var nameable NameableNode
 
 		switch node.(type) {

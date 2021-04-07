@@ -15,13 +15,23 @@
 package enginetest_test
 
 import (
+	"bufio"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -87,12 +97,9 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT column_0, sum(column_1) FROM 
-			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
-			group by 1 having avg(column_1) > 2 order by 1`,
+		Query: "SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second')",
 		Expected: []sql.Row{
-			{2, 7.0},
-			{3, 9.0},
+			{"second row"},
 		},
 	}
 	fmt.Sprintf("%v", test)
@@ -195,6 +202,16 @@ func TestBrokenQueries(t *testing.T) {
 	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)
 }
 
+func TestTestQueryPlanTODOs(t *testing.T) {
+	harness := enginetest.NewSkippingMemoryHarness()
+	engine := enginetest.NewEngine(t, harness)
+	for _, tt := range enginetest.QueryPlanTODOs {
+		t.Run(tt.Query, func(t *testing.T) {
+			enginetest.TestQueryPlan(t, enginetest.NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
+		})
+	}
+}
+
 func TestVersionedQueries(t *testing.T) {
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
@@ -224,6 +241,75 @@ func TestQueryPlans(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestQueryPlans(t, harness)
 		})
+	}
+}
+
+// This test will write a new set of query plan expected results to a file that you can copy and paste over the existing
+// query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
+// how query plans have changed without a lot of manual copying and pasting.
+func TestWriteQueryPlans(t *testing.T) {
+	t.Skip()
+
+	harness := enginetest.NewDefaultMemoryHarness()
+	engine := enginetest.NewEngine(t, harness)
+
+	tmp, err := ioutil.TempDir("", "*")
+	if err != nil {
+		return
+	}
+
+	outputPath := filepath.Join(tmp, "queryPlans.txt")
+	f, err := os.Create(outputPath)
+	require.NoError(t, err)
+
+	w := bufio.NewWriter(f)
+	_, _ = w.WriteString("var PlanTests = []QueryPlanTest{\n")
+	for _, tt := range enginetest.PlanTests {
+		_, _ = w.WriteString("\t{\n")
+		ctx := enginetest.NewContextWithEngine(harness, engine)
+		parsed, err := parse.Parse(ctx, tt.Query)
+		require.NoError(t, err)
+
+		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		planString := extractQueryNode(node).String()
+
+		if strings.Contains(tt.Query, "`") {
+			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
+		} else {
+			_, _ = w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
+		}
+		_, _ = w.WriteString("\n")
+
+		_, _ = w.WriteString(`ExpectedPlan: `)
+		for i, line := range strings.Split(planString, "\n") {
+			if i > 0 {
+				_, _ = w.WriteString(" + \n")
+			}
+			if len(line) > 0 {
+				_, _ = w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
+			} else {
+				// final line with comma
+				_, _ = w.WriteString("\"\",\n")
+			}
+		}
+		_, _ = w.WriteString("\t},\n")
+	}
+	_, _ = w.WriteString("}")
+
+	_ = w.Flush()
+
+	t.Logf("Query plans in %s", outputPath)
+}
+
+func extractQueryNode(node sql.Node) sql.Node {
+	switch node := node.(type) {
+	case *plan.QueryProcess:
+		return extractQueryNode(node.Child)
+	case *analyzer.Releaser:
+		return extractQueryNode(node.Child)
+	default:
+		return node
 	}
 }
 

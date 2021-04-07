@@ -112,6 +112,10 @@ func (o *Or) String() string {
 	return fmt.Sprintf("%s OR %s", o.Left, o.Right)
 }
 
+func (o *Or) DebugString() string {
+	return fmt.Sprintf("%s OR %s", sql.DebugString(o.Left), sql.DebugString(o.Right))
+}
+
 // Type implements the Expression interface.
 func (*Or) Type() sql.Type {
 	return sql.Boolean

@@ -120,7 +120,7 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	for _, tt := range PlanTests {
 		t.Run(tt.Query, func(t *testing.T) {
-			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, tt.Query, tt.ExpectedPlan)
+			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
 		})
 	}
 }
@@ -138,12 +138,19 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
-func TestQueryPlan(t *testing.T, ctx *sql.Context, engine *sqle.Engine, query string, expectedPlan string) {
+func TestQueryPlan(t *testing.T, ctx *sql.Context, engine *sqle.Engine, harness Harness, query string, expectedPlan string) {
 	parsed, err := parse.Parse(ctx, query)
 	require.NoError(t, err)
 
 	node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
 	require.NoError(t, err)
+
+	if sh, ok := harness.(SkippingHarness); ok {
+		if sh.SkipQueryTest(query) {
+			t.Skipf("Skipping query plan for %s", query)
+		}
+	}
+
 	assert.Equal(t, expectedPlan, extractQueryNode(node).String(), "Unexpected result for query: "+query)
 }
 
