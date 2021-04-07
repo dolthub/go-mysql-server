@@ -2278,19 +2278,19 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT USER()`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER()`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -2302,7 +2302,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT CURRENT_user`,
 		Expected: []sql.Row{
-			{"user"},
+			{"user@client"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
