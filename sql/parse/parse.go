@@ -2165,17 +2165,12 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			separatorS = v.Separator
 		}
 
-		distinct := expression.NewLiteral(v.Distinct, sql.LongText)
-		separator := expression.NewLiteral(separatorS, sql.LongText)
-
 		sortFields, err := orderByToSortFields(ctx, v.OrderBy)
 		if err != nil {
 			return nil, err
 		}
-
-		orderByExpressions := sortFields.ToExpressions()
-
-		return aggregation.NewGroupConcat(distinct, orderByExpressions, separator, exprs)
+		
+		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs)
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:

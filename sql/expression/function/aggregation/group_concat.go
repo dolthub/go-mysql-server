@@ -22,17 +22,21 @@ import (
 )
 
 type GroupConcat struct {
-	distinct sql.Expression
-	orderBy []sql.Expression
-	separator sql.Expression
+	distinct string
+	sf  sql.SortFields
+	separator string
 	selectExprs []sql.Expression
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
 
-func NewGroupConcat(distinct sql.Expression, orderBy []sql.Expression, separator sql.Expression, selectExprs []sql.Expression) (sql.Expression, error) {
-	return &GroupConcat{distinct: distinct, orderBy: orderBy, separator: separator, selectExprs: selectExprs}, nil
+func NewEmptyGroupConcat() sql.Expression {
+	return &GroupConcat{}
+}
+
+func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression) (sql.Expression, error) {
+	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs}, nil
 }
 
 // NewBuffer creates a new buffer for the aggregation.
@@ -59,13 +63,6 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) erro
 		return fmt.Errorf("Operand should contain 1 column")
 	}
 
-	// Get the distinct keyword
-	dv, err := g.distinct.Eval(ctx, evalRow)
-	if err != nil {
-		return err
-	}
-	distinct := dv.(string)
-
 	// Get the current value as a string
 	v, err := sql.LongText.Convert(evalRow[0])
 	if err != nil {
@@ -79,7 +76,7 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) erro
 	distinctSet := buffer[1].(map[string]bool)
 
 	// Check if distinct is active if so look at and update our map
-	if distinct != "" {
+	if g.distinct != "" {
 		// If this value exists go ahead and return nil
 		if _, ok := distinctSet[vs]; ok {
 			return nil
@@ -107,13 +104,11 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rows := row[0].([]sql.Row)
 
-	sf := make(sql.SortFields, len(g.orderBy))
-	sf = sf.FromExpressions(g.orderBy)
 	// Execute the order operation if it exists.
-	if sf != nil {
+	if g.sf != nil {
 		//sf[0].Order = sql.Descending
 		sorter := &expression.Sorter{
-			SortFields: sf,
+			SortFields: g.sf,
 			Rows: rows,
 			Ctx: ctx,
 		}
@@ -124,21 +119,13 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// evaluate the separator
-	sep, err := g.separator.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	separator := sep.(string)
-
 	ret := ""
 	for i, row := range rows {
 		lastIdx := len(row) - 1
 		if i == len(rows) - 1 {
 			ret += row[lastIdx].(string)
 		} else {
-			ret += row[lastIdx].(string) + separator
+			ret += row[lastIdx].(string) + g.separator
 		}
 	}
 
@@ -181,50 +168,22 @@ func (g *GroupConcat) IsNullable() bool {
 }
 
 func (g *GroupConcat) Children() []sql.Expression {
-	arr := make([]sql.Expression, 1)
-	arr[0] = g.distinct
-	arr = append(arr, g.orderBy...)
-	arr = append(arr, g.separator)
+	arr := g.sf.ToExpressions()
 	return append(arr, g.selectExprs...)
 }
 
 func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return GroupConcatToChildren(children...)
-}
-
-func GroupConcatToChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(GroupConcat{}, len(children), 2)
 	}
 
-	distinct := children[0]
-	var orderByExpr []sql.Expression
-	var separator sql.Expression
+	// Get the order by expression using the length of the sort fields.
+	delim := len(g.sf)
+	orderByExpr := children[:len(g.sf)]
 
-	var counter int
-Loop:
-	for i := 1; i < len(children); i++ {
-		expr := children[i]
-		switch expr.(type) {
-		case *expression.Literal:
-			// hit the separator case
-			separator = expr
-			counter = i
-			break Loop
-		default:
-			orderByExpr = append(orderByExpr, expr)
-		}
-	}
-
-	var selectExprs []sql.Expression
-	if counter < len(children) {
-		selectExprs = children[counter+1:]
-	}
-
-	return NewGroupConcat(distinct, orderByExpr, separator, selectExprs)
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[delim:])
 }
 
 func (g *GroupConcat) FunctionName() string {
 	return "group_concat"
 }
-
