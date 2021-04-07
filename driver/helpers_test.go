@@ -15,18 +15,16 @@ type V = interface{}
 var driverMu sync.Mutex
 var drivers = map[driver.Provider]*driver.Driver{}
 
-func sqlOpen(t *testing.T, provider driver.Provider) *sql.DB {
+func sqlOpen(t *testing.T, provider driver.Provider, dsn string) *sql.DB {
 	driverMu.Lock()
 	drv, ok := drivers[provider]
 	if !ok {
-		drv = driver.New(provider, driver.Options{
-			JSON: driver.ScanAsObject,
-		})
+		drv = driver.New(provider, driver.Options{})
 		drivers[provider] = drv
 	}
 	driverMu.Unlock()
 
-	conn, err := drv.OpenConnector(t.Name())
+	conn, err := drv.OpenConnector(dsn)
 	require.NoError(t, err)
 	return sql.OpenDB(conn)
 }

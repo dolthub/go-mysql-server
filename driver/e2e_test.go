@@ -10,7 +10,7 @@ import (
 
 func TestQuery(t *testing.T) {
 	mtb, records := personMemTable("db", "person")
-	db := sqlOpen(t, mtb)
+	db := sqlOpen(t, mtb, t.Name()+"?jsonAs=object")
 
 	var name, email string
 	var numbers interface{}
@@ -63,7 +63,7 @@ func TestQuery(t *testing.T) {
 
 func TestExec(t *testing.T) {
 	mtb, records := personMemTable("db", "person")
-	db := sqlOpen(t, mtb)
+	db := sqlOpen(t, mtb, t.Name())
 
 	cases := []struct {
 		Name, Statement string
