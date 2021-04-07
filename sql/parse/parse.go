@@ -2169,7 +2169,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		if err != nil {
 			return nil, err
 		}
-		
+
 		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs)
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)

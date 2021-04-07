@@ -41,11 +41,10 @@ func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, s
 
 // NewBuffer creates a new buffer for the aggregation.
 func (g *GroupConcat) NewBuffer() sql.Row {
-	var distinctSet = make(map[string]bool)
-	const nulls = false
 	var rows []sql.Row
+	var distinctSet = make(map[string]bool)
 
-	return sql.NewRow(rows, distinctSet, nulls)
+	return sql.NewRow(rows, distinctSet)
 }
 
 // Update implements the Aggregation interface.
@@ -53,7 +52,7 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) erro
 	evalRow, err := evalExprs(ctx, g.selectExprs, originalRow)
 
 	// Skip if this is a null row
-	if buffer[2].(bool) {
+	if evalRow == nil {
 		return nil
 	}
 
@@ -67,6 +66,10 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) erro
 	v, err := sql.LongText.Convert(evalRow[0])
 	if err != nil {
 		return err
+	}
+
+	if v == nil {
+		return nil
 	}
 
 	vs := v.(string)
@@ -101,12 +104,16 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 }
 
 // TODO: Reevaluate what's going with the return types
+// cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rows := row[0].([]sql.Row)
+	
+	if len(rows) == 0 {
+		return nil, nil
+	}
 
 	// Execute the order operation if it exists.
 	if g.sf != nil {
-		//sf[0].Order = sql.Descending
 		sorter := &expression.Sorter{
 			SortFields: g.sf,
 			Rows: rows,
@@ -129,7 +136,18 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
+	maxLen := getGroupConcatMaxLen(ctx)
+
+	if int64(len(ret)) > maxLen {
+		ret = ret[0:maxLen]
+	}
+
 	return ret, nil
+}
+
+func getGroupConcatMaxLen(ctx *sql.Context) int64 {
+	_, gcml := ctx.Get("group_concat_max_len")
+	return gcml.(int64)
 }
 
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, error) {

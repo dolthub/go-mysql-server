@@ -427,10 +427,14 @@ var ScriptTests = []ScriptTest{
 		Name: "Group Concat Queries",
 		SetUpScript: []string{
 			"CREATE TABLE x (pk int)",
-			"INSERT INTO x VALUES (1),(2),(3),(4)",
+			"INSERT INTO x VALUES (1),(2),(3),(4),(NULL)",
+
 			"create table t (o_id int, attribute longtext, value longtext)",
 			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
 			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
+
+			"create table nulls(pk int)",
+			"INSERT INTO nulls VALUES (NULL)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -440,6 +444,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    `SELECT group_concat(DISTINCT pk) FROM x;`,
 				Expected: []sql.Row{{"1,2,3,4"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT pk SEPARATOR '-') FROM x;`,
+				Expected: []sql.Row{{"1-2-3-4"}},
 			},
 			{
 				Query: 	 `SELECT group_concat(attribute) FROM t group by o_id`,
@@ -455,7 +463,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
-				Expected: []sql.Row{{"2,2,2,2"}},
+				Expected: []sql.Row{{"2,2,2,2,2"}},
 			},
 			{
 				Query:    `SELECT group_concat(DISTINCT (SELECT 2)) FROM x;`,
@@ -468,6 +476,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: 	 `SELECT group_concat(DISTINCT attribute ORDER BY attribute DESC) FROM t`,
 				Expected: []sql.Row{{"shape,fabric,color"}},
+			},
+			{
+				Query: 	 `SELECT group_concat(pk) FROM nulls`,
+				Expected: []sql.Row{{nil}},
 			},
 		},
 	},
