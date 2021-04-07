@@ -45,8 +45,8 @@ func (g *GroupConcat) NewBuffer() sql.Row {
 }
 
 // Update implements the Aggregation interface.
-func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	row, err := evalExprs(ctx, g.selectExprs, row)
+func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) error {
+	evalRow, err := evalExprs(ctx, g.selectExprs, originalRow)
 
 	// Skip if this is a null row
 	if buffer[2].(bool) {
@@ -54,20 +54,20 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	}
 
 	// The length of the row should not exceed 1.
-	if len(row) > 1 {
+	if len(evalRow) > 1 {
 		// TODO: Switch to mysql.EROperandColumns
 		return fmt.Errorf("Operand should contain 1 column")
 	}
 
 	// Get the distinct keyword
-	dv, err := g.distinct.Eval(ctx, row)
+	dv, err := g.distinct.Eval(ctx, evalRow)
 	if err != nil {
 		return err
 	}
 	distinct := dv.(string)
 
 	// Get the current value as a string
-	v, err := sql.LongText.Convert(row[0])
+	v, err := sql.LongText.Convert(evalRow[0])
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 	// Append the current value to the end of the row. We want to preserve the row's original structure for
 	// for sort ordering in the final step.
-	rows = append(rows, append(row, nil, vs))
+	rows = append(rows, append(originalRow, nil, vs))
 
 	buffer[0] = rows
 	buffer[1] = distinctSet
@@ -111,6 +111,7 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	sf = sf.FromExpressions(g.orderBy)
 	// Execute the order operation if it exists.
 	if sf != nil {
+		//sf[0].Order = sql.Descending
 		sorter := &expression.Sorter{
 			SortFields: sf,
 			Rows: rows,
@@ -121,12 +122,6 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if sorter.LastError != nil {
 			return nil, sorter.LastError
 		}
-
-		originalOrderIdx := len(rows[0]) - 1
-		// And finally sort again by the original order
-		sort.SliceStable(rows, func(i, j int) bool {
-			return rows[i][originalOrderIdx].(string) > rows[j][originalOrderIdx].(string)
-		})
 	}
 
 	// evaluate the separator
