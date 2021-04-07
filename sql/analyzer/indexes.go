@@ -181,6 +181,7 @@ func getIndexes(
 					return nil, err
 				}
 
+				tounion := make([]sql.IndexLookup, 0, len(values)-1)
 				for _, v := range values[1:] {
 					lookup2, errLookup := idx.Get(v)
 
@@ -193,10 +194,11 @@ func getIndexes(
 						return nil, nil
 					}
 
-					lookup, err = lookup.(sql.MergeableIndexLookup).Union(lookup2)
-					if err != nil {
-						return nil, err
-					}
+					tounion = append(tounion, lookup2)
+				}
+				lookup, err = lookup.(sql.MergeableIndexLookup).Union(tounion...)
+				if err != nil {
+					return nil, err
 				}
 
 				result[idx.Table()] = &indexLookup{
