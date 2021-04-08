@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"sort"
+	"strings"
 )
 
 type GroupConcat struct {
@@ -35,7 +36,7 @@ func NewEmptyGroupConcat() sql.Expression {
 	return &GroupConcat{}
 }
 
-func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression) (sql.Expression, error) {
+func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression) (*GroupConcat, error) {
 	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs}, nil
 }
 
@@ -174,7 +175,37 @@ func (g *GroupConcat) Resolved() bool {
 }
 
 func (g *GroupConcat) String() string {
-	return "GROUP_CONCAT()" // TODO: Make this complete
+	sb := strings.Builder{}
+	sb.WriteString("group_concat(")
+	if g.distinct != "" {
+		sb.WriteString(fmt.Sprintf("distinct %s", g.distinct))
+	} else if g.selectExprs != nil {
+		var exprs = make([]string, len(g.selectExprs))
+		for i, expr := range g.selectExprs {
+			exprs[i] = expr.String()
+		}
+
+		sb.WriteString(strings.Join(exprs, ", "))
+	}
+
+	if len(g.sf) > 0 {
+		sb.WriteString(" order by ")
+		for i, ob := range g.sf {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(ob.String())
+		}
+	}
+
+	if g.separator != "," {
+		sb.WriteString( " separator ")
+		sb.WriteString(fmt.Sprintf("'%s'", g.separator))
+	}
+
+	sb.WriteString(")")
+
+	return sb.String()
 }
 
 func (g *GroupConcat) Type() sql.Type {

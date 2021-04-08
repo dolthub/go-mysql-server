@@ -14,4 +14,52 @@
 
 package aggregation
 
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
 
+func TestGroupConcat_FunctionName(t *testing.T) {
+	assert := require.New(t)
+
+	m, err := NewGroupConcat("field", nil, ",", nil)
+	require.NoError(t, err)
+
+	assert.Equal("group_concat(distinct field)", m.String())
+
+	m, err = NewGroupConcat("field", nil, "-", nil)
+	require.NoError(t, err)
+
+	assert.Equal("group_concat(distinct field separator '-')", m.String())
+
+	sf := sql.SortFields{
+		{expression.NewUnresolvedColumn("field"), sql.Ascending, 0},
+		{expression.NewUnresolvedColumn("field2"), sql.Descending, 0},
+	}
+
+	m, err = NewGroupConcat("field", sf, "-", nil)
+	require.NoError(t, err)
+
+	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
+}
+
+//func TestGroupConcat_PastMaxLen(t *testing.T) {
+//	var rows []sql.Row
+//
+//	for i := 0; i < 1050; i ++ {
+//		rows = append(rows, sql.Row{i})
+//	}
+//
+//	gc, err := NewGroupConcat("", nil, ",", nil)
+//	buf := gc.NewBuffer()
+//	for _, row := range rows {
+//		require.NoError(t, gc.Update(sql.NewEmptyContext(), buf, row))
+//	}
+//
+//	result, err := gc.Eval(sql.NewEmptyContext(), buf)
+//	rs := result.(string)
+//	require.NoError(t, err)
+//	require.Equal(t,1024, len(rs))
+//}
