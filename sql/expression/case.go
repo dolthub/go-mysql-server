@@ -54,6 +54,12 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 	if sql.IsTextBlob(left) && sql.IsTextBlob(right) {
 		return sql.LongBlob
 	}
+	if sql.IsTime(left) && sql.IsTime(right) {
+		if left == right {
+			return left
+		}
+		return sql.Datetime
+	}
 	if sql.IsNumber(left) && sql.IsNumber(right) {
 		if left == sql.Float64 || right == sql.Float64 {
 			return sql.Float64

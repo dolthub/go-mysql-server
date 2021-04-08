@@ -232,6 +232,16 @@ func TestCaseType(t *testing.T) {
 			caseExpr(NewLiteral(int32(10), sql.Int32), NewLiteral(decimal.NewFromInt(1), decimalType)),
 			decimalType,
 		},
+		{
+			"date and date stays date",
+			caseExpr(NewLiteral("2020-04-07", sql.Date), NewLiteral("2020-04-07", sql.Date)),
+			sql.Date,
+		},
+		{
+			"date and timestamp becomes datetime",
+			caseExpr(NewLiteral("2020-04-07", sql.Date), NewLiteral("2020-04-07T00:00:00Z", sql.Timestamp)),
+			sql.Datetime,
+		},
 	}
 
 	for _, tt := range testCases {
