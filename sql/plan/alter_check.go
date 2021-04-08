@@ -209,18 +209,9 @@ func (p DropCheck) String() string {
 }
 
 func NewCheckDefinition(check *sql.CheckConstraint) (*sql.CheckDefinition, error) {
-	enforced := ""
-	if !check.Enforced {
-		enforced = " NOT ENFORCED"
-	}
-
 	return &sql.CheckDefinition{
-		Name: check.Name,
-		CheckExpression: fmt.Sprintf(
-			"ALTER TABLE _ ADD CONSTRAINT %s CHECK (%s)%s",
-			check.Name,
-			check.Expr.String(),
-			enforced,
-		),
+		Name:            check.Name,
+		CheckExpression: fmt.Sprintf("%s", check.Expr),
+		Enforced:        check.Enforced,
 	}, nil
 }
