@@ -39,19 +39,60 @@ func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression
 	return &Case{expr, branches, elseExpr}
 }
 
-// Type implements the sql.Expression interface.
-func (c *Case) Type() sql.Type {
-	for _, b := range c.Branches {
-		if b.Value.Type() != sql.Null {
-			return b.Value.Type()
+// From the description of operator typing here:
+// https://dev.mysql.com/doc/refman/8.0/en/flow-control-functions.html#operator_case
+func combinedCaseBranchType(left, right sql.Type) sql.Type {
+	if left == sql.Null {
+		return right
+	}
+	if right == sql.Null {
+		return left
+	}
+	if sql.IsTextOnly(left) && sql.IsTextOnly(right) {
+		return sql.LongText
+	}
+	if sql.IsTextBlob(left) && sql.IsTextBlob(right) {
+		return sql.LongBlob
+	}
+	if sql.IsTime(left) && sql.IsTime(right) {
+		if left == right {
+			return left
+		}
+		return sql.Datetime
+	}
+	if sql.IsNumber(left) && sql.IsNumber(right) {
+		if left == sql.Float64 || right == sql.Float64 {
+			return sql.Float64
+		}
+		if left == sql.Float32 || right == sql.Float32 {
+			return sql.Float32
+		}
+		if sql.IsDecimal(left) || sql.IsDecimal(right) {
+			return sql.MustCreateDecimalType(65, 10)
+		}
+		if left == sql.Uint64 && sql.IsSigned(right) ||
+			right == sql.Uint64 && sql.IsSigned(left) {
+			return sql.MustCreateDecimalType(65, 10)
+		}
+		if !sql.IsSigned(left) && !sql.IsSigned(right) {
+			return sql.Uint64
+		} else {
+			return sql.Int64
 		}
 	}
+	return sql.LongText
+}
 
-	if c.Else.Type() != sql.Null {
-		return c.Else.Type()
+// Type implements the sql.Expression interface.
+func (c *Case) Type() sql.Type {
+	curr := sql.Null
+	for _, b := range c.Branches {
+		curr = combinedCaseBranchType(curr, b.Value.Type())
 	}
-
-	return sql.Null
+	if c.Else != nil {
+		curr = combinedCaseBranchType(curr, c.Else.Type())
+	}
+	return curr
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -114,6 +155,8 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
+	t := c.Type()
+
 	for _, b := range c.Branches {
 		var cond sql.Expression
 		if expr != nil {
@@ -128,12 +171,20 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		if ok {
-			return b.Value.Eval(ctx, row)
+			bval, err := b.Value.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			return t.Convert(bval)
 		}
 	}
 
 	if c.Else != nil {
-		return c.Else.Eval(ctx, row)
+		val, err := c.Else.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		return t.Convert(val)
 	}
 
 	return nil, nil
