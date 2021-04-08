@@ -15,7 +15,7 @@
 package analyzer
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -143,30 +143,31 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]sql.Expression, e
 }
 
 func convertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
-	parsed, err := sqlparser.ParseStrictDDL(check.AlterStatement)
+	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
+	parsed, err := sqlparser.Parse(parseStr)
 	if err != nil {
 		return nil, err
 	}
 
-	ddl, ok := parsed.(*sqlparser.DDL)
-	if !ok || ddl.ConstraintAction == "" || len(ddl.TableSpec.Constraints) != 1 || strings.ToLower(ddl.ConstraintAction) != sqlparser.AddStr {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.AlterStatement)
+	selectStmt, ok := parsed.(*sqlparser.Select)
+	if !ok || len(selectStmt.SelectExprs) != 1 {
+		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
-	parsedConstraint := ddl.TableSpec.Constraints[0]
-	chConstraint, ok := parsedConstraint.Details.(*sqlparser.CheckConstraintDefinition)
-	if !ok || chConstraint.Expr == nil {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.AlterStatement)
+	expr := selectStmt.SelectExprs[0]
+	ae, ok := expr.(*sqlparser.AliasedExpr)
+	if !ok {
+		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
-	c, err := parse.ExprToExpression(ctx, chConstraint.Expr)
+	c, err := parse.ExprToExpression(ctx, ae.Expr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &sql.CheckConstraint{
-		Name:     parsedConstraint.Name,
+		Name:     check.Name,
 		Expr:     c,
-		Enforced: chConstraint.Enforced,
+		Enforced: check.Enforced,
 	}, nil
 }

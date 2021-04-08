@@ -228,8 +228,9 @@ type ForeignKeyConstraint struct {
 // CheckDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
 // but must store and return them when asked.
 type CheckDefinition struct {
-	Name           string // The name of this check. Check names in a database are unique.
-	AlterStatement string // Reference for expression body
+	Name            string // The name of this check. Check names in a database are unique.
+	CheckExpression string // String serialization of the check expression
+	Enforced        bool   // Whether this constraint is enforced
 }
 
 // CheckConstraint declares a boolean-eval constraint.

@@ -216,7 +216,7 @@ func NewCheckDefinition(check *sql.CheckConstraint) (*sql.CheckDefinition, error
 
 	return &sql.CheckDefinition{
 		Name: check.Name,
-		AlterStatement: fmt.Sprintf(
+		CheckExpression: fmt.Sprintf(
 			"ALTER TABLE _ ADD CONSTRAINT %s CHECK (%s)%s",
 			check.Name,
 			check.Expr.String(),
