@@ -208,6 +208,9 @@ var (
 
 	// ErrSignalOnlySqlState is returned when SIGNAL/RESIGNAL references a DECLARE CONDITION for a MySQL error code.
 	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")
+
+	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
+	ErrUnknownConstraint = errors.NewKind("no constraint named %q found on table %q")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

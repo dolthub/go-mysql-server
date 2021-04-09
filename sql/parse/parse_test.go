@@ -889,20 +889,11 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&sql.ForeignKeyConstraint{
-			Name:              "fk_name",
-			Columns:           []string{},
-			ReferencedTable:   "",
-			ReferencedColumns: []string{},
-			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
-			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
-		},
+			"fk_name",
 	),
-	`ALTER TABLE t1 DROP CONSTRAINT fk_name`: plan.NewAlterDropForeignKey(
+	`ALTER TABLE t1 DROP CONSTRAINT fk_name`: plan.NewDropConstraint(
 		plan.NewUnresolvedTable("t1", ""),
-		&sql.ForeignKeyConstraint{
-			Name: "fk_name",
-		},
+			"fk_name",
 	),
 	`DESCRIBE foo;`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("foo", ""),

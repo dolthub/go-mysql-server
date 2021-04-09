@@ -457,6 +457,10 @@ func TestDropCheckConstraints(t *testing.T) {
 	enginetest.TestDropCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestDropConstraints(t *testing.T) {
+	enginetest.TestDropConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestExplode(t *testing.T) {
 	enginetest.TestExplode(t, enginetest.NewDefaultMemoryHarness())
 }

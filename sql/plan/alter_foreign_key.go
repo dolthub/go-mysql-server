@@ -39,7 +39,7 @@ type CreateForeignKey struct {
 
 type DropForeignKey struct {
 	UnaryNode
-	FkDef *sql.ForeignKeyConstraint
+	Name string
 }
 
 func NewAlterAddForeignKey(table, refTable sql.Node, fkDef *sql.ForeignKeyConstraint) *CreateForeignKey {
@@ -49,10 +49,10 @@ func NewAlterAddForeignKey(table, refTable sql.Node, fkDef *sql.ForeignKeyConstr
 	}
 }
 
-func NewAlterDropForeignKey(table sql.Node, fkDef *sql.ForeignKeyConstraint) *DropForeignKey {
+func NewAlterDropForeignKey(table sql.Node, name string) *DropForeignKey {
 	return &DropForeignKey{
 		UnaryNode: UnaryNode{Child: table},
-		FkDef:     fkDef,
+		Name: name,
 	}
 }
 
@@ -104,7 +104,7 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 				return ErrAddForeignKeyDuplicateColumn.New(fkCol)
 			}
 		} else {
-			return sql.ErrTableColumnNotFound.New(fkCol)
+			return sql.ErrTableColumnNotFound.New(fkAlterable.Name(), fkCol)
 		}
 	}
 
@@ -125,7 +125,7 @@ func (p *DropForeignKey) Execute(ctx *sql.Context) error {
 		return err
 	}
 
-	return fkAlterable.DropForeignKey(ctx, p.FkDef.Name)
+	return fkAlterable.DropForeignKey(ctx, p.Name)
 }
 
 // RowIter implements the Node interface.
@@ -143,7 +143,7 @@ func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewAlterDropForeignKey(children[0], p.FkDef), nil
+	return NewAlterDropForeignKey(children[0], p.Name), nil
 }
 
 // WithChildren implements the Node interface.
@@ -168,7 +168,7 @@ func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 
 func (p DropForeignKey) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DropForeignKey(%s)", p.FkDef.Name)
+	_ = pr.WriteNode("DropForeignKey(%s)", p.Name)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.UnaryNode.Child.String()))
 	return pr.String()
 }

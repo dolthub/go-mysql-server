@@ -39,7 +39,7 @@ type CreateCheck struct {
 
 type DropCheck struct {
 	UnaryNode
-	Check *sql.CheckConstraint
+	Name string
 }
 
 func NewAlterAddCheck(table sql.Node, check *sql.CheckConstraint) *CreateCheck {
@@ -49,10 +49,10 @@ func NewAlterAddCheck(table sql.Node, check *sql.CheckConstraint) *CreateCheck {
 	}
 }
 
-func NewAlterDropCheck(table sql.Node, check *sql.CheckConstraint) *DropCheck {
+func NewAlterDropCheck(table sql.Node, name string) *DropCheck {
 	return &DropCheck{
 		UnaryNode: UnaryNode{Child: table},
-		Check:     check,
+		Name: name,
 	}
 }
 
@@ -180,7 +180,7 @@ func (p *DropCheck) Execute(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
-	return chAlterable.DropCheck(ctx, p.Check.Name)
+	return chAlterable.DropCheck(ctx, p.Name)
 }
 
 // RowIter implements the Node interface.
@@ -197,13 +197,13 @@ func (p *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewAlterDropCheck(children[0], p.Check), nil
+	return NewAlterDropCheck(children[0], p.Name), nil
 }
 func (p *DropCheck) Schema() sql.Schema { return nil }
 
 func (p DropCheck) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DropCheck(%s)", p.Check.Name)
+	_ = pr.WriteNode("DropCheck(%s)", p.Name)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.UnaryNode.Child.String()))
 	return pr.String()
 }

@@ -980,17 +980,11 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterDropForeignKey(table, c), nil
+				return plan.NewAlterDropForeignKey(table, c.Name), nil
 			case *sql.CheckConstraint:
-				return plan.NewAlterDropCheck(table, c), nil
+				return plan.NewAlterDropCheck(table, c.Name), nil
 			case namedConstraint:
-				// For simple named constraint drops, fill in a partial foreign key constraint. This will need to be changed if
-				// we ever support other kinds of constraints than foreign keys (e.g. CHECK)
-				// TODO: this fails if check constraint delete desired but not indicated
-				// It works for memory engine right now but won't for Dolt
-				return plan.NewAlterDropForeignKey(table, &sql.ForeignKeyConstraint{
-					Name: c.name,
-				}), nil
+				return plan.NewDropConstraint(table, c.name), nil
 			default:
 				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 			}

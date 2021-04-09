@@ -25,6 +25,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
 	{"resolve_common_table_expressions", resolveCommonTableExpressions},
 	{"resolve_tables", resolveTables},
+	{"resolve_drop_constraint", resolveDropConstraint},
 	{"load_check_constraints", loadChecks},
 	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_create_like", resolveCreateLike},

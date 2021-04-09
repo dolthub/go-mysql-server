@@ -1965,8 +1965,51 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 	require.Error(err)
 	assert.True(t, sql.ErrTableNotFound.Is(err))
 
+	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 DROP CONSTRAINT dne")
+	require.Error(err)
+	assert.True(t, sql.ErrUnknownConstraint.Is(err))
+
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 DROP CHECK chk3")
 	require.NoError(err)
+}
+
+func TestDropConstraints(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
+	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT fk1 FOREIGN KEY (a) REFERENCES t2(b)")
+	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT chk1")
+	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT fk1")
+
+	db, err := e.Catalog.Database("mydb")
+	require.NoError(err)
+
+	ctx := NewContext(harness)
+	table, ok, err := db.GetTableInsensitive(ctx, "t1")
+	require.NoError(err)
+	require.True(ok)
+
+	cht, ok := table.(sql.CheckTable)
+	require.True(ok)
+
+	checks, err := cht.GetChecks(NewContext(harness))
+	require.NoError(err)
+
+	expected := []sql.CheckDefinition{}
+	assert.Equal(t, expected, checks)
+
+	fkt, ok := table.(sql.ForeignKeyTable)
+	require.True(ok)
+
+	fks, err := fkt.GetForeignKeys(NewContext(harness))
+	require.NoError(err)
+
+	expectedFks := []sql.ForeignKeyConstraint{}
+	assert.Equal(t, expectedFks, fks)
 }
 
 func TestNaturalJoin(t *testing.T, harness Harness) {
