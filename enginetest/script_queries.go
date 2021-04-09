@@ -606,4 +606,19 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "INSERT INTO ... SELECT with AUTO_INCREMENT",
+		SetUpScript: []string{
+			"create table ai (pk int primary key auto_increment, c0 int);",
+			"create table other (pk int primary key);",
+			"insert into other values (1), (2), (3)",
+			"insert into ai (c0) select * from other;",
+		},
+		Query: "select * from ai;",
+		Expected: []sql.Row{
+			{1, 1},
+			{2, 2},
+			{3, 3},
+		},
+	},
 }
