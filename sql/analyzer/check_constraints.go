@@ -20,63 +20,54 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// validateCreateCheck handles CreateCheck nodes, resolving references to "old" and "new" table references in
-// the check body. Also validates that these old and new references are being used appropriately -- they are only
-// valid for certain kinds of checks and certain statements.
-func validateCreateCheck(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
-	ct, ok := node.(*plan.CreateCheck)
-	if !ok {
-		return node, nil
+// validateCreateCheck legal expressions for CREATE CHECK statements, including those embedded in CREATE TABLE
+// statements
+func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	switch n := n.(type) {
+	case *plan.CreateCheck:
+		return validateCreateCheckNode(n)
+	case *plan.CreateTable:
+		return validateCreateTableChecks(n)
 	}
 
-	chAlterable, ok := ct.UnaryNode.Child.(sql.Table)
-	if !ok {
-		return node, nil
-	}
+	return n, nil
+}
 
-	checkCols := make(map[string]bool)
-	for _, col := range chAlterable.Schema() {
-		checkCols[col.Name] = true
-	}
+func validateCreateTableChecks(n *plan.CreateTable) (sql.Node, error) {
+	// if !n.Resolved() {
+	// 	return false
+	// }
+	return n, nil
+}
 
-	var err error
-	plan.InspectExpressionsWithNode(node, func(n sql.Node, e sql.Expression) bool {
-		if _, ok := n.(*plan.CreateCheck); !ok {
-			return true
-		}
-
-		// Make sure that all columns are valid, in the table, and there are no duplicates
-		switch expr := e.(type) {
-		case *deferredColumn:
-			if _, ok := checkCols[expr.Name()]; !ok {
-				err = sql.ErrTableColumnNotFound.New(expr.Name())
-				return false
-			}
-		case *expression.GetField:
-			if _, ok := checkCols[expr.Name()]; !ok {
-				err = sql.ErrTableColumnNotFound.New(expr.Name())
-				return false
-			}
-		case *expression.UnresolvedFunction:
-			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(expr.String())
-			return false
-		case *plan.Subquery:
-			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(expr.String())
-			return false
-		}
-		return true
-	})
-
+func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, error) {
+	err := checkExpressionValid(ct)
 	if err != nil {
 		return nil, err
 	}
 
 	return ct, nil
+}
+
+func checkExpressionValid(ct *plan.CreateCheck) error {
+	var err error
+	sql.Inspect(ct.Check.Expr, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		// TODO: deterministic functions are fine
+		case sql.FunctionExpression:
+			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(e.String())
+			return false
+		case *plan.Subquery:
+			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(e.String())
+			return false
+		}
+		return true
+	})
+	return err
 }
 
 // loadChecks loads any checks that are required for a plan node to operate properly (except for nodes dealing with
