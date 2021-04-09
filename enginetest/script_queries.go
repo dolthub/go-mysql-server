@@ -612,7 +612,7 @@ var ScriptTests = []ScriptTest{
 			"create table ai (pk int primary key auto_increment, c0 int);",
 			"create table other (pk int primary key);",
 			"insert into other values (1), (2), (3)",
-			"insert into ai (c0) select * from other;",
+			"insert into ai (c0) select * from other order by other.pk;",
 		},
 		Query: "select * from ai;",
 		Expected: []sql.Row{
