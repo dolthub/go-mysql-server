@@ -67,6 +67,7 @@ type Driver struct {
 	provider Provider
 	options  Options
 	sessions SessionBuilder
+	contexts ContextBuilder
 
 	mu       sync.Mutex
 	catalogs map[*sql.Catalog]*catalog
@@ -79,10 +80,16 @@ func New(provider Provider, options Options) *Driver {
 		sessions = DefaultSessionBuilder{}
 	}
 
+	contexts, ok := provider.(ContextBuilder)
+	if !ok {
+		contexts = DefaultContextBuilder{}
+	}
+
 	return &Driver{
 		provider: provider,
 		options:  options,
 		sessions: sessions,
+		contexts: contexts,
 		catalogs: map[*sql.Catalog]*catalog{},
 	}
 }
@@ -198,10 +205,11 @@ func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
 	indexes := sql.NewIndexRegistry()
 	views := sql.NewViewRegistry()
 	return &Conn{
-		options: c.options,
-		catalog: c.catalog,
-		session: session,
-		indexes: indexes,
-		views:   views,
+		options:  c.options,
+		catalog:  c.catalog,
+		session:  session,
+		contexts: c.driver.contexts,
+		indexes:  indexes,
+		views:    views,
 	}, nil
 }
