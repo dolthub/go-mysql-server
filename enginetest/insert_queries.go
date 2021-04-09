@@ -523,6 +523,17 @@ var InsertQueries = []WriteQueryTest{
 			{11, 121},
 		},
 	},
+	{
+		WriteQuery: `INSERT INTO auto_increment_tbl (c0) SELECT 44 FROM dual`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
+		SelectQuery:         "SELECT * FROM auto_increment_tbl",
+		ExpectedSelect: []sql.Row{
+			{1, 11},
+			{2, 22},
+			{3, 33},
+			{4, 44},
+		},
+	},
 }
 
 var InsertScripts = []ScriptTest{
