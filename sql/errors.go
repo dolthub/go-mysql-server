@@ -210,7 +210,7 @@ var (
 	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")
 
 	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
-	ErrUnknownConstraint = errors.NewKind("no constraint named %q found on table %q")
+	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

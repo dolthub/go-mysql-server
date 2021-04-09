@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var (
@@ -87,16 +87,7 @@ func (c *CreateCheck) Expressions() []sql.Expression {
 
 // Resolved implements the Resolvable interface.
 func (c *CreateCheck) Resolved() bool {
-	ok := true
-	sql.Inspect(c.Check.Expr, func(expr sql.Expression) bool {
-		switch expr.(type) {
-		case *expression.UnresolvedColumn:
-			ok = false
-			return false
-		}
-		return true
-	})
-	return ok
+	return c.Child.Resolved() && c.Check.Expr.Resolved()
 }
 
 // WithExpressions implements the sql.Expressioner interface.
@@ -111,15 +102,15 @@ func (c *CreateCheck) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 }
 
 // Execute inserts the rows in the database.
-func (p *CreateCheck) Execute(ctx *sql.Context) error {
-	chAlterable, err := getCheckAlterable(p.UnaryNode.Child)
+func (c *CreateCheck) Execute(ctx *sql.Context) error {
+	chAlterable, err := getCheckAlterable(c.UnaryNode.Child)
 	if err != nil {
 		return err
 	}
 
 	// check existing rows in table
 	var res interface{}
-	rowIter, err := p.UnaryNode.Child.RowIter(ctx, nil)
+	rowIter, err := c.UnaryNode.Child.RowIter(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -129,16 +120,16 @@ func (p *CreateCheck) Execute(ctx *sql.Context) error {
 		if row == nil || err != io.EOF {
 			break
 		}
-		res, err = p.Check.Expr.Eval(ctx, row)
+		res, err = c.Check.Expr.Eval(ctx, row)
 		if err != nil {
 			return err
 		}
 		if val, ok := res.(bool); !ok || !val {
-			return ErrCheckFailed.New(p.Check.Name)
+			return ErrCheckFailed.New(c.Check.Name)
 		}
 	}
 
-	check, err := NewCheckDefinition(p.Check)
+	check, err := NewCheckDefinition(c.Check)
 	if err != nil {
 		return err
 	}
@@ -147,29 +138,29 @@ func (p *CreateCheck) Execute(ctx *sql.Context) error {
 }
 
 // WithChildren implements the Node interface.
-func (p *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewAlterAddCheck(children[0], p.Check), nil
+	return NewAlterAddCheck(children[0], c.Check), nil
 }
 
-func (p *CreateCheck) Schema() sql.Schema { return nil }
+func (c *CreateCheck) Schema() sql.Schema { return nil }
 
-func (p *CreateCheck) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	err := p.Execute(ctx)
+func (c *CreateCheck) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	err := c.Execute(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(), nil
 }
 
-func (p CreateCheck) String() string {
+func (c CreateCheck) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("AddCheck(%s)", p.Check.Name)
+	_ = pr.WriteNode("AddCheck(%s)", c.Check.Name)
 	_ = pr.WriteChildren(
-		fmt.Sprintf("Table(%s)", p.UnaryNode.Child.String()),
-		fmt.Sprintf("Expr(%s)", p.Check.Expr.String()),
+		fmt.Sprintf("Table(%s)", c.UnaryNode.Child.String()),
+		fmt.Sprintf("Expr(%s)", c.Check.Expr.String()),
 	)
 	return pr.String()
 }
@@ -209,9 +200,23 @@ func (p DropCheck) String() string {
 }
 
 func NewCheckDefinition(check *sql.CheckConstraint) (*sql.CheckDefinition, error) {
+	// When transforming an analyzed CheckConstraint into a CheckDefinition (for storage), we strip off any table
+	// qualifiers that got resolved during analysis. This is to naively match the MySQL behavior, which doesn't print
+	// any table qualifiers in check expressions.
+	unqualifiedCols, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+		gf, ok := e.(*expression.GetField)
+		if ok {
+			return expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable()), nil
+		}
+		return e, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return &sql.CheckDefinition{
 		Name:            check.Name,
-		CheckExpression: fmt.Sprintf("%s", check.Expr),
+		CheckExpression: fmt.Sprintf("%s", unqualifiedCols),
 		Enforced:        check.Enforced,
 	}, nil
 }

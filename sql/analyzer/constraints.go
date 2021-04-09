@@ -63,5 +63,59 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 		}
 	}
 
-	return nil, sql.ErrUnknownConstraint.New(dropConstraint.Name, table.Name())
+	return nil, sql.ErrUnknownConstraint.New(dropConstraint.Name)
+}
+
+// validateDropConstraint returns an error if the constraint named to be dropped doesn't exist
+func validateDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	switch n := n.(type) {
+	case *plan.DropForeignKey:
+		rt, ok := n.Child.(*plan.ResolvedTable)
+		if !ok {
+			return nil, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
+		}
+
+		fkt, ok := rt.Table.(sql.ForeignKeyTable)
+		if ok {
+			fks, err := fkt.GetForeignKeys(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, fk := range fks {
+				if strings.ToLower(fk.Name) == strings.ToLower(n.Name) {
+					return n, nil
+				}
+			}
+
+			return nil, sql.ErrUnknownConstraint.New(n.Name)
+		}
+
+		return nil, plan.ErrNoForeignKeySupport.New(rt.Table.Name())
+	case *plan.DropCheck:
+		rt, ok := n.Child.(*plan.ResolvedTable)
+		if !ok {
+			return nil, ErrInAnalysis.New("Expected a ResolvedTable for ALTER TABLE DROP CONSTRAINT statement")
+		}
+
+		ct, ok := rt.Table.(sql.CheckTable)
+		if ok {
+			checks, err := ct.GetChecks(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, check := range checks {
+				if strings.ToLower(check.Name) == strings.ToLower(n.Name) {
+					return n, nil
+				}
+			}
+
+			return nil, sql.ErrUnknownConstraint.New(n.Name)
+		}
+
+		return nil, plan.ErrNoCheckConstraintSupport.New(rt.Table.Name())
+	default:
+		return n, nil
+	}
 }
