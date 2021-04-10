@@ -12,7 +12,7 @@ ODBC, JDBC, or the default MySQL client shell interface.
 
 [Dolt](https://www.doltdb.com), a SQL database with Git-style 
 versioning, is the main database implementation of this package. 
-Check out that project for reference implmenentations.
+Check out that project for reference implementations.
 
 ## Scope of this project
 
@@ -25,7 +25,7 @@ These are the goals of **go-mysql-server**:
 - Provide a runnable server speaking the MySQL wire protocol,
   connected to data sources of your choice.
 - Optimize query plans.
-- Allow implementators to add their own analysis steps and
+- Allow implementors to add their own analysis steps and
   optimizations.
 - Support indexed lookups and joins on data tables that support them.
 - Support external index driver implementations such as pilosa.
