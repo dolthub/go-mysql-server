@@ -41,22 +41,28 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 func validateCreateTableChecks(n *plan.CreateTable) (sql.Node, error) {
 	// TODO: make sure all the columns in the CHECK statement are valid. resolve_columns doesn't do this for us because
 	//  it special cases CreateTable nodes
-
-	return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+	var err error
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.Wrapper:
 			// column defaults, no need to inspect these
-			return e, nil
+			return false
 		default:
 			// check expressions, must be validated
 			// TODO: would be better to wrap these in something else to be able to identify them better
-			err := checkExpressionValid(e)
+			err = checkExpressionValid(e)
 			if err != nil {
-				return nil, err
+				return false
 			}
-			return e, nil
+			return true
 		}
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
 }
 
 func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, error) {
