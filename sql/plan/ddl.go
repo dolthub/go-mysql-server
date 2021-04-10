@@ -270,9 +270,15 @@ func (c *CreateTable) String() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.schema))
-	for i, col := range c.schema {
+	exprs := make([]sql.Expression, len(c.schema) + len(c.chDefs))
+	i := 0
+	for _, col := range c.schema {
 		exprs[i] = expression.WrapExpression(col.Default)
+		i++
+	}
+	for _, ch := range c.chDefs {
+		exprs[i] = ch.Expr
+		i++
 	}
 	return exprs
 }
@@ -290,18 +296,24 @@ func (c *CreateTable) IfNotExists() bool {
 }
 
 func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(c.schema) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema))
+	if len(exprs) != len(c.schema) + len(c.chDefs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema) + len(c.chDefs))
 	}
 	nc := *c
-	for i, expr := range exprs {
-		unwrappedColDefVal, ok := expr.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+	i := 0
+	for ; i < len(c.schema); i++ {
+		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 		if ok {
 			nc.schema[i].Default = unwrappedColDefVal
 		} else { // nil fails type check
 			nc.schema[i].Default = nil
 		}
 	}
+
+	for ; i < len(c.chDefs); i++ {
+		nc.chDefs[i].Expr = exprs[i]
+	}
+
 	return &nc, nil
 }
 

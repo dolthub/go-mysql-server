@@ -38,9 +38,10 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 func validateCreateTableChecks(n *plan.CreateTable) (sql.Node, error) {
-	// if !n.Resolved() {
-	// 	return false
-	// }
+	// return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+	// 	x, ok := e.(*sql.CheckConstraint)
+	// })
+
 	return n, nil
 }
 
