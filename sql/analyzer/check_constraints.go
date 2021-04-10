@@ -17,6 +17,7 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -38,15 +39,28 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 func validateCreateTableChecks(n *plan.CreateTable) (sql.Node, error) {
-	// return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
-	// 	x, ok := e.(*sql.CheckConstraint)
-	// })
+	// TODO: make sure all the columns in the CHECK statement are valid. resolve_columns doesn't do this for us because
+	//  it special cases CreateTable nodes
 
-	return n, nil
+	return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+		switch e := e.(type) {
+		case *expression.Wrapper:
+			// column defaults, no need to inspect these
+			return e, nil
+		default:
+			// check expressions, must be validated
+			// TODO: would be better to wrap these in something else to be able to identify them better
+			err := checkExpressionValid(e)
+			if err != nil {
+				return nil, err
+			}
+			return e, nil
+		}
+	})
 }
 
 func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, error) {
-	err := checkExpressionValid(ct)
+	err := checkExpressionValid(ct.Check.Expr)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +68,9 @@ func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, error) {
 	return ct, nil
 }
 
-func checkExpressionValid(ct *plan.CreateCheck) error {
+func checkExpressionValid(e sql.Expression) error {
 	var err error
-	sql.Inspect(ct.Check.Expr, func(e sql.Expression) bool {
+	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		// TODO: deterministic functions are fine
 		case sql.FunctionExpression:
