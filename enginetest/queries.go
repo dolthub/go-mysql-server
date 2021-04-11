@@ -2326,6 +2326,7 @@ var QueryTests = []QueryTest{
 			{"tmpdir", sql.GetTmpdirSessionVar()},
 			{"local_infile", int8(0)},
 			{"secure_file_priv", nil},
+			{"group_concat_max_len", int64(1024)},
 		},
 	},
 	{
