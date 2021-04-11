@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var (
@@ -52,7 +52,7 @@ func NewAlterAddCheck(table sql.Node, check *sql.CheckConstraint) *CreateCheck {
 func NewAlterDropCheck(table sql.Node, name string) *DropCheck {
 	return &DropCheck{
 		UnaryNode: UnaryNode{Child: table},
-		Name: name,
+		Name:      name,
 	}
 }
 

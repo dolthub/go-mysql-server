@@ -1838,19 +1838,19 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 
 	expected := []sql.CheckDefinition{
 		{
-			Name: "chk1",
+			Name:            "chk1",
 			CheckExpression: "b > 0",
-			Enforced: true,
+			Enforced:        true,
 		},
 		{
-			Name: "chk2",
+			Name:            "chk2",
 			CheckExpression: "b > 0",
-			Enforced: false,
+			Enforced:        false,
 		},
 		{
-			Name: "chk3",
+			Name:            "chk3",
 			CheckExpression: "b > 1",
-			Enforced: true,
+			Enforced:        true,
 		},
 	}
 	assert.ElementsMatch(t, expected, checks)

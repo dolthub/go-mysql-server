@@ -587,26 +587,26 @@ CREATE TABLE t4
 		&plan.TableSpec{
 			Schema: sql.Schema{
 				{
-				Name:       "c1",
-				Source: "t4",
-				Type:       sql.Int32,
-				Nullable:   true,
-			},
+					Name:     "c1",
+					Source:   "t4",
+					Type:     sql.Int32,
+					Nullable: true,
+				},
 				{
-					Name:       "c2",
-					Source: "t4",
-					Type:       sql.Int32,
-					Nullable:   true,
+					Name:     "c2",
+					Source:   "t4",
+					Type:     sql.Int32,
+					Nullable: true,
 				},
 			},
 			ChDefs: []*sql.CheckConstraint{
 				{
-				Expr: expression.NewEquals(
-					expression.NewUnresolvedColumn("c1"),
-					expression.NewUnresolvedColumn("c2"),
-				),
-				Enforced: true,
-			},
+					Expr: expression.NewEquals(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewUnresolvedColumn("c2"),
+					),
+					Enforced: true,
+				},
 				{
 					Expr: expression.NewGreaterThan(
 						expression.NewUnresolvedColumn("c1"),
@@ -648,22 +648,22 @@ CREATE TABLE t2
 		&plan.TableSpec{
 			Schema: sql.Schema{
 				{
-					Name:       "c1",
-					Source: "t2",
-					Type:       sql.Int32,
-					Nullable:   true,
+					Name:     "c1",
+					Source:   "t2",
+					Type:     sql.Int32,
+					Nullable: true,
 				},
 				{
-					Name:       "c2",
-					Source: "t2",
-					Type:       sql.Int32,
-					Nullable:   true,
+					Name:     "c2",
+					Source:   "t2",
+					Type:     sql.Int32,
+					Nullable: true,
 				},
 				{
-					Name:       "c3",
-					Source: "t2",
-					Type:       sql.Int32,
-					Nullable:   true,
+					Name:     "c3",
+					Source:   "t2",
+					Type:     sql.Int32,
+					Nullable: true,
 				},
 			},
 			ChDefs: []*sql.CheckConstraint{
@@ -1030,11 +1030,11 @@ CREATE TABLE t2
 	),
 	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-			"fk_name",
+		"fk_name",
 	),
 	`ALTER TABLE t1 DROP CONSTRAINT fk_name`: plan.NewDropConstraint(
 		plan.NewUnresolvedTable("t1", ""),
-			"fk_name",
+		"fk_name",
 	),
 	`DESCRIBE foo;`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("foo", ""),

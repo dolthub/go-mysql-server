@@ -339,7 +339,7 @@ func (c *CreateTable) schemaDebugString() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.schema) + len(c.chDefs))
+	exprs := make([]sql.Expression, len(c.schema)+len(c.chDefs))
 	i := 0
 	for _, col := range c.schema {
 		exprs[i] = expression.WrapExpression(col.Default)
@@ -365,8 +365,8 @@ func (c *CreateTable) IfNotExists() bool {
 }
 
 func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(c.schema) + len(c.chDefs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema) + len(c.chDefs))
+	if len(exprs) != len(c.schema)+len(c.chDefs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema)+len(c.chDefs))
 	}
 
 	nc := *c
@@ -381,8 +381,8 @@ func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		}
 	}
 
-	for ; i < len(c.chDefs) + len(c.schema); i++ {
-		nc.chDefs[i - len(c.schema)].Expr = exprs[i]
+	for ; i < len(c.chDefs)+len(c.schema); i++ {
+		nc.chDefs[i-len(c.schema)].Expr = exprs[i]
 	}
 
 	return &nc, nil
