@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -454,6 +455,10 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
 			},
 			{
+				Query: 	 `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
+			},
+			{
 				Query: 	 `SELECT group_concat(DISTINCT attribute) FROM t`,
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
@@ -480,6 +485,14 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: 	 `SELECT group_concat(pk) FROM nulls`,
 				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query: `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
+				ExpectedErr: analyzer.ErrSubqueryMultipleColumns,
+			},
+			{
+				Query: `SELECT group_concat((SELECT * FROM x)) from t`,
+				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 		},
 	},

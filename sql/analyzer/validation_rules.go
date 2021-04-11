@@ -80,7 +80,7 @@ var (
 	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
 	// more than a single column.
 	ErrSubqueryMultipleColumns = errors.NewKind(
-		"subquery expressions can only return a single column",
+		"operand contains more than one column",
 	)
 
 	// ErrSubqueryFieldIndex is returned when an expression subquery references a field outside the range of the rows it

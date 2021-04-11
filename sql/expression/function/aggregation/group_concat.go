@@ -51,16 +51,13 @@ func (g *GroupConcat) NewBuffer() sql.Row {
 // Update implements the Aggregation interface.
 func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) error {
 	evalRow, err := evalExprs(ctx, g.selectExprs, originalRow)
+	if err != nil {
+		return err
+	}
 
 	// Skip if this is a null row
 	if evalRow == nil {
 		return nil
-	}
-
-	// The length of the row should not exceed 1.
-	if len(evalRow) > 1 {
-		// TODO: Switch to mysql.EROperandColumns
-		return fmt.Errorf("Operand should contain 1 column")
 	}
 
 	// Get the current value as a string
@@ -104,7 +101,6 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 	return g.Update(ctx, buffer, partial)
 }
 
-// TODO: Reevaluate what's going with the return types
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rows := row[0].([]sql.Row)
@@ -208,6 +204,7 @@ func (g *GroupConcat) String() string {
 	return sb.String()
 }
 
+// TODO: Have variable return types for group concat
 func (g *GroupConcat) Type() sql.Type {
 	return sql.LongText
 }

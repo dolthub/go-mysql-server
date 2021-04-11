@@ -45,21 +45,24 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
 }
 
-//func TestGroupConcat_PastMaxLen(t *testing.T) {
-//	var rows []sql.Row
-//
-//	for i := 0; i < 1050; i ++ {
-//		rows = append(rows, sql.Row{i})
-//	}
-//
-//	gc, err := NewGroupConcat("", nil, ",", nil)
-//	buf := gc.NewBuffer()
-//	for _, row := range rows {
-//		require.NoError(t, gc.Update(sql.NewEmptyContext(), buf, row))
-//	}
-//
-//	result, err := gc.Eval(sql.NewEmptyContext(), buf)
-//	rs := result.(string)
-//	require.NoError(t, err)
-//	require.Equal(t,1024, len(rs))
-//}
+// Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len
+func TestGroupConcat_PastMaxLen(t *testing.T) {
+	var rows []sql.Row
+	ctx := sql.NewEmptyContext()
+
+	for i := 0; i < 1050; i ++ {
+		rows = append(rows, sql.Row{int64(i)})
+	}
+
+	gc, err := NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, sql.Int64, "int", true)})
+	buf := gc.NewBuffer()
+	for _, row := range rows {
+		require.NoError(t, gc.Update(ctx, buf, row))
+	}
+
+	result, err := gc.Eval(ctx, buf)
+	rs := result.(string)
+
+	require.NoError(t, err)
+	require.Equal(t, getGroupConcatMaxLen(ctx), int64(len(rs)))
+}

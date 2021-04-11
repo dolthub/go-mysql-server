@@ -205,6 +205,10 @@ var (
 
 	// ErrSignalOnlySqlState is returned when SIGNAL/RESIGNAL references a DECLARE CONDITION for a MySQL error code.
 	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")
+
+	// ErrExpectedSingleRow is returned when a subquery executed in normal queries or aggregation function returns
+	// more than 1 row without an attached IN clause.
+	ErrExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -221,6 +225,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 	switch {
 	case ErrTableNotFound.Is(err):
 		code = mysql.ERNoSuchTable
+	case ErrExpectedSingleRow.Is(err):
+		code = mysql.ERSubqueryNo1Row
 	default:
 		code = mysql.ERUnknownError
 	}
