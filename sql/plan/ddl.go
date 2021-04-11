@@ -368,7 +368,9 @@ func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 	if len(exprs) != len(c.schema) + len(c.chDefs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema) + len(c.chDefs))
 	}
+
 	nc := *c
+
 	i := 0
 	for ; i < len(c.schema); i++ {
 		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
@@ -379,8 +381,8 @@ func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 		}
 	}
 
-	for ; i < len(c.chDefs); i++ {
-		nc.chDefs[i].Expr = exprs[i]
+	for ; i < len(c.chDefs) + len(c.schema); i++ {
+		nc.chDefs[i - len(c.schema)].Expr = exprs[i]
 	}
 
 	return &nc, nil

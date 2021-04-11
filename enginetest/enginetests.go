@@ -1964,20 +1964,35 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 }
 
 func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
-	require := require.New(t)
 	e := NewEngine(t, harness)
-	var err error
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
 
 	// functions, UDFs, procedures
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")")
-	require.Error(err)
-	assert.True(t, sql.ErrInvalidConstraintFunctionsNotSupported.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK ((select count(*) from t1) = 0)")
-	require.Error(err)
-	assert.True(t, sql.ErrInvalidConstraintSubqueryNotSupported.Is(err))
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")", sql.ErrInvalidConstraintFunctionsNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK ((select count(*) from t1) = 0)", sql.ErrInvalidConstraintSubqueryNotSupported)
+	AssertErr(t, e, harness, `
+CREATE TABLE t3 (
+	a int primary key CONSTRAINT chk2 CHECK (current_user = "root@")
+)
+`, sql.ErrInvalidConstraintFunctionsNotSupported)
+	AssertErr(t, e, harness, `
+CREATE TABLE t3 (
+	a int primary key,
+	CHECK (current_user = "root@")
+)
+`, sql.ErrInvalidConstraintFunctionsNotSupported)
+	AssertErr(t, e, harness, `
+CREATE TABLE t3 (
+	a int primary key CONSTRAINT chk2 CHECK (a = (select count(*) from t1))
+)
+`, sql.ErrInvalidConstraintSubqueryNotSupported)
+	AssertErr(t, e, harness, `
+CREATE TABLE t3 (
+	a int primary key,
+	CHECK (a = (select count(*) from t1))
+)
+`, sql.ErrInvalidConstraintSubqueryNotSupported)
 }
 
 func TestDropCheckConstraints(t *testing.T, harness Harness) {

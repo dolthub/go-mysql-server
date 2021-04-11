@@ -1069,13 +1069,13 @@ func (t *Table) CreateCheck(_ *sql.Context, check *sql.CheckDefinition) error {
 	}
 
 	for _, key := range t.checks {
-		if key.Name == check.Name {
+		if key.Name == toInsert.Name {
 			return fmt.Errorf("constraint %s already exists", toInsert.Name)
 		}
 	}
 
 	for _, key := range t.foreignKeys {
-		if key.Name == check.Name {
+		if key.Name == toInsert.Name {
 			return fmt.Errorf("constraint %s already exists", toInsert.Name)
 		}
 	}
