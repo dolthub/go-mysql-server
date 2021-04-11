@@ -1853,7 +1853,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 			Enforced:        true,
 		},
 	}
-	assert.ElementsMatch(t, expected, checks)
+	assert.Equal(t, expected, checks)
 
 	// Unnamed constraint
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT CHECK (b > 100)")
