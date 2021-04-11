@@ -4,7 +4,7 @@ require (
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c
-	github.com/dolthub/vitess v0.0.0-20210322084751-90cd9f21567b
+	github.com/dolthub/vitess v0.0.0-20210407210255-aba7691e0cdf
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/go-kit/kit v0.9.0
 	github.com/go-sql-driver/mysql v1.4.1
@@ -31,5 +31,3 @@ require (
 )
 
 go 1.13
-
-replace github.com/dolthub/vitess => /Users/vinairachakonda/go/src/dolthub/vitess
