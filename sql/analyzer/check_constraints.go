@@ -32,19 +32,25 @@ func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	case *plan.CreateCheck:
 		return validateCreateCheckNode(n)
 	case *plan.CreateTable:
-		return validateCreateTableChecks(n)
+		return validateCreateTableChecks(ctx, a, n, scope)
 	}
 
 	return n, nil
 }
 
-func validateCreateTableChecks(n *plan.CreateTable) (sql.Node, error) {
-	// TODO: make sure all the columns in the CHECK statement are valid. resolve_columns doesn't do this for us because
-	//  it special cases CreateTable nodes
-	var err error
+func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *Scope) (sql.Node, error) {
+	columns, err := indexColumns(ctx, a, n, scope)
+	if err != nil {
+		return nil, err
+	}
+
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if err != nil {
+			return false
+		}
+
 		switch e := e.(type) {
-		case *expression.Wrapper:
+		case *expression.Wrapper, nil:
 			// column defaults, no need to inspect these
 			return false
 		default:
@@ -54,6 +60,19 @@ func validateCreateTableChecks(n *plan.CreateTable) (sql.Node, error) {
 			if err != nil {
 				return false
 			}
+
+			switch e := e.(type) {
+			case column:
+				col := tableCol{
+					table: e.Table(),
+					col:   e.Name(),
+				}
+				if _, ok := columns[col]; !ok {
+					err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
+					return false
+				}
+			}
+
 			return true
 		}
 	})

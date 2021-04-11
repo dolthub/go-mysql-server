@@ -269,6 +269,75 @@ func (c *CreateTable) String() string {
 	return fmt.Sprintf("Create table %s%s", ifNotExists, c.name)
 }
 
+func (c *CreateTable) DebugString() string {
+	ifNotExists := ""
+	if c.ifNotExists {
+		ifNotExists = "if not exists "
+	}
+	p := sql.NewTreePrinter()
+	p.WriteNode("Create table %s%s", ifNotExists, c.name)
+
+	var children []string
+	children = append(children, c.schemaDebugString())
+
+	if len(c.fkDefs) > 0 {
+		children = append(children, c.foreignKeysDebugString())
+	}
+	if len(c.idxDefs) > 0 {
+		children = append(children, c.indexesDebugString())
+	}
+	if len(c.chDefs) > 0 {
+		children = append(children, c.checkConstraintsDebugString())
+	}
+
+	p.WriteChildren(children...)
+	return p.String()
+}
+
+func (c *CreateTable) foreignKeysDebugString() string {
+	p := sql.NewTreePrinter()
+	p.WriteNode("ForeignKeys")
+	var children []string
+	for _, def := range c.fkDefs {
+		children = append(children, sql.DebugString(def))
+	}
+	p.WriteChildren(children...)
+	return p.String()
+}
+
+func (c *CreateTable) indexesDebugString() string {
+	p := sql.NewTreePrinter()
+	p.WriteNode("Indexes")
+	var children []string
+	for _, def := range c.idxDefs {
+		children = append(children, sql.DebugString(def))
+	}
+	p.WriteChildren(children...)
+	return p.String()
+}
+
+func (c *CreateTable) checkConstraintsDebugString() string {
+	p := sql.NewTreePrinter()
+	p.WriteNode("CheckConstraints")
+	var children []string
+	for _, def := range c.chDefs {
+		children = append(children, sql.DebugString(def))
+	}
+	p.WriteChildren(children...)
+	return p.String()
+}
+
+func (c *CreateTable) schemaDebugString() string {
+	p := sql.NewTreePrinter()
+	p.WriteNode("Columns")
+	var children []string
+	for _, col := range c.schema {
+		children = append(children, sql.DebugString(col))
+	}
+	p.WriteChildren(children...)
+	return p.String()
+}
+
 func (c *CreateTable) Expressions() []sql.Expression {
 	exprs := make([]sql.Expression, len(c.schema) + len(c.chDefs))
 	i := 0

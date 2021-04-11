@@ -573,6 +573,65 @@ var fixtures = map[string]sql.Node{
 			}},
 		},
 	),
+	`
+CREATE TABLE t4
+(
+  CHECK (c1 = c2),
+  c1 INT CHECK (c1 > 10),
+  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
+  CHECK (c1 > c3)
+);`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t4",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{
+				{
+				Name:       "c1",
+				Source: "t4",
+				Type:       sql.Int32,
+				Nullable:   true,
+			},
+				{
+					Name:       "c2",
+					Source: "t4",
+					Type:       sql.Int32,
+					Nullable:   true,
+				},
+			},
+			ChDefs: []*sql.CheckConstraint{
+				{
+				Expr: expression.NewEquals(
+					expression.NewUnresolvedColumn("c1"),
+					expression.NewUnresolvedColumn("c2"),
+				),
+				Enforced: true,
+			},
+				{
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewLiteral(int8(10), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Name: "c2_positive",
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c2"),
+						expression.NewLiteral(int8(0), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewUnresolvedColumn("c3"),
+					),
+					Enforced: true,
+				},
+			},
+		},
+	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",

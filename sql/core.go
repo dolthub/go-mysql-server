@@ -215,31 +215,6 @@ type Table interface {
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
 
-// ForeignKeyConstraint declares a constraint between the columns of two tables.
-type ForeignKeyConstraint struct {
-	Name              string
-	Columns           []string
-	ReferencedTable   string
-	ReferencedColumns []string
-	OnUpdate          ForeignKeyReferenceOption
-	OnDelete          ForeignKeyReferenceOption
-}
-
-// CheckDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
-// but must store and return them when asked.
-type CheckDefinition struct {
-	Name            string // The name of this check. Check names in a database are unique.
-	CheckExpression string // String serialization of the check expression
-	Enforced        bool   // Whether this constraint is enforced
-}
-
-// CheckConstraint declares a boolean-eval constraint.
-type CheckConstraint struct {
-	Name     string
-	Expr     Expression
-	Enforced bool
-}
-
 // TableWrapper is a node that wraps the real table. This is needed because
 // wrappers cannot implement some methods the table may implement.
 type TableWrapper interface {
@@ -334,19 +309,6 @@ type IndexAlterableTable interface {
 	// RenameIndex renames an existing index to another name that is not already taken by another index on this table.
 	RenameIndex(ctx *Context, fromIndexName string, toIndexName string) error
 }
-
-// ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
-// table.
-type ForeignKeyReferenceOption string
-
-const (
-	ForeignKeyReferenceOption_DefaultAction ForeignKeyReferenceOption = "DEFAULT" // No explicit action was specified
-	ForeignKeyReferenceOption_Restrict      ForeignKeyReferenceOption = "RESTRICT"
-	ForeignKeyReferenceOption_Cascade       ForeignKeyReferenceOption = "CASCADE"
-	ForeignKeyReferenceOption_NoAction      ForeignKeyReferenceOption = "NO ACTION"
-	ForeignKeyReferenceOption_SetNull       ForeignKeyReferenceOption = "SET NULL"
-	ForeignKeyReferenceOption_SetDefault    ForeignKeyReferenceOption = "SET DEFAULT"
-)
 
 // ForeignKeyTable is a table that can declare its foreign key constraints.
 type ForeignKeyTable interface {
