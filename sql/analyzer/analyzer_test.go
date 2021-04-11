@@ -27,173 +27,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func TestAnalyzer_Analyze(t *testing.T) {
-	require := require.New(t)
-
-	table := memory.NewPushdownTable("mytable", sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "mytable"},
-		{Name: "t", Type: sql.Text, Source: "mytable"},
-	})
-
-	table2 := memory.NewPushdownTable("mytable2", sql.Schema{
-		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
-	})
-
-	db := memory.NewDatabase("mydb")
-	db.AddTable("mytable", table)
-	db.AddTable("mytable2", table2)
-
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := withoutProcessTracking(NewDefault(catalog))
-
-	var notAnalyzed sql.Node = plan.NewUnresolvedTable("mytable", "")
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
-	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
-	require.NoError(err)
-	require.Equal(
-		plan.NewResolvedTable(table, db, nil),
-		analyzed,
-	)
-
-	notAnalyzed = plan.NewUnresolvedTable("nonexistant", "")
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	require.Error(err)
-	require.NotNil(analyzed)
-
-	analyzed, err = a.Analyze(ctx, plan.NewResolvedTable(table, db, nil), nil)
-	require.NoError(err)
-	require.Equal(
-		plan.NewResolvedTable(table, db, nil),
-		analyzed,
-	)
-
-	notAnalyzed = plan.NewProject(
-		[]sql.Expression{expression.NewUnresolvedColumn("o")},
-		plan.NewUnresolvedTable("mytable", ""),
-	)
-	_, err = a.Analyze(ctx, notAnalyzed, nil)
-	require.Error(err)
-
-	notAnalyzed = plan.NewProject(
-		[]sql.Expression{expression.NewUnresolvedColumn("i")},
-		plan.NewUnresolvedTable("mytable", ""),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	var expected sql.Node = plan.NewDecoratedNode("Projected table access on [i]", plan.NewResolvedTable(table.WithProjection([]string{"i"}), db, nil))
-	require.NoError(err)
-	assertNodesEqualWithDiff(t, expected, analyzed)
-
-	notAnalyzed = plan.NewDescribe(
-		plan.NewUnresolvedTable("mytable", ""),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	expected = plan.NewDescribe(
-		plan.NewResolvedTable(table, db, nil),
-	)
-	require.NoError(err)
-	assertNodesEqualWithDiff(t, expected, analyzed)
-
-	notAnalyzed = plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewUnresolvedTable("mytable", ""),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	require.NoError(err)
-
-	expected = plan.NewDecoratedNode("Projected table access on [i t]", plan.NewResolvedTable(table.WithProjection([]string{"i", "t"}), db, nil))
-	assertNodesEqualWithDiff(t, expected, analyzed)
-
-	notAnalyzed = plan.NewProject(
-		[]sql.Expression{expression.NewStar()},
-		plan.NewProject(
-			[]sql.Expression{expression.NewStar()},
-			plan.NewUnresolvedTable("mytable", ""),
-		),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	require.NoError(err)
-
-	expected = plan.NewDecoratedNode("Projected table access on [i t]", plan.NewResolvedTable(table.WithProjection([]string{"i", "t"}), db, nil))
-	assertNodesEqualWithDiff(t, expected, analyzed)
-
-	notAnalyzed = plan.NewProject(
-		[]sql.Expression{
-			expression.NewAlias("foo", expression.NewUnresolvedColumn("i")),
-		},
-		plan.NewUnresolvedTable("mytable", ""),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	expected = plan.NewProject(
-		[]sql.Expression{
-			expression.NewAlias("foo", expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false)),
-		},
-		plan.NewDecoratedNode("Projected table access on [i]",
-			plan.NewResolvedTable(table.WithProjection([]string{"i"}), db, nil)),
-	)
-	require.NoError(err)
-	assertNodesEqualWithDiff(t, expected, analyzed)
-
-	notAnalyzed = plan.NewProject(
-		[]sql.Expression{expression.NewUnresolvedColumn("i")},
-		plan.NewFilter(
-			expression.NewEquals(
-				expression.NewUnresolvedColumn("i"),
-				expression.NewLiteral(int32(1), sql.Int32),
-			),
-			plan.NewUnresolvedTable("mytable", ""),
-		),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	expected = plan.NewDecoratedNode("Filtered table access on [mytable.i = 1]",
-		plan.NewDecoratedNode("Projected table access on [i]",
-			plan.NewResolvedTable(table.WithFilters([]sql.Expression{
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-					expression.NewLiteral(int32(1), sql.Int32),
-				),
-			}).(*memory.PushdownTable).WithProjection([]string{"i"}), db, nil),
-		),
-	)
-	require.NoError(err)
-	assertNodesEqualWithDiff(t, expected, analyzed)
-
-	notAnalyzed = plan.NewProject(
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("i"),
-			expression.NewUnresolvedColumn("i2"),
-		},
-		plan.NewCrossJoin(
-			plan.NewUnresolvedTable("mytable", ""),
-			plan.NewUnresolvedTable("mytable2", ""),
-		),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	expected = plan.NewCrossJoin(
-		plan.NewDecoratedNode("Projected table access on [i]", plan.NewResolvedTable(table.WithProjection([]string{"i"}), db, nil)),
-		plan.NewDecoratedNode("Projected table access on [i2]", plan.NewResolvedTable(table2.WithProjection([]string{"i2"}), db, nil)),
-	)
-	require.NoError(err)
-	assertNodesEqualWithDiff(t, expected, analyzed)
-
-	notAnalyzed = plan.NewLimit(int64(1),
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewUnresolvedColumn("i"),
-			},
-			plan.NewUnresolvedTable("mytable", ""),
-		),
-	)
-	analyzed, err = a.Analyze(ctx, notAnalyzed, nil)
-	expected = plan.NewLimit(
-		int64(1),
-		plan.NewDecoratedNode("Projected table access on [i]",
-			plan.NewResolvedTable(table.WithProjection([]string{"i"}), db, nil)),
-	)
-	require.NoError(err)
-	assertNodesEqualWithDiff(t, expected, analyzed)
-}
-
 func TestMaxIterations(t *testing.T) {
 	require := require.New(t)
 	tName := "my-table"
@@ -332,19 +165,19 @@ func countRules(batches []*Batch) int {
 func TestMixInnerAndNaturalJoins(t *testing.T) {
 	var require = require.New(t)
 
-	table := memory.NewPushdownTable("mytable", sql.Schema{
+	table := memory.NewFilteredTable("mytable", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
 	})
 
-	table2 := memory.NewPushdownTable("mytable2", sql.Schema{
+	table2 := memory.NewFilteredTable("mytable2", sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
 	})
 
-	table3 := memory.NewPushdownTable("mytable3", sql.Schema{
+	table3 := memory.NewFilteredTable("mytable3", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable3"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable3"},
 		{Name: "t3", Type: sql.Text, Source: "mytable3"},
@@ -379,12 +212,12 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	expected := plan.NewProject(
 		[]sql.Expression{
 			expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-			expression.NewGetFieldWithTable(3, sql.Float64, "mytable2", "f2", false),
+			expression.NewGetFieldWithTable(4, sql.Float64, "mytable2", "f2", false),
 			expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 			expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", false),
-			expression.NewGetFieldWithTable(4, sql.Int32, "mytable2", "i2", false),
+			expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
 			expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
-			expression.NewGetFieldWithTable(6, sql.Text, "mytable3", "t3", false),
+			expression.NewGetFieldWithTable(8, sql.Text, "mytable3", "t3", false),
 		},
 		plan.NewInnerJoin(
 			plan.NewInnerJoin(
@@ -392,18 +225,18 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 				plan.NewDecoratedNode("Projected table access on [f2 i2 t2]", plan.NewResolvedTable(table2.WithProjection([]string{"f2", "i2", "t2"}), db, nil)),
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-					expression.NewGetFieldWithTable(4, sql.Int32, "mytable2", "i2", false),
+					expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", false),
 				),
 			),
 			plan.NewDecoratedNode("Projected table access on [t3 i f2]", plan.NewResolvedTable(table3.WithProjection([]string{"t3", "i", "f2"}), db, nil)),
 			expression.NewAnd(
 				expression.NewEquals(
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", false),
-					expression.NewGetFieldWithTable(7, sql.Int32, "mytable3", "i", false),
+					expression.NewGetFieldWithTable(6, sql.Int32, "mytable3", "i", false),
 				),
 				expression.NewEquals(
-					expression.NewGetFieldWithTable(3, sql.Float64, "mytable2", "f2", false),
-					expression.NewGetFieldWithTable(8, sql.Float64, "mytable3", "f2", false),
+					expression.NewGetFieldWithTable(4, sql.Float64, "mytable2", "f2", false),
+					expression.NewGetFieldWithTable(7, sql.Float64, "mytable3", "f2", false),
 				),
 			),
 		),
@@ -412,7 +245,8 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
-	require.Equal(expected, result)
+
+	assertNodesEqualWithDiff(t, expected, result)
 }
 
 func TestReorderProjectionUnresolvedChild(t *testing.T) {

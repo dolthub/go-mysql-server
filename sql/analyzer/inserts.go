@@ -177,7 +177,9 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) error {
 	for _, expr := range projExprs {
 		switch e := expr.(type) {
-		case *expression.Literal, *sql.ColumnDefaultValue:
+		case *expression.Literal,
+			*expression.AutoIncrement,
+			*sql.ColumnDefaultValue:
 			continue
 		case *expression.GetField:
 			otherCol := schema[e.Index()]

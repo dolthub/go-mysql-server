@@ -333,7 +333,13 @@ func (l loadDataIter) parseFields(line string) ([]sql.Expression, error) {
 
 	exprs := make([]sql.Expression, len(l.destination.Schema()))
 
-	for i, field := range fields {
+	limit := len(exprs)
+	if len(fields) < limit {
+		limit = len(fields)
+	}
+
+	for i := 0; i < limit; i++ {
+		field := fields[i]
 		dSchema := l.destination.Schema()[i]
 		// Replace the empty string with defaults
 		if field == "" {

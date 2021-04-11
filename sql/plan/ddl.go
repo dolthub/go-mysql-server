@@ -766,7 +766,11 @@ func (m *ModifyColumn) TableName() string {
 	return m.tableName
 }
 
-func (m *ModifyColumn) Column() *sql.Column {
+func (m *ModifyColumn) Column() string {
+	return m.columnName
+}
+
+func (m *ModifyColumn) NewColumn() *sql.Column {
 	return m.column
 }
 

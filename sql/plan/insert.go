@@ -90,16 +90,18 @@ func (p *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 type insertIter struct {
-	schema      sql.Schema
-	inserter    sql.RowInserter
-	replacer    sql.RowReplacer
-	updater     sql.RowUpdater
-	rowSource   sql.RowIter
-	ctx         *sql.Context
-	updateExprs []sql.Expression
-	checks      []sql.Expression
-	tableNode   sql.Node
-	closed      bool
+	schema              sql.Schema
+	inserter            sql.RowInserter
+	replacer            sql.RowReplacer
+	updater             sql.RowUpdater
+	rowSource           sql.RowIter
+	lastInsertIdUpdated bool
+	ctx                 *sql.Context
+	insertExprs         []sql.Expression
+	updateExprs         []sql.Expression
+	checks              []sql.Expression
+	tableNode           sql.Node
+	closed              bool
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -165,6 +167,8 @@ func newInsertIter(
 		return nil, err
 	}
 
+	insertExpressions := getInsertExpressions(values)
+
 	return &insertIter{
 		schema:      dstSchema,
 		tableNode:   table,
@@ -173,12 +177,26 @@ func newInsertIter(
 		updater:     updater,
 		rowSource:   rowIter,
 		updateExprs: onDupUpdateExpr,
+		insertExprs: insertExpressions,
 		checks:      checks,
 		ctx:         ctx,
 	}, nil
 }
 
-func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
+func getInsertExpressions(values sql.Node) []sql.Expression {
+	var exprs []sql.Expression
+	Inspect(values, func(node sql.Node) bool {
+		switch node := node.(type) {
+		case *Project:
+			exprs = node.Projections
+			return false
+		}
+		return true
+	})
+	return exprs
+}
+
+func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	row, err := i.rowSource.Next()
 	if err == io.EOF {
 		return nil, err
@@ -249,66 +267,71 @@ func (i insertIter) Next() (returnRow sql.Row, returnErr error) {
 				return nil, err
 			}
 
-			// Handle ON DUPLICATE KEY UPDATE clause
-			var pkExpression sql.Expression
-			for index, col := range i.schema {
-				if col.PrimaryKey {
-					value := row[index]
-					exp := expression.NewEquals(expression.NewGetField(index, col.Type, col.Name, col.Nullable), expression.NewLiteral(value, col.Type))
-					if pkExpression != nil {
-						pkExpression = expression.NewAnd(pkExpression, exp)
-					} else {
-						pkExpression = exp
-					}
-				}
-			}
-
-			filter := NewFilter(pkExpression, i.tableNode)
-			filterIter, err := filter.RowIter(i.ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			defer func() {
-				err := filterIter.Close(i.ctx)
-				if returnErr == nil {
-					returnErr = err
-				}
-			}()
-
-			// By definition, there can only be a single row here. And only one row should ever be updated according to the
-			// spec:
-			// https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html
-			rowToUpdate, err := filterIter.Next()
-			if err != nil {
-				return nil, err
-			}
-
-			err = i.resolveValues(i.ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			newRow, err := applyUpdateExpressions(i.ctx, i.updateExprs, rowToUpdate)
-			if err != nil {
-				return nil, err
-			}
-
-			err = i.updater.Update(i.ctx, rowToUpdate, newRow)
-			if err != nil {
-				return nil, err
-			}
-
-			// In the case that we attempted an update, return a concatenated [old,new] row just like update.
-			return rowToUpdate.Append(newRow), nil
+			return i.handleOnDuplicateKeyUpdate(row)
 		}
 	}
+
+	i.updateLastInsertId(i.ctx, row)
 
 	return row, nil
 }
 
+func (i *insertIter) handleOnDuplicateKeyUpdate(row sql.Row) (returnRow sql.Row, returnErr error) {
+	var pkExpression sql.Expression
+	for index, col := range i.schema {
+		if col.PrimaryKey {
+			value := row[index]
+			exp := expression.NewEquals(expression.NewGetField(index, col.Type, col.Name, col.Nullable), expression.NewLiteral(value, col.Type))
+			if pkExpression != nil {
+				pkExpression = expression.NewAnd(pkExpression, exp)
+			} else {
+				pkExpression = exp
+			}
+		}
+	}
+
+	filter := NewFilter(pkExpression, i.tableNode)
+	filterIter, err := filter.RowIter(i.ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err := filterIter.Close(i.ctx)
+		if returnErr == nil {
+			returnErr = err
+		}
+	}()
+
+	// By definition, there can only be a single row here. And only one row should ever be updated according to the
+	// spec:
+	// https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html
+	rowToUpdate, err := filterIter.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	err = i.resolveValues(i.ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	newRow, err := applyUpdateExpressions(i.ctx, i.updateExprs, rowToUpdate)
+	if err != nil {
+		return nil, err
+	}
+
+	err = i.updater.Update(i.ctx, rowToUpdate, newRow)
+	if err != nil {
+		return nil, err
+	}
+
+	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
+	return rowToUpdate.Append(newRow), nil
+}
+
 // resolveValues resolves all VALUES functions.
-func (i insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
+func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 	for _, updateExpr := range i.updateExprs {
 		var err error
 		sql.Inspect(updateExpr, func(expr sql.Expression) bool {
@@ -331,7 +354,7 @@ func (i insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 	return nil
 }
 
-func (i insertIter) Close(ctx *sql.Context) error {
+func (i *insertIter) Close(ctx *sql.Context) error {
 	if !i.closed {
 		i.closed = true
 		if i.inserter != nil {
@@ -355,7 +378,60 @@ func (i insertIter) Close(ctx *sql.Context) error {
 			}
 		}
 	}
+
 	return nil
+}
+
+func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
+	if i.lastInsertIdUpdated {
+		return
+	}
+
+	var autoIncVal int64
+	var found bool
+	for i, expr := range i.insertExprs {
+		if _, ok := expr.(*expression.AutoIncrement); ok {
+			autoIncVal = toInt64(row[i])
+			found = true
+			break
+		}
+	}
+
+	if found {
+		ctx.SetLastQueryInfo(sql.LastInsertId, autoIncVal)
+		i.lastInsertIdUpdated = true
+	}
+}
+
+func toInt64(x interface{}) int64 {
+	switch x := x.(type) {
+	case int:
+		return int64(x)
+	case uint:
+		return int64(x)
+	case int8:
+		return int64(x)
+	case uint8:
+		return int64(x)
+	case int16:
+		return int64(x)
+	case uint16:
+		return int64(x)
+	case int32:
+		return int64(x)
+	case uint32:
+		return int64(x)
+	case int64:
+		return x
+	case uint64:
+		return int64(x)
+	case float32:
+		return int64(x)
+	case float64:
+		return int64(x)
+	default:
+		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
+	}
 }
 
 // RowIter implements the Node interface.

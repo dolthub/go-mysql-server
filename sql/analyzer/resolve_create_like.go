@@ -39,6 +39,9 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			return nil, err
 		}
 		for _, index := range indexes {
+			if index.IsGenerated() {
+				continue
+			}
 			constraint := sql.IndexConstraint_None
 			if index.IsUnique() {
 				constraint = sql.IndexConstraint_Unique

@@ -205,12 +205,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 }
 
 func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query string) (*plan.Block, error) {
-	if query == "" {
-		query = "compound statement in block"
-	}
 	var statements []sql.Node
 	for _, s := range parserStatements {
-		statement, err := convert(ctx, s, query)
+		statement, err := convert(ctx, s, sqlparser.String(s))
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +217,7 @@ func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query
 }
 
 func convertBeginEndBlock(ctx *sql.Context, n *sqlparser.BeginEndBlock, query string) (sql.Node, error) {
-	block, err := convertBlock(ctx, n.Statements, "compound statement in begin..end block")
+	block, err := convertBlock(ctx, n.Statements, query)
 	if err != nil {
 		return nil, err
 	}
@@ -614,6 +611,10 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
 		if err != nil {
 			return nil, err
+		}
+
+		if s.CalcFoundRows {
+			node.(*plan.Limit).CalcFoundRows = true
 		}
 	} else if ok, val := sql.HasDefaultValue(ctx.Session, "sql_select_limit"); !ok {
 		limit := mustCastNumToInt64(val)
@@ -1721,10 +1722,18 @@ func tableExprToTable(
 			}
 
 			if t.As.IsEmpty() {
+				// This should be caught by the parser, but here just in case
 				return nil, ErrUnsupportedFeature.New("subquery without alias")
 			}
 
-			return plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node), nil
+			sq := plan.NewSubqueryAlias(t.As.String(), sqlparser.String(e.Select), node)
+
+			if len(e.Columns) > 0 {
+				columns := columnsToStrings(e.Columns)
+				sq = sq.WithColumns(columns)
+			}
+
+			return sq, nil
 		case *sqlparser.ValuesStatement:
 			if t.As.IsEmpty() {
 				// Parser should enforce this, but just to be safe
@@ -1735,7 +1744,14 @@ func tableExprToTable(
 				return nil, err
 			}
 
-			return plan.NewValueDerivedTable(values, t.As.String()), nil
+			vdt := plan.NewValueDerivedTable(values, t.As.String())
+
+			if len(e.Columns) > 0 {
+				columns := columnsToStrings(e.Columns)
+				vdt = vdt.WithColumns(columns)
+			}
+
+			return vdt, nil
 		default:
 			return nil, ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}

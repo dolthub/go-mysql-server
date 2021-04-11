@@ -36,29 +36,7 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	}
 
 	// Do not try to parallelize DDL or descriptive operations
-	return !isDdlNode(node)
-}
-
-// isDdlNode returns whether the node given is a DDL operation, which includes things like SHOW commands. In general,
-// these are nodes that interact only with schema and the catalog, not with any table rows.
-func isDdlNode(node sql.Node) bool {
-	switch node.(type) {
-	case *plan.CreateTable, *plan.DropTable, *plan.Truncate,
-		*plan.AddColumn, *plan.ModifyColumn, *plan.DropColumn,
-		*plan.RenameTable, *plan.RenameColumn,
-		*plan.CreateIndex, *plan.AlterIndex, *plan.DropIndex,
-		*plan.CreateForeignKey, *plan.DropForeignKey,
-		*plan.CreateTrigger, *plan.DropTrigger,
-		*plan.ShowTables, *plan.ShowCreateTable,
-		*plan.ShowTriggers, *plan.ShowCreateTrigger,
-		*plan.ShowDatabases, *plan.ShowCreateDatabase,
-		*plan.ShowColumns, *plan.ShowIndexes,
-		*plan.ShowProcessList, *plan.ShowTableStatus,
-		*plan.ShowVariables, *plan.ShowWarnings:
-		return true
-	default:
-		return false
-	}
+	return !plan.IsDdlNode(node)
 }
 
 func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {

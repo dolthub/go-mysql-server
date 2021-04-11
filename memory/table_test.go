@@ -110,7 +110,6 @@ var tests = []struct {
 	expectedFiltered []sql.Row
 
 	columns           []string
-	expectedSchema    sql.Schema
 	expectedProjected []sql.Row
 
 	expectedFiltersAndProjections []sql.Row
@@ -150,22 +149,18 @@ var tests = []struct {
 			sql.NewRow("e", int32(10), int64(200)),
 		},
 		columns: []string{"col3", "col1"},
-		expectedSchema: sql.Schema{
-			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false)},
-			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false)},
-		},
 		expectedProjected: []sql.Row{
-			sql.NewRow(int64(100), "a"),
-			sql.NewRow(int64(100), "b"),
-			sql.NewRow(int64(100), "c"),
-			sql.NewRow(int64(200), "d"),
-			sql.NewRow(int64(200), "e"),
-			sql.NewRow(int64(200), "f"),
+			sql.NewRow("a", nil, int64(100)),
+			sql.NewRow("b", nil, int64(100)),
+			sql.NewRow("c", nil, int64(100)),
+			sql.NewRow("d", nil, int64(200)),
+			sql.NewRow("e", nil, int64(200)),
+			sql.NewRow("f", nil, int64(200)),
 		},
 		expectedFiltersAndProjections: []sql.Row{
-			sql.NewRow(int64(100), "a"),
-			sql.NewRow(int64(100), "b"),
-			sql.NewRow(int64(200), "e"),
+			sql.NewRow("a", nil, int64(100)),
+			sql.NewRow("b", nil, int64(100)),
+			sql.NewRow("e", nil, int64(200)),
 		},
 		indexColumns: []string{"col1", "col3"},
 		expectedKeyValues: []*indexKeyValue{
@@ -192,8 +187,9 @@ var tests = []struct {
 		},
 		partition: memory.NewPartition([]byte("0")),
 		expectedIndexed: []sql.Row{
-			sql.NewRow(int64(100), "a"),
-			sql.NewRow(int64(200), "e"),
+			{"a", nil, int64(100)},
+			{"c", nil, int64(100)},
+			{"e", nil, int64(200)},
 		},
 	},
 }
@@ -245,14 +241,14 @@ func TestFiltered(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewFilteredTable(test.name, test.schema)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
 			filtered := table.WithFilters(test.filters)
 
-			filteredRows := testFlatRows(t, filtered)
+			filteredRows := getAllRows(t, filtered)
 			require.Len(filteredRows, len(test.expectedFiltered))
 			for _, row := range filteredRows {
 				require.Contains(test.expectedFiltered, row)
@@ -267,15 +263,14 @@ func TestProjected(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
 			projected := table.WithProjection(test.columns)
-			require.ElementsMatch(projected.Schema(), test.expectedSchema)
 
-			projectedRows := testFlatRows(t, projected)
+			projectedRows := getAllRows(t, projected)
 			require.Len(projectedRows, len(test.expectedProjected))
 			for _, row := range projectedRows {
 				require.Contains(test.expectedProjected, row)
@@ -289,16 +284,15 @@ func TestFilterAndProject(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewFilteredTable(test.name, test.schema)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
 			filtered := table.WithFilters(test.filters)
-			projected := filtered.(*memory.PushdownTable).WithProjection(test.columns)
-			require.ElementsMatch(projected.Schema(), test.expectedSchema)
+			projected := filtered.(*memory.FilteredTable).WithProjection(test.columns)
 
-			rows := testFlatRows(t, projected)
+			rows := getAllRows(t, projected)
 			require.Len(rows, len(test.expectedFiltersAndProjections))
 			for _, row := range rows {
 				require.Contains(test.expectedFiltersAndProjections, row)
@@ -312,16 +306,13 @@ func TestIndexed(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var require = require.New(t)
 
-			table := memory.NewPartitionedPushdownTable(test.name, test.schema, test.numPartitions)
+			table := memory.NewPartitionedTable(test.name, test.schema, test.numPartitions)
 			for _, row := range test.rows {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			filtered := table.WithFilters(test.filters)
-			projected := filtered.(*memory.PushdownTable).WithProjection(test.columns)
-			indexed := projected.(*memory.PushdownTable).WithIndexLookup(test.lookup)
-
-			require.ElementsMatch(indexed.Schema(), test.expectedSchema)
+			projected := table.WithProjection(test.columns)
+			indexed := projected.(*memory.Table).WithIndexLookup(test.lookup)
 
 			ctx := sql.NewEmptyContext()
 			iter, err := indexed.PartitionRows(ctx, test.partition)
@@ -330,20 +321,17 @@ func TestIndexed(t *testing.T) {
 			rows, err := sql.RowIterToRows(ctx, iter)
 			require.NoError(err)
 
-			require.Len(rows, len(test.expectedIndexed))
-			for _, row := range rows {
-				require.Contains(test.expectedIndexed, row)
-			}
+			require.Equal(rows, test.expectedIndexed)
 		})
 	}
 }
 
-func testFlatRows(t *testing.T, table sql.Table) []sql.Row {
+func getAllRows(t *testing.T, table sql.Table) []sql.Row {
 	var require = require.New(t)
 
 	pIter, err := table.Partitions(sql.NewEmptyContext())
 	require.NoError(err)
-	flatRows := []sql.Row{}
+	allRows := []sql.Row{}
 	for {
 		p, err := pIter.Next()
 		if err != nil {
@@ -361,11 +349,10 @@ func testFlatRows(t *testing.T, table sql.Table) []sql.Row {
 		rows, err := sql.RowIterToRows(ctx, iter)
 		require.NoError(err)
 
-		flatRows = append(flatRows, rows...)
-
+		allRows = append(allRows, rows...)
 	}
 
-	return flatRows
+	return allRows
 }
 
 func TestTableIndexKeyValueIter(t *testing.T) {

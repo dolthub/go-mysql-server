@@ -47,7 +47,11 @@ type User struct {
 }
 
 func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.Client().User, nil
+	if ctx.Client().User == "" && ctx.Client().Address == "" {
+		return "", nil
+	}
+	
+	return ctx.Client().User + "@" + ctx.Client().Address, nil
 }
 
 var _ sql.FunctionExpression = User{}
