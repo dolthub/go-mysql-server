@@ -16,16 +16,17 @@ package aggregation
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"sort"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 type GroupConcat struct {
-	distinct string
-	sf  sql.SortFields
-	separator string
+	distinct    string
+	sf          sql.SortFields
+	separator   string
 	selectExprs []sql.Expression
 }
 
@@ -104,7 +105,7 @@ func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rows := row[0].([]sql.Row)
-	
+
 	if len(rows) == 0 {
 		return nil, nil
 	}
@@ -113,8 +114,8 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if g.sf != nil {
 		sorter := &expression.Sorter{
 			SortFields: g.sf,
-			Rows: rows,
-			Ctx: ctx,
+			Rows:       rows,
+			Ctx:        ctx,
 		}
 
 		sort.Stable(sorter)
@@ -126,7 +127,7 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ret := ""
 	for i, row := range rows {
 		lastIdx := len(row) - 1
-		if i == len(rows) - 1 {
+		if i == len(rows)-1 {
 			ret += row[lastIdx].(string)
 		} else {
 			ret += row[lastIdx].(string) + g.separator
@@ -175,7 +176,9 @@ func (g *GroupConcat) String() string {
 	sb.WriteString("group_concat(")
 	if g.distinct != "" {
 		sb.WriteString(fmt.Sprintf("distinct %s", g.distinct))
-	} else if g.selectExprs != nil {
+	}
+
+	if g.selectExprs != nil {
 		var exprs = make([]string, len(g.selectExprs))
 		for i, expr := range g.selectExprs {
 			exprs[i] = expr.String()
@@ -195,7 +198,7 @@ func (g *GroupConcat) String() string {
 	}
 
 	if g.separator != "," {
-		sb.WriteString( " separator ")
+		sb.WriteString(" separator ")
 		sb.WriteString(fmt.Sprintf("'%s'", g.separator))
 	}
 

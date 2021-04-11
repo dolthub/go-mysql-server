@@ -15,10 +15,12 @@
 package aggregation
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestGroupConcat_FunctionName(t *testing.T) {
@@ -45,12 +47,12 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
 }
 
-// Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len
+// Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len (default 1024)
 func TestGroupConcat_PastMaxLen(t *testing.T) {
 	var rows []sql.Row
 	ctx := sql.NewEmptyContext()
 
-	for i := 0; i < 1050; i ++ {
+	for i := 0; i < 2000; i++ {
 		rows = append(rows, sql.Row{int64(i)})
 	}
 
