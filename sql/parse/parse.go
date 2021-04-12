@@ -2186,7 +2186,10 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 
-		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs)
+		_, gcml := ctx.Get("group_concat_max_len")
+		groupConcatMaxLen := gcml.(int64)
+
+		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:

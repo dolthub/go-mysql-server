@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -28,6 +30,8 @@ type GroupConcat struct {
 	sf          sql.SortFields
 	separator   string
 	selectExprs []sql.Expression
+	maxLen      int
+	returnType  sql.Type
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
@@ -37,8 +41,8 @@ func NewEmptyGroupConcat() sql.Expression {
 	return &GroupConcat{}
 }
 
-func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression) (*GroupConcat, error) {
-	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs}, nil
+func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
+	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}, nil
 }
 
 // NewBuffer creates a new buffer for the aggregation.
@@ -51,18 +55,25 @@ func (g *GroupConcat) NewBuffer() sql.Row {
 
 // Update implements the Aggregation interface.
 func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) error {
-	evalRow, err := evalExprs(ctx, g.selectExprs, originalRow)
+	evalRow, retType, err := evalExprs(ctx, g.selectExprs, originalRow)
 	if err != nil {
 		return err
 	}
+
+	g.returnType = retType
 
 	// Skip if this is a null row
 	if evalRow == nil {
 		return nil
 	}
 
-	// Get the current value as a string
-	v, err := sql.LongText.Convert(evalRow[0])
+	var v interface{}
+	if retType == sql.Blob {
+		v, err = sql.Blob.Convert(evalRow[0])
+	} else {
+		v, err = sql.LongText.Convert(evalRow[0])
+	}
+
 	if err != nil {
 		return err
 	}
@@ -124,41 +135,42 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	ret := ""
+	sb := strings.Builder{}
 	for i, row := range rows {
 		lastIdx := len(row) - 1
 		if i == len(rows)-1 {
-			ret += row[lastIdx].(string)
+			sb.WriteString(row[lastIdx].(string))
 		} else {
-			ret += row[lastIdx].(string) + g.separator
+			sb.WriteString(row[lastIdx].(string))
+			sb.WriteString(g.separator)
 		}
 	}
+	ret := sb.String()
 
-	maxLen := getGroupConcatMaxLen(ctx)
-
-	if int64(len(ret)) > maxLen {
-		ret = ret[0:maxLen]
+	if len(ret) > g.maxLen {
+		ret = ret[0:g.maxLen]
 	}
 
 	return ret, nil
 }
 
-func getGroupConcatMaxLen(ctx *sql.Context) int64 {
-	_, gcml := ctx.Get("group_concat_max_len")
-	return gcml.(int64)
-}
-
-func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, error) {
+func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
 	result := make(sql.Row, len(exprs))
+	retType := sql.Blob
 	for i, expr := range exprs {
 		var err error
 		result[i], err = expr.Eval(ctx, row)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+
+		// If every expression returns Blob type return Blob otherwise return Text.
+		if expr.Type() != sql.Blob {
+			retType = sql.Text
 		}
 	}
 
-	return result, nil
+	return result, retType, nil
 }
 
 func (g *GroupConcat) Resolved() bool {
@@ -207,9 +219,22 @@ func (g *GroupConcat) String() string {
 	return sb.String()
 }
 
-// TODO: Have variable return types for group concat
+// cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat for explanations
+// on return type.
 func (g *GroupConcat) Type() sql.Type {
-	return sql.LongText
+	if g.returnType == sql.Blob {
+		if g.maxLen <= 512 {
+			return sql.MustCreateString(query.Type_VARBINARY, 512, sql.Collation_binary)
+		} else {
+			return sql.Blob
+		}
+	} else {
+		if g.maxLen <= 512 {
+			return sql.MustCreateString(query.Type_VARCHAR, 512, sql.Collation_Default)
+		} else {
+			return sql.Text
+		}
+	}
 }
 
 func (g *GroupConcat) IsNullable() bool {
@@ -230,7 +255,7 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	delim := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[delim:])
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[delim:], g.maxLen)
 }
 
 func (g *GroupConcat) FunctionName() string {
