@@ -250,3 +250,27 @@ func (c *Case) String() string {
 	buf.WriteString(" END")
 	return buf.String()
 }
+
+func (c *Case) DebugString() string {
+	var buf bytes.Buffer
+
+	buf.WriteString("CASE ")
+	if c.Expr != nil {
+		buf.WriteString(sql.DebugString(c.Expr))
+	}
+
+	for _, b := range c.Branches {
+		buf.WriteString(" WHEN ")
+		buf.WriteString(sql.DebugString(b.Cond))
+		buf.WriteString(" THEN ")
+		buf.WriteString(sql.DebugString(b.Value))
+	}
+
+	if c.Else != nil {
+		buf.WriteString(" ELSE ")
+		buf.WriteString(sql.DebugString(c.Else))
+	}
+
+	buf.WriteString(" END")
+	return buf.String()
+}
