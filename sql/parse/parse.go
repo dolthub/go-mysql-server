@@ -1367,15 +1367,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewInsertInto(
-		sql.UnresolvedDatabase(i.Table.Qualifier.String()),
-		tableNameToUnresolvedTable(i.Table),
-		src,
-		isReplace,
-		columnsToStrings(i.Columns),
-		onDupExprs,
-		nil,
-	), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columnsToStrings(i.Columns), onDupExprs), nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
@@ -1474,15 +1466,7 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
 
-	return plan.NewInsertInto(
-		sql.UnresolvedDatabase(d.Table.Qualifier.String()),
-		tableNameToUnresolvedTable(d.Table),
-		ld,
-		false,
-		ld.ColumnNames,
-		nil,
-		nil,
-	), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec

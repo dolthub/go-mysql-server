@@ -126,24 +126,20 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 				return node, nil
 			}
 
-			table, ok := rtable.Table.(sql.CheckAlterableTable)
+			table, ok := rtable.Table.(sql.CheckTable)
 			if !ok {
 				return node, nil
 			}
 
-			loadedChecks, err := loadChecksFromTable(ctx, table)
+			var err error
+			nc.Checks, err = loadChecksFromTable(ctx, table)
 			if err != nil {
 				return nil, err
 			}
 
-			if len(loadedChecks) != 0 {
-				nc.Checks = loadedChecks
-			} else {
-				nc.Checks = make([]sql.Expression, 0)
-			}
-
 			return &nc, nil
-		// TODO : reimplement modify column nodes and throw errors here to protect check columns
+		// TODO: throw an error if an ALTER TABLE would invalidate a check constraint, or fix them up automatically
+		//  when possible
 		//case *plan.DropColumn:
 		//case *plan.RenameColumn:
 		//case *plan.ModifyColumn:
@@ -153,8 +149,8 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 	})
 }
 
-func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]sql.Expression, error) {
-	var loadedChecks []sql.Expression
+func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstraint, error) {
+	var loadedChecks []*sql.CheckConstraint
 	if checkTable, ok := table.(sql.CheckTable); ok {
 		checks, err := checkTable.GetChecks(ctx)
 		if err != nil {
@@ -165,9 +161,7 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]sql.Expression, e
 			if err != nil {
 				return nil, err
 			}
-			if constraint.Enforced {
-				loadedChecks = append(loadedChecks, constraint.Expr)
-			}
+			loadedChecks = append(loadedChecks, constraint)
 		}
 	}
 	return loadedChecks, nil

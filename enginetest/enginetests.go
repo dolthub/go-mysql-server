@@ -1915,7 +1915,7 @@ CREATE TABLE t2
 		checkConds = append(checkConds, check.CheckExpression)
 	}
 
-	assert.ElementsMatch(t, expectedCheckConds, checkConds)
+	assert.Equal(t, expectedCheckConds, checkConds)
 
 	// Some faulty create statements
 	AssertErr(t, e, harness, "ALTER TABLE t3 ADD CONSTRAINT chk2 CHECK (c > 0)", sql.ErrTableNotFound)
@@ -1935,32 +1935,27 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 1) NOT ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
-	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (b > -1) ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK ((a + b) / 2 >= 1) ENFORCED")
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
+
 	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
 		{1, 1},
 	}, nil, nil)
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0)")
+	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,0)", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,1)", sql.ErrCheckConstraintViolated)
+
 	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
 		{1, 1},
 	}, nil, nil)
 
-	ctx := NewContext(harness)
-	require.True(t, len(ctx.Warnings()) > 0)
+	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER)")
+	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (1,1),(2,2)")
+	RunQuery(t, e, harness, "DELETE FROM t1")
 
-	expectedCode := 3819
-	condition := false
-	for _, warning := range ctx.Warnings() {
-		if warning.Code == expectedCode {
-			condition = true
-			break
-		}
-	}
-
-	require.True(t, condition)
-
+	AssertErr(t, e, harness, "INSERT INTO t1 select a - 1, b from t2", sql.ErrCheckConstraintViolated)
+	RunQuery(t, e, harness, "INSERT INTO t1 select a, b from t2")
 }
 
 func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
@@ -2031,17 +2026,11 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 
 	assert.Equal(t, expected, checks)
 
-	// Some faulty create statements
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t2 DROP CONSTRAINT chk2")
-	require.Error(err)
-	assert.True(t, sql.ErrTableNotFound.Is(err))
+	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CHECK chk3")
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 DROP CONSTRAINT dne")
-	require.Error(err)
-	assert.True(t, sql.ErrUnknownConstraint.Is(err))
-
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE t1 DROP CHECK chk3")
-	require.NoError(err)
+	// Some faulty drop statements
+	AssertErr(t, e, harness, "ALTER TABLE t2 DROP CONSTRAINT chk2", sql.ErrTableNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT dne", sql.ErrUnknownConstraint)
 }
 
 func TestDropConstraints(t *testing.T, harness Harness) {

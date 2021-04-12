@@ -54,6 +54,30 @@ type CheckConstraint struct {
 	Enforced bool
 }
 
+type CheckConstraints []*CheckConstraint
+
+func (checks CheckConstraints) ToExpressions() []Expression {
+	exprs := make([]Expression, len(checks))
+	for i := range checks {
+		exprs[i] = checks[i].Expr
+	}
+	return exprs
+}
+
+func (checks CheckConstraints) FromExpressions(exprs []Expression) (CheckConstraints, error) {
+	if len(checks) != len(exprs) {
+		return nil, ErrInvalidChildrenNumber.New(checks, len(exprs), len(checks))
+	}
+
+	newChecks := make(CheckConstraints, len(checks))
+	for i := range exprs {
+		newChecks[i] = &*checks[i]
+		newChecks[i].Expr = exprs[i]
+	}
+
+	return newChecks, nil
+}
+
 func (c CheckConstraint) DebugString() string {
 	name := c.Name
 	if len(name) > 0 {
