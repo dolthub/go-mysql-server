@@ -31,7 +31,7 @@ func (d *DropConstraint) String() string {
 }
 
 func (d *DropConstraint) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("DropConstraint is a placehold node, but RowIter was called")
+	panic("DropConstraint is a placeholder node, but RowIter was called")
 }
 
 func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
