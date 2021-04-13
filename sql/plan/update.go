@@ -17,10 +17,10 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")
@@ -36,9 +36,9 @@ type Update struct {
 func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
 	return &Update{
 		UnaryNode: UnaryNode{NewUpdateSource(
-		n,
-		updateExprs,
-	)}}
+			n,
+			updateExprs,
+		)}}
 }
 
 func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
