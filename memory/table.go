@@ -23,11 +23,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Table represents an in-memory database table.
@@ -1062,19 +1062,25 @@ func (t *Table) GetChecks(_ *sql.Context) ([]sql.CheckDefinition, error) {
 
 // CreateCheck implements sql.CheckAlterableTable
 func (t *Table) CreateCheck(_ *sql.Context, check *sql.CheckDefinition) error {
+	toInsert := *check
+
+	if toInsert.Name == "" {
+		toInsert.Name = t.generateCheckName()
+	}
+
 	for _, key := range t.checks {
-		if key.Name == check.Name {
-			return fmt.Errorf("constraint %s already exists", check.Name)
+		if key.Name == toInsert.Name {
+			return fmt.Errorf("constraint %s already exists", toInsert.Name)
 		}
 	}
 
 	for _, key := range t.foreignKeys {
-		if key.Name == check.Name {
-			return fmt.Errorf("constraint %s already exists", check.Name)
+		if key.Name == toInsert.Name {
+			return fmt.Errorf("constraint %s already exists", toInsert.Name)
 		}
 	}
 
-	t.checks = append(t.checks, *check)
+	t.checks = append(t.checks, toInsert)
 
 	return nil
 }
@@ -1194,6 +1200,21 @@ func (t *Table) IndexKeyValues(
 // Filters implements the sql.FilteredTable interface.
 func (t *Table) Filters() []sql.Expression {
 	return t.filters
+}
+
+func (t *Table) generateCheckName() string {
+	i := 1
+Top:
+	for {
+		name := fmt.Sprintf("%s_chk_%d", t.name, i)
+		for _, check := range t.checks {
+			if check.Name == name {
+				i++
+				continue Top
+			}
+		}
+		return name
+	}
 }
 
 type partitionIndexKeyValueIter struct {

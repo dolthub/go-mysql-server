@@ -178,6 +178,11 @@ var (
 	// ErrInvalidConstraintSubqueryNotSupported is returned when a CONSTRAINT CHECK is called with a sub-query expression.
 	ErrInvalidConstraintSubqueryNotSupported = errors.NewKind("Invalid constraint expression, sub-queries not supported: %s")
 
+	ErrCheckConstraintViolatedFmtStr = "Check constraint %q violated"
+
+	// ErrCheckConstraintViolated is returned when a CONSTRAINT CHECK is called with a sub-query expression.
+	ErrCheckConstraintViolated = errors.NewKind(ErrCheckConstraintViolatedFmtStr)
+
 	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
 	// list with a different number of columns than the schema of the table.
 	ErrColumnCountMismatch = errors.NewKind("In definition of view, derived table or common table expression, SELECT list and column names list have different column counts")
@@ -208,6 +213,9 @@ var (
 
 	// ErrSignalOnlySqlState is returned when SIGNAL/RESIGNAL references a DECLARE CONDITION for a MySQL error code.
 	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")
+
+	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
+	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

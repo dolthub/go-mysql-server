@@ -980,17 +980,11 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterDropForeignKey(table, c), nil
+				return plan.NewAlterDropForeignKey(table, c.Name), nil
 			case *sql.CheckConstraint:
-				return plan.NewAlterDropCheck(table, c), nil
+				return plan.NewAlterDropCheck(table, c.Name), nil
 			case namedConstraint:
-				// For simple named constraint drops, fill in a partial foreign key constraint. This will need to be changed if
-				// we ever support other kinds of constraints than foreign keys (e.g. CHECK)
-				// TODO: this fails if check constraint delete desired but not indicated
-				// It works for memory engine right now but won't for Dolt
-				return plan.NewAlterDropForeignKey(table, &sql.ForeignKeyConstraint{
-					Name: c.name,
-				}), nil
+				return plan.NewDropConstraint(table, c.name), nil
 			default:
 				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 			}
@@ -1373,15 +1367,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewInsertInto(
-		sql.UnresolvedDatabase(i.Table.Qualifier.String()),
-		tableNameToUnresolvedTable(i.Table),
-		src,
-		isReplace,
-		columnsToStrings(i.Columns),
-		onDupExprs,
-		nil,
-	), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columnsToStrings(i.Columns), onDupExprs), nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
@@ -1480,15 +1466,7 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
 
-	return plan.NewInsertInto(
-		sql.UnresolvedDatabase(d.Table.Qualifier.String()),
-		tableNameToUnresolvedTable(d.Table),
-		ld,
-		false,
-		ld.ColumnNames,
-		nil,
-		nil,
-	), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec

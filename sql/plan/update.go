@@ -20,6 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")
@@ -28,11 +29,16 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 // Update is a node for updating rows on tables.
 type Update struct {
 	UnaryNode
+	Checks sql.CheckConstraints
 }
 
 // NewUpdate creates an Update node.
 func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
-	return &Update{UnaryNode{NewUpdateSource(n, updateExprs)}}
+	return &Update{
+		UnaryNode: UnaryNode{NewUpdateSource(
+			n,
+			updateExprs,
+		)}}
 }
 
 func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
@@ -85,8 +91,30 @@ func updateDatabaseHelper(node sql.Node) string {
 	return ""
 }
 
-func (p *Update) Database() string {
-	return updateDatabaseHelper(p.Child)
+func (u *Update) Database() string {
+	return updateDatabaseHelper(u.Child)
+}
+
+func (u *Update) Expressions() []sql.Expression {
+	return u.Checks.ToExpressions()
+}
+
+func (u *Update) Resolved() bool {
+	return u.Child.Resolved() && expression.ExpressionsResolved(u.Checks.ToExpressions()...)
+}
+
+func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+	if len(newExprs) != len(u.Checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), len(u.Checks))
+	}
+
+	var err error
+	u.Checks, err = u.Checks.FromExpressions(newExprs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &u, nil
 }
 
 // UpdateInfo is the Info for OKResults returned by Update nodes.
@@ -103,6 +131,7 @@ type updateIter struct {
 	childIter sql.RowIter
 	schema    sql.Schema
 	updater   sql.RowUpdater
+	checks    sql.CheckConstraints
 	ctx       *sql.Context
 	closed    bool
 }
@@ -115,7 +144,24 @@ func (u *updateIter) Next() (sql.Row, error) {
 
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
 	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
+		// TODO: we aren't enforcing other kinds of constraints here, like nullability
 		if !equals {
+			// apply check constraints
+			for _, check := range u.checks {
+				if !check.Enforced {
+					continue
+				}
+
+				checkPassed, err := sql.EvaluateCondition(u.ctx, check.Expr, newRow)
+				if err != nil {
+					return nil, err
+				}
+
+				if !checkPassed {
+					return nil, sql.ErrCheckConstraintViolated.New(check.Name)
+				}
+			}
+
 			err = u.updater.Update(u.ctx, oldRow, newRow)
 			if err != nil {
 				return nil, err
@@ -157,11 +203,18 @@ func (u *updateIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func newUpdateIter(childIter sql.RowIter, schema sql.Schema, updater sql.RowUpdater, ctx *sql.Context) *updateIter {
+func newUpdateIter(
+	ctx *sql.Context,
+	childIter sql.RowIter,
+	schema sql.Schema,
+	updater sql.RowUpdater,
+	checks sql.CheckConstraints,
+) *updateIter {
 	return &updateIter{
 		childIter: childIter,
 		updater:   updater,
 		schema:    schema,
+		checks:    checks,
 		ctx:       ctx,
 	}
 }
@@ -179,7 +232,7 @@ func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return newUpdateIter(iter, updatable.Schema(), updater, ctx), nil
+	return newUpdateIter(ctx, iter, updatable.Schema(), updater, u.Checks), nil
 }
 
 // WithChildren implements the Node interface.

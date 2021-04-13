@@ -50,7 +50,7 @@ func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	if ctx.Client().User == "" && ctx.Client().Address == "" {
 		return "", nil
 	}
-	
+
 	return ctx.Client().User + "@" + ctx.Client().Address, nil
 }
 

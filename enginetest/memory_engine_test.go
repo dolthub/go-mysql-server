@@ -449,12 +449,20 @@ func TestChecksOnInsert(t *testing.T) {
 	enginetest.TestChecksOnInsert(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestChecksOnUpdate(t *testing.T) {
+	enginetest.TestChecksOnUpdate(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestTestDisallowedCheckConstraints(t *testing.T) {
 	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestDropCheckConstraints(t *testing.T) {
 	enginetest.TestDropCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestDropConstraints(t *testing.T) {
+	enginetest.TestDropConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestExplode(t *testing.T) {

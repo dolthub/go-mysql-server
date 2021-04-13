@@ -15,7 +15,7 @@
 package analyzer
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -25,58 +25,89 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// validateCreateCheck handles CreateCheck nodes, resolving references to "old" and "new" table references in
-// the check body. Also validates that these old and new references are being used appropriately -- they are only
-// valid for certain kinds of checks and certain statements.
-func validateCreateCheck(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
-	ct, ok := node.(*plan.CreateCheck)
-	if !ok {
-		return node, nil
+// validateCreateCheck legal expressions for CREATE CHECK statements, including those embedded in CREATE TABLE
+// statements
+func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	switch n := n.(type) {
+	case *plan.CreateCheck:
+		return validateCreateCheckNode(n)
+	case *plan.CreateTable:
+		return validateCreateTableChecks(ctx, a, n, scope)
 	}
 
-	chAlterable, ok := ct.UnaryNode.Child.(sql.Table)
-	if !ok {
-		return node, nil
+	return n, nil
+}
+
+func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *Scope) (sql.Node, error) {
+	columns, err := indexColumns(ctx, a, n, scope)
+	if err != nil {
+		return nil, err
 	}
 
-	checkCols := make(map[string]bool)
-	for _, col := range chAlterable.Schema() {
-		checkCols[col.Name] = true
-	}
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if err != nil {
+			return false
+		}
 
-	var err error
-	plan.InspectExpressionsWithNode(node, func(n sql.Node, e sql.Expression) bool {
-		if _, ok := n.(*plan.CreateCheck); !ok {
+		switch e := e.(type) {
+		case *expression.Wrapper, nil:
+			// column defaults, no need to inspect these
+			return false
+		default:
+			// check expressions, must be validated
+			// TODO: would be better to wrap these in something else to be able to identify them better
+			err = checkExpressionValid(e)
+			if err != nil {
+				return false
+			}
+
+			switch e := e.(type) {
+			case column:
+				col := tableCol{
+					table: e.Table(),
+					col:   e.Name(),
+				}
+				if _, ok := columns[col]; !ok {
+					err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
+					return false
+				}
+			}
+
 			return true
 		}
-
-		// Make sure that all columns are valid, in the table, and there are no duplicates
-		switch expr := e.(type) {
-		case *deferredColumn:
-			if _, ok := checkCols[expr.Name()]; !ok {
-				err = sql.ErrTableColumnNotFound.New(expr.Name())
-				return false
-			}
-		case *expression.GetField:
-			if _, ok := checkCols[expr.Name()]; !ok {
-				err = sql.ErrTableColumnNotFound.New(expr.Name())
-				return false
-			}
-		case *expression.UnresolvedFunction:
-			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(expr.String())
-			return false
-		case *plan.Subquery:
-			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(expr.String())
-			return false
-		}
-		return true
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
+	return n, nil
+}
+
+func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, error) {
+	err := checkExpressionValid(ct.Check.Expr)
+	if err != nil {
+		return nil, err
+	}
+
 	return ct, nil
+}
+
+func checkExpressionValid(e sql.Expression) error {
+	var err error
+	sql.Inspect(e, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		// TODO: deterministic functions are fine
+		case sql.FunctionExpression:
+			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(e.String())
+			return false
+		case *plan.Subquery:
+			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(e.String())
+			return false
+		}
+		return true
+	})
+	return err
 }
 
 // loadChecks loads any checks that are required for a plan node to operate properly (except for nodes dealing with
@@ -88,31 +119,44 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch node := n.(type) {
 		case *plan.InsertInto:
-			nc := *node
+			nn := *node
 
-			rtable, ok := nc.Destination.(*plan.ResolvedTable)
+			rtable, ok := nn.Destination.(*plan.ResolvedTable)
 			if !ok {
 				return node, nil
 			}
 
-			table, ok := rtable.Table.(sql.CheckAlterableTable)
+			table, ok := rtable.Table.(sql.CheckTable)
 			if !ok {
 				return node, nil
 			}
 
-			loadedChecks, err := loadChecksFromTable(ctx, table)
+			var err error
+			nn.Checks, err = loadChecksFromTable(ctx, table)
 			if err != nil {
 				return nil, err
 			}
 
-			if len(loadedChecks) != 0 {
-				nc.Checks = loadedChecks
-			} else {
-				nc.Checks = make([]sql.Expression, 0)
+			return &nn, nil
+		case *plan.Update:
+			rtable := getResolvedTable(node)
+
+			table, ok := rtable.Table.(sql.CheckTable)
+			if !ok {
+				return node, nil
 			}
 
-			return &nc, nil
-		// TODO : reimplement modify column nodes and throw errors here to protect check columns
+			var err error
+			nn := *node
+			nn.Checks, err = loadChecksFromTable(ctx, table)
+			if err != nil {
+				return nil, err
+			}
+
+			return &nn, nil
+
+		// TODO: throw an error if an ALTER TABLE would invalidate a check constraint, or fix them up automatically
+		//  when possible
 		//case *plan.DropColumn:
 		//case *plan.RenameColumn:
 		//case *plan.ModifyColumn:
@@ -122,8 +166,8 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 	})
 }
 
-func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]sql.Expression, error) {
-	var loadedChecks []sql.Expression
+func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstraint, error) {
+	var loadedChecks []*sql.CheckConstraint
 	if checkTable, ok := table.(sql.CheckTable); ok {
 		checks, err := checkTable.GetChecks(ctx)
 		if err != nil {
@@ -134,39 +178,38 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]sql.Expression, e
 			if err != nil {
 				return nil, err
 			}
-			if constraint.Enforced {
-				loadedChecks = append(loadedChecks, constraint.Expr)
-			}
+			loadedChecks = append(loadedChecks, constraint)
 		}
 	}
 	return loadedChecks, nil
 }
 
 func convertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
-	parsed, err := sqlparser.ParseStrictDDL(check.AlterStatement)
+	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
+	parsed, err := sqlparser.Parse(parseStr)
 	if err != nil {
 		return nil, err
 	}
 
-	ddl, ok := parsed.(*sqlparser.DDL)
-	if !ok || ddl.ConstraintAction == "" || len(ddl.TableSpec.Constraints) != 1 || strings.ToLower(ddl.ConstraintAction) != sqlparser.AddStr {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.AlterStatement)
+	selectStmt, ok := parsed.(*sqlparser.Select)
+	if !ok || len(selectStmt.SelectExprs) != 1 {
+		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
-	parsedConstraint := ddl.TableSpec.Constraints[0]
-	chConstraint, ok := parsedConstraint.Details.(*sqlparser.CheckConstraintDefinition)
-	if !ok || chConstraint.Expr == nil {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.AlterStatement)
+	expr := selectStmt.SelectExprs[0]
+	ae, ok := expr.(*sqlparser.AliasedExpr)
+	if !ok {
+		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
-	c, err := parse.ExprToExpression(ctx, chConstraint.Expr)
+	c, err := parse.ExprToExpression(ctx, ae.Expr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &sql.CheckConstraint{
-		Name:     parsedConstraint.Name,
+		Name:     check.Name,
 		Expr:     c,
-		Enforced: chConstraint.Enforced,
+		Enforced: check.Enforced,
 	}, nil
 }

@@ -573,6 +573,147 @@ var fixtures = map[string]sql.Node{
 			}},
 		},
 	),
+	`
+CREATE TABLE t4
+(
+  CHECK (c1 = c2),
+  c1 INT CHECK (c1 > 10),
+  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
+  CHECK (c1 > c3)
+);`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t4",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{
+				{
+					Name:     "c1",
+					Source:   "t4",
+					Type:     sql.Int32,
+					Nullable: true,
+				},
+				{
+					Name:     "c2",
+					Source:   "t4",
+					Type:     sql.Int32,
+					Nullable: true,
+				},
+			},
+			ChDefs: []*sql.CheckConstraint{
+				{
+					Expr: expression.NewEquals(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewUnresolvedColumn("c2"),
+					),
+					Enforced: true,
+				},
+				{
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewLiteral(int8(10), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Name: "c2_positive",
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c2"),
+						expression.NewLiteral(int8(0), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewUnresolvedColumn("c3"),
+					),
+					Enforced: true,
+				},
+			},
+		},
+	),
+	`
+CREATE TABLE t2
+(
+  CHECK (c1 = c2),
+  c1 INT CHECK (c1 > 10),
+  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
+  c3 INT CHECK (c3 < 100),
+  CONSTRAINT c1_nonzero CHECK (c1 = 0),
+  CHECK (c1 > c3)
+);`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t2",
+		false,
+		&plan.TableSpec{
+			Schema: sql.Schema{
+				{
+					Name:     "c1",
+					Source:   "t2",
+					Type:     sql.Int32,
+					Nullable: true,
+				},
+				{
+					Name:     "c2",
+					Source:   "t2",
+					Type:     sql.Int32,
+					Nullable: true,
+				},
+				{
+					Name:     "c3",
+					Source:   "t2",
+					Type:     sql.Int32,
+					Nullable: true,
+				},
+			},
+			ChDefs: []*sql.CheckConstraint{
+				{
+					Expr: expression.NewEquals(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewUnresolvedColumn("c2"),
+					),
+					Enforced: true,
+				},
+				{
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewLiteral(int8(10), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Name: "c2_positive",
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c2"),
+						expression.NewLiteral(int8(0), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Expr: expression.NewLessThan(
+						expression.NewUnresolvedColumn("c3"),
+						expression.NewLiteral(int8(100), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Name: "c1_nonzero",
+					Expr: expression.NewEquals(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewLiteral(int8(0), sql.Int8),
+					),
+					Enforced: true,
+				},
+				{
+					Expr: expression.NewGreaterThan(
+						expression.NewUnresolvedColumn("c1"),
+						expression.NewUnresolvedColumn("c3"),
+					),
+					Enforced: true,
+				},
+			},
+		},
+	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
@@ -889,20 +1030,11 @@ var fixtures = map[string]sql.Node{
 	),
 	`ALTER TABLE t1 DROP FOREIGN KEY fk_name`: plan.NewAlterDropForeignKey(
 		plan.NewUnresolvedTable("t1", ""),
-		&sql.ForeignKeyConstraint{
-			Name:              "fk_name",
-			Columns:           []string{},
-			ReferencedTable:   "",
-			ReferencedColumns: []string{},
-			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
-			OnDelete:          sql.ForeignKeyReferenceOption_DefaultAction,
-		},
+		"fk_name",
 	),
-	`ALTER TABLE t1 DROP CONSTRAINT fk_name`: plan.NewAlterDropForeignKey(
+	`ALTER TABLE t1 DROP CONSTRAINT fk_name`: plan.NewDropConstraint(
 		plan.NewUnresolvedTable("t1", ""),
-		&sql.ForeignKeyConstraint{
-			Name: "fk_name",
-		},
+		"fk_name",
 	),
 	`DESCRIBE foo;`: plan.NewShowColumns(false,
 		plan.NewUnresolvedTable("foo", ""),
@@ -1298,42 +1430,18 @@ var fixtures = map[string]sql.Node{
 			plan.NewUnresolvedTable("t1", ""),
 		),
 	),
-	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
-		sql.UnresolvedDatabase(""),
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewValues([][]sql.Expression{{
-			expression.NewLiteral("a", sql.LongText),
-			expression.NewLiteral(int8(1), sql.Int8),
-		}}),
-		false,
-		[]string{"col1", "col2"},
-		[]sql.Expression{},
-		nil,
-	),
-	`INSERT INTO mydb.t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
-		sql.UnresolvedDatabase("mydb"),
-		plan.NewUnresolvedTable("t1", "mydb"),
-		plan.NewValues([][]sql.Expression{{
-			expression.NewLiteral("a", sql.LongText),
-			expression.NewLiteral(int8(1), sql.Int8),
-		}}),
-		false,
-		[]string{"col1", "col2"},
-		[]sql.Expression{},
-		nil,
-	),
-	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(
-		sql.UnresolvedDatabase(""),
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewValues([][]sql.Expression{{
-			expression.NewBindVar("v1"),
-			expression.NewBindVar("v2"),
-		}}),
-		false,
-		[]string{"col1", "col2"},
-		[]sql.Expression{},
-		nil,
-	),
+	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("a", sql.LongText),
+		expression.NewLiteral(int8(1), sql.Int8),
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}),
+	`INSERT INTO mydb.t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase("mydb"), plan.NewUnresolvedTable("t1", "mydb"), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("a", sql.LongText),
+		expression.NewLiteral(int8(1), sql.Int8),
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}),
+	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewBindVar("v1"),
+		expression.NewBindVar("v2"),
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
 		plan.NewFilter(
 			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
@@ -1344,18 +1452,10 @@ var fixtures = map[string]sql.Node{
 			expression.NewSetField(expression.NewUnresolvedColumn("col2"), expression.NewBindVar("v2")),
 		},
 	),
-	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(
-		sql.UnresolvedDatabase(""),
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewValues([][]sql.Expression{{
-			expression.NewLiteral("a", sql.LongText),
-			expression.NewLiteral(int8(1), sql.Int8),
-		}}),
-		true,
-		[]string{"col1", "col2"},
-		[]sql.Expression{},
-		nil,
-	),
+	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("a", sql.LongText),
+		expression.NewLiteral(int8(1), sql.Int8),
+	}}), true, []string{"col1", "col2"}, []sql.Expression{}),
 	`SHOW TABLES`:                           plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	`SHOW FULL TABLES`:                      plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
 	`SHOW TABLES FROM foo`:                  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
@@ -2756,19 +2856,11 @@ var fixtures = map[string]sql.Node{
 						plan.NewUnresolvedTable("baz", ""),
 					),
 				),
-				plan.NewInsertInto(
-					sql.UnresolvedDatabase(""),
-					plan.NewUnresolvedTable("zzz", ""),
-					plan.NewValues([][]sql.Expression{{
-						expression.NewUnresolvedQualifiedColumn("old", "a"),
-						expression.NewUnresolvedQualifiedColumn("old", "b"),
-					}},
-					),
-					false,
-					[]string{"a", "b"},
-					[]sql.Expression{},
-					nil,
-				),
+				plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+					expression.NewUnresolvedQualifiedColumn("old", "a"),
+					expression.NewUnresolvedQualifiedColumn("old", "b"),
+				}},
+				), false, []string{"a", "b"}, []sql.Expression{}),
 			}),
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
@@ -2785,38 +2877,22 @@ var fixtures = map[string]sql.Node{
 	),
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
 		plan.NewUnresolvedTable("foo", ""),
-		plan.NewInsertInto(
-			sql.UnresolvedDatabase(""),
-			plan.NewUnresolvedTable("zzz", ""),
-			plan.NewValues([][]sql.Expression{{
-				expression.NewUnresolvedQualifiedColumn("old", "a"),
-				expression.NewUnresolvedQualifiedColumn("old", "b"),
-			}},
-			),
-			false,
-			[]string{"a", "b"},
-			[]sql.Expression{},
-			nil,
-		),
+		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+			expression.NewUnresolvedQualifiedColumn("old", "a"),
+			expression.NewUnresolvedQualifiedColumn("old", "b"),
+		}},
+		), false, []string{"a", "b"}, []sql.Expression{}),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 	),
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update",
 		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
 		plan.NewUnresolvedTable("foo", ""),
-		plan.NewInsertInto(
-			sql.UnresolvedDatabase(""),
-			plan.NewUnresolvedTable("zzz", ""),
-			plan.NewValues([][]sql.Expression{{
-				expression.NewUnresolvedQualifiedColumn("old", "a"),
-				expression.NewUnresolvedQualifiedColumn("old", "b"),
-			}},
-			),
-			false,
-			[]string{"a", "b"},
-			[]sql.Expression{},
-			nil,
-		),
+		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+			expression.NewUnresolvedQualifiedColumn("old", "a"),
+			expression.NewUnresolvedQualifiedColumn("old", "b"),
+		}},
+		), false, []string{"a", "b"}, []sql.Expression{}),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 	),

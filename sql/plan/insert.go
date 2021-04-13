@@ -47,13 +47,14 @@ type InsertInto struct {
 	ColumnNames []string
 	IsReplace   bool
 	OnDupExprs  []sql.Expression
-	Checks      []sql.Expression
+	Checks      sql.CheckConstraints
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
+var _ sql.Node = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, checks []sql.Expression) *InsertInto {
+func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
 	return &InsertInto{
 		db:          db,
 		Destination: dst,
@@ -61,30 +62,29 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 		ColumnNames: cols,
 		IsReplace:   isReplace,
 		OnDupExprs:  onDupExprs,
-		Checks:      checks,
 	}
 }
 
 // Schema implements the sql.Node interface.
 // Insert nodes return rows that are inserted. Replaces return a concatenation of the deleted row and the inserted row.
 // If no row was deleted, the value of those columns is nil.
-func (p *InsertInto) Schema() sql.Schema {
-	if p.IsReplace {
-		return append(p.Destination.Schema(), p.Destination.Schema()...)
+func (ii *InsertInto) Schema() sql.Schema {
+	if ii.IsReplace {
+		return append(ii.Destination.Schema(), ii.Destination.Schema()...)
 	}
-	return p.Destination.Schema()
+	return ii.Destination.Schema()
 }
 
-func (p *InsertInto) Children() []sql.Node {
-	return []sql.Node{p.Destination}
+func (ii *InsertInto) Children() []sql.Node {
+	return []sql.Node{ii.Destination}
 }
 
-func (p *InsertInto) Database() sql.Database {
-	return p.db
+func (ii *InsertInto) Database() sql.Database {
+	return ii.db
 }
 
-func (p *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
-	nc := *p
+func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
+	nc := *ii
 	nc.db = database
 	return &nc, nil
 }
@@ -99,7 +99,7 @@ type insertIter struct {
 	ctx                 *sql.Context
 	insertExprs         []sql.Expression
 	updateExprs         []sql.Expression
-	checks              []sql.Expression
+	checks              sql.CheckConstraints
 	tableNode           sql.Node
 	closed              bool
 }
@@ -138,7 +138,7 @@ func newInsertIter(
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
-	checks []sql.Expression,
+	checks sql.CheckConstraints,
 	row sql.Row,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
@@ -220,15 +220,18 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	// apply check constraints
-	var res interface{}
 	for _, check := range i.checks {
-		res, err = check.Eval(i.ctx, row)
+		if !check.Enforced {
+			continue
+		}
+
+		checkPassed, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
 		if err != nil {
 			return nil, err
 		}
-		if val, ok := res.(bool); !ok || !val {
-			i.ctx.Warn(3819, "Check constraint '%s' is violated", check.String())
-			return nil, nil
+
+		if !checkPassed {
+			return nil, sql.ErrCheckConstraintViolated.New(check.Name)
 		}
 	}
 
@@ -435,48 +438,48 @@ func toInt64(x interface{}) int64 {
 }
 
 // RowIter implements the Node interface.
-func (p *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, p.Destination, p.Source, p.IsReplace, p.OnDupExprs, p.Checks, row)
+func (ii *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return newInsertIter(ctx, ii.Destination, ii.Source, ii.IsReplace, ii.OnDupExprs, ii.Checks, row)
 }
 
 // WithChildren implements the Node interface.
-func (p *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(children), 1)
 	}
 
-	np := *p
+	np := *ii
 	np.Destination = children[0]
 	return &np, nil
 }
 
 // WithSource sets the source node for this insert, which is analyzed separately
-func (p *InsertInto) WithSource(src sql.Node) sql.Node {
-	np := *p
+func (ii *InsertInto) WithSource(src sql.Node) sql.Node {
+	np := *ii
 	np.Source = src
 	return &np
 }
 
-func (p InsertInto) String() string {
+func (ii InsertInto) String() string {
 	pr := sql.NewTreePrinter()
-	if p.IsReplace {
-		_ = pr.WriteNode("Replace(%s)", strings.Join(p.ColumnNames, ", "))
+	if ii.IsReplace {
+		_ = pr.WriteNode("Replace(%s)", strings.Join(ii.ColumnNames, ", "))
 	} else {
-		_ = pr.WriteNode("Insert(%s)", strings.Join(p.ColumnNames, ", "))
+		_ = pr.WriteNode("Insert(%s)", strings.Join(ii.ColumnNames, ", "))
 	}
-	_ = pr.WriteChildren(p.Destination.String(), p.Source.String())
+	_ = pr.WriteChildren(ii.Destination.String(), ii.Source.String())
 	return pr.String()
 }
 
-func (p InsertInto) DebugString() string {
+func (ii InsertInto) DebugString() string {
 	pr := sql.NewTreePrinter()
 	var columnNames []string
-	if p.IsReplace {
+	if ii.IsReplace {
 		_ = pr.WriteNode("Replace(%s)", strings.Join(columnNames, ", "))
 	} else {
 		_ = pr.WriteNode("Insert(%s)", strings.Join(columnNames, ", "))
 	}
-	_ = pr.WriteChildren(sql.DebugString(p.Destination), sql.DebugString(p.Source))
+	_ = pr.WriteChildren(sql.DebugString(ii.Destination), sql.DebugString(ii.Source))
 	return pr.String()
 }
 
@@ -489,30 +492,38 @@ func validateNullability(dstSchema sql.Schema, row sql.Row) error {
 	return nil
 }
 
-func (p *InsertInto) Expressions() []sql.Expression {
-	return append(p.OnDupExprs, p.Checks...)
+func (ii *InsertInto) Expressions() []sql.Expression {
+	return append(ii.OnDupExprs, ii.Checks.ToExpressions()...)
 }
 
-func (p *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(p.OnDupExprs)+len(p.Checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(p.OnDupExprs)+len(p.Checks), 1)
+func (ii InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+	if len(newExprs) != len(ii.OnDupExprs)+len(ii.Checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.Checks))
 	}
 
-	return NewInsertInto(p.db, p.Destination, p.Source, p.IsReplace, p.ColumnNames, newExprs[:len(p.OnDupExprs)], newExprs[len(p.OnDupExprs):]), nil
+	ii.OnDupExprs = newExprs[:len(ii.OnDupExprs)]
+
+	var err error
+	ii.Checks, err = ii.Checks.FromExpressions(newExprs[len(ii.OnDupExprs):])
+	if err != nil {
+		return nil, err
+	}
+
+	return &ii, nil
 }
 
 // Resolved implements the Resolvable interface.
-func (p *InsertInto) Resolved() bool {
-	if !p.Destination.Resolved() || !p.Source.Resolved() {
+func (ii *InsertInto) Resolved() bool {
+	if !ii.Destination.Resolved() || !ii.Source.Resolved() {
 		return false
 	}
-	for _, updateExpr := range p.OnDupExprs {
+	for _, updateExpr := range ii.OnDupExprs {
 		if !updateExpr.Resolved() {
 			return false
 		}
 	}
-	for _, checkExpr := range p.Checks {
-		if !checkExpr.Resolved() {
+	for _, checkExpr := range ii.Checks {
+		if !checkExpr.Expr.Resolved() {
 			return false
 		}
 	}

@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -437,26 +435,35 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	span, _ := ctx.Span("resolveColumnDefaults")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	// This is kind of hacky: we rely on the fact that we know that CreateTable et al return the default for every
+	// column in the table, and they get evaluated in order below
+	colIndex := 0
+	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		switch node := n.(type) {
+		default:
+			return e, nil
 		case *plan.CreateTable, *plan.AddColumn, *plan.ModifyColumn:
-			sch := node.Schema()
-			var columns = make(map[string]indexedCol)
-			for i, col := range sch {
-				columns[strings.ToLower(col.Name)] = indexedCol{col, i}
-			}
-			newDefaults := make([]sql.Expression, len(sch))
+			switch e := e.(type) {
+			default:
+				return e, nil
+			case *expression.Wrapper:
+				sch := node.Schema()
+				col := sch[colIndex]
+				colIndex++
 
-			for i, col := range sch {
-				newDefault := col.Default
-				if col.Default.Resolved() {
-					newDefaults[i] = expression.WrapExpression(newDefault)
-					continue
+				newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+				if !ok {
+					return e, nil
 				}
-				newDefault = &(*newDefault)
+
+				if newDefault.Resolved() {
+					return e, nil
+				}
+
 				if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() {
 					return nil, sql.ErrInvalidTextBlobColumnDefault.New()
 				}
+
 				var err error
 				newDefault.Expression, err = expression.TransformUp(newDefault.Expression, func(e sql.Expression) (sql.Expression, error) {
 					if expr, ok := e.(*expression.GetField); ok {
@@ -466,9 +473,11 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 					}
 					return e, nil
 				})
+
 				if err != nil {
 					return nil, err
 				}
+
 				sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
 					switch expr := e.(type) {
 					case sql.FunctionExpression:
@@ -508,15 +517,14 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 						}
 					}
 				}
+
 				newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
 				if err != nil {
 					return nil, err
 				}
-				newDefaults[i] = expression.WrapExpression(newDefault)
+
+				return expression.WrapExpression(newDefault), nil
 			}
-			return node.(sql.Expressioner).WithExpressions(newDefaults...)
-		default:
-			return node, nil
 		}
 	})
 }
