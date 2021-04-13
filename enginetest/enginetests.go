@@ -1951,10 +1951,10 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	}, nil, nil)
 
 	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER)")
-	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (1,1),(2,2)")
+	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (2,2),(3,3)")
 	RunQuery(t, e, harness, "DELETE FROM t1")
 
-	AssertErr(t, e, harness, "INSERT INTO t1 select a - 1, b from t2", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 select a - 2, b - 1 from t2", sql.ErrCheckConstraintViolated)
 	RunQuery(t, e, harness, "INSERT INTO t1 select a, b from t2")
 }
 
