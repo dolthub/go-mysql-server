@@ -220,3 +220,40 @@ func NewCheckDefinition(check *sql.CheckConstraint) (*sql.CheckDefinition, error
 		Enforced:        check.Enforced,
 	}, nil
 }
+
+// DropConstraint is a temporary node to handle dropping a named constraint on a table. The type of the constraint is
+// not known, and is determined during analysis.
+type DropConstraint struct {
+	UnaryNode
+	Name string
+}
+
+func (d *DropConstraint) String() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("DropConstraint(%s)", d.Name)
+	_ = tp.WriteChildren(d.UnaryNode.Child.String())
+	return tp.String()
+}
+
+func (d *DropConstraint) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	panic("DropConstraint is a placeholder node, but RowIter was called")
+}
+
+func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+
+	nd := &d
+	nd.UnaryNode = UnaryNode{children[0]}
+	return nd, nil
+}
+
+// NewDropConstraint returns a new DropConstraint node
+func NewDropConstraint(table *UnresolvedTable, name string) *DropConstraint {
+	return &DropConstraint{
+		UnaryNode: UnaryNode{table},
+		Name:      name,
+	}
+}
+

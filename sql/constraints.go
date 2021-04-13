@@ -29,6 +29,19 @@ type ForeignKeyConstraint struct {
 	OnDelete          ForeignKeyReferenceOption
 }
 
+// ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
+// table.
+type ForeignKeyReferenceOption string
+
+const (
+	ForeignKeyReferenceOption_DefaultAction ForeignKeyReferenceOption = "DEFAULT" // No explicit action was specified
+	ForeignKeyReferenceOption_Restrict      ForeignKeyReferenceOption = "RESTRICT"
+	ForeignKeyReferenceOption_Cascade       ForeignKeyReferenceOption = "CASCADE"
+	ForeignKeyReferenceOption_NoAction      ForeignKeyReferenceOption = "NO ACTION"
+	ForeignKeyReferenceOption_SetNull       ForeignKeyReferenceOption = "SET NULL"
+	ForeignKeyReferenceOption_SetDefault    ForeignKeyReferenceOption = "SET DEFAULT"
+)
+
 func (f *ForeignKeyConstraint) DebugString() string {
 	return fmt.Sprintf(
 		"FOREIGN KEY %s (%s) REFERENCES %s (%s)",
@@ -56,6 +69,7 @@ type CheckConstraint struct {
 
 type CheckConstraints []*CheckConstraint
 
+// ToExpressions returns the check expressions in these constrains as a slice of sql.Expression
 func (checks CheckConstraints) ToExpressions() []Expression {
 	exprs := make([]Expression, len(checks))
 	for i := range checks {
@@ -64,6 +78,8 @@ func (checks CheckConstraints) ToExpressions() []Expression {
 	return exprs
 }
 
+// FromExpressions takes a slice of sql.Expression in the same order as these constraints, and returns a new slice of
+// constraints with the expressions given, holding names and other properties constant.
 func (checks CheckConstraints) FromExpressions(exprs []Expression) (CheckConstraints, error) {
 	if len(checks) != len(exprs) {
 		return nil, ErrInvalidChildrenNumber.New(checks, len(exprs), len(checks))
@@ -89,16 +105,3 @@ func (c CheckConstraint) DebugString() string {
 	}
 	return fmt.Sprintf("%sCHECK %s %sENFORCED", name, DebugString(c.Expr), not)
 }
-
-// ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
-// table.
-type ForeignKeyReferenceOption string
-
-const (
-	ForeignKeyReferenceOption_DefaultAction ForeignKeyReferenceOption = "DEFAULT" // No explicit action was specified
-	ForeignKeyReferenceOption_Restrict      ForeignKeyReferenceOption = "RESTRICT"
-	ForeignKeyReferenceOption_Cascade       ForeignKeyReferenceOption = "CASCADE"
-	ForeignKeyReferenceOption_NoAction      ForeignKeyReferenceOption = "NO ACTION"
-	ForeignKeyReferenceOption_SetNull       ForeignKeyReferenceOption = "SET NULL"
-	ForeignKeyReferenceOption_SetDefault    ForeignKeyReferenceOption = "SET DEFAULT"
-)
