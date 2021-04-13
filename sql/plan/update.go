@@ -100,7 +100,7 @@ func (u *Update) Expressions() []sql.Expression {
 }
 
 func (u *Update) Resolved() bool {
-	return expression.ExpressionsResolved(u.Checks.ToExpressions()...)
+	return u.Child.Resolved() && expression.ExpressionsResolved(u.Checks.ToExpressions()...)
 }
 
 func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
