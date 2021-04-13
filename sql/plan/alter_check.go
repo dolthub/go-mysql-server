@@ -256,4 +256,3 @@ func NewDropConstraint(table *UnresolvedTable, name string) *DropConstraint {
 		Name:      name,
 	}
 }
-
