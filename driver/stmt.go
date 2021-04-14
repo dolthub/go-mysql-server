@@ -86,7 +86,11 @@ func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 }
 
 func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (driver.Result, error) {
-	qctx := s.conn.newContextWithQuery(ctx, s.queryStr)
+	qctx, err := s.conn.newContextWithQuery(ctx, s.queryStr)
+	if err != nil {
+		return nil, err
+	}
+
 	_, rows, err := s.conn.catalog.engine.QueryWithBindings(qctx, s.queryStr, bindings)
 	if err != nil {
 		return nil, err
@@ -103,7 +107,11 @@ func (s *Stmt) exec(ctx context.Context, bindings map[string]sql.Expression) (dr
 }
 
 func (s *Stmt) query(ctx context.Context, bindings map[string]sql.Expression) (driver.Rows, error) {
-	qctx := s.conn.newContextWithQuery(ctx, s.queryStr)
+	qctx, err := s.conn.newContextWithQuery(ctx, s.queryStr)
+	if err != nil {
+		return nil, err
+	}
+
 	cols, rows, err := s.conn.catalog.engine.QueryWithBindings(qctx, s.queryStr, bindings)
 	if err != nil {
 		return nil, err
