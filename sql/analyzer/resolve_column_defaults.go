@@ -435,96 +435,102 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	span, _ := ctx.Span("resolveColumnDefaults")
 	defer span.Finish()
 
-	// This is kind of hacky: we rely on the fact that we know that CreateTable et al return the default for every
+	// This is kind of hacky: we rely on the fact that we know that CreateTable returns the default for every
 	// column in the table, and they get evaluated in order below
 	colIndex := 0
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		eWrapper, ok := e.(*expression.Wrapper)
+		if !ok {
+			return e, nil
+		}
 		switch node := n.(type) {
+		case *plan.CreateTable:
+			sch := node.Schema()
+			col := sch[colIndex]
+			colIndex++
+			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+		case *plan.AddColumn:
+			return resolveColumnDefaultsOnWrapper(ctx, node.Column(), eWrapper)
+		case *plan.ModifyColumn:
+			return resolveColumnDefaultsOnWrapper(ctx, node.NewColumn(), eWrapper)
 		default:
 			return e, nil
-		case *plan.CreateTable, *plan.AddColumn, *plan.ModifyColumn:
-			switch e := e.(type) {
-			default:
-				return e, nil
-			case *expression.Wrapper:
-				sch := node.Schema()
-				col := sch[colIndex]
-				colIndex++
-
-				newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
-				if !ok {
-					return e, nil
-				}
-
-				if newDefault.Resolved() {
-					return e, nil
-				}
-
-				if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() {
-					return nil, sql.ErrInvalidTextBlobColumnDefault.New()
-				}
-
-				var err error
-				newDefault.Expression, err = expression.TransformUp(newDefault.Expression, func(e sql.Expression) (sql.Expression, error) {
-					if expr, ok := e.(*expression.GetField); ok {
-						// Default values can only reference their host table, so we can remove the table name, removing
-						// the necessity to update default values on table renames.
-						return expr.WithTable(""), nil
-					}
-					return e, nil
-				})
-
-				if err != nil {
-					return nil, err
-				}
-
-				sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
-					switch expr := e.(type) {
-					case sql.FunctionExpression:
-						funcName := expr.FunctionName()
-						if _, isValid := validColumnDefaultFuncs[funcName]; !isValid {
-							err = sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)
-							return false
-						}
-						if (funcName == "now" || funcName == "current_timestamp") &&
-							newDefault.IsLiteral() &&
-							(!sql.IsTime(col.Type) || sql.Date == col.Type) {
-							err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
-							return false
-						}
-						return true
-					case *plan.Subquery:
-						err = sql.ErrColumnDefaultSubquery.New(col.Name)
-						return false
-					default:
-						return true
-					}
-				})
-				if err != nil {
-					return nil, err
-				}
-				//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
-				isLiteral := newDefault.IsLiteral()
-				if unaryMinusExpr, ok := newDefault.Expression.(*expression.UnaryMinus); ok {
-					if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
-						switch val := literalExpr.Value().(type) {
-						case float32:
-							newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
-							isLiteral = true
-						case float64:
-							newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
-							isLiteral = true
-						}
-					}
-				}
-
-				newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
-				if err != nil {
-					return nil, err
-				}
-
-				return expression.WrapExpression(newDefault), nil
-			}
 		}
 	})
+}
+
+func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, error) {
+	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return e, nil
+	}
+
+	if newDefault.Resolved() {
+		return e, nil
+	}
+
+	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() {
+		return nil, sql.ErrInvalidTextBlobColumnDefault.New()
+	}
+
+	var err error
+	newDefault.Expression, err = expression.TransformUp(newDefault.Expression, func(e sql.Expression) (sql.Expression, error) {
+		if expr, ok := e.(*expression.GetField); ok {
+			// Default values can only reference their host table, so we can remove the table name, removing
+			// the necessity to update default values on table renames.
+			return expr.WithTable(""), nil
+		}
+		return e, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
+		switch expr := e.(type) {
+		case sql.FunctionExpression:
+			funcName := expr.FunctionName()
+			if _, isValid := validColumnDefaultFuncs[funcName]; !isValid {
+				err = sql.ErrInvalidColumnDefaultFunction.New(funcName, col.Name)
+				return false
+			}
+			if (funcName == "now" || funcName == "current_timestamp") &&
+				newDefault.IsLiteral() &&
+				(!sql.IsTime(col.Type) || sql.Date == col.Type) {
+				err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
+				return false
+			}
+			return true
+		case *plan.Subquery:
+			err = sql.ErrColumnDefaultSubquery.New(col.Name)
+			return false
+		default:
+			return true
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
+	isLiteral := newDefault.IsLiteral()
+	if unaryMinusExpr, ok := newDefault.Expression.(*expression.UnaryMinus); ok {
+		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
+			switch val := literalExpr.Value().(type) {
+			case float32:
+				newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
+				isLiteral = true
+			case float64:
+				newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
+				isLiteral = true
+			}
+		}
+	}
+
+	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
+	if err != nil {
+		return nil, err
+	}
+
+	return expression.WrapExpression(newDefault), nil
 }

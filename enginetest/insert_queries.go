@@ -524,7 +524,7 @@ var InsertQueries = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery: `INSERT INTO auto_increment_tbl (c0) SELECT 44 FROM dual`,
+		WriteQuery:          `INSERT INTO auto_increment_tbl (c0) SELECT 44 FROM dual`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl",
 		ExpectedSelect: []sql.Row{

@@ -177,6 +177,12 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			return nil, err
 		}
 		return convertDDL(ctx, query, ddl.(*sqlparser.DDL))
+	case *sqlparser.MultiAlterDDL:
+		multiAlterDdl, err := sqlparser.ParseStrictDDL(query)
+		if err != nil {
+			return nil, err
+		}
+		return convertMultiAlterDDL(ctx, query, multiAlterDdl.(*sqlparser.MultiAlterDDL))
 	case *sqlparser.DBDDL:
 		return convertDBDDL(n)
 	case *sqlparser.Set:
@@ -700,6 +706,22 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c))
 	}
+}
+
+func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
+	statementsLen := len(c.Statements)
+	if statementsLen == 1 {
+		return convertDDL(ctx, query, c.Statements[0])
+	}
+	statements := make([]sql.Node, statementsLen)
+	var err error
+	for i := 0; i < statementsLen; i++ {
+		statements[i], err = convertDDL(ctx, query, c.Statements[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return plan.NewBlock(statements), nil
 }
 
 func convertDBDDL(c *sqlparser.DBDDL) (sql.Node, error) {

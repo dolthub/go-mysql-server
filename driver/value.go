@@ -21,9 +21,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // ErrUnsupportedType is returned when a query argument of an unsupported type is passed to a statement
