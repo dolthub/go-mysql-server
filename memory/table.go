@@ -762,6 +762,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 	for i, col := range t.schema {
 		if col.Name == columnName {
 			oldIdx = i
+			column.PrimaryKey = col.PrimaryKey
 			break
 		}
 	}
