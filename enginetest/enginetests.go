@@ -1470,7 +1470,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified"},
+		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
@@ -1481,7 +1481,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", Nullable: true},
+		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", Nullable: true, PrimaryKey: true},
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST", []sql.Row(nil), nil, nil)
@@ -1490,7 +1490,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok"},
+		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
