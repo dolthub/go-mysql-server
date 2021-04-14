@@ -1342,7 +1342,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME COLUMN i TO i2", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
 	require.NoError(err)
@@ -1422,6 +1422,22 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		sql.NewRow("yay", int64(2), nil, "second row", int32(42)),
 		sql.NewRow("yay", int64(3), nil, "third row", int32(42)),
 	}, nil, nil)
+
+	// multiple column additions in a single ALTER
+	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(26), ADD COLUMN s5 VARCHAR(27)", []sql.Row(nil), nil, nil)
+
+	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
+		{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+		{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
+	}, tbl.Schema())
 
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist ADD COLUMN i2 INT COMMENT 'hello'")
 	require.Error(err)
@@ -1754,8 +1770,8 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 		")", []sql.Row(nil), nil, nil)
 
 	TestQuery(t, harness, e, "CREATE TABLE child2(e INTEGER PRIMARY KEY, f INTEGER)", []sql.Row(nil), nil, nil)
-	TestQuery(t, harness, e, "ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT", []sql.Row(nil), nil, nil)
-	TestQuery(t, harness, e, "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child2 ADD CONSTRAINT fk2 FOREIGN KEY (f) REFERENCES parent(b) ON DELETE RESTRICT, "+
+		"ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL", []sql.Row(nil), nil, nil)
 	TestQuery(t, harness, e, "ALTER TABLE child2 DROP CONSTRAINT fk2", []sql.Row(nil), nil, nil)
 
 	db, err := e.Catalog.Database("mydb")
@@ -2868,6 +2884,13 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 			"  `v2` bigint DEFAULT (v1y + 1),\n" +
 			"  PRIMARY KEY (`pk`)\n" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}}, nil, nil)
+	})
+
+	t.Run("Add multiple columns same ALTER", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t30(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "INSERT INTO t30 (pk) VALUES (1), (2)")
+		TestQuery(t, harness, e, "ALTER TABLE t30 ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT pk, v1, v2 FROM t30", []sql.Row{{1, 4, 5}, {2, 4, 5}}, nil, nil)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {
