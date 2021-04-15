@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -453,6 +455,19 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return resolveColumnDefaultsOnWrapper(ctx, node.Column(), eWrapper)
 		case *plan.ModifyColumn:
 			return resolveColumnDefaultsOnWrapper(ctx, node.NewColumn(), eWrapper)
+		case *plan.AlterDefaultSet:
+			loweredColName := strings.ToLower(node.ColumnName)
+			var col *sql.Column
+			for _, schCol := range node.Schema() {
+				if strings.ToLower(schCol.Name) == loweredColName {
+					col = schCol
+					break
+				}
+			}
+			if col == nil {
+				return nil, sql.ErrTableColumnNotFound.New(node.Child.String(), node.ColumnName)
+			}
+			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 		default:
 			return e, nil
 		}

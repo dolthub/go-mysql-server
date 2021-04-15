@@ -112,7 +112,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, c
 
 		if !found {
 			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
-				return nil, plan.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
+				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
 			}
 			projExprs[i] = f.Default
 		}
