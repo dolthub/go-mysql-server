@@ -621,4 +621,52 @@ var ScriptTests = []ScriptTest{
 			{3, 3},
 		},
 	},
+	{
+		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 88}},
+			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT (CONVERT('42', SIGNED));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "INSERT INTO test (pk) VALUES (2);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 88}, {2, 42}},
+			},
+			{
+				Query:       "ALTER TABLE test ALTER v2 SET DEFAULT 1;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 DROP DEFAULT;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "INSERT INTO test (pk) VALUES (3);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query:       "ALTER TABLE test ALTER v2 DROP DEFAULT;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{ // Just confirms that the last INSERT didn't do anything
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 88}, {2, 42}},
+			},
+		},
+	},
 }

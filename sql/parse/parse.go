@@ -1035,6 +1035,9 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.AutoIncSpec != nil {
 		return convertAlterAutoIncrement(ddl)
 	}
+	if ddl.DefaultSpec != nil {
+		return convertAlterDefault(ctx, ddl)
+	}
 	return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
 
@@ -1128,6 +1131,22 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewAlterAutoIncrement(tableNameToUnresolvedTable(ddl.Table), autoVal), nil
+}
+
+func convertAlterDefault(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := tableNameToUnresolvedTable(ddl.Table)
+	switch strings.ToLower(ddl.DefaultSpec.Action) {
+	case sqlparser.SetStr:
+		defaultVal, err := convertDefaultExpression(ctx, ddl.DefaultSpec.Value)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAlterDefaultSet(table, ddl.DefaultSpec.Column.String(), defaultVal), nil
+	case sqlparser.DropStr:
+		return plan.NewAlterDefaultDrop(table, ddl.DefaultSpec.Column.String()), nil
+	default:
+		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+	}
 }
 
 func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -1587,20 +1606,9 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		comment = string(cd.Type.Comment.Val)
 	}
 
-	var defaultVal *sql.ColumnDefaultValue
-	if cd.Type.Default != nil {
-		parsedExpr, err := ExprToExpression(ctx, cd.Type.Default)
-		if err != nil {
-			return nil, err
-		}
-		// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
-		_, isExpr := cd.Type.Default.(*sqlparser.ParenExpr)
-		// A literal will never have children, thus we can also check for that.
-		isExpr = isExpr || len(parsedExpr.Children()) != 0
-		defaultVal, err = ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
-		if err != nil {
-			return nil, err
-		}
+	defaultVal, err := convertDefaultExpression(ctx, cd.Type.Default)
+	if err != nil {
+		return nil, err
 	}
 
 	extra := ""
@@ -1618,6 +1626,21 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		Comment:       comment,
 		Extra:         extra,
 	}, nil
+}
+
+func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sql.ColumnDefaultValue, error) {
+	if defaultExpr == nil {
+		return nil, nil
+	}
+	parsedExpr, err := ExprToExpression(ctx, defaultExpr)
+	if err != nil {
+		return nil, err
+	}
+	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
+	_, isExpr := defaultExpr.(*sqlparser.ParenExpr)
+	// A literal will never have children, thus we can also check for that.
+	isExpr = isExpr || len(parsedExpr.Children()) != 0
+	return ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {
