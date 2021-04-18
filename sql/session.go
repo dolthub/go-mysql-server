@@ -293,6 +293,7 @@ func DefaultSessionConfig() map[string]TypedValue {
 		"tmpdir":                   TypedValue{LongText, GetTmpdirSessionVar()},
 		"local_infile":             TypedValue{Int8, int8(0)},
 		"secure_file_priv":         TypedValue{LongText, nil},
+		"group_concat_max_len":     TypedValue{Int64, int64(1024)},
 	}
 }
 

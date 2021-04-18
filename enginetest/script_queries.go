@@ -17,9 +17,8 @@ package enginetest
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql/plan"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 type ScriptTest struct {
@@ -619,6 +618,90 @@ var ScriptTests = []ScriptTest{
 			{1, 1},
 			{2, 2},
 			{3, 3},
+		},
+	},
+	{
+		Name: "Group Concat Queries",
+		SetUpScript: []string{
+			"CREATE TABLE x (pk int)",
+			"INSERT INTO x VALUES (1),(2),(3),(4),(NULL)",
+
+			"create table t (o_id int, attribute longtext, value longtext)",
+			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
+
+			"create table nulls(pk int)",
+			"INSERT INTO nulls VALUES (NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT group_concat(pk) FROM x;`,
+				Expected: []sql.Row{{"1,2,3,4"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT pk) FROM x;`,
+				Expected: []sql.Row{{"1,2,3,4"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT pk SEPARATOR '-') FROM x;`,
+				Expected: []sql.Row{{"1-2-3-4"}},
+			},
+			{
+				Query:    `SELECT group_concat(attribute) FROM t group by o_id`,
+				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute) FROM t`,
+				Expected: []sql.Row{{"color,fabric,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat(attribute) FROM t`,
+				Expected: []sql.Row{{"color,fabric,color,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
+				Expected: []sql.Row{{"2,2,2,2,2"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT (SELECT 2)) FROM x;`,
+				Expected: []sql.Row{{"2"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute ASC) FROM t`,
+				Expected: []sql.Row{{"color,fabric,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute DESC) FROM t`,
+				Expected: []sql.Row{{"shape,fabric,color"}},
+			},
+			{
+				Query:    `SELECT group_concat(pk) FROM nulls`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
+				ExpectedErr: sql.ErrSubqueryMultipleColumns,
+			},
+			{
+				Query:       `SELECT group_concat((SELECT * FROM x)) from t`,
+				ExpectedErr: sql.ErrExpectedSingleRow,
+			},
+			{
+				Query:    `SELECT group_concat(attribute) FROM t where o_id=2`,
+				Expected: []sql.Row{{"color,fabric"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
+			},
+			{
+				Query:    `SELECT group_concat(o_id) FROM t WHERE attribute='color'`,
+				Expected: []sql.Row{{"2,3"}},
+			},
 		},
 	},
 	{

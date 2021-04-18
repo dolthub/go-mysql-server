@@ -214,6 +214,15 @@ var (
 	// ErrSignalOnlySqlState is returned when SIGNAL/RESIGNAL references a DECLARE CONDITION for a MySQL error code.
 	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")
 
+	// ErrExpectedSingleRow is returned when a subquery executed in normal queries or aggregation function returns
+	// more than 1 row without an attached IN clause.
+	ErrExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
+
+	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
+	// more than a single column.
+	ErrSubqueryMultipleColumns = errors.NewKind(
+		"operand contains more than one column",
+	)
 	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
 	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
 
@@ -240,6 +249,10 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERNoSuchTable
 	case ErrCannotCreateDatabaseExists.Is(err):
 		code = mysql.ERDbCreateExists
+	case ErrExpectedSingleRow.Is(err):
+		code = mysql.ERSubqueryNo1Row
+	case ErrSubqueryMultipleColumns.Is(err):
+		code = mysql.EROperandColumns
 	default:
 		code = mysql.ERUnknownError
 	}

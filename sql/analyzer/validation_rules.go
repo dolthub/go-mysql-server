@@ -77,12 +77,6 @@ var (
 		"using EXPLODE is not supported outside a Project node",
 	)
 
-	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
-	// more than a single column.
-	ErrSubqueryMultipleColumns = errors.NewKind(
-		"subquery expressions can only return a single column",
-	)
-
 	// ErrSubqueryFieldIndex is returned when an expression subquery references a field outside the range of the rows it
 	// works on.
 	ErrSubqueryFieldIndex = errors.NewKind(
@@ -439,7 +433,7 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	})
 
 	if !valid {
-		return nil, ErrSubqueryMultipleColumns.New()
+		return nil, sql.ErrSubqueryMultipleColumns.New()
 	}
 
 	// Then validate that every subquery has field indexes within the correct range
