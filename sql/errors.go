@@ -212,6 +212,12 @@ var (
 	// ErrExpectedSingleRow is returned when a subquery executed in normal queries or aggregation function returns
 	// more than 1 row without an attached IN clause.
 	ErrExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
+
+	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
+	// more than a single column.
+	ErrSubqueryMultipleColumns = errors.NewKind(
+		"operand contains more than one column",
+	)
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -232,6 +238,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERDbCreateExists
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
+	case ErrSubqueryMultipleColumns.Is(err):
+		code = mysql.EROperandColumns
 	default:
 		code = mysql.ERUnknownError
 	}

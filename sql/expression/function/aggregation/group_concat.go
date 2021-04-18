@@ -138,19 +138,27 @@ func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	sb := strings.Builder{}
 	for i, row := range rows {
 		lastIdx := len(row) - 1
-		if i == len(rows)-1 {
+		if i == 0 {
 			sb.WriteString(row[lastIdx].(string))
 		} else {
-			sb.WriteString(row[lastIdx].(string))
 			sb.WriteString(g.separator)
+			sb.WriteString(row[lastIdx].(string))
+		}
+
+		// Don't allow the string to cross maxlen
+		if sb.Len() >= g.maxLen {
+			break
 		}
 	}
+
 	ret := sb.String()
 
+	// There might be a couple of character differences even if we broke early in the loop
 	if len(ret) > g.maxLen {
-		ret = ret[0:g.maxLen]
+		ret = ret[:g.maxLen]
 	}
 
+	// Add this to handle any one off errors.
 	return ret, nil
 }
 
@@ -176,6 +184,14 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 func (g *GroupConcat) Resolved() bool {
 	for _, se := range g.selectExprs {
 		if !se.Resolved() {
+			return false
+		}
+	}
+
+	sfs := g.sf.ToExpressions()
+
+	for _, sf := range sfs  {
+		if !sf.Resolved() {
 			return false
 		}
 	}
@@ -242,8 +258,7 @@ func (g *GroupConcat) IsNullable() bool {
 }
 
 func (g *GroupConcat) Children() []sql.Expression {
-	arr := g.sf.ToExpressions()
-	return append(arr, g.selectExprs...)
+	return append(g.sf.ToExpressions(), g.selectExprs...)
 }
 
 func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -252,10 +267,10 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	}
 
 	// Get the order by expression using the length of the sort fields.
-	delim := len(g.sf)
+	sortFieldMarker := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[delim:], g.maxLen)
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[sortFieldMarker:], g.maxLen)
 }
 
 func (g *GroupConcat) FunctionName() string {

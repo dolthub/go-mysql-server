@@ -843,7 +843,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 
 	_, err := validateSubqueryColumns(ctx, nil, node, nil)
 	require.Error(err)
-	require.True(ErrSubqueryMultipleColumns.Is(err))
+	require.True(sql.ErrSubqueryMultipleColumns.Is(err))
 
 	table := memory.NewTable("test", sql.Schema{
 		{Name: "foo", Type: sql.Text},
