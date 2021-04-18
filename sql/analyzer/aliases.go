@@ -85,6 +85,15 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			return false
 		case *plan.Procedure:
 			return false
+		case *plan.Block:
+			// blocks should not be parsed as a whole, just their statements individually
+			for _, child := range node.Children() {
+				_, analysisErr = getTableAliases(child, scope)
+				if analysisErr != nil {
+					break
+				}
+			}
+			return false
 		case *plan.CreateForeignKey:
 			rt := getResolvedTable(node.Left())
 			analysisErr = passAliases.add(rt, rt)
@@ -109,6 +118,9 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		}
 
 		return true
+	}
+	if analysisErr != nil {
+		return nil, analysisErr
 	}
 
 	// Inspect all of the scopes, outer to inner. Within a single scope, a name conflict is an error. But an inner scope

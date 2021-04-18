@@ -51,21 +51,23 @@ const (
 	ScanAsStored
 )
 
-// Options for the driver
+// Options for the driver.
 type Options struct {
 	// JSON indicates how JSON row values should be scanned
 	JSON ScanKind
 }
 
-// Provider resolves SQL catalogs
+// A Provider resolves SQL catalogs.
 type Provider interface {
 	Resolve(name string, options *Options) (string, *sql.Catalog, error)
 }
 
-// Driver exposes an engine as a stdlib SQL driver.
+// A Driver exposes an engine as a stdlib SQL driver.
 type Driver struct {
 	provider Provider
 	options  Options
+	sessions SessionBuilder
+	contexts ContextBuilder
 
 	mu       sync.Mutex
 	catalogs map[*sql.Catalog]*catalog
@@ -73,9 +75,22 @@ type Driver struct {
 
 // New returns a driver using the specified provider.
 func New(provider Provider, options Options) *Driver {
+	sessions, ok := provider.(SessionBuilder)
+	if !ok {
+		sessions = DefaultSessionBuilder{}
+	}
+
+	contexts, ok := provider.(ContextBuilder)
+	if !ok {
+		contexts = DefaultContextBuilder{}
+	}
+
 	return &Driver{
 		provider: provider,
 		options:  options,
+		sessions: sessions,
+		contexts: contexts,
+		catalogs: map[*sql.Catalog]*catalog{},
 	}
 }
 
@@ -125,9 +140,6 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 		anlz := analyzer.NewDefault(sqlCat)
 		engine := sqle.New(sqlCat, anlz, nil)
 		cat = &catalog{engine: engine}
-		if d.catalogs == nil {
-			d.catalogs = map[*sql.Catalog]*catalog{}
-		}
 		d.catalogs[sqlCat] = cat
 	}
 	d.mu.Unlock()
@@ -173,22 +185,31 @@ type Connector struct {
 }
 
 // Driver returns the driver.
-func (c *Connector) Driver() driver.Driver {
-	return c.driver
-}
+func (c *Connector) Driver() driver.Driver { return c.driver }
+
+// Server returns the server name.
+func (c *Connector) Server() string { return c.server }
+
+// Catalog returns the SQL catalog.
+func (c *Connector) Catalog() *sql.Catalog { return c.catalog.engine.Catalog }
 
 // Connect returns a connection to the database.
-func (c *Connector) Connect(context.Context) (driver.Conn, error) {
+func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
 	id := c.catalog.nextConnectionID()
 
-	session := sql.NewSession(c.server, fmt.Sprintf("#%d", id), "", id)
+	session, err := c.driver.sessions.NewSession(ctx, id, c)
+	if err != nil {
+		return nil, err
+	}
+
 	indexes := sql.NewIndexRegistry()
 	views := sql.NewViewRegistry()
 	return &Conn{
-		options: c.options,
-		catalog: c.catalog,
-		session: session,
-		indexes: indexes,
-		views:   views,
+		options:  c.options,
+		catalog:  c.catalog,
+		session:  session,
+		contexts: c.driver.contexts,
+		indexes:  indexes,
+		views:    views,
 	}, nil
 }

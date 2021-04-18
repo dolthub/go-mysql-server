@@ -14,7 +14,11 @@
 
 package sql
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+	"strings"
+)
 
 // Column is the definition of a table column.
 // As SQL:2016 puts it:
@@ -59,4 +63,36 @@ func (c *Column) Equals(c2 *Column) bool {
 		c.Nullable == c2.Nullable &&
 		reflect.DeepEqual(c.Default, c2.Default) &&
 		reflect.DeepEqual(c.Type, c2.Type)
+}
+
+func (c *Column) DebugString() string {
+	sb := strings.Builder{}
+	sb.WriteString("Name: ")
+	sb.WriteString(c.Name)
+	sb.WriteString(", ")
+	sb.WriteString("Source: ")
+	sb.WriteString(c.Source)
+	sb.WriteString(", ")
+	sb.WriteString("Type: ")
+	sb.WriteString(c.Type.String())
+	sb.WriteString(", ")
+	sb.WriteString("PrimaryKey: ")
+	sb.WriteString(fmt.Sprintf("%v", c.PrimaryKey))
+	sb.WriteString(", ")
+	sb.WriteString("Nullable: ")
+	sb.WriteString(fmt.Sprintf("%v", c.Nullable))
+	sb.WriteString(", ")
+	sb.WriteString("Comment: ")
+	sb.WriteString(c.Comment)
+	sb.WriteString(", ")
+	sb.WriteString("Default: ")
+	sb.WriteString(c.Default.String())
+	sb.WriteString(", ")
+	sb.WriteString("AutoIncrement: ")
+	sb.WriteString(fmt.Sprintf("%v", c.AutoIncrement))
+	sb.WriteString(", ")
+	sb.WriteString("Extra: ")
+	sb.WriteString(c.Extra)
+
+	return sb.String()
 }

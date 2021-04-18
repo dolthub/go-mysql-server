@@ -554,6 +554,47 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION SELECT s, i FROM mt UNION SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt UNION ALL SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -4772,6 +4813,15 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{
 			{2, 7.0},
 			{3, 9.0},
+		},
+	},
+	// The outer CTE currently resolves before the inner one, which causes
+	// this to return { {1}, {1}, } instead.
+	{
+		Query: `WITH t AS (SELECT 1) SELECT * FROM t UNION (WITH t AS (SELECT 2) SELECT * FROM t)`,
+		Expected: []sql.Row{
+			{1},
+			{2},
 		},
 	},
 	{

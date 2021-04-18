@@ -177,6 +177,12 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			return nil, err
 		}
 		return convertDDL(ctx, query, ddl.(*sqlparser.DDL))
+	case *sqlparser.MultiAlterDDL:
+		multiAlterDdl, err := sqlparser.ParseStrictDDL(query)
+		if err != nil {
+			return nil, err
+		}
+		return convertMultiAlterDDL(ctx, query, multiAlterDdl.(*sqlparser.MultiAlterDDL))
 	case *sqlparser.DBDDL:
 		return convertDBDDL(n)
 	case *sqlparser.Set:
@@ -702,6 +708,22 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 	}
 }
 
+func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlterDDL) (sql.Node, error) {
+	statementsLen := len(c.Statements)
+	if statementsLen == 1 {
+		return convertDDL(ctx, query, c.Statements[0])
+	}
+	statements := make([]sql.Node, statementsLen)
+	var err error
+	for i := 0; i < statementsLen; i++ {
+		statements[i], err = convertDDL(ctx, query, c.Statements[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return plan.NewBlock(statements), nil
+}
+
 func convertDBDDL(c *sqlparser.DBDDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
@@ -980,17 +1002,11 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterDropForeignKey(table, c), nil
+				return plan.NewAlterDropForeignKey(table, c.Name), nil
 			case *sql.CheckConstraint:
-				return plan.NewAlterDropCheck(table, c), nil
+				return plan.NewAlterDropCheck(table, c.Name), nil
 			case namedConstraint:
-				// For simple named constraint drops, fill in a partial foreign key constraint. This will need to be changed if
-				// we ever support other kinds of constraints than foreign keys (e.g. CHECK)
-				// TODO: this fails if check constraint delete desired but not indicated
-				// It works for memory engine right now but won't for Dolt
-				return plan.NewAlterDropForeignKey(table, &sql.ForeignKeyConstraint{
-					Name: c.name,
-				}), nil
+				return plan.NewDropConstraint(table, c.name), nil
 			default:
 				return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 			}
@@ -1018,6 +1034,9 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 	if ddl.AutoIncSpec != nil {
 		return convertAlterAutoIncrement(ddl)
+	}
+	if ddl.DefaultSpec != nil {
+		return convertAlterDefault(ctx, ddl)
 	}
 	return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
@@ -1112,6 +1131,22 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewAlterAutoIncrement(tableNameToUnresolvedTable(ddl.Table), autoVal), nil
+}
+
+func convertAlterDefault(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := tableNameToUnresolvedTable(ddl.Table)
+	switch strings.ToLower(ddl.DefaultSpec.Action) {
+	case sqlparser.SetStr:
+		defaultVal, err := convertDefaultExpression(ctx, ddl.DefaultSpec.Value)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAlterDefaultSet(table, ddl.DefaultSpec.Column.String(), defaultVal), nil
+	case sqlparser.DropStr:
+		return plan.NewAlterDefaultDrop(table, ddl.DefaultSpec.Column.String()), nil
+	default:
+		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+	}
 }
 
 func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -1373,15 +1408,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewInsertInto(
-		sql.UnresolvedDatabase(i.Table.Qualifier.String()),
-		tableNameToUnresolvedTable(i.Table),
-		src,
-		isReplace,
-		columnsToStrings(i.Columns),
-		onDupExprs,
-		nil,
-	), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columnsToStrings(i.Columns), onDupExprs), nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
@@ -1480,15 +1507,7 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
 
-	return plan.NewInsertInto(
-		sql.UnresolvedDatabase(d.Table.Qualifier.String()),
-		tableNameToUnresolvedTable(d.Table),
-		ld,
-		false,
-		ld.ColumnNames,
-		nil,
-		nil,
-	), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
@@ -1587,20 +1606,9 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		comment = string(cd.Type.Comment.Val)
 	}
 
-	var defaultVal *sql.ColumnDefaultValue
-	if cd.Type.Default != nil {
-		parsedExpr, err := ExprToExpression(ctx, cd.Type.Default)
-		if err != nil {
-			return nil, err
-		}
-		// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
-		_, isExpr := cd.Type.Default.(*sqlparser.ParenExpr)
-		// A literal will never have children, thus we can also check for that.
-		isExpr = isExpr || len(parsedExpr.Children()) != 0
-		defaultVal, err = ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
-		if err != nil {
-			return nil, err
-		}
+	defaultVal, err := convertDefaultExpression(ctx, cd.Type.Default)
+	if err != nil {
+		return nil, err
 	}
 
 	extra := ""
@@ -1618,6 +1626,21 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		Comment:       comment,
 		Extra:         extra,
 	}, nil
+}
+
+func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sql.ColumnDefaultValue, error) {
+	if defaultExpr == nil {
+		return nil, nil
+	}
+	parsedExpr, err := ExprToExpression(ctx, defaultExpr)
+	if err != nil {
+		return nil, err
+	}
+	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
+	_, isExpr := defaultExpr.(*sqlparser.ParenExpr)
+	// A literal will never have children, thus we can also check for that.
+	isExpr = isExpr || len(parsedExpr.Children()) != 0
+	return ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {

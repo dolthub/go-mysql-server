@@ -30,7 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
-const port = 3336
+const port = 33336
 
 func authEngine(au auth.Auth) (*sqle.Engine, *sql.IndexRegistry, error) {
 	db := memory.NewDatabase("test")
