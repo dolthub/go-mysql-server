@@ -23,6 +23,12 @@ var (
 	// ErrSyntaxError is returned when a syntax error in vitess is encountered.
 	ErrSyntaxError = errors.NewKind("%s")
 
+	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
+	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
+
+	// ErrSystemVariableCodeFail is returned when failing to encode/decode a system variable.
+	ErrSystemVariableCodeFail = errors.NewKind("unable to encode/decode value '%v' for '%s'")
+
 	// ErrInvalidType is thrown when there is an unexpected type at some part of
 	// the execution tree.
 	ErrInvalidType = errors.NewKind("invalid type: %s")

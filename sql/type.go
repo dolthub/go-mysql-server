@@ -63,6 +63,17 @@ type Type interface {
 	fmt.Stringer
 }
 
+// SystemVariableType represents a SQL type specifically (and only) used in system variables. Assigning any non-system
+// variables a SystemVariableType will cause errors.
+type SystemVariableType interface {
+	Type
+	// EncodeValue returns the given value as a string for storage.
+	EncodeValue(interface{}) (string, error)
+	// DecodeValue returns the original value given to EncodeValue from the given string. This is different from `Convert`,
+	// as the encoded value may technically be an "illegal" value according to the type rules.
+	DecodeValue(string) (interface{}, error)
+}
+
 // AreComparable returns whether the given types are either the same or similar enough that values can meaningfully be
 // compared across all permutations. Int8 and Int64 are comparable types, where as VarChar and Int64 are not. In the case
 // of the latter example, not all possible values of a VarChar are comparable to an Int64, while this is true for the

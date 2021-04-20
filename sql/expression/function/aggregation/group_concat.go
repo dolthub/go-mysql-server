@@ -190,7 +190,7 @@ func (g *GroupConcat) Resolved() bool {
 
 	sfs := g.sf.ToExpressions()
 
-	for _, sf := range sfs  {
+	for _, sf := range sfs {
 		if !sf.Resolved() {
 			return false
 		}
