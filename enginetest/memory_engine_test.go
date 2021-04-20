@@ -97,7 +97,11 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT mytable.s FROM mytable WHERE mytable.i = (SELECT othertable.i2 FROM othertable WHERE othertable.s2 = 'second')",
+		Query: "CREATE TABLE `test_data_fUGNcRWp` (\n" +
+			"    x FLOAT(53),\n" +
+			"    b BOOL,\n" +
+			"    CHECK (b IN (0, 1))\n" +
+			")",
 		Expected: []sql.Row{
 			{"second row"},
 		},
