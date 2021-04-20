@@ -116,7 +116,7 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 	// Make sure that the ref columns exist
 	for _, refCol := range p.FkDef.ReferencedColumns {
 		if !p.right.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
-			return sql.ErrTableColumnNotFound.New(refCol)
+			return sql.ErrTableColumnNotFound.New(p.FkDef.ReferencedTable, refCol)
 		}
 	}
 
