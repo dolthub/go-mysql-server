@@ -604,7 +604,7 @@ func (i *joinIter) Next() (sql.Row, error) {
 			if err == io.EOF {
 				if !i.foundMatch && (i.typ == JoinTypeLeft || i.typ == JoinTypeRight) {
 					row := i.buildRow(primary, nil)
-					return i.removeParentRow(row), nil
+					return row, nil
 				}
 				continue
 			}
@@ -612,7 +612,6 @@ func (i *joinIter) Next() (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		row = i.removeParentRow(row)
 		matches, err := conditionIsTrue(i.ctx, row, i.cond)
 		if err != nil {
 			return nil, err
@@ -627,26 +626,31 @@ func (i *joinIter) Next() (sql.Row, error) {
 	}
 }
 
-func (i *joinIter) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[len(i.originalRow):])
-	r = r[:len(r)-len(i.originalRow)+i.scopeLen]
-	return r
-}
-
 // buildRow builds the resulting row using the rows from the primary and
 // secondary branches depending on the join type.
 func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
-	row := make(sql.Row, i.rowSize)
+	toCut := len(i.originalRow) - i.scopeLen
+	row := make(sql.Row, i.rowSize - toCut)
 
+	scope := primary[:i.scopeLen]
+	primary = primary[len(i.originalRow):]
+
+	var first, second sql.Row
+	var secondOffset int
 	switch i.typ {
 	case JoinTypeRight:
-		copy(row, primary[:i.scopeLen])
-		copy(row[i.scopeLen:], secondary)
-		copy(row[i.rowSize-len(primary)+i.scopeLen:], primary[i.scopeLen:])
+		first = secondary
+		second = primary
+		secondOffset = len(row) - len(second)
 	default:
-		copy(row, primary)
-		copy(row[len(primary):], secondary)
+		first = primary
+		second = secondary
+		secondOffset = i.scopeLen + len(first)
 	}
+
+	copy(row, scope)
+	copy(row[i.scopeLen:], first)
+	copy(row[secondOffset:], second)
 
 	return row
 }
