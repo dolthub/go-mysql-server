@@ -63,10 +63,7 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 
 			switch e := e.(type) {
 			case column:
-				col := tableCol{
-					table: e.Table(),
-					col:   e.Name(),
-				}
+				col := newTableCol(e.Table(), e.Name())
 				if _, ok := columns[col]; !ok {
 					err = sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
 					return false

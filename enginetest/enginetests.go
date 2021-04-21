@@ -1899,14 +1899,14 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	// Check statements in CREATE TABLE statements
 	// TODO: <> gets parsed / serialized as NOT(=), needs to be fixed for full round trip compatibility
 	RunQuery(t, e, harness, `
-CREATE TABLE t2
+CREATE TABLE T2
 (
   CHECK (c1 = c2),
   c1 INT CHECK (c1 > 10),
   c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
   c3 INT CHECK (c3 < 100),
   CONSTRAINT c1_nonzero CHECK (c1 = 0),
-  CHECK (c1 > c3)
+  CHECK (C1 > C3)
 );`)
 
 	table, ok, err = db.GetTableInsensitive(NewContext(harness), "t2")
