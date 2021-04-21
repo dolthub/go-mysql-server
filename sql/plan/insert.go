@@ -47,13 +47,14 @@ type InsertInto struct {
 	IsReplace   bool
 	OnDupExprs  []sql.Expression
 	Checks      sql.CheckConstraints
+	Ignore		bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
+func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
 	return &InsertInto{
 		db:          db,
 		Destination: dst,
@@ -61,6 +62,7 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 		ColumnNames: cols,
 		IsReplace:   isReplace,
 		OnDupExprs:  onDupExprs,
+		Ignore:		 ignore,
 	}
 }
 
