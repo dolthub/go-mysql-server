@@ -53,11 +53,11 @@ var ErrInsertIgnore = errors.NewKind("This row was ignored") // Used for making 
 // ER_SUBQUERY_NO_1_ROW - yes
 // ER_VIEW_CHECK_FAILED - No
 var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
-	 								 sql.ErrPrimaryKeyViolation,
-	 								 sql.ErrPartitionNotFound,
-	 								 sql.ErrExpectedSingleRow,
-	 								 sql.ErrForeignKeyChildViolation,
-	 								 sql.ErrForeignKeyParentViolation}
+	sql.ErrPrimaryKeyViolation,
+	sql.ErrPartitionNotFound,
+	sql.ErrExpectedSingleRow,
+	sql.ErrForeignKeyChildViolation,
+	sql.ErrForeignKeyParentViolation}
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
@@ -68,7 +68,7 @@ type InsertInto struct {
 	IsReplace   bool
 	OnDupExprs  []sql.Expression
 	Checks      sql.CheckConstraints
-	Ignore		bool
+	Ignore      bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
@@ -83,7 +83,7 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 		ColumnNames: cols,
 		IsReplace:   isReplace,
 		OnDupExprs:  onDupExprs,
-		Ignore:		 ignore,
+		Ignore:      ignore,
 	}
 }
 
@@ -124,7 +124,7 @@ type insertIter struct {
 	checks              sql.CheckConstraints
 	tableNode           sql.Node
 	closed              bool
-	ignore				bool
+	ignore              bool
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -204,7 +204,7 @@ func newInsertIter(
 		insertExprs: insertExpressions,
 		checks:      checks,
 		ctx:         ctx,
-		ignore: 	 ignore,
+		ignore:      ignore,
 	}, nil
 }
 
@@ -447,11 +447,11 @@ func (i *insertIter) handleErrorAndQuitOrIgnore(err error) error {
 
 			// Add a warning instead
 			i.ctx.Session.Warn(&sql.Warning{
-				Level: "Note",
-				Code: sqlerr.Num,
+				Level:   "Note",
+				Code:    sqlerr.Num,
 				Message: err.Error(),
 			})
-			
+
 			// In this case the default value gets updated so return nil
 			if sql.ErrInsertIntoNonNullableDefaultNullColumn.Is(err) {
 				return nil

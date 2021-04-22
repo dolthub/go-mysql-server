@@ -15,8 +15,9 @@
 package enginetest
 
 import (
-	"github.com/dolthub/vitess/go/mysql"
 	"math"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -909,7 +910,7 @@ var InsertErrorScripts = []ScriptTest{
 	},
 }
 
-var InsertIgnoreScripts = []ScriptTest {
+var InsertIgnoreScripts = []ScriptTest{
 	{
 		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
 		SetUpScript: []string{
@@ -920,7 +921,7 @@ var InsertIgnoreScripts = []ScriptTest {
 			{
 				Query: "SELECT * FROM y",
 				Expected: []sql.Row{
-					{1,1}, {2,2}, {3,3},
+					{1, 1}, {2, 2}, {3, 3},
 				},
 			},
 			{

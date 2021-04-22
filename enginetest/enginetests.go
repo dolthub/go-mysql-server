@@ -926,7 +926,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 		} else if assertion.ExpectedErrStr != "" {
 			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 		} else if assertion.ExpectedWarning != 0 {
-			AssertWarningAndTestQuery(t, e, harness, assertion.Query, assertion.Expected, nil,  assertion.ExpectedWarning)
+			AssertWarningAndTestQuery(t, e, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
 		}

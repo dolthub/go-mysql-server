@@ -2892,7 +2892,7 @@ CREATE TABLE t2
 			expression.NewUnresolvedQualifiedColumn("old", "a"),
 			expression.NewUnresolvedQualifiedColumn("old", "b"),
 		}},
-		), false, []string{"a", "b"}, []sql.Expression{},false),
+		), false, []string{"a", "b"}, []sql.Expression{}, false),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 	),
