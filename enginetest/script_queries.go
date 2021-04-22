@@ -637,19 +637,19 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    `SELECT group_concat(pk) FROM x;`,
+				Query:    `SELECT group_concat(pk ORDER BY pk) FROM x;`,
 				Expected: []sql.Row{{"1,2,3,4"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT pk) FROM x;`,
+				Query:    `SELECT group_concat(DISTINCT pk ORDER BY pk) FROM x;`,
 				Expected: []sql.Row{{"1,2,3,4"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT pk SEPARATOR '-') FROM x;`,
+				Query:    `SELECT group_concat(DISTINCT pk ORDER BY pk SEPARATOR '-') FROM x;`,
 				Expected: []sql.Row{{"1-2-3-4"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute) FROM t group by o_id`,
+				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id`,
 				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
 			},
 			{
@@ -657,12 +657,12 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute) FROM t`,
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute) FROM t`,
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute) FROM t`,
-				Expected: []sql.Row{{"color,fabric,color,shape"}},
+				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t`,
+				Expected: []sql.Row{{"color,color,fabric,shape"}},
 			},
 			{
 				Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
