@@ -518,13 +518,31 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT "testing" AS s, (SELECT max(i) FROM (SELECT * FROM mytable) mytable RIGHT JOIN (SELECT i2, s2 FROM othertable ORDER BY i2 ASC UNION ALL SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable ON i2 = i) AS rj FROM DUAL`,
+		Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
 		Expected: []sql.Row{
 			{"testing", 3},
 		},
 	},
 	{
-		Query: `SELECT "testing" AS s, (SELECT max(i2) FROM (SELECT * FROM mytable) mytable RIGHT JOIN (SELECT i2, s2 FROM othertable ORDER BY i2 ASC UNION ALL SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable ON i2 = i) AS rj FROM DUAL`,
+		Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i2)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
 		Expected: []sql.Row{
 			{"testing", 4},
 		},
