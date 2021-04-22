@@ -237,6 +237,11 @@ var (
 
 	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
 	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
+
+	// ErrPartitionNotFound is thrown when a partition key on a table is not found
+	ErrPartitionNotFound = errors.NewKind("partition not found %q")
+
+	 ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -259,6 +264,12 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERSubqueryNo1Row
 	case ErrSubqueryMultipleColumns.Is(err):
 		code = mysql.EROperandColumns
+	case ErrInsertIntoNonNullableProvidedNull.Is(err):
+		code = mysql.ERBadNullError
+	case ErrPrimaryKeyViolation.Is(err):
+		code = mysql.ERDupEntry
+	case ErrPartitionNotFound.Is(err):
+		code = 1526 // TODO: Needs to be added to vitess
 	default:
 		code = mysql.ERUnknownError
 	}

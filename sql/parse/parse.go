@@ -1397,10 +1397,6 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		return nil, err
 	}
 
-	if len(i.Ignore) > 0 {
-		return nil, ErrUnsupportedSyntax.New(sqlparser.String(i))
-	}
-
 	isReplace := i.Action == sqlparser.ReplaceStr
 
 	src, err := insertRowsToNode(ctx, i.Rows)

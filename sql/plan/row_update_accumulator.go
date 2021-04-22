@@ -209,6 +209,8 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 		row, err := a.iter.Next()
 		if err == io.EOF {
 			return sql.NewRow(a.updateRowHandler.okResult()), nil
+		} else if ErrInsertIgnore.Is(err) { // return err if its not an ignorable error
+			continue
 		}
 
 		if err != nil {

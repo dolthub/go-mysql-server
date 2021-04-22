@@ -158,9 +158,7 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
-		return nil, fmt.Errorf(
-			"partition not found: %q", partition.Key(),
-		)
+		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
 
 	var values sql.IndexValueIter

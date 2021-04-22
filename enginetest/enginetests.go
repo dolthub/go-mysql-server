@@ -448,6 +448,10 @@ func TestInsertInto(t *testing.T, harness Harness) {
 	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
 	}
+
+	for _, script := range InsertIgnoreScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
@@ -465,6 +469,9 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 		TestScript(t, harness, script)
 	}
 }
+
+
+
 
 func TestLoadData(t *testing.T, harness Harness) {
 	for _, script := range LoadDataScripts {
@@ -921,6 +928,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
 		} else if assertion.ExpectedErrStr != "" {
 			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+		} else if assertion.ExpectedWarning != 0 {
+			AssertWarningAndTestQuery(t, e, harness, assertion.Query, assertion.Expected, nil,  assertion.ExpectedWarning)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
 		}
@@ -1616,7 +1625,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrCannotCreateDatabaseExists)
 
-		AssertWarning(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", mysql.ERDbCreateExists)
+		AssertWarningAndTestQuery(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists)
 	})
 }
 
@@ -1656,7 +1665,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
-		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS mydb", mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, harness, "DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
 
 		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
@@ -1667,7 +1676,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 
-		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS testdb", mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
 	})
 }
 
@@ -2631,16 +2640,17 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 	}
 }
 
-func AssertWarning(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedCode int) {
+func AssertWarningAndTestQuery(t *testing.T, e *sqle.Engine, harness Harness, query string, expected []sql.Row, expectedCols []*sql.Column, expectedCode int) {
+	require := require.New(t)
 	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, query)
-	require.NoError(t, err)
+	sch, iter, err := e.Query(ctx, query)
+	require.NoError(err, "Unexpected error for query %s", query)
 
-	_, err = sql.RowIterToRows(ctx, iter)
-	require.NoError(t, err)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(err, "Unexpected error for query %s", query)
 
 	ctx = NewContext(harness)
-	require.True(t, len(ctx.Warnings()) > 0)
+	require.True(len(ctx.Warnings()) > 0)
 
 	condition := false
 	for _, warning := range ctx.Warnings() {
@@ -2650,7 +2660,9 @@ func AssertWarning(t *testing.T, e *sqle.Engine, harness Harness, query string, 
 		}
 	}
 
-	require.True(t, condition)
+	assert.True(t, condition)
+
+	checkResults(t, require, expected, expectedCols, sch, rows, query)
 }
 
 type customFunc struct {
@@ -3099,6 +3111,10 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err, "Unexpected error for query %s", q)
 
+	checkResults(t, require, expected, expectedCols, sch, rows, q)
+}
+
+func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string) {
 	widenedRows := WidenRows(sch, rows)
 	widenedExpected := WidenRows(sch, expected)
 

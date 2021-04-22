@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
 	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -906,4 +907,104 @@ var InsertErrorScripts = []ScriptTest{
 		Query:       "create table bad (pk1 int auto_increment default 10, c0 int);",
 		ExpectedErr: parse.ErrInvalidAutoIncCols,
 	},
+}
+
+var InsertIgnoreScripts = []ScriptTest {
+	{
+		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
+		SetUpScript: []string{
+			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+			"INSERT IGNORE INTO y VALUES (1, 1), (1,2), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM y",
+				Expected: []sql.Row{
+					{1,1}, {2,2}, {3,3},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (1, 2), (4,4)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (5, NULL)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERBadNullError,
+			},
+			{
+				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk FROM y WHERE pk > 1);",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERSubqueryNo1Row,
+			},
+		},
+	},
+	{
+		Name: "Test that INSERT IGNORE with Non nullable columns works",
+		SetUpScript: []string{
+			"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
+			"INSERT IGNORE INTO x VALUES (1, NULL)",
+			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+			"INSERT IGNORE INTO y VALUES (1, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM x",
+				Expected: []sql.Row{
+					{1, ""},
+				},
+			},
+			{
+				Query: "SELECT * FROM y",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (2, NULL)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERBadNullError,
+			},
+		},
+	},
+	// TODO: We just have too much casting logic to fix to get this right....
+	//{
+	//	Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
+	//	SetUpScript: []string{
+	//		"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
+	//		`INSERT IGNORE INTO x VALUES (1, "one"), (2, TRUE), (3, "three")`,
+	//		"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+	//		`INSERT IGNORE INTO y VALUES (1, 1), (2, "two"), (3,3);`,
+	//	},
+	//	Assertions: []ScriptTestAssertion{
+	//		{
+	//			Query: "SELECT * FROM x",
+	//			Expected: []sql.Row{
+	//				{1, "one"}, {2, 1}, {3, "three"},
+	//			},
+	//		},
+	//		{
+	//			Query: "SELECT * FROM y",
+	//			Expected: []sql.Row{
+	//				{1, 1}, {2, 0}, {3, 3},
+	//			},
+	//		},
+	//		{
+	//			Query: `INSERT IGNORE INTO y VALUES (4, "four")`,
+	//			Expected: []sql.Row{
+	//				{sql.OkResult{RowsAffected: 1}},
+	//			},
+	//			ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+	//		},
+	//	},
+	//},
 }
