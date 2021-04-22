@@ -134,6 +134,14 @@ END;`,
 				},
 			},
 			{
+				Query: "CALL p1(@outparam, null, 2)",
+				Expected: []sql.Row{
+					{
+						nil,
+					},
+				},
+			},
+			{
 				Query: "CALL p1(@outparam, 7, 4)",
 				Expected: []sql.Row{
 					{
