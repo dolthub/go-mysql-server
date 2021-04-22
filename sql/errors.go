@@ -76,6 +76,7 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
+	// TODO: This should be a ErDupKey instead
 	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %s")
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
@@ -249,6 +250,9 @@ var (
 
 	// ErrForeignKeyParentViolation is called when a parent row that is deleted has children, and a foreign key constraint fails. Delete the children first.
 	ErrForeignKeyParentViolation = errors.NewKind("cannot delete or update a parent row - Foreign key violation on fk: `%s`, table: `%s`, referenced table: `%s`, key: `%s`")
+
+	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
+	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -281,6 +285,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
 	case ErrForeignKeyParentViolation.Is(err):
 		code = mysql.ERRowIsReferenced2 // test with mysql returns 1451 vs 1215
+	case ErrDuplicateEntry.Is(err):
+		code = mysql.ERDupEntry
 	default:
 		code = mysql.ERUnknownError
 	}

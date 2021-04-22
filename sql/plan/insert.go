@@ -42,7 +42,7 @@ var ErrInsertIgnore = errors.NewKind("This row was ignored") // Used for making 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 // The INSERT IGNORE syntax applies to these ignorable errors
 // ER_BAD_NULL_ERROR - yes
-// ER_DUP_ENTRY - yes
+// ER_DUP_ENTRY - yes // AlsoHandlesUniqueViolation
 // ER_DUP_ENTRY_WITH_KEY_NAME - kinda
 // ER_DUP_KEY - kinda
 // ER_NO_PARTITION_FOR_GIVEN_VALUE - yes
@@ -57,7 +57,8 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrPartitionNotFound,
 	sql.ErrExpectedSingleRow,
 	sql.ErrForeignKeyChildViolation,
-	sql.ErrForeignKeyParentViolation}
+	sql.ErrForeignKeyParentViolation,
+	sql.ErrDuplicateEntry}
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
@@ -286,7 +287,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
-			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err)) || len(i.updateExprs) == 0 {
+			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
 				return i.ignoreOrClose(err)
 			}
 
