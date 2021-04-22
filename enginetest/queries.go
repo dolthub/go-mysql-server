@@ -518,6 +518,52 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		// TODO: ORDER BY should apply to the union. The parser is wrong.
+		Query: `SELECT s2, i2, i
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+			ON i2 = i`,
+		Expected: []sql.Row{
+			{"third", 1, 1},
+			{"second", 2, 2},
+			{"first", 3, 3},
+			{"not found", 4, nil},
+		},
+	},
+	{
+		Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+		Expected: []sql.Row{
+			{"testing", 3},
+		},
+	},
+	{
+		Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i2)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+		Expected: []sql.Row{
+			{"testing", 4},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where i = mtouter.i+1) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
@@ -4667,6 +4713,26 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{1, 1, 4},
 			{1, 1, 4},
+		},
+	},
+	{
+		Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
+		Expected: []sql.Row{
+			{"third", 1, 1},
+			{"second", 2, 2},
+			{"first", 3, 3},
+		},
+	},
+	{
+		Query: `SELECT lefttable.i, righttable.s
+			FROM (SELECT * FROM mytable) lefttable
+			JOIN (SELECT * FROM mytable) righttable
+			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
+			ORDER BY lefttable.i ASC`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
 		},
 	},
 	{
