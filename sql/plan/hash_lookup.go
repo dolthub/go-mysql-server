@@ -15,7 +15,10 @@
 package plan
 
 import (
+	"fmt"
 	"sync"
+
+	"github.com/cespare/xxhash"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -76,11 +79,14 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	if n.lookup == nil {
+		// Instead of building the mapping inline here with a special
+		// RowIter, we currently make use of CachedResults and require
+		// *CachedResults to be our direct child.
 		if res := n.UnaryNode.Child.(*CachedResults).getCachedResults(); res != nil {
 			n.lookup = make(map[interface{}][]sql.Row)
 			for _, row := range res {
 				// TODO: Maybe do not put nil stuff in here.
-				key, err := n.childProjection.Eval(ctx, row)
+				key, err := n.getHashKey(ctx, n.childProjection, row)
 				if err != nil {
 					return nil, err
 				}
@@ -92,11 +98,41 @@ func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 		}
 	}
 	if n.lookup != nil {
-		key, err := n.lookupProjection.Eval(ctx, r)
+		key, err := n.getHashKey(ctx, n.lookupProjection, r)
 		if err != nil {
 			return nil, err
 		}
 		return sql.RowsToRowIter(n.lookup[key]...), nil
 	}
 	return n.UnaryNode.Child.RowIter(ctx, r)
+}
+
+// Convert a tuple expression returning []interface{} into something comparable.
+// Fast paths a few smaller slices into fixed size arrays, puts everything else
+// through string serialization and a hash for now. It is OK to hash lossy here
+// as the join condition is still evaluated after the matching rows are returned.
+func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row) (interface{}, error) {
+	key, err := e.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if s, ok := key.([]interface{}); ok {
+		switch len(s) {
+		case 0:
+			return [0]interface{}{}, nil
+		case 1:
+			return [1]interface{}{s[0]}, nil
+		case 2:
+			return [2]interface{}{s[0], s[1]}, nil
+		case 3:
+			return [3]interface{}{s[0], s[1], s[2]}, nil
+		case 4:
+			return [4]interface{}{s[0], s[1], s[2], s[3]}, nil
+		case 5:
+			return [5]interface{}{s[0], s[1], s[2], s[3], s[4]}, nil
+		default:
+			return xxhash.Sum64String(fmt.Sprintf("%#v", s)), nil
+		}
+	}
+	return key, nil
 }

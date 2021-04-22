@@ -300,6 +300,25 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT lefttable.i, righttable.s
+			FROM (SELECT * FROM mytable) lefttable
+			JOIN (SELECT * FROM mytable) righttable
+			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
+			ORDER BY lefttable.i ASC`,
+		ExpectedPlan: "Sort(lefttable.i ASC)\n" +
+			" └─ Project(lefttable.i, righttable.s)\n" +
+			"     └─ InnerJoin(lefttable.i = righttable.i AND righttable.s = lefttable.s)\n" +
+			"         ├─ SubqueryAlias(lefttable)\n" +
+			"         │   └─ Projected table access on [i s]\n" +
+			"         │       └─ Table(mytable)\n" +
+			"         └─ HashLookup(child: (righttable.i, righttable.s), lookup: (lefttable.i, lefttable.s))\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias(righttable)\n" +
+			"                     └─ Projected table access on [i s]\n" +
+			"                         └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: `SELECT s2, i2, i FROM mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ RightIndexedJoin(othertable.i2 = mytable.i)\n" +

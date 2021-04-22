@@ -4724,6 +4724,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT lefttable.i, righttable.s
+			FROM (SELECT * FROM mytable) lefttable
+			JOIN (SELECT * FROM mytable) righttable
+			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
+			ORDER BY lefttable.i ASC`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
 		Query: "SELECT BINARY 'hi'",
 		Expected: []sql.Row{
 			{"hi"},
