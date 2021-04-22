@@ -912,6 +912,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				Query:       script.Query,
 				Expected:    script.Expected,
 				ExpectedErr: script.ExpectedErr,
+				ExpectedErrStr: script.ExpectedErrStr,
 			},
 		}
 	}

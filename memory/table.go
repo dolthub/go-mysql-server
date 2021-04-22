@@ -620,7 +620,7 @@ func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
 					for _, i := range pkColIdxes {
 						vals[i] = row[pkColIdxes[i]]
 					}
-					return sql.ErrPrimaryKeyViolation.New(fmt.Sprint(vals))
+					return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
 				}
 			}
 		}

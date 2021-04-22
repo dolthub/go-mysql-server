@@ -247,7 +247,7 @@ END;`,
 			},
 			{
 				Query:       "CALL p1(10)",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
+				ExpectedErrStr: "duplicate primary key given: [1]",
 			},
 			{
 				Query: "CALL p1(11)",
