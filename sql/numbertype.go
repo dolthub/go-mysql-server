@@ -242,7 +242,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		num, err := cast.ToInt64E(v)
 		if err != nil {
-			return nil, err // TODO: casting
+			return nil, err
 		}
 		if num > math.MaxInt32 || num < math.MinInt32 {
 			return nil, ErrOutOfRange.New(num, t)

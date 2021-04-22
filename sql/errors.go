@@ -241,7 +241,14 @@ var (
 	// ErrPartitionNotFound is thrown when a partition key on a table is not found
 	ErrPartitionNotFound = errors.NewKind("partition not found %q")
 
-	 ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
+	// ErrInsertIntoNonNullableProvidedNull is called when a null value is inserted into a non-nullable column
+	ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
+
+	// ErrForeignKeyChildViolation is called when a rows is added but there is no parent row, and a foreign key constraint fails. Add the parent row first.
+	ErrForeignKeyChildViolation = errors.NewKind("cannot add or update a child row - Foreign key violation on fk: `%s`, table: `%s`, referenced table: `%s`, key: `%s`")
+
+	// ErrForeignKeyParentViolation is called when a parent row that is deleted has children, and a foreign key constraint fails. Delete the children first.
+	ErrForeignKeyParentViolation = errors.NewKind("cannot delete or update a parent row - Foreign key violation on fk: `%s`, table: `%s`, referenced table: `%s`, key: `%s`")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -270,6 +277,10 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERDupEntry
 	case ErrPartitionNotFound.Is(err):
 		code = 1526 // TODO: Needs to be added to vitess
+	case ErrForeignKeyChildViolation.Is(err):
+		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
+	case ErrForeignKeyParentViolation.Is(err):
+		code = mysql.ERRowIsReferenced2 // test with mysql returns 1451 vs 1215
 	default:
 		code = mysql.ERUnknownError
 	}

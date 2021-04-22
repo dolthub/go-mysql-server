@@ -47,15 +47,17 @@ var ErrInsertIgnore = errors.NewKind("This row was ignored") // Used for making 
 // ER_DUP_KEY - kinda
 // ER_NO_PARTITION_FOR_GIVEN_VALUE - yes
 // ER_NO_PARTITION_FOR_GIVEN_VALUE_SILENT - No
-// ER_NO_REFERENCED_ROW_2 - No (should be though
+// ER_NO_REFERENCED_ROW_2 - Yes
 // ER_ROW_DOES_NOT_MATCH_GIVEN_PARTITION_SET - No
-// ER_ROW_IS_REFERENCED_2 - No
+// ER_ROW_IS_REFERENCED_2 - Yes
 // ER_SUBQUERY_NO_1_ROW - yes
 // ER_VIEW_CHECK_FAILED - No
 var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	 								 sql.ErrPrimaryKeyViolation,
 	 								 sql.ErrPartitionNotFound,
-	 								 sql.ErrExpectedSingleRow}
+	 								 sql.ErrExpectedSingleRow,
+	 								 sql.ErrForeignKeyChildViolation,
+	 								 sql.ErrForeignKeyParentViolation}
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
