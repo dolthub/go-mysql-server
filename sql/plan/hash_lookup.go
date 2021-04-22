@@ -15,10 +15,7 @@
 package plan
 
 import (
-	"fmt"
 	"sync"
-
-	"github.com/cespare/xxhash"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -131,7 +128,7 @@ func (n *HashLookup) getHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		case 5:
 			return [5]interface{}{s[0], s[1], s[2], s[3], s[4]}, nil
 		default:
-			return xxhash.Sum64String(fmt.Sprintf("%#v", s)), nil
+			return sql.HashOf(s)
 		}
 	}
 	return key, nil
