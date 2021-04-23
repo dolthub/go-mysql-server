@@ -77,10 +77,10 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
-	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %w")
+	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given")
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
-	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given: %w")
+	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
 
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
