@@ -43,7 +43,7 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		pj, _ := parent.(plan.JoinNode)
 		pij, _ := parent.(*plan.IndexedJoin)
 		var cond sql.Expression
-		var primaryGetter, secondaryGetter func (sql.Expression) sql.Expression
+		var primaryGetter, secondaryGetter func(sql.Expression) sql.Expression
 		if isCachedResults {
 			switch {
 			case pij != nil && childNum == 1:
@@ -78,7 +78,7 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		// are actually returned from the child.
 		var primaryGetFields, secondaryGetFields []sql.Expression
 		validCondition := true
-		sql.Inspect(cond, func (e sql.Expression) bool {
+		sql.Inspect(cond, func(e sql.Expression) bool {
 			if e == nil {
 				return true
 			}
@@ -118,9 +118,9 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	})
 }
 
-func getFieldIndexRange(low, high, offset int) func (sql.Expression) sql.Expression {
+func getFieldIndexRange(low, high, offset int) func(sql.Expression) sql.Expression {
 	if high != -1 {
-		return func (e sql.Expression) sql.Expression {
+		return func(e sql.Expression) sql.Expression {
 			if gf, ok := e.(*expression.GetField); ok {
 				if gf.Index() >= low && gf.Index() < high {
 					return gf.WithIndex(gf.Index() - offset)
@@ -129,7 +129,7 @@ func getFieldIndexRange(low, high, offset int) func (sql.Expression) sql.Express
 			return nil
 		}
 	} else {
-		return func (e sql.Expression) sql.Expression {
+		return func(e sql.Expression) sql.Expression {
 			if gf, ok := e.(*expression.GetField); ok {
 				if gf.Index() >= low {
 					return gf.WithIndex(gf.Index() - offset)

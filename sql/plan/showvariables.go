@@ -23,6 +23,7 @@ import (
 )
 
 // ShowVariables is a node that shows the global and session variables
+//TODO: implement the GLOBAL and SESSION distinction
 type ShowVariables struct {
 	pattern string
 }
@@ -83,7 +84,7 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		)
 	}
 
-	for k, v := range ctx.GetAll() {
+	for k, v := range ctx.GetAllSessionVariables() {
 		if like != nil {
 			b, err := like.Eval(ctx, sql.NewRow(k, sv.pattern))
 			if err != nil {
@@ -94,7 +95,7 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 			}
 		}
 
-		rows = append(rows, sql.NewRow(k, v.Value))
+		rows = append(rows, sql.NewRow(k, v))
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
