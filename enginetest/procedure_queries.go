@@ -246,8 +246,8 @@ END;`,
 				},
 			},
 			{
-				Query:          "CALL p1(10)",
-				ExpectedErr:     sql.ErrPrimaryKeyViolation,
+				Query:       "CALL p1(10)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
 				Query: "CALL p1(11)",
