@@ -648,7 +648,7 @@ func (i *joinIter) Next() (sql.Row, error) {
 // secondary branches depending on the join type.
 func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	toCut := len(i.originalRow) - i.scopeLen
-	row := make(sql.Row, i.rowSize - toCut)
+	row := make(sql.Row, i.rowSize-toCut)
 
 	scope := primary[:i.scopeLen]
 	primary = primary[len(i.originalRow):]
