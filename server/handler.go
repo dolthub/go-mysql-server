@@ -309,7 +309,10 @@ func (h *Handler) doQuery(
 		if n.Local {
 			// tell the connection to undergo the load data process with this
 			// metadata
-			_, tmpdir := ctx.Get("tmpdir")
+			tmpdir, err := ctx.GetSessionVariable(ctx, "tmpdir")
+			if err != nil {
+				return err
+			}
 			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, n.Infile)
 			if err != nil {
 				return err
@@ -449,7 +452,10 @@ rowLoop:
 		return err
 	}
 
-	autoCommit := isSessionAutocommit(ctx)
+	autoCommit, err := isSessionAutocommit(ctx)
+	if err != nil {
+		return err
+	}
 
 	_, statementIsCommit := parsedQuery.(*sqlparser.Commit)
 	if statementIsCommit || (autoCommit && statementNeedsCommit(parsedQuery, parseErr)) {
@@ -533,19 +539,12 @@ func (h *Handler) pollForClosedConnection(nc conntainer, errChan chan error, qui
 	}
 }
 
-func isSessionAutocommit(ctx *sql.Context) bool {
-	typ, autoCommitSessionVar := ctx.Get(sql.AutoCommitSessionVar)
-	autoCommit := false
-	if autoCommitSessionVar != nil {
-		switch typ {
-		case sql.Int64:
-			autoCommit = autoCommitSessionVar.(int64) == int64(1)
-		case sql.Boolean:
-			autoCommit, _ = sql.ConvertToBool(autoCommitSessionVar)
-		default:
-		}
+func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
 	}
-	return autoCommit
+	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 func statementNeedsCommit(parsedQuery sqlparser.Statement, parseErr error) bool {

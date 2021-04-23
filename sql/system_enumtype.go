@@ -66,7 +66,7 @@ func (t systemEnumType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
-	// Float nor nil values are accepted
+	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
 		if value >= 0 && value < len(t.indexToVal) {
@@ -90,6 +90,14 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert(int(value))
 	case uint64:
 		return t.Convert(int(value))
+	case float32:
+		return t.Convert(float64(value))
+	case float64:
+		// Float values aren't truly accepted, but the engine will give them when it should give ints.
+		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
+		if value == float64(int(value)) {
+			return t.Convert(int(value))
+		}
 	case string:
 		if idx, ok := t.valToIndex[strings.ToLower(value)]; ok {
 			return t.indexToVal[idx], nil

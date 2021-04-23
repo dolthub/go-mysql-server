@@ -23,13 +23,13 @@ import (
 // SystemVar is an expression that returns the value of a system variable. It's also used as the expression on the left
 // hand side of a SET statement for a system variable.
 type SystemVar struct {
-	Name string
-	typ  sql.Type
+	Name  string
+	Scope sql.SystemVariableScope
 }
 
 // NewSystemVar creates a new SystemVar expression.
-func NewSystemVar(name string, typ sql.Type) *SystemVar {
-	return &SystemVar{name, typ}
+func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
+	return &SystemVar{name, scope}
 }
 
 // Children implements the sql.Expression interface.
@@ -37,12 +37,31 @@ func (v *SystemVar) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
 func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	_, val := ctx.Get(v.Name)
-	return val, nil
+	switch v.Scope {
+	case sql.SystemVariableScope_Session:
+		val, err := ctx.GetSessionVariable(ctx, v.Name)
+		if err != nil {
+			return nil, err
+		}
+		return val, nil
+	case sql.SystemVariableScope_Global:
+		_, val, ok := sql.SystemVariables.GetGlobal(v.Name)
+		if !ok {
+			return nil, sql.ErrUnknownSystemVariable.New(v.Name)
+		}
+		return val, nil
+	default: // should never happen
+		return nil, fmt.Errorf("unknown scope `%v` on system variable `%s`", v.Scope, v.Name)
+	}
 }
 
 // Type implements the sql.Expression interface.
-func (v *SystemVar) Type() sql.Type { return v.typ }
+func (v *SystemVar) Type() sql.Type {
+	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
+		return sysVar.Type
+	}
+	return sql.Null
+}
 
 // IsNullable implements the sql.Expression interface.
 func (v *SystemVar) IsNullable() bool { return false }
@@ -51,10 +70,15 @@ func (v *SystemVar) IsNullable() bool { return false }
 func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
-func (v *SystemVar) String() string { return "@@" + v.Name }
-
-func (v *SystemVar) DebugString() string {
-	return fmt.Sprintf("@@%s (%s)", v.Name, v.typ)
+func (v *SystemVar) String() string {
+	switch v.Scope {
+	case sql.SystemVariableScope_Session:
+		return fmt.Sprintf("@@SESSION.%s", v.Name)
+	case sql.SystemVariableScope_Global:
+		return fmt.Sprintf("@@GLOBAL.%s", v.Name)
+	default: // should never happen
+		return fmt.Sprintf("@@UNKNOWN(%v).%s", v.Scope, v.Name)
+	}
 }
 
 // WithChildren implements the Expression interface.
@@ -81,7 +105,10 @@ func (v *UserVar) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
 func (v *UserVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	_, val := ctx.Get(v.Name)
+	_, val, err := ctx.GetUserVariable(ctx, v.Name)
+	if err != nil {
+		return nil, err
+	}
 	return val, nil
 }
 
@@ -97,10 +124,6 @@ func (v *UserVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *UserVar) String() string { return "@" + v.Name }
-
-func (v *UserVar) DebugString() string {
-	return fmt.Sprintf("@%s", v.Name)
-}
 
 // WithChildren implements the Expression interface.
 func (v *UserVar) WithChildren(children ...sql.Expression) (sql.Expression, error) {

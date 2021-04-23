@@ -57,7 +57,9 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 		rows = append(rows, sql.Row{int64(i)})
 	}
 
-	maxLen := getGroupConcatMaxLen(ctx)
+	maxLenInt, err := ctx.GetSessionVariable(ctx, "group_concat_max_len")
+	require.NoError(t, err)
+	maxLen := maxLenInt.(uint64)
 
 	gc, err := NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, sql.Int64, "int", true)}, int(maxLen))
 	require.NoError(t, err)
@@ -104,9 +106,4 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 
 		require.Equal(t, tt.returnType, gc.Type())
 	}
-}
-
-func getGroupConcatMaxLen(ctx *sql.Context) int64 {
-	_, gcml := ctx.Get("group_concat_max_len")
-	return gcml.(int64)
 }

@@ -643,8 +643,18 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
 					triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
 					tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
-					_, characterSetClient := ctx.Get("character_set_client")
-					_, collationConnection := ctx.Get("collation_connection")
+					characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+					if err != nil {
+						return nil, err
+					}
+					collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+					if err != nil {
+						return nil, err
+					}
+					collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+					if err != nil {
+						return nil, err
+					}
 					rows = append(rows, Row{
 						"def",                      // trigger_catalog
 						triggerDb.Name(),           // trigger_schema
@@ -665,9 +675,9 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 						time.Unix(0, 0).UTC(),      // created
 						"",                         // sql_mode
 						"",                         // definer
-						characterSetClient,         // character_set_client //TODO: allow these to be retrieved from integrators
-						collationConnection,        // collation_connection //TODO: allow these to be retrieved from integrators
-						Collation_Default.String(), // database_collation //TODO: add support for databases to set collation
+						characterSetClient,         // character_set_client
+						collationConnection,        // collation_connection
+						collationServer,            // database_collation
 					})
 				}
 			}

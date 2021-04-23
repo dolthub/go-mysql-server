@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"io"
 	"strconv"
 	"strings"
@@ -72,6 +73,95 @@ type SystemVariableType interface {
 	// DecodeValue returns the original value given to EncodeValue from the given string. This is different from `Convert`,
 	// as the encoded value may technically be an "illegal" value according to the type rules.
 	DecodeValue(string) (interface{}, error)
+}
+
+// ApproximateTypeFromValue returns the closest matching type to the given value. For example, an int16 will return SMALLINT.
+func ApproximateTypeFromValue(val interface{}) Type {
+	switch v := val.(type) {
+	case bool:
+		return Boolean
+	case int:
+		if strconv.IntSize == 32 {
+			return Int32
+		}
+		return Int64
+	case int64:
+		return Int64
+	case int32:
+		return Int32
+	case int16:
+		return Int16
+	case int8:
+		return Int8
+	case uint:
+		if strconv.IntSize == 32 {
+			return Uint32
+		}
+		return Uint64
+	case uint64:
+		return Uint64
+	case uint32:
+		return Uint32
+	case uint16:
+		return Uint16
+	case uint8:
+		return Uint8
+	case time.Duration:
+		return Time
+	case time.Time:
+		return Datetime
+	case float32:
+		return Float32
+	case float64:
+		return Float64
+	case string:
+		typ, err := CreateString(sqltypes.VarChar, int64(len(v)), Collation_Default)
+		if err != nil {
+			typ, err = CreateString(sqltypes.Text, int64(len(v)), Collation_Default)
+			if err != nil {
+				typ = LongText
+			}
+		}
+		return typ
+	case []byte:
+		typ, err := CreateBinary(sqltypes.VarBinary, int64(len(v)))
+		if err != nil {
+			typ, err = CreateBinary(sqltypes.Blob, int64(len(v)))
+			if err != nil {
+				typ = LongBlob
+			}
+		}
+		return typ
+	case decimal.Decimal:
+		str := v.String()
+		dotIdx := strings.Index(str, ".")
+		if len(str) > 66 {
+			return Float64
+		} else if dotIdx == -1 {
+			typ, err := CreateDecimalType(uint8(len(str)), 0)
+			if err != nil {
+				return Float64
+			}
+			return typ
+		} else {
+			precision := uint8(len(str)-1)
+			scale := uint8(len(str)-dotIdx-1)
+			typ, err := CreateDecimalType(precision, scale)
+			if err != nil {
+				return Float64
+			}
+			return typ
+		}
+	case decimal.NullDecimal:
+		if !v.Valid {
+			return Float64
+		}
+		return ApproximateTypeFromValue(v.Decimal)
+	case nil:
+		return Null
+	default:
+		return LongText
+	}
 }
 
 // AreComparable returns whether the given types are either the same or similar enough that values can meaningfully be

@@ -81,16 +81,26 @@ func (s *ShowCreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 	}
 	for _, trigger := range triggers {
 		if strings.ToLower(trigger.Name) == s.TriggerName {
-			_, characterSetClient := ctx.Get("character_set_client")
-			_, collationConnection := ctx.Get("collation_connection")
+			characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+			if err != nil {
+				return nil, err
+			}
+			collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+			if err != nil {
+				return nil, err
+			}
+			collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+			if err != nil {
+				return nil, err
+			}
 			return sql.RowsToRowIter(sql.Row{
-				trigger.Name,                   // Trigger
-				"",                             // sql_mode
-				trigger.CreateStatement,        // SQL Original Statement
-				characterSetClient,             // character_set_client //TODO: allow these to be retrieved from integrators
-				collationConnection,            // collation_connection //TODO: allow these to be retrieved from integrators
-				sql.Collation_Default.String(), // Database Collation //TODO: add support for databases to set collation
-				time.Unix(0, 0).UTC(),          // Created
+				trigger.Name,            // Trigger
+				"",                      // sql_mode
+				trigger.CreateStatement, // SQL Original Statement
+				characterSetClient,      // character_set_client
+				collationConnection,     // collation_connection
+				collationServer,         // Database Collation
+				time.Unix(0, 0).UTC(),   // Created
 			}), nil
 		}
 	}

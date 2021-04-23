@@ -78,20 +78,30 @@ func (s *ShowTriggers) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		triggerEvent := strings.ToUpper(trigger.TriggerEvent)
 		triggerTime := strings.ToUpper(trigger.TriggerTime)
 		tableName := trigger.Table.(*UnresolvedTable).Name()
-		_, characterSetClient := ctx.Get("character_set_client")
-		_, collationConnection := ctx.Get("collation_connection")
+		characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+		if err != nil {
+			return nil, err
+		}
+		collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+		if err != nil {
+			return nil, err
+		}
+		collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+		if err != nil {
+			return nil, err
+		}
 		rows = append(rows, sql.Row{
-			trigger.TriggerName,            // Trigger
-			triggerEvent,                   // Event
-			tableName,                      // Table
-			trigger.BodyString,             // Statement
-			triggerTime,                    // Timing
-			time.Unix(0, 0).UTC(),          // Created
-			"",                             // sql_mode
-			"",                             // Definer
-			characterSetClient,             // character_set_client //TODO: allow these to be retrieved from integrators
-			collationConnection,            // collation_connection //TODO: allow these to be retrieved from integrators
-			sql.Collation_Default.String(), // Database Collation
+			trigger.TriggerName,   // Trigger
+			triggerEvent,          // Event
+			tableName,             // Table
+			trigger.BodyString,    // Statement
+			triggerTime,           // Timing
+			time.Unix(0, 0).UTC(), // Created
+			"",                    // sql_mode
+			"",                    // Definer
+			characterSetClient,    // character_set_client
+			collationConnection,   // collation_connection
+			collationServer,       // Database Collation
 		})
 	}
 	return sql.RowsToRowIter(rows...), nil
