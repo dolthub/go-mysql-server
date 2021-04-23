@@ -264,12 +264,12 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
-			if !sql.IsUniqueKeyError(err) || len(i.updateExprs) == 0 {
+			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err)) || len(i.updateExprs) == 0 {
 				_ = i.rowSource.Close(i.ctx)
 				return nil, err
 			}
 
-			ue := err.(sql.UniqueKeyError)
+			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
 			return i.handleOnDuplicateKeyUpdate(row, ue.Existing)
 		}
 	}

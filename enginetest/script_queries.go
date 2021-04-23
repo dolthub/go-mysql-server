@@ -34,8 +34,6 @@ type ScriptTest struct {
 	Expected []sql.Row
 	// For tests that make a single assertion, ExpectedErr can be set for the expected error
 	ExpectedErr *errors.Kind
-	// For tests where a non go-errors package error is returned
-	ExpectedErrStr string
 }
 
 type ScriptTestAssertion struct {

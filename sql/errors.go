@@ -76,6 +76,12 @@ var (
 	// ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
+	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
+	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %w")
+
+	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
+	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given: %w")
+
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
 		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
@@ -267,32 +273,17 @@ type UniqueKeyError struct {
 	Existing Row
 }
 
-func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) UniqueKeyError {
-	return UniqueKeyError{
+func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
+	ue := UniqueKeyError{
 		keyStr:   keyStr,
 		IsPK:     isPK,
 		Existing: existing,
 	}
-}
 
-func IsUniqueKeyError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	_, ok := err.(UniqueKeyError)
-	return ok
-}
-
-func IsUniqueErrorOfType(isPK bool, err error) bool {
-	if err == nil {
-		return false
-	}
-
-	if ue, ok := err.(UniqueKeyError); !ok {
-		return false
+	if isPK {
+		return ErrPrimaryKeyViolation.Wrap(ue)
 	} else {
-		return ue.IsPK == isPK
+		return ErrUniqueKeyViolation.Wrap(ue)
 	}
 }
 

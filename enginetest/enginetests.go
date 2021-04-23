@@ -909,10 +909,9 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 	if len(assertions) == 0 {
 		assertions = []ScriptTestAssertion{
 			{
-				Query:       script.Query,
-				Expected:    script.Expected,
-				ExpectedErr: script.ExpectedErr,
-				ExpectedErrStr: script.ExpectedErrStr,
+				Query:          script.Query,
+				Expected:       script.Expected,
+				ExpectedErr:    script.ExpectedErr,
 			},
 		}
 	}
