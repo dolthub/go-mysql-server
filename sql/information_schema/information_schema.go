@@ -711,7 +711,7 @@ func checkConstraintsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 				}
 
 				for _, checkDefinition := range checkDefinitions {
-					rows = append(rows, Row{"def", db.Name, checkDefinition.Name, checkDefinition.CheckExpression})
+					rows = append(rows, Row{"def", db.Name(), checkDefinition.Name, checkDefinition.CheckExpression})
 				}
 			}
 		}
@@ -742,16 +742,12 @@ func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 					return nil, err
 				}
 
-				if len(checkDefinitions) == 0 {
-					continue
-				}
-
 				for _, checkDefinition := range checkDefinitions {
 					enforced := "YES"
 					if !checkDefinition.Enforced {
 						enforced = "NO"
 					}
-					rows = append(rows, Row{"def", db.Name, checkDefinition.Name, db.Name(), tbl.Name(), "CHECK", checkDefinition, enforced})
+					rows = append(rows, Row{"def", db.Name(), checkDefinition.Name, db.Name(), tbl.Name(), "CHECK", enforced})
 				}
 			}
 
@@ -764,7 +760,12 @@ func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 				}
 
 				for _, index := range indexes {
-					rows = append(rows, Row{"def", db.Name, index.ID(), db.Name(), tbl.Name(), strings.ToUpper(index.IndexType()), "YES"})
+					outputType := "PRIMARY KEY"
+					if index.ID() != "PRIMARY" {
+						outputType = "UNIQUE"
+					}
+
+					rows = append(rows, Row{"def", db.Name(), index.ID(), db.Name(), tbl.Name(), outputType, "YES"})
 				}
 			}
 
@@ -777,7 +778,7 @@ func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 				}
 
 				for _, fk := range fks {
-					rows = append(rows, Row{"def", db.Name, fk.Name, db.Name(), tbl.Name(), "FOREIGN KEY", "YES"})
+					rows = append(rows, Row{"def", db.Name(), fk.Name, db.Name(), tbl.Name(), "FOREIGN KEY", "YES"})
 				}
 			}
 		}
