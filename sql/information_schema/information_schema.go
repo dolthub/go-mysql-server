@@ -401,7 +401,7 @@ var checkConstraintsSchema = Schema{
 	{Name: "constraint_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
 	{Name: "constraint_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
 	{Name: "constraint_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
-	{Name: "check_cluase", Type: LongText, Default: nil, Nullable: false, Source: CheckConstraintsTableName},
+	{Name: "check_clause", Type: LongText, Default: nil, Nullable: false, Source: CheckConstraintsTableName},
 }
 
 func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
@@ -706,10 +706,6 @@ func checkConstraintsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 					return nil, err
 				}
 
-				if len(checkDefinitions) == 0 {
-					continue
-				}
-
 				for _, checkDefinition := range checkDefinitions {
 					rows = append(rows, Row{"def", db.Name(), checkDefinition.Name, checkDefinition.CheckExpression})
 				}
@@ -762,7 +758,13 @@ func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 				for _, index := range indexes {
 					outputType := "PRIMARY KEY"
 					if index.ID() != "PRIMARY" {
-						outputType = "UNIQUE"
+						if index.IsUnique() {
+							outputType = "UNIQUE"
+						} else {
+							// In this case we have a multi-index which is not represented in this table
+							continue
+						}
+
 					}
 
 					rows = append(rows, Row{"def", db.Name(), index.ID(), db.Name(), tbl.Name(), outputType, "YES"})

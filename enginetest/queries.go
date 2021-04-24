@@ -5407,6 +5407,28 @@ var InfoSchemaQueries = []QueryTest{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
 	},
+	{
+		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
+		Expected: []sql.Row{
+			{"def", "mydb", "PRIMARY", "mydb", "auto_increment_tbl", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "bigtable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
+			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "othertable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "people", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "tabletest", "PRIMARY KEY", "YES"},
+		},
+	},
+	{
+		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
+		Expected: []sql.Row{},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
@@ -5420,6 +5442,44 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "describe auto;",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "height < 10"},
+					{"def", "mydb", "mycheck", "test_score >= 50"},
+				},
+			},
+			{
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.table_constraints ignores multi-index",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on mytable(test_score)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
 			},
 		},
