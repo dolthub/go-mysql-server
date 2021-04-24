@@ -16,6 +16,7 @@ package plan
 
 import (
 	"context"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -31,19 +32,21 @@ func TestSet(t *testing.T) {
 
 	s := NewSet(
 		[]sql.Expression{
-			expression.NewSetField(expression.NewSystemVar("foo", sql.LongText), expression.NewLiteral("bar", sql.LongText)),
-			expression.NewSetField(expression.NewSystemVar("baz", sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+			expression.NewSetField(expression.NewUserVar("foo"), expression.NewLiteral("bar", sql.LongText)),
+			expression.NewSetField(expression.NewUserVar("baz"), expression.NewLiteral(int64(1), sql.Int64)),
 		},
 	)
 
 	_, err := s.RowIter(ctx, nil)
 	require.NoError(err)
 
-	typ, v := ctx.Get("foo")
-	require.Equal(sql.LongText, typ)
+	typ, v, err := ctx.GetUserVariable(ctx, "foo")
+	require.NoError(err)
+	require.Equal(sql.MustCreateStringWithDefaults(sqltypes.VarChar, 3), typ)
 	require.Equal("bar", v)
 
-	typ, v = ctx.Get("baz")
+	typ, v, err = ctx.GetUserVariable(ctx, "baz")
+	require.NoError(err)
 	require.Equal(sql.Int64, typ)
 	require.Equal(int64(1), v)
 }

@@ -394,8 +394,8 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 	})
 
 	var inMemorySession bool
-	_, val := ctx.Get(inMemoryJoinSessionVar)
-	if val != nil {
+	val, err := ctx.GetSessionVariable(ctx, inMemoryJoinSessionVar)
+	if err == nil && val == int8(1) {
 		inMemorySession = true
 	}
 

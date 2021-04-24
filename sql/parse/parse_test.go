@@ -2088,20 +2088,20 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewSetField(expression.NewUnresolvedColumn("autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
 			expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("bar", sql.LongText)),
-			expression.NewSetField(expression.NewUnresolvedColumn("baz"), expression.NewLiteral("on", sql.LongText)),
+			expression.NewSetField(expression.NewUnresolvedColumn("baz"), expression.NewLiteral("ON", sql.LongText)),
 			expression.NewSetField(expression.NewUnresolvedColumn("qux"), expression.NewUnresolvedColumn("bareword")),
 		},
 	),
 	`SET @@session.autocommit=1, foo="true"`: plan.NewSet(
 		[]sql.Expression{
-			expression.NewSetField(expression.NewUnresolvedColumn("@@session.autocommit"), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewSetField(expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session), expression.NewLiteral(int8(1), sql.Int8)),
 			expression.NewSetField(expression.NewUnresolvedColumn("foo"), expression.NewLiteral("true", sql.LongText)),
 		},
 	),
 	`SET SESSION NET_READ_TIMEOUT= 700, SESSION NET_WRITE_TIMEOUT= 700`: plan.NewSet(
 		[]sql.Expression{
-			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_READ_TIMEOUT"), expression.NewLiteral(int16(700), sql.Int16)),
-			expression.NewSetField(expression.NewUnresolvedColumn("@@session.NET_WRITE_TIMEOUT"), expression.NewLiteral(int16(700), sql.Int16)),
+			expression.NewSetField(expression.NewSystemVar("NET_READ_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), sql.Int16)),
+			expression.NewSetField(expression.NewSystemVar("NET_WRITE_TIMEOUT", sql.SystemVariableScope_Session), expression.NewLiteral(int16(700), sql.Int16)),
 		},
 	),
 	`SET gtid_mode=DEFAULT`: plan.NewSet(
@@ -2111,7 +2111,7 @@ CREATE TABLE t2
 	),
 	`SET @@sql_select_limit=default`: plan.NewSet(
 		[]sql.Expression{
-			expression.NewSetField(expression.NewUnresolvedColumn("@@sql_select_limit"), expression.NewDefaultColumn("")),
+			expression.NewSetField(expression.NewSystemVar("sql_select_limit", sql.SystemVariableScope_Session), expression.NewDefaultColumn("")),
 		},
 	),
 	"":                     plan.Nothing,

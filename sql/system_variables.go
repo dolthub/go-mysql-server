@@ -14,7 +14,11 @@
 
 package sql
 
-import "math"
+import (
+	"math"
+	"strings"
+	"sync"
+)
 
 // SystemVariableScope represents the scope of a system variable.
 type SystemVariableScope byte
@@ -27,6 +31,20 @@ const (
 	// SystemVariableScope_Both is set when the system variable exists in both the global and session contexts.
 	SystemVariableScope_Both
 )
+
+// String returns the scope as an uppercase string.
+func (s SystemVariableScope) String() string {
+	switch s {
+	case SystemVariableScope_Global:
+		return "GLOBAL"
+	case SystemVariableScope_Session:
+		return "SESSION"
+	case SystemVariableScope_Both:
+		return "GLOBAL, SESSION"
+	default:
+		return "UNKNOWN_SYSTEM_SCOPE"
+	}
+}
 
 // SystemVariable represents a system variable.
 type SystemVariable struct {
@@ -46,8 +64,117 @@ type SystemVariable struct {
 	Default interface{}
 }
 
-// systemVars is the internal collection of all MySQL system variables according to the following page:
+// globalSystemVariables is the underlying type of SystemVariables.
+type globalSystemVariables struct {
+	mutex *sync.RWMutex
+	sysVarVals map[string]interface{}
+}
+
+// SystemVariables is the collection of system variables for this process.
+var SystemVariables = &globalSystemVariables{&sync.RWMutex{}, make(map[string]interface{})}
+
+// AddSystemVariables adds the given system variables to the collection. If a name is already used by an existing
+// variable, then it is overwritten with the new one.
+func (sv *globalSystemVariables) AddSystemVariables(sysVars []SystemVariable) {
+	sv.mutex.Lock()
+	defer sv.mutex.Unlock()
+	for _, originalSysVar := range sysVars {
+		sysVar := originalSysVar
+		lowerName := strings.ToLower(sysVar.Name)
+		sysVar.Name = lowerName
+		systemVars[lowerName] = sysVar
+		sv.sysVarVals[lowerName] = sysVar.Default
+	}
+}
+
+// AssignValues sets all of the values in the given map to their respective variables. If a variable cannot be found, or
+// the value is invalid, then an error is returned. If the values contain any custom system variables, then make sure
+// that they've been added using AddSystemVariables first.
+func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error {
+	sv.mutex.Lock()
+	defer sv.mutex.Unlock()
+	for varName, val := range vals {
+		varName = strings.ToLower(varName)
+		sysVar, ok := systemVars[varName]
+		if !ok {
+			return ErrUnknownSystemVariable.New(varName)
+		}
+		convertedVal, err := sysVar.Type.Convert(val)
+		if err != nil {
+			return err
+		}
+		sv.sysVarVals[varName] = convertedVal
+	}
+	return nil
+}
+
+// NewSessionMap returns a new map of system variable values for sessions.
+func (sv *globalSystemVariables) NewSessionMap() map[string]interface{} {
+	sv.mutex.RLock()
+	defer sv.mutex.RUnlock()
+	sessionVals := make(map[string]interface{}, len(sv.sysVarVals))
+	for key, val := range sv.sysVarVals {
+		sessionVals[key] = val
+	}
+	return sessionVals
+}
+
+// GetGlobal returns the system variable definition and value for the given name. If the variable does not exist, returns
+// false. Case-insensitive.
+func (sv *globalSystemVariables) GetGlobal(name string) (SystemVariable, interface{}, bool) {
+	sv.mutex.RLock()
+	defer sv.mutex.RUnlock()
+	name = strings.ToLower(name)
+	v, ok := systemVars[name]
+	if ok {
+		return v, sv.sysVarVals[name], true
+	}
+	return SystemVariable{}, nil, false
+}
+
+// SetGlobal sets the system variable with the given name to the given value. If the system variable does not exist,
+// then an error is returned. Additionally, if the value is invalid for the variable's type then an error is returned.
+// Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
+// statement. To set session system variables, use the appropriate function on the session context. To set values
+// directly (such as when loading persisted values), use AssignValues. Case-insensitive.
+func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
+	sv.mutex.Lock()
+	defer sv.mutex.Unlock()
+	name = strings.ToLower(name)
+	sysVar, ok := systemVars[name]
+	if !ok {
+		return ErrUnknownSystemVariable.New(name)
+	}
+	if sysVar.Scope == SystemVariableScope_Session {
+		return ErrSystemVariableSessionOnly.New(name)
+	}
+	if !sysVar.Dynamic {
+		return ErrSystemVariableReadOnly.New(name)
+	}
+	convertedVal, err := sysVar.Type.Convert(val)
+	if err != nil {
+		return err
+	}
+	sv.sysVarVals[name] = convertedVal
+	return nil
+}
+
+// init initializes SystemVariables as it functions as a global variable.
+func init() {
+	for _, sysVar := range systemVars {
+		SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
+	}
+}
+
+//TODO: Add from the following sources because MySQL likes to not have every variable on a single page:
+// https://dev.mysql.com/doc/refman/8.0/en/mysql-cluster-options-variables.html
+// There's also this page, which shows that a TON of variables are still missing ):
+// https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
+
+// systemVars is the internal collection of all MySQL system variables according to the following pages:
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html
+// https://dev.mysql.com/doc/refman/8.0/en/replication-options-gtids.html
+// https://dev.mysql.com/doc/refman/8.0/en/replication-options-source.html
 var systemVars = map[string]SystemVariable{
 	"activate_all_roles_on_login": {
 		Name:              "activate_all_roles_on_login",
@@ -166,8 +293,8 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemBoolType("autocommit"),
-		Default:           int8(1),
+		Type: NewSystemBoolType("autocommit"),
+		Default: int8(0),
 	},
 	"automatic_sp_privileges": {
 		Name:              "automatic_sp_privileges",
@@ -184,6 +311,22 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: false,
 		Type:              NewSystemBoolType("auto_generate_certs"),
 		Default:           int8(1),
+	},
+	"auto_increment_increment": {
+		Name: "auto_increment_increment",
+		Scope: SystemVariableScope_Both,
+		Dynamic: true,
+		SetVarHintApplies: true,
+		Type: NewSystemIntType("auto_increment_increment", 1, 65535, false),
+		Default: int64(1),
+	},
+	"auto_increment_offset": {
+		Name: "auto_increment_offset",
+		Scope: SystemVariableScope_Both,
+		Dynamic: true,
+		SetVarHintApplies: true,
+		Type: NewSystemIntType("auto_increment_offset", 1, 65535, false),
+		Default: int64(1),
 	},
 	"avoid_temporal_upgrade": {
 		Name:              "avoid_temporal_upgrade",
@@ -225,6 +368,14 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: false,
 		Type:              NewSystemStringType("bind_address"),
 		Default:           "*",
+	},
+	"binlog_gtid_simple_recovery": {
+		Name: "binlog_gtid_simple_recovery",
+		Scope: SystemVariableScope_Global,
+		Dynamic: false,
+		SetVarHintApplies: false,
+		Type: NewSystemBoolType("binlog_gtid_simple_recovery"),
+		Default: int8(1),
 	},
 	"block_encryption_mode": {
 		Name:              "block_encryption_mode",
@@ -279,24 +430,24 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("character_set_client"),
-		Default:           "utf8mb4",
+		Type: NewSystemStringType("character_set_client"),
+		Default: Collation_Default.CharacterSet().String(),
 	},
 	"character_set_connection": {
 		Name:              "character_set_connection",
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("character_set_connection"),
-		Default:           "utf8mb4",
+		Type: NewSystemStringType("character_set_connection"),
+		Default: Collation_Default.CharacterSet().String(),
 	},
 	"character_set_database": {
 		Name:              "character_set_database",
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("character_set_database"),
-		Default:           "utf8mb4",
+		Type: NewSystemStringType("character_set_database"),
+		Default: Collation_Default.CharacterSet().String(),
 	},
 	"character_set_filesystem": {
 		Name:              "character_set_filesystem",
@@ -311,24 +462,24 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("character_set_results"),
-		Default:           "utf8mb4",
+		Type: NewSystemStringType("character_set_results"),
+		Default: Collation_Default.CharacterSet().String(),
 	},
 	"character_set_server": {
 		Name:              "character_set_server",
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("character_set_server"),
-		Default:           "utf8mb4",
+		Type: NewSystemStringType("character_set_server"),
+		Default: Collation_Default.CharacterSet().String(),
 	},
 	"character_set_system": {
 		Name:              "character_set_system",
 		Scope:             SystemVariableScope_Global,
 		Dynamic:           false,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("character_set_system"),
-		Default:           "utf8",
+		Type: NewSystemStringType("character_set_system"),
+		Default: Collation_Default.CharacterSet().String(),
 	},
 	"character_sets_dir": {
 		Name:              "character_sets_dir",
@@ -351,24 +502,24 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("collation_connection"),
-		Default:           "",
+		Type: NewSystemStringType("collation_connection"),
+		Default: Collation_Default.String(),
 	},
 	"collation_database": {
 		Name:              "collation_database",
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("collation_database"),
-		Default:           "utf8mb4_0900_ai_ci",
+		Type: NewSystemStringType("collation_database"),
+		Default: Collation_Default.String(),
 	},
 	"collation_server": {
 		Name:              "collation_server",
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("collation_server"),
-		Default:           "utf8mb4_0900_ai_ci",
+		Type: NewSystemStringType("collation_server"),
+		Default: Collation_Default.String(),
 	},
 	"completion_type": {
 		Name:              "completion_type",
@@ -562,6 +713,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemBoolType("end_markers_in_json"),
 		Default:           int8(0),
 	},
+	"enforce_gtid_consistency": {
+		Name: "enforce_gtid_consistency",
+		Scope: SystemVariableScope_Global,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemEnumType("enforce_gtid_consistency", "OFF", "ON", "WARN"),
+		Default: "OFF",
+	},
 	"eq_range_index_dive_limit": {
 		Name:              "eq_range_index_dive_limit",
 		Scope:             SystemVariableScope_Both,
@@ -690,6 +849,54 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemUintType("group_concat_max_len", 4, 18446744073709551615),
 		Default:           uint64(1024),
 	},
+	"gtid_executed": {
+		Name: "gtid_executed",
+		Scope: SystemVariableScope_Global,
+		Dynamic: false,
+		SetVarHintApplies: false,
+		Type: NewSystemStringType("gtid_executed"),
+		Default: "",
+	},
+	"gtid_executed_compression_period": {
+		Name: "gtid_executed_compression_period",
+		Scope: SystemVariableScope_Global,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemIntType("gtid_executed_compression_period", 0, 4294967295, false),
+		Default: int64(0),
+	},
+	"gtid_mode": {
+		Name: "gtid_mode",
+		Scope: SystemVariableScope_Global,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemEnumType("gtid_mode", "OFF", "OFF_PERMISSIVE", "ON_PERMISSIVE", "ON"),
+		Default: "OFF",
+	},
+	"gtid_next": {
+		Name: "gtid_next",
+		Scope: SystemVariableScope_Session,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemEnumType("gtid_next", "AUTOMATIC", "ANONYMOUS", "UUID:NUMBER"),
+		Default: "AUTOMATIC",
+	},
+	"gtid_owned": {
+		Name: "gtid_owned",
+		Scope: SystemVariableScope_Both,
+		Dynamic: false,
+		SetVarHintApplies: false,
+		Type: NewSystemStringType("gtid_owned"),
+		Default: "",
+	},
+	"gtid_purged": {
+		Name: "gtid_purged",
+		Scope: SystemVariableScope_Global,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemStringType("gtid_purged"),
+		Default: "",
+	},
 	"have_statement_timeout": {
 		Name:              "have_statement_timeout",
 		Scope:             SystemVariableScope_Global,
@@ -722,6 +929,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemStringType("hostname"),
 		Default:           "",
 	},
+	"immediate_server_version": {
+		Name: "immediate_server_version",
+		Scope: SystemVariableScope_Session,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemIntType("immediate_server_version", -9223372036854775808, 9223372036854775807, false),
+		Default: int64(80017),
+	},
 	"init_connect": {
 		Name:              "init_connect",
 		Scope:             SystemVariableScope_Global,
@@ -745,6 +960,14 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: false,
 		Type:              NewSystemStringType("init_file"),
 		Default:           "",
+	},
+	"inmemory_joins": {
+		Name: "inmemory_joins",
+		Scope: SystemVariableScope_Session,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemBoolType("inmemory_joins"),
+		Default: int8(0),
 	},
 	"interactive_timeout": {
 		Name:              "interactive_timeout",
@@ -841,6 +1064,14 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: false,
 		Type:              NewSystemIntType("large_page_size", -9223372036854775808, 9223372036854775807, false),
 		Default:           int64(0),
+	},
+	"last_insert_id": {
+		Name: "last_insert_id",
+		Scope: SystemVariableScope_Session,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemIntType("last_insert_id", -9223372036854775808, 9223372036854775807, false),
+		Default: int64(0),
 	},
 	"lc_messages": {
 		Name:              "lc_messages",
@@ -1055,8 +1286,8 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: false,
-		Type:              NewSystemIntType("max_allowed_packet", 1024, 1073741824, false),
-		Default:           int64(67108864),
+		Type: NewSystemIntType("max_allowed_packet", 1024, 1073741824, false),
+		Default: int64(1073741824),
 	},
 	"max_connect_errors": {
 		Name:              "max_connect_errors",
@@ -1314,6 +1545,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemStringType("named_pipe_full_access_group"),
 		Default:           "",
 	},
+	"ndbinfo_version": {
+		Name: "ndbinfo_version",
+		Scope: SystemVariableScope_Global,
+		Dynamic: false,
+		SetVarHintApplies: false,
+		Type: NewSystemStringType("ndbinfo_version"),
+		Default: "",
+	},
 	"net_buffer_length": {
 		Name:              "net_buffer_length",
 		Scope:             SystemVariableScope_Both,
@@ -1458,6 +1697,14 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: false,
 		Type:              NewSystemIntType("optimizer_trace_offset", -9223372036854775808, 9223372036854775807, true),
 		Default:           int64(-1),
+	},
+	"original_server_version": {
+		Name: "original_server_version",
+		Scope: SystemVariableScope_Session,
+		Dynamic: true,
+		SetVarHintApplies: false,
+		Type: NewSystemIntType("original_server_version", -9223372036854775808, 9223372036854775807, false),
+		Default: int64(80017),
 	},
 	"parser_max_mem_size": {
 		Name:              "parser_max_mem_size",
@@ -1725,15 +1972,14 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemIntType("schema_definition_cache", 256, 524288, false),
 		Default:           int64(256),
 	},
-	//TODO: validate the directory given
-	//"secure_file_priv": {
-	//	Name: "secure_file_priv",
-	//	Scope: SystemVariableScope_Global,
-	//	Dynamic: false,
-	//	SetVarHintApplies: false,
-	//	Type: NewSystemStringType("secure_file_priv"),
-	//	Default: "",
-	//},
+	"secure_file_priv": {
+		Name: "secure_file_priv",
+		Scope: SystemVariableScope_Global,
+		Dynamic: false,
+		SetVarHintApplies: false,
+		Type: NewSystemStringType("secure_file_priv"),
+		Default: "",
+	},
 	"select_into_buffer_size": {
 		Name:              "select_into_buffer_size",
 		Scope:             SystemVariableScope_Both,
@@ -2019,8 +2265,8 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Both,
 		Dynamic:           true,
 		SetVarHintApplies: true,
-		Type:              NewSystemIntType("sql_select_limit", -9223372036854775808, 9223372036854775807, false),
-		Default:           int64(0),
+		Type: NewSystemIntType("sql_select_limit", -9223372036854775808, 9223372036854775807, false),
+		Default: int64(2147483647),
 	},
 	"sql_warnings": {
 		Name:              "sql_warnings",
@@ -2147,8 +2393,8 @@ var systemVars = map[string]SystemVariable{
 		Scope:             SystemVariableScope_Global,
 		Dynamic:           false,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("system_time_zone"),
-		Default:           "",
+		Type: NewSystemStringType("system_time_zone"),
+		Default: "UTC",
 	},
 	"table_definition_cache": {
 		Name:              "table_definition_cache",
@@ -2336,14 +2582,13 @@ var systemVars = map[string]SystemVariable{
 		Type:              NewSystemUintType("tmp_table_size", 1024, 18446744073709551615),
 		Default:           uint64(16777216),
 	},
-	//TODO: add to dolt
 	"tmpdir": {
 		Name:              "tmpdir",
 		Scope:             SystemVariableScope_Global,
 		Dynamic:           false,
 		SetVarHintApplies: false,
-		Type:              NewSystemStringType("tmpdir"),
-		Default:           "",
+		Type: NewSystemStringType("tmpdir"),
+		Default: GetTmpdirSessionVar(),
 	},
 	//TODO: implement block sizes
 	//"transaction_alloc_block_size": {
@@ -2409,6 +2654,14 @@ var systemVars = map[string]SystemVariable{
 		SetVarHintApplies: false,
 		Type:              NewSystemBoolType("validate_user_plugins"),
 		Default:           int8(1),
+	},
+	"version": {
+		Name: "version",
+		Scope: SystemVariableScope_Global,
+		Dynamic: false,
+		SetVarHintApplies: false,
+		Type: NewSystemStringType("version"),
+		Default: "",
 	},
 	"version_comment": {
 		Name:              "version_comment",

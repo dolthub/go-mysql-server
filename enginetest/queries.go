@@ -15,7 +15,6 @@
 package enginetest
 
 import (
-	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -2391,48 +2390,32 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW VARIABLES`,
-		Expected: []sql.Row{
-			{"autocommit", int64(0)},
-			{"auto_increment_increment", int64(1)},
-			{"time_zone", "SYSTEM"},
-			{"system_time_zone", time.Now().UTC().Location().String()},
-			{"max_allowed_packet", math.MaxInt32},
-			{"sql_mode", ""},
-			{"gtid_mode", int32(0)},
-			{"collation_database", "utf8mb4_0900_ai_ci"},
-			{"ndbinfo_version", ""},
-			{"sql_select_limit", math.MaxInt32},
-			{"transaction_isolation", "READ UNCOMMITTED"},
-			{"version", ""},
-			{"version_comment", ""},
-			{"character_set_client", sql.Collation_Default.CharacterSet().String()},
-			{"character_set_connection", sql.Collation_Default.CharacterSet().String()},
-			{"character_set_results", sql.Collation_Default.CharacterSet().String()},
-			{"collation_connection", sql.Collation_Default.String()},
-			{"tmpdir", sql.GetTmpdirSessionVar()},
-			{"local_infile", int8(0)},
-			{"secure_file_priv", nil},
-			{"group_concat_max_len", int64(1024)},
-		},
-	},
-	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode`,
 		Expected: []sql.Row{
-			{"gtid_mode", int32(0)},
+			{"gtid_mode", "OFF"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES LIKE 'gtid%`,
 		Expected: []sql.Row{
-			{"gtid_mode", int32(0)},
+			{"gtid_executed", ""},
+			{"gtid_executed_compression_period", int64(0)},
+			{"gtid_mode", "OFF"},
+			{"gtid_next", "AUTOMATIC"},
+			{"gtid_owned", ""},
+			{"gtid_purged", ""},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode`,
 		Expected: []sql.Row{
-			{"sql_mode", ""},
-			{"gtid_mode", int32(0)},
+			{"block_encryption_mode", "aes-128-ecb"},
+			{"gtid_mode", "OFF"},
+			{"offline_mode", int64(0)},
+			{"pseudo_slave_mode", int64(0)},
+			{"rbr_exec_mode", "STRICT"},
+			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
+			{"ssl_fips_mode", "OFF"},
 		},
 	},
 	{
