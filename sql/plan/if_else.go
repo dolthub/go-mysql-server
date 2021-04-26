@@ -205,9 +205,12 @@ func (ieb *IfElseBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		if err != nil {
 			return nil, err
 		}
-		passedCondition, err := sql.ConvertToBool(condition)
-		if err != nil {
-			return nil, err
+		var passedCondition bool
+		if condition != nil {
+			passedCondition, err = sql.ConvertToBool(condition)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if !passedCondition {
 			continue

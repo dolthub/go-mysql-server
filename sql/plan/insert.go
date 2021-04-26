@@ -291,7 +291,8 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 				return i.ignoreOrClose(err)
 			}
 
-			return i.handleOnDuplicateKeyUpdate(row)
+			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
+			return i.handleOnDuplicateKeyUpdate(row, ue.Existing)
 		}
 	}
 
@@ -300,42 +301,8 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	return row, nil
 }
 
-func (i *insertIter) handleOnDuplicateKeyUpdate(row sql.Row) (returnRow sql.Row, returnErr error) {
-	var pkExpression sql.Expression
-	for index, col := range i.schema {
-		if col.PrimaryKey {
-			value := row[index]
-			exp := expression.NewEquals(expression.NewGetField(index, col.Type, col.Name, col.Nullable), expression.NewLiteral(value, col.Type))
-			if pkExpression != nil {
-				pkExpression = expression.NewAnd(pkExpression, exp)
-			} else {
-				pkExpression = exp
-			}
-		}
-	}
-
-	filter := NewFilter(pkExpression, i.tableNode)
-	filterIter, err := filter.RowIter(i.ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		err := filterIter.Close(i.ctx)
-		if returnErr == nil {
-			returnErr = err
-		}
-	}()
-
-	// By definition, there can only be a single row here. And only one row should ever be updated according to the
-	// spec:
-	// https://dev.mysql.com/doc/refman/8.0/en/insert-on-duplicate.html
-	rowToUpdate, err := filterIter.Next()
-	if err != nil {
-		return nil, err
-	}
-
-	err = i.resolveValues(i.ctx, row)
+func (i *insertIter) handleOnDuplicateKeyUpdate(row, rowToUpdate sql.Row) (returnRow sql.Row, returnErr error) {
+	err := i.resolveValues(i.ctx, row)
 	if err != nil {
 		return nil, err
 	}
