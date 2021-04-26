@@ -2681,6 +2681,40 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Expression, error) {
 	res := make([]sql.Expression, len(e))
 	for i, setExpr := range e {
+		if expr, ok := setExpr.Expr.(*sqlparser.SQLVal); ok && strings.ToLower(setExpr.Name.String()) == "transaction" &&
+			(setExpr.Scope == sqlparser.SetScope_Global || setExpr.Scope == sqlparser.SetScope_Session || string(setExpr.Scope) == "") {
+			scope := sql.SystemVariableScope_Session
+			if setExpr.Scope == sqlparser.SetScope_Global {
+				scope = sql.SystemVariableScope_Global
+			}
+			switch strings.ToLower(expr.String()) {
+			case "'isolation level repeatable read'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("REPEATABLE-READ", sql.LongText))
+				continue
+			case "'isolation level read committed'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-COMMITTED", sql.LongText))
+				continue
+			case "'isolation level read uncommitted'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-UNCOMMITTED", sql.LongText))
+				continue
+			case "'isolation level serializable'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("SERIALIZABLE", sql.LongText))
+				continue
+			case "'read write'":
+				varToSet := expression.NewSystemVar("transaction_read_only", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(false, sql.Boolean))
+				continue
+			case "'read only'":
+				varToSet := expression.NewSystemVar("transaction_read_only", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(true, sql.Boolean))
+				continue
+			}
+		}
+
 		innerExpr, err := ExprToExpression(ctx, setExpr.Expr)
 		if err != nil {
 			return nil, err
