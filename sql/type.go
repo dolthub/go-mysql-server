@@ -16,11 +16,12 @@ package sql
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
 	"io"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -144,8 +145,8 @@ func ApproximateTypeFromValue(val interface{}) Type {
 			}
 			return typ
 		} else {
-			precision := uint8(len(str)-1)
-			scale := uint8(len(str)-dotIdx-1)
+			precision := uint8(len(str) - 1)
+			scale := uint8(len(str) - dotIdx - 1)
 			typ, err := CreateDecimalType(precision, scale)
 			if err != nil {
 				return Float64

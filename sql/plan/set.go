@@ -123,7 +123,7 @@ func (s *Set) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 func setUserVar(ctx *sql.Context, userVar *expression.UserVar, right sql.Expression, row sql.Row) error {
 	val, err := right.Eval(ctx, row)
 	if err != nil {
-		return  err
+		return err
 	}
 	err = ctx.SetUserVariable(ctx, userVar.Name, val)
 	if err != nil {
