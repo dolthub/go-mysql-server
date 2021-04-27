@@ -809,7 +809,6 @@ func getColumnNamesFromIndex(idx Index, table Table) []string {
 		}
 	}
 
-	// TODO: Validate this is correct for multi index
 	return indexCols
 }
 
