@@ -218,6 +218,63 @@ var VariableQueries = []ScriptTest{
 			{55, 77},
 		},
 	},
+	{
+		Name: "set transaction",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set transaction isolation level serializable, read only",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+			},
+			{
+				Query:    "set transaction read write, isolation level read uncommitted",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"READ-UNCOMMITTED", 0}},
+			},
+			{
+				Query:    "set transaction isolation level read committed",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation",
+				Expected: []sql.Row{{"READ-COMMITTED"}},
+			},
+			{
+				Query:    "set transaction isolation level repeatable read",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation",
+				Expected: []sql.Row{{"REPEATABLE-READ"}},
+			},
+			{
+				Query:    "set session transaction isolation level serializable, read only",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+			},
+			{
+				Query:    "set global transaction read write, isolation level read uncommitted",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+			},
+			{
+				Query:    "select @@global.transaction_isolation, @@global.transaction_read_only",
+				Expected: []sql.Row{{"READ-UNCOMMITTED", 0}},
+			},
+		},
+	},
 	//TODO: do not override tables with user-var-like names...but why would you do this??
 	//{
 	//	Name: "user var table name no conflict",
