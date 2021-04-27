@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -40,50 +41,61 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return e, nil
 		}
 
-		varName := trimVarName(sf.Left.String())
+		setExpr := sf.Left
+		varName := sf.Left.String()
 		setVal, err := getSetVal(ctx, varName, sf.Right)
 		if err != nil {
 			return nil, err
 		}
 
-		// For the left side of the SetField expression, we will attempt to resolve the variable being set. The rules to
-		// determine whether to treat a left-hand expression as a system var or something else are subtle. These are all
-		// the valid ways to assign to a system variable with session scope:
-		// SET SESSION sql_mode = 'TRADITIONAL';
-		// SET LOCAL sql_mode = 'TRADITIONAL';
-		// SET @@SESSION.sql_mode = 'TRADITIONAL';
-		// SET @@LOCAL.sql_mode = 'TRADITIONAL';
-		// SET @@sql_mode = 'TRADITIONAL';
-		// SET sql_mode = 'TRADITIONAL';
-		// These are all equivalent, and all distinct from setting a user variable with the same name:
-		// set @sql_mode = "abc"
-		if uc, ok := sf.Left.(*expression.UnresolvedColumn); ok {
-			if isSystemVariable(uc) {
-				// TODO: clean up distinction between system and user vars in this interface
-				typ, _ := ctx.Session.Get(varName)
-				if typ == sql.Null {
-					// TODO: since we don't support all system variables supported by MySQL yet, for compatibility reasons we
-					//  will just accept them all here. But we should reject unknown ones.
-					// return nil, sql.ErrUnknownSystemVariable.New(varName)
-					typ = sf.Right.Type()
-				}
-
-				// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
-				// unresolved columns.
-				if uc, ok := setVal.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
-					if !isSystemVariable(uc) && !isUserVariable(uc) {
-						setVal = expression.NewLiteral(uc.Name(), sql.LongText)
-					}
-				}
-
-				return sf.WithChildren(expression.NewSystemVar(varName, typ), setVal)
+		if _, ok := sf.Left.(*expression.UnresolvedColumn); ok {
+			var scope sqlparser.SetScope
+			varName, scope, err = sqlparser.VarScope(varName)
+			if err != nil {
+				return nil, err
 			}
 
-			if isUserVariable(uc) {
-				return sf.WithChildren(expression.NewUserVar(varName), setVal)
+			switch scope {
+			case sqlparser.SetScope_None:
+				return sf, nil
+			case sqlparser.SetScope_Global:
+				_, _, ok = sql.SystemVariables.GetGlobal(varName)
+				if !ok {
+					return nil, sql.ErrUnknownSystemVariable.New(varName)
+				}
+				setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Global)
+			case sqlparser.SetScope_Persist:
+				return nil, sql.ErrUnsupportedFeature.New("PERSIST")
+			case sqlparser.SetScope_PersistOnly:
+				return nil, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
+			case sqlparser.SetScope_Session:
+				_, err = ctx.GetSessionVariable(ctx, varName)
+				if err != nil {
+					return nil, err
+				}
+				setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Session)
+			case sqlparser.SetScope_User:
+				setExpr = expression.NewUserVar(varName)
+			default: // shouldn't happen
+				return nil, fmt.Errorf("unknown set scope %v", scope)
 			}
 		}
 
+		// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
+		// unresolved columns.
+		if _, ok := setExpr.(*expression.SystemVar); ok {
+			if uc, ok := setVal.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
+				_, setScope, _ := sqlparser.VarScope(uc.Name())
+				if setScope == sqlparser.SetScope_None {
+					setVal = expression.NewLiteral(uc.Name(), sql.LongText)
+				}
+			}
+		}
+		if _, ok := setExpr.(*expression.SystemVar); ok {
+			return sf.WithChildren(setExpr, setVal)
+		} else if _, ok := setExpr.(*expression.UserVar); ok {
+			return sf.WithChildren(setExpr, setVal)
+		}
 		return sf, nil
 	})
 }
@@ -103,8 +115,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			return e, nil
 		}
 
-		varName := trimVarName(sf.Left.String())
-		setVal, err := getSetVal(ctx, varName, sf.Right)
+		setVal, err := getSetVal(ctx, sf.Left.String(), sf.Right)
 		if err != nil {
 			return nil, err
 		}
@@ -112,31 +123,22 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		// If this column expression was deferred, it means that it wasn't prefixed with @@ and can't be found in any table.
 		// So treat it as a naked system variable and see if it exists
 		if uc, ok := sf.Left.(*deferredColumn); ok {
-			varName := trimVarName(uc.String())
-			typ, _ := ctx.Session.Get(varName)
-			if typ == sql.Null {
-				// TODO: since we don't support all system variables supported by MySQL yet, for compatibility reasons we
-				//  will just accept them all here. But we should reject unknown ones.
-				// return nil, sql.ErrUnknownSystemVariable.New(varName)
-
-				// If the right-hand side isn't resolved, we can't process this as a bareword variable assignment
-				// because we don't know the type
-				if !setVal.Resolved() {
-					return sf, nil
-				}
-
-				typ = sf.Right.Type()
+			varName := uc.String()
+			_, _, ok = sql.SystemVariables.GetGlobal(varName)
+			if !ok {
+				return sf, nil
 			}
 
 			// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
 			// unresolved columns.
 			if uc, ok := setVal.(column); ok && uc.Table() == "" {
-				if !isSystemVariable(uc) && !isUserVariable(uc) {
+				_, setScope, _ := sqlparser.VarScope(uc.Name())
+				if setScope == sqlparser.SetScope_None {
 					setVal = expression.NewLiteral(uc.Name(), sql.LongText)
 				}
 			}
 
-			return sf.WithChildren(expression.NewSystemVar(varName, typ), setVal)
+			return sf.WithChildren(expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
 		}
 
 		return sf, nil
@@ -146,12 +148,26 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 // getSetVal evaluates the right hand side of a SetField expression and returns an evaluated value as appropriate
 func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expression, error) {
 	if _, ok := e.(*expression.DefaultColumn); ok {
-		valtyp, ok := sql.DefaultSessionConfig()[varName]
-		if !ok {
-			return nil, sql.ErrUnknownSystemVariable.New(varName)
+		varName, scope, err := sqlparser.VarScope(varName)
+		if err != nil {
+			return nil, err
 		}
-		value, typ := valtyp.Value, valtyp.Typ
-		return expression.NewLiteral(value, typ), nil
+		switch scope {
+		case sqlparser.SetScope_None, sqlparser.SetScope_Session, sqlparser.SetScope_Global:
+			_, value, ok := sql.SystemVariables.GetGlobal(varName)
+			if !ok {
+				return nil, sql.ErrUnknownSystemVariable.New(varName)
+			}
+			return expression.NewLiteral(value, sql.ApproximateTypeFromValue(value)), nil
+		case sqlparser.SetScope_Persist:
+			return nil, sql.ErrUnsupportedFeature.New("PERSIST")
+		case sqlparser.SetScope_PersistOnly:
+			return nil, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
+		case sqlparser.SetScope_User:
+			return nil, sql.ErrUserVariableNoDefault.New(varName)
+		default: // shouldn't happen
+			return nil, fmt.Errorf("unknown set scope %v", scope)
+		}
 	}
 
 	if !e.Resolved() {
@@ -172,13 +188,13 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 
 		switch strings.ToLower(val) {
 		case sqlparser.KeywordString(sqlparser.ON):
-			return expression.NewLiteral(1, sql.Boolean), nil
+			return expression.NewLiteral(true, sql.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.TRUE):
-			return expression.NewLiteral(1, sql.Boolean), nil
+			return expression.NewLiteral(true, sql.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.OFF):
-			return expression.NewLiteral(0, sql.Boolean), nil
+			return expression.NewLiteral(false, sql.Boolean), nil
 		case sqlparser.KeywordString(sqlparser.FALSE):
-			return expression.NewLiteral(0, sql.Boolean), nil
+			return expression.NewLiteral(false, sql.Boolean), nil
 		}
 	} else if e.Type() == sql.Boolean {
 		val, err := e.Eval(ctx, nil)

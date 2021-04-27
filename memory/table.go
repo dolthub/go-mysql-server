@@ -23,9 +23,8 @@ import (
 	"strconv"
 	"strings"
 
-	errors "gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/vitess/go/sqltypes"
+	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -620,7 +619,7 @@ func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
 					for _, i := range pkColIdxes {
 						vals[i] = row[pkColIdxes[i]]
 					}
-					return sql.ErrPrimaryKeyViolation.New(fmt.Sprint(vals))
+					return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
 				}
 			}
 		}
@@ -762,6 +761,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 	for i, col := range t.schema {
 		if col.Name == columnName {
 			oldIdx = i
+			column.PrimaryKey = col.PrimaryKey
 			break
 		}
 	}

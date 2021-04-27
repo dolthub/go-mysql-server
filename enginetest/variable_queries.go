@@ -55,19 +55,19 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable ON / OFF",
 		SetUpScript: []string{
-			"set @@autocommit = ON, sql_mode = OFF",
+			"set @@autocommit = ON, sql_mode = \"\"",
 		},
 		Query: "SELECT @@autocommit, @@session.sql_mode",
 		Expected: []sql.Row{
-			{1, 0},
+			{1, ""},
 		},
 	},
 	{
 		Name: "set system variable true / false quoted",
 		SetUpScript: []string{
-			`set @@autocommit = "true", sql_mode = "false"`,
+			`set @@autocommit = "true", default_table_encryption = "false"`,
 		},
-		Query: "SELECT @@autocommit, @@session.sql_mode",
+		Query: "SELECT @@autocommit, @@session.default_table_encryption",
 		Expected: []sql.Row{
 			{1, 0},
 		},
@@ -75,9 +75,9 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable true / false",
 		SetUpScript: []string{
-			`set @@autocommit = true, sql_mode = false`,
+			`set @@autocommit = true, default_table_encryption = false`,
 		},
-		Query: "SELECT @@autocommit, @@session.sql_mode",
+		Query: "SELECT @@autocommit, @@session.default_table_encryption",
 		Expected: []sql.Row{
 			{1, 0},
 		},
@@ -85,10 +85,10 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable with expressions",
 		SetUpScript: []string{
-			`set sql_mode = "123", @@auto_increment_increment = 1`,
-			`set sql_mode = concat(@@sql_mode, "456"), @@auto_increment_increment = @@auto_increment_increment + 3`,
+			`set lc_messages = "123", @@auto_increment_increment = 1`,
+			`set lc_messages = concat(@@lc_messages, "456"), @@auto_increment_increment = @@auto_increment_increment + 3`,
 		},
-		Query: "SELECT @@sql_mode, @@auto_increment_increment",
+		Query: "SELECT @@lc_messages, @@auto_increment_increment",
 		Expected: []sql.Row{
 			{"123456", 4},
 		},
@@ -128,33 +128,21 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable to bareword",
 		SetUpScript: []string{
-			`set @@sql_mode = some_mode`,
+			`set @@sql_mode = ALLOW_INVALID_DATES`,
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"some_mode"},
+			{"ALLOW_INVALID_DATES"},
 		},
 	},
 	{
 		Name: "set system variable to bareword, unqualified",
 		SetUpScript: []string{
-			`set sql_mode = some_mode`,
+			`set sql_mode = ALLOW_INVALID_DATES`,
 		},
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
-			{"some_mode"},
-		},
-	},
-	// TODO: for compatibility, we allow unknown system variables to be set as well. For full MySQL emulation, we need to
-	//  list every system variable MySQL supports and reject all others.
-	{
-		Name: "set unknown system variable",
-		SetUpScript: []string{
-			`set dne = "hello"`,
-		},
-		Query: "SELECT @@dne",
-		Expected: []sql.Row{
-			{"hello"},
+			{"ALLOW_INVALID_DATES"},
 		},
 	},
 	// User variables
@@ -209,17 +197,186 @@ var VariableQueries = []ScriptTest{
 			{1234, 1234},
 		},
 	},
+	{
+		Name: "local is session",
+		SetUpScript: []string{
+			`set @@LOCAL.cte_max_recursion_depth = 1234`,
+		},
+		Query: "SELECT @@SESSION.cte_max_recursion_depth",
+		Expected: []sql.Row{
+			{1234},
+		},
+	},
+	{
+		Name: "user and system var with same name",
+		SetUpScript: []string{
+			`set @cte_max_recursion_depth = 55`,
+			`set cte_max_recursion_depth = 77`,
+		},
+		Query: "SELECT @cte_max_recursion_depth, @@cte_max_recursion_depth",
+		Expected: []sql.Row{
+			{55, 77},
+		},
+	},
+	{
+		Name: "set transaction",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set transaction isolation level serializable, read only",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+			},
+			{
+				Query:    "set transaction read write, isolation level read uncommitted",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"READ-UNCOMMITTED", 0}},
+			},
+			{
+				Query:    "set transaction isolation level read committed",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation",
+				Expected: []sql.Row{{"READ-COMMITTED"}},
+			},
+			{
+				Query:    "set transaction isolation level repeatable read",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation",
+				Expected: []sql.Row{{"REPEATABLE-READ"}},
+			},
+			{
+				Query:    "set session transaction isolation level serializable, read only",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+			},
+			{
+				Query:    "set global transaction read write, isolation level read uncommitted",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "select @@transaction_isolation, @@transaction_read_only",
+				Expected: []sql.Row{{"SERIALIZABLE", 1}},
+			},
+			{
+				Query:    "select @@global.transaction_isolation, @@global.transaction_read_only",
+				Expected: []sql.Row{{"READ-UNCOMMITTED", 0}},
+			},
+		},
+	},
+	//TODO: do not override tables with user-var-like names...but why would you do this??
+	//{
+	//	Name: "user var table name no conflict",
+	//	SetUpScript: []string{
+	//		"create table test (pk bigint primary key, `@v1` bigint)",
+	//		`insert into test values (1, 123)`,
+	//		`set @v1 = 1234`,
+	//	},
+	//	Query: "SELECT @v1, `@v1` from test",
+	//	Expected: []sql.Row{
+	//		{1234, 123},
+	//	},
+	//},
 }
 
 var VariableErrorTests = []QueryErrorTest{
-	// TODO: for compatibility, we allow unknown system variables to be set as well. For full MySQL emulation, we need to
-	//  list every system variable MySQL supports and reject all others.
-	// {
-	// 	Query:       "set @@does_not_exist = 100",
-	// 	ExpectedErr: sql.ErrUnknownSystemVariable,
-	// },
+	{
+		Query:       "set @@does_not_exist = 100",
+		ExpectedErr: sql.ErrUnknownSystemVariable,
+	},
 	{
 		Query:       "set @myvar = bareword",
 		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       "set @@sql_mode = true",
+		ExpectedErr: sql.ErrInvalidSystemVariableValue,
+	},
+	{
+		Query:       `set @@sql_mode = "NOT_AN_OPTION"`,
+		ExpectedErr: sql.ErrInvalidSetValue,
+	},
+	{
+		Query:       `set global core_file = true`,
+		ExpectedErr: sql.ErrSystemVariableReadOnly,
+	},
+	{
+		Query:       `set global require_row_format = on`,
+		ExpectedErr: sql.ErrSystemVariableSessionOnly,
+	},
+	{
+		Query:       `set session default_password_lifetime = 5`,
+		ExpectedErr: sql.ErrSystemVariableGlobalOnly,
+	},
+	{
+		Query:       `set @custom_var = default`,
+		ExpectedErr: sql.ErrUserVariableNoDefault,
+	},
+	{
+		Query:       `set session @@bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set global @@bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set session @@session.bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set session @@global.bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set global @@session.bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set global @@global.bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set session @myvar = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set global @myvar = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set @@session.@@bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set @@global.@@bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set @@session.@bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set @@global.@bulk_insert_buffer_size = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set @@session.@myvar = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
+	},
+	{
+		Query:       `set @@global.@myvar = 5`,
+		ExpectedErr: sql.ErrSyntaxError,
 	},
 }

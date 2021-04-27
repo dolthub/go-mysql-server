@@ -70,6 +70,7 @@ var Defaults = []sql.Function{
 	sql.Function0{Name: "found_rows", Fn: NewFoundRows},
 	sql.Function1{Name: "from_base64", Fn: NewFromBase64},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
+	sql.Function0{Name: "group_concat", Fn: aggregation.NewEmptyGroupConcat},
 	sql.Function1{Name: "hex", Fn: NewHex},
 	sql.Function1{Name: "hour", Fn: NewHour},
 	sql.Function3{Name: "if", Fn: NewIf},

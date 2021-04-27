@@ -23,6 +23,7 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_views", resolveViews},
+	{"lift_common_table_expressions", liftCommonTableExpressions},
 	{"resolve_common_table_expressions", resolveCommonTableExpressions},
 	{"resolve_tables", resolveTables},
 	{"resolve_drop_constraint", resolveDropConstraint},
@@ -86,6 +87,7 @@ var OnceAfterDefault = []Rule{
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
 	{"cache_subquery_results", cacheSubqueryResults},
 	{"cache_subquery_aliases_in_joins", cacheSubqueryAlisesInJoins},
+	{"apply_hash_lookups", applyHashLookups},
 	{"resolve_insert_rows", resolveInsertRows},
 	{"apply_triggers", applyTriggers},
 	{"apply_procedures", applyProcedures},

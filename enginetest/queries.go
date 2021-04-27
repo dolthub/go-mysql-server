@@ -15,7 +15,6 @@
 package enginetest
 
 import (
-	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -518,6 +517,52 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		// TODO: ORDER BY should apply to the union. The parser is wrong.
+		Query: `SELECT s2, i2, i
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+			ON i2 = i`,
+		Expected: []sql.Row{
+			{"third", 1, 1},
+			{"second", 2, 2},
+			{"first", 3, 3},
+			{"not found", 4, nil},
+		},
+	},
+	{
+		Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+		Expected: []sql.Row{
+			{"testing", 3},
+		},
+	},
+	{
+		Query: `SELECT
+			"testing" AS s,
+			(SELECT max(i2)
+			 FROM (SELECT * FROM mytable) mytable
+			 RIGHT JOIN
+				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				 UNION ALL
+				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
+				ON i2 = i) AS rj
+			FROM DUAL`,
+		Expected: []sql.Row{
+			{"testing", 4},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where i = mtouter.i+1) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
@@ -551,6 +596,47 @@ var QueryTests = []QueryTest{
 		Query: `WITH common_table AS (SELECT cec.id AS id, cec.strength FROM (SELECT 1 as id, 12 as strength) cec) SELECT strength FROM common_table cte`,
 		Expected: []sql.Row{
 			{12},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION SELECT s, i FROM mt UNION SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+		},
+	},
+	{
+		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt UNION ALL SELECT s, i FROM mt UNION ALL SELECT s, i FROM mt;",
+		Expected: []sql.Row{
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
+			{"first row", int64(1)},
+			{"second row", int64(2)},
+			{"third row", int64(3)},
 		},
 	},
 	{
@@ -2304,47 +2390,32 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW VARIABLES`,
-		Expected: []sql.Row{
-			{"autocommit", int64(0)},
-			{"auto_increment_increment", int64(1)},
-			{"time_zone", "SYSTEM"},
-			{"system_time_zone", time.Now().UTC().Location().String()},
-			{"max_allowed_packet", math.MaxInt32},
-			{"sql_mode", ""},
-			{"gtid_mode", int32(0)},
-			{"collation_database", "utf8mb4_0900_ai_ci"},
-			{"ndbinfo_version", ""},
-			{"sql_select_limit", math.MaxInt32},
-			{"transaction_isolation", "READ UNCOMMITTED"},
-			{"version", ""},
-			{"version_comment", ""},
-			{"character_set_client", sql.Collation_Default.CharacterSet().String()},
-			{"character_set_connection", sql.Collation_Default.CharacterSet().String()},
-			{"character_set_results", sql.Collation_Default.CharacterSet().String()},
-			{"collation_connection", sql.Collation_Default.String()},
-			{"tmpdir", sql.GetTmpdirSessionVar()},
-			{"local_infile", int8(0)},
-			{"secure_file_priv", nil},
-		},
-	},
-	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode`,
 		Expected: []sql.Row{
-			{"gtid_mode", int32(0)},
+			{"gtid_mode", "OFF"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES LIKE 'gtid%`,
 		Expected: []sql.Row{
-			{"gtid_mode", int32(0)},
+			{"gtid_executed", ""},
+			{"gtid_executed_compression_period", int64(0)},
+			{"gtid_mode", "OFF"},
+			{"gtid_next", "AUTOMATIC"},
+			{"gtid_owned", ""},
+			{"gtid_purged", ""},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode`,
 		Expected: []sql.Row{
-			{"sql_mode", ""},
-			{"gtid_mode", int32(0)},
+			{"block_encryption_mode", "aes-128-ecb"},
+			{"gtid_mode", "OFF"},
+			{"offline_mode", int64(0)},
+			{"pseudo_slave_mode", int64(0)},
+			{"rbr_exec_mode", "STRICT"},
+			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
+			{"ssl_fips_mode", "OFF"},
 		},
 	},
 	{
@@ -4628,6 +4699,26 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
+		Expected: []sql.Row{
+			{"third", 1, 1},
+			{"second", 2, 2},
+			{"first", 3, 3},
+		},
+	},
+	{
+		Query: `SELECT lefttable.i, righttable.s
+			FROM (SELECT * FROM mytable) lefttable
+			JOIN (SELECT * FROM mytable) righttable
+			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
+			ORDER BY lefttable.i ASC`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
 		Query: "SELECT BINARY 'hi'",
 		Expected: []sql.Row{
 			{"hi"},
@@ -4771,6 +4862,15 @@ var BrokenQueries = []QueryTest{
 		Expected: []sql.Row{
 			{2, 7.0},
 			{3, 9.0},
+		},
+	},
+	// The outer CTE currently resolves before the inner one, which causes
+	// this to return { {1}, {1}, } instead.
+	{
+		Query: `WITH t AS (SELECT 1) SELECT * FROM t UNION (WITH t AS (SELECT 2) SELECT * FROM t)`,
+		Expected: []sql.Row{
+			{1},
+			{2},
 		},
 	},
 	{
@@ -5290,6 +5390,28 @@ var InfoSchemaQueries = []QueryTest{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
 	},
+	{
+		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
+		Expected: []sql.Row{
+			{"def", "mydb", "PRIMARY", "mydb", "auto_increment_tbl", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "bigtable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
+			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "othertable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "people", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "tabletest", "PRIMARY KEY", "YES"},
+		},
+	},
+	{
+		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
+		Expected: []sql.Row{},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
@@ -5303,6 +5425,45 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "describe auto;",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10), CONSTRAINT vcheck CHECK (height > 0))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "height < 10"},
+					{"def", "mydb", "mycheck", "test_score >= 50"},
+				},
+			},
+			{
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.table_constraints ignores non-unique indexes",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on mytable(test_score)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
 			},
 		},

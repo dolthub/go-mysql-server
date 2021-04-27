@@ -297,25 +297,21 @@ func convertUse(n *sqlparser.Use) (sql.Node, error) {
 }
 
 func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
-	if n.Scope == sqlparser.GlobalStr {
-		return nil, ErrUnsupportedFeature.New("SET global variables")
-	}
-
 	// Special case: SET NAMES expands to 3 different system variables. The parser doesn't yet support the optional
 	// collation string, which is fine since our support for it is mostly fake anyway.
 	// See https://dev.mysql.com/doc/refman/8.0/en/set-names.html
 	if isSetNames(n.Exprs) {
 		return convertSet(ctx, &sqlparser.Set{
-			Exprs: sqlparser.SetExprs{
-				&sqlparser.SetExpr{
+			Exprs: sqlparser.SetVarExprs{
+				&sqlparser.SetVarExpr{
 					Name: sqlparser.NewColName("character_set_client"),
 					Expr: n.Exprs[0].Expr,
 				},
-				&sqlparser.SetExpr{
+				&sqlparser.SetVarExpr{
 					Name: sqlparser.NewColName("character_set_connection"),
 					Expr: n.Exprs[0].Expr,
 				},
-				&sqlparser.SetExpr{
+				&sqlparser.SetVarExpr{
 					Name: sqlparser.NewColName("character_set_results"),
 					Expr: n.Exprs[0].Expr,
 				},
@@ -332,7 +328,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 	return plan.NewSet(exprs), nil
 }
 
-func isSetNames(exprs sqlparser.SetExprs) bool {
+func isSetNames(exprs sqlparser.SetVarExprs) bool {
 	if len(exprs) != 1 {
 		return false
 	}
@@ -622,7 +618,7 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		if s.CalcFoundRows {
 			node.(*plan.Limit).CalcFoundRows = true
 		}
-	} else if ok, val := sql.HasDefaultValue(ctx.Session, "sql_select_limit"); !ok {
+	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
 		limit := mustCastNumToInt64(val)
 		node = plan.NewLimit(limit, node)
 	}
@@ -1035,6 +1031,9 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.AutoIncSpec != nil {
 		return convertAlterAutoIncrement(ddl)
 	}
+	if ddl.DefaultSpec != nil {
+		return convertAlterDefault(ctx, ddl)
+	}
 	return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
 }
 
@@ -1128,6 +1127,22 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewAlterAutoIncrement(tableNameToUnresolvedTable(ddl.Table), autoVal), nil
+}
+
+func convertAlterDefault(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := tableNameToUnresolvedTable(ddl.Table)
+	switch strings.ToLower(ddl.DefaultSpec.Action) {
+	case sqlparser.SetStr:
+		defaultVal, err := convertDefaultExpression(ctx, ddl.DefaultSpec.Value)
+		if err != nil {
+			return nil, err
+		}
+		return plan.NewAlterDefaultSet(table, ddl.DefaultSpec.Column.String(), defaultVal), nil
+	case sqlparser.DropStr:
+		return plan.NewAlterDefaultDrop(table, ddl.DefaultSpec.Column.String()), nil
+	default:
+		return nil, ErrUnsupportedFeature.New(sqlparser.String(ddl))
+	}
 }
 
 func convertExternalCreateIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
@@ -1373,7 +1388,7 @@ func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
-	onDupExprs, err := setExprsToExpressions(ctx, sqlparser.SetExprs(i.OnDup))
+	onDupExprs, err := assignmentExprsToExpressions(ctx, sqlparser.AssignmentExprs(i.OnDup))
 	if err != nil {
 		return nil, err
 	}
@@ -1436,7 +1451,7 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		return nil, err
 	}
 
-	updateExprs, err := setExprsToExpressions(ctx, d.Exprs)
+	updateExprs, err := assignmentExprsToExpressions(ctx, d.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -1587,20 +1602,9 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		comment = string(cd.Type.Comment.Val)
 	}
 
-	var defaultVal *sql.ColumnDefaultValue
-	if cd.Type.Default != nil {
-		parsedExpr, err := ExprToExpression(ctx, cd.Type.Default)
-		if err != nil {
-			return nil, err
-		}
-		// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
-		_, isExpr := cd.Type.Default.(*sqlparser.ParenExpr)
-		// A literal will never have children, thus we can also check for that.
-		isExpr = isExpr || len(parsedExpr.Children()) != 0
-		defaultVal, err = ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
-		if err != nil {
-			return nil, err
-		}
+	defaultVal, err := convertDefaultExpression(ctx, cd.Type.Default)
+	if err != nil {
+		return nil, err
 	}
 
 	extra := ""
@@ -1618,6 +1622,21 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 		Comment:       comment,
 		Extra:         extra,
 	}, nil
+}
+
+func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sql.ColumnDefaultValue, error) {
+	if defaultExpr == nil {
+		return nil, nil
+	}
+	parsedExpr, err := ExprToExpression(ctx, defaultExpr)
+	if err != nil {
+		return nil, err
+	}
+	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
+	_, isExpr := defaultExpr.(*sqlparser.ParenExpr)
+	// A literal will never have children, thus we can also check for that.
+	isExpr = isExpr || len(parsedExpr.Children()) != 0
+	return ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {
@@ -1816,8 +1835,8 @@ func orderByToSort(ctx *sql.Context, ob sqlparser.OrderBy, child sql.Node) (*pla
 	return plan.NewSort(sortFields, child), nil
 }
 
-func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) ([]sql.SortField, error) {
-	var sortFields []sql.SortField
+func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) (sql.SortFields, error) {
+	var sortFields sql.SortFields
 	for _, o := range ob {
 		e, err := ExprToExpression(ctx, o.Expr)
 		if err != nil {
@@ -1927,7 +1946,7 @@ func isAggregateExpr(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.UnresolvedFunction:
 			isAgg = isAgg || e.IsAggregate
-		case *aggregation.CountDistinct:
+		case *aggregation.CountDistinct, *aggregation.GroupConcat:
 			isAgg = true
 		}
 
@@ -2170,6 +2189,30 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
 			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
+	case *sqlparser.GroupConcatExpr:
+		exprs, err := selectExprsToExpressions(ctx, v.Exprs)
+		if err != nil {
+			return nil, err
+		}
+
+		separatorS := ","
+		if v.Separator != "" {
+			separatorS = v.Separator
+		}
+
+		sortFields, err := orderByToSortFields(ctx, v.OrderBy)
+		if err != nil {
+			return nil, err
+		}
+
+		//TODO: this should be acquired at runtime, not at parse time, so fix this
+		gcml, err := ctx.GetSessionVariable(ctx, "group_concat_max_len")
+		if err != nil {
+			return nil, err
+		}
+		groupConcatMaxLen := gcml.(uint64)
+
+		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:
@@ -2635,7 +2678,75 @@ func intervalExprToExpression(ctx *sql.Context, e *sqlparser.IntervalExpr) (sql.
 	return expression.NewInterval(expr, e.Unit), nil
 }
 
-func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetExprs) ([]sql.Expression, error) {
+func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Expression, error) {
+	res := make([]sql.Expression, len(e))
+	for i, setExpr := range e {
+		if expr, ok := setExpr.Expr.(*sqlparser.SQLVal); ok && strings.ToLower(setExpr.Name.String()) == "transaction" &&
+			(setExpr.Scope == sqlparser.SetScope_Global || setExpr.Scope == sqlparser.SetScope_Session || string(setExpr.Scope) == "") {
+			scope := sql.SystemVariableScope_Session
+			if setExpr.Scope == sqlparser.SetScope_Global {
+				scope = sql.SystemVariableScope_Global
+			}
+			switch strings.ToLower(expr.String()) {
+			case "'isolation level repeatable read'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("REPEATABLE-READ", sql.LongText))
+				continue
+			case "'isolation level read committed'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-COMMITTED", sql.LongText))
+				continue
+			case "'isolation level read uncommitted'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("READ-UNCOMMITTED", sql.LongText))
+				continue
+			case "'isolation level serializable'":
+				varToSet := expression.NewSystemVar("transaction_isolation", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral("SERIALIZABLE", sql.LongText))
+				continue
+			case "'read write'":
+				varToSet := expression.NewSystemVar("transaction_read_only", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(false, sql.Boolean))
+				continue
+			case "'read only'":
+				varToSet := expression.NewSystemVar("transaction_read_only", scope)
+				res[i] = expression.NewSetField(varToSet, expression.NewLiteral(true, sql.Boolean))
+				continue
+			}
+		}
+
+		innerExpr, err := ExprToExpression(ctx, setExpr.Expr)
+		if err != nil {
+			return nil, err
+		}
+		switch setExpr.Scope {
+		case sqlparser.SetScope_None:
+			colName, err := ExprToExpression(ctx, setExpr.Name)
+			if err != nil {
+				return nil, err
+			}
+			res[i] = expression.NewSetField(colName, innerExpr)
+		case sqlparser.SetScope_Global:
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Global)
+			res[i] = expression.NewSetField(varToSet, innerExpr)
+		case sqlparser.SetScope_Persist:
+			return nil, sql.ErrUnsupportedFeature.New("PERSIST")
+		case sqlparser.SetScope_PersistOnly:
+			return nil, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
+		case sqlparser.SetScope_Session:
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Session)
+			res[i] = expression.NewSetField(varToSet, innerExpr)
+		case sqlparser.SetScope_User:
+			varToSet := expression.NewUserVar(setExpr.Name.String())
+			res[i] = expression.NewSetField(varToSet, innerExpr)
+		default: // shouldn't happen
+			return nil, fmt.Errorf("unknown set scope %v", setExpr.Scope)
+		}
+	}
+	return res, nil
+}
+
+func assignmentExprsToExpressions(ctx *sql.Context, e sqlparser.AssignmentExprs) ([]sql.Expression, error) {
 	res := make([]sql.Expression, len(e))
 	for i, updateExpr := range e {
 		colName, err := ExprToExpression(ctx, updateExpr.Name)

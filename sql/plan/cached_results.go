@@ -83,6 +83,15 @@ func (n *CachedResults) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
+func (n *CachedResults) getCachedResults() []sql.Row {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if n.cache == nil {
+		return nil
+	}
+	return n.cache.Get()
+}
+
 type cachedResultsIter struct {
 	parent  *CachedResults
 	iter    sql.RowIter

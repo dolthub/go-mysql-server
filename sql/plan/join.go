@@ -45,6 +45,7 @@ type JoinNode interface {
 	JoinType() JoinType
 	Comment() string
 	WithScopeLen(int) JoinNode
+	WithMultipassMode() JoinNode
 }
 
 // joinStruct contains all the common data fields and implements the commom sql.Node getters for all join types.
@@ -53,6 +54,7 @@ type joinStruct struct {
 	Cond       sql.Expression
 	CommentStr string
 	ScopeLen   int
+	JoinMode   joinMode
 }
 
 // Expressions implements sql.Expression
@@ -106,7 +108,7 @@ func (j *InnerJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *InnerJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeInner, j.left, j.right, j.Cond, row, j.ScopeLen)
+	return joinRowIter(ctx, JoinTypeInner, j.left, j.right, j.Cond, row, j.ScopeLen, j.JoinMode)
 }
 
 // WithChildren implements the Node interface.
@@ -124,6 +126,11 @@ func (j *InnerJoin) WithScopeLen(i int) JoinNode {
 	nj := *j
 	nj.ScopeLen = i
 	return &nj
+}
+
+func (j InnerJoin) WithMultipassMode() JoinNode {
+	j.JoinMode = multipassMode
+	return &j
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -195,7 +202,7 @@ func (j *LeftJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *LeftJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeLeft, j.left, j.right, j.Cond, row, j.ScopeLen)
+	return joinRowIter(ctx, JoinTypeLeft, j.left, j.right, j.Cond, row, j.ScopeLen, j.JoinMode)
 }
 
 // WithChildren implements the Node interface.
@@ -224,6 +231,11 @@ func (j *LeftJoin) WithScopeLen(i int) JoinNode {
 	nj := *j
 	nj.ScopeLen = i
 	return &nj
+}
+
+func (j LeftJoin) WithMultipassMode() JoinNode {
+	j.JoinMode = multipassMode
+	return &j
 }
 
 // WithComment implements sql.CommentedNode
@@ -284,7 +296,7 @@ func (j *RightJoin) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (j *RightJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return joinRowIter(ctx, JoinTypeRight, j.left, j.right, j.Cond, row, j.ScopeLen)
+	return joinRowIter(ctx, JoinTypeRight, j.left, j.right, j.Cond, row, j.ScopeLen, j.JoinMode)
 }
 
 // WithChildren implements the Node interface.
@@ -313,6 +325,11 @@ func (j *RightJoin) WithScopeLen(i int) JoinNode {
 	nj := *j
 	nj.ScopeLen = i
 	return &nj
+}
+
+func (j RightJoin) WithMultipassMode() JoinNode {
+	j.JoinMode = multipassMode
+	return &j
 }
 
 // WithComment implements sql.CommentedNode
@@ -357,7 +374,7 @@ func (t JoinType) String() string {
 	}
 }
 
-func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row, scopeLen int) (sql.RowIter, error) {
+func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.Expression, row sql.Row, scopeLen int, mode joinMode) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := left.(sql.Nameable); ok {
 		leftName = leftTable.Name()
@@ -377,14 +394,15 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 	})
 
 	var inMemorySession bool
-	_, val := ctx.Get(inMemoryJoinSessionVar)
-	if val != nil {
+	val, err := ctx.GetSessionVariable(ctx, inMemoryJoinSessionVar)
+	if err == nil && val == int8(1) {
 		inMemorySession = true
 	}
 
-	var mode = unknownMode
-	if useInMemoryJoins || inMemorySession {
-		mode = memoryMode
+	if mode == unknownMode {
+		if useInMemoryJoins || inMemorySession {
+			mode = memoryMode
+		}
 	}
 
 	cache, dispose := ctx.Memory.NewRowsCache()
@@ -603,16 +621,15 @@ func (i *joinIter) Next() (sql.Row, error) {
 		if err != nil {
 			if err == io.EOF {
 				if !i.foundMatch && (i.typ == JoinTypeLeft || i.typ == JoinTypeRight) {
-					row, off := i.buildRow(primary, nil)
-					return i.removeParentRow(row, off), nil
+					row := i.buildRow(primary, nil)
+					return row, nil
 				}
 				continue
 			}
 			return nil, err
 		}
 
-		row, off := i.buildRow(primary, secondary)
-		row = i.removeParentRow(row, off)
+		row := i.buildRow(primary, secondary)
 		matches, err := conditionIsTrue(i.ctx, row, i.cond)
 		if err != nil {
 			return nil, err
@@ -627,29 +644,33 @@ func (i *joinIter) Next() (sql.Row, error) {
 	}
 }
 
-func (i *joinIter) removeParentRow(r sql.Row, o int) sql.Row {
-	copy(r[o+i.scopeLen:], r[o+len(i.originalRow):])
-	r = r[:len(r)-len(i.originalRow)+i.scopeLen]
-	return r
-}
-
 // buildRow builds the resulting row using the rows from the primary and
 // secondary branches depending on the join type.
-func (i *joinIter) buildRow(primary, secondary sql.Row) (sql.Row, int) {
-	row := make(sql.Row, i.rowSize)
-	offset := 0
+func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
+	toCut := len(i.originalRow) - i.scopeLen
+	row := make(sql.Row, i.rowSize-toCut)
 
+	scope := primary[:i.scopeLen]
+	primary = primary[len(i.originalRow):]
+
+	var first, second sql.Row
+	var secondOffset int
 	switch i.typ {
 	case JoinTypeRight:
-		copy(row, secondary)
-		copy(row[i.rowSize-len(primary):], primary)
-		offset = i.rowSize - len(primary)
+		first = secondary
+		second = primary
+		secondOffset = len(row) - len(second)
 	default:
-		copy(row, primary)
-		copy(row[len(primary):], secondary)
+		first = primary
+		second = secondary
+		secondOffset = i.scopeLen + len(first)
 	}
 
-	return row, offset
+	copy(row, scope)
+	copy(row[i.scopeLen:], first)
+	copy(row[secondOffset:], second)
+
+	return row
 }
 
 func (i *joinIter) Close(ctx *sql.Context) (err error) {

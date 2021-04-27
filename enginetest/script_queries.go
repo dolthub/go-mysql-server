@@ -17,9 +17,8 @@ package enginetest
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql/plan"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 type ScriptTest struct {
@@ -619,6 +618,138 @@ var ScriptTests = []ScriptTest{
 			{1, 1},
 			{2, 2},
 			{3, 3},
+		},
+	},
+	{
+		Name: "Group Concat Queries",
+		SetUpScript: []string{
+			"CREATE TABLE x (pk int)",
+			"INSERT INTO x VALUES (1),(2),(3),(4),(NULL)",
+
+			"create table t (o_id int, attribute longtext, value longtext)",
+			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
+			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
+
+			"create table nulls(pk int)",
+			"INSERT INTO nulls VALUES (NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT group_concat(pk ORDER BY pk) FROM x;`,
+				Expected: []sql.Row{{"1,2,3,4"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT pk ORDER BY pk) FROM x;`,
+				Expected: []sql.Row{{"1,2,3,4"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT pk ORDER BY pk SEPARATOR '-') FROM x;`,
+				Expected: []sql.Row{{"1-2-3-4"}},
+			},
+			{
+				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id`,
+				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute) FROM t`,
+				Expected: []sql.Row{{"color,fabric,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t`,
+				Expected: []sql.Row{{"color,color,fabric,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat((SELECT 2)) FROM x;`,
+				Expected: []sql.Row{{"2,2,2,2,2"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT (SELECT 2)) FROM x;`,
+				Expected: []sql.Row{{"2"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute ASC) FROM t`,
+				Expected: []sql.Row{{"color,fabric,shape"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute DESC) FROM t`,
+				Expected: []sql.Row{{"shape,fabric,color"}},
+			},
+			{
+				Query:    `SELECT group_concat(pk) FROM nulls`,
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
+				ExpectedErr: sql.ErrSubqueryMultipleColumns,
+			},
+			{
+				Query:       `SELECT group_concat((SELECT * FROM x)) from t`,
+				ExpectedErr: sql.ErrExpectedSingleRow,
+			},
+			{
+				Query:    `SELECT group_concat(attribute) FROM t where o_id=2`,
+				Expected: []sql.Row{{"color,fabric"}},
+			},
+			{
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
+			},
+			{
+				Query:    `SELECT group_concat(o_id) FROM t WHERE attribute='color'`,
+				Expected: []sql.Row{{"2,3"}},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE ... ALTER COLUMN SET / DROP DEFAULT",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 88}},
+			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT (CONVERT('42', SIGNED));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "INSERT INTO test (pk) VALUES (2);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 88}, {2, 42}},
+			},
+			{
+				Query:       "ALTER TABLE test ALTER v2 SET DEFAULT 1;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 DROP DEFAULT;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "INSERT INTO test (pk) VALUES (3);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query:       "ALTER TABLE test ALTER v2 DROP DEFAULT;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{ // Just confirms that the last INSERT didn't do anything
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 88}, {2, 42}},
+			},
 		},
 	},
 }

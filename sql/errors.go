@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -22,6 +23,15 @@ import (
 var (
 	// ErrSyntaxError is returned when a syntax error in vitess is encountered.
 	ErrSyntaxError = errors.NewKind("%s")
+
+	// ErrUnsupportedFeature is thrown when a feature is not already supported
+	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
+
+	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
+	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
+
+	// ErrSystemVariableCodeFail is returned when failing to encode/decode a system variable.
+	ErrSystemVariableCodeFail = errors.NewKind("unable to encode/decode value '%v' for '%s'")
 
 	// ErrInvalidType is thrown when there is an unexpected type at some part of
 	// the execution tree.
@@ -70,10 +80,10 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
-	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %s")
+	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given")
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
-	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given: %s")
+	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
 
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
@@ -148,6 +158,18 @@ var (
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
 
+	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
+	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
+
+	// ErrSystemVariableSessionOnly is returned when attempting to set a SESSION-only variable using SET GLOBAL.
+	ErrSystemVariableSessionOnly = errors.NewKind(`Variable '%s' is a SESSION variable and can't be used with SET GLOBAL`)
+
+	// ErrSystemVariableGlobalOnly is returned when attempting to set a GLOBAL-only variable using SET SESSION.
+	ErrSystemVariableGlobalOnly = errors.NewKind(`Variable '%s' is a GLOBAL variable and should be set with SET GLOBAL`)
+
+	// ErrUserVariableNoDefault is returned when attempting to set the default value on a user variable.
+	ErrUserVariableNoDefault = errors.NewKind(`User variable '%s' does not have a default value`)
+
 	// ErrInvalidUseOfOldNew is returned when a trigger attempts to make use of OLD or NEW references when they don't exist
 	ErrInvalidUseOfOldNew = errors.NewKind("There is no %s row in on %s trigger")
 
@@ -214,8 +236,23 @@ var (
 	// ErrSignalOnlySqlState is returned when SIGNAL/RESIGNAL references a DECLARE CONDITION for a MySQL error code.
 	ErrSignalOnlySqlState = errors.NewKind("SIGNAL/RESIGNAL can only use a condition defined with SQLSTATE")
 
+	// ErrExpectedSingleRow is returned when a subquery executed in normal queries or aggregation function returns
+	// more than 1 row without an attached IN clause.
+	ErrExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
+
+	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
+	// more than a single column.
+	ErrSubqueryMultipleColumns = errors.NewKind(
+		"operand contains more than one column",
+	)
 	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
 	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
+
+	// ErrInsertIntoNonNullableDefaultNullColumn is returned when an INSERT excludes a field which is non-nullable and has no default/autoincrement.
+	ErrInsertIntoNonNullableDefaultNullColumn = errors.NewKind("Field '%s' doesn't have a default value")
+
+	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
+	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -234,9 +271,41 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERNoSuchTable
 	case ErrCannotCreateDatabaseExists.Is(err):
 		code = mysql.ERDbCreateExists
+	case ErrExpectedSingleRow.Is(err):
+		code = mysql.ERSubqueryNo1Row
+	case ErrSubqueryMultipleColumns.Is(err):
+		code = mysql.EROperandColumns
 	default:
 		code = mysql.ERUnknownError
 	}
 
 	return mysql.NewSQLError(code, sqlState, err.Error()), false
+}
+
+type UniqueKeyError struct {
+	keyStr string
+	IsPK bool
+	Existing Row
+}
+
+func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
+	ue := UniqueKeyError{
+		keyStr:   keyStr,
+		IsPK:     isPK,
+		Existing: existing,
+	}
+
+	if isPK {
+		return ErrPrimaryKeyViolation.Wrap(ue)
+	} else {
+		return ErrUniqueKeyViolation.Wrap(ue)
+	}
+}
+
+func (ue UniqueKeyError) Error() string {
+	if ue.IsPK {
+		return fmt.Sprintf("duplicate primary key given: %s", ue.keyStr)
+	} else {
+		return fmt.Sprintf("duplicate unique key given: %s", ue.keyStr)
+	}
 }

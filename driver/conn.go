@@ -23,19 +23,29 @@ import (
 
 // Conn is a connection to a database.
 type Conn struct {
-	options Options
-	catalog *catalog
-	session sql.Session
-	indexes *sql.IndexRegistry
-	views   *sql.ViewRegistry
+	options  Options
+	catalog  *catalog
+	session  sql.Session
+	contexts ContextBuilder
+	indexes  *sql.IndexRegistry
+	views    *sql.ViewRegistry
 }
+
+// Catalog returns the SQL catalog.
+func (c *Conn) Catalog() *sql.Catalog { return c.catalog.engine.Catalog }
+
+// Session returns the SQL session.
+func (c *Conn) Session() sql.Session { return c.session }
 
 // Prepare validates the query and returns a statement.
 func (c *Conn) Prepare(query string) (driver.Stmt, error) {
-	ctx := c.newContextWithQuery(context.Background(), query)
+	ctx, err := c.newContextWithQuery(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
 
 	// validate the query
-	_, err := c.catalog.engine.AnalyzeQuery(ctx, query)
+	_, err = c.catalog.engine.AnalyzeQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -53,15 +63,14 @@ func (c *Conn) Begin() (driver.Tx, error) {
 	return fakeTransaction{}, nil
 }
 
-func (c *Conn) newContextWithQuery(ctx context.Context, query string) *sql.Context {
-	return sql.NewContext(ctx,
+func (c *Conn) newContextWithQuery(ctx context.Context, query string) (*sql.Context, error) {
+	return c.contexts.NewContext(ctx, c,
 		sql.WithSession(c.session),
 		sql.WithQuery(query),
 		sql.WithPid(c.catalog.nextProcessID()),
 		sql.WithMemoryManager(c.catalog.engine.Catalog.MemoryManager),
 		sql.WithIndexRegistry(c.indexes),
-		sql.WithViewRegistry(c.views),
-	)
+		sql.WithViewRegistry(c.views))
 }
 
 type fakeTransaction struct{}

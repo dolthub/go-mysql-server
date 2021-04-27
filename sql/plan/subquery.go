@@ -19,12 +19,8 @@ import (
 	"io"
 	"sync"
 
-	errors "gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
-
-var errExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
 
 // Subquery is as an expression whose value is derived by executing a subquery. It must be executed for every row in
 // the outer result set. It's in the plan package instead of the expression package because it functions more like a
@@ -186,7 +182,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if len(rows) > 1 {
-		return nil, errExpectedSingleRow.New()
+		return nil, sql.ErrExpectedSingleRow.New()
 	}
 
 	if s.canCacheResults {
