@@ -461,14 +461,14 @@ func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, qui
 	inode, err := sockstate.GetConnInode(tcpConn)
 	if err != nil || inode == 0 {
 		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
-			logrus.Warn("Connection checker exiting, connection isn't TCP")
+			logrus.Trace("Connection checker exiting, connection isn't TCP")
 		}
 		return
 	}
 
 	t, ok := tcpConn.LocalAddr().(*net.TCPAddr)
 	if !ok {
-		logrus.Warn("Connection checker exiting, could not get local port")
+		logrus.Debug("Connection checker exiting, could not get local port")
 		return
 	}
 
@@ -482,11 +482,11 @@ func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, qui
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
 		switch st {
 		case sockstate.Broken:
-			logrus.Warn("socket state is broken, returning error")
+			logrus.Trace("socket state is broken, returning error")
 			errChan <- ErrConnectionWasClosed.New()
 			return
 		case sockstate.Error:
-			logrus.Warnf("Connection checker exiting, got err checking sockstate: %v", err)
+			logrus.Debugf("Connection checker exiting, got err checking sockstate: %v", err)
 			return
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
