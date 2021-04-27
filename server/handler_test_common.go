@@ -116,7 +116,7 @@ func newConn(id uint32) *mysql.Conn {
 
 	// Set conn so it does not panic when we close it
 	val := reflect.ValueOf(conn).Elem()
-	field := val.FieldByName("conn")
+	field := val.FieldByName("Conn")
 	field = reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
 	field.Set(reflect.ValueOf(new(mockConn)))
 
