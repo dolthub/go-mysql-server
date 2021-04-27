@@ -758,6 +758,7 @@ func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 			}
 
 			// Get UNIQUEs, PRIMARY KEYs
+			// TODO: This does not correctly distinguish nonnative indexes used on sql.Table
 			indexTable, ok := tbl.(IndexedTable)
 			if ok {
 				indexes, err := indexTable.GetIndexes(ctx)
