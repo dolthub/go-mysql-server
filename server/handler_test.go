@@ -159,19 +159,13 @@ func TestHandlerKill(t *testing.T) {
 		0,
 	)
 
-	require.Len(handler.c, 0)
-
-	var dummyNetConn net.Conn
 	conn1 := newConn(1)
-	conntainer1 := conntainer{conn1, dummyNetConn}
 	handler.NewConnection(conn1)
 
 	conn2 := newConn(2)
-	conntainer2 := conntainer{conn2, dummyNetConn}
 	handler.NewConnection(conn2)
 
 	require.Len(handler.sm.sessions, 0)
-	require.Len(handler.c, 2)
 
 	handler.ComInitDB(conn2, "test")
 	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result) error {
@@ -181,9 +175,6 @@ func TestHandlerKill(t *testing.T) {
 	require.NoError(err)
 
 	require.Len(handler.sm.sessions, 1)
-	require.Len(handler.c, 2)
-	require.Equal(conntainer1, handler.c[1])
-	require.Equal(conntainer2, handler.c[2])
 	assertNoConnProcesses(t, e, conn2.ConnectionID)
 
 	err = handler.sm.SetDB(conn1, "test")
@@ -199,9 +190,6 @@ func TestHandlerKill(t *testing.T) {
 	require.NoError(err)
 
 	require.Len(handler.sm.sessions, 1)
-	require.Len(handler.c, 1)
-	_, ok := handler.c[1]
-	require.False(ok)
 	assertNoConnProcesses(t, e, conn1.ConnectionID)
 }
 
@@ -308,7 +296,6 @@ func TestOkClosedConnection(t *testing.T) {
 		),
 		0,
 	)
-	h.AddNetConnection(&conn)
 	c := newConn(1)
 	h.NewConnection(c)
 

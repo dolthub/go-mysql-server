@@ -55,19 +55,12 @@ var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 const rowsBatch = 100
 const tcpCheckerSleepTime = 1
 
-type conntainer struct {
-	MysqlConn *mysql.Conn
-	NetConn   net.Conn
-}
-
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
 	mu          sync.Mutex
 	e           *sqle.Engine
 	sm          *SessionManager
-	c           map[uint32]conntainer
 	readTimeout time.Duration
-	lc          []*net.Conn
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
@@ -75,37 +68,12 @@ func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
 	return &Handler{
 		e:           e,
 		sm:          sm,
-		c:           make(map[uint32]conntainer),
 		readTimeout: rt,
 	}
 }
 
-// AddNetConnection is used to add the net.Conn to the Handler when available (usually on the
-// Listener.Accept() method)
-func (h *Handler) AddNetConnection(c *net.Conn) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.lc = append(h.lc, c)
-}
-
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
-	h.mu.Lock()
-	if _, ok := h.c[c.ConnectionID]; !ok {
-		// Retrieve the latest net.Conn stored by Listener.Accept(), if called, and remove it
-		var netConn net.Conn
-		if len(h.lc) > 0 {
-			netConn = *h.lc[len(h.lc)-1]
-			h.lc = h.lc[:len(h.lc)-1]
-		} else {
-			logrus.Debug("Could not find TCP socket connection after Accept(), " +
-				"connection checker won't run")
-		}
-		h.c[c.ConnectionID] = conntainer{c, netConn}
-	}
-
-	h.mu.Unlock()
-
 	logrus.Infof("NewConnection: client %v", c.ConnectionID)
 }
 
@@ -137,10 +105,6 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) {
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	ctx, _ := h.sm.NewContextWithQuery(c, "")
 	h.sm.CloseConn(c)
-
-	h.mu.Lock()
-	delete(h.c, c.ConnectionID)
-	h.mu.Unlock()
 
 	// If connection was closed, kill only its associated queries.
 	h.e.Catalog.ProcessList.KillOnlyQueries(c.ConnectionID)
@@ -341,13 +305,6 @@ func (h *Handler) doQuery(
 		return err
 	}
 
-	h.mu.Lock()
-	nc, ok := h.c[c.ConnectionID]
-	h.mu.Unlock()
-	if !ok {
-		return ErrConnectionWasClosed.New()
-	}
-
 	var r *sqltypes.Result
 	var proccesedAtLeastOneBatch bool
 
@@ -387,7 +344,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	go h.pollForClosedConnection(nc, errChan, quit, query)
+	go h.pollForClosedConnection(c, errChan, quit, query)
 
 rowLoop:
 	for {
@@ -494,8 +451,8 @@ func (h *Handler) errorWrappedDoQuery(
 // Periodically polls the connection socket to determine if it is has been closed by the client, sending an error on
 // the supplied error channel if it has. Meant to be run in a separate goroutine from the query handler routine.
 // Returns immediately on platforms that can't support TCP socket checks.
-func (h *Handler) pollForClosedConnection(nc conntainer, errChan chan error, quit chan struct{}, query string) {
-	tcpConn, ok := nc.NetConn.(*net.TCPConn)
+func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, quit chan struct{}, query string) {
+	tcpConn, ok := c.Conn.(*net.TCPConn)
 	if !ok {
 		logrus.Debug("Connection checker exiting, connection isn't TCP")
 		return
@@ -504,14 +461,14 @@ func (h *Handler) pollForClosedConnection(nc conntainer, errChan chan error, qui
 	inode, err := sockstate.GetConnInode(tcpConn)
 	if err != nil || inode == 0 {
 		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
-			errChan <- err
+			logrus.Trace("Connection checker exiting, connection isn't TCP")
 		}
 		return
 	}
 
-	t, ok := nc.NetConn.LocalAddr().(*net.TCPAddr)
+	t, ok := tcpConn.LocalAddr().(*net.TCPAddr)
 	if !ok {
-		logrus.Warn("Connection checker exiting, could not get local port")
+		logrus.Debug("Connection checker exiting, could not get local port")
 		return
 	}
 
@@ -525,11 +482,11 @@ func (h *Handler) pollForClosedConnection(nc conntainer, errChan chan error, qui
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
 		switch st {
 		case sockstate.Broken:
-			logrus.Tracef("socket state is broken, returning error")
+			logrus.Trace("socket state is broken, returning error")
 			errChan <- ErrConnectionWasClosed.New()
 			return
 		case sockstate.Error:
-			errChan <- err
+			logrus.Infof("Connection checker exiting, got err checking sockstate: %v", err)
 			return
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
@@ -634,19 +591,8 @@ func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 	h.e.Catalog.Kill(connID)
 	if s[1] != "query" {
 		logrus.Infof("kill connection: id %d", connID)
-
-		h.mu.Lock()
-		c, ok := h.c[connID]
-		if ok {
-			delete(h.c, connID)
-		}
-		h.mu.Unlock()
-		if !ok {
-			return false, errConnectionNotFound.New(connID)
-		}
-
-		h.sm.CloseConn(c.MysqlConn)
-		c.MysqlConn.Close()
+		h.sm.CloseConn(conn)
+		conn.Close()
 	}
 
 	return true, nil

@@ -33,11 +33,5 @@ func NewListener(protocol, address string, handler *Handler) (*Listener, error) 
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
-	conn, err := l.Listener.Accept()
-	if err != nil {
-		return nil, err
-	}
-
-	l.h.AddNetConnection(&conn)
-	return conn, err
+	return l.Listener.Accept()
 }
