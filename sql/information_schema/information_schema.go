@@ -800,6 +800,86 @@ func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+func getColumnNamesFromIndex(idx Index, table Table) []string {
+	var indexCols []string
+	for _, expr := range idx.Expressions() {
+		col := plan.GetColumnFromIndexExpr(expr, table)
+		if col != nil {
+			indexCols = append(indexCols, fmt.Sprintf("`%s`", col.Name))
+		}
+	}
+
+	// TODO: Validate this is correct for multi index
+	return indexCols
+}
+
+func keyColumnConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases() {
+		tableNames, err := db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			// Get UNIQUEs, PRIMARY KEYs
+			// TODO: This does not correctly distinguish nonnative indexes used with a sql.Table
+			indexTable, ok := tbl.(IndexedTable)
+			if ok {
+				indexes, err := indexTable.GetIndexes(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, index := range indexes {
+					// In this case we have a multi-index which is not represented in this table
+					if index.ID() != "PRIMARY" && !index.IsUnique() {
+						continue
+					}
+
+					colNames := getColumnNamesFromIndex(index, tbl)
+
+					// Create a Row for each column this index refers too.
+					for i, colName := range colNames {
+						colName = strings.Replace(colName, "`", "", -1) // get rid of backticks
+						ordinalPosition := i + 1                        // Ordinal Positions starts at one
+
+						rows = append(rows, Row{"def", db.Name(), index.ID(), "def", db.Name(), tbl.Name(), colName, ordinalPosition, nil, nil, nil, nil})
+					}
+				}
+			}
+
+			// Get FKs
+			fkTable, ok := tbl.(ForeignKeyTable)
+			if ok {
+				fks, err := fkTable.GetForeignKeys(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, fk := range fks {
+					for j, colName := range fk.Columns {
+						ordinalPosition := j + 1
+
+						referencedSchema := db.Name()
+						referencedTableName := fk.ReferencedTable
+						referencedColumnName := strings.Replace(fk.ReferencedColumns[j], "`", "", -1) // get rid of backticks
+
+						rows = append(rows, Row{"def", db.Name(), fk.Name, "def", db.Name(), tbl.Name(), colName, ordinalPosition, ordinalPosition, referencedSchema, referencedTableName, referencedColumnName})
+					}
+				}
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 func emptyRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
@@ -871,7 +951,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				name:    KeyColumnUsageTableName,
 				schema:  keyColumnUsageSchema,
 				catalog: cat,
-				rowIter: emptyRowIter,
+				rowIter: keyColumnConstraintRowIter,
 			},
 			TriggersTableName: &informationSchemaTable{
 				name:    TriggersTableName,
