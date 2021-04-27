@@ -488,6 +488,34 @@ type VersionedDatabase interface {
 	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
 }
 
+// Transaction is an opaque type implemented by an integrator to record necessary information at the start of a
+// transaction. Active transactions will be recorded in the session.
+type Transaction interface {
+	fmt.Stringer
+}
+
+// TransactionDatabase is a Database that can BEGIN, ROLLBACK and COMMIT transactions, as well as create SAVEPOINTS and
+// restore to them.
+type TransactionDatabase interface {
+	Database
+
+	// BeginTransaction starts a new transaction and returns it
+	BeginTransaction(ctx *Context) (Transaction, error)
+
+	// Rollback restores the database to the state recorded in the transaction given
+	Rollback(ctx *Context, transaction Transaction) error
+
+	// CreateSavepoint records a savepoint for the transaction given with the name given. If the name is already in use
+	// for this transaction, the new savepoint replaces the old one.
+	CreateSavepoint(ctx *Context, transaction Transaction, name string) error
+
+	// RollbackToSavepoint restores the database to the state named by the savepoint
+	RollbackToSavepoint(ctx *Context, transaction Transaction, name string) error
+
+	// ReleaseSavepoint removes the savepoint named from the transaction given
+	ReleaseSavepoint(ctx *Context, transaction Transaction, name string) error
+}
+
 // TriggerDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
 // but must store and return them when asked.
 type TriggerDefinition struct {

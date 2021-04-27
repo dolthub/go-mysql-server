@@ -16,7 +16,7 @@ package plan
 
 import "github.com/dolthub/go-mysql-server/sql"
 
-// Begin starts a transaction. This is provided just for compatibility with SQL clients and is a no-op.
+// Begin starts a transaction.
 type Begin struct{}
 
 // NewBegin creates a new Begin node.
