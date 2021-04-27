@@ -5432,7 +5432,7 @@ var InfoSchemaScripts = []ScriptTest{
 	{
 		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
 		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10))",
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10), CONSTRAINT vcheck CHECK (height > 0))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -5447,13 +5447,14 @@ var InfoSchemaScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
 			},
 		},
 	},
 	{
-		Name: "information_schema.table_constraints ignores multi-index",
+		Name: "information_schema.table_constraints ignores non-unique indexes",
 		SetUpScript: []string{
 			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
 			"CREATE INDEX myindex on mytable(test_score)",
