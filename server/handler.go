@@ -486,7 +486,7 @@ func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, qui
 			errChan <- ErrConnectionWasClosed.New()
 			return
 		case sockstate.Error:
-			logrus.Debugf("Connection checker exiting, got err checking sockstate: %v", err)
+			logrus.Infof("Connection checker exiting, got err checking sockstate: %v", err)
 			return
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
