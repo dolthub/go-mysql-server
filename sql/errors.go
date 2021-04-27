@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -79,10 +80,10 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
-	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %s")
+	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given")
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
-	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given: %s")
+	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
 
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
@@ -279,4 +280,32 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 	}
 
 	return mysql.NewSQLError(code, sqlState, err.Error()), false
+}
+
+type UniqueKeyError struct {
+	keyStr string
+	IsPK bool
+	Existing Row
+}
+
+func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
+	ue := UniqueKeyError{
+		keyStr:   keyStr,
+		IsPK:     isPK,
+		Existing: existing,
+	}
+
+	if isPK {
+		return ErrPrimaryKeyViolation.Wrap(ue)
+	} else {
+		return ErrUniqueKeyViolation.Wrap(ue)
+	}
+}
+
+func (ue UniqueKeyError) Error() string {
+	if ue.IsPK {
+		return fmt.Sprintf("duplicate primary key given: %s", ue.keyStr)
+	} else {
+		return fmt.Sprintf("duplicate unique key given: %s", ue.keyStr)
+	}
 }
