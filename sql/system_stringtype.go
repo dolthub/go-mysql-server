@@ -21,7 +21,7 @@ import (
 
 // systemStringType is an internal string type ONLY for system variables.
 type systemStringType struct {
-	varName    string
+	varName string
 }
 
 var _ SystemVariableType = systemStringType{}

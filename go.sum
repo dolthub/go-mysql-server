@@ -14,16 +14,6 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c h1:ZIo6IOXU3/rJK4lp83QRq1zGhQrjQQtlmE2b7H1Vv/k=
 github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
-github.com/dolthub/vitess v0.0.0-20210414224709-fa7684f981b1 h1:e06pT0DTXvFXTAD5+iDSvzcQFrWXelDRrmT9/oDqOsY=
-github.com/dolthub/vitess v0.0.0-20210414224709-fa7684f981b1/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
-github.com/dolthub/vitess v0.0.0-20210422063521-b78f5277c58e h1:ByVFFtfVEgx+PlQ/0CWdidHTSw9BwhWSbeCtmitkFA0=
-github.com/dolthub/vitess v0.0.0-20210422063521-b78f5277c58e/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
-github.com/dolthub/vitess v0.0.0-20210422080457-3db7e200004f h1:5bsV89R+NobsOMtfrpSUiLiykTGUUgpYPs/65ZIQxmE=
-github.com/dolthub/vitess v0.0.0-20210422080457-3db7e200004f/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
-github.com/dolthub/vitess v0.0.0-20210422104829-f150448ba2fa h1:3SPT8U6vImgYzdiL6MJIVCGDXBECeOwSmF+CGkxOwXw=
-github.com/dolthub/vitess v0.0.0-20210422104829-f150448ba2fa/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
-github.com/dolthub/vitess v0.0.0-20210422122353-f24ecee8d5f4 h1:hO/Emrh8gCc1xChjYuH7dwtAdH0SInQZFjAXkxZ8d20=
-github.com/dolthub/vitess v0.0.0-20210422122353-f24ecee8d5f4/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
 github.com/dolthub/vitess v0.0.0-20210423125910-e55ee465c2e8 h1:DEFVTB71AdE6vbX1FbtVWRJr+bui8RMfw+U0NnQoGnc=
 github.com/dolthub/vitess v0.0.0-20210423125910-e55ee465c2e8/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=

@@ -31,10 +31,10 @@ import (
 // simply delegates to the child.
 func NewHashLookup(n *CachedResults, childProjection sql.Expression, lookupProjection sql.Expression) *HashLookup {
 	return &HashLookup{
-		UnaryNode: UnaryNode{n},
-		childProjection: childProjection,
+		UnaryNode:        UnaryNode{n},
+		childProjection:  childProjection,
 		lookupProjection: lookupProjection,
-		mutex: new(sync.Mutex),
+		mutex:            new(sync.Mutex),
 	}
 }
 

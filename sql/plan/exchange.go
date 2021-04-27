@@ -238,8 +238,8 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 
 func (it *exchangeRowIter) tryWriteErr(err error) {
 	select {
-		case it.err <- err:
-		default:
+	case it.err <- err:
+	default:
 	}
 }
 
@@ -311,12 +311,12 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 		rowCount++
 
 		select {
-			case it.rows <- row:
-			case <-quitChan:
-				return
-			case <-it.ctx.Done():
-				it.tryWriteErr(context.Canceled)
-				return
+		case it.rows <- row:
+		case <-quitChan:
+			return
+		case <-it.ctx.Done():
+			it.tryWriteErr(context.Canceled)
+			return
 		}
 	}
 }
