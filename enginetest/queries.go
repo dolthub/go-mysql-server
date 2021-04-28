@@ -521,7 +521,7 @@ var QueryTests = []QueryTest{
 		Query: `SELECT s2, i2, i
 			FROM (SELECT * FROM mytable) mytable
 			RIGHT JOIN
-				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
 			ON i2 = i`,
@@ -538,7 +538,7 @@ var QueryTests = []QueryTest{
 			(SELECT max(i)
 			 FROM (SELECT * FROM mytable) mytable
 			 RIGHT JOIN
-				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
 				ON i2 = i) AS rj
@@ -553,7 +553,7 @@ var QueryTests = []QueryTest{
 			(SELECT max(i2)
 			 FROM (SELECT * FROM mytable) mytable
 			 RIGHT JOIN
-				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
 				ON i2 = i) AS rj
