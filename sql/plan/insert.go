@@ -42,8 +42,8 @@ var ErrInsertIgnore = errors.NewKind("This row was ignored") // Used for making 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 // The INSERT IGNORE syntax applies to these ignorable errors
 // ER_BAD_NULL_ERROR - yes
-// ER_DUP_ENTRY - yes // AlsoHandlesUniqueViolation
-// ER_DUP_ENTRY_WITH_KEY_NAME - kinda
+// ER_DUP_ENTRY - yes
+// ER_DUP_ENTRY_WITH_KEY_NAME - Yes
 // ER_DUP_KEY - kinda
 // ER_NO_PARTITION_FOR_GIVEN_VALUE - yes
 // ER_NO_PARTITION_FOR_GIVEN_VALUE_SILENT - No
