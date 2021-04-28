@@ -16,8 +16,14 @@ github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c h1:ZIo6IOX
 github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
 github.com/dolthub/vitess v0.0.0-20210423125910-e55ee465c2e8 h1:DEFVTB71AdE6vbX1FbtVWRJr+bui8RMfw+U0NnQoGnc=
 github.com/dolthub/vitess v0.0.0-20210423125910-e55ee465c2e8/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
-github.com/dolthub/vitess v0.0.0-20210427161911-b5436daa695a h1:W/pWfKFW8vnLf3LYwMt0rmvTC9fK2P9YBJuYD2XxLT4=
-github.com/dolthub/vitess v0.0.0-20210427161911-b5436daa695a/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20210427163740-51b18191d0e8 h1:deU+Foms/wedy1HDxKojzdIuWXbEFth5ef0p1jKsECU=
+github.com/dolthub/vitess v0.0.0-20210427163740-51b18191d0e8/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20210427164356-92318a12aaff h1:7Nfs/dhJ9TODWEWTe5F9kuFwT40eZ5c+Ycq5uMC/OZs=
+github.com/dolthub/vitess v0.0.0-20210427164356-92318a12aaff/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20210427164819-318855815508 h1:j+T3uQccqnohVMLsINl8xRBoAbC/29W1nFFJoLFvLmE=
+github.com/dolthub/vitess v0.0.0-20210427164819-318855815508/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20210428104209-a5f7932c1bc0 h1:o7g8HXUa3A+weA86zj5evLNTyG8WFmXXyE7Vv5OWv7k=
+github.com/dolthub/vitess v0.0.0-20210428104209-a5f7932c1bc0/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 h1:Ghm4eQYC0nEPnSJdVkTrXpu9KtoVCSo1hg7mtI7G9KU=
