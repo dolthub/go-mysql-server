@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -283,8 +284,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 }
 
 type UniqueKeyError struct {
-	keyStr string
-	IsPK bool
+	keyStr   string
+	IsPK     bool
 	Existing Row
 }
 
