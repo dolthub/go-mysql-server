@@ -245,22 +245,32 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	if i.replacer != nil {
-		toReturn := row.Append(row)
-		if err = i.replacer.Delete(i.ctx, row); err != nil {
-			if !sql.ErrDeleteRowNotFound.Is(err) {
-				_ = i.rowSource.Close(i.ctx)
-				return nil, err
-			}
-			// if the row was not found during deletion, write nils into the toReturn row
-			for i := range row {
-				toReturn[i] = nil
+		toReturn := make(sql.Row, len(row)*2)
+		for i := 0; i < len(row); i++ {
+			toReturn[i+len(row)] = row[i]
+		}
+		// May have multiple duplicate pk & unique errors due to multiple indexes
+		for {
+			if err := i.replacer.Insert(i.ctx, row); err != nil {
+				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
+					_ = i.rowSource.Close(i.ctx)
+					return nil, err
+				}
+
+				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
+				if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
+					_ = i.rowSource.Close(i.ctx)
+					return nil, err
+				}
+				// the row had to be deleted, write the values into the toReturn row
+				for i := 0; i < len(ue.Existing); i++ {
+					toReturn[i] = ue.Existing[i]
+				}
+			} else {
+				break
 			}
 		}
 
-		if err = i.replacer.Insert(i.ctx, row); err != nil {
-			_ = i.rowSource.Close(i.ctx)
-			return nil, err
-		}
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
