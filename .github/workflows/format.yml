@@ -1,0 +1,28 @@
+name: Check Formatting
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  verify:
+    name: Verify format
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Setup Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.13
+        id: go
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Check all
+        working-directory: ./
+        run: |
+          GOFLAGS="-mod=readonly" go build ./...
+          go vet -mod=readonly ./...
+          ./utils/repofmt/check_fmt.sh
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          CHANGE_TARGET: ${{ github.base_ref }}
