@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	"context"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -46,6 +47,19 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 
 func NewDefaultMemoryHarness() *MemoryHarness {
 	return NewMemoryHarness("default", 1, testNumPartitions, true, nil)
+}
+
+var skippedQueries = []string{
+	"select * from unionview", // memory views only persist for a single session
+}
+
+func (m *MemoryHarness) SkipQueryTest(query string) bool {
+	for _, skippedQuery := range skippedQueries {
+		if strings.Contains(strings.ToLower(query), strings.ToLower(skippedQuery)) {
+			return true
+		}
+	}
+	return false
 }
 
 func NewSkippingMemoryHarness() *SkippingMemoryHarness {

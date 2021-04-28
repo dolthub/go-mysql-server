@@ -752,4 +752,21 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "Create union view",
+		SetUpScript: []string{
+			"create table myTable (i int primary key, s varchar(100))",
+			"insert into myTable values (1, 'first row'), (2, 'second row')",
+			"create view unionView as (select * from myTable order by i limit 1) union all (select * from mytable order by i limit 1)",
+		},
+		Assertions:  []ScriptTestAssertion{
+			{
+				Query:          "select * from unionView order by i",
+				Expected:       []sql.Row{
+					{1, "first row"},
+					{1, "first row"},
+				},
+			},
+		},
+	},
 }
