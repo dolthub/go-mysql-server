@@ -20,8 +20,6 @@ jobs:
       - name: Check all
         working-directory: ./
         run: |
-          GOFLAGS="-mod=readonly" go build ./...
-          go vet -mod=readonly ./...
           ./utils/repofmt/check_fmt.sh
         env:
           BRANCH_NAME: ${{ github.head_ref }}
