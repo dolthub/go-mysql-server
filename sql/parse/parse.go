@@ -207,6 +207,10 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDeclare(ctx, n)
 	case *sqlparser.Signal:
 		return convertSignal(ctx, n)
+		//TODO: implement the SAVEPOINT statements used in transactions, currently here for integration compatibility
+	case *sqlparser.Savepoint, *sqlparser.RollbackSavepoint, *sqlparser.ReleaseSavepoint:
+		ctx.Warn(1642, "SAVEPOINT functionality is currently a no-op")
+		return plan.NewBlock(nil), nil // An empty block is essentially a no-op
 	}
 }
 
