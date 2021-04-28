@@ -42,9 +42,6 @@ var ErrNullDefault = errors.NewKind("column declared not null must have a non-nu
 // ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
 var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
 
-// ErrUnsupportedFeature is thrown when a feature is not already supported
-var ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
-
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
 	db sql.Database

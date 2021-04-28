@@ -24,6 +24,9 @@ var (
 	// ErrSyntaxError is returned when a syntax error in vitess is encountered.
 	ErrSyntaxError = errors.NewKind("%s")
 
+	// ErrUnsupportedFeature is thrown when a feature is not already supported
+	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
+
 	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
 	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
 
@@ -77,7 +80,6 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
-
 	// TODO: This should be a ErDupKey instead
 	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %s")
 
@@ -156,6 +158,18 @@ var (
 
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
+
+	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
+	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
+
+	// ErrSystemVariableSessionOnly is returned when attempting to set a SESSION-only variable using SET GLOBAL.
+	ErrSystemVariableSessionOnly = errors.NewKind(`Variable '%s' is a SESSION variable and can't be used with SET GLOBAL`)
+
+	// ErrSystemVariableGlobalOnly is returned when attempting to set a GLOBAL-only variable using SET SESSION.
+	ErrSystemVariableGlobalOnly = errors.NewKind(`Variable '%s' is a GLOBAL variable and should be set with SET GLOBAL`)
+
+	// ErrUserVariableNoDefault is returned when attempting to set the default value on a user variable.
+	ErrUserVariableNoDefault = errors.NewKind(`User variable '%s' does not have a default value`)
 
 	// ErrInvalidUseOfOldNew is returned when a trigger attempts to make use of OLD or NEW references when they don't exist
 	ErrInvalidUseOfOldNew = errors.NewKind("There is no %s row in on %s trigger")
@@ -297,8 +311,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 }
 
 type UniqueKeyError struct {
-	keyStr string
-	IsPK bool
+	keyStr   string
+	IsPK     bool
 	Existing Row
 }
 

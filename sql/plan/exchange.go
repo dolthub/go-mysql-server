@@ -172,7 +172,7 @@ func (it *exchangeRowIter) start() {
 	for {
 		select {
 		case <-it.ctx.Done():
-			it.err <- context.Canceled
+			it.tryWriteErr(context.Canceled)
 			it.closeTokens()
 			return
 		case <-it.quit():
@@ -201,7 +201,7 @@ func (it *exchangeRowIter) start() {
 func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 	defer func() {
 		if x := recover(); x != nil {
-			it.err <- fmt.Errorf("mysql_server caught panic:\n%v", x)
+			it.tryWriteErr(fmt.Errorf("mysql_server caught panic:\n%v", x))
 		}
 
 		close(ch)
@@ -210,7 +210,7 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 	for {
 		select {
 		case <-it.ctx.Done():
-			it.err <- context.Canceled
+			it.tryWriteErr(context.Canceled)
 			return
 		case <-it.quit():
 			return
@@ -220,12 +220,26 @@ func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
 		p, err := it.partitions.Next()
 		if err != nil {
 			if err != io.EOF {
-				it.err <- err
+				it.tryWriteErr(err)
 			}
 			return
 		}
 
-		ch <- p
+		select {
+		case ch <- p:
+		case <-it.ctx.Done():
+			it.tryWriteErr(context.Canceled)
+			return
+		case <-it.quit():
+			return
+		}
+	}
+}
+
+func (it *exchangeRowIter) tryWriteErr(err error) {
+	select {
+	case it.err <- err:
+	default:
 	}
 }
 
@@ -245,29 +259,32 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 		return n, nil
 	})
 	if err != nil {
-		it.err <- err
+		it.tryWriteErr(err)
 		return
 	}
 
 	rows, err := node.RowIter(ctx, it.row)
 	if err != nil {
-		it.err <- err
+		it.tryWriteErr(err)
 		return
 	}
 
 	defer func() {
 		if err := rows.Close(ctx); err != nil {
-			it.err <- err
+			it.tryWriteErr(err)
 		}
 	}()
 
+	quitChan := it.quit()
 	for {
 		select {
 		case <-it.ctx.Done():
-			it.err <- context.Canceled
+			it.tryWriteErr(context.Canceled)
 			return
-		case <-it.quit():
+
+		case <-quitChan:
 			return
+
 		default:
 		}
 
@@ -281,17 +298,26 @@ func (it *exchangeRowIter) iterPartition(p sql.Partition) {
 			}()
 			row, err = rows.Next()
 		}()
+
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 
-			it.err <- err
+			it.tryWriteErr(err)
 			return
 		}
 
 		rowCount++
-		it.rows <- row
+
+		select {
+		case it.rows <- row:
+		case <-quitChan:
+			return
+		case <-it.ctx.Done():
+			it.tryWriteErr(context.Canceled)
+			return
+		}
 	}
 }
 

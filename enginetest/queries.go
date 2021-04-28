@@ -15,7 +15,6 @@
 package enginetest
 
 import (
-	"math"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -2391,48 +2390,32 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW VARIABLES`,
-		Expected: []sql.Row{
-			{"autocommit", int64(0)},
-			{"auto_increment_increment", int64(1)},
-			{"time_zone", "SYSTEM"},
-			{"system_time_zone", time.Now().UTC().Location().String()},
-			{"max_allowed_packet", math.MaxInt32},
-			{"sql_mode", ""},
-			{"gtid_mode", int32(0)},
-			{"collation_database", "utf8mb4_0900_ai_ci"},
-			{"ndbinfo_version", ""},
-			{"sql_select_limit", math.MaxInt32},
-			{"transaction_isolation", "READ UNCOMMITTED"},
-			{"version", ""},
-			{"version_comment", ""},
-			{"character_set_client", sql.Collation_Default.CharacterSet().String()},
-			{"character_set_connection", sql.Collation_Default.CharacterSet().String()},
-			{"character_set_results", sql.Collation_Default.CharacterSet().String()},
-			{"collation_connection", sql.Collation_Default.String()},
-			{"tmpdir", sql.GetTmpdirSessionVar()},
-			{"local_infile", int8(0)},
-			{"secure_file_priv", nil},
-			{"group_concat_max_len", int64(1024)},
-		},
-	},
-	{
 		Query: `SHOW VARIABLES LIKE 'gtid_mode`,
 		Expected: []sql.Row{
-			{"gtid_mode", int32(0)},
+			{"gtid_mode", "OFF"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES LIKE 'gtid%`,
 		Expected: []sql.Row{
-			{"gtid_mode", int32(0)},
+			{"gtid_executed", ""},
+			{"gtid_executed_compression_period", int64(0)},
+			{"gtid_mode", "OFF"},
+			{"gtid_next", "AUTOMATIC"},
+			{"gtid_owned", ""},
+			{"gtid_purged", ""},
 		},
 	},
 	{
 		Query: `SHOW GLOBAL VARIABLES LIKE '%mode`,
 		Expected: []sql.Row{
-			{"sql_mode", ""},
-			{"gtid_mode", int32(0)},
+			{"block_encryption_mode", "aes-128-ecb"},
+			{"gtid_mode", "OFF"},
+			{"offline_mode", int64(0)},
+			{"pseudo_slave_mode", int64(0)},
+			{"rbr_exec_mode", "STRICT"},
+			{"sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"},
+			{"ssl_fips_mode", "OFF"},
 		},
 	},
 	{
@@ -5407,6 +5390,28 @@ var InfoSchemaQueries = []QueryTest{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
 	},
+	{
+		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
+		Expected: []sql.Row{
+			{"def", "mydb", "PRIMARY", "mydb", "auto_increment_tbl", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "bigtable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
+			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "othertable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "people", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "tabletest", "PRIMARY KEY", "YES"},
+		},
+	},
+	{
+		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
+		Expected: []sql.Row{},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
@@ -5420,6 +5425,45 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "describe auto;",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10), CONSTRAINT vcheck CHECK (height > 0))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "height < 10"},
+					{"def", "mydb", "mycheck", "test_score >= 50"},
+				},
+			},
+			{
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.table_constraints ignores non-unique indexes",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on mytable(test_score)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
 			},
 		},

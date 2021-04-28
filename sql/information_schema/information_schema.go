@@ -67,6 +67,8 @@ const (
 	CharacterSetsTableName = "character_sets"
 	// EnginesTableName is the name of the engines table
 	EnginesTableName = "engines"
+	// CheckConstraintsTableName is the name of check_constraints table
+	CheckConstraintsTableName = "check_constraints"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -395,6 +397,13 @@ var enginesSchema = Schema{
 	{Name: "savepoints", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
 }
 
+var checkConstraintsSchema = Schema{
+	{Name: "constraint_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
+	{Name: "constraint_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
+	{Name: "constraint_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
+	{Name: "check_clause", Type: LongText, Default: nil, Nullable: false, Source: CheckConstraintsTableName},
+}
+
 func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
@@ -643,36 +652,151 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
 					triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
 					tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
-					_, characterSetClient := ctx.Get("character_set_client")
-					_, collationConnection := ctx.Get("collation_connection")
+					characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+					if err != nil {
+						return nil, err
+					}
+					collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+					if err != nil {
+						return nil, err
+					}
+					collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+					if err != nil {
+						return nil, err
+					}
 					rows = append(rows, Row{
-						"def",                      // trigger_catalog
-						triggerDb.Name(),           // trigger_schema
-						triggerPlan.TriggerName,    // trigger_name
-						triggerEvent,               // event_manipulation
-						"def",                      // event_object_catalog
-						triggerDb.Name(),           // event_object_schema //TODO: table may be in a different db
-						tableName,                  // event_object_table
-						int64(order + 1),           // action_order
-						nil,                        // action_condition
-						triggerPlan.BodyString,     // action_statement
-						"ROW",                      // action_orientation
-						triggerTime,                // action_timing
-						nil,                        // action_reference_old_table
-						nil,                        // action_reference_new_table
-						"OLD",                      // action_reference_old_row
-						"NEW",                      // action_reference_new_row
-						time.Unix(0, 0).UTC(),      // created
-						"",                         // sql_mode
-						"",                         // definer
-						characterSetClient,         // character_set_client //TODO: allow these to be retrieved from integrators
-						collationConnection,        // collation_connection //TODO: allow these to be retrieved from integrators
-						Collation_Default.String(), // database_collation //TODO: add support for databases to set collation
+						"def",                   // trigger_catalog
+						triggerDb.Name(),        // trigger_schema
+						triggerPlan.TriggerName, // trigger_name
+						triggerEvent,            // event_manipulation
+						"def",                   // event_object_catalog
+						triggerDb.Name(),        // event_object_schema //TODO: table may be in a different db
+						tableName,               // event_object_table
+						int64(order + 1),        // action_order
+						nil,                     // action_condition
+						triggerPlan.BodyString,  // action_statement
+						"ROW",                   // action_orientation
+						triggerTime,             // action_timing
+						nil,                     // action_reference_old_table
+						nil,                     // action_reference_new_table
+						"OLD",                   // action_reference_old_row
+						"NEW",                   // action_reference_new_row
+						time.Unix(0, 0).UTC(),   // created
+						"",                      // sql_mode
+						"",                      // definer
+						characterSetClient,      // character_set_client
+						collationConnection,     // collation_connection
+						collationServer,         // database_collation
 					})
 				}
 			}
 		}
 	}
+	return RowsToRowIter(rows...), nil
+}
+
+func checkConstraintsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases() {
+		tableNames, err := db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			checkTbl, ok := tbl.(CheckTable)
+			if ok {
+				checkDefinitions, err := checkTbl.GetChecks(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, checkDefinition := range checkDefinitions {
+					rows = append(rows, Row{"def", db.Name(), checkDefinition.Name, checkDefinition.CheckExpression})
+				}
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases() {
+		tableNames, err := db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			// Get all the CHECKs
+			checkTbl, ok := tbl.(CheckTable)
+			if ok {
+				checkDefinitions, err := checkTbl.GetChecks(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, checkDefinition := range checkDefinitions {
+					enforced := "YES"
+					if !checkDefinition.Enforced {
+						enforced = "NO"
+					}
+					rows = append(rows, Row{"def", db.Name(), checkDefinition.Name, db.Name(), tbl.Name(), "CHECK", enforced})
+				}
+			}
+
+			// Get UNIQUEs, PRIMARY KEYs
+			// TODO: This does not correctly distinguish nonnative indexes used with a sql.Table
+			indexTable, ok := tbl.(IndexedTable)
+			if ok {
+				indexes, err := indexTable.GetIndexes(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, index := range indexes {
+					outputType := "PRIMARY KEY"
+					if index.ID() != "PRIMARY" {
+						if index.IsUnique() {
+							outputType = "UNIQUE"
+						} else {
+							// In this case we have a multi-index which is not represented in this table
+							continue
+						}
+
+					}
+
+					rows = append(rows, Row{"def", db.Name(), index.ID(), db.Name(), tbl.Name(), outputType, "YES"})
+				}
+			}
+
+			// Get FKs
+			fkTable, ok := tbl.(ForeignKeyTable)
+			if ok {
+				fks, err := fkTable.GetForeignKeys(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, fk := range fks {
+					rows = append(rows, Row{"def", db.Name(), fk.Name, db.Name(), tbl.Name(), "FOREIGN KEY", "YES"})
+				}
+			}
+		}
+	}
+
 	return RowsToRowIter(rows...), nil
 }
 
@@ -735,7 +859,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				name:    TableConstraintsTableName,
 				schema:  tableConstraintsSchema,
 				catalog: cat,
-				rowIter: emptyRowIter,
+				rowIter: tableConstraintRowIter,
 			},
 			ReferentialConstraintsTableName: &informationSchemaTable{
 				name:    ReferentialConstraintsTableName,
@@ -784,6 +908,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  enginesSchema,
 				catalog: cat,
 				rowIter: engineRowIter,
+			},
+			CheckConstraintsTableName: &informationSchemaTable{
+				name:    CheckConstraintsTableName,
+				schema:  checkConstraintsSchema,
+				catalog: cat,
+				rowIter: checkConstraintsRowIter,
 			},
 		},
 	}
