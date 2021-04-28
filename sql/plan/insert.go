@@ -58,7 +58,8 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrExpectedSingleRow,
 	sql.ErrForeignKeyChildViolation,
 	sql.ErrForeignKeyParentViolation,
-	sql.ErrDuplicateEntry}
+	sql.ErrDuplicateEntry,
+    sql.ErrUniqueKeyViolation}
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {

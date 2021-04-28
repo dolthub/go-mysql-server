@@ -295,6 +295,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERBadNullError
 	case ErrPrimaryKeyViolation.Is(err):
 		code = mysql.ERDupEntry
+	case ErrUniqueKeyViolation.Is(err):
+		code = mysql.ERDupEntry
 	case ErrPartitionNotFound.Is(err):
 		code = 1526 // TODO: Needs to be added to vitess
 	case ErrForeignKeyChildViolation.Is(err):

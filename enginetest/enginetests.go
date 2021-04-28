@@ -448,7 +448,9 @@ func TestInsertInto(t *testing.T, harness Harness) {
 	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
 	}
+}
 
+func TestInsertIgnoreInto(t *testing.T, harness Harness) {
 	for _, script := range InsertIgnoreScripts {
 		TestScript(t, harness, script)
 	}
