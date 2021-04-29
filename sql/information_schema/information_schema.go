@@ -1058,9 +1058,7 @@ func (t *informationSchemaTable) Partitions(ctx *Context) (PartitionIter, error)
 // PartitionRows implements the sql.PartitionRows interface.
 func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition) (RowIter, error) {
 	if !bytes.Equal(partition.Key(), partitionKey(t.Name())) {
-		return nil, fmt.Errorf(
-			"partition not found: %q", partition.Key(),
-		)
+		return nil, ErrPartitionNotFound.New(partition.Key())
 	}
 	if t.rowIter == nil {
 		return RowsToRowIter(), nil

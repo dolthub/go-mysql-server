@@ -49,9 +49,7 @@ func NewDefaultMemoryHarness() *MemoryHarness {
 	return NewMemoryHarness("default", 1, testNumPartitions, true, nil)
 }
 
-var skippedQueries = []string{
-	"select * from unionview", // memory views only persist for a single session
-}
+var skippedQueries = []string{}
 
 func (m *MemoryHarness) SkipQueryTest(query string) bool {
 	for _, skippedQuery := range skippedQueries {

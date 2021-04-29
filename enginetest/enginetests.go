@@ -450,6 +450,12 @@ func TestInsertInto(t *testing.T, harness Harness) {
 	}
 }
 
+func TestInsertIgnoreInto(t *testing.T, harness Harness) {
+	for _, script := range InsertIgnoreScripts {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	for _, expectedFailure := range InsertErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
@@ -925,28 +931,46 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
 		} else if assertion.ExpectedErrStr != "" {
 			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+		} else if assertion.ExpectedWarning != 0 {
+			AssertWarningAndTestQuery(t, e, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
 		}
 	}
 }
 
+// This method is the only place we can reliably test newly created views, because view definitions live in the
+// context, as opposed to being defined by integrators with a ViewDatabase interface, and we lose that context with
+// our standard method of using a new context object per query.
+// TODO: fix this by introducing sql.ViewDatabase
 func TestViews(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 
 	// nested views
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
-	require.NoError(err)
-	iter.Close(ctx)
-
+	RunQueryWithContext(t, e, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
 	for _, testCase := range ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, nil, testCase.Bindings)
 		})
 	}
+
+	// Views with non-standard select statements
+	RunQueryWithContext(t, e, ctx, "create view unionView as (select * from myTable order by i limit 1) union all (select * from mytable order by i limit 1)")
+	t.Run("select * from unionview order by i", func(t *testing.T) {
+		TestQueryWithContext(
+			t,
+			ctx,
+			e,
+			"select * from unionview order by i",
+			[]sql.Row{
+				{1, "first row"},
+				{1, "first row"},
+			},
+			nil,
+			nil,
+		)
+	})
 }
 
 func TestVersionedViews(t *testing.T, harness Harness) {
@@ -1620,7 +1644,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrCannotCreateDatabaseExists)
 
-		AssertWarning(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", mysql.ERDbCreateExists)
+		AssertWarningAndTestQuery(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists)
 	})
 }
 
@@ -1660,7 +1684,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
-		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS mydb", mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, harness, "DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
 
 		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
@@ -1671,7 +1695,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 
-		AssertWarning(t, e, harness, "DROP DATABASE IF EXISTS testdb", mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
 	})
 }
 
@@ -2666,6 +2690,14 @@ func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 	require.NoError(t, err)
 }
 
+// RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
+func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string) {
+	_, iter, err := e.Query(ctx, query)
+	require.NoError(t, err)
+	_, err = sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+}
+
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx := NewContext(harness)
@@ -2683,16 +2715,17 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 	}
 }
 
-func AssertWarning(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedCode int) {
+func AssertWarningAndTestQuery(t *testing.T, e *sqle.Engine, harness Harness, query string, expected []sql.Row, expectedCols []*sql.Column, expectedCode int) {
+	require := require.New(t)
 	ctx := NewContext(harness)
-	_, iter, err := e.Query(ctx, query)
-	require.NoError(t, err)
+	sch, iter, err := e.Query(ctx, query)
+	require.NoError(err, "Unexpected error for query %s", query)
 
-	_, err = sql.RowIterToRows(ctx, iter)
-	require.NoError(t, err)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(err, "Unexpected error for query %s", query)
 
 	ctx = NewContext(harness)
-	require.True(t, len(ctx.Warnings()) > 0)
+	require.True(len(ctx.Warnings()) > 0)
 
 	condition := false
 	for _, warning := range ctx.Warnings() {
@@ -2702,7 +2735,9 @@ func AssertWarning(t *testing.T, e *sqle.Engine, harness Harness, query string, 
 		}
 	}
 
-	require.True(t, condition)
+	assert.True(t, condition)
+
+	checkResults(t, require, expected, expectedCols, sch, rows, query)
 }
 
 type customFunc struct {
@@ -3151,6 +3186,10 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err, "Unexpected error for query %s", q)
 
+	checkResults(t, require, expected, expectedCols, sch, rows, q)
+}
+
+func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string) {
 	widenedRows := WidenRows(sch, rows)
 	widenedExpected := WidenRows(sch, expected)
 

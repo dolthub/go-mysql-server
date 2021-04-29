@@ -17,6 +17,8 @@ package enginetest
 import (
 	"math"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
@@ -906,4 +908,144 @@ var InsertErrorScripts = []ScriptTest{
 		Query:       "create table bad (pk1 int auto_increment default 10, c0 int);",
 		ExpectedErr: parse.ErrInvalidAutoIncCols,
 	},
+}
+
+var InsertIgnoreScripts = []ScriptTest{
+	{
+		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
+		SetUpScript: []string{
+			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+			"INSERT IGNORE INTO y VALUES (1, 1), (1,2), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM y",
+				Expected: []sql.Row{
+					{1, 1}, {2, 2}, {3, 3},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (1, 2), (4,4)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (5, NULL)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERBadNullError,
+			},
+			{
+				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk FROM y WHERE pk > 1);",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERSubqueryNo1Row,
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (3, 8)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+		},
+	},
+	{
+		Name: "Test that INSERT IGNORE with Non nullable columns works",
+		SetUpScript: []string{
+			"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
+			"INSERT IGNORE INTO x VALUES (1, NULL)",
+			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+			"INSERT IGNORE INTO y VALUES (1, NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM x",
+				Expected: []sql.Row{
+					{1, ""},
+				},
+			},
+			{
+				Query: "SELECT * FROM y",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (2, NULL)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERBadNullError,
+			},
+		},
+	},
+	{
+		Name: "Test that INSERT IGNORE INTO works with unique keys",
+		SetUpScript: []string{
+			"CREATE TABLE mytable(pk int PRIMARY KEY, value varchar(10) UNIQUE)",
+			"INSERT INTO mytable values (1,'one')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO mytable VALUES (2, 'one')",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+		},
+	},
+	{
+		Name: "Test that INSERT IGNORE works with FK Violations",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
+			"CREATE TABLE t2 (id INT PRIMARY KEY, v2 int, CONSTRAINT mfk FOREIGN KEY (v2) REFERENCES t1(id));",
+			"INSERT INTO t1 values (1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO t2 VALUES (1,2);",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ErNoReferencedRow2,
+			},
+		},
+	},
+	// TODO: Condense all of our casting logic into a single error.
+	//{
+	//	Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
+	//	SetUpScript: []string{
+	//		"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
+	//		`INSERT IGNORE INTO x VALUES (1, "one"), (2, TRUE), (3, "three")`,
+	//		"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+	//		`INSERT IGNORE INTO y VALUES (1, 1), (2, "two"), (3,3);`,
+	//	},
+	//	Assertions: []ScriptTestAssertion{
+	//		{
+	//			Query: "SELECT * FROM x",
+	//			Expected: []sql.Row{
+	//				{1, "one"}, {2, 1}, {3, "three"},
+	//			},
+	//		},
+	//		{
+	//			Query: "SELECT * FROM y",
+	//			Expected: []sql.Row{
+	//				{1, 1}, {2, 0}, {3, 3},
+	//			},
+	//		},
+	//		{
+	//			Query: `INSERT IGNORE INTO y VALUES (4, "four")`,
+	//			Expected: []sql.Row{
+	//				{sql.OkResult{RowsAffected: 1}},
+	//			},
+	//			ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+	//		},
+	//	},
+	//},
 }

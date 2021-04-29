@@ -53,6 +53,8 @@ func (c CreateDB) Children() []sql.Node {
 
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	exists := c.Catalog.HasDB(c.dbName)
+	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
+
 	if exists {
 		if c.IfNotExists {
 			ctx.Session.Warn(&sql.Warning{
@@ -61,7 +63,7 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				Message: fmt.Sprintf("Can't create database %s; database exists ", c.dbName),
 			})
 
-			return sql.RowsToRowIter(), nil
+			return sql.RowsToRowIter(rows...), nil
 		} else {
 			return nil, sql.ErrCannotCreateDatabaseExists.New(c.dbName)
 		}
@@ -69,8 +71,6 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	db := memory.NewDatabase(c.dbName)
 	c.Catalog.AddDatabase(db)
-
-	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
 
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -123,7 +123,9 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", d.dbName),
 			})
 
-			return sql.RowsToRowIter(), nil
+			rows := []sql.Row{{sql.OkResult{RowsAffected: 0}}}
+
+			return sql.RowsToRowIter(rows...), nil
 		} else {
 			return nil, sql.ErrCannotDropDatabaseDoesntExist.New(d.dbName)
 		}

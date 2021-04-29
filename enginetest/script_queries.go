@@ -44,6 +44,9 @@ type ScriptTestAssertion struct {
 	// In most cases, errors should be linked to a custom error, however there are exceptions where this is not possible,
 	// such as the use of the SIGNAL statement.
 	ExpectedErrStr string
+
+	// ExpectedWarning is used for queries that should generate warnings but not errors.
+	ExpectedWarning int
 }
 
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
@@ -749,23 +752,6 @@ var ScriptTests = []ScriptTest{
 			{ // Just confirms that the last INSERT didn't do anything
 				Query:    "SELECT * FROM test;",
 				Expected: []sql.Row{{1, 88}, {2, 42}},
-			},
-		},
-	},
-	{
-		Name: "Create union view",
-		SetUpScript: []string{
-			"create table myTable (i int primary key, s varchar(100))",
-			"insert into myTable values (1, 'first row'), (2, 'second row')",
-			"create view unionView as (select * from myTable order by i limit 1) union all (select * from mytable order by i limit 1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from unionView order by i",
-				Expected: []sql.Row{
-					{1, "first row"},
-					{1, "first row"},
-				},
 			},
 		},
 	},

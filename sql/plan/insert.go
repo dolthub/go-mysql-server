@@ -35,8 +35,31 @@ var ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not 
 var ErrInsertIntoUnsupportedValues = errors.NewKind("%T is unsupported for inserts")
 var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
 var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
-var ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
 var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %s")
+
+var ErrInsertIgnore = errors.NewKind("This row was ignored") // Used for making sure the row accumulator is correct
+
+// cc: https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
+// The INSERT IGNORE syntax applies to these ignorable errors
+// ER_BAD_NULL_ERROR - yes
+// ER_DUP_ENTRY - yes
+// ER_DUP_ENTRY_WITH_KEY_NAME - Yes
+// ER_DUP_KEY - kinda
+// ER_NO_PARTITION_FOR_GIVEN_VALUE - yes
+// ER_NO_PARTITION_FOR_GIVEN_VALUE_SILENT - No
+// ER_NO_REFERENCED_ROW_2 - Yes
+// ER_ROW_DOES_NOT_MATCH_GIVEN_PARTITION_SET - No
+// ER_ROW_IS_REFERENCED_2 - Yes
+// ER_SUBQUERY_NO_1_ROW - yes
+// ER_VIEW_CHECK_FAILED - No
+var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
+	sql.ErrPrimaryKeyViolation,
+	sql.ErrPartitionNotFound,
+	sql.ErrExpectedSingleRow,
+	sql.ErrForeignKeyChildViolation,
+	sql.ErrForeignKeyParentViolation,
+	sql.ErrDuplicateEntry,
+	sql.ErrUniqueKeyViolation}
 
 // InsertInto is a node describing the insertion into some table.
 type InsertInto struct {
@@ -47,13 +70,14 @@ type InsertInto struct {
 	IsReplace   bool
 	OnDupExprs  []sql.Expression
 	Checks      sql.CheckConstraints
+	Ignore      bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)
 var _ sql.Node = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression) *InsertInto {
+func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
 	return &InsertInto{
 		db:          db,
 		Destination: dst,
@@ -61,6 +85,7 @@ func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []st
 		ColumnNames: cols,
 		IsReplace:   isReplace,
 		OnDupExprs:  onDupExprs,
+		Ignore:      ignore,
 	}
 }
 
@@ -101,6 +126,7 @@ type insertIter struct {
 	checks              sql.CheckConstraints
 	tableNode           sql.Node
 	closed              bool
+	ignore              bool
 }
 
 func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
@@ -139,6 +165,7 @@ func newInsertIter(
 	onDupUpdateExpr []sql.Expression,
 	checks sql.CheckConstraints,
 	row sql.Row,
+	ignore bool,
 ) (*insertIter, error) {
 	dstSchema := table.Schema()
 
@@ -179,6 +206,7 @@ func newInsertIter(
 		insertExprs: insertExpressions,
 		checks:      checks,
 		ctx:         ctx,
+		ignore:      ignore,
 	}, nil
 }
 
@@ -202,8 +230,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	if err != nil {
-		_ = i.rowSource.Close(i.ctx)
-		return nil, err
+		return i.ignoreOrClose(err)
 	}
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
@@ -212,10 +239,9 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		row = row[len(row)-len(i.schema):]
 	}
 
-	err = validateNullability(i.schema, row)
+	err = i.validateNullability(i.schema, row)
 	if err != nil {
-		_ = i.rowSource.Close(i.ctx)
-		return nil, err
+		return i.ignoreOrClose(err)
 	}
 
 	// apply check constraints
@@ -226,7 +252,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 
 		checkPassed, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
 		if err != nil {
-			return nil, err
+			return nil, i.warnOnIgnorableError(err)
 		}
 
 		if !checkPassed {
@@ -245,28 +271,37 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	if i.replacer != nil {
-		toReturn := row.Append(row)
-		if err = i.replacer.Delete(i.ctx, row); err != nil {
-			if !sql.ErrDeleteRowNotFound.Is(err) {
-				_ = i.rowSource.Close(i.ctx)
-				return nil, err
-			}
-			// if the row was not found during deletion, write nils into the toReturn row
-			for i := range row {
-				toReturn[i] = nil
-			}
+		toReturn := make(sql.Row, len(row)*2)
+		for i := 0; i < len(row); i++ {
+			toReturn[i+len(row)] = row[i]
 		}
+		// May have multiple duplicate pk & unique errors due to multiple indexes
+		//TODO: how does this interact with triggers?
+		for {
+			if err := i.replacer.Insert(i.ctx, row); err != nil {
+				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
+					_ = i.rowSource.Close(i.ctx)
+					return nil, err
+				}
 
-		if err = i.replacer.Insert(i.ctx, row); err != nil {
-			_ = i.rowSource.Close(i.ctx)
-			return nil, err
+				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
+				if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
+					_ = i.rowSource.Close(i.ctx)
+					return nil, err
+				}
+				// the row had to be deleted, write the values into the toReturn row
+				for i := 0; i < len(ue.Existing); i++ {
+					toReturn[i] = ue.Existing[i]
+				}
+			} else {
+				break
+			}
 		}
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
-			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err)) || len(i.updateExprs) == 0 {
-				_ = i.rowSource.Close(i.ctx)
-				return nil, err
+			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
+				return i.ignoreOrClose(err)
 			}
 
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
@@ -372,6 +407,45 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
+func (i *insertIter) ignoreOrClose(err error) (sql.Row, error) {
+	if i.ignore {
+		return nil, i.warnOnIgnorableError(err)
+	} else {
+		_ = i.rowSource.Close(i.ctx)
+		return nil, err
+	}
+}
+
+func (i *insertIter) warnOnIgnorableError(err error) error {
+	if !i.ignore {
+		return err
+	}
+
+	// Check that this error is a part of the list of Ignorable Errors and create the relevant warning
+	for _, ie := range IgnorableErrors {
+		if ie.Is(err) {
+			sqlerr, _ := sql.CastSQLError(err)
+
+			// Add a warning instead
+			i.ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    sqlerr.Num,
+				Message: err.Error(),
+			})
+
+			// In this case the default value gets updated so return nil
+			if sql.ErrInsertIntoNonNullableDefaultNullColumn.Is(err) {
+				return nil
+			}
+
+			// Return the InsertIgnore err to ensure our accumulator doesn't count this row.
+			return ErrInsertIgnore.New()
+		}
+	}
+
+	return err
+}
+
 func toInt64(x interface{}) int64 {
 	switch x := x.(type) {
 	case int:
@@ -405,7 +479,7 @@ func toInt64(x interface{}) int64 {
 
 // RowIter implements the Node interface.
 func (ii *InsertInto) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return newInsertIter(ctx, ii.Destination, ii.Source, ii.IsReplace, ii.OnDupExprs, ii.Checks, row)
+	return newInsertIter(ctx, ii.Destination, ii.Source, ii.IsReplace, ii.OnDupExprs, ii.Checks, row, ii.Ignore)
 }
 
 // WithChildren implements the Node interface.
@@ -449,10 +523,16 @@ func (ii InsertInto) DebugString() string {
 	return pr.String()
 }
 
-func validateNullability(dstSchema sql.Schema, row sql.Row) error {
-	for i, col := range dstSchema {
-		if !col.Nullable && row[i] == nil {
-			return ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+func (i *insertIter) validateNullability(dstSchema sql.Schema, row sql.Row) error {
+	for count, col := range dstSchema {
+		if !col.Nullable && row[count] == nil {
+			// In the case of an IGNORE we set the nil value to a default and add a warning
+			if i.ignore {
+				row[count] = col.Type.Zero()
+				_ = i.warnOnIgnorableError(sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+			} else {
+				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+			}
 		}
 	}
 	return nil

@@ -94,9 +94,7 @@ func (u *indexValIter) initValues() error {
 	if u.values == nil {
 		rows, ok := u.tbl.partitions[string(u.partition.Key())]
 		if !ok {
-			return fmt.Errorf(
-				"partition not found: %q", u.partition.Key(),
-			)
+			return sql.ErrPartitionNotFound.New(u.partition.Key())
 		}
 
 		for i, row := range rows {
