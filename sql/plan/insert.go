@@ -259,14 +259,9 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 			return nil, i.warnOnIgnorableError(err)
 		}
 
-		//checkPassed, ok := res.(bool)
 		if checkPassed, ok := res.(bool); !ok || !checkPassed {
 			return nil, sql.ErrCheckConstraintViolated.New(check.Name)
 		}
-
-		//if !checkPassed {
-		//	return nil, sql.ErrCheckConstraintViolated.New(check.Name)
-		//}
 	}
 
 	// Do any necessary type conversions to the target schema
