@@ -81,7 +81,8 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
-	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given")
+	// TODO: This should be a ErDupEntry instead
+	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %s")
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
@@ -254,6 +255,21 @@ var (
 
 	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
 	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
+
+	// ErrPartitionNotFound is thrown when a partition key on a table is not found
+	ErrPartitionNotFound = errors.NewKind("partition not found %q")
+
+	// ErrInsertIntoNonNullableProvidedNull is called when a null value is inserted into a non-nullable column
+	ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
+
+	// ErrForeignKeyChildViolation is called when a rows is added but there is no parent row, and a foreign key constraint fails. Add the parent row first.
+	ErrForeignKeyChildViolation = errors.NewKind("cannot add or update a child row - Foreign key violation on fk: `%s`, table: `%s`, referenced table: `%s`, key: `%s`")
+
+	// ErrForeignKeyParentViolation is called when a parent row that is deleted has children, and a foreign key constraint fails. Delete the children first.
+	ErrForeignKeyParentViolation = errors.NewKind("cannot delete or update a parent row - Foreign key violation on fk: `%s`, table: `%s`, referenced table: `%s`, key: `%s`")
+
+	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
+	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -276,6 +292,20 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERSubqueryNo1Row
 	case ErrSubqueryMultipleColumns.Is(err):
 		code = mysql.EROperandColumns
+	case ErrInsertIntoNonNullableProvidedNull.Is(err):
+		code = mysql.ERBadNullError
+	case ErrPrimaryKeyViolation.Is(err):
+		code = mysql.ERDupEntry
+	case ErrUniqueKeyViolation.Is(err):
+		code = mysql.ERDupEntry
+	case ErrPartitionNotFound.Is(err):
+		code = 1526 // TODO: Needs to be added to vitess
+	case ErrForeignKeyChildViolation.Is(err):
+		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
+	case ErrForeignKeyParentViolation.Is(err):
+		code = mysql.ERRowIsReferenced2 // test with mysql returns 1451 vs 1215
+	case ErrDuplicateEntry.Is(err):
+		code = mysql.ERDupEntry
 	default:
 		code = mysql.ERUnknownError
 	}

@@ -1433,15 +1433,15 @@ CREATE TABLE t2
 	`INSERT INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("a", sql.LongText),
 		expression.NewLiteral(int8(1), sql.Int8),
-	}}), false, []string{"col1", "col2"}, []sql.Expression{}),
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 	`INSERT INTO mydb.t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase("mydb"), plan.NewUnresolvedTable("t1", "mydb"), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("a", sql.LongText),
 		expression.NewLiteral(int8(1), sql.Int8),
-	}}), false, []string{"col1", "col2"}, []sql.Expression{}),
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 	`INSERT INTO t1 (col1, col2) VALUES (?, ?)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewBindVar("v1"),
 		expression.NewBindVar("v2"),
-	}}), false, []string{"col1", "col2"}, []sql.Expression{}),
+	}}), false, []string{"col1", "col2"}, []sql.Expression{}, false),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
 		plan.NewFilter(
 			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
@@ -1455,7 +1455,7 @@ CREATE TABLE t2
 	`REPLACE INTO t1 (col1, col2) VALUES ('a', 1)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral("a", sql.LongText),
 		expression.NewLiteral(int8(1), sql.Int8),
-	}}), true, []string{"col1", "col2"}, []sql.Expression{}),
+	}}), true, []string{"col1", "col2"}, []sql.Expression{}, false),
 	`SHOW TABLES`:                           plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	`SHOW FULL TABLES`:                      plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
 	`SHOW TABLES FROM foo`:                  plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, nil),
@@ -2860,7 +2860,7 @@ CREATE TABLE t2
 					expression.NewUnresolvedQualifiedColumn("old", "a"),
 					expression.NewUnresolvedQualifiedColumn("old", "b"),
 				}},
-				), false, []string{"a", "b"}, []sql.Expression{}),
+				), false, []string{"a", "b"}, []sql.Expression{}, false),
 			}),
 		),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
@@ -2881,7 +2881,7 @@ CREATE TABLE t2
 			expression.NewUnresolvedQualifiedColumn("old", "a"),
 			expression.NewUnresolvedQualifiedColumn("old", "b"),
 		}},
-		), false, []string{"a", "b"}, []sql.Expression{}),
+		), false, []string{"a", "b"}, []sql.Expression{}, false),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 	),
@@ -2892,7 +2892,7 @@ CREATE TABLE t2
 			expression.NewUnresolvedQualifiedColumn("old", "a"),
 			expression.NewUnresolvedQualifiedColumn("old", "b"),
 		}},
-		), false, []string{"a", "b"}, []sql.Expression{}),
+		), false, []string{"a", "b"}, []sql.Expression{}, false),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 	),

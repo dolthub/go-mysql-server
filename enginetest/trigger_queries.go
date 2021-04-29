@@ -1796,7 +1796,7 @@ var TriggerErrorTests = []ScriptTest{
 			"create trigger trigger_has_error before insert on x for each row insert into y values (null)",
 		},
 		Query:       "insert into x values (1,2)",
-		ExpectedErr: plan.ErrInsertIntoNonNullableProvidedNull,
+		ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 	},
 	{
 		Name: "self update on insert",

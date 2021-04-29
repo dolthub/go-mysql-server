@@ -16,7 +16,6 @@ package plan_test
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"testing"
 
@@ -128,9 +127,7 @@ func (t *dummyTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 func (t *dummyTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	rows, ok := t.partitions[string(partition.Key())]
 	if !ok {
-		return nil, fmt.Errorf(
-			"partition not found: %q", partition.Key(),
-		)
+		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
 
 	return sql.RowsToRowIter(rows...), nil

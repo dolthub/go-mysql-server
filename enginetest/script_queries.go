@@ -44,6 +44,9 @@ type ScriptTestAssertion struct {
 	// In most cases, errors should be linked to a custom error, however there are exceptions where this is not possible,
 	// such as the use of the SIGNAL statement.
 	ExpectedErrStr string
+
+	// ExpectedWarning is used for queries that should generate warnings but not errors.
+	ExpectedWarning int
 }
 
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of

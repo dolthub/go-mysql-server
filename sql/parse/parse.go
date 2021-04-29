@@ -1397,10 +1397,6 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		return nil, err
 	}
 
-	if len(i.Ignore) > 0 {
-		return nil, ErrUnsupportedSyntax.New(sqlparser.String(i))
-	}
-
 	isReplace := i.Action == sqlparser.ReplaceStr
 
 	src, err := insertRowsToNode(ctx, i.Rows)
@@ -1408,7 +1404,13 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 		return nil, err
 	}
 
-	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columnsToStrings(i.Columns), onDupExprs), nil
+	ignore := false
+	// TODO: make this a bool in vitess
+	if strings.Contains(strings.ToLower(i.Ignore), "ignore") {
+		ignore = true
+	}
+
+	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columnsToStrings(i.Columns), onDupExprs, ignore), nil
 }
 
 func convertDelete(ctx *sql.Context, d *sqlparser.Delete) (sql.Node, error) {
@@ -1507,7 +1509,7 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 
 	ld := plan.NewLoadData(bool(d.Local), d.Infile, unresolvedTable, columnsToStrings(d.Columns), d.Fields, d.Lines, ignoreNumVal)
 
-	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil), nil
+	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil, false), nil
 }
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
