@@ -939,22 +939,38 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 	}
 }
 
+// This method is the only place we can reliably test newly created views, because view definitions live in the
+// context, as opposed to being defined by integrators with a ViewDatabase interface, and we lose that context with
+// our standard method of using a new context object per query.
+// TODO: fix this by introducing sql.ViewDatabase
 func TestViews(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 
 	// nested views
-	_, iter, err := e.Query(ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
-	require.NoError(err)
-	iter.Close(ctx)
-
+	RunQueryWithContext(t, e, ctx, "CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1")
 	for _, testCase := range ViewTests {
 		t.Run(testCase.Query, func(t *testing.T) {
 			TestQueryWithContext(t, ctx, e, testCase.Query, testCase.Expected, nil, testCase.Bindings)
 		})
 	}
+
+	// Views with non-standard select statements
+	RunQueryWithContext(t, e, ctx, "create view unionView as (select * from myTable order by i limit 1) union all (select * from mytable order by i limit 1)")
+	t.Run("select * from unionview order by i", func(t *testing.T) {
+		TestQueryWithContext(
+			t,
+			ctx,
+			e,
+			"select * from unionview order by i",
+			[]sql.Row{
+				{1, "first row"},
+				{1, "first row"},
+			},
+			nil,
+			nil,
+		)
+	})
 }
 
 func TestVersionedViews(t *testing.T, harness Harness) {
@@ -2668,6 +2684,14 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 // RunQuery runs the query given and asserts that it doesn't result in an error.
 func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 	ctx := NewContext(harness)
+	_, iter, err := e.Query(ctx, query)
+	require.NoError(t, err)
+	_, err = sql.RowIterToRows(ctx, iter)
+	require.NoError(t, err)
+}
+
+// RunQueryWithContext runs the query given and asserts that it doesn't result in an error.
+func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string) {
 	_, iter, err := e.Query(ctx, query)
 	require.NoError(t, err)
 	_, err = sql.RowIterToRows(ctx, iter)
