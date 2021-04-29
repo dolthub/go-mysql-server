@@ -276,6 +276,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 			toReturn[i+len(row)] = row[i]
 		}
 		// May have multiple duplicate pk & unique errors due to multiple indexes
+		//TODO: how does this interact with triggers?
 		for {
 			if err := i.replacer.Insert(i.ctx, row); err != nil {
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {

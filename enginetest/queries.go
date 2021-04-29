@@ -521,7 +521,7 @@ var QueryTests = []QueryTest{
 		Query: `SELECT s2, i2, i
 			FROM (SELECT * FROM mytable) mytable
 			RIGHT JOIN
-				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
 			ON i2 = i`,
@@ -538,7 +538,7 @@ var QueryTests = []QueryTest{
 			(SELECT max(i)
 			 FROM (SELECT * FROM mytable) mytable
 			 RIGHT JOIN
-				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
 				ON i2 = i) AS rj
@@ -553,7 +553,7 @@ var QueryTests = []QueryTest{
 			(SELECT max(i2)
 			 FROM (SELECT * FROM mytable) mytable
 			 RIGHT JOIN
-				(SELECT i2, s2 FROM othertable ORDER BY i2 ASC
+				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
 				ON i2 = i) AS rj
@@ -5412,6 +5412,28 @@ var InfoSchemaQueries = []QueryTest{
 		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
 		Expected: []sql.Row{},
 	},
+	{
+		Query: "SELECT * FROM information_schema.key_column_usage ORDER BY constraint_schema, table_name",
+		Expected: []sql.Row{
+			{"def", "foo", "PRIMARY", "def", "foo", "other_table", "text", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "auto_increment_tbl", "pk", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "bigtable", "t", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "fk_tbl", "pk", 1, nil, nil, nil, nil},
+			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
+			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "floattable", "i", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "i", 1, nil, nil, nil, nil},
+			{"def", "mydb", "mytable_s", "def", "mydb", "mytable", "s", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "newlinetable", "i", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "niltable", "i", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "othertable", "i2", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "dob", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "first_name", 2, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "last_name", 3, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "middle_name", 4, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "tabletest", "i", 1, nil, nil, nil, nil},
+		},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
@@ -5464,6 +5486,54 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
 				Expected: []sql.Row{
 					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.key_column_usage ignores non-unique indexes",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on mytable(test_score)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.key_column_usage where table_name='mytable'",
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "pk", 1, nil, nil, nil, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.key_column_usage works with composite foreign keys",
+		SetUpScript: []string{
+			"CREATE TABLE ptable (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on ptable(test_score, height)",
+			"CREATE TABLE ptable2 (pk int primary key, test_score2 int, height2 int, CONSTRAINT fkr FOREIGN KEY (test_score2, height2) REFERENCES ptable(test_score,height));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.key_column_usage where table_name='ptable2' ORDER BY constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "def", "mydb", "ptable2", "pk", 1, nil, nil, nil, nil},
+					{"def", "mydb", "fkr", "def", "mydb", "ptable2", "test_score2", 1, 1, "mydb", "ptable", "test_score"},
+					{"def", "mydb", "fkr", "def", "mydb", "ptable2", "height2", 2, 2, "mydb", "ptable", "height"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.key_column_usage works with composite primary keys",
+		SetUpScript: []string{
+			"CREATE TABLE ptable (pk int, test_score int, height int, PRIMARY KEY (pk, test_score))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.key_column_usage where table_name='ptable' ORDER BY constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "PRIMARY", "def", "mydb", "ptable", "pk", 1, nil, nil, nil, nil},
+					{"def", "mydb", "PRIMARY", "def", "mydb", "ptable", "test_score", 2, nil, nil, nil, nil},
 				},
 			},
 		},
