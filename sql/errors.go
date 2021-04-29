@@ -80,7 +80,7 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
-	// TODO: This should be a ErDupKey instead
+	// TODO: This should be a ErDupEntry instead
 	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %s")
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated

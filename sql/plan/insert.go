@@ -252,7 +252,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 
 		checkPassed, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
 		if err != nil {
-			return nil, i.handleErrorAndQuitOrIgnore(err)
+			return nil, i.warnOnIgnorableError(err)
 		}
 
 		if !checkPassed {
@@ -279,7 +279,8 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		for {
 			if err := i.replacer.Insert(i.ctx, row); err != nil {
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
-					return i.ignoreOrClose(err)
+					_ = i.rowSource.Close(i.ctx)
+					return nil, err
 				}
 
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
@@ -407,14 +408,14 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 
 func (i *insertIter) ignoreOrClose(err error) (sql.Row, error) {
 	if i.ignore {
-		return nil, i.handleErrorAndQuitOrIgnore(err)
+		return nil, i.warnOnIgnorableError(err)
 	} else {
 		_ = i.rowSource.Close(i.ctx)
 		return nil, err
 	}
 }
 
-func (i *insertIter) handleErrorAndQuitOrIgnore(err error) error {
+func (i *insertIter) warnOnIgnorableError(err error) error {
 	if !i.ignore {
 		return err
 	}
@@ -436,6 +437,7 @@ func (i *insertIter) handleErrorAndQuitOrIgnore(err error) error {
 				return nil
 			}
 
+			// Return the InsertIgnore err to ensure our accumulator doesn't count this row.
 			return ErrInsertIgnore.New()
 		}
 	}
@@ -526,7 +528,7 @@ func (i *insertIter) validateNullability(dstSchema sql.Schema, row sql.Row) erro
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if i.ignore {
 				row[count] = col.Type.Zero()
-				_ = i.handleErrorAndQuitOrIgnore(sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+				_ = i.warnOnIgnorableError(sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 			} else {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}

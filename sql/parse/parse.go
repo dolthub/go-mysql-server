@@ -1405,6 +1405,7 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	ignore := false
+	// TODO: make this a bool in vitess
 	if strings.Contains(strings.ToLower(i.Ignore), "ignore") {
 		ignore = true
 	}

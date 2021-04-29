@@ -1002,7 +1002,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return append(indexes, nonPrimaryIndexes...), nil
 }
 
-// GetForeignKeys implements sql. gnKeyTable
+// GetForeignKeys implements sql.ForeignKeyTable
 func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, error) {
 	return t.foreignKeys, nil
 }

@@ -945,6 +945,13 @@ var InsertIgnoreScripts = []ScriptTest{
 				},
 				ExpectedWarning: mysql.ERSubqueryNo1Row,
 			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (3, 8)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
 		},
 	},
 	{
