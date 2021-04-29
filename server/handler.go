@@ -16,7 +16,6 @@ package server
 
 import (
 	"context"
-	"github.com/dolthub/vitess/go/netutil"
 	"io"
 	"net"
 	"regexp"
@@ -26,6 +25,7 @@ import (
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
