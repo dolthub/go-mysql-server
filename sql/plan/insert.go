@@ -250,14 +250,23 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 			continue
 		}
 
-		checkPassed, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
+		res, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
+		if res == nil {
+			continue
+		}
+
 		if err != nil {
 			return nil, i.warnOnIgnorableError(err)
 		}
 
-		if !checkPassed {
+		//checkPassed, ok := res.(bool)
+		if checkPassed, ok := res.(bool); !ok || !checkPassed {
 			return nil, sql.ErrCheckConstraintViolated.New(check.Name)
 		}
+
+		//if !checkPassed {
+		//	return nil, sql.ErrCheckConstraintViolated.New(check.Name)
+		//}
 	}
 
 	// Do any necessary type conversions to the target schema

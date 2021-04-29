@@ -682,10 +682,13 @@ type StoredProcedureDatabase interface {
 
 // EvaluateCondition evaluates a condition, which is an expression whose value
 // will be coerced to boolean.
-func EvaluateCondition(ctx *Context, cond Expression, row Row) (bool, error) {
+func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, error) {
 	v, err := cond.Eval(ctx, row)
 	if err != nil {
 		return false, err
+	}
+	if v == nil {
+		return nil, nil
 	}
 
 	switch b := v.(type) {

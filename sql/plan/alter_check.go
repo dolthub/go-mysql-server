@@ -124,6 +124,9 @@ func (c *CreateCheck) Execute(ctx *sql.Context) error {
 		if err != nil {
 			return err
 		}
+		if res == nil {
+			continue
+		}
 		if val, ok := res.(bool); !ok || !val {
 			return ErrCheckFailed.New(c.Check.Name)
 		}

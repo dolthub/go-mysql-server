@@ -165,12 +165,12 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			cond = b.Cond
 		}
 
-		ok, err := sql.EvaluateCondition(ctx, cond, row)
+		res, err := sql.EvaluateCondition(ctx, cond, row)
 		if err != nil {
 			return nil, err
 		}
 
-		if ok {
+		if val, ok := res.(bool); ok && val {
 			bval, err := b.Value.Eval(ctx, row)
 			if err != nil {
 				return nil, err
