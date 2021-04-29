@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"github.com/dolthub/vitess/go/netutil"
 	"io"
 	"net"
 	"regexp"
@@ -452,7 +453,7 @@ func (h *Handler) errorWrappedDoQuery(
 // the supplied error channel if it has. Meant to be run in a separate goroutine from the query handler routine.
 // Returns immediately on platforms that can't support TCP socket checks.
 func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, quit chan struct{}, query string) {
-	tcpConn, ok := c.Conn.(*net.TCPConn)
+	tcpConn, ok := maybeGetTCPConn(c.Conn)
 	if !ok {
 		logrus.Debug("Connection checker exiting, connection isn't TCP")
 		return
@@ -494,6 +495,20 @@ func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, qui
 			time.Sleep(tcpCheckerSleepTime * time.Second)
 		}
 	}
+}
+
+func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
+	wrap, ok := conn.(netutil.ConnWithTimeouts)
+	if ok {
+		conn = wrap.Conn
+	}
+
+	tcp, ok := conn.(*net.TCPConn)
+	if ok {
+		return tcp, true
+	}
+
+	return nil, false
 }
 
 func isSessionAutocommit(ctx *sql.Context) (bool, error) {
