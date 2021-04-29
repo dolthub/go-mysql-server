@@ -17,10 +17,28 @@ package plan
 import "github.com/dolthub/go-mysql-server/sql"
 
 // Begin starts a transaction.
-type Begin struct{}
+type Begin struct{
+	db sql.Database
+}
+
+var _ sql.Databaser = (*Begin)(nil)
+var _ sql.Node = (*Begin)(nil)
 
 // NewBegin creates a new Begin node.
-func NewBegin() *Begin { return new(Begin) }
+func NewBegin(db sql.UnresolvedDatabase) *Begin {
+	return &Begin{
+		db: db,
+	}
+}
+
+func (b *Begin) Database() sql.Database {
+	return b.db
+}
+
+func (b Begin) WithDatabase(database sql.Database) (sql.Node, error) {
+	b.db = database
+	return &b, nil
+}
 
 // RowIter implements the sql.Node interface.
 func (*Begin) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
@@ -39,7 +57,10 @@ func (b *Begin) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // Resolved implements the sql.Node interface.
-func (*Begin) Resolved() bool { return true }
+func (b *Begin) Resolved() bool {
+	_, ok := b.db.(sql.UnresolvedDatabase)
+	return !ok
+}
 
 // Children implements the sql.Node interface.
 func (*Begin) Children() []sql.Node { return nil }
@@ -49,10 +70,28 @@ func (*Begin) Schema() sql.Schema { return nil }
 
 // Commit commits the changes performed in a transaction. This is provided just for compatibility with SQL clients and
 // is a no-op.
-type Commit struct{}
+type Commit struct{
+	db sql.Database
+}
+
+var _ sql.Databaser = (*Commit)(nil)
+var _ sql.Node = (*Commit)(nil)
 
 // NewCommit creates a new Commit node.
-func NewCommit() *Commit { return new(Commit) }
+func NewCommit(db sql.UnresolvedDatabase) *Commit {
+	return &Commit{
+		db: db,
+	}
+}
+
+func (c *Commit) Database() sql.Database {
+	return c.db
+}
+
+func (c Commit) WithDatabase(database sql.Database) (sql.Node, error) {
+	c.db = database
+	return &c, nil
+}
 
 // RowIter implements the sql.Node interface.
 func (*Commit) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
@@ -71,7 +110,10 @@ func (c *Commit) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // Resolved implements the sql.Node interface.
-func (*Commit) Resolved() bool { return true }
+func (c *Commit) Resolved() bool {
+	_, ok := c.db.(sql.UnresolvedDatabase)
+	return !ok
+}
 
 // Children implements the sql.Node interface.
 func (*Commit) Children() []sql.Node { return nil }
@@ -79,16 +121,34 @@ func (*Commit) Children() []sql.Node { return nil }
 // Schema implements the sql.Node interface.
 func (*Commit) Schema() sql.Schema { return nil }
 
-// Rollback undoes the changes performed in a transaction. This is provided just for compatibility with SQL clients and
-// is a no-op.
-type Rollback struct{}
+// Rollback undoes the changes performed in the current transaction. For compatibility, databases that don't implement
+// sql.TransactionDatabase treat this as a no-op.
+type Rollback struct{
+	db sql.Database
+}
+
+var _ sql.Databaser = (*Rollback)(nil)
+var _ sql.Node = (*Rollback)(nil)
 
 // NewRollback creates a new Rollback node.
-func NewRollback() *Rollback { return new(Rollback) }
+func NewRollback(db sql.UnresolvedDatabase) *Rollback {
+	return &Rollback{
+		db: db,
+	}
+}
 
 // RowIter implements the sql.Node interface.
 func (*Rollback) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil
+}
+
+func (r *Rollback) Database() sql.Database {
+	return r.db
+}
+
+func (r Rollback) WithDatabase(database sql.Database) (sql.Node, error) {
+	r.db = database
+	return &r, nil
 }
 
 func (*Rollback) String() string { return "ROLLBACK" }
@@ -103,7 +163,10 @@ func (r *Rollback) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // Resolved implements the sql.Node interface.
-func (*Rollback) Resolved() bool { return true }
+func (r *Rollback) Resolved() bool {
+	_, ok := r.db.(sql.UnresolvedDatabase)
+	return !ok
+}
 
 // Children implements the sql.Node interface.
 func (*Rollback) Children() []sql.Node { return nil }
