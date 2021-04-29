@@ -52,7 +52,7 @@ type Client struct {
 type Session interface {
 	// Address of the server.
 	Address() string
-	// User of the session.
+	// Client returns the user of the session.
 	Client() Client
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
@@ -67,7 +67,7 @@ type Session interface {
 	GetAllSessionVariables() map[string]interface{}
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
-	// SetDefaultDatabase sets the current database for this session
+	// SetCurrentDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
 	// CommitTransaction commits the current transaction for this session for the current database
 	CommitTransaction(ctx *Context, dbName string) error

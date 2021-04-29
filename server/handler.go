@@ -414,8 +414,8 @@ rowLoop:
 		return err
 	}
 
-	_, statementIsCommit := parsedQuery.(*sqlparser.Commit)
-	if statementIsCommit || (autoCommit && statementNeedsCommit(parsedQuery, parseErr)) {
+	// TODO: consolidate commit logic with Commit() node
+	if autoCommit && statementNeedsCommit(parsedQuery, parseErr) {
 		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
 			return err
 		}
