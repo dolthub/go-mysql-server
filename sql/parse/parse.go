@@ -1366,12 +1366,12 @@ func convertReferenceAction(action sqlparser.ReferenceAction) sql.ForeignKeyRefe
 }
 
 func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
-	selectStatement, ok := c.ViewExpr.(*sqlparser.Select)
+	selectStatement, ok := c.ViewExpr.(sqlparser.SelectStatement)
 	if !ok {
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(c.ViewExpr))
 	}
 
-	queryNode, err := convertSelect(ctx, selectStatement)
+	queryNode, err := convertSelectStatement(ctx, selectStatement)
 	if err != nil {
 		return nil, err
 	}
