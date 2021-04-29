@@ -502,6 +502,9 @@ type TransactionDatabase interface {
 	// BeginTransaction starts a new transaction and returns it
 	BeginTransaction(ctx *Context) (Transaction, error)
 
+	// CommitTransaction commits the transaction given
+	CommitTransaction(ctx *Context, tx Transaction) error
+
 	// Rollback restores the database to the state recorded in the transaction given
 	Rollback(ctx *Context, transaction Transaction) error
 

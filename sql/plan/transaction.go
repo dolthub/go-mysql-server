@@ -41,7 +41,18 @@ func (b Begin) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 // RowIter implements the sql.Node interface.
-func (*Begin) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
+func (b *Begin) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	tdb, ok := b.db.(sql.TransactionDatabase)
+	if !ok {
+		return sql.RowsToRowIter(), nil
+	}
+
+	transaction, err := tdb.BeginTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx.SetTransaction(transaction)
 	return sql.RowsToRowIter(), nil
 }
 
@@ -94,7 +105,23 @@ func (c Commit) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 // RowIter implements the sql.Node interface.
-func (*Commit) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
+func (c *Commit) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	tdb, ok := c.db.(sql.TransactionDatabase)
+	if !ok {
+		return sql.RowsToRowIter(), nil
+	}
+
+	transaction := ctx.GetTransaction()
+
+	if transaction == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	err := tdb.CommitTransaction(ctx, transaction)
+	if err != nil {
+		return nil, err
+	}
+
 	return sql.RowsToRowIter(), nil
 }
 
@@ -138,7 +165,23 @@ func NewRollback(db sql.UnresolvedDatabase) *Rollback {
 }
 
 // RowIter implements the sql.Node interface.
-func (*Rollback) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) {
+func (r *Rollback) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	tdb, ok := r.db.(sql.TransactionDatabase)
+	if !ok {
+		return sql.RowsToRowIter(), nil
+	}
+
+	transaction := ctx.GetTransaction()
+
+	if transaction == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	err := tdb.Rollback(ctx, transaction)
+	if err != nil {
+		return nil, err
+	}
+
 	return sql.RowsToRowIter(), nil
 }
 

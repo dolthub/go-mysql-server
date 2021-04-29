@@ -96,6 +96,10 @@ type Session interface {
 	SetLastQueryInfo(key string, value int64)
 	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.
 	GetLastQueryInfo(key string) int64
+	// GetTransaction returns the active transaction, if any
+	GetTransaction() Transaction
+	// SetTransaction sets the session's transaction
+	SetTransaction(tx Transaction)
 }
 
 // BaseSession is the basic session type.
@@ -112,6 +116,7 @@ type BaseSession struct {
 	locks         map[string]bool
 	queriedDb     string
 	lastQueryInfo map[string]int64
+	tx 	Transaction
 }
 
 var _ Session = (*BaseSession)(nil)
@@ -368,6 +373,14 @@ func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 		}
 	}
 	return true, nil
+}
+
+func (s *BaseSession) GetTransaction() Transaction {
+	return s.tx
+}
+
+func (s *BaseSession) SetTransaction(tx Transaction) {
+	s.tx = tx
 }
 
 // NewSession creates a new session with data.
