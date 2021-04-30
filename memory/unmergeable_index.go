@@ -103,7 +103,7 @@ func (u *indexValIter) initValues() error {
 				return err
 			}
 
-			if val, ok := res.(bool); ok && val {
+			if sql.IsTrue(res) {
 				encoded, err := EncodeIndexValue(&IndexValue{
 					Pos: i,
 				})
