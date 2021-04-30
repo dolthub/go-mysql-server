@@ -1705,7 +1705,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
 		"CONSTRAINT fk1 FOREIGN KEY (D) REFERENCES parent(B) ON DELETE CASCADE"+
 		")", []sql.Row(nil), nil, nil)
-	TestQuery(t, harness, e, "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (d) REFERENCES child(c)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (D) REFERENCES child(C)", []sql.Row(nil), nil, nil)
 
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
@@ -1724,9 +1724,9 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	expected := []sql.ForeignKeyConstraint{
 		{
 			Name:              "fk1",
-			Columns:           []string{"D"},
+			Columns:           []string{"d"},
 			ReferencedTable:   "parent",
-			ReferencedColumns: []string{"B"},
+			ReferencedColumns: []string{"b"},
 			OnUpdate:          sql.ForeignKeyReferenceOption_DefaultAction,
 			OnDelete:          sql.ForeignKeyReferenceOption_Cascade,
 		},

@@ -117,19 +117,32 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 		return ErrNoForeignKeySupport.New(p.Table)
 	}
 
-	if len(p.FkDef.Columns) == 0 {
+	return executeCreateForeignKey(ctx, fkAlterable, refTbl, p.FkDef)
+}
+
+// executeCreateForeignKey verifies the foreign key definition and calls CreateForeignKey on the given table.
+func executeCreateForeignKey(ctx *sql.Context, fkAlterable sql.ForeignKeyAlterableTable, refTbl sql.Table, fkDef *sql.ForeignKeyConstraint) error {
+	if len(fkDef.Columns) == 0 {
 		return ErrForeignKeyMissingColumns.New()
+	}
+	if len(fkDef.Columns) != len(fkDef.ReferencedColumns) {
+		return sql.ErrForeignKeyColumnCountMismatch.New()
 	}
 
 	// Make sure that all columns are valid, in the table, and there are no duplicates
 	seenCols := make(map[string]bool)
+	actualColNames := make(map[string]string)
 	for _, col := range fkAlterable.Schema() {
-		seenCols[col.Name] = false
+		lowerColName := strings.ToLower(col.Name)
+		seenCols[lowerColName] = false
+		actualColNames[lowerColName] = col.Name
 	}
-	for _, fkCol := range p.FkDef.Columns {
-		if seen, ok := seenCols[fkCol]; ok {
+	for i, fkCol := range fkDef.Columns {
+		lowerFkCol := strings.ToLower(fkCol)
+		if seen, ok := seenCols[lowerFkCol]; ok {
 			if !seen {
-				seenCols[fkCol] = true
+				seenCols[lowerFkCol] = true
+				fkDef.Columns[i] = actualColNames[lowerFkCol]
 			} else {
 				return ErrAddForeignKeyDuplicateColumn.New(fkCol)
 			}
@@ -138,14 +151,29 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 		}
 	}
 
-	// Make sure that the ref columns exist
-	for _, refCol := range p.FkDef.ReferencedColumns {
-		if !refTbl.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
-			return sql.ErrTableColumnNotFound.New(p.FkDef.ReferencedTable, refCol)
+	// Do the same for the referenced columns
+	seenCols = make(map[string]bool)
+	actualColNames = make(map[string]string)
+	for _, col := range refTbl.Schema() {
+		lowerColName := strings.ToLower(col.Name)
+		seenCols[lowerColName] = false
+		actualColNames[lowerColName] = col.Name
+	}
+	for i, fkRefCol := range fkDef.ReferencedColumns {
+		lowerFkRefCol := strings.ToLower(fkRefCol)
+		if seen, ok := seenCols[lowerFkRefCol]; ok {
+			if !seen {
+				seenCols[lowerFkRefCol] = true
+				fkDef.ReferencedColumns[i] = actualColNames[lowerFkRefCol]
+			} else {
+				return ErrAddForeignKeyDuplicateColumn.New(fkRefCol)
+			}
+		} else {
+			return sql.ErrTableColumnNotFound.New(fkDef.ReferencedTable, fkRefCol)
 		}
 	}
 
-	return fkAlterable.CreateForeignKey(ctx, p.FkDef.Name, p.FkDef.Columns, p.FkDef.ReferencedTable, p.FkDef.ReferencedColumns, p.FkDef.OnUpdate, p.FkDef.OnDelete)
+	return fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedTable, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
 }
 
 // WithDatabase implements the sql.Databaser interface.
