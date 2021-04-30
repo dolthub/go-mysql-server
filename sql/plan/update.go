@@ -152,12 +152,12 @@ func (u *updateIter) Next() (sql.Row, error) {
 					continue
 				}
 
-				checkPassed, err := sql.EvaluateCondition(u.ctx, check.Expr, newRow)
+				res, err := sql.EvaluateCondition(u.ctx, check.Expr, newRow)
 				if err != nil {
 					return nil, err
 				}
 
-				if !checkPassed {
+				if sql.IsFalse(res) {
 					return nil, sql.ErrCheckConstraintViolated.New(check.Name)
 				}
 			}

@@ -1994,8 +1994,11 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,0)", sql.ErrCheckConstraintViolated)
 	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,1)", sql.ErrCheckConstraintViolated)
 
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,NULL)")
+
 	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
 		{1, 1},
+		{4, nil},
 	}, nil, nil)
 
 	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER)")
