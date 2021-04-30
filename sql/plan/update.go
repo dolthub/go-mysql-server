@@ -156,11 +156,8 @@ func (u *updateIter) Next() (sql.Row, error) {
 				if err != nil {
 					return nil, err
 				}
-				if res == nil {
-					continue
-				}
 
-				if passed, ok := res.(bool); !ok || !passed {
+				if sql.IsFalse(res) {
 					return nil, sql.ErrCheckConstraintViolated.New(check.Name)
 				}
 			}

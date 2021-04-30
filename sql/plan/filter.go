@@ -117,7 +117,7 @@ func (i *FilterIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		if val, ok := res.(bool); ok && val {
+		if sql.IsTrue(res) {
 			return row, nil
 		}
 	}

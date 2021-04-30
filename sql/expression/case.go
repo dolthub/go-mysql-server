@@ -170,7 +170,7 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		if val, ok := res.(bool); ok && val {
+		if sql.IsTrue(res) {
 			bval, err := b.Value.Eval(ctx, row)
 			if err != nil {
 				return nil, err

@@ -681,7 +681,7 @@ type StoredProcedureDatabase interface {
 }
 
 // EvaluateCondition evaluates a condition, which is an expression whose value
-// will be coerced to boolean.
+// will be nil or coerced boolean.
 func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, error) {
 	v, err := cond.Eval(ctx, row)
 	if err != nil {
@@ -728,6 +728,18 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, err
 	default:
 		return false, nil
 	}
+}
+
+// IsFalse coerces EvaluateCondition interface{} response to boolean
+func IsFalse(val interface{}) bool {
+	res, ok := val.(bool)
+	return ok && !res
+}
+
+// IsTrue coerces EvaluateCondition interface{} response to boolean
+func IsTrue(val interface{}) bool {
+	res, ok := val.(bool)
+	return ok && res
 }
 
 // TypesEqual compares two Types and returns whether they are equivalent.

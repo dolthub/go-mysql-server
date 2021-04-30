@@ -251,15 +251,12 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		}
 
 		res, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
-		if res == nil {
-			continue
-		}
 
 		if err != nil {
 			return nil, i.warnOnIgnorableError(err)
 		}
 
-		if checkPassed, ok := res.(bool); !ok || !checkPassed {
+		if sql.IsFalse(res) {
 			return nil, sql.ErrCheckConstraintViolated.New(check.Name)
 		}
 	}
