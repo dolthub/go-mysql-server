@@ -710,9 +710,13 @@ func (t *Table) insertValueInRows(ctx *sql.Context, idx int, colDefault *sql.Col
 			newRow = append(newRow, nil)
 			newRow = append(newRow, row[idx:]...)
 			var err error
-			newRow[idx], err = colDefault.Eval(ctx, newRow)
-			if err != nil {
-				return err
+			if !t.schema[idx].Nullable && colDefault == nil {
+				newRow[idx] = t.schema[idx].Type.Zero()
+			} else {
+				newRow[idx], err = colDefault.Eval(ctx, newRow)
+				if err != nil {
+					return err
+				}
 			}
 			newP[i] = newRow
 		}

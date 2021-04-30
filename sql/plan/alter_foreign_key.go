@@ -33,19 +33,29 @@ var (
 )
 
 type CreateForeignKey struct {
-	BinaryNode // Left: child, Right: parent
-	FkDef      *sql.ForeignKeyConstraint
+	// In the cases where we have multiple ALTER statements, we need to resolve the table at execution time rather than
+	// during analysis. Otherwise, you could add a column in the preceding alter and we may have analyzed to a table
+	// that did not yet have that column.
+	ddlNode
+	Table           string
+	ReferencedTable string
+	FkDef           *sql.ForeignKeyConstraint
 }
+
+var _ sql.Node = (*CreateForeignKey)(nil)
+var _ sql.Databaser = (*CreateForeignKey)(nil)
 
 type DropForeignKey struct {
 	UnaryNode
 	Name string
 }
 
-func NewAlterAddForeignKey(table, refTable sql.Node, fkDef *sql.ForeignKeyConstraint) *CreateForeignKey {
+func NewAlterAddForeignKey(db sql.Database, table, refTable string, fkDef *sql.ForeignKeyConstraint) *CreateForeignKey {
 	return &CreateForeignKey{
-		BinaryNode: BinaryNode{table, refTable},
-		FkDef:      fkDef,
+		ddlNode:         ddlNode{db},
+		Table:           table,
+		ReferencedTable: refTable,
+		FkDef:           fkDef,
 	}
 }
 
@@ -87,9 +97,24 @@ func getForeignKeyAlterableTable(t sql.Table) (sql.ForeignKeyAlterableTable, err
 
 // Execute inserts the rows in the database.
 func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
-	fkAlterable, err := getForeignKeyAlterable(p.BinaryNode.left)
+	tbl, ok, err := p.db.GetTableInsensitive(ctx, p.Table)
 	if err != nil {
 		return err
+	}
+	if !ok {
+		return sql.ErrTableNotFound.New(p.Table)
+	}
+	refTbl, ok, err := p.db.GetTableInsensitive(ctx, p.ReferencedTable)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return sql.ErrTableNotFound.New(p.ReferencedTable)
+	}
+
+	fkAlterable, ok := tbl.(sql.ForeignKeyAlterableTable)
+	if !ok {
+		return ErrNoForeignKeySupport.New(p.Table)
 	}
 
 	if len(p.FkDef.Columns) == 0 {
@@ -115,12 +140,19 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 
 	// Make sure that the ref columns exist
 	for _, refCol := range p.FkDef.ReferencedColumns {
-		if !p.right.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
+		if !refTbl.Schema().Contains(refCol, p.FkDef.ReferencedTable) {
 			return sql.ErrTableColumnNotFound.New(p.FkDef.ReferencedTable, refCol)
 		}
 	}
 
 	return fkAlterable.CreateForeignKey(ctx, p.FkDef.Name, p.FkDef.Columns, p.FkDef.ReferencedTable, p.FkDef.ReferencedColumns, p.FkDef.OnUpdate, p.FkDef.OnDelete)
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (p *CreateForeignKey) WithDatabase(db sql.Database) (sql.Node, error) {
+	np := *p
+	np.db = db
+	return &np, nil
 }
 
 // Execute inserts the rows in the database.
@@ -153,10 +185,7 @@ func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // WithChildren implements the Node interface.
 func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
-	}
-	return NewAlterAddForeignKey(children[0], children[1], p.FkDef), nil
+	return NillaryWithChildren(p, children...)
 }
 
 func (p *CreateForeignKey) Schema() sql.Schema { return nil }
@@ -182,9 +211,9 @@ func (p CreateForeignKey) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AddForeignKey(%s)", p.FkDef.Name)
 	_ = pr.WriteChildren(
-		fmt.Sprintf("Table(%s)", p.BinaryNode.left.String()),
+		fmt.Sprintf("Table(%s)", p.Table),
 		fmt.Sprintf("Columns(%s)", strings.Join(p.FkDef.Columns, ", ")),
-		fmt.Sprintf("ReferencedTable(%s)", p.BinaryNode.right.String()),
+		fmt.Sprintf("ReferencedTable(%s)", p.ReferencedTable),
 		fmt.Sprintf("ReferencedColumns(%s)", strings.Join(p.FkDef.ReferencedColumns, ", ")),
 		fmt.Sprintf("OnUpdate(%s)", p.FkDef.OnUpdate),
 		fmt.Sprintf("OnDelete(%s)", p.FkDef.OnDelete))

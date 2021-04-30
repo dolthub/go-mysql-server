@@ -297,14 +297,22 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 		if !tblSch[col].Default.IsLiteral() {
 			secondPass = append(secondPass, col)
 			continue
-		}
-		val, err := tblSch[col].Default.Eval(ctx, newRow)
-		if err != nil {
-			return nil, err
-		}
-		newRow[col], err = tblSch[col].Type.Convert(val)
-		if err != nil {
-			return nil, err
+		} else if tblSch[col].Default == nil && !tblSch[col].Nullable {
+			val := tblSch[col].Type.Zero()
+			var err error
+			newRow[col], err = tblSch[col].Type.Convert(val)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			val, err := tblSch[col].Default.Eval(ctx, newRow)
+			if err != nil {
+				return nil, err
+			}
+			newRow[col], err = tblSch[col].Type.Convert(val)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	for _, col := range secondPass {

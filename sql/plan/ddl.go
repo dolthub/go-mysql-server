@@ -72,6 +72,10 @@ type IndexDefinition struct {
 	Comment    string
 }
 
+func (i *IndexDefinition) String() string {
+	return i.IndexName
+}
+
 // TableSpec is a node describing the schema of a table.
 type TableSpec struct {
 	Schema  sql.Schema
