@@ -108,19 +108,19 @@ type Session interface {
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	id            uint32
-	addr          string
-	currentDB     string
-	client        Client
-	mu            *sync.RWMutex
-	systemVars    map[string]interface{}
-	userVars      map[string]interface{}
-	warnings      []*Warning
-	warncnt       uint16
-	locks         map[string]bool
-	queriedDb     string
-	lastQueryInfo map[string]int64
-	tx 	Transaction
+	id               uint32
+	addr             string
+	currentDB        string
+	client           Client
+	mu               *sync.RWMutex
+	systemVars       map[string]interface{}
+	userVars         map[string]interface{}
+	warnings         []*Warning
+	warncnt          uint16
+	locks            map[string]bool
+	queriedDb        string
+	lastQueryInfo    map[string]int64
+	tx               Transaction
 	ignoreAutocommit bool
 }
 

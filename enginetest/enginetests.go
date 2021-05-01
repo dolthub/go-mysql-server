@@ -1689,7 +1689,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		// The test setup sets a database name, which interferes with DROP DATABASE tests
 		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-		AssertWarningAndTestQuery(t, e, ctx, harness,"DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
 
 		e.Analyzer.Verbose = true
 		e.Analyzer.Debug = true

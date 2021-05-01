@@ -18,9 +18,9 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 // StartTransaction explicitly starts a transaction. Transactions also start before any statement execution that doesn't have a
 // transaction.
-type StartTransaction struct{
+type StartTransaction struct {
 	UnaryNode // null in the case that this is an explicit StartTransaction statement, set to the wrapped statement node otherwise
-	db sql.Database
+	db        sql.Database
 }
 
 var _ sql.Databaser = (*StartTransaction)(nil)
@@ -140,7 +140,7 @@ func (s *StartTransaction) Schema() sql.Schema {
 
 // Commit commits the changes performed in a transaction. This is provided just for compatibility with SQL clients and
 // is a no-op.
-type Commit struct{
+type Commit struct {
 	db sql.Database
 }
 
@@ -212,7 +212,7 @@ func (*Commit) Schema() sql.Schema { return nil }
 
 // Rollback undoes the changes performed in the current transaction. For compatibility, databases that don't implement
 // sql.TransactionDatabase treat this as a no-op.
-type Rollback struct{
+type Rollback struct {
 	db sql.Database
 }
 
