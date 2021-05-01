@@ -100,6 +100,10 @@ type Session interface {
 	GetTransaction() Transaction
 	// SetTransaction sets the session's transaction
 	SetTransaction(tx Transaction)
+	// SetIgnoreAutoCommit instructs the session to ignore the value of the @@autocommit variable, or consider it again
+	SetIgnoreAutoCommit(ignore bool)
+	// GetIgnoreAutoCommit returns whether this session should ignore the @@autocommit variable
+	GetIgnoreAutoCommit() bool
 }
 
 // BaseSession is the basic session type.
@@ -117,6 +121,15 @@ type BaseSession struct {
 	queriedDb     string
 	lastQueryInfo map[string]int64
 	tx 	Transaction
+	ignoreAutocommit bool
+}
+
+func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
+	s.ignoreAutocommit = ignore
+}
+
+func (s *BaseSession) GetIgnoreAutoCommit() bool {
+	return s.ignoreAutocommit
 }
 
 var _ Session = (*BaseSession)(nil)

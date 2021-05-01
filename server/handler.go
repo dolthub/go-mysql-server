@@ -284,6 +284,27 @@ func (h *Handler) doQuery(
 		}
 	}
 
+	// TODO: this should happen in the analyzer so it can work with non-current databases
+	beginNewTransaction := ctx.GetTransaction() == nil
+	if beginNewTransaction {
+		db := ctx.GetCurrentDatabase()
+		if len(db) > 0 {
+			database, err := h.e.Catalog.Database(db)
+			if err != nil {
+				return err
+			}
+
+			tdb, ok := database.(sql.TransactionDatabase)
+			if ok {
+				tx, err := tdb.BeginTransaction(ctx)
+				if err != nil {
+					return err
+				}
+				ctx.SetTransaction(tx)
+			}
+		}
+	}
+
 	var schema sql.Schema
 	var rows sql.RowIter
 	if len(bindings) == 0 {
@@ -413,7 +434,9 @@ rowLoop:
 	}
 
 	tx := ctx.GetTransaction()
-	if autoCommit && tx != nil {
+	commitTransaction := tx != nil && autoCommit && !ctx.GetIgnoreAutoCommit()
+	if commitTransaction {
+		// TODO: unify this logic with Commit node
 		logrus.Tracef("committing transaction %s", tx)
 		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
 			return err

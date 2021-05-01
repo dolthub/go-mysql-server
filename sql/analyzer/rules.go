@@ -97,9 +97,9 @@ var OnceAfterDefault = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
-	{"parallelize", parallelize},
-	{"begin_transaction", beginTransaction},
 	{"track_process", trackProcess},
+	{"parallelize", parallelize},
+//	{"begin_transaction", beginTransaction}, // Disabled for now, implicit transactions are handled before analysis in handler.go
 	{"clear_warnings", clearWarnings},
 }
 

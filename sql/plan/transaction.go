@@ -53,12 +53,24 @@ func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		return s.Child.RowIter(ctx, row)
 	}
 
+	currentTx := ctx.GetTransaction()
+	// A START TRANSACTION statement commits any pending work before beginning a new tx
+	// TODO: this work is wasted in the case that START TRANSACTION is the first statement after COMMIT
+	if currentTx != nil {
+		err := tdb.CommitTransaction(ctx, currentTx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	transaction, err := tdb.BeginTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx.SetTransaction(transaction)
+	// until this transaction is committed or rolled back, don't begin or commit any transactions automatically
+	ctx.SetIgnoreAutoCommit(true)
 
 	if s.Child == nil {
 		return sql.RowsToRowIter(), nil
@@ -76,21 +88,34 @@ func (s *StartTransaction) String() string {
 
 func (s *StartTransaction) DebugString() string {
 	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("START TRANSACTION")
+	_ = tp.WriteNode("Start Transaction")
 	if s.Child != nil {
 		_ = tp.WriteChildren(sql.DebugString(s.Child))
 	}
 	return tp.String()
 }
 
+func (s *StartTransaction) Children() []sql.Node {
+	if s.Child == nil {
+		return nil
+	}
+	return []sql.Node{s.Child}
+}
+
 // WithChildren implements the Node interface.
 func (s StartTransaction) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if s.Child == nil {
+		if len(children) != 0 {
+			return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
+		}
+		return &s, nil
+	}
+
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
 	s.Child = children[0]
-
 	return &s, nil
 }
 
@@ -155,6 +180,9 @@ func (c *Commit) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ctx.SetIgnoreAutoCommit(false)
+	ctx.SetTransaction(nil)
 
 	return sql.RowsToRowIter(), nil
 }
