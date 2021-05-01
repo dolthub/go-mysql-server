@@ -2359,7 +2359,7 @@ CREATE TABLE t2
 		),
 		showCollationProjection,
 	),
-	`ROLLBACK`:                               plan.NewRollback(),
+	`ROLLBACK`:                               plan.NewRollback(""),
 	"SHOW CREATE TABLE `mytable`":            plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), false),
 	"SHOW CREATE TABLE mytable":              plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), false),
 	"SHOW CREATE TABLE mydb.`mytable`":       plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), false),

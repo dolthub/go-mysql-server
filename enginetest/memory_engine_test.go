@@ -97,11 +97,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "CREATE TABLE `test_data_fUGNcRWp` (\n" +
-			"    x FLOAT(53),\n" +
-			"    b BOOL,\n" +
-			"    CHECK (b IN (0, 1))\n" +
-			")",
+		Query: "CREATE DATABASE testdb",
 		Expected: []sql.Row{
 			{"second row"},
 		},

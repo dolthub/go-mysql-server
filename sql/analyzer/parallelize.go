@@ -44,8 +44,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 		return node, nil
 	}
 
-	proc, ok := node.(*plan.QueryProcess)
-	if (ok && !shouldParallelize(proc.Child, nil)) || !shouldParallelize(node, scope) {
+	if !shouldParallelize(node, scope) {
 		return node, nil
 	}
 
@@ -105,8 +104,7 @@ func isParallelizable(node sql.Node) bool {
 		switch node := node.(type) {
 		// These are the only unary nodes that can be parallelized. Any other
 		// unary nodes will not.
-		case *plan.TableAlias,
-			*plan.Exchange:
+		case *plan.TableAlias, *plan.Exchange:
 		// Some nodes may have subquery expressions that make them unparallelizable
 		case *plan.Project, *plan.Filter:
 			for _, e := range node.(sql.Expressioner).Expressions() {

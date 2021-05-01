@@ -42,6 +42,11 @@ func resolveDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 			}
 		}
 
+		// Nothing to resolve. This can happen if no database is current
+		if dbName == "" {
+			return n, nil
+		}
+
 		db, err := a.Catalog.Database(dbName)
 		if err != nil {
 			return nil, err

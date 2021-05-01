@@ -71,7 +71,7 @@ func (s *StartTransaction) String() string {
 	if s.Child != nil {
 		return s.Child.String()
 	}
-	return "START TRANSACTION"
+	return "Start Transaction"
 }
 
 func (s *StartTransaction) DebugString() string {
@@ -96,11 +96,13 @@ func (s StartTransaction) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Resolved implements the sql.Node interface.
 func (s *StartTransaction) Resolved() bool {
+	// If the database is nameless, we count it as resolved
 	_, unresolved := s.db.(sql.UnresolvedDatabase)
+	dbResolved := !unresolved || s.db.Name() == ""
 	if s.Child != nil {
-		return !unresolved && s.Child.Resolved()
+		return dbResolved && s.Child.Resolved()
 	}
-	return !unresolved
+	return dbResolved
 }
 
 // Schema implements the sql.Node interface.

@@ -932,7 +932,7 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 		} else if assertion.ExpectedErrStr != "" {
 			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 		} else if assertion.ExpectedWarning != 0 {
-			AssertWarningAndTestQuery(t, e, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
 		}
@@ -1644,14 +1644,13 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrCannotCreateDatabaseExists)
 
-		AssertWarningAndTestQuery(t, e, harness, "CREATE DATABASE IF NOT EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists)
+		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists)
 	})
 }
 
 func TestDropDatabase(t *testing.T, harness Harness) {
-	e := NewEngine(t, harness)
-
 	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
+		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("mydb")
@@ -1662,17 +1661,18 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DROP DATABASE works on newly created databases.", func(t *testing.T) {
+		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("testdb")
 		require.NoError(t, err)
 
 		TestQuery(t, harness, e, "DROP DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-
 		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
 	})
 
 	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
+		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, "CREATE SCHEMA testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("testdb")
@@ -1684,18 +1684,30 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
-		AssertWarningAndTestQuery(t, e, harness, "DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+		e := NewEngine(t, harness)
 
-		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		// The test setup sets a database name, which interferes with DROP DATABASE tests
+		ctx := NewContext(harness)
+		TestQueryWithContext(t, ctx, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		AssertWarningAndTestQuery(t, e, ctx, harness,"DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+
+		e.Analyzer.Verbose = true
+		e.Analyzer.Debug = true
+		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("testdb")
 		require.NoError(t, err)
 
-		TestQuery(t, harness, e, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		AssertErr(t, e, harness, "USE testdb", sql.ErrDatabaseNotFound)
+		_, iter, err := e.Query(ctx, "USE testdb")
+		if err == nil {
+			_, err = sql.RowIterToRows(ctx, iter)
+		}
+		require.Error(t, err)
+		require.True(t, sql.ErrDatabaseNotFound.Is(err), "Expected error of type %s but got %s", sql.ErrDatabaseNotFound, err)
 
-		AssertWarningAndTestQuery(t, e, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
 	})
 }
 
@@ -2715,17 +2727,27 @@ func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expe
 	}
 }
 
-func AssertWarningAndTestQuery(t *testing.T, e *sqle.Engine, harness Harness, query string, expected []sql.Row, expectedCols []*sql.Column, expectedCode int) {
+// AssertWarningAndTestQuery tests the query and asserts an expected warning code. If |ctx| is provided, it will be
+// used. Otherwise the harness will be used to create a fresh context.
+func AssertWarningAndTestQuery(
+	t *testing.T,
+	e *sqle.Engine,
+	ctx *sql.Context,
+	harness Harness,
+	query string,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+	expectedCode int,
+) {
 	require := require.New(t)
-	ctx := NewContext(harness)
+	if ctx == nil {
+		ctx = NewContext(harness)
+	}
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(err, "Unexpected error for query %s", query)
 
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err, "Unexpected error for query %s", query)
-
-	ctx = NewContext(harness)
-	require.True(len(ctx.Warnings()) > 0)
 
 	condition := false
 	for _, warning := range ctx.Warnings() {
