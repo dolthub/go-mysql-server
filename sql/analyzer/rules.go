@@ -97,6 +97,7 @@ var OnceAfterDefault = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
+	{"begin_transaction", beginTransaction},
 	{"track_process", trackProcess},
 	{"parallelize", parallelize},
 	{"clear_warnings", clearWarnings},

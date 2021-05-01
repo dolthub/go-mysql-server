@@ -241,7 +241,6 @@ func (h *Handler) doQuery(
 	logrus.Tracef("received query %s", query)
 
 	ctx, err := h.sm.NewContextWithQuery(c, query)
-
 	if err != nil {
 		return err
 	}
@@ -415,11 +414,12 @@ rowLoop:
 		return err
 	}
 
-	// TODO: consolidate commit logic with Commit() node
-	if autoCommit && statementNeedsCommit(parsedQuery, parseErr) {
+	if autoCommit {
 		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
 			return err
 		}
+		// Clearing out the current transaction will tell us to start a new one the next time this session queries
+		ctx.SetTransaction(nil)
 	}
 
 	// Even if r.RowsAffected = 0, the callback must be

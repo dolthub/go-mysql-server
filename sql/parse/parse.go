@@ -190,7 +190,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Use:
 		return convertUse(n)
 	case *sqlparser.Begin:
-		return plan.NewBegin(""), nil
+		return plan.NewStartTransaction(""), nil
 	case *sqlparser.Commit:
 		return plan.NewCommit(""), nil
 	case *sqlparser.Rollback:

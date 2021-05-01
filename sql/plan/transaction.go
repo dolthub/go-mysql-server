@@ -16,35 +16,41 @@ package plan
 
 import "github.com/dolthub/go-mysql-server/sql"
 
-// Begin starts a transaction.
-type Begin struct{
+// StartTransaction explicitly starts a transaction. Transactions also start before any statement execution that doesn't have a
+// transaction.
+type StartTransaction struct{
+	UnaryNode // null in the case that this is an explicit StartTransaction statement, set to the wrapped statement node otherwise
 	db sql.Database
 }
 
-var _ sql.Databaser = (*Begin)(nil)
-var _ sql.Node = (*Begin)(nil)
+var _ sql.Databaser = (*StartTransaction)(nil)
+var _ sql.Node = (*StartTransaction)(nil)
 
-// NewBegin creates a new Begin node.
-func NewBegin(db sql.UnresolvedDatabase) *Begin {
-	return &Begin{
+// NewStartTransaction creates a new StartTransaction node.
+func NewStartTransaction(db sql.UnresolvedDatabase) *StartTransaction {
+	return &StartTransaction{
 		db: db,
 	}
 }
 
-func (b *Begin) Database() sql.Database {
-	return b.db
+func (s *StartTransaction) Database() sql.Database {
+	return s.db
 }
 
-func (b Begin) WithDatabase(database sql.Database) (sql.Node, error) {
-	b.db = database
-	return &b, nil
+func (s StartTransaction) WithDatabase(database sql.Database) (sql.Node, error) {
+	s.db = database
+	return &s, nil
 }
 
 // RowIter implements the sql.Node interface.
-func (b *Begin) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	tdb, ok := b.db.(sql.TransactionDatabase)
+func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	tdb, ok := s.db.(sql.TransactionDatabase)
 	if !ok {
-		return sql.RowsToRowIter(), nil
+		if s.Child == nil {
+			return sql.RowsToRowIter(), nil
+		}
+
+		return s.Child.RowIter(ctx, row)
 	}
 
 	transaction, err := tdb.BeginTransaction(ctx)
@@ -53,31 +59,57 @@ func (b *Begin) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	}
 
 	ctx.SetTransaction(transaction)
-	return sql.RowsToRowIter(), nil
-}
 
-func (*Begin) String() string { return "BEGIN" }
-
-// WithChildren implements the Node interface.
-func (b *Begin) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(b, len(children), 0)
+	if s.Child == nil {
+		return sql.RowsToRowIter(), nil
 	}
 
-	return b, nil
+	return s.Child.RowIter(ctx, row)
+}
+
+func (s *StartTransaction) String() string {
+	if s.Child != nil {
+		return s.Child.String()
+	}
+	return "START TRANSACTION"
+}
+
+func (s *StartTransaction) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("START TRANSACTION")
+	if s.Child != nil {
+		_ = tp.WriteChildren(sql.DebugString(s.Child))
+	}
+	return tp.String()
+}
+
+// WithChildren implements the Node interface.
+func (s StartTransaction) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
+	}
+
+	s.Child = children[0]
+
+	return &s, nil
 }
 
 // Resolved implements the sql.Node interface.
-func (b *Begin) Resolved() bool {
-	_, ok := b.db.(sql.UnresolvedDatabase)
-	return !ok
+func (s *StartTransaction) Resolved() bool {
+	_, unresolved := s.db.(sql.UnresolvedDatabase)
+	if s.Child != nil {
+		return !unresolved && s.Child.Resolved()
+	}
+	return !unresolved
 }
 
-// Children implements the sql.Node interface.
-func (*Begin) Children() []sql.Node { return nil }
-
 // Schema implements the sql.Node interface.
-func (*Begin) Schema() sql.Schema { return nil }
+func (s *StartTransaction) Schema() sql.Schema {
+	if s.Child == nil {
+		return nil
+	}
+	return s.Child.Schema()
+}
 
 // Commit commits the changes performed in a transaction. This is provided just for compatibility with SQL clients and
 // is a no-op.
