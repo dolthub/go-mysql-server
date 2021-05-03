@@ -72,7 +72,13 @@ func (j JSONContains) FunctionName() string {
 }
 
 func (j JSONContains) Resolved() bool {
-	return j.JSONTarget.Resolved() && j.JSONCandidate.Resolved() && j.Path.Resolved()
+	for _, child := range j.Children() {
+		if child != nil && !child.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (j JSONContains) String() string {
