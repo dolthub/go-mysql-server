@@ -88,7 +88,7 @@ func TestJSONContains(t *testing.T) {
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, json, "$.foo"}, nil, nil},
-		{f, sql.Row{json, `foo`, "$.b.c"}, true, nil},
+		{f, sql.Row{json, `"foo"`, "$.b.c"}, true, nil},
 		{f, sql.Row{json, 1, "$.e[0][*]"}, false, nil},
 		{f, sql.Row{json, []float64{1, 2}, "$.e[0][*]"}, true, nil},
 		{f, sql.Row{json, json, "$"}, true, nil}, // reflexivity
@@ -97,8 +97,11 @@ func TestJSONContains(t *testing.T) {
 		{f, sql.Row{json, goodMap, "$"}, true, nil},
 		{f2, sql.Row{json, []float64{1, 2}}, false, nil},
 		{f2, sql.Row{"[1,2,3,4]", []float64{1, 2}}, true, nil},
-		{f2, sql.Row{"hello", "hello"}, true, nil},
+		{f2, sql.Row{`"hello"`, `"hello"`}, true, nil},
 		{f2, sql.Row{"{}", "{}"}, true, nil},
+		{f2, sql.Row{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New("hello")},
+		{f2, sql.Row{"[1,2", "[1]"}, nil, sql.ErrInvalidJSONText.New("[1,2")},
+		{f2, sql.Row{"[1,2]", "[1"}, nil, sql.ErrInvalidJSONText.New("[1")},
 	}
 
 	for _, tt := range testCases {

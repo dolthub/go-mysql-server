@@ -53,13 +53,6 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 		err = json.Unmarshal(v, &doc)
 	case string:
 		err = json.Unmarshal([]byte(v), &doc)
-
-		// Edge case: A generic string should still be able to be marshalled
-		if err != nil {
-			if _, err2 := json.Marshal(v); err2 == nil {
-				return JSONDocument{Val: v}, nil
-			}
-		}
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation

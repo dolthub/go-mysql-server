@@ -145,12 +145,12 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 		return nil, err
 	}
 
-	js, err = sql.JSON.Convert(js)
+	converted, err := sql.JSON.Convert(js)
 	if err != nil {
-		return nil, err
+		return nil, sql.ErrInvalidJSONText.New(js)
 	}
 
-	searchable, ok := js.(sql.SearchableJSONValue)
+	searchable, ok := converted.(sql.SearchableJSONValue)
 	if !ok {
 		searchable, err = js.(sql.JSONValue).Unmarshall(ctx)
 		if err != nil {
