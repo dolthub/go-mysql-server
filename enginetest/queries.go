@@ -5434,6 +5434,34 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "def", "mydb", "tabletest", "i", 1, nil, nil, nil, nil},
 		},
 	},
+	{
+		Query: "SELECT JSON_CONTAINS(nil, 1)",
+		Expected: nil,
+	},
+	{
+		Query: "SELECT JSON_CONTAINS(1, nil)",
+		Expected: nil,
+	},
+	{
+		Query: "SELECT JSON_CONTAINS(1, nil, '$.a')",
+		Expected: nil,
+	},
+	{
+		Query: `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.a')`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query: `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.b')`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query: `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.a')`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query: `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.c')`,
+		Expected: []sql.Row{{false}},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{

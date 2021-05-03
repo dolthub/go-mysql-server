@@ -31,6 +31,12 @@ func TestJSONContains(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	f2, err := NewJSONContains(
+		expression.NewGetField(0, sql.JSON, "arg1", false),
+		expression.NewGetField(1, sql.JSON, "arg2", false),
+	)
+	require.NoError(t, err)
+
 	json := map[string]interface{}{
 		"a": []interface{}{float64(1), float64(2), float64(3), float64(4)},
 		"b": map[string]interface{}{
@@ -43,7 +49,11 @@ func TestJSONContains(t *testing.T) {
 		},
 	}
 
-	// TODO: Build a json2
+	otherMap := map[string]interface{}{
+		"x": []interface{}{
+			[]interface{}{float64(1), float64(2)},
+		},
+	}
 
 	testCases := []struct {
 		f        sql.Expression
@@ -53,10 +63,17 @@ func TestJSONContains(t *testing.T) {
 	}{
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("should start with '$'")},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
+		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, json, "$.foo"}, nil, nil},
 		{f, sql.Row{json, `foo`, "$.b.c"}, true, nil},
 		{f, sql.Row{json, 1, "$.e[0][*]"}, false, nil},
 		{f, sql.Row{json, []float64{1, 2}, "$.e[0][*]"}, true, nil},
+		{f, sql.Row{json, json, "$"}, true, nil}, // reflexivity
+		{f, sql.Row{json, json["e"], "$.e"}, true, nil},
+		{f, sql.Row{json, otherMap, "$.e"}, false, nil}, // false due to key name difference
+		{f2, sql.Row{json, []float64{1, 2}}, false, nil},
+		{f2, sql.Row{"[1,2,3,4]", []float64{1, 2}}, true, nil},
+		{f2, sql.Row{"hello", "hello"}, true, nil},
 	}
 
 	for _, tt := range testCases {

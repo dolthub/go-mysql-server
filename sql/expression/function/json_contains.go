@@ -77,6 +77,7 @@ func (j JSONContains) Resolved() bool {
 func (j JSONContains) String() string {
 	children := j.Children()
 	var parts = make([]string, len(children))
+
 	for i, c := range children {
 		parts[i] = c.String()
 	}
@@ -154,7 +155,11 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 }
 
 func (j JSONContains) Children() []sql.Expression {
-	return []sql.Expression{j.JSONTarget, j.JSONCandidate, j.Path}
+	if j.Path != nil {
+		return []sql.Expression{j.JSONTarget, j.JSONCandidate, j.Path}
+	}
+
+	return []sql.Expression{j.JSONTarget, j.JSONCandidate}
 }
 
 func (j JSONContains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
