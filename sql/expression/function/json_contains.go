@@ -16,8 +16,9 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // JSON_CONTAINS(target, candidate[, path])
@@ -44,9 +45,9 @@ import (
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains
 type JSONContains struct {
-	JSONTarget sql.Expression
+	JSONTarget    sql.Expression
 	JSONCandidate sql.Expression
-	Path sql.Expression
+	Path          sql.Expression
 }
 
 var _ sql.FunctionExpression = (*JSONContains)(nil)
@@ -54,7 +55,6 @@ var _ sql.FunctionExpression = (*JSONContains)(nil)
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 || len(args) > 3 {
-		// TODO: Bad error message
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", "2 or 3", len(args))
 	}
 

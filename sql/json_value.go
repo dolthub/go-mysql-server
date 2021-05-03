@@ -163,7 +163,7 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 		}
 
 		// validate that every element in b is in a
-		for i := 0; i < sl.Len(); i++  {
+		for i := 0; i < sl.Len(); i++ {
 			contains := false
 			for _, aa := range a {
 				cmp, err := compareJSON(aa, sl.Index(i).Interface())

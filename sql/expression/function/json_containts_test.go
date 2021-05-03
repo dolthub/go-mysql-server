@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 package function
 
 import (
 	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestJSONContains(t *testing.T) {
