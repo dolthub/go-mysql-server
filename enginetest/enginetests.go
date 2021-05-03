@@ -1475,10 +1475,6 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require.Error(err)
 	require.True(sql.ErrTableColumnNotFound.Is(err))
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL")
-	require.Error(err)
-	require.True(plan.ErrNullDefault.Is(err))
-
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
 	require.Error(err)
 	require.True(sql.ErrIncompatibleDefaultType.Is(err))
@@ -1719,9 +1715,9 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)", []sql.Row(nil), nil, nil)
 	TestQuery(t, harness, e, "ALTER TABLE parent ADD INDEX pb (b)", []sql.Row(nil), nil, nil)
 	TestQuery(t, harness, e, "CREATE TABLE child(c INTEGER PRIMARY KEY, d INTEGER, "+
-		"CONSTRAINT fk1 FOREIGN KEY (d) REFERENCES parent(b) ON DELETE CASCADE"+
+		"CONSTRAINT fk1 FOREIGN KEY (D) REFERENCES parent(B) ON DELETE CASCADE"+
 		")", []sql.Row(nil), nil, nil)
-	TestQuery(t, harness, e, "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (d) REFERENCES child(c)", []sql.Row(nil), nil, nil)
+	TestQuery(t, harness, e, "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (D) REFERENCES child(C)", []sql.Row(nil), nil, nil)
 
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
@@ -1806,6 +1802,12 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE child2 ADD CONSTRAINT fk4 FOREIGN KEY (f) REFERENCES child(dne) ON UPDATE SET NULL")
 	require.Error(err)
 	assert.True(t, sql.ErrTableColumnNotFound.Is(err))
+
+	t.Run("Add a column then immediately add a foreign key", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE parent3 (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1))")
+		RunQuery(t, e, harness, "CREATE TABLE child3 (pk BIGINT PRIMARY KEY);")
+		TestQuery(t, harness, e, "ALTER TABLE child3 ADD COLUMN v1 BIGINT NULL, ADD CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3(v1);", []sql.Row(nil), nil, nil)
+	})
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
@@ -2004,8 +2006,11 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,0)", sql.ErrCheckConstraintViolated)
 	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,1)", sql.ErrCheckConstraintViolated)
 
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,NULL)")
+
 	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
 		{1, 1},
+		{4, nil},
 	}, nil, nil)
 
 	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER)")
@@ -3010,6 +3015,20 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t30 (pk) VALUES (1), (2)")
 		TestQuery(t, harness, e, "ALTER TABLE t30 ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2", []sql.Row(nil), nil, nil)
 		TestQuery(t, harness, e, "SELECT pk, v1, v2 FROM t30", []sql.Row{{1, 4, 5}, {2, 4, 5}}, nil, nil)
+	})
+
+	t.Run("Add non-nullable column without default #1", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t31 (pk BIGINT PRIMARY KEY)", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "INSERT INTO t31 VALUES (1), (2), (3)")
+		TestQuery(t, harness, e, "ALTER TABLE t31 ADD COLUMN v1 BIGINT NOT NULL", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t31", []sql.Row{{1, 0}, {2, 0}, {3, 0}}, nil, nil)
+	})
+
+	t.Run("Add non-nullable column without default #2", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t32 (pk BIGINT PRIMARY KEY)", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "INSERT INTO t32 VALUES (1), (2), (3)")
+		TestQuery(t, harness, e, "ALTER TABLE t32 ADD COLUMN v1 VARCHAR(20) NOT NULL", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT * FROM t32", []sql.Row{{1, ""}, {2, ""}, {3, ""}}, nil, nil)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {

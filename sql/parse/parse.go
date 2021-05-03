@@ -977,8 +977,8 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
 		return convertAlterIndex(ctx, ddl)
 	}
-	//TODO: support multiple constraints in a single ALTER statement
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
+		db := sql.UnresolvedDatabase(ddl.Table.Qualifier.String())
 		table := tableNameToUnresolvedTable(ddl.Table)
 		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
 		if err != nil {
@@ -988,11 +988,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.AddStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterAddForeignKey(
-					table,
-					plan.NewUnresolvedTable(c.ReferencedTable, ddl.Table.Qualifier.String()),
-					c), nil
-
+				return plan.NewAlterAddForeignKey(db, ddl.Table.Name.String(), c.ReferencedTable, c), nil
 			case *sql.CheckConstraint:
 				return plan.NewAlterAddCheck(table, c), nil
 			default:

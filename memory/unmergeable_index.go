@@ -98,12 +98,12 @@ func (u *indexValIter) initValues() error {
 		}
 
 		for i, row := range rows {
-			ok, err := sql.EvaluateCondition(sql.NewEmptyContext(), u.matchExpression, row)
+			res, err := sql.EvaluateCondition(sql.NewEmptyContext(), u.matchExpression, row)
 			if err != nil {
 				return err
 			}
 
-			if ok {
+			if sql.IsTrue(res) {
 				encoded, err := EncodeIndexValue(&IndexValue{
 					Pos: i,
 				})

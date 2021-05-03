@@ -72,6 +72,10 @@ type IndexDefinition struct {
 	Comment    string
 }
 
+func (i *IndexDefinition) String() string {
+	return i.IndexName
+}
+
 // TableSpec is a node describing the schema of a table.
 type TableSpec struct {
 	Schema  sql.Schema
@@ -208,7 +212,14 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 					return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
 				}
 				for _, fkDef := range c.fkDefs {
-					err = fkAlterable.CreateForeignKey(ctx, fkDef.Name, fkDef.Columns, fkDef.ReferencedTable, fkDef.ReferencedColumns, fkDef.OnUpdate, fkDef.OnDelete)
+					refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
+					if err != nil {
+						return sql.RowsToRowIter(), err
+					}
+					if !ok {
+						return sql.RowsToRowIter(), sql.ErrTableNotFound.New(fkDef.ReferencedTable)
+					}
+					err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
 					if err != nil {
 						return sql.RowsToRowIter(), err
 					}

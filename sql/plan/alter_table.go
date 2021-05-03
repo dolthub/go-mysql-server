@@ -144,10 +144,6 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		}
 	}
 
-	if !a.column.Nullable && a.column.Default == nil {
-		return nil, ErrNullDefault.New()
-	}
-
 	if err := a.validateDefaultPosition(tblSch); err != nil {
 		return nil, err
 	}

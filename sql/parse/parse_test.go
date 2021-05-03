@@ -912,8 +912,9 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b)`: plan.NewAlterAddForeignKey(
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewUnresolvedTable("t0", ""),
+		sql.UnresolvedDatabase(""),
+		"t1",
+		"t0",
 		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -924,8 +925,9 @@ CREATE TABLE t2
 		},
 	),
 	`ALTER TABLE t1 ADD CONSTRAINT fk_name FOREIGN KEY (b_id) REFERENCES t0(b)`: plan.NewAlterAddForeignKey(
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewUnresolvedTable("t0", ""),
+		sql.UnresolvedDatabase(""),
+		"t1",
+		"t0",
 		&sql.ForeignKeyConstraint{
 			Name:              "fk_name",
 			Columns:           []string{"b_id"},
@@ -936,8 +938,9 @@ CREATE TABLE t2
 		},
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE CASCADE`: plan.NewAlterAddForeignKey(
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewUnresolvedTable("t0", ""),
+		sql.UnresolvedDatabase(""),
+		"t1",
+		"t0",
 		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -948,8 +951,9 @@ CREATE TABLE t2
 		},
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b) ON DELETE RESTRICT`: plan.NewAlterAddForeignKey(
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewUnresolvedTable("t0", ""),
+		sql.UnresolvedDatabase(""),
+		"t1",
+		"t0",
 		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -960,8 +964,9 @@ CREATE TABLE t2
 		},
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE SET NULL ON DELETE NO ACTION`: plan.NewAlterAddForeignKey(
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewUnresolvedTable("t0", ""),
+		sql.UnresolvedDatabase(""),
+		"t1",
+		"t0",
 		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id"},
@@ -972,8 +977,9 @@ CREATE TABLE t2
 		},
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c)`: plan.NewAlterAddForeignKey(
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewUnresolvedTable("t0", ""),
+		sql.UnresolvedDatabase(""),
+		"t1",
+		"t0",
 		&sql.ForeignKeyConstraint{
 			Name:              "",
 			Columns:           []string{"b_id", "c_id"},
@@ -984,8 +990,9 @@ CREATE TABLE t2
 		},
 	),
 	`ALTER TABLE t1 ADD CONSTRAINT fk_name FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c) ON UPDATE RESTRICT ON DELETE CASCADE`: plan.NewAlterAddForeignKey(
-		plan.NewUnresolvedTable("t1", ""),
-		plan.NewUnresolvedTable("t0", ""),
+		sql.UnresolvedDatabase(""),
+		"t1",
+		"t0",
 		&sql.ForeignKeyConstraint{
 			Name:              "fk_name",
 			Columns:           []string{"b_id", "c_id"},

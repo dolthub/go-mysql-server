@@ -120,11 +120,13 @@ func (c *CreateCheck) Execute(ctx *sql.Context) error {
 		if row == nil || err != io.EOF {
 			break
 		}
-		res, err = c.Check.Expr.Eval(ctx, row)
+
+		res, err = sql.EvaluateCondition(ctx, c.Check.Expr, row)
 		if err != nil {
 			return err
 		}
-		if val, ok := res.(bool); !ok || !val {
+
+		if sql.IsFalse(res) {
 			return ErrCheckFailed.New(c.Check.Name)
 		}
 	}
