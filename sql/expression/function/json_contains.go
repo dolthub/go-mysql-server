@@ -53,9 +53,9 @@ var _ sql.FunctionExpression = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 2 {
+	if len(args) < 2 || len(args) > 3 {
 		// TODO: Bad error message
-		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", 2, len(args))
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", "2 or 3", len(args))
 	}
 
 	if len(args) == 2 {
