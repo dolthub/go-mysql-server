@@ -15,7 +15,9 @@
 package function
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
 )
 
 // JSON_CONTAINS(target, candidate[, path])
@@ -42,17 +44,57 @@ import (
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains
 type JSONContains struct {
-	sql.Expression
+	JSONTarget sql.Expression
+	JSONCandidate sql.Expression
+	Path sql.Expression
 }
 
-var _ sql.FunctionExpression = JSONContains{}
+var _ sql.FunctionExpression = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONContains{}.FunctionName())
+	if len(args) < 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", 3, len(args))
+	}
+
+	return &JSONContains{args[0], args[1], args[2]}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONContains) FunctionName() string {
 	return "json_contains"
+}
+
+func (j JSONContains) Resolved() bool {
+	return j.JSONTarget.Resolved() && j.JSONCandidate.Resolved() && j.Path.Resolved()
+}
+
+func (j JSONContains) String() string {
+	children := j.Children()
+	var parts = make([]string, len(children))
+	for i, c := range children {
+		parts[i] = c.String()
+	}
+
+	return fmt.Sprintf("JSON_CONTAINS(%s)", strings.Join(parts, ", "))
+}
+
+func (j JSONContains) Type() sql.Type {
+	return sql.Boolean
+}
+
+func (j JSONContains) IsNullable() bool {
+	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || j.Path.IsNullable()
+}
+
+func (j JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	panic("implement me")
+}
+
+func (j JSONContains) Children() []sql.Expression {
+	return []sql.Expression{j.JSONTarget, j.JSONCandidate, j.Path}
+}
+
+func (j JSONContains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONContains(children...)
 }
