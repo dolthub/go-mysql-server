@@ -40,7 +40,7 @@ type SearchableJSONValue interface {
 	JSONValue
 
 	// Contains is value-specific implementation of JSON_Contains()
-	Contains(ctx *Context, path string) (ok bool, err error)
+	Contains(ctx *Context, candidate SearchableJSONValue) (ok bool, err error)
 	// Extract is value-specific implementation of JSON_Extract()
 	Extract(ctx *Context, path string) (val JSONValue, err error)
 	// Keys is value-specific implementation of JSON_Keys()
@@ -76,7 +76,7 @@ func (doc JSONDocument) ToString(_ *Context) (string, error) {
 
 var _ SearchableJSONValue = JSONDocument{}
 
-func (doc JSONDocument) Contains(ctx *Context, path string) (ok bool, err error) {
+func (doc JSONDocument) Contains(ctx *Context, candidate SearchableJSONValue) (ok bool, err error) {
 	panic("not implemented")
 }
 

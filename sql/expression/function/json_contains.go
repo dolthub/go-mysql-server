@@ -53,8 +53,13 @@ var _ sql.FunctionExpression = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", 3, len(args))
+	if len(args) < 2 {
+		// TODO: Bad error message
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", 2, len(args))
+	}
+
+	if len(args) == 2 {
+		return &JSONContains{args[0], args[1], nil}, nil
 	}
 
 	return &JSONContains{args[0], args[1], args[2]}, nil
@@ -88,7 +93,66 @@ func (j JSONContains) IsNullable() bool {
 }
 
 func (j JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("implement me")
+	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate)
+	if err != nil {
+		return nil, err
+	}
+
+	// If there's path reevaluate target based off of this path
+	if j.Path != nil {
+		// Evaluate the given path if there is one
+		path, err := j.Path.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		path, err = sql.LongText.Convert(path)
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := target.Extract(ctx, path.(string))
+		if err != nil {
+			return nil, err
+		}
+
+		target, err = result.Unmarshall(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Now determine whether the candidate value exists in the target
+
+
+}
+
+
+func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.SearchableJSONValue, error) {
+	js, err := json.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	js, err = sql.JSON.Convert(js)
+	if err != nil {
+		return nil, err
+	}
+
+	searchable, ok := js.(sql.SearchableJSONValue)
+	if !ok {
+		searchable, err = js.(sql.JSONValue).Unmarshall(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return searchable, nil
 }
 
 func (j JSONContains) Children() []sql.Expression {
