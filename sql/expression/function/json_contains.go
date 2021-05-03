@@ -44,6 +44,7 @@ import (
 // Otherwise, the candidate value is not contained in the target document.
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains
+// TODO: Add multi index optimization -> https://dev.mysql.com/doc/refman/8.0/en/create-index.html#create-index-multi-valued
 type JSONContains struct {
 	JSONTarget    sql.Expression
 	JSONCandidate sql.Expression
