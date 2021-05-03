@@ -128,10 +128,8 @@ func (j JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Now determine whether the candidate value exists in the target
-
-
+	return target.Contains(ctx, candidate)
 }
-
 
 func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.SearchableJSONValue, error) {
 	js, err := json.Eval(ctx, row)

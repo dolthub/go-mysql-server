@@ -16,6 +16,7 @@ package sql
 
 import (
 	"encoding/json"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -40,7 +41,7 @@ type SearchableJSONValue interface {
 	JSONValue
 
 	// Contains is value-specific implementation of JSON_Contains()
-	Contains(ctx *Context, candidate SearchableJSONValue) (ok bool, err error)
+	Contains(ctx *Context, candidate JSONValue) (val interface{}, err error)
 	// Extract is value-specific implementation of JSON_Extract()
 	Extract(ctx *Context, path string) (val JSONValue, err error)
 	// Keys is value-specific implementation of JSON_Keys()
@@ -76,8 +77,14 @@ func (doc JSONDocument) ToString(_ *Context) (string, error) {
 
 var _ SearchableJSONValue = JSONDocument{}
 
-func (doc JSONDocument) Contains(ctx *Context, candidate SearchableJSONValue) (ok bool, err error) {
-	panic("not implemented")
+// Contains returns nil in case of a nil value for either the doc.Val or candidate. Otherwise
+// it returns a bool
+func (doc JSONDocument) Contains(ctx *Context, candidate JSONValue) (val interface{}, err error) {
+	other, err := candidate.Unmarshall(ctx)
+	if err != nil {
+		return false, err
+	}
+	return containsJSON(doc.Val, other.Val)
 }
 
 func (doc JSONDocument) Extract(ctx *Context, path string) (JSONValue, error) {
@@ -114,6 +121,117 @@ func ConcatenateJSONValues(ctx *Context, vals ...JSONValue) (JSONValue, error) {
 		arr[i] = d.Val
 	}
 	return JSONDocument{Val: arr}, nil
+}
+
+func containsJSON(a, b interface{}) (interface{}, error) {
+	if a == nil || b == nil {
+		return nil, nil
+	}
+
+	switch a := a.(type) {
+	case bool:
+		return containsJSONBool(a, b)
+	case []interface{}:
+		return containsJSONArray(a, b)
+	case map[string]interface{}:
+		return containsJSONObject(a, b)
+	case string:
+		return containsJSONString(a, b)
+	case float64:
+		return containsJSONNumber(a, b)
+	default:
+		return false, ErrInvalidType.New(a)
+	}
+}
+
+func containsJSONBool(a bool, b interface{}) (bool, error) {
+	switch b := b.(type) {
+	case bool:
+		return a == b, nil
+	default:
+		return false, nil
+	}
+}
+
+func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
+	switch reflect.TypeOf(b).Kind() {
+	case reflect.Slice:
+		sl := reflect.ValueOf(b)
+
+		if sl.Len() > len(a) {
+			return false, nil
+		}
+
+		// validate that every element in b is in a
+		for i := 0; i < sl.Len(); i++  {
+			contains := false
+			for _, aa := range a {
+				cmp, err := compareJSON(aa, sl.Index(i).Interface())
+				if err != nil {
+					return false, err
+				}
+
+				if cmp == 0 {
+					contains = true
+					break
+				}
+			}
+
+			if !contains {
+				return false, nil
+			}
+		}
+
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
+	switch b := b.(type) {
+	case map[string]interface{}:
+		if len(b) > len(a) {
+			return false, nil
+		}
+
+		inter := jsonObjectKeyIntersection(a, b)
+		for _, key := range inter {
+			aa := a[key]
+			bb := b[key]
+
+			cmp, err := compareJSON(aa, bb)
+			if err != nil {
+				return false, err
+			}
+
+			if cmp != 0 {
+				return false, nil
+			}
+		}
+
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+func containsJSONString(a string, b interface{}) (bool, error) {
+	switch b := b.(type) {
+	case string:
+		return a == b, nil
+	default:
+		return false, nil
+	}
+}
+
+func containsJSONNumber(a float64, b interface{}) (bool, error) {
+	switch b := b.(type) {
+	case float64:
+		return a == b, nil
+	default:
+		return false, nil
+	}
 }
 
 // JSON values can be compared using the =, <, <=, >, >=, <>, !=, and <=> operators. BETWEEN IN() GREATEST() LEAST() are

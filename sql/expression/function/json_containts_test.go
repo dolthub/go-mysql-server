@@ -25,8 +25,8 @@ import (
 
 func TestJSONContains(t *testing.T) {
 	f, err := NewJSONContains(
-		expression.NewGetField(0, sql.LongText, "arg1", false),
-		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(0, sql.JSON, "arg1", false),
+		expression.NewGetField(1, sql.JSON, "arg2", false),
 		expression.NewGetField(2, sql.LongText, "arg3", false),
 	)
 	require.NoError(t, err)
@@ -53,10 +53,10 @@ func TestJSONContains(t *testing.T) {
 	}{
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("should start with '$'")},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
-		{f, sql.Row{json, json, "$.foo"}, false, nil},
-		{f, sql.Row{json, json, "$.b.c"}, true, nil},
-		{f, sql.Row{json, json, "$.b.c"}, true, nil},
-		{f, sql.Row{json, json, "$.e[0][*]"}, true, nil},
+		{f, sql.Row{json, json, "$.foo"}, nil, nil},
+		{f, sql.Row{json, `foo`, "$.b.c"}, true, nil},
+		{f, sql.Row{json, 1, "$.e[0][*]"}, false, nil},
+		{f, sql.Row{json, []float64{1, 2}, "$.e[0][*]"}, true, nil},
 	}
 
 	for _, tt := range testCases {
