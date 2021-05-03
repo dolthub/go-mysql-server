@@ -64,9 +64,17 @@ func TestJSONContains(t *testing.T) {
 		},
 	}
 
-	otherMap := map[string]interface{}{
+	badMap := map[string]interface{}{
 		"x": []interface{}{
 			[]interface{}{float64(1), float64(2)},
+			[]interface{}{float64(3), float64(4)},
+		},
+	}
+
+	goodMap := map[string]interface{}{
+		"e": []interface{}{
+			[]interface{}{float64(1), float64(2)},
+			[]interface{}{float64(3), float64(4)},
 		},
 	}
 
@@ -85,10 +93,12 @@ func TestJSONContains(t *testing.T) {
 		{f, sql.Row{json, []float64{1, 2}, "$.e[0][*]"}, true, nil},
 		{f, sql.Row{json, json, "$"}, true, nil}, // reflexivity
 		{f, sql.Row{json, json["e"], "$.e"}, true, nil},
-		{f, sql.Row{json, otherMap, "$.e"}, false, nil}, // false due to key name difference
+		{f, sql.Row{json, badMap, "$"}, false, nil}, // false due to key name difference
+		{f, sql.Row{json, goodMap, "$"}, true, nil},
 		{f2, sql.Row{json, []float64{1, 2}}, false, nil},
 		{f2, sql.Row{"[1,2,3,4]", []float64{1, 2}}, true, nil},
 		{f2, sql.Row{"hello", "hello"}, true, nil},
+		{f2, sql.Row{"{}", "{}"}, true, nil},
 	}
 
 	for _, tt := range testCases {

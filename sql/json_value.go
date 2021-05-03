@@ -196,6 +196,11 @@ func containsJSONObject(a map[string]interface{}, b interface{}) (bool, error) {
 		}
 
 		inter := jsonObjectKeyIntersection(a, b)
+
+		if len(inter) == 0 && len(a) != len(b) {
+			return false, nil
+		}
+
 		for _, key := range inter {
 			aa := a[key]
 			bb := b[key]
