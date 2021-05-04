@@ -52,6 +52,24 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	return transformPushdownFilters(a, n, scope, tableAliases)
 }
 
+// pushdownSubqueryAliasFilters attempts to push conditions in filters down to
+// individual subquery aliases.
+func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, ctx := ctx.Span("pushdown_subquery_alias_filters")
+	defer span.Finish()
+
+	if !canDoPushdown(n) {
+		return n, nil
+	}
+
+	tableAliases, err := getTableAliases(n, scope)
+	if err != nil {
+		return nil, err
+	}
+
+	return transformPushdownSubqueryAliasFilters(a, n, scope, tableAliases)
+}
+
 // pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
 func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("pushdown_projections")
@@ -143,32 +161,31 @@ func canDoPushdown(n sql.Node) bool {
 	return true
 }
 
-func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
-
-	// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
-	// the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
-	// sometimes null in these types of joins). It must be evaluated only after the join result is computed.
-	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch n := parent.(type) {
-		case *plan.TableAlias:
-			return false
-		case *plan.IndexedJoin:
-			if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
-				return childNum == 0
-			}
-			return true
-		case *plan.LeftJoin:
+// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
+// the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
+// sometimes null in these types of joins). It must be evaluated only after the join result is computed.
+func filterPushdownChildSelector(parent sql.Node, child sql.Node, childNum int) bool {
+	switch n := parent.(type) {
+	case *plan.TableAlias:
+		return false
+	case *plan.IndexedJoin:
+		if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
 			return childNum == 0
-		case *plan.RightJoin:
-			return childNum == 1
 		}
 		return true
+	case *plan.LeftJoin:
+		return childNum == 0
+	case *plan.RightJoin:
+		return childNum == 1
 	}
+	return true
+}
 
+func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
 	var filters *filterSet
 
 	transformFilterNode := func(n *plan.Filter) (sql.Node, error) {
-		return plan.TransformUpWithSelector(n, childSelector, func(node sql.Node) (sql.Node, error) {
+		return plan.TransformUpWithSelector(n, filterPushdownChildSelector, func(node sql.Node) (sql.Node, error) {
 			switch node := node.(type) {
 			case *plan.Filter:
 				n, err := removePushedDownPredicates(a, node, filters)
@@ -176,7 +193,7 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliase
 					return nil, err
 				}
 				return FixFieldIndexesForExpressions(n, scope)
-			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.ValueDerivedTable:
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 				table, err := pushdownFiltersToTable(a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, err
@@ -185,6 +202,46 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliase
 				return FixFieldIndexesForExpressions(table, scope)
 			default:
 				return FixFieldIndexesForExpressions(node, scope)
+			}
+		})
+	}
+
+	// For each filter node, we want to push its predicates as low as possible.
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.Filter:
+			// First step is to find all col exprs and group them by the table they mention.
+			// Even if they appear multiple times, only the first one will be used.
+			filtersByTable, err := getFiltersByTable(n)
+
+			// An error returned by getFiltersByTable means that we can't cleanly separate all the filters into tables.
+			// In that case, skip pushing down the filters.
+			// TODO: we could also handle this by keeping track of the filters we can't handle and re-applying them at the end
+			if err != nil {
+				return n, nil
+			}
+
+			filters = newFilterSet(filtersByTable, tableAliases)
+
+			return transformFilterNode(n)
+		default:
+			return n, nil
+		}
+	})
+}
+
+func transformPushdownSubqueryAliasFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
+	var filters *filterSet
+
+	transformFilterNode := func(n *plan.Filter) (sql.Node, error) {
+		return plan.TransformUpWithSelector(n, filterPushdownChildSelector, func(node sql.Node) (sql.Node, error) {
+			switch node := node.(type) {
+			case *plan.Filter:
+				return removePushedDownPredicates(a, node, filters)
+			case *plan.SubqueryAlias:
+				return pushdownFiltersUnderSubqueryAlias(node, filters)
+			default:
+				return node, nil
 			}
 		})
 	}
