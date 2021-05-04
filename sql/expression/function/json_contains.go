@@ -67,11 +67,11 @@ func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // FunctionName implements sql.FunctionExpression
-func (j JSONContains) FunctionName() string {
+func (j *JSONContains) FunctionName() string {
 	return "json_contains"
 }
 
-func (j JSONContains) Resolved() bool {
+func (j *JSONContains) Resolved() bool {
 	for _, child := range j.Children() {
 		if child != nil && !child.Resolved() {
 			return false
@@ -81,7 +81,7 @@ func (j JSONContains) Resolved() bool {
 	return true
 }
 
-func (j JSONContains) String() string {
+func (j *JSONContains) String() string {
 	children := j.Children()
 	var parts = make([]string, len(children))
 
@@ -92,15 +92,15 @@ func (j JSONContains) String() string {
 	return fmt.Sprintf("JSON_CONTAINS(%s)", strings.Join(parts, ", "))
 }
 
-func (j JSONContains) Type() sql.Type {
+func (j *JSONContains) Type() sql.Type {
 	return sql.Boolean
 }
 
-func (j JSONContains) IsNullable() bool {
+func (j *JSONContains) IsNullable() bool {
 	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || j.Path.IsNullable()
 }
 
-func (j JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (s
 	return searchable, nil
 }
 
-func (j JSONContains) Children() []sql.Expression {
+func (j *JSONContains) Children() []sql.Expression {
 	if j.Path != nil {
 		return []sql.Expression{j.JSONTarget, j.JSONCandidate, j.Path}
 	}
@@ -169,6 +169,10 @@ func (j JSONContains) Children() []sql.Expression {
 	return []sql.Expression{j.JSONTarget, j.JSONCandidate}
 }
 
-func (j JSONContains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONContains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(j.Children()) != len(children) {
+		return nil, fmt.Errorf("json_contains did not receive the correct amount of args")
+	}
+
 	return NewJSONContains(children...)
 }
