@@ -303,6 +303,9 @@ func pushdownFiltersToTable(
 	filters *filterSet,
 	tableAliases TableAliases,
 ) (sql.Node, error) {
+	if sa, ok := tableNode.(*plan.SubqueryAlias); ok {
+		return pushdownFiltersUnderSubqueryAlias(sa, filters)
+	}
 
 	table := getTable(tableNode)
 	if table == nil {
@@ -358,7 +361,7 @@ func pushdownFiltersToTable(
 	}
 
 	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.SubqueryAlias, *plan.ValueDerivedTable:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 		node, err := withTable(newTableNode, table)
 		if err != nil {
 			return nil, err
@@ -373,6 +376,42 @@ func pushdownFiltersToTable(
 		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
 	}
 }
+
+// pushdownFiltersUnderSubqueryAlias takes |filters| applying to the subquery
+// alias a moves them under the subquery alias. Because the subquery alias is
+// Opaque, it behaves a little bit like a FilteredTable, and pushing the
+// filters down below it can help find index usage opportunities later in the
+// analysis phase.
+func pushdownFiltersUnderSubqueryAlias(sa *plan.SubqueryAlias, filters *filterSet) (sql.Node, error) {
+	handled := filters.availableFiltersForTable(sa.Name())
+	if len(handled) == 0 {
+		return sa, nil
+	}
+	filters.markFiltersHandled(handled...)
+	schema := sa.Schema()
+	handled, err := FixFieldIndexesOnExpressions(nil, schema, handled...)
+	if err != nil {
+		return nil, err
+	}
+
+	// |handled| is in terms of the parent schema, and in particular the
+	// |Source| is the alias name. Rewrite it to refer to the |sa.Child|
+	// schema instead.
+	childSchema := sa.Child.Schema()
+	expressionsForChild := make([]sql.Expression, len(handled))
+	for i, h := range handled {
+		expressionsForChild[i], err = expression.TransformUp(h, func(e sql.Expression) (sql.Expression, error) {
+			if gt, ok := e.(*expression.GetField); ok {
+				col := childSchema[gt.Index()]
+				return gt.WithTable(col.Source).WithName(col.Name), nil
+			}
+			return e, nil
+		})
+	}
+
+	return sa.WithChildren(plan.NewFilter(expression.JoinAnd(expressionsForChild...), sa.Child))
+}
+
 
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable

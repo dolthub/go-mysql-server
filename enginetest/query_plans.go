@@ -342,8 +342,8 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT othertable.s2, othertable.i2, mytable.i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON othertable.i2 = mytable.i WHERE othertable.s2 > 'a'`,
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Filter(othertable.s2 > \"a\")\n" +
-			"     │   └─ SubqueryAlias(othertable)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Filter(othertable.s2 > \"a\")\n" +
 			"     │       └─ Projected table access on [s2 i2]\n" +
 			"     │           └─ Table(othertable)\n" +
 			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
