@@ -15,6 +15,9 @@
 package function
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -41,18 +44,135 @@ import (
 // Otherwise, the candidate value is not contained in the target document.
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-contains
+// TODO: Add multi index optimization -> https://dev.mysql.com/doc/refman/8.0/en/create-index.html#create-index-multi-valued
 type JSONContains struct {
-	sql.Expression
+	JSONTarget    sql.Expression
+	JSONCandidate sql.Expression
+	Path          sql.Expression
 }
 
-var _ sql.FunctionExpression = JSONContains{}
+var _ sql.FunctionExpression = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
 func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONContains{}.FunctionName())
+	if len(args) < 2 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", "2 or 3", len(args))
+	}
+
+	if len(args) == 2 {
+		return &JSONContains{args[0], args[1], nil}, nil
+	}
+
+	return &JSONContains{args[0], args[1], args[2]}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (j JSONContains) FunctionName() string {
+func (j *JSONContains) FunctionName() string {
 	return "json_contains"
+}
+
+func (j *JSONContains) Resolved() bool {
+	for _, child := range j.Children() {
+		if child != nil && !child.Resolved() {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (j *JSONContains) String() string {
+	children := j.Children()
+	var parts = make([]string, len(children))
+
+	for i, c := range children {
+		parts[i] = c.String()
+	}
+
+	return fmt.Sprintf("JSON_CONTAINS(%s)", strings.Join(parts, ", "))
+}
+
+func (j *JSONContains) Type() sql.Type {
+	return sql.Boolean
+}
+
+func (j *JSONContains) IsNullable() bool {
+	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || j.Path.IsNullable()
+}
+
+func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate)
+	if err != nil {
+		return nil, err
+	}
+
+	// If there's path reevaluate target based off of this path
+	if j.Path != nil {
+		// Evaluate the given path if there is one
+		path, err := j.Path.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+
+		path, err = sql.LongText.Convert(path)
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := target.Extract(ctx, path.(string))
+		if err != nil {
+			return nil, err
+		}
+
+		target, err = result.Unmarshall(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Now determine whether the candidate value exists in the target
+	return target.Contains(ctx, candidate)
+}
+
+func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.SearchableJSONValue, error) {
+	js, err := json.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	converted, err := sql.JSON.Convert(js)
+	if err != nil {
+		return nil, sql.ErrInvalidJSONText.New(js)
+	}
+
+	searchable, ok := converted.(sql.SearchableJSONValue)
+	if !ok {
+		searchable, err = js.(sql.JSONValue).Unmarshall(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return searchable, nil
+}
+
+func (j *JSONContains) Children() []sql.Expression {
+	if j.Path != nil {
+		return []sql.Expression{j.JSONTarget, j.JSONCandidate, j.Path}
+	}
+
+	return []sql.Expression{j.JSONTarget, j.JSONCandidate}
+}
+
+func (j *JSONContains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(j.Children()) != len(children) {
+		return nil, fmt.Errorf("json_contains did not receive the correct amount of args")
+	}
+
+	return NewJSONContains(children...)
 }

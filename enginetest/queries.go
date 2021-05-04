@@ -4748,6 +4748,34 @@ var QueryTests = []QueryTest{
 			{nil},
 		},
 	},
+	{
+		Query:    "SELECT JSON_CONTAINS(NULL, 1)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT JSON_CONTAINS(1, NULL)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT JSON_CONTAINS(1, NULL, '$.a')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.a')`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.b')`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.a')`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.c')`,
+		Expected: []sql.Row{{true}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
