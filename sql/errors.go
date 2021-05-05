@@ -273,6 +273,9 @@ var (
 
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
+
+	// ErrInvalidArgument is returned when an argument to a function is invalid.
+	ErrInvalidArgument = errors.NewKind("Incorrect arguments to %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
