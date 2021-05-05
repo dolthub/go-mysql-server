@@ -3371,32 +3371,26 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"mydb", "mytable", "TABLE"}},
 	},
 	{
-		Query:    `SELECT REGEXP_MATCHES("bopbeepbop", "bop")`,
-		Expected: []sql.Row{{[]interface{}{"bop", "bop"}}},
+		Query: "SELECT REGEXP_LIKE('testing', 'TESTING');",
+		Expected: []sql.Row{
+			{1},
+		},
 	},
 	{
-		Query:    `SELECT EXPLODE(REGEXP_MATCHES("bopbeepbop", "bop"))`,
-		Expected: []sql.Row{{"bop"}, {"bop"}},
+		Query: "SELECT REGEXP_LIKE('testing', 'TESTING') FROM mytable;",
+		Expected: []sql.Row{
+			{1},
+			{1},
+			{1},
+		},
 	},
 	{
-		Query:    `SELECT EXPLODE(REGEXP_MATCHES("helloworld", "bop"))`,
-		Expected: nil,
-	},
-	{
-		Query:    `SELECT EXPLODE(REGEXP_MATCHES("", ""))`,
-		Expected: []sql.Row{{""}},
-	},
-	{
-		Query:    `SELECT REGEXP_MATCHES(NULL, "")`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT REGEXP_MATCHES("", NULL)`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT REGEXP_MATCHES("", "", NULL)`,
-		Expected: []sql.Row{{nil}},
+		Query: "SELECT i, s, REGEXP_LIKE(s, '[a-z]+d row') FROM mytable;",
+		Expected: []sql.Row{
+			{1, "first row", 0},
+			{2, "second row", 1},
+			{3, "third row", 1},
+		},
 	},
 	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",

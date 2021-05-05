@@ -76,6 +76,18 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(999)}},
 	},
 	{
+		WriteQuery:          "INSERT INTO mytable VALUES (999, _binary 'x');",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
+		ExpectedSelect:      []sql.Row{{"x"}},
+	},
+	{
+		WriteQuery:          "INSERT INTO mytable SET i = 999, s = _binary 'x';",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT s FROM mytable WHERE i = 999;",
+		ExpectedSelect:      []sql.Row{{"x"}},
+	},
+	{
 		WriteQuery: `INSERT INTO typestable VALUES (
 			999, 127, 32767, 2147483647, 9223372036854775807,
 			255, 65535, 4294967295, 18446744073709551615,
