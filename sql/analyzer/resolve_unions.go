@@ -40,12 +40,44 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			subqueryCtx, cancelFunc := ctx.NewSubContext()
 			defer cancelFunc()
 
-			left, err := a.Analyze(subqueryCtx, n.Left(), scope)
+			left, err := a.analyzeThroughBatch(subqueryCtx, n.Left(), scope, "default-rules")
 			if err != nil {
 				return nil, err
 			}
 
-			right, err := a.Analyze(subqueryCtx, n.Right(), scope)
+			right, err := a.analyzeThroughBatch(subqueryCtx, n.Right(), scope, "default-rules")
+			if err != nil {
+				return nil, err
+			}
+
+			return n.WithChildren(stripQueryProcess(left), stripQueryProcess(right))
+		default:
+			return n, nil
+		}
+	})
+}
+
+func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	if n.Resolved() {
+		return n, nil
+	}
+	// Procedures explicitly handle unions
+	if _, ok := n.(*plan.CreateProcedure); ok {
+		return n, nil
+	}
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.Union:
+			subqueryCtx, cancelFunc := ctx.NewSubContext()
+			defer cancelFunc()
+
+			left, err := a.analyzeStartingAtBatch(subqueryCtx, n.Left(), scope, "default-rules")
+			if err != nil {
+				return nil, err
+			}
+
+			right, err := a.analyzeStartingAtBatch(subqueryCtx, n.Right(), scope, "default-rules")
 			if err != nil {
 				return nil, err
 			}

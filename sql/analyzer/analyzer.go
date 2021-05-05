@@ -335,9 +335,32 @@ func (a *Analyzer) PopDebugContext() {
 	}
 }
 
+func analyzeAll(batchName string) bool {
+	return true
+}
+
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
+	return a.analyzeWithSelector(ctx, n, scope, analyzeAll)
+}
+
+func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string) (sql.Node, error) {
+	stop := false
+	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
+		if stop {
+			return false
+		}
+		if desc == until {
+			stop = true
+		}
+		// we return true even for the matching description; only start
+		// returning false after this batch.
+		return true
+	})
+}
+
+func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, selector func(d string) bool) (sql.Node, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		//"plan": , n.String(),
 	})
@@ -345,14 +368,16 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 	var err error
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
-		a.PushDebugContext(batch.Desc)
-		n, err = batch.Eval(ctx, a, n, scope)
-		if err != nil {
-			a.Log("Encountered error: %v", err)
+		if selector(batch.Desc) {
+			a.PushDebugContext(batch.Desc)
+			n, err = batch.Eval(ctx, a, n, scope)
+			if err != nil {
+				a.Log("Encountered error: %v", err)
+				a.PopDebugContext()
+				return n, err
+			}
 			a.PopDebugContext()
-			return n, err
 		}
-		a.PopDebugContext()
 	}
 
 	defer func() {
@@ -363,4 +388,17 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 	}()
 
 	return n, err
+}
+
+func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string) (sql.Node, error) {
+	start := false
+	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
+		if desc == startAt {
+			start = true
+		}
+		if start {
+			return true
+		}
+		return false
+	})
 }
