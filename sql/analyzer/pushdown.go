@@ -469,7 +469,6 @@ func pushdownFiltersUnderSubqueryAlias(sa *plan.SubqueryAlias, filters *filterSe
 	return sa.WithChildren(plan.NewFilter(expression.JoinAnd(expressionsForChild...), sa.Child))
 }
 
-
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
 func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[string]*indexLookup) (sql.Node, error) {
