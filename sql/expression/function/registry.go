@@ -136,7 +136,7 @@ var Defaults = []sql.Function{
 	sql.Function2{Name: "power", Fn: NewPower},
 	sql.Function1{Name: "radians", Fn: NewRadians},
 	sql.FunctionN{Name: "rand", Fn: NewRand},
-	sql.FunctionN{Name: "regexp_matches", Fn: NewRegexpMatches},
+	sql.FunctionN{Name: "regexp_like", Fn: NewRegexpLike},
 	sql.Function2{Name: "repeat", Fn: NewRepeat},
 	sql.Function3{Name: "replace", Fn: NewReplace},
 	sql.Function1{Name: "reverse", Fn: NewReverse},

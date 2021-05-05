@@ -27,8 +27,6 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
-
 			// subqueries do not have access to outer scope
 			child, err := a.analyzeThroughBatch(ctx, n.Child, nil, "default-rules")
 			if err != nil {
@@ -56,8 +54,6 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
-
 			// subqueries do not have access to outer scope
 			child, err := a.analyzeStartingAtBatch(ctx, n.Child, nil, "default-rules")
 			if err != nil {

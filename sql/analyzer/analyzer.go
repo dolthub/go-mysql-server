@@ -335,10 +335,14 @@ func (a *Analyzer) PopDebugContext() {
 	}
 }
 
+func analyzeAll(batchName string) bool {
+	return true
+}
+
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
-	return a.analyzeWithSelector(ctx, n, scope, func(string) bool { return true })
+	return a.analyzeWithSelector(ctx, n, scope, analyzeAll)
 }
 
 func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string) (sql.Node, error) {
