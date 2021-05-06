@@ -2,6 +2,7 @@ name: Test
 on: [push, pull_request]
 jobs:
   test:
+    name: Go tests
     strategy:
       matrix:
         go-version: [1.13.x, 1.14.x]
