@@ -3371,32 +3371,26 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"mydb", "mytable", "TABLE"}},
 	},
 	{
-		Query:    `SELECT REGEXP_MATCHES("bopbeepbop", "bop")`,
-		Expected: []sql.Row{{[]interface{}{"bop", "bop"}}},
+		Query: "SELECT REGEXP_LIKE('testing', 'TESTING');",
+		Expected: []sql.Row{
+			{1},
+		},
 	},
 	{
-		Query:    `SELECT EXPLODE(REGEXP_MATCHES("bopbeepbop", "bop"))`,
-		Expected: []sql.Row{{"bop"}, {"bop"}},
+		Query: "SELECT REGEXP_LIKE('testing', 'TESTING') FROM mytable;",
+		Expected: []sql.Row{
+			{1},
+			{1},
+			{1},
+		},
 	},
 	{
-		Query:    `SELECT EXPLODE(REGEXP_MATCHES("helloworld", "bop"))`,
-		Expected: nil,
-	},
-	{
-		Query:    `SELECT EXPLODE(REGEXP_MATCHES("", ""))`,
-		Expected: []sql.Row{{""}},
-	},
-	{
-		Query:    `SELECT REGEXP_MATCHES(NULL, "")`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT REGEXP_MATCHES("", NULL)`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT REGEXP_MATCHES("", "", NULL)`,
-		Expected: []sql.Row{{nil}},
+		Query: "SELECT i, s, REGEXP_LIKE(s, '[a-z]+d row') FROM mytable;",
+		Expected: []sql.Row{
+			{1, "first row", 0},
+			{2, "second row", 1},
+			{3, "third row", 1},
+		},
 	},
 	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",
@@ -4747,6 +4741,34 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{
 			{nil},
 		},
+	},
+	{
+		Query:    "SELECT JSON_CONTAINS(NULL, 1)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT JSON_CONTAINS(1, NULL)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT JSON_CONTAINS(1, NULL, '$.a')",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.a')`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1', '$.b')`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.a')`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.c')`,
+		Expected: []sql.Row{{true}},
 	},
 }
 

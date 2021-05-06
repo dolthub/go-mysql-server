@@ -68,6 +68,8 @@ var DefaultRules = []Rule{
 // OnceAfterDefault contains the rules to be applied just once after the
 // DefaultRules.
 var OnceAfterDefault = []Rule{
+	{"finalize_subqueries", finalizeSubqueries},
+	{"finalize_unions", finalizeUnions},
 	{"load_triggers", loadTriggers},
 	{"process_truncate", processTruncate},
 	{"resolve_column_defaults", resolveColumnDefaults},

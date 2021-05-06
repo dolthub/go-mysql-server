@@ -103,6 +103,12 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
+		WriteQuery:          "UPDATE mytable SET s = _binary 'updated' WHERE i = 3;",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM mytable;",
+		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "updated"}},
+	},
+	{
 		WriteQuery:          "UPDATE typestable SET ti = '2020-03-06 00:00:00';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM typestable;",

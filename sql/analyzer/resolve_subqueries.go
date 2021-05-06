@@ -27,10 +27,35 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
-			a.Log("found subquery %q with child of type %T", n.Name(), n.Child)
-
 			// subqueries do not have access to outer scope
-			child, err := a.Analyze(ctx, n.Child, nil)
+			child, err := a.analyzeThroughBatch(ctx, n.Child, nil, "default-rules")
+			if err != nil {
+				return nil, err
+			}
+
+			if len(n.Columns) > 0 {
+				schemaLen := schemaLength(n.Child)
+				if schemaLen != len(n.Columns) {
+					return nil, sql.ErrColumnCountMismatch.New()
+				}
+			}
+
+			return n.WithChildren(stripQueryProcess(child))
+		default:
+			return n, nil
+		}
+	})
+}
+
+func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, ctx := ctx.Span("finalize_subqueries")
+	defer span.Finish()
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.SubqueryAlias:
+			// subqueries do not have access to outer scope
+			child, err := a.analyzeStartingAtBatch(ctx, n.Child, nil, "default-rules")
 			if err != nil {
 				return nil, err
 			}

@@ -15,4 +15,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Test
+      if: ${{ matrix.platform != 'ubuntu-latest' }}
       run: go test ./...
+    - name: Test
+      if: ${{ matrix.platform == 'ubuntu-latest' }}
+      run: go test -race ./...

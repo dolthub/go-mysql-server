@@ -2566,7 +2566,6 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 		if err != nil {
 			return nil, err
 		}
-
 		return expression.NewUnaryMinus(expr), nil
 	case sqlparser.PlusStr:
 		// Unary plus expressions do nothing (do not turn the expression positive). Just return the underlying expression.
@@ -2576,8 +2575,18 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 		if err != nil {
 			return nil, err
 		}
-
 		return expression.NewBinary(expr), nil
+	case "_binary ":
+		// Charset introducers do not operate as CONVERT, they just state how a string should be interpreted.
+		// TODO: if we encounter a non-string, do something other than just return
+		expr, err := ExprToExpression(ctx, e.Expr)
+		if err != nil {
+			return nil, err
+		}
+		if exprLiteral, ok := expr.(*expression.Literal); ok && sql.IsTextOnly(exprLiteral.Type()) {
+			return expression.NewLiteral(exprLiteral.Value(), sql.LongBlob), nil
+		}
+		return expr, nil
 	default:
 		return nil, ErrUnsupportedFeature.New("unary operator: " + e.Operator)
 	}
