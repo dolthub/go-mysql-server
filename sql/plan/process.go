@@ -101,8 +101,20 @@ func (p *QueryProcess) DebugString() string {
 // shouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
 // any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
 func (p *QueryProcess) shouldSetFoundRows() bool {
-	limit, ok := p.Child.(*Limit)
-	if !ok {
+	var limit *Limit
+	Inspect(p.Child, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *StartTransaction:
+			return true
+		case *Limit:
+			limit = n
+			return false
+		default:
+			return false
+		}
+	})
+
+	if limit == nil {
 		return true
 	}
 

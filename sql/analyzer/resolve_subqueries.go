@@ -127,11 +127,20 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 // Something similar happens in the trackProcess analyzer step, but we can't always wait that long to get rid of the
 // QueryProcess node.
 // TODO: instead of stripping this node off after analysis, it would be better to just not add it in the first place.
-func stripQueryProcess(analyzed sql.Node) sql.Node {
-	if qp, ok := analyzed.(*plan.QueryProcess); ok {
-		analyzed = qp.Child
+func stripQueryProcess(n sql.Node) sql.Node {
+	nodeIsPassthrough := true
+	for nodeIsPassthrough {
+		switch tn := n.(type) {
+		case *plan.QueryProcess:
+			n = tn.Child
+		case *plan.StartTransaction:
+			n = tn.Child
+		default:
+			nodeIsPassthrough = false
+		}
 	}
-	return analyzed
+
+	return n
 }
 
 func exprIsCacheable(expr sql.Expression, lowestAlloewdIdx int) bool {

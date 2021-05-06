@@ -241,7 +241,6 @@ func (h *Handler) doQuery(
 	logrus.Tracef("received query %s", query)
 
 	ctx, err := h.sm.NewContextWithQuery(c, query)
-
 	if err != nil {
 		return err
 	}
@@ -268,7 +267,7 @@ func (h *Handler) doQuery(
 	// statements not handled by vitess's parser, so even if there's a parse error here we still pass it to the engine
 	// for execution.
 	// TODO: unify parser logic so we don't have to parse twice
-	parsedQuery, parseErr := sqlparser.Parse(query)
+	parsedQuery, _ := sqlparser.Parse(query)
 	switch n := parsedQuery.(type) {
 	case *sqlparser.Load:
 		if n.Local {
@@ -281,6 +280,27 @@ func (h *Handler) doQuery(
 			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, n.Infile)
 			if err != nil {
 				return err
+			}
+		}
+	}
+
+	// TODO: this should happen in the analyzer so it can work with non-current databases
+	beginNewTransaction := ctx.GetTransaction() == nil
+	if beginNewTransaction {
+		db := ctx.GetCurrentDatabase()
+		if len(db) > 0 {
+			database, err := h.e.Catalog.Database(db)
+			if err != nil {
+				return err
+			}
+
+			tdb, ok := database.(sql.TransactionDatabase)
+			if ok {
+				tx, err := tdb.BeginTransaction(ctx)
+				if err != nil {
+					return err
+				}
+				ctx.SetTransaction(tx)
 			}
 		}
 	}
@@ -374,13 +394,11 @@ rowLoop:
 			close(quit)
 			return err
 		case row := <-rowChan:
-			if isOkResult(row) {
+			if sql.IsOkResult(row) {
 				if len(r.Rows) > 0 {
 					panic("Got OkResult mixed with RowResult")
 				}
 				r = resultFromOkResult(row[0].(sql.OkResult))
-
-				logrus.Tracef("returning OK result %v", r)
 				break rowLoop
 			}
 
@@ -390,7 +408,7 @@ rowLoop:
 				return err
 			}
 
-			logrus.Tracef("returning result row %s", outputRow)
+			logrus.Tracef("spooling result row %s", outputRow)
 			r.Rows = append(r.Rows, outputRow)
 			r.RowsAffected++
 		case <-timer.C:
@@ -415,11 +433,23 @@ rowLoop:
 		return err
 	}
 
-	_, statementIsCommit := parsedQuery.(*sqlparser.Commit)
-	if statementIsCommit || (autoCommit && statementNeedsCommit(parsedQuery, parseErr)) {
+	tx := ctx.GetTransaction()
+	commitTransaction := tx != nil && autoCommit && !ctx.GetIgnoreAutoCommit()
+	if commitTransaction {
+		// TODO: unify this logic with Commit node
+		logrus.Tracef("committing transaction %s", tx)
 		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
 			return err
 		}
+		// Clearing out the current transaction will tell us to start a new one the next time this session queries
+		ctx.SetTransaction(nil)
+	}
+
+	switch len(r.Rows) {
+	case 0:
+		logrus.Tracef("returning empty result")
+	case 1:
+		logrus.Tracef("returning result %v", r)
 	}
 
 	// Even if r.RowsAffected = 0, the callback must be
@@ -519,17 +549,6 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
-func statementNeedsCommit(parsedQuery sqlparser.Statement, parseErr error) bool {
-	if parseErr == nil {
-		switch parsedQuery.(type) {
-		case *sqlparser.DDL, *sqlparser.Commit, *sqlparser.Update, *sqlparser.Insert, *sqlparser.Delete, *sqlparser.Load:
-			return true
-		}
-	}
-
-	return false
-}
-
 func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
 	infoStr := ""
 	if result.Info != nil {
@@ -540,14 +559,6 @@ func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
 		InsertID:     result.InsertID,
 		Info:         infoStr,
 	}
-}
-
-func isOkResult(row sql.Row) bool {
-	if len(row) == 1 {
-		_, ok := row[0].(sql.OkResult)
-		return ok
-	}
-	return false
 }
 
 func getTransactionDbName(ctx *sql.Context) string {

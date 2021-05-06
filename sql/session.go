@@ -52,7 +52,7 @@ type Client struct {
 type Session interface {
 	// Address of the server.
 	Address() string
-	// User of the session.
+	// Client returns the user of the session.
 	Client() Client
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
@@ -67,7 +67,7 @@ type Session interface {
 	GetAllSessionVariables() map[string]interface{}
 	// GetCurrentDatabase gets the current database for this session
 	GetCurrentDatabase() string
-	// SetDefaultDatabase sets the current database for this session
+	// SetCurrentDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
 	// CommitTransaction commits the current transaction for this session for the current database
 	CommitTransaction(ctx *Context, dbName string) error
@@ -96,22 +96,40 @@ type Session interface {
 	SetLastQueryInfo(key string, value int64)
 	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.
 	GetLastQueryInfo(key string) int64
+	// GetTransaction returns the active transaction, if any
+	GetTransaction() Transaction
+	// SetTransaction sets the session's transaction
+	SetTransaction(tx Transaction)
+	// SetIgnoreAutoCommit instructs the session to ignore the value of the @@autocommit variable, or consider it again
+	SetIgnoreAutoCommit(ignore bool)
+	// GetIgnoreAutoCommit returns whether this session should ignore the @@autocommit variable
+	GetIgnoreAutoCommit() bool
 }
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	id            uint32
-	addr          string
-	currentDB     string
-	client        Client
-	mu            *sync.RWMutex
-	systemVars    map[string]interface{}
-	userVars      map[string]interface{}
-	warnings      []*Warning
-	warncnt       uint16
-	locks         map[string]bool
-	queriedDb     string
-	lastQueryInfo map[string]int64
+	id               uint32
+	addr             string
+	currentDB        string
+	client           Client
+	mu               *sync.RWMutex
+	systemVars       map[string]interface{}
+	userVars         map[string]interface{}
+	warnings         []*Warning
+	warncnt          uint16
+	locks            map[string]bool
+	queriedDb        string
+	lastQueryInfo    map[string]int64
+	tx               Transaction
+	ignoreAutocommit bool
+}
+
+func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
+	s.ignoreAutocommit = ignore
+}
+
+func (s *BaseSession) GetIgnoreAutoCommit() bool {
+	return s.ignoreAutocommit
 }
 
 var _ Session = (*BaseSession)(nil)
@@ -368,6 +386,14 @@ func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 		}
 	}
 	return true, nil
+}
+
+func (s *BaseSession) GetTransaction() Transaction {
+	return s.tx
+}
+
+func (s *BaseSession) SetTransaction(tx Transaction) {
+	s.tx = tx
 }
 
 // NewSession creates a new session with data.
