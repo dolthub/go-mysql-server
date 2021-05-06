@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -30,9 +32,10 @@ type RegexpLike struct {
 	Pattern sql.Expression
 	Flags   sql.Expression
 
-	cached    bool
-	cachedVal interface{}
-	re        *regexp.Regexp
+	cachedVal   atomic.Value
+	re          *regexp.Regexp
+	compileOnce sync.Once
+	compileErr  error
 }
 
 var _ sql.FunctionExpression = (*RegexpLike)(nil)
@@ -103,20 +106,25 @@ func (r *RegexpLike) String() string {
 	return fmt.Sprintf("regexp_like(%s)", strings.Join(args, ", "))
 }
 
+func (r *RegexpLike) compile(ctx *sql.Context) {
+	r.compileOnce.Do(func() {
+		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Flags, r.FunctionName(), nil)
+	})
+}
+
 // Eval implements the sql.Expression interface.
 func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	span, ctx := ctx.Span("function.RegexpLike")
 	defer span.Finish()
 
-	if r.cached {
-		return r.cachedVal, nil
+	cached := r.cachedVal.Load()
+	if cached != nil {
+		return cached, nil
 	}
-	var err error
-	if r.re == nil {
-		r.re, err = compileRegex(ctx, r.Pattern, r.Flags, r.FunctionName(), nil)
-		if err != nil {
-			return nil, err
-		}
+
+	r.compile(ctx)
+	if r.compileErr != nil {
+		return nil, r.compileErr
 	}
 	if r.re == nil {
 		return nil, nil
@@ -140,9 +148,9 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	} else {
 		outVal = int8(0)
 	}
+
 	if canBeCached(r.Text) {
-		r.cached = true
-		r.cachedVal = outVal
+		r.cachedVal.Store(outVal)
 	}
 	return outVal, nil
 }
