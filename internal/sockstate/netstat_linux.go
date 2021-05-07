@@ -229,6 +229,7 @@ func parseSocktab(r io.Reader, accept AcceptFn) ([]sockTabEntry, error) {
 // This net stat code appears to be broken when running a linux binary under the Windows Subsystem for Linux (WSL). If
 // we detect we are running on WSL, disable the TCP socket check, as we do on Windows and Darwin.
 var isWSL = false
+var isProcBlocked = false
 
 func init() {
 	osRelease, err := ioutil.ReadFile("/proc/sys/kernel/osrelease")
@@ -239,13 +240,14 @@ func init() {
 		}
 	} else {
 		logrus.Warnf("Could not read /proc/sys/kernel/osrelease: %s", err.Error())
+		isProcBlocked = true
 	}
 }
 
 // tcpSocks returns a slice of active TCP sockets containing only those
 // elements that satisfy the accept function
 func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
-	if isWSL {
+	if isWSL || isProcBlocked {
 		logrus.Warn("Connection checking not implemented for WSL")
 		return nil, ErrSocketCheckNotImplemented.New()
 	}
@@ -277,7 +279,7 @@ func tcpSocks(accept AcceptFn) ([]sockTabEntry, error) {
 
 // GetConnInode returns the Linux inode number of a TCP connection
 func GetConnInode(c *net.TCPConn) (n uint64, err error) {
-	if isWSL {
+	if isWSL || isProcBlocked {
 		return 0, ErrSocketCheckNotImplemented.New()
 	}
 

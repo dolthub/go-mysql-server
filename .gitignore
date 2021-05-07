@@ -33,3 +33,6 @@ _example/*.exe
 test-server
 
 .idea/*
+
+# OSX Files
+.DS_Store
