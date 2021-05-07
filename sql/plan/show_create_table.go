@@ -243,6 +243,17 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		}
 	}
 
+	checksTable := getChecksTable(table)
+	if checksTable != nil {
+		checks, err := checksTable.GetChecks(i.ctx)
+		if err != nil {
+			return "", err
+		}
+		for _, check := range checks {
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK ((%s))", check.Name, check.CheckExpression))
+		}
+	}
+
 	return fmt.Sprintf(
 		"CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		table.Name(),
@@ -257,6 +268,17 @@ func getForeignKeyTable(t sql.Table) sql.ForeignKeyTable {
 		return t
 	case sql.TableWrapper:
 		return getForeignKeyTable(t.Underlying())
+	default:
+		return nil
+	}
+}
+
+func getChecksTable(t sql.Table) sql.CheckTable {
+	switch t := t.(type) {
+	case sql.CheckTable:
+		return t
+	case sql.TableWrapper:
+		return getChecksTable(t.Underlying())
 	default:
 		return nil
 	}

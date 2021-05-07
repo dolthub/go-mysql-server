@@ -44,6 +44,7 @@ func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
+	createChecks(t, harness, engine)
 
 	for _, tt := range QueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
@@ -62,6 +63,7 @@ func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
 	engine := NewEngine(t, harness)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
+	createChecks(t, harness, engine)
 
 	for _, tt := range queries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
@@ -91,6 +93,7 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	engine := NewEngineWithDbs(t, harness, dbs, nil)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
+	createChecks(t, harness, engine)
 
 	for _, tt := range InfoSchemaQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, nil)
@@ -111,6 +114,13 @@ func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	if fkh, ok := harness.(ForeignKeyHarness); ok && fkh.SupportsForeignKeys() {
 		ctx := NewContextWithEngine(harness, engine)
 		TestQueryWithContext(t, ctx, engine, "ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE", nil, nil, nil)
+	}
+}
+
+func createChecks(t *testing.T, harness Harness, engine *sqle.Engine) {
+	if chk, ok := harness.(ChecksHarness); ok && chk.SupportsCheckConstraints() {
+		ctx := NewContextWithEngine(harness, engine)
+		TestQueryWithContext(t, ctx, engine, "ALTER TABLE mytable ADD CONSTRAINT mycheck CHECK (i > -100)", nil, nil, nil)
 	}
 }
 
@@ -2692,6 +2702,7 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 	engine := NewEngineWithDbs(t, harness, dbs, nil)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
+	createChecks(t, harness, engine)
 
 	for _, tt := range ShowTableStatusQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, nil)

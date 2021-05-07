@@ -73,6 +73,7 @@ var _ VersionedDBHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
+var _ ChecksHarness = (*MemoryHarness)(nil)
 
 type SkippingMemoryHarness struct {
 	MemoryHarness
@@ -91,6 +92,10 @@ func (m *MemoryHarness) SupportsForeignKeys() bool {
 }
 
 func (m *MemoryHarness) SupportsKeylessTables() bool {
+	return true
+}
+
+func (m *MemoryHarness) SupportsCheckConstraints() bool {
 	return true
 }
 

@@ -5373,7 +5373,8 @@ var InfoSchemaQueries = []QueryTest{
 				"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
 				"  PRIMARY KEY (`i`),\n" +
 				"  KEY `mytable_i_s` (`i`,`s`),\n" +
-				"  UNIQUE KEY `mytable_s` (`s`)\n" +
+				"  UNIQUE KEY `mytable_s` (`s`),\n" +
+				"  CONSTRAINT `mycheck` CHECK ((`i` > -100))\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
 	},
@@ -5420,6 +5421,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
@@ -5432,7 +5434,9 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
-		Expected: []sql.Row{},
+		Expected: []sql.Row{
+			{"def", "mydb", "mycheck", "i > -100"},
+		},
 	},
 	{
 		Query: "SELECT * FROM information_schema.key_column_usage ORDER BY constraint_schema, table_name",
