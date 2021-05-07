@@ -200,8 +200,10 @@ func (c *Commit) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Resolved implements the sql.Node interface.
 func (c *Commit) Resolved() bool {
-	_, ok := c.db.(sql.UnresolvedDatabase)
-	return !ok
+	// If the database is nameless, we count it as resolved
+	_, unresolved := c.db.(sql.UnresolvedDatabase)
+	dbResolved := !unresolved || c.db.Name() == ""
+	return dbResolved
 }
 
 // Children implements the sql.Node interface.
