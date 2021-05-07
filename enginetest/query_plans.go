@@ -347,6 +347,16 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'a'`,
+		ExpectedPlan: "SubqueryAlias(othertable_three)\n" +
+			" └─ SubqueryAlias(othertable_two)\n" +
+			"     └─ SubqueryAlias(othertable_one)\n" +
+			"         └─ Filter(othertable.s2 = \"a\")\n" +
+			"             └─ Projected table access on [s2 i2]\n" +
+			"                 └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT othertable.s2, othertable.i2, mytable.i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON othertable.i2 = mytable.i WHERE othertable.s2 > 'a'`,
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
