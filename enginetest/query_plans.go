@@ -339,13 +339,31 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM (SELECT * FROM othertable) othertable_alias WHERE s2 = 'a'`,
+		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
+			" └─ Filter(othertable.s2 = \"a\")\n" +
+			"     └─ Projected table access on [s2 i2]\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'a'`,
+		ExpectedPlan: "SubqueryAlias(othertable_three)\n" +
+			" └─ SubqueryAlias(othertable_two)\n" +
+			"     └─ SubqueryAlias(othertable_one)\n" +
+			"         └─ Filter(othertable.s2 = \"a\")\n" +
+			"             └─ Projected table access on [s2 i2]\n" +
+			"                 └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT othertable.s2, othertable.i2, mytable.i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON othertable.i2 = mytable.i WHERE othertable.s2 > 'a'`,
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Filter(othertable.s2 > \"a\")\n" +
-			"     │   └─ SubqueryAlias(othertable)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Filter(othertable.s2 > \"a\")\n" +
 			"     │       └─ Projected table access on [s2 i2]\n" +
-			"     │           └─ Table(othertable)\n" +
+			"     │           └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
 			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
@@ -484,6 +502,22 @@ var PlanTests = []QueryPlanTest{
 			" └─ RightIndexedJoin(one_pk.pk = two_pk.pk1 AND one_pk.pk = two_pk.pk2)\n" +
 			"     ├─ Table(two_pk)\n" +
 			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT * FROM othertable) othertable_alias WHERE othertable_alias.i2 = 1`,
+		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
+			" └─ Filter(othertable.i2 = 1)\n" +
+			"     └─ Projected table access on [s2 i2]\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT * FROM othertable WHERE i2 = 1) othertable_alias WHERE othertable_alias.i2 = 1`,
+		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
+			" └─ Filter(othertable.i2 = 1 AND othertable.i2 = 1)\n" +
+			"     └─ Projected table access on [s2 i2]\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{

@@ -118,6 +118,8 @@ func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
+	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
 	for _, tt := range PlanTests {
 		t.Run(tt.Query, func(t *testing.T) {
 			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
@@ -3137,7 +3139,7 @@ func NewContext(harness Harness) *sql.Context {
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
-			plan.NewUnresolvedTable("mytable", "mydb"),
+			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
 		).AsView())
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
