@@ -5457,7 +5457,7 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT * FROM information_schema.partitions",
+		Query:    "SELECT * FROM information_schema.partitions",
 		Expected: []sql.Row{},
 	},
 }
