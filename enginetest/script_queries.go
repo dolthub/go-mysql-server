@@ -825,7 +825,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable5` (\n  `pk` int NOT NULL,\n"+
 							"  `v` int,\n"+
 							"  PRIMARY KEY (`pk`),\n"+
-							"  CONSTRAINT `check4` CHECK ((((`pk` > 2) OR (`v` < 5)) AND (`pk` < 9)))\n"+
+							"  CONSTRAINT `check5` CHECK (((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9))))\n"+
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},

@@ -331,84 +331,146 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 }
 
 func formatCheckExpression(expr sql.Expression) (string, error) {
-	exprs, err := formatCheckExpressionHelper(expr)
-
-	fmt.Println(exprs)
+	st, err := formatCheckExpressionHelper(expr)
 
 	if err != nil {
 		return "", err
 	}
 
-	return "", nil
+	return st, nil
 }
 
-func formatCheckExpressionHelper(expr sql.Expression) (retExpr []sql.Expression, err error)  {
+func formatCheckExpressionHelper(expr sql.Expression) (string, error)  {
 	switch t := expr.(type) {
 	case *expression.And:
+		leftChild := t.Left
+		rightChild := t.Right
+
+		lok := isSoloOperand(leftChild)
+		rok := isSoloOperand(rightChild)
+
+		if lok && rok {
+			return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(leftChild), "AND", getCorrectStringFromSoloOperand(rightChild)), nil
+		}
+
+		var left string
+		var err error
+		if !lok {
+			left, err = formatCheckExpressionHelper(leftChild)
+			if err != nil {
+				return "", err
+			}
+			left = left[1:len(left)-1] // TODO: Switch to regex
+		} else {
+			left = getCorrectStringFromSoloOperand(leftChild)
+		}
+
+
+		var right string
+		if !rok {
+			right, err = formatCheckExpressionHelper(rightChild)
+			right = right[1:len(right)-1] // TODO: Switch to regex
+			if err != nil {
+				return "", err
+			}
+		} else {
+			right = getCorrectStringFromSoloOperand(rightChild)
+		}
+
+		_, sameOp := leftChild.(*expression.And)
+
+		if sameOp {
+			return fmt.Sprintf("(%s %s %s)", left, "AND", right), nil
+		} else {
+			return fmt.Sprintf("((%s) %s %s)", left, "AND", right), nil
+		}
+	case *expression.Or:
 		if len(t.Children()) != 2 {
-			return nil, fmt.Errorf("AND/OR operation has more than 2 children")
+			return "", fmt.Errorf("AND/OR operation has more than 2 children")
 		}
 
 		leftChild := t.Children()[0]
 		rightChild := t.Children()[1]
 
-		if isSoloOperand(leftChild) && isSoloOperand(rightChild) {
-			retExpr =  append(retExpr, expr)
-			return retExpr, nil
+		lok := isSoloOperand(leftChild)
+		rok := isSoloOperand(rightChild)
+
+		if lok && rok {
+			return fmt.Sprintf("(%s %s %s)", leftChild.String(), "OR", rightChild.String()), nil
 		}
 
-		left, err := formatCheckExpressionHelper(leftChild)
-		if err != nil {
-			return nil, err
+		var left string
+		var err error
+		if !lok {
+			left, err = formatCheckExpressionHelper(leftChild)
+			if err != nil {
+				return "", err
+			}
+			left = left[1:len(left)-1] // TODO: Switch to regex
+		} else {
+			left = getCorrectStringFromSoloOperand(leftChild)
 		}
 
-		retExpr =  append(retExpr, left...)
-
-		retExpr =  append(retExpr, expr)
-
-		right, err := formatCheckExpressionHelper(rightChild)
-		if err != nil {
-			return nil, err
+		var right string
+		if !rok {
+			right, err = formatCheckExpressionHelper(rightChild)
+			if err != nil {
+				return "", err
+			}
+			right = right[1:len(right)-1] // TODO: Switch to regex
+		} else {
+			right = getCorrectStringFromSoloOperand(rightChild)
 		}
 
-		retExpr =  append(retExpr, right...)
+		_, sameOp := leftChild.(*expression.Or)
 
-		return retExpr, nil
-	//case expression.Comparer:
-	//	left, err := formatCheckExpressionHelper(t.Left(), arr)
-	//	if err != nil {
-	//		return nil,  nil, err
-	//	}
-	//
-	//	right, rs, err := formatCheckExpressionHelper(t.Right(), arr)
-	//	if err != nil {
-	//		return nil, "", err
-	//	}
-	//
-	//	newExpr, err := t.WithChildren(left, right)
-	//	if err != nil {
-	//		return nil, "", err
-	//	}
-	//
-	//	return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Expression(), rs), nil
-	//case *expression.UnresolvedColumn:
-	//	name := t.Name()
-	//	strings.Replace(name, "`", "", -1)
-	//
-	//	newExpr := expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
-	//
-	//	return newExpr, newExpr.String(), nil
+		if sameOp {
+			return fmt.Sprintf("(%s %s %s)", left, "OR", right), nil
+		} else {
+
+			return fmt.Sprintf("(%s %s (%s))", left, "OR", right), nil
+		}
+	case expression.Comparer:
+		if isSoloOperand(t) {
+			return getCorrectStringFromSoloOperand(t), nil
+		}
+
+		return fmt.Sprintf("((%s) %s %s)", t.Left(), t.Expression(), t.Right()), nil
 	default:
-		return []sql.Expression{expr}, nil
+		return expr.String(), nil
 	}
 }
 
 func isSoloOperand(expr sql.Expression) bool {
-	switch expr.(type) {
+	switch t := expr.(type) {
 	case *expression.UnresolvedColumn, *expression.Literal:
+		return true
+	case expression.Comparer:
+		if _, ok := t.Left().(expression.Comparer); ok {
+			return false
+		}
+
+		if _, ok := t.Right().(expression.Comparer); ok {
+			return false
+		}
+
 		return true
 	default:
 		return false
+	}
+}
+
+func getCorrectStringFromSoloOperand(expr sql.Expression) string {
+	switch t := expr.(type) {
+	case *expression.UnresolvedColumn:
+		name := t.Name()
+		strings.Replace(name, "`", "", -1)
+
+		return fmt.Sprintf("`%s`", name)
+	case expression.Comparer:
+		return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(t.Left()), t.Expression(), getCorrectStringFromSoloOperand(t.Right()))
+	default:
+		return  t.String()
 	}
 }
 
