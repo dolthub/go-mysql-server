@@ -249,7 +249,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			_, st, err := formatCheckExpression(check.Expr)
+			st, err := formatCheckExpression(check.Expr)
 			if err != nil {
 				return "", err
 			}
@@ -330,68 +330,85 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	return true
 }
 
-func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error)  {
+func formatCheckExpression(expr sql.Expression) (string, error) {
+	exprs, err := formatCheckExpressionHelper(expr)
+
+	fmt.Println(exprs)
+
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
+}
+
+func formatCheckExpressionHelper(expr sql.Expression) (retExpr []sql.Expression, err error)  {
 	switch t := expr.(type) {
-	case expression.Comparer:
-		left, ls, err := formatCheckExpression(t.Left())
-		if err != nil {
-			return nil,  "", err
-		}
-
-		right, rs, err := formatCheckExpression(t.Right())
-		if err != nil {
-			return nil, "", err
-		}
-
-		newExpr, err := t.WithChildren(left, right)
-		if err != nil {
-			return nil, "", err
-		}
-
-		return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Expression(), rs), nil
 	case *expression.And:
-		left, ls, err := formatCheckExpression(t.Left)
-		if err != nil {
-			return nil,  "", err
+		if len(t.Children()) != 2 {
+			return nil, fmt.Errorf("AND/OR operation has more than 2 children")
 		}
 
-		right, rs, err := formatCheckExpression(t.Right)
-		if err != nil {
-			return nil,  "", err
+		leftChild := t.Children()[0]
+		rightChild := t.Children()[1]
+
+		if isSoloOperand(leftChild) && isSoloOperand(rightChild) {
+			retExpr =  append(retExpr, expr)
+			return retExpr, nil
 		}
 
-		newExpr, err := t.WithChildren(left, right)
+		left, err := formatCheckExpressionHelper(leftChild)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
-		return newExpr, fmt.Sprintf("(%s %s %s)", ls, "AND", rs), nil
-	case *expression.Or:
-		left, ls, err := formatCheckExpression(t.Left)
+		retExpr =  append(retExpr, left...)
+
+		retExpr =  append(retExpr, expr)
+
+		right, err := formatCheckExpressionHelper(rightChild)
 		if err != nil {
-			return nil,  "", err
+			return nil, err
 		}
 
-		right, rs, err := formatCheckExpression(t.Right)
-		if err != nil {
-			return nil,  "", err
-		}
+		retExpr =  append(retExpr, right...)
 
-		newExpr, err := t.WithChildren(left, right)
-		if err != nil {
-			return nil, "", err
-		}
-
-		return newExpr, fmt.Sprintf("(%s %s %s)", ls, "OR", rs), nil
-	case *expression.UnresolvedColumn:
-		name := t.Name()
-		strings.Replace(name, "`", "", -1)
-
-		newExpr := expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
-
-		return newExpr, newExpr.String(), nil
+		return retExpr, nil
+	//case expression.Comparer:
+	//	left, err := formatCheckExpressionHelper(t.Left(), arr)
+	//	if err != nil {
+	//		return nil,  nil, err
+	//	}
+	//
+	//	right, rs, err := formatCheckExpressionHelper(t.Right(), arr)
+	//	if err != nil {
+	//		return nil, "", err
+	//	}
+	//
+	//	newExpr, err := t.WithChildren(left, right)
+	//	if err != nil {
+	//		return nil, "", err
+	//	}
+	//
+	//	return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Expression(), rs), nil
+	//case *expression.UnresolvedColumn:
+	//	name := t.Name()
+	//	strings.Replace(name, "`", "", -1)
+	//
+	//	newExpr := expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
+	//
+	//	return newExpr, newExpr.String(), nil
 	default:
-		return expr, expr.String(), nil
+		return []sql.Expression{expr}, nil
+	}
+}
+
+func isSoloOperand(expr sql.Expression) bool {
+	switch expr.(type) {
+	case *expression.UnresolvedColumn, *expression.Literal:
+		return true
+	default:
+		return false
 	}
 }
 
