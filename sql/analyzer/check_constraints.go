@@ -151,6 +151,26 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			}
 
 			return &nn, nil
+		case *plan.ShowCreateTable:
+			rtable := getResolvedTable(node)
+
+			if rtable == nil {
+				return node, nil
+			}
+
+			table, ok := rtable.Table.(sql.CheckTable)
+			if !ok {
+				return node, nil
+			}
+
+			var err error
+			nn := *node
+			nn.Checks, err = loadChecksFromTable(ctx, table)
+			if err != nil {
+				return nil, err
+			}
+
+			return &nn, nil
 
 		// TODO: throw an error if an ALTER TABLE would invalidate a check constraint, or fix them up automatically
 		//  when possible

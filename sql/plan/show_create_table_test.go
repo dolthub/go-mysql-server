@@ -98,7 +98,6 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	require.NoError(table.CreateForeignKey(ctx, "fk1", []string{"baz", "zab"}, "otherTable", []string{"a", "b"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_Cascade))
 	require.NoError(table.CreateForeignKey(ctx, "fk2", []string{"foo"}, "otherTable", []string{"b"}, sql.ForeignKeyReferenceOption_Restrict, sql.ForeignKeyReferenceOption_DefaultAction))
 	require.NoError(table.CreateForeignKey(ctx, "fk3", []string{"bza"}, "otherTable", []string{"c"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_DefaultAction))
-	require.NoError(table.CreateCheck(ctx, &sql.CheckDefinition{Name: "mycheck", CheckExpression: "`zab` > 0", Enforced: true}))
 
 	db.AddTable(table.Name(), table)
 
@@ -128,6 +127,15 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			comment: "test comment",
 		},
 	}
+
+	showCreateTable.(*ShowCreateTable).Checks = sql.CheckConstraints{
+		{
+			Name: "mycheck",
+			Expr: expression.NewGreaterThan(expression.NewUnresolvedColumn("zab"), expression.NewLiteral(int8(0), sql.Int8)),
+			Enforced: true,
+		},
+	}
+
 
 	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 

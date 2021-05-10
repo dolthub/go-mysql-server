@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 	"strings"
 
@@ -31,6 +32,7 @@ type ShowCreateTable struct {
 	*UnaryNode
 	IsView  bool
 	Indexes []sql.Index
+	Checks  sql.CheckConstraints
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
@@ -88,6 +90,7 @@ func (n *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		table:   n.Child,
 		isView:  n.IsView,
 		indexes: n.Indexes,
+		checks:  n.Checks,
 	}, nil
 }
 
@@ -112,6 +115,7 @@ type showCreateTablesIter struct {
 	isView       bool
 	ctx          *sql.Context
 	indexes      []sql.Index
+	checks 		 sql.CheckConstraints
 }
 
 func (i *showCreateTablesIter) Next() (sql.Row, error) {
@@ -243,14 +247,14 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 		}
 	}
 
-	checksTable := getChecksTable(table)
-	if checksTable != nil {
-		checks, err := checksTable.GetChecks(i.ctx)
-		if err != nil {
-			return "", err
-		}
-		for _, check := range checks {
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK ((%s))", check.Name, check.CheckExpression))
+	if i.checks != nil {
+		for _, check := range i.checks {
+			updt, err := getNewCheckExpressionWithBacktickedColumn(check.Expr)
+			if err != nil {
+				return "", err
+			}
+
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK ((%s))", check.Name, updt.String()))
 		}
 	}
 
@@ -324,6 +328,24 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	}
 
 	return true
+}
+
+func getNewCheckExpressionWithBacktickedColumn(expr sql.Expression) (sql.Expression, error)  {
+	for i, child := range expr.Children() {
+		switch t := child.(type){
+		case *expression.UnresolvedColumn:
+			name := t.Name()
+			strings.Replace(name, "`", "", -1)
+
+			children := expr.Children()
+			children[i] = expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
+			return expr.WithChildren(children...)
+		default:
+			return getNewCheckExpressionWithBacktickedColumn(child)
+		}
+	}
+
+	return nil, fmt.Errorf("Child was not found")
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {
