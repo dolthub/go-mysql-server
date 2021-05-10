@@ -70,7 +70,7 @@ type Session interface {
 	// SetCurrentDatabase sets the current database for this session
 	SetCurrentDatabase(dbName string)
 	// CommitTransaction commits the current transaction for this session for the current database
-	CommitTransaction(ctx *Context, dbName string) error
+	CommitTransaction(ctx *Context, dbName string, transaction Transaction) error
 	// ID returns the unique ID of the connection.
 	ID() uint32
 	// Warn stores the warning in the session.
@@ -135,7 +135,7 @@ func (s *BaseSession) GetIgnoreAutoCommit() bool {
 var _ Session = (*BaseSession)(nil)
 
 // CommitTransaction commits the current transaction for the current database.
-func (s *BaseSession) CommitTransaction(*Context, string) error {
+func (s *BaseSession) CommitTransaction(*Context, string, Transaction) error {
 	// no-op on BaseSession
 	return nil
 }

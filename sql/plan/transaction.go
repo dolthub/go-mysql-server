@@ -63,7 +63,7 @@ func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 
-	transaction, err := tdb.BeginTransaction(ctx)
+	transaction, err := tdb.StartTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -245,6 +245,10 @@ func (r *Rollback) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Like Commit, Rollback ends the current transaction and a new one begins with the next statement
+	ctx.SetIgnoreAutoCommit(false)
+	ctx.SetTransaction(nil)
 
 	return sql.RowsToRowIter(), nil
 }
