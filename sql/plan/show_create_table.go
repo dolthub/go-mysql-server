@@ -249,12 +249,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			updt, err := formatCheckExpression(check.Expr)
+			_, st, err := formatCheckExpression(check.Expr)
 			if err != nil {
 				return "", err
 			}
 
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, updt.String()))
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, st))
 		}
 	}
 
@@ -330,51 +330,68 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	return true
 }
 
-func formatCheckExpression(expr sql.Expression) (sql.Expression, error)  {
+func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error)  {
 	switch t := expr.(type) {
 	case expression.Comparer:
-		left, err := formatCheckExpression(t.Left())
+		left, _, err := formatCheckExpression(t.Left())
 		if err != nil {
-			return nil, err
+			return nil,  "", err
 		}
 
-		right, err := formatCheckExpression(t.Right())
+		right, _, err := formatCheckExpression(t.Right())
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
-		return t.WithChildren(left, right)
+		newExpr, err := t.WithChildren(left, right)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
 	case *expression.And:
-		left, err := formatCheckExpression(t.Left)
+		left, _, err := formatCheckExpression(t.Left)
 		if err != nil {
-			return nil, err
+			return nil,  "", err
 		}
 
-		right, err := formatCheckExpression(t.Right)
+		right, _, err := formatCheckExpression(t.Right)
 		if err != nil {
-			return nil, err
+			return nil,  "", err
 		}
 
-		return t.WithChildren(left, right)
+		newExpr, err := t.WithChildren(left, right)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
 	case *expression.Or:
-		left, err := formatCheckExpression(t.Left)
+		left, _, err := formatCheckExpression(t.Left)
 		if err != nil {
-			return nil, err
+			return nil,  "", err
 		}
 
-		right, err := formatCheckExpression(t.Right)
+		right, _, err := formatCheckExpression(t.Right)
 		if err != nil {
-			return nil, err
+			return nil,  "", err
 		}
 
-		return t.WithChildren(left, right)
+		newExpr, err := t.WithChildren(left, right)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
 	case *expression.UnresolvedColumn:
 		name := t.Name()
 		strings.Replace(name, "`", "", -1)
 
-		return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name)), nil
+		newExpr := expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
+
+		return newExpr, newExpr.String(), nil
 	default:
-		return expr, nil
+		return expr, expr.String(), nil
 	}
 }
 
