@@ -761,6 +761,7 @@ var ScriptTests = []ScriptTest{
 			"CREATE TABLE mytable1(pk int PRIMARY KEY, CONSTRAINT check1 CHECK (pk = 5))",
 			"CREATE TABLE mytable2(pk int PRIMARY KEY, v int, CONSTRAINT check2 CHECK (v < 5))",
 			"CREATE TABLE mytable3(pk int PRIMARY KEY, v int, CONSTRAINT check3 CHECK (pk > 2 AND v < 5))",
+			"CREATE TABLE mytable4(pk int PRIMARY KEY, v int, CONSTRAINT check4 CHECK (pk > 2 AND v < 5 AND pk < 9))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -796,7 +797,20 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n"+
 							"  `v` int,\n"+
 							"  PRIMARY KEY (`pk`),\n"+
-							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5))))\n"+
+							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5)))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable4",
+				Expected: []sql.Row{
+					{
+						"mytable3",
+						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check4` CHECK (((`pk` > 2) AND (`v` < 5) AND (`pk` < 9)))\n"+
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},

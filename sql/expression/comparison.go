@@ -32,6 +32,7 @@ type Comparer interface {
 	Compare(ctx *sql.Context, row sql.Row) (int, error)
 	Left() sql.Expression
 	Right() sql.Expression
+	Expression() string
 }
 
 // ErrNilOperand ir returned if some or both of the comparison's operands is nil.
@@ -39,10 +40,11 @@ var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
 type comparison struct {
 	BinaryExpression
+	expression string
 }
 
-func newComparison(left, right sql.Expression) comparison {
-	return comparison{BinaryExpression{left, right}}
+func newComparison(left, right sql.Expression, expression string) comparison {
+	return comparison{BinaryExpression{left, right}, expression}
 }
 
 // Compare the two given values using the types of the expressions in the comparison.
@@ -165,6 +167,8 @@ func (c *comparison) Left() sql.Expression { return c.BinaryExpression.Left }
 // Right implements Comparer interface
 func (c *comparison) Right() sql.Expression { return c.BinaryExpression.Right }
 
+func (c *comparison) Expression() string { return c.expression }
+
 // Equals is a comparison that checks an expression is equal to another.
 type Equals struct {
 	comparison
@@ -172,7 +176,7 @@ type Equals struct {
 
 // NewEquals returns a new Equals expression.
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
-	return &Equals{newComparison(left, right)}
+	return &Equals{newComparison(left, right, "=")}
 }
 
 // Eval implements the Expression interface.
@@ -214,7 +218,7 @@ type NullSafeEquals struct {
 
 // NewNullSafeEquals returns a new NullSafeEquals expression.
 func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEquals {
-	return &NullSafeEquals{newComparison(left, right)}
+	return &NullSafeEquals{newComparison(left, right, "<=>")}
 }
 
 // Type implements the Expression interface.
@@ -297,7 +301,7 @@ func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
 	})
 
 	return &Regexp{
-		comparison: newComparison(left, right),
+		comparison: newComparison(left, right, "REGEXP"),
 		pool:       nil,
 		cached:     cached,
 		once:       sync.Once{},
@@ -420,7 +424,7 @@ type GreaterThan struct {
 
 // NewGreaterThan creates a new GreaterThan expression.
 func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
-	return &GreaterThan{newComparison(left, right)}
+	return &GreaterThan{newComparison(left, right, ">")}
 }
 
 // Eval implements the Expression interface.
@@ -460,7 +464,7 @@ type LessThan struct {
 
 // NewLessThan creates a new LessThan expression.
 func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
-	return &LessThan{newComparison(left, right)}
+	return &LessThan{newComparison(left, right, "<")}
 }
 
 // Eval implements the expression interface.
@@ -501,7 +505,7 @@ type GreaterThanOrEqual struct {
 
 // NewGreaterThanOrEqual creates a new GreaterThanOrEqual
 func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterThanOrEqual {
-	return &GreaterThanOrEqual{newComparison(left, right)}
+	return &GreaterThanOrEqual{newComparison(left, right, ">=")}
 }
 
 // Eval implements the Expression interface.
@@ -542,7 +546,7 @@ type LessThanOrEqual struct {
 
 // NewLessThanOrEqual creates a LessThanOrEqual expression.
 func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEqual {
-	return &LessThanOrEqual{newComparison(left, right)}
+	return &LessThanOrEqual{newComparison(left, right, "<=")}
 }
 
 // Eval implements the Expression interface.

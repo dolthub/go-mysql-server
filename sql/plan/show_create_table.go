@@ -333,12 +333,12 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error)  {
 	switch t := expr.(type) {
 	case expression.Comparer:
-		left, _, err := formatCheckExpression(t.Left())
+		left, ls, err := formatCheckExpression(t.Left())
 		if err != nil {
 			return nil,  "", err
 		}
 
-		right, _, err := formatCheckExpression(t.Right())
+		right, rs, err := formatCheckExpression(t.Right())
 		if err != nil {
 			return nil, "", err
 		}
@@ -348,14 +348,14 @@ func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) 
 			return nil, "", err
 		}
 
-		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
+		return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Expression(), rs), nil
 	case *expression.And:
-		left, _, err := formatCheckExpression(t.Left)
+		left, ls, err := formatCheckExpression(t.Left)
 		if err != nil {
 			return nil,  "", err
 		}
 
-		right, _, err := formatCheckExpression(t.Right)
+		right, rs, err := formatCheckExpression(t.Right)
 		if err != nil {
 			return nil,  "", err
 		}
@@ -365,14 +365,14 @@ func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) 
 			return nil, "", err
 		}
 
-		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
+		return newExpr, fmt.Sprintf("(%s %s %s)", ls, "AND", rs), nil
 	case *expression.Or:
-		left, _, err := formatCheckExpression(t.Left)
+		left, ls, err := formatCheckExpression(t.Left)
 		if err != nil {
 			return nil,  "", err
 		}
 
-		right, _, err := formatCheckExpression(t.Right)
+		right, rs, err := formatCheckExpression(t.Right)
 		if err != nil {
 			return nil,  "", err
 		}
@@ -382,7 +382,7 @@ func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) 
 			return nil, "", err
 		}
 
-		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
+		return newExpr, fmt.Sprintf("(%s %s %s)", ls, "OR", rs), nil
 	case *expression.UnresolvedColumn:
 		name := t.Name()
 		strings.Replace(name, "`", "", -1)
