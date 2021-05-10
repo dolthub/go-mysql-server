@@ -755,4 +755,52 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Run SHOW CREATE TABLE with different types of check constraints",
+		SetUpScript: []string{
+			"CREATE TABLE mytable1(pk int PRIMARY KEY, CONSTRAINT check1 CHECK (pk = 5))",
+			"CREATE TABLE mytable2(pk int PRIMARY KEY, v int, CONSTRAINT check2 CHECK (v < 5))",
+			"CREATE TABLE mytable3(pk int PRIMARY KEY, v int, CONSTRAINT check3 CHECK (pk > 2 AND v < 5))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE mytable1",
+				Expected: []sql.Row{
+					{
+						"mytable1",
+						"CREATE TABLE `mytable1` (\n  `pk` int NOT NULL,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check1` CHECK ((`pk` = 5))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable2",
+				Expected: []sql.Row{
+					{
+						"mytable2",
+						"CREATE TABLE `mytable2` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check2` CHECK ((`v` < 5))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable3",
+				Expected: []sql.Row{
+					{
+						"mytable3",
+						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND `(v` < 5))))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+		},
+	},
 }

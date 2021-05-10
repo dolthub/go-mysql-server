@@ -249,12 +249,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			updt, err := getNewCheckExpressionWithBacktickedColumn(check.Expr)
+			updt, err := formatCheckExpression(check.Expr)
 			if err != nil {
 				return "", err
 			}
 
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK ((%s))", check.Name, updt.String()))
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, updt.String()))
 		}
 	}
 
@@ -330,22 +330,52 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	return true
 }
 
-func getNewCheckExpressionWithBacktickedColumn(expr sql.Expression) (sql.Expression, error)  {
-	for i, child := range expr.Children() {
-		switch t := child.(type){
-		case *expression.UnresolvedColumn:
-			name := t.Name()
-			strings.Replace(name, "`", "", -1)
-
-			children := expr.Children()
-			children[i] = expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
-			return expr.WithChildren(children...)
-		default:
-			return getNewCheckExpressionWithBacktickedColumn(child)
+func formatCheckExpression(expr sql.Expression) (sql.Expression, error)  {
+	switch t := expr.(type) {
+	case expression.Comparer:
+		left, err := formatCheckExpression(t.Left())
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	return nil, fmt.Errorf("Child was not found")
+		right, err := formatCheckExpression(t.Right())
+		if err != nil {
+			return nil, err
+		}
+
+		return t.WithChildren(left, right)
+	case *expression.And:
+		left, err := formatCheckExpression(t.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := formatCheckExpression(t.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return t.WithChildren(left, right)
+	case *expression.Or:
+		left, err := formatCheckExpression(t.Left)
+		if err != nil {
+			return nil, err
+		}
+
+		right, err := formatCheckExpression(t.Right)
+		if err != nil {
+			return nil, err
+		}
+
+		return t.WithChildren(left, right)
+	case *expression.UnresolvedColumn:
+		name := t.Name()
+		strings.Replace(name, "`", "", -1)
+
+		return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name)), nil
+	default:
+		return expr, nil
+	}
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {
