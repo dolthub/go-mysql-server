@@ -69,6 +69,8 @@ const (
 	EnginesTableName = "engines"
 	// CheckConstraintsTableName is the name of check_constraints table
 	CheckConstraintsTableName = "check_constraints"
+	// PartitionsTableName is the name of the partitions table
+	PartitionsTableName = "partitions"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -402,6 +404,34 @@ var checkConstraintsSchema = Schema{
 	{Name: "constraint_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
 	{Name: "constraint_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CheckConstraintsTableName},
 	{Name: "check_clause", Type: LongText, Default: nil, Nullable: false, Source: CheckConstraintsTableName},
+}
+
+var partitionSchema = Schema{
+	{Name: "table_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "table_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: PartitionsTableName},
+	{Name: "partition_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "subpartition_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "partition_ordinal_position", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "subpartition_ordinal_position", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "partition_method", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 13), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "subpartition_method", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 13), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "partition_expression", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "subpartition_expression", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "partition_descriptor", Type: LongText, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "table_rows", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "avg_row_length", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "data_length", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "max_data_length", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "index_length", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "data_free", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "create_time", Type: Timestamp, Default: nil, Nullable: false, Source: PartitionsTableName},
+	{Name: "update_time", Type: Datetime, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "check_time", Type: Datetime, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "checksum", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "partition_comment", Type: LongText, Default: nil, Nullable: false, Source: PartitionsTableName},
+	{Name: "nodegroup", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "tablespace_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 258), Default: nil, Nullable: true, Source: PartitionsTableName},
 }
 
 func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
@@ -993,6 +1023,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  checkConstraintsSchema,
 				catalog: cat,
 				rowIter: checkConstraintsRowIter,
+			},
+			PartitionsTableName: &informationSchemaTable{
+				name:    PartitionsTableName,
+				schema:  partitionSchema,
+				catalog: cat,
+				rowIter: emptyRowIter,
 			},
 		},
 	}
