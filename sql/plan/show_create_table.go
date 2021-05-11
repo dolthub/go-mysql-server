@@ -337,28 +337,40 @@ func formatCheckExpression(expr sql.Expression) (string, error) {
 		rok := isSoloOperand(rightChild)
 
 		if lok && rok {
-			return fmt.Sprintf("%s %s %s", getCorrectStringFromSoloOperand(leftChild), "AND", getCorrectStringFromSoloOperand(rightChild)), nil
+			ls, err := getUpdatedExpressionString(leftChild)
+			if err != nil {
+				return "", err
+			}
+
+			rs, err := getUpdatedExpressionString(rightChild)
+			if err != nil {
+				return "", err
+			}
+
+			return fmt.Sprintf("%s %s %s", ls, "AND", rs), nil
 		}
 
 		var left string
 		var err error
 		if !lok {
 			left, err = formatCheckExpression(leftChild)
-			if err != nil {
-				return "", err
-			}
 		} else {
-			left = getCorrectStringFromSoloOperand(leftChild)
+			left, err = getUpdatedExpressionString(leftChild)
+		}
+
+		if err != nil {
+			return "", err
 		}
 
 		var right string
 		if !rok {
 			right, err = formatCheckExpression(rightChild)
-			if err != nil {
-				return "", err
-			}
 		} else {
-			right = getCorrectStringFromSoloOperand(rightChild)
+			right, err = getUpdatedExpressionString(rightChild)
+		}
+
+		if err != nil {
+			return "", err
 		}
 
 		_, sameOp := leftChild.(*expression.And)
@@ -376,28 +388,40 @@ func formatCheckExpression(expr sql.Expression) (string, error) {
 		rok := isSoloOperand(rightChild)
 
 		if lok && rok {
-			return fmt.Sprintf("%s %s %s", getCorrectStringFromSoloOperand(leftChild), "OR", getCorrectStringFromSoloOperand(rightChild)), nil
+			ls, err := getUpdatedExpressionString(leftChild)
+			if err != nil {
+				return "", err
+			}
+
+			rs, err := getUpdatedExpressionString(rightChild)
+			if err != nil {
+				return "", err
+			}
+
+			return fmt.Sprintf("%s %s %s", ls, "OR", rs), nil
 		}
 
 		var left string
 		var err error
 		if !lok {
 			left, err = formatCheckExpression(leftChild)
-			if err != nil {
-				return "", err
-			}
 		} else {
-			left = getCorrectStringFromSoloOperand(leftChild)
+			left, err = getUpdatedExpressionString(leftChild)
+		}
+
+		if err != nil {
+			return "", err
 		}
 
 		var right string
 		if !rok {
 			right, err = formatCheckExpression(rightChild)
-			if err != nil {
-				return "", err
-			}
 		} else {
-			right = getCorrectStringFromSoloOperand(rightChild)
+			right, err = getUpdatedExpressionString(rightChild)
+		}
+
+		if err != nil {
+			return "", err
 		}
 
 		_, sameOp := leftChild.(*expression.Or)
@@ -407,14 +431,8 @@ func formatCheckExpression(expr sql.Expression) (string, error) {
 		} else {
 			return fmt.Sprintf("(%s %s (%s))", left, "OR", right), nil
 		}
-	case expression.Comparer:
-		if isSoloOperand(t) {
-			return getCorrectStringFromSoloOperand(t), nil
-		}
-
-		return fmt.Sprintf("(%s %s (%s))", t.Left(), t.Expression(), t.Right()), nil
 	default:
-		return expr.String(), nil
+		return getUpdatedExpressionString(t)
 	}
 }
 
@@ -422,6 +440,7 @@ func isSoloOperand(expr sql.Expression) bool {
 	switch t := expr.(type) {
 	case *expression.UnresolvedColumn, *expression.Literal:
 		return true
+	// Edge Case: We need to handle this differently as MySQL goes out of its ways to simplify () on comparisons
 	case expression.Comparer:
 		if _, ok := t.Left().(expression.Comparer); ok {
 			return false
@@ -433,23 +452,41 @@ func isSoloOperand(expr sql.Expression) bool {
 
 		return true
 	default:
+		for _, child := range t.Children() {
+			if !isSoloOperand(child) {
+				return false
+			}
+		}
 		return false
 	}
 }
 
-func getCorrectStringFromSoloOperand(expr sql.Expression) string {
+func getUpdatedExpressionString(expr sql.Expression) (string, error) {
+	newExpr, err := getUpdatedExpression(expr)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("(%s)", newExpr.String()), nil
+}
+
+func getUpdatedExpression(expr sql.Expression) (sql.Expression, error) {
 	switch t := expr.(type) {
 	case *expression.UnresolvedColumn:
 		name := t.Name()
 		strings.Replace(name, "`", "", -1)
 
-		return fmt.Sprintf("`%s`", name)
-	case expression.Comparer:
-		return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(t.Left()), t.Expression(), getCorrectStringFromSoloOperand(t.Right()))
-	case *expression.Arithmetic:
-		return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(t.Left), t.Op, getCorrectStringFromSoloOperand(t.Right))
+		return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name)),nil
 	default:
-		return t.String()
+		newChildren := make([]sql.Expression, len(t.Children()))
+		for i, child := range t.Children() {
+			newChild, err := getUpdatedExpression(child)
+			if err != nil {
+				return nil, err
+			}
+			newChildren[i] = newChild
+		}
+		return t.WithChildren(newChildren...)
 	}
 }
 
