@@ -299,7 +299,7 @@ func (h *Handler) doQuery(
 
 			tdb, ok := database.(sql.TransactionDatabase)
 			if ok {
-				tx, err := tdb.BeginTransaction(ctx)
+				tx, err := tdb.StartTransaction(ctx)
 				if err != nil {
 					return err
 				}
@@ -443,7 +443,7 @@ rowLoop:
 	if commitTransaction {
 		// TODO: unify this logic with Commit node
 		logrus.Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
+		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx), tx); err != nil {
 			return err
 		}
 		// Clearing out the current transaction will tell us to start a new one the next time this session queries

@@ -276,6 +276,10 @@ var (
 
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Incorrect arguments to %s")
+
+	// ErrSavepointDoesNotExist is returned when a RELEASE SAVEPOINT or ROLLBACK TO SAVEPOINT statement references a
+	// non-existent savepoint identifier
+	ErrSavepointDoesNotExist = errors.NewKind("SAVEPOINT %s does not exist")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
