@@ -405,11 +405,6 @@ func isSoloOperand(expr sql.Expression) bool {
 
 		return true
 	default:
-		for _, child := range t.Children() {
-			if !isSoloOperand(child) {
-				return false
-			}
-		}
 		return false
 	}
 }
