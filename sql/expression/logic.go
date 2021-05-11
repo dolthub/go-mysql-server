@@ -176,6 +176,3 @@ func (o *Or) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	}
 	return NewOr(children[0], children[1]), nil
 }
-func (a *Or) Expression() string {
-	return "Or"
-}

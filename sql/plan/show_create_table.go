@@ -334,9 +334,10 @@ func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) 
 
 	if len(expr.Children()) == 0 {
 		switch t := expr.(type) {
+		// In the case of an unresolved column we want to pass up the new expression with the backticked columns
 		case *expression.UnresolvedColumn:
 			name := t.Name()
-			strings.Replace(name, "`", "", -1)
+			strings.Replace(name, "`", "", -1) // remove any preexisting backticks
 
 			newExpr := expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
 
