@@ -815,7 +815,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{
 						"mytable4",
-						"CREATE TABLE `mytable5` (\n  `pk` int NOT NULL,\n" +
+						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check4` CHECK (((`pk` > 2) AND (`v` < 5) AND (`pk` < 9)))\n" +

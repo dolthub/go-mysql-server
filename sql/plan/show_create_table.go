@@ -329,9 +329,13 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 // CREATE TABLE standard.
 func formatCheckExpression(expr sql.Expression) (string, error) {
 	switch t := expr.(type) {
-	case *expression.And:
-		leftChild := t.Left
-		rightChild := t.Right
+	case expression.Logic:
+		if len(t.Children()) > 2 {
+			return "", fmt.Errorf("Logical AND/OR has more than two expressions")
+		}
+
+		leftChild := t.Children()[0]
+		rightChild := t.Children()[1]
 
 		lok := isSoloOperand(leftChild)
 		rok := isSoloOperand(rightChild)
@@ -347,7 +351,7 @@ func formatCheckExpression(expr sql.Expression) (string, error) {
 				return "", err
 			}
 
-			return fmt.Sprintf("%s %s %s", ls, "AND", rs), nil
+			return fmt.Sprintf("%s %s %s", ls, t.GetLogicalExpression(), rs), nil
 		}
 
 		var left string
@@ -373,63 +377,12 @@ func formatCheckExpression(expr sql.Expression) (string, error) {
 			return "", err
 		}
 
-		_, sameOp := leftChild.(*expression.And)
+		sameOp := isSameLogicalOperation(leftChild, t)
 
 		if sameOp {
-			return fmt.Sprintf("(%s %s %s)", left, "AND", right), nil
+			return fmt.Sprintf("(%s %s %s)", left,  t.GetLogicalExpression(), right), nil
 		} else {
-			return fmt.Sprintf("(%s %s (%s))", left, "AND", right), nil
-		}
-	case *expression.Or:
-		leftChild := t.Left
-		rightChild := t.Right
-
-		lok := isSoloOperand(leftChild)
-		rok := isSoloOperand(rightChild)
-
-		if lok && rok {
-			ls, err := getUpdatedExpressionString(leftChild)
-			if err != nil {
-				return "", err
-			}
-
-			rs, err := getUpdatedExpressionString(rightChild)
-			if err != nil {
-				return "", err
-			}
-
-			return fmt.Sprintf("%s %s %s", ls, "OR", rs), nil
-		}
-
-		var left string
-		var err error
-		if !lok {
-			left, err = formatCheckExpression(leftChild)
-		} else {
-			left, err = getUpdatedExpressionString(leftChild)
-		}
-
-		if err != nil {
-			return "", err
-		}
-
-		var right string
-		if !rok {
-			right, err = formatCheckExpression(rightChild)
-		} else {
-			right, err = getUpdatedExpressionString(rightChild)
-		}
-
-		if err != nil {
-			return "", err
-		}
-
-		_, sameOp := leftChild.(*expression.Or)
-
-		if sameOp {
-			return fmt.Sprintf("(%s %s %s)", left, "OR", right), nil
-		} else {
-			return fmt.Sprintf("(%s %s (%s))", left, "OR", right), nil
+			return fmt.Sprintf("(%s %s (%s))", left,  t.GetLogicalExpression(), right), nil
 		}
 	default:
 		return getUpdatedExpressionString(t)
@@ -488,6 +441,31 @@ func getUpdatedExpression(expr sql.Expression) (sql.Expression, error) {
 		}
 		return t.WithChildren(newChildren...)
 	}
+}
+
+func isSameLogicalOperation(left, curr sql.Expression) bool {
+	_, ok := left.(expression.Logic)
+	if !ok {
+		return false
+	}
+
+	if _, ok := curr.(*expression.And); ok {
+		if _, ok := left.(*expression.And); ok {
+			return true
+		}
+
+		return false
+	}
+
+	if _, ok := curr.(*expression.Or); ok {
+		if _, ok := left.(*expression.Or); ok {
+			return true
+		}
+
+		return false
+	}
+
+	return false
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {
