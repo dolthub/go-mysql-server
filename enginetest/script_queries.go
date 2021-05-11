@@ -759,6 +759,7 @@ var ScriptTests = []ScriptTest{
 		Name: "Run SHOW CREATE TABLE with different types of check constraints",
 		SetUpScript: []string{
 			"CREATE TABLE mytable1(pk int PRIMARY KEY, CONSTRAINT check1 CHECK (pk = 5))",
+			"ALTER TABLE mytable1 ADD CONSTRAINT check11 CHECK (pk < 6)",
 			"CREATE TABLE mytable2(pk int PRIMARY KEY, v int, CONSTRAINT check2 CHECK (v < 5))",
 			"CREATE TABLE mytable3(pk int PRIMARY KEY, v int, CONSTRAINT check3 CHECK (pk > 2 AND v < 5))",
 			"CREATE TABLE mytable4(pk int PRIMARY KEY, v int, CONSTRAINT check4 CHECK (pk > 2 AND v < 5 AND pk < 9))",
@@ -777,7 +778,8 @@ var ScriptTests = []ScriptTest{
 						"mytable1",
 						"CREATE TABLE `mytable1` (\n  `pk` int NOT NULL,\n"+
 							"  PRIMARY KEY (`pk`),\n"+
-							"  CONSTRAINT `check1` CHECK ((`pk` = 5))\n"+
+							"  CONSTRAINT `check1` CHECK ((`pk` = 5)),\n"+
+							"  CONSTRAINT `check11` CHECK ((`pk` < 6))\n"+
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -844,7 +846,7 @@ var ScriptTests = []ScriptTest{
 							"  PRIMARY KEY (`pk`),\n"+
 							"  CONSTRAINT `check6` CHECK (NOT(`pk`))\n"+
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-					}, // TODO: fix
+					},
 				},
 			},
 			{
