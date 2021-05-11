@@ -249,7 +249,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			st, err := formatCheckExpression(check.Expr)
+			_, st, err := formatCheckExpressionTwo(check.Expr)
 			if err != nil {
 				return "", err
 			}
@@ -469,6 +469,78 @@ func produceCreateViewStatement(view *SubqueryAlias) string {
 		view.Name(),
 		view.TextDefinition,
 	)
+}
+
+func formatCheckExpressionTwo(expr sql.Expression) (sql.Expression, string, error)  {
+	if len(expr.Children()) > 2 {
+		return nil, "", fmt.Errorf("error: expression tree is expected to be binary")
+	}
+
+	if len(expr.Children()) == 0 {
+		switch t := expr.(type) {
+		case *expression.UnresolvedColumn:
+			name := t.Name()
+			strings.Replace(name, "`", "", -1)
+
+			newExpr := expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
+
+			return newExpr, newExpr.String(), nil
+		default:
+			return expr, t.String(), nil
+		}
+	}
+
+	// ex. NOT(<col>)
+	if len(expr.Children()) == 1 {
+		child, _, err := formatCheckExpressionTwo(expr.Children()[0])
+
+		if err != nil {
+			return nil, "", err
+		}
+
+		newExpr, err := expr.WithChildren(child)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return newExpr, newExpr.String(), nil
+	}
+
+	if len(expr.Children()) == 2 {
+		left := expr.Children()[0]
+		right := expr.Children()[1]
+
+		lExpr, ls, err := formatCheckExpressionTwo(left)
+
+		if err != nil {
+			return nil, "", err
+		}
+
+		rExpr, rs, err := formatCheckExpressionTwo(right)
+
+		if err != nil {
+			return nil, "", err
+		}
+
+		var expressionStr string
+		switch t := expr.(type) {
+		case expression.Logic:
+			expressionStr = t.GetLogicalExpression()
+		case expression.Comparer:
+			expressionStr = t.Expression()
+		case *expression.Arithmetic:
+			expressionStr = t.Op
+		}
+
+		newExpr, err := expr.WithChildren(lExpr, rExpr)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return newExpr, fmt.Sprintf("(%s %s %s)", ls, expressionStr, rs), nil
+	}
+
+	return nil, "", nil
 }
 
 func (i *showCreateTablesIter) Close(*sql.Context) error {

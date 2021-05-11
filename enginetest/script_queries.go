@@ -764,10 +764,10 @@ var ScriptTests = []ScriptTest{
 			"ALTER TABLE mytable2 ADD CONSTRAINT check12 CHECK (pk  + v = 6)",
 			"CREATE TABLE mytable3(pk int PRIMARY KEY, v int, CONSTRAINT check3 CHECK (pk > 2 AND v < 5))",
 			"CREATE TABLE mytable4(pk int PRIMARY KEY, v int, CONSTRAINT check4 CHECK (pk > 2 AND v < 5 AND pk < 9))",
-			"CREATE TABLE mytable5(pk int PRIMARY KEY, v int, CONSTRAINT check5 CHECK (pk > 2 OR v < 5 AND pk < 9))",
+			"CREATE TABLE mytable5(pk int PRIMARY KEY, v int, CONSTRAINT check5 CHECK (pk > 2 OR (v < 5 AND pk < 9)))",
 			"CREATE TABLE mytable6(pk int PRIMARY KEY, v int, CONSTRAINT check6 CHECK (NOT pk))",
 			"CREATE TABLE mytable7(pk int PRIMARY KEY, v int, CONSTRAINT check7 CHECK (pk != v))",
-			"CREATE TABLE mytable8(pk int PRIMARY KEY, v int, CONSTRAINT check8 CHECK (pk > 2 OR v  < 5 OR pk < 10))",
+			"CREATE TABLE mytable8(pk int PRIMARY KEY, v int, CONSTRAINT check8 CHECK (pk > 2 OR v < 5 OR pk < 10))",
 			"CREATE TABLE mytable9(pk int PRIMARY KEY, v int, CONSTRAINT check9 CHECK ((pk + v) / 2 >= 1))",
 			"CREATE TABLE mytable10(pk int PRIMARY KEY, v int, CONSTRAINT check10 CHECK (v < 5) NOT ENFORCED)",
 		},
@@ -794,7 +794,7 @@ var ScriptTests = []ScriptTest{
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
 							"  CONSTRAINT `check2` CHECK ((`v` < 5)),\n" +
-							"  CONSTRAINT `check12` CHECK ((`pk` + `v` = 6))\n" +
+							"  CONSTRAINT `check12` CHECK (((`pk` + `v`) = 6))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -807,7 +807,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check3` CHECK ((`pk` > 2) AND (`v` < 5))\n" +
+							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -820,7 +820,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check4` CHECK (((`pk` > 2) AND (`v` < 5) AND (`pk` < 9)))\n" +
+							"  CONSTRAINT `check4` CHECK ((((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -846,7 +846,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable6` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check6` CHECK ((NOT(`pk`)))\n" +
+							"  CONSTRAINT `check6` CHECK (NOT(`pk`))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -872,7 +872,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable8` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check8` CHECK (((`pk` > 2) OR (`v` < 5) OR (`pk` < 10)))\n" +
+							"  CONSTRAINT `check8` CHECK ((((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
