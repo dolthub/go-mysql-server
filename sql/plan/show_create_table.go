@@ -22,7 +22,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var ErrNotView = errors.NewKind("'%' is not VIEW")
@@ -249,12 +248,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			_, st, err := formatCheckExpression(check.Expr)
-			if err != nil {
-				return "", err
-			}
-
-			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, st)
+			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, check.Expr.String())
 
 			if !check.Enforced {
 				fmted += " /*!80016 NOT ENFORCED */"
@@ -323,99 +317,6 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	}
 
 	return true
-}
-
-// formatCheckExpression takes in a check expression and prints it out in a fully formatted manner according to SHOW
-// CREATE TABLE standard.
-func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) {
-	if len(expr.Children()) == 0 {
-		switch t := expr.(type) {
-		// In the case of an unresolved column we want to pass up the new expression with the backticked columns
-		case *expression.UnresolvedColumn:
-			name := t.Name()
-			strings.Replace(name, "`", "", -1) // remove any preexisting backticks
-
-			newExpr := expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name))
-
-			return newExpr, newExpr.String(), nil
-		default:
-			return expr, t.String(), nil
-		}
-	}
-
-	// ex. NOT(<col>)
-	if len(expr.Children()) == 1 {
-		child, _, err := formatCheckExpression(expr.Children()[0])
-
-		if err != nil {
-			return nil, "", err
-		}
-
-		newExpr, err := expr.WithChildren(child)
-		if err != nil {
-			return nil, "", err
-		}
-
-		return newExpr, newExpr.String(), nil
-	}
-
-	// ex) AND, OR, <=
-	if len(expr.Children()) == 2 {
-		left := expr.Children()[0]
-		right := expr.Children()[1]
-
-		lExpr, ls, err := formatCheckExpression(left)
-
-		if err != nil {
-			return nil, "", err
-		}
-
-		rExpr, rs, err := formatCheckExpression(right)
-
-		if err != nil {
-			return nil, "", err
-		}
-
-		newExpr, err := expr.WithChildren(lExpr, rExpr)
-		if err != nil {
-			return nil, "", err
-		}
-
-		var expressionStr string
-		switch t := expr.(type) {
-		case expression.Logic:
-			return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.GetLogicalExpression(), rs), nil
-		case expression.Comparer:
-			return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Expression(), rs), nil
-		case *expression.Arithmetic:
-			return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Op, rs), nil
-		}
-
-		return newExpr, fmt.Sprintf("(%s %s %s)", ls, expressionStr, rs), nil
-	}
-
-	if len(expr.Children()) > 2 {
-		newChildren := make([]sql.Expression, len(expr.Children()))
-
-		for i, child := range expr.Children() {
-			newChild, _, err := formatCheckExpression(child)
-			if err != nil {
-				return nil, "", err
-			}
-
-			newChildren[i] = newChild
-		}
-
-		newExpr, err := expr.WithChildren(newChildren...)
-
-		if err != nil {
-			return nil, "", err
-		}
-
-		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
-	}
-
-	return expr, expr.String(), nil
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {

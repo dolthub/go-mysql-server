@@ -20,11 +20,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-type Logic interface {
-	sql.Expression
-	GetLogicalExpression() string
-}
-
 // And checks whether two expressions are true.
 type And struct {
 	BinaryExpression
@@ -52,15 +47,11 @@ func JoinAnd(exprs ...sql.Expression) sql.Expression {
 }
 
 func (a *And) String() string {
-	return fmt.Sprintf("%s AND %s", a.Left, a.Right)
+	return fmt.Sprintf("(%s AND %s)", a.Left, a.Right)
 }
 
 func (a *And) DebugString() string {
 	return fmt.Sprintf("%s AND %s", sql.DebugString(a.Left), sql.DebugString(a.Right))
-}
-
-func (a *And) GetLogicalExpression() string {
-	return "AND"
 }
 
 // Type implements the Expression interface.
@@ -118,15 +109,11 @@ func NewOr(left, right sql.Expression) sql.Expression {
 }
 
 func (o *Or) String() string {
-	return fmt.Sprintf("%s OR %s", o.Left, o.Right)
+	return fmt.Sprintf("(%s OR %s)", o.Left, o.Right)
 }
 
 func (o *Or) DebugString() string {
 	return fmt.Sprintf("%s OR %s", sql.DebugString(o.Left), sql.DebugString(o.Right))
-}
-
-func (o *Or) GetLogicalExpression() string {
-	return "OR"
 }
 
 // Type implements the Expression interface.
