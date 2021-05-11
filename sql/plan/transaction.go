@@ -291,7 +291,7 @@ func (*Rollback) Schema() sql.Schema { return nil }
 
 type CreateSavepoint struct {
 	name string
-	db sql.Database
+	db   sql.Database
 }
 
 var _ sql.Databaser = (*CreateSavepoint)(nil)
@@ -300,7 +300,7 @@ var _ sql.Node = (*CreateSavepoint)(nil)
 // NewCreateSavepoint creates a new CreateSavepoint node.
 func NewCreateSavepoint(db sql.UnresolvedDatabase, name string) *CreateSavepoint {
 	return &CreateSavepoint{
-		db: db,
+		db:   db,
 		name: name,
 	}
 }
@@ -360,7 +360,7 @@ func (*CreateSavepoint) Schema() sql.Schema { return nil }
 
 type RollbackSavepoint struct {
 	name string
-	db sql.Database
+	db   sql.Database
 }
 
 var _ sql.Databaser = (*RollbackSavepoint)(nil)
@@ -369,7 +369,7 @@ var _ sql.Node = (*RollbackSavepoint)(nil)
 // NewRollbackSavepoint creates a new RollbackSavepoint node.
 func NewRollbackSavepoint(db sql.UnresolvedDatabase, name string) *RollbackSavepoint {
 	return &RollbackSavepoint{
-		db: db,
+		db:   db,
 		name: name,
 	}
 }
@@ -429,7 +429,7 @@ func (*RollbackSavepoint) Schema() sql.Schema { return nil }
 
 type ReleaseSavepoint struct {
 	name string
-	db sql.Database
+	db   sql.Database
 }
 
 var _ sql.Databaser = (*ReleaseSavepoint)(nil)
@@ -438,7 +438,7 @@ var _ sql.Node = (*ReleaseSavepoint)(nil)
 // NewReleaseSavepoint creates a new ReleaseSavepoint node.
 func NewReleaseSavepoint(db sql.UnresolvedDatabase, name string) *ReleaseSavepoint {
 	return &ReleaseSavepoint{
-		db: db,
+		db:   db,
 		name: name,
 	}
 }
