@@ -851,19 +851,19 @@ var ScriptTests = []ScriptTest{
 					},
 				},
 			},
-			//{
-			//	Query: "SHOW CREATE TABLE mytable7",
-			//	Expected: []sql.Row{
-			//		{
-			//			"mytable7",
-			//			"CREATE TABLE `mytable7` (\n  `pk` int NOT NULL,\n" +
-			//				"  `v` int,\n" +
-			//				"  PRIMARY KEY (`pk`),\n" +
-			//				"  CONSTRAINT `check7` CHECK (((`pk` <> `pk`) <> `v`))\n" +
-			//				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-			//		},
-			//	},
-			//},
+			{
+				Query: "SHOW CREATE TABLE mytable7",
+				Expected: []sql.Row{
+					{
+						"mytable7",
+						"CREATE TABLE `mytable7` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check7` CHECK (NOT(`pk` = `v`))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
 			{
 				Query: "SHOW CREATE TABLE mytable8",
 				Expected: []sql.Row{

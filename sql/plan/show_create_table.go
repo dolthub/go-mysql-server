@@ -249,7 +249,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			_, st, err := formatCheckExpressionTwo(check.Expr)
+			_, st, err := formatCheckExpression(check.Expr)
 			if err != nil {
 				return "", err
 			}
@@ -327,153 +327,9 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 
 // formatCheckExpression takes in a check expression and prints it out in a fully formatted manner according to SHOW
 // CREATE TABLE standard.
-func formatCheckExpression(expr sql.Expression) (string, error) {
-	switch t := expr.(type) {
-	case expression.Logic:
-		if len(t.Children()) > 2 {
-			return "", fmt.Errorf("Logical AND/OR has more than two expressions")
-		}
-
-		leftChild := t.Children()[0]
-		rightChild := t.Children()[1]
-
-		lok := isSoloOperand(leftChild)
-		rok := isSoloOperand(rightChild)
-
-		if lok && rok {
-			ls, err := getUpdatedExpressionString(leftChild)
-			if err != nil {
-				return "", err
-			}
-
-			rs, err := getUpdatedExpressionString(rightChild)
-			if err != nil {
-				return "", err
-			}
-
-			return fmt.Sprintf("%s %s %s", ls, t.GetLogicalExpression(), rs), nil
-		}
-
-		var left string
-		var err error
-		if !lok {
-			left, err = formatCheckExpression(leftChild)
-		} else {
-			left, err = getUpdatedExpressionString(leftChild)
-		}
-
-		if err != nil {
-			return "", err
-		}
-
-		var right string
-		if !rok {
-			right, err = formatCheckExpression(rightChild)
-		} else {
-			right, err = getUpdatedExpressionString(rightChild)
-		}
-
-		if err != nil {
-			return "", err
-		}
-
-		sameOp := isSameLogicalOperation(leftChild, t)
-
-		if sameOp {
-			return fmt.Sprintf("(%s %s %s)", left,  t.GetLogicalExpression(), right), nil
-		} else {
-			return fmt.Sprintf("(%s %s (%s))", left,  t.GetLogicalExpression(), right), nil
-		}
-	default:
-		return getUpdatedExpressionString(t)
-	}
-}
-
-func isSoloOperand(expr sql.Expression) bool {
-	switch t := expr.(type) {
-	case *expression.UnresolvedColumn, *expression.Literal:
-		return true
-	// Edge Case: We need to handle this differently as MySQL goes out of its ways to simplify () on comparisons
-	case expression.Comparer:
-		if _, ok := t.Left().(expression.Comparer); ok {
-			return false
-		}
-
-		if _, ok := t.Right().(expression.Comparer); ok {
-			return false
-		}
-
-		return true
-	default:
-		return false
-	}
-}
-
-func getUpdatedExpressionString(expr sql.Expression) (string, error) {
-	newExpr, err := getUpdatedExpression(expr)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("(%s)", newExpr.String()), nil
-}
-
-func getUpdatedExpression(expr sql.Expression) (sql.Expression, error) {
-	switch t := expr.(type) {
-	case *expression.UnresolvedColumn:
-		name := t.Name()
-		strings.Replace(name, "`", "", -1)
-
-		return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name)),nil
-	default:
-		newChildren := make([]sql.Expression, len(t.Children()))
-		for i, child := range t.Children() {
-			newChild, err := getUpdatedExpression(child)
-			if err != nil {
-				return nil, err
-			}
-			newChildren[i] = newChild
-		}
-		return t.WithChildren(newChildren...)
-	}
-}
-
-func isSameLogicalOperation(left, curr sql.Expression) bool {
-	_, ok := left.(expression.Logic)
-	if !ok {
-		return false
-	}
-
-	if _, ok := curr.(*expression.And); ok {
-		if _, ok := left.(*expression.And); ok {
-			return true
-		}
-
-		return false
-	}
-
-	if _, ok := curr.(*expression.Or); ok {
-		if _, ok := left.(*expression.Or); ok {
-			return true
-		}
-
-		return false
-	}
-
-	return false
-}
-
-func produceCreateViewStatement(view *SubqueryAlias) string {
-	return fmt.Sprintf(
-		"CREATE VIEW `%s` AS %s",
-		view.Name(),
-		view.TextDefinition,
-	)
-}
-
-func formatCheckExpressionTwo(expr sql.Expression) (sql.Expression, string, error)  {
+func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) {
 	if len(expr.Children()) > 2 {
-		return nil, "", fmt.Errorf("error: expression tree is expected to be binary")
+		return nil, "", fmt.Errorf("error: expression tree is expected to be a binary tree")
 	}
 
 	if len(expr.Children()) == 0 {
@@ -492,7 +348,7 @@ func formatCheckExpressionTwo(expr sql.Expression) (sql.Expression, string, erro
 
 	// ex. NOT(<col>)
 	if len(expr.Children()) == 1 {
-		child, _, err := formatCheckExpressionTwo(expr.Children()[0])
+		child, _, err := formatCheckExpression(expr.Children()[0])
 
 		if err != nil {
 			return nil, "", err
@@ -506,17 +362,18 @@ func formatCheckExpressionTwo(expr sql.Expression) (sql.Expression, string, erro
 		return newExpr, newExpr.String(), nil
 	}
 
+	// ex) AND, OR, <=
 	if len(expr.Children()) == 2 {
 		left := expr.Children()[0]
 		right := expr.Children()[1]
 
-		lExpr, ls, err := formatCheckExpressionTwo(left)
+		lExpr, ls, err := formatCheckExpression(left)
 
 		if err != nil {
 			return nil, "", err
 		}
 
-		rExpr, rs, err := formatCheckExpressionTwo(right)
+		rExpr, rs, err := formatCheckExpression(right)
 
 		if err != nil {
 			return nil, "", err
@@ -541,6 +398,14 @@ func formatCheckExpressionTwo(expr sql.Expression) (sql.Expression, string, erro
 	}
 
 	return nil, "", nil
+}
+
+func produceCreateViewStatement(view *SubqueryAlias) string {
+	return fmt.Sprintf(
+		"CREATE VIEW `%s` AS %s",
+		view.Name(),
+		view.TextDefinition,
+	)
 }
 
 func (i *showCreateTablesIter) Close(*sql.Context) error {
