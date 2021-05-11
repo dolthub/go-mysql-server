@@ -5433,7 +5433,7 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
+		Query: "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
 		Expected: []sql.Row{
 			{"def", "mydb", "mycheck", "i > -100"},
 		},

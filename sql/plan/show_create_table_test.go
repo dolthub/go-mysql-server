@@ -130,12 +130,11 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 
 	showCreateTable.(*ShowCreateTable).Checks = sql.CheckConstraints{
 		{
-			Name: "mycheck",
-			Expr: expression.NewGreaterThan(expression.NewUnresolvedColumn("zab"), expression.NewLiteral(int8(0), sql.Int8)),
+			Name:     "mycheck",
+			Expr:     expression.NewGreaterThan(expression.NewUnresolvedColumn("zab"), expression.NewLiteral(int8(0), sql.Int8)),
 			Enforced: true,
 		},
 	}
-
 
 	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 

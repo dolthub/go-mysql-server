@@ -16,13 +16,13 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"io"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var ErrNotView = errors.NewKind("'%' is not VIEW")
@@ -115,7 +115,7 @@ type showCreateTablesIter struct {
 	isView       bool
 	ctx          *sql.Context
 	indexes      []sql.Index
-	checks 		 sql.CheckConstraints
+	checks       sql.CheckConstraints
 }
 
 func (i *showCreateTablesIter) Next() (sql.Row, error) {
@@ -336,7 +336,7 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	return true
 }
 
-func formatCheckExpression(expr sql.Expression) (string, error)  {
+func formatCheckExpression(expr sql.Expression) (string, error) {
 	switch t := expr.(type) {
 	case *expression.And:
 		leftChild := t.Left
@@ -359,7 +359,6 @@ func formatCheckExpression(expr sql.Expression) (string, error)  {
 		} else {
 			left = getCorrectStringFromSoloOperand(leftChild)
 		}
-
 
 		var right string
 		if !rok {
@@ -459,7 +458,7 @@ func getCorrectStringFromSoloOperand(expr sql.Expression) string {
 	case *expression.Arithmetic:
 		return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(t.Left), t.Op, getCorrectStringFromSoloOperand(t.Right))
 	default:
-		return  t.String()
+		return t.String()
 	}
 }
 
