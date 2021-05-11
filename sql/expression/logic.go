@@ -98,6 +98,10 @@ func (a *And) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewAnd(children[0], children[1]), nil
 }
 
+func (a *And) Expression() string {
+	return "AND"
+}
+
 // Or checks whether one of the two given expressions is true.
 type Or struct {
 	BinaryExpression
@@ -162,4 +166,7 @@ func (o *Or) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 2)
 	}
 	return NewOr(children[0], children[1]), nil
+}
+func (a *Or) Expression() string {
+	return "Or"
 }

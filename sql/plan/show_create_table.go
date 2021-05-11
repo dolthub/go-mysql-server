@@ -283,17 +283,6 @@ func getForeignKeyTable(t sql.Table) sql.ForeignKeyTable {
 	}
 }
 
-func getChecksTable(t sql.Table) sql.CheckTable {
-	switch t := t.(type) {
-	case sql.CheckTable:
-		return t
-	case sql.TableWrapper:
-		return getChecksTable(t.Underlying())
-	default:
-		return nil
-	}
-}
-
 func quoteIdentifiers(ids []string) []string {
 	quoted := make([]string, len(ids))
 	for i, id := range ids {
@@ -336,6 +325,8 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	return true
 }
 
+// formatCheckExpression takes in a check expression and prints it out in a fully formatted manner according to SHOW
+// CREATE TABLE standard.
 func formatCheckExpression(expr sql.Expression) (string, error) {
 	switch t := expr.(type) {
 	case *expression.And:
