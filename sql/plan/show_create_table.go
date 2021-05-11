@@ -254,7 +254,13 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 				return "", err
 			}
 
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, st))
+			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, st)
+
+			if !check.Enforced {
+				fmted += " /*!80016 NOT ENFORCED */"
+			}
+
+			colStmts = append(colStmts, fmted)
 		}
 	}
 
@@ -330,17 +336,7 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 	return true
 }
 
-func formatCheckExpression(expr sql.Expression) (string, error) {
-	st, err := formatCheckExpressionHelper(expr)
-
-	if err != nil {
-		return "", err
-	}
-
-	return st, nil
-}
-
-func formatCheckExpressionHelper(expr sql.Expression) (string, error)  {
+func formatCheckExpression(expr sql.Expression) (string, error)  {
 	switch t := expr.(type) {
 	case *expression.And:
 		leftChild := t.Left
@@ -350,17 +346,16 @@ func formatCheckExpressionHelper(expr sql.Expression) (string, error)  {
 		rok := isSoloOperand(rightChild)
 
 		if lok && rok {
-			return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(leftChild), "AND", getCorrectStringFromSoloOperand(rightChild)), nil
+			return fmt.Sprintf("%s %s %s", getCorrectStringFromSoloOperand(leftChild), "AND", getCorrectStringFromSoloOperand(rightChild)), nil
 		}
 
 		var left string
 		var err error
 		if !lok {
-			left, err = formatCheckExpressionHelper(leftChild)
+			left, err = formatCheckExpression(leftChild)
 			if err != nil {
 				return "", err
 			}
-			left = left[1:len(left)-1] // TODO: Switch to regex
 		} else {
 			left = getCorrectStringFromSoloOperand(leftChild)
 		}
@@ -368,8 +363,7 @@ func formatCheckExpressionHelper(expr sql.Expression) (string, error)  {
 
 		var right string
 		if !rok {
-			right, err = formatCheckExpressionHelper(rightChild)
-			right = right[1:len(right)-1] // TODO: Switch to regex
+			right, err = formatCheckExpression(rightChild)
 			if err != nil {
 				return "", err
 			}
@@ -382,42 +376,36 @@ func formatCheckExpressionHelper(expr sql.Expression) (string, error)  {
 		if sameOp {
 			return fmt.Sprintf("(%s %s %s)", left, "AND", right), nil
 		} else {
-			return fmt.Sprintf("((%s) %s %s)", left, "AND", right), nil
+			return fmt.Sprintf("(%s %s (%s))", left, "AND", right), nil
 		}
 	case *expression.Or:
-		if len(t.Children()) != 2 {
-			return "", fmt.Errorf("AND/OR operation has more than 2 children")
-		}
-
-		leftChild := t.Children()[0]
-		rightChild := t.Children()[1]
+		leftChild := t.Left
+		rightChild := t.Right
 
 		lok := isSoloOperand(leftChild)
 		rok := isSoloOperand(rightChild)
 
 		if lok && rok {
-			return fmt.Sprintf("(%s %s %s)", leftChild.String(), "OR", rightChild.String()), nil
+			return fmt.Sprintf("%s %s %s", getCorrectStringFromSoloOperand(leftChild), "OR", getCorrectStringFromSoloOperand(rightChild)), nil
 		}
 
 		var left string
 		var err error
 		if !lok {
-			left, err = formatCheckExpressionHelper(leftChild)
+			left, err = formatCheckExpression(leftChild)
 			if err != nil {
 				return "", err
 			}
-			left = left[1:len(left)-1] // TODO: Switch to regex
 		} else {
 			left = getCorrectStringFromSoloOperand(leftChild)
 		}
 
 		var right string
 		if !rok {
-			right, err = formatCheckExpressionHelper(rightChild)
+			right, err = formatCheckExpression(rightChild)
 			if err != nil {
 				return "", err
 			}
-			right = right[1:len(right)-1] // TODO: Switch to regex
 		} else {
 			right = getCorrectStringFromSoloOperand(rightChild)
 		}
@@ -427,7 +415,6 @@ func formatCheckExpressionHelper(expr sql.Expression) (string, error)  {
 		if sameOp {
 			return fmt.Sprintf("(%s %s %s)", left, "OR", right), nil
 		} else {
-
 			return fmt.Sprintf("(%s %s (%s))", left, "OR", right), nil
 		}
 	case expression.Comparer:
@@ -435,7 +422,7 @@ func formatCheckExpressionHelper(expr sql.Expression) (string, error)  {
 			return getCorrectStringFromSoloOperand(t), nil
 		}
 
-		return fmt.Sprintf("((%s) %s %s)", t.Left(), t.Expression(), t.Right()), nil
+		return fmt.Sprintf("(%s %s (%s))", t.Left(), t.Expression(), t.Right()), nil
 	default:
 		return expr.String(), nil
 	}
@@ -469,6 +456,8 @@ func getCorrectStringFromSoloOperand(expr sql.Expression) string {
 		return fmt.Sprintf("`%s`", name)
 	case expression.Comparer:
 		return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(t.Left()), t.Expression(), getCorrectStringFromSoloOperand(t.Right()))
+	case *expression.Arithmetic:
+		return fmt.Sprintf("(%s %s %s)", getCorrectStringFromSoloOperand(t.Left), t.Op, getCorrectStringFromSoloOperand(t.Right))
 	default:
 		return  t.String()
 	}

@@ -764,6 +764,10 @@ var ScriptTests = []ScriptTest{
 			"CREATE TABLE mytable4(pk int PRIMARY KEY, v int, CONSTRAINT check4 CHECK (pk > 2 AND v < 5 AND pk < 9))",
 			"CREATE TABLE mytable5(pk int PRIMARY KEY, v int, CONSTRAINT check5 CHECK (pk > 2 OR v < 5 AND pk < 9))",
 			"CREATE TABLE mytable6(pk int PRIMARY KEY, v int, CONSTRAINT check6 CHECK (NOT pk))",
+			"CREATE TABLE mytable7(pk int PRIMARY KEY, v int, CONSTRAINT check7 CHECK (pk != v))",
+			"CREATE TABLE mytable8(pk int PRIMARY KEY, v int, CONSTRAINT check8 CHECK (pk > 2 OR v  < 5 OR pk < 10))",
+			"CREATE TABLE mytable9(pk int PRIMARY KEY, v int, CONSTRAINT check9 CHECK ((pk + v) / 2 >= 1))",
+			"CREATE TABLE mytable10(pk int PRIMARY KEY, v int, CONSTRAINT check10 CHECK (v < 5) NOT ENFORCED)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -799,7 +803,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n"+
 							"  `v` int,\n"+
 							"  PRIMARY KEY (`pk`),\n"+
-							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5)))\n"+
+							"  CONSTRAINT `check3` CHECK ((`pk` > 2) AND (`v` < 5))\n"+
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -826,6 +830,71 @@ var ScriptTests = []ScriptTest{
 							"  `v` int,\n"+
 							"  PRIMARY KEY (`pk`),\n"+
 							"  CONSTRAINT `check5` CHECK (((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9))))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable6",
+				Expected: []sql.Row{
+					{
+						"mytable6",
+						"CREATE TABLE `mytable6` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check6` CHECK (NOT(`pk`))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					}, // TODO: fix
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable7",
+				Expected: []sql.Row{
+					{
+						"mytable7",
+						"CREATE TABLE `mytable7` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check7` CHECK (((`pk` <> `pk`) <> `v`))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable8",
+				Expected: []sql.Row{
+					{
+						"mytable8",
+						"CREATE TABLE `mytable8` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check8` CHECK (((`pk` > 2) OR (`v` < 5) OR (`pk` < 10)))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable9",
+				Expected: []sql.Row{
+					{
+						"mytable9",
+						"CREATE TABLE `mytable9` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check9` CHECK ((((`pk` + `v`) / 2) >= 1))\n"+
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable10",
+				Expected: []sql.Row{
+					{
+						"mytable10",
+						"CREATE TABLE `mytable10` (\n  `pk` int NOT NULL,\n"+
+							"  `v` int,\n"+
+							"  PRIMARY KEY (`pk`),\n"+
+							"  CONSTRAINT `check10` CHECK ((`v` < 5)) /*!80016 NOT ENFORCED */\n"+
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
