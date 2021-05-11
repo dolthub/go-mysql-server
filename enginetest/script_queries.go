@@ -763,6 +763,7 @@ var ScriptTests = []ScriptTest{
 			"CREATE TABLE mytable2(pk int PRIMARY KEY, v int, CONSTRAINT check2 CHECK (v < 5))",
 			"ALTER TABLE mytable2 ADD CONSTRAINT check12 CHECK (pk  + v = 6)",
 			"CREATE TABLE mytable3(pk int PRIMARY KEY, v int, CONSTRAINT check3 CHECK (pk > 2 AND v < 5))",
+			"ALTER TABLE mytable3 ADD CONSTRAINT check13 CHECK (pk BETWEEN 2 AND 100)",
 			"CREATE TABLE mytable4(pk int PRIMARY KEY, v int, CONSTRAINT check4 CHECK (pk > 2 AND v < 5 AND pk < 9))",
 			"CREATE TABLE mytable5(pk int PRIMARY KEY, v int, CONSTRAINT check5 CHECK (pk > 2 OR (v < 5 AND pk < 9)))",
 			"CREATE TABLE mytable6(pk int PRIMARY KEY, v int, CONSTRAINT check6 CHECK (NOT pk))",
@@ -807,7 +808,8 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5)))\n" +
+							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5))),\n" +
+							"  CONSTRAINT `check13` CHECK ((`pk` BETWEEN 2 AND 100))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},

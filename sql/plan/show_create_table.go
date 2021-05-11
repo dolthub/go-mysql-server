@@ -328,10 +328,6 @@ func isPrimaryKeyIndex(index sql.Index, table sql.Table) bool {
 // formatCheckExpression takes in a check expression and prints it out in a fully formatted manner according to SHOW
 // CREATE TABLE standard.
 func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) {
-	if len(expr.Children()) > 2 {
-		return nil, "", fmt.Errorf("error: expression tree is expected to be a binary tree")
-	}
-
 	if len(expr.Children()) == 0 {
 		switch t := expr.(type) {
 		// In the case of an unresolved column we want to pass up the new expression with the backticked columns
@@ -380,25 +376,46 @@ func formatCheckExpression(expr sql.Expression) (sql.Expression, string, error) 
 			return nil, "", err
 		}
 
-		var expressionStr string
-		switch t := expr.(type) {
-		case expression.Logic:
-			expressionStr = t.GetLogicalExpression()
-		case expression.Comparer:
-			expressionStr = t.Expression()
-		case *expression.Arithmetic:
-			expressionStr = t.Op
-		}
-
 		newExpr, err := expr.WithChildren(lExpr, rExpr)
 		if err != nil {
 			return nil, "", err
 		}
 
+		var expressionStr string
+		switch t := expr.(type) {
+		case expression.Logic:
+			return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.GetLogicalExpression(), rs), nil
+		case expression.Comparer:
+			return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Expression(), rs), nil
+		case *expression.Arithmetic:
+			return newExpr, fmt.Sprintf("(%s %s %s)", ls, t.Op, rs), nil
+		}
+
 		return newExpr, fmt.Sprintf("(%s %s %s)", ls, expressionStr, rs), nil
 	}
 
-	return nil, "", nil
+	if len(expr.Children()) > 2 {
+		newChildren := make([]sql.Expression, len(expr.Children()))
+
+		for i, child := range expr.Children() {
+			newChild, _, err := formatCheckExpression(child)
+			if err != nil {
+				return nil, "", err
+			}
+
+			newChildren[i] = newChild
+		}
+
+		newExpr, err := expr.WithChildren(newChildren...)
+
+		if err != nil {
+			return nil, "", err
+		}
+
+		return newExpr, fmt.Sprintf("(%s)", newExpr.String()), nil
+	}
+
+	return expr, expr.String(), nil
 }
 
 func produceCreateViewStatement(view *SubqueryAlias) string {
