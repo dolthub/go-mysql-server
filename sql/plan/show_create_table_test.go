@@ -155,7 +155,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 			"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
 			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
 			"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`),\n"+
-			"  CONSTRAINT `mycheck` CHECK ((`zab` > 0))\n"+
+			"  CONSTRAINT `mycheck` CHECK (`zab` > 0)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 

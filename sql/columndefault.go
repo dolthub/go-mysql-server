@@ -112,7 +112,7 @@ func (e *ColumnDefaultValue) String() string {
 	if e.literal {
 		return e.Expression.String()
 	} else {
-		return fmt.Sprintf("(%s)", e.Expression.String())
+		return fmt.Sprintf("%s", e.Expression.String())
 	}
 }
 

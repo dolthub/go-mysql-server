@@ -5396,7 +5396,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  PRIMARY KEY (`i`),\n" +
 				"  KEY `mytable_i_s` (`i`,`s`),\n" +
 				"  UNIQUE KEY `mytable_s` (`s`),\n" +
-				"  CONSTRAINT `mycheck` CHECK ((`i` > -100))\n" +
+				"  CONSTRAINT `mycheck` CHECK (`i` > -100)\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
 	},

@@ -780,8 +780,8 @@ var ScriptTests = []ScriptTest{
 						"mytable1",
 						"CREATE TABLE `mytable1` (\n  `pk` int NOT NULL,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check1` CHECK ((`pk` = 5)),\n" +
-							"  CONSTRAINT `check11` CHECK ((`pk` < 6))\n" +
+							"  CONSTRAINT `check1` CHECK (`pk` = 5),\n" +
+							"  CONSTRAINT `check11` CHECK (`pk` < 6)\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -794,8 +794,8 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable2` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check2` CHECK ((`v` < 5)),\n" +
-							"  CONSTRAINT `check12` CHECK (((`pk` + `v`) = 6))\n" +
+							"  CONSTRAINT `check2` CHECK (`v` < 5),\n" +
+							"  CONSTRAINT `check12` CHECK ((`pk` + `v`) = 6)\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -808,8 +808,8 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5))),\n" +
-							"  CONSTRAINT `check13` CHECK ((`pk` BETWEEN 2 AND 100))\n" +
+							"  CONSTRAINT `check3` CHECK ((`pk` > 2) AND (`v` < 5)),\n" +
+							"  CONSTRAINT `check13` CHECK (`pk` BETWEEN 2 AND 100)\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -822,7 +822,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check4` CHECK ((((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9)))\n" +
+							"  CONSTRAINT `check4` CHECK (((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -835,7 +835,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable5` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check5` CHECK (((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9))))\n" +
+							"  CONSTRAINT `check5` CHECK ((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -874,12 +874,12 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable8` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check8` CHECK ((((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10)))\n" +
+							"  CONSTRAINT `check8` CHECK (((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
 			},
-			// TODO: Expression tree is Incorrect
+			// TODO: Dolt parses this check constraint incorrectly....
 			//{
 			//	Query: "SHOW CREATE TABLE mytable9",
 			//	Expected: []sql.Row{
@@ -901,7 +901,7 @@ var ScriptTests = []ScriptTest{
 						"CREATE TABLE `mytable10` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check10` CHECK ((`v` < 5)) /*!80016 NOT ENFORCED */\n" +
+							"  CONSTRAINT `check10` CHECK (`v` < 5) /*!80016 NOT ENFORCED */\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
