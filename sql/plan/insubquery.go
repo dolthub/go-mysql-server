@@ -123,11 +123,11 @@ func (in *InSubquery) WithChildren(children ...sql.Expression) (sql.Expression, 
 }
 
 func (in *InSubquery) String() string {
-	return fmt.Sprintf("%s IN %s", in.Left, in.Right)
+	return fmt.Sprintf("(%s IN %s)", in.Left, in.Right)
 }
 
 func (in *InSubquery) DebugString() string {
-	return fmt.Sprintf("%s IN %s", sql.DebugString(in.Left), sql.DebugString(in.Right))
+	return fmt.Sprintf("(%s IN %s)", sql.DebugString(in.Left), sql.DebugString(in.Right))
 }
 
 // Children implements the Expression interface.

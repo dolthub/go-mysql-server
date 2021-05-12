@@ -44,10 +44,6 @@ func (in *InTuple) Right() sql.Expression {
 	return in.BinaryExpression.Right
 }
 
-func (in *InTuple) Expression() string {
-	return "IN"
-}
-
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
 	return &InTuple{BinaryExpression{left, right}}

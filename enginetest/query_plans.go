@@ -195,9 +195,9 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT mytable.i, selfjoin.i FROM mytable INNER JOIN mytable selfjoin ON mytable.i = selfjoin.i WHERE selfjoin.i IN (SELECT 1 FROM DUAL)`,
 		ExpectedPlan: "Project(mytable.i, selfjoin.i)\n" +
-			" └─ Filterselfjoin.i IN (Project(1)\n" +
+			" └─ Filter(selfjoin.i IN (Project(1)\n" +
 			"     └─ Table(dual)\n" +
-			"    )\n" +
+			"    ))\n" +
 			"     └─ IndexedJoin(mytable.i = selfjoin.i)\n" +
 			"         ├─ Table(mytable)\n" +
 			"         └─ TableAlias(selfjoin)\n" +
@@ -390,11 +390,11 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT mytable.i, mytable.s FROM mytable WHERE mytable.i IN (SELECT i2 FROM othertable WHERE mytable.i = othertable.i2)`,
-		ExpectedPlan: "Filtermytable.i IN (Project(othertable.i2)\n" +
+		ExpectedPlan: "Filter(mytable.i IN (Project(othertable.i2)\n" +
 			" └─ Filter(mytable.i = othertable.i2)\n" +
 			"     └─ Projected table access on [i2]\n" +
 			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
-			")\n" +
+			"))\n" +
 			" └─ Table(mytable)\n" +
 			"",
 	},
