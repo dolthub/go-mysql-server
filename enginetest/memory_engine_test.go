@@ -248,7 +248,7 @@ func TestQueryPlans(t *testing.T) {
 // query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
 // how query plans have changed without a lot of manual copying and pasting.
 func TestWriteQueryPlans(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	harness := enginetest.NewDefaultMemoryHarness()
 	engine := enginetest.NewEngine(t, harness)
