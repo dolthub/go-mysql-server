@@ -1204,6 +1204,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 }
+
 // Queries where the query planner produces a correct (results) but suboptimal plan.
 var QueryPlanTODOs = []QueryPlanTest{
 	{

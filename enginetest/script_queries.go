@@ -879,20 +879,19 @@ var ScriptTests = []ScriptTest{
 					},
 				},
 			},
-			// TODO: Dolt parses this check constraint incorrectly....
-			//{
-			//	Query: "SHOW CREATE TABLE mytable9",
-			//	Expected: []sql.Row{
-			//		{
-			//			"mytable9",
-			//			"CREATE TABLE `mytable9` (\n  `pk` int NOT NULL,\n" +
-			//				"  `v` int,\n" +
-			//				"  PRIMARY KEY (`pk`),\n" +
-			//				"  CONSTRAINT `check9` CHECK ((((`pk` + `v`) / 2) >= 1))\n" +
-			//				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-			//		},
-			//	},
-			//},
+			{
+				Query: "SHOW CREATE TABLE mytable9",
+				Expected: []sql.Row{
+					{
+						"mytable9",
+						"CREATE TABLE `mytable9` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check9` CHECK (((`pk` + `v`) / 2) >= 1)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
 			{
 				Query: "SHOW CREATE TABLE mytable10",
 				Expected: []sql.Row{
