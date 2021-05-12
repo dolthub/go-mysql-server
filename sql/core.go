@@ -499,8 +499,8 @@ type Transaction interface {
 type TransactionDatabase interface {
 	Database
 
-	// BeginTransaction starts a new transaction and returns it
-	BeginTransaction(ctx *Context) (Transaction, error)
+	// StartTransaction starts a new transaction and returns it
+	StartTransaction(ctx *Context) (Transaction, error)
 
 	// CommitTransaction commits the transaction given
 	CommitTransaction(ctx *Context, tx Transaction) error

@@ -1446,6 +1446,28 @@ var QueryTests = []QueryTest{
 		Expected: nil,
 	},
 	{
+		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
+		Expected: []sql.Row{
+			{"first", int64(3)},
+		},
+	},
+	{
+		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable WHERE s2 = 'first') othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
+		Expected: []sql.Row{
+			{"first", int64(3)},
+		},
+	},
+	{
+		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable WHERE i2 = 3) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
+		Expected: []sql.Row{
+			{"first", int64(3)},
+		},
+	},
+	{
+		Query:    `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable WHERE s2 = 'second') othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
+		Expected: nil,
+	},
+	{
 		Query: "SELECT i,v from stringandtable WHERE i",
 		Expected: []sql.Row{
 			{int64(1), "1"},
@@ -5459,6 +5481,10 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "middle_name", 4, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "tabletest", "i", 1, nil, nil, nil, nil},
 		},
+	},
+	{
+		Query:    "SELECT * FROM information_schema.partitions",
+		Expected: []sql.Row{},
 	},
 }
 

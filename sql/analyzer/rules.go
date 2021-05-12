@@ -49,6 +49,7 @@ var DefaultRules = []Rule{
 	{"flatten_table_aliases", flattenTableAliases},
 	{"pushdown_sort", pushdownSort},
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
+	{"pushdown_subquery_alias_filters", pushdownSubqueryAliasFilters},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"validate_check_constraint", validateCreateCheck},

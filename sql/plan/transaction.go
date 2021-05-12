@@ -14,7 +14,11 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"fmt"
+
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 // StartTransaction explicitly starts a transaction. Transactions also start before any statement execution that doesn't have a
 // transaction.
@@ -63,7 +67,7 @@ func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 
-	transaction, err := tdb.BeginTransaction(ctx)
+	transaction, err := tdb.StartTransaction(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +204,10 @@ func (c *Commit) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Resolved implements the sql.Node interface.
 func (c *Commit) Resolved() bool {
-	_, ok := c.db.(sql.UnresolvedDatabase)
-	return !ok
+	// If the database is nameless, we count it as resolved
+	_, unresolved := c.db.(sql.UnresolvedDatabase)
+	dbResolved := !unresolved || c.db.Name() == ""
+	return dbResolved
 }
 
 // Children implements the sql.Node interface.
@@ -244,6 +250,10 @@ func (r *Rollback) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
+	// Like Commit, Rollback ends the current transaction and a new one begins with the next statement
+	ctx.SetIgnoreAutoCommit(false)
+	ctx.SetTransaction(nil)
+
 	return sql.RowsToRowIter(), nil
 }
 
@@ -278,3 +288,210 @@ func (*Rollback) Children() []sql.Node { return nil }
 
 // Schema implements the sql.Node interface.
 func (*Rollback) Schema() sql.Schema { return nil }
+
+type CreateSavepoint struct {
+	name string
+	db   sql.Database
+}
+
+var _ sql.Databaser = (*CreateSavepoint)(nil)
+var _ sql.Node = (*CreateSavepoint)(nil)
+
+// NewCreateSavepoint creates a new CreateSavepoint node.
+func NewCreateSavepoint(db sql.UnresolvedDatabase, name string) *CreateSavepoint {
+	return &CreateSavepoint{
+		db:   db,
+		name: name,
+	}
+}
+
+// RowIter implements the sql.Node interface.
+func (c *CreateSavepoint) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	tdb, ok := c.db.(sql.TransactionDatabase)
+	if !ok {
+		return sql.RowsToRowIter(), nil
+	}
+
+	transaction := ctx.GetTransaction()
+
+	if transaction == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	err := tdb.CreateSavepoint(ctx, transaction, c.name)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(), nil
+}
+
+func (c *CreateSavepoint) Database() sql.Database {
+	return c.db
+}
+
+func (c CreateSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
+	c.db = database
+	return &c, nil
+}
+
+func (c *CreateSavepoint) String() string { return fmt.Sprintf("SAVEPOINT %s", c.name) }
+
+// WithChildren implements the Node interface.
+func (c *CreateSavepoint) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
+	}
+
+	return c, nil
+}
+
+// Resolved implements the sql.Node interface.
+func (c *CreateSavepoint) Resolved() bool {
+	_, ok := c.db.(sql.UnresolvedDatabase)
+	return !ok
+}
+
+// Children implements the sql.Node interface.
+func (*CreateSavepoint) Children() []sql.Node { return nil }
+
+// Schema implements the sql.Node interface.
+func (*CreateSavepoint) Schema() sql.Schema { return nil }
+
+type RollbackSavepoint struct {
+	name string
+	db   sql.Database
+}
+
+var _ sql.Databaser = (*RollbackSavepoint)(nil)
+var _ sql.Node = (*RollbackSavepoint)(nil)
+
+// NewRollbackSavepoint creates a new RollbackSavepoint node.
+func NewRollbackSavepoint(db sql.UnresolvedDatabase, name string) *RollbackSavepoint {
+	return &RollbackSavepoint{
+		db:   db,
+		name: name,
+	}
+}
+
+// RowIter implements the sql.Node interface.
+func (r *RollbackSavepoint) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	tdb, ok := r.db.(sql.TransactionDatabase)
+	if !ok {
+		return sql.RowsToRowIter(), nil
+	}
+
+	transaction := ctx.GetTransaction()
+
+	if transaction == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	err := tdb.RollbackToSavepoint(ctx, transaction, r.name)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(), nil
+}
+
+func (r *RollbackSavepoint) Database() sql.Database {
+	return r.db
+}
+
+func (r RollbackSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
+	r.db = database
+	return &r, nil
+}
+
+func (r *RollbackSavepoint) String() string { return fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", r.name) }
+
+// WithChildren implements the Node interface.
+func (r *RollbackSavepoint) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+	}
+
+	return r, nil
+}
+
+// Resolved implements the sql.Node interface.
+func (r *RollbackSavepoint) Resolved() bool {
+	_, ok := r.db.(sql.UnresolvedDatabase)
+	return !ok
+}
+
+// Children implements the sql.Node interface.
+func (*RollbackSavepoint) Children() []sql.Node { return nil }
+
+// Schema implements the sql.Node interface.
+func (*RollbackSavepoint) Schema() sql.Schema { return nil }
+
+type ReleaseSavepoint struct {
+	name string
+	db   sql.Database
+}
+
+var _ sql.Databaser = (*ReleaseSavepoint)(nil)
+var _ sql.Node = (*ReleaseSavepoint)(nil)
+
+// NewReleaseSavepoint creates a new ReleaseSavepoint node.
+func NewReleaseSavepoint(db sql.UnresolvedDatabase, name string) *ReleaseSavepoint {
+	return &ReleaseSavepoint{
+		db:   db,
+		name: name,
+	}
+}
+
+// RowIter implements the sql.Node interface.
+func (r *ReleaseSavepoint) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	tdb, ok := r.db.(sql.TransactionDatabase)
+	if !ok {
+		return sql.RowsToRowIter(), nil
+	}
+
+	transaction := ctx.GetTransaction()
+
+	if transaction == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
+	err := tdb.RollbackToSavepoint(ctx, transaction, r.name)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(), nil
+}
+
+func (r *ReleaseSavepoint) Database() sql.Database {
+	return r.db
+}
+
+func (r ReleaseSavepoint) WithDatabase(database sql.Database) (sql.Node, error) {
+	r.db = database
+	return &r, nil
+}
+
+func (r *ReleaseSavepoint) String() string { return fmt.Sprintf("RELEASE SAVEPOINT %s", r.name) }
+
+// WithChildren implements the Node interface.
+func (r *ReleaseSavepoint) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+	}
+
+	return r, nil
+}
+
+// Resolved implements the sql.Node interface.
+func (r *ReleaseSavepoint) Resolved() bool {
+	_, ok := r.db.(sql.UnresolvedDatabase)
+	return !ok
+}
+
+// Children implements the sql.Node interface.
+func (*ReleaseSavepoint) Children() []sql.Node { return nil }
+
+// Schema implements the sql.Node interface.
+func (*ReleaseSavepoint) Schema() sql.Schema { return nil }

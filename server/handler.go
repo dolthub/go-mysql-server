@@ -284,8 +284,11 @@ func (h *Handler) doQuery(
 		}
 	}
 
-	// TODO: this should happen in the analyzer so it can work with non-current databases
+	// TODO: this should happen in the analyzer so it can work correctly with non-current databases
+	//  What we have here is a dirty hack where a non-current database will get a commit with no transaction,
+	//  since we couldn't begin one
 	beginNewTransaction := ctx.GetTransaction() == nil
+	noDbSelected := false
 	if beginNewTransaction {
 		db := ctx.GetCurrentDatabase()
 		if len(db) > 0 {
@@ -296,12 +299,14 @@ func (h *Handler) doQuery(
 
 			tdb, ok := database.(sql.TransactionDatabase)
 			if ok {
-				tx, err := tdb.BeginTransaction(ctx)
+				tx, err := tdb.StartTransaction(ctx)
 				if err != nil {
 					return err
 				}
 				ctx.SetTransaction(tx)
 			}
+		} else {
+			noDbSelected = true
 		}
 	}
 
@@ -434,11 +439,11 @@ rowLoop:
 	}
 
 	tx := ctx.GetTransaction()
-	commitTransaction := tx != nil && autoCommit && !ctx.GetIgnoreAutoCommit()
+	commitTransaction := (tx != nil || noDbSelected) && autoCommit && !ctx.GetIgnoreAutoCommit()
 	if commitTransaction {
 		// TODO: unify this logic with Commit node
 		logrus.Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx)); err != nil {
+		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx), tx); err != nil {
 			return err
 		}
 		// Clearing out the current transaction will tell us to start a new one the next time this session queries

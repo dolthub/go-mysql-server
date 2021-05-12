@@ -154,10 +154,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	switch n := stmt.(type) {
 	default:
 		return nil, ErrUnsupportedSyntax.New(sqlparser.String(n))
-	case *sqlparser.BeginEndBlock:
-		return convertBeginEndBlock(ctx, n, query)
-	case *sqlparser.IfStatement:
-		return convertIfBlock(ctx, n)
 	case *sqlparser.Show:
 		// When a query is empty it means it comes from a subquery, as we don't
 		// have the query itself in a subquery. Hence, a SHOW could not be
@@ -166,12 +162,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			return nil, ErrUnsupportedFeature.New("SHOW in subquery")
 		}
 		return convertShow(ctx, n, query)
-	case *sqlparser.Explain:
-		return convertExplain(ctx, n)
-	case *sqlparser.Insert:
-		return convertInsert(ctx, n)
 	case *sqlparser.DDL:
 		// unlike other statements, DDL statements have loose parsing by default
+		// TODO: fix this
 		ddl, err := sqlparser.ParseStrictDDL(query)
 		if err != nil {
 			return nil, err
@@ -185,6 +178,16 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertMultiAlterDDL(ctx, query, multiAlterDdl.(*sqlparser.MultiAlterDDL))
 	case *sqlparser.DBDDL:
 		return convertDBDDL(n)
+	case *sqlparser.Explain:
+		return convertExplain(ctx, n)
+	case *sqlparser.Insert:
+		return convertInsert(ctx, n)
+	case *sqlparser.Delete:
+		return convertDelete(ctx, n)
+	case *sqlparser.Update:
+		return convertUpdate(ctx, n)
+	case *sqlparser.Load:
+		return convertLoad(ctx, n)
 	case *sqlparser.Set:
 		return convertSet(ctx, n)
 	case *sqlparser.Use:
@@ -195,22 +198,22 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return plan.NewCommit(""), nil
 	case *sqlparser.Rollback:
 		return plan.NewRollback(""), nil
-	case *sqlparser.Delete:
-		return convertDelete(ctx, n)
-	case *sqlparser.Update:
-		return convertUpdate(ctx, n)
-	case *sqlparser.Load:
-		return convertLoad(ctx, n)
+	case *sqlparser.Savepoint:
+		return plan.NewCreateSavepoint("", n.Identifier), nil
+	case *sqlparser.RollbackSavepoint:
+		return plan.NewRollbackSavepoint("", n.Identifier), nil
+	case *sqlparser.ReleaseSavepoint:
+		return plan.NewReleaseSavepoint("", n.Identifier), nil
+	case *sqlparser.BeginEndBlock:
+		return convertBeginEndBlock(ctx, n, query)
+	case *sqlparser.IfStatement:
+		return convertIfBlock(ctx, n)
 	case *sqlparser.Call:
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
 		return convertDeclare(ctx, n)
 	case *sqlparser.Signal:
 		return convertSignal(ctx, n)
-		//TODO: implement the SAVEPOINT statements used in transactions, currently here for integration compatibility
-	case *sqlparser.Savepoint, *sqlparser.RollbackSavepoint, *sqlparser.ReleaseSavepoint:
-		ctx.Warn(1642, "SAVEPOINT functionality is currently a no-op")
-		return plan.NewBlock(nil), nil // An empty block is essentially a no-op
 	}
 }
 
