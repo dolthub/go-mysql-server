@@ -146,7 +146,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 					expression.NewGetFieldWithTable(5, sql.Text, "mytable2", "t2", false),
 				},
 				plan.NewCrossJoin(
-					plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]", plan.NewResolvedTable(table.WithFilters([]sql.Expression{
+					plan.NewDecoratedNode("Filtered table access on [(mytable.f = 3.14)]", plan.NewResolvedTable(table.WithFilters([]sql.Expression{
 						expression.NewEquals(
 							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false),
 							expression.NewLiteral(3.14, sql.Float64),
@@ -192,7 +192,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 				},
 				plan.NewCrossJoin(
 					plan.NewDecoratedNode("Projected table access on [f]",
-						plan.NewDecoratedNode("Filtered table access on [mytable.f = 3.14]",
+						plan.NewDecoratedNode("Filtered table access on [(mytable.f = 3.14)]",
 							plan.NewResolvedTable(table.WithProjection([]string{"f"}).(*memory.FilteredTable).WithFilters([]sql.Expression{
 								eq(expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", false), expression.NewLiteral(3.14, sql.Float64)),
 							}), nil, nil),

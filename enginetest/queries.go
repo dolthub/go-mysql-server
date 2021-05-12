@@ -5435,7 +5435,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
 		Expected: []sql.Row{
-			{"def", "mydb", "mycheck", "i > -100"},
+			{"def", "mydb", "mycheck", "(i > -100)"},
 		},
 	},
 	{
@@ -5486,8 +5486,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
 				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "height < 10"},
-					{"def", "mydb", "mycheck", "test_score >= 50"},
+					{"def", "mydb", "hcheck", "(height < 10)"},
+					{"def", "mydb", "mycheck", "(test_score >= 50)"},
 				},
 			},
 			{

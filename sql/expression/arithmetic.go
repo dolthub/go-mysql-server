@@ -590,7 +590,7 @@ func (e *UnaryMinus) Type() sql.Type {
 }
 
 func (e *UnaryMinus) String() string {
-	return fmt.Sprintf("(-%s)", e.Child)
+	return fmt.Sprintf("-%s", e.Child)
 }
 
 // WithChildren implements the Expression interface.

@@ -1909,17 +1909,17 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	expected := []sql.CheckDefinition{
 		{
 			Name:            "chk1",
-			CheckExpression: "b > 0",
+			CheckExpression: "(b > 0)",
 			Enforced:        true,
 		},
 		{
 			Name:            "chk2",
-			CheckExpression: "b > 0",
+			CheckExpression: "(b > 0)",
 			Enforced:        false,
 		},
 		{
 			Name:            "chk3",
-			CheckExpression: "b > 1",
+			CheckExpression: "(b > 1)",
 			Enforced:        true,
 		},
 	}
@@ -1940,7 +1940,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 
 	foundChk4 := false
 	for _, check := range checks {
-		if check.CheckExpression == "b > 100" {
+		if check.CheckExpression == "(b > 100)" {
 			assert.True(t, len(check.Name) > 0, "empty check name")
 			foundChk4 = true
 			break
@@ -1972,12 +1972,12 @@ CREATE TABLE T2
 	require.NoError(err)
 
 	expectedCheckConds := []string{
-		"c1 = c2",
-		"c1 > 10",
-		"c2 > 0",
-		"c3 < 100",
-		"c1 = 0",
-		"c1 > c3",
+		"(c1 = c2)",
+		"(c1 > 10)",
+		"(c2 > 0)",
+		"(c3 < 100)",
+		"(c1 = 0)",
+		"(c1 > c3)",
 	}
 
 	var checkConds []string
@@ -2115,7 +2115,7 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 	expected := []sql.CheckDefinition{
 		{
 			Name:            "chk3",
-			CheckExpression: "c > 0",
+			CheckExpression: "(c > 0)",
 			Enforced:        true,
 		},
 	}
@@ -2156,7 +2156,7 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	expected := []sql.CheckDefinition{
 		{
 			Name:            "chk1",
-			CheckExpression: "a > 0",
+			CheckExpression: "(a > 0)",
 			Enforced:        true,
 		},
 	}
@@ -3016,7 +3016,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "SHOW CREATE TABLE t29", []sql.Row{{"t29", "CREATE TABLE `t29` (\n" +
 			"  `pk` bigint NOT NULL,\n" +
 			"  `v1y` bigint,\n" +
-			"  `v2` bigint DEFAULT (v1y + 1),\n" +
+			"  `v2` bigint DEFAULT ((v1y + 1)),\n" +
 			"  PRIMARY KEY (`pk`)\n" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}}, nil, nil)
 	})
