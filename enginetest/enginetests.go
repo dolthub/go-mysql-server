@@ -130,6 +130,7 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
+	createChecks(t, harness, engine)
 	for _, tt := range PlanTests {
 		t.Run(tt.Query, func(t *testing.T) {
 			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
@@ -1153,7 +1154,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	t.Run("CREATE LIKE with indexes, default, and comments", func(t *testing.T) {
 		_, iter, err := e.Query(ctx, "CREATE TABLE t7pre("+
 			"pk bigint primary key,"+
-			"v1 bigint default (2) comment 'hi there',"+
+			"v1 bigint default 2 comment 'hi there',"+
 			"index idx_v1 (v1) comment 'index here'"+
 			")")
 		if plan.ErrNotIndexable.Is(err) {
@@ -1175,9 +1176,10 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		s := sql.Schema{
 			{Name: "pk", Type: sql.Int64, PrimaryKey: true, Nullable: false, Source: "t7"},
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7",
-				Default: parse.MustStringToColumnDefaultValue(ctx, "(2)", sql.Int64, true), Comment: "hi there"},
+				Default: parse.MustStringToColumnDefaultValue(ctx, "2", sql.Int64, true), Comment: "hi there"},
 		}
-		require.Equal(t, s, indexableTable.Schema())
+		cs := indexableTable.Schema()
+		require.Equal(t, s, cs)
 
 		indexes, err := indexableTable.GetIndexes(ctx)
 		require.NoError(t, err)
@@ -1197,7 +1199,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("foo")
 		_, iter, err := e.Query(ctx, "CREATE TABLE t8pre("+
 			"pk bigint primary key,"+
-			"v1 bigint default (7) comment 'greetings'"+
+			"v1 bigint default 7 comment 'greetings'"+
 			")")
 		require.NoError(t, err)
 		_, err = sql.RowIterToRows(ctx, iter)
@@ -1216,7 +1218,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		s := sql.Schema{
 			{Name: "pk", Type: sql.Int64, PrimaryKey: true, Nullable: false, Source: "t8"},
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t8",
-				Default: parse.MustStringToColumnDefaultValue(ctx, "(7)", sql.Int64, true), Comment: "greetings"},
+				Default: parse.MustStringToColumnDefaultValue(ctx, "7", sql.Int64, true), Comment: "greetings"},
 		}
 		require.Equal(t, s, indexableTable.Schema())
 	})
