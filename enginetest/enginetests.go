@@ -3020,7 +3020,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "SHOW CREATE TABLE t29", []sql.Row{{"t29", "CREATE TABLE `t29` (\n" +
 			"  `pk` bigint NOT NULL,\n" +
 			"  `v1y` bigint,\n" +
-			"  `v2` bigint DEFAULT (v1y + 1),\n" +
+			"  `v2` bigint DEFAULT ((v1y + 1)),\n" +
 			"  PRIMARY KEY (`pk`)\n" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"}}, nil, nil)
 	})
