@@ -1212,7 +1212,7 @@ var QueryPlanTODOs = []QueryPlanTest{
 		Query: `SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-			"     └─ Filter((a.pk1 = b.pk1) AND a.pk2 = b.pk2)\n" +
+			"     └─ Filter((a.pk1 = b.pk1) AND (a.pk2 = b.pk2))\n" +
 			"         └─ CrossJoin\n" +
 			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table(two_pk)\n" +
@@ -1225,7 +1225,7 @@ var QueryPlanTODOs = []QueryPlanTest{
 		Query: `SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-			"     └─ Filter(((a.pk1 = b.pk2) AND (a.pk2 = b.pk1)))\n" +
+			"     └─ Filter((a.pk1 = b.pk2) AND (a.pk2 = b.pk1))\n" +
 			"         └─ CrossJoin\n" +
 			"             ├─ TableAlias(a)\n" +
 			"             │   └─ Table(two_pk)\n" +
@@ -1238,7 +1238,7 @@ var QueryPlanTODOs = []QueryPlanTest{
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3`,
 		ExpectedPlan: "Sort(niltable.i ASC, niltable.f ASC)\n" +
 			" └─ Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			"     └─ RightJoin(one_pk.pk = niltable.i AND one_pk.pk > 0)\n" +
+			"     └─ RightJoin((one_pk.pk = niltable.i) AND (one_pk.pk > 0))\n" +
 			"         ├─ Projected table access on [pk]\n" +
 			"         │   └─ Table(one_pk)\n" +
 			"         └─ Projected table access on [i f]\n" +
@@ -1251,11 +1251,11 @@ var QueryPlanTODOs = []QueryPlanTest{
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk1 ASC)\n" +
 			" └─ Project(t1.pk, t2.pk1, t2.pk2)\n" +
 			"     └─ CrossJoin\n" +
-			"         ├─ Filter((t1.pk = 1))\n" +
+			"         ├─ Filter(t1.pk = 1)\n" +
 			"         │   └─ TableAlias(t1)\n" +
 			"         │       └─ Projected table access on [pk]\n" +
 			"         │           └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
-			"         └─ Filter(t2.pk2 = 1 AND t2.pk1 = 1)\n" +
+			"         └─ Filter((t2.pk2 = 1) AND (t2.pk1 = 1))\n" +
 			"             └─ TableAlias(t2)\n" +
 			"                 └─ Table(two_pk)\n" +
 			"",
