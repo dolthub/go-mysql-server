@@ -1178,8 +1178,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(2)", sql.Int64, true), Comment: "hi there"},
 		}
-		cs := indexableTable.Schema()
-		require.Equal(t, s, cs)
+		require.Equal(t, s, indexableTable.Schema())
 
 		indexes, err := indexableTable.GetIndexes(ctx)
 		require.NoError(t, err)
