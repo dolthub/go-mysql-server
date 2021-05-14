@@ -24,11 +24,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -263,13 +263,17 @@ func (h *Handler) doQuery(
 
 	start := time.Now()
 
-	// Parse the query independently of the engine for further analysis. The parser has its own parsing logic for
-	// statements not handled by vitess's parser, so even if there's a parse error here we still pass it to the engine
-	// for execution.
-	// TODO: unify parser logic so we don't have to parse twice
-	parsedQuery, _ := sqlparser.Parse(query)
-	switch n := parsedQuery.(type) {
-	case *sqlparser.Load:
+	parsed, err := parse.Parse(ctx, query)
+	if err != nil {
+		return err
+	}
+
+	// For USE DATABASE statements, we need to process them here, before executing the query, so that we can set the
+	// database for transactions appropriately
+	switch n := parsed.(type) {
+	case *plan.Use:
+		ctx.SetCurrentDatabase(n.Database().Name())
+	case *plan.LoadData:
 		if n.Local {
 			// tell the connection to undergo the load data process with this
 			// metadata
@@ -277,22 +281,45 @@ func (h *Handler) doQuery(
 			if err != nil {
 				return err
 			}
-			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, n.Infile)
+			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, n.File)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	// TODO: this should happen in the analyzer so it can work correctly with non-current databases
-	//  What we have here is a dirty hack where a non-current database will get a commit with no transaction,
-	//  since we couldn't begin one
+	transactionDatabase := ctx.GetCurrentDatabase()
+
+	// Similarly, before we begin a transaction, we need to know if the database being operated on is not the one
+	// currently selected
+	switch n := parsed.(type) {
+	case *plan.CreateTable:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.InsertInto:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.DeleteFrom:
+		if n.Database() != "" {
+			transactionDatabase = n.Database()
+		}
+	case *plan.Update:
+		if n.Database() != "" {
+			transactionDatabase = n.Database()
+		}
+	}
+
+	// db := ctx.GetCurrentDatabase()
+	// logrus.Tracef("database %s", db)
+
+	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
 	beginNewTransaction := ctx.GetTransaction() == nil
 	noDbSelected := false
 	if beginNewTransaction {
-		db := ctx.GetCurrentDatabase()
-		if len(db) > 0 {
-			database, err := h.e.Catalog.Database(db)
+		if len(transactionDatabase) > 0 {
+			database, err := h.e.Catalog.Database(transactionDatabase)
 			if err != nil {
 				return err
 			}
@@ -313,13 +340,13 @@ func (h *Handler) doQuery(
 	var schema sql.Schema
 	var rows sql.RowIter
 	if len(bindings) == 0 {
-		schema, rows, err = h.e.Query(ctx, query)
+		schema, rows, err = h.e.Query(ctx, query, parsed)
 	} else {
 		sqlBindings, err := bindingsToExprs(bindings)
 		if err != nil {
 			return err
 		}
-		schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
+		schema, rows, err = h.e.QueryWithBindings(ctx, query, parsed, sqlBindings)
 	}
 	defer func() {
 		if q, ok := h.e.Auth.(*auth.Audit); ok {
