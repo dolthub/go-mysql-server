@@ -450,6 +450,10 @@ rowLoop:
 		ctx.SetTransaction(nil)
 	}
 
+	if err = setConnStatusFlags(ctx, c); err != nil {
+		return err
+	}
+
 	switch len(r.Rows) {
 	case 0:
 		logrus.Tracef("returning empty result")
@@ -466,6 +470,27 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
+	ok, err := isSessionAutocommit(ctx)
+	if err != nil {
+		return err
+	}
+	if ok {
+		c.StatusFlags |= uint16(mysql.ServerStatusAutocommit)
+	} else {
+		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
+	}
+	return nil
+}
+
+func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 // Call doQuery and cast known errors to SQLError
@@ -544,14 +569,6 @@ func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
 	}
 
 	return nil, false
-}
-
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
