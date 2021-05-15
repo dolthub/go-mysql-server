@@ -120,7 +120,6 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
-
 	for _, tt := range PlanTests {
 		t.Run(tt.Query, func(t *testing.T) {
 			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
