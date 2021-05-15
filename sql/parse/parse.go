@@ -2091,7 +2091,6 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	if err != nil {
 		return nil, err
 	}
-
 	// The literal and expression distinction seems to be decided by the presence of parentheses, even for defaults like NOW() vs (NOW())
 	// 2+2 would evaluate to a literal under the parentheses check, but will have children due to being an Arithmetic expression, thus we check for children.
 	return ExpressionToColumnDefaultValue(ctx, parsedExpr, len(parsedExpr.Children()) == 0 && !strings.HasPrefix(exprStr, "("))
