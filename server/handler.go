@@ -453,6 +453,9 @@ rowLoop:
 	if err = setConnStatusFlags(ctx, c); err != nil {
 		return err
 	}
+	if err = setResultInfo(ctx, r); err != nil {
+		return err
+	}
 
 	switch len(r.Rows) {
 	case 0:
@@ -461,6 +464,7 @@ rowLoop:
 		logrus.Tracef("returning result %v", r)
 	}
 
+	// TODO(andy): logic doesn't match comment?
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener
 	// and avoid returning errors when the query doesn't
@@ -482,6 +486,21 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	} else {
 		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
 	}
+	return nil
+}
+
+func setResultInfo(ctx *sql.Context, r *sqltypes.Result) error {
+	val, err := ctx.Session.GetSessionVariable(ctx, "last_insert_id")
+	if err != nil {
+		return err
+	}
+
+	val, err = sql.Uint64.Convert(val)
+	if err != nil {
+		return err
+	}
+	r.InsertID = val.(uint64)
+
 	return nil
 }
 

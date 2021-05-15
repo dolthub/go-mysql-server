@@ -22,6 +22,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+const lastInsertIDSessionVar = "last_insert_id"
+
 var (
 	// ErrAutoIncrementUnsupported is returned when table does not support AUTO_INCREMENT.
 	ErrAutoIncrementUnsupported = errors.NewKind("table %s does not support AUTO_INCREMENT columns")
@@ -115,6 +117,11 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 	i.autoIncVal = NewLiteral(nextVal, i.Type())
+
+	err = ctx.Session.SetSessionVariable(ctx, lastInsertIDSessionVar, val)
+	if err != nil {
+		return nil, err
+	}
 
 	return val, nil
 }
