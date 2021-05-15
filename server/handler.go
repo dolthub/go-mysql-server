@@ -107,8 +107,8 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	ctx, _ := h.sm.NewContextWithQuery(c, "")
 	h.sm.CloseConn(c)
 
-	// If connection was closed, kill only its associated queries.
-	h.e.Catalog.ProcessList.KillOnlyQueries(c.ConnectionID)
+	// If connection was closed, kill its associated queries.
+	h.e.Catalog.ProcessList.Kill(c.ConnectionID)
 	if err := h.e.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
@@ -261,6 +261,13 @@ func (h *Handler) doQuery(
 		return callback(&sqltypes.Result{})
 	}
 
+	ctx, err = h.e.Catalog.AddProcess(ctx, query)
+	defer func() {
+		if err != nil && ctx != nil {
+			h.e.Catalog.Done(ctx.Pid())
+		}
+	}()
+
 	start := time.Now()
 
 	parsed, err := parse.Parse(ctx, query)
@@ -268,11 +275,8 @@ func (h *Handler) doQuery(
 		return err
 	}
 
-	// For USE DATABASE statements, we need to process them here, before executing the query, so that we can set the
-	// database for transactions appropriately
+	// TODO: move this elsewhere, or find a way to not parse twice
 	switch n := parsed.(type) {
-	case *plan.Use:
-		ctx.SetCurrentDatabase(n.Database().Name())
 	case *plan.LoadData:
 		if n.Local {
 			// tell the connection to undergo the load data process with this
@@ -288,75 +292,28 @@ func (h *Handler) doQuery(
 		}
 	}
 
-	transactionDatabase := ctx.GetCurrentDatabase()
-
-	// Similarly, before we begin a transaction, we need to know if the database being operated on is not the one
-	// currently selected
-	switch n := parsed.(type) {
-	case *plan.CreateTable:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.InsertInto:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.DeleteFrom:
-		if n.Database() != "" {
-			transactionDatabase = n.Database()
-		}
-	case *plan.Update:
-		if n.Database() != "" {
-			transactionDatabase = n.Database()
-		}
-	}
-
-	// db := ctx.GetCurrentDatabase()
-	// logrus.Tracef("database %s", db)
-
-	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
-	beginNewTransaction := ctx.GetTransaction() == nil
-	noDbSelected := false
-	if beginNewTransaction {
-		if len(transactionDatabase) > 0 {
-			database, err := h.e.Catalog.Database(transactionDatabase)
-			if err != nil {
-				return err
-			}
-
-			tdb, ok := database.(sql.TransactionDatabase)
-			if ok {
-				tx, err := tdb.StartTransaction(ctx)
-				if err != nil {
-					return err
-				}
-				ctx.SetTransaction(tx)
-			}
-		} else {
-			noDbSelected = true
-		}
-	}
-
 	var schema sql.Schema
 	var rows sql.RowIter
 	if len(bindings) == 0 {
-		schema, rows, err = h.e.Query(ctx, query, parsed)
+		schema, rows, err = h.e.Query(ctx, query)
 	} else {
 		sqlBindings, err := bindingsToExprs(bindings)
 		if err != nil {
 			return err
 		}
-		schema, rows, err = h.e.QueryWithBindings(ctx, query, parsed, sqlBindings)
+		schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
 	}
+
+	if err != nil {
+		logrus.Tracef("Error running query %s: %s", query, err)
+		return err
+	}
+
 	defer func() {
 		if q, ok := h.e.Auth.(*auth.Audit); ok {
 			q.Query(ctx, time.Since(start), err)
 		}
 	}()
-	if err != nil {
-		logrus.Tracef("Error running query %s: %s", query, err)
-		return err
-	}
 
 	var r *sqltypes.Result
 	var proccesedAtLeastOneBatch bool
@@ -397,7 +354,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	go h.pollForClosedConnection(c, errChan, quit, query)
+	go h.pollForClosedConnection(c, errChan, quit)
 
 rowLoop:
 	for {
@@ -460,23 +417,6 @@ rowLoop:
 		return err
 	}
 
-	autoCommit, err := isSessionAutocommit(ctx)
-	if err != nil {
-		return err
-	}
-
-	tx := ctx.GetTransaction()
-	commitTransaction := (tx != nil || noDbSelected) && autoCommit && !ctx.GetIgnoreAutoCommit()
-	if commitTransaction {
-		// TODO: unify this logic with Commit node
-		logrus.Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx), tx); err != nil {
-			return err
-		}
-		// Clearing out the current transaction will tell us to start a new one the next time this session queries
-		ctx.SetTransaction(nil)
-	}
-
 	switch len(r.Rows) {
 	case 0:
 		logrus.Tracef("returning empty result")
@@ -514,7 +454,7 @@ func (h *Handler) errorWrappedDoQuery(
 // Periodically polls the connection socket to determine if it is has been closed by the client, sending an error on
 // the supplied error channel if it has. Meant to be run in a separate goroutine from the query handler routine.
 // Returns immediately on platforms that can't support TCP socket checks.
-func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, quit chan struct{}, query string) {
+func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, quit chan struct{}) {
 	tcpConn, ok := maybeGetTCPConn(c.Conn)
 	if !ok {
 		logrus.Debug("Connection checker exiting, connection isn't TCP")
@@ -573,14 +513,6 @@ func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
 	return nil, false
 }
 
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
-}
-
 func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
 	infoStr := ""
 	if result.Info != nil {
@@ -590,19 +522,6 @@ func resultFromOkResult(result sql.OkResult) *sqltypes.Result {
 		RowsAffected: result.RowsAffected,
 		InsertID:     result.InsertID,
 		Info:         infoStr,
-	}
-}
-
-func getTransactionDbName(ctx *sql.Context) string {
-	currentDbInUse := ctx.GetCurrentDatabase()
-	queriedDatabase := ctx.GetQueriedDatabase()
-
-	ctx.SetQueriedDatabase("") // reset the queried database variable
-
-	if queriedDatabase != "" {
-		return queriedDatabase
-	} else {
-		return currentDbInUse
 	}
 }
 

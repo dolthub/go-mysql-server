@@ -143,46 +143,182 @@ func (e *Engine) AnalyzeQuery(
 	return analyzed.Schema(), nil
 }
 
-// Query executes a query.
-func (e *Engine) Query(
-	ctx *sql.Context,
-	query string,
-) (sql.Schema, sql.RowIter, error) {
+// Query executes a query. If parsed is non-nil, it will be used instead of parsing the query from text.
+func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
 	return e.QueryWithBindings(ctx, query, nil)
 }
 
+// QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used instead
+// of parsing the query from text.
 func (e *Engine) QueryWithBindings(
 	ctx *sql.Context,
 	query string,
 	bindings map[string]sql.Expression,
 ) (sql.Schema, sql.RowIter, error) {
 	var (
-		parsed, analyzed sql.Node
+		analyzed sql.Node
 		iter             sql.RowIter
 		err              error
 	)
 
-	finish := observeQuery(ctx, query)
-	defer finish(err)
-
-	parsed, err = parse.Parse(ctx, query)
+	parsed, err := parse.Parse(ctx, query)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var perm = auth.ReadPerm
-	var typ = sql.QueryProcess
-	switch parsed.(type) {
-	case *plan.CreateIndex:
-		typ = sql.CreateIndexProcess
-		perm = auth.ReadPerm | auth.WritePerm
-	case *plan.CreateForeignKey, *plan.CreateCheck, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateView,
-		*plan.DeleteFrom, *plan.DropIndex, *plan.DropView,
-		*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
-		*plan.Update:
-		perm = auth.ReadPerm | auth.WritePerm
+	finish := observeQuery(ctx, query)
+	defer finish(err)
+
+	err = e.authCheck(ctx, parsed)
+	if err != nil {
+		return nil, nil, err
 	}
 
+	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(bindings) > 0 {
+		analyzed, err = plan.ApplyBindings(analyzed, bindings)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	setQueriedDatabase(ctx, parsed)
+
+	schema, rowIter, err2 := e.beginTransaction(ctx, parsed)
+	if err2 != nil {
+		return schema, rowIter, err2
+	}
+
+	iter, err = analyzed.RowIter(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	autoCommit, err := isSessionAutocommit(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if autoCommit {
+		iter = transactionCommittingIter{iter}
+	}
+
+	return analyzed.Schema(), iter, nil
+}
+
+func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (sql.Schema, sql.RowIter, error) {
+	// Before we begin a transaction, we need to know if the database being operated on is not the one
+	// currently selected
+	transactionDatabase := determineTransactionDatabase(ctx, parsed)
+
+	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
+	beginNewTransaction := ctx.GetTransaction() == nil
+	if beginNewTransaction {
+		if len(transactionDatabase) > 0 {
+			database, err := e.Catalog.Database(transactionDatabase)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			tdb, ok := database.(sql.TransactionDatabase)
+			if ok {
+				tx, err := tdb.StartTransaction(ctx)
+				if err != nil {
+					return nil, nil, err
+				}
+				ctx.SetTransaction(tx)
+			}
+		}
+	}
+	return nil, nil, nil
+}
+
+type transactionCommittingIter struct {
+	childIter sql.RowIter
+}
+
+func (t transactionCommittingIter) Next() (sql.Row, error) {
+	return t.childIter.Next()
+}
+
+func (t transactionCommittingIter) Close(ctx *sql.Context) error {
+	err := t.childIter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	tx := ctx.GetTransaction()
+	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
+	if commitTransaction {
+		logrus.Tracef("committing transaction %s", tx)
+		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx), tx); err != nil {
+			return err
+		}
+
+		// Clearing out the current transaction will tell us to start a new one the next time this session queries
+		ctx.SetTransaction(nil)
+	}
+
+	return nil
+}
+
+func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return sql.ConvertToBool(autoCommitSessionVar)
+}
+
+func getTransactionDbName(ctx *sql.Context) string {
+	currentDbInUse := ctx.GetCurrentDatabase()
+	queriedDatabase := ctx.GetQueriedDatabase()
+
+	ctx.SetQueriedDatabase("") // reset the queried database variable
+
+	if queriedDatabase != "" {
+		return queriedDatabase
+	} else {
+		return currentDbInUse
+	}
+}
+
+func determineTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
+	// For USE DATABASE statements, we need to process them here, before executing the query, so that we can set the
+	// database for transactions appropriately
+	switch n := parsed.(type) {
+	case *plan.Use:
+		ctx.SetCurrentDatabase(n.Database().Name())
+	}
+	transactionDatabase := ctx.GetCurrentDatabase()
+
+	switch n := parsed.(type) {
+	case *plan.CreateTable:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.InsertInto:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.DeleteFrom:
+		if n.Database() != "" {
+			transactionDatabase = n.Database()
+		}
+	case *plan.Update:
+		if n.Database() != "" {
+			transactionDatabase = n.Database()
+		}
+	}
+
+	return transactionDatabase
+}
+
+func setQueriedDatabase(ctx *sql.Context, parsed sql.Node) {
 	switch n := parsed.(type) {
 	case *plan.CreateTable:
 		if n.Database() != nil && n.Database().Name() != "" {
@@ -201,40 +337,21 @@ func (e *Engine) QueryWithBindings(
 			ctx.SetQueriedDatabase(n.Database())
 		}
 	}
+}
 
-	err = e.Auth.Allowed(ctx, perm)
-	if err != nil {
-		return nil, nil, err
+func (e *Engine) authCheck(ctx *sql.Context, parsed sql.Node) error {
+	var perm = auth.ReadPerm
+	switch parsed.(type) {
+	case *plan.CreateIndex:
+		perm = auth.ReadPerm | auth.WritePerm
+	case *plan.CreateForeignKey, *plan.CreateCheck, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateView,
+		*plan.DeleteFrom, *plan.DropIndex, *plan.DropView,
+		*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
+		*plan.Update:
+		perm = auth.ReadPerm | auth.WritePerm
 	}
 
-	ctx, err = e.Catalog.AddProcess(ctx, typ, query)
-	defer func() {
-		if err != nil && ctx != nil {
-			e.Catalog.Done(ctx.Pid())
-		}
-	}()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(bindings) > 0 {
-		analyzed, err = plan.ApplyBindings(analyzed, bindings)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-
-	iter, err = analyzed.RowIter(ctx, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return analyzed.Schema(), iter, nil
+	return e.Auth.Allowed(ctx, perm)
 }
 
 // ParseDefaults takes in a schema, along with each column's default value in a string form, and returns the schema

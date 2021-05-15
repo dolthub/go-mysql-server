@@ -40,7 +40,7 @@ func TestTrackProcess(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1))
-	ctx, err := catalog.AddProcess(ctx, sql.QueryProcess, "SELECT foo")
+	ctx, err := catalog.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
 
 	result, err := rule.Apply(ctx, a, node, nil)
@@ -49,7 +49,6 @@ func TestTrackProcess(t *testing.T) {
 	processes := catalog.Processes()
 	require.Len(processes, 1)
 	require.Equal("SELECT foo", processes[0].Query)
-	require.Equal(sql.QueryProcess, processes[0].Type)
 	require.Equal(
 		map[string]sql.TableProgress{
 			"foo": sql.TableProgress{
