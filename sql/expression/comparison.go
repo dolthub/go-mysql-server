@@ -198,11 +198,11 @@ func (e *Equals) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 func (e *Equals) String() string {
-	return fmt.Sprintf("%s = %s", e.Left(), e.Right())
+	return fmt.Sprintf("(%s = %s)", e.Left(), e.Right())
 }
 
 func (e *Equals) DebugString() string {
-	return fmt.Sprintf("%s = %s", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
+	return fmt.Sprintf("(%s = %s)", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
 }
 
 // NullSafeEquals is a comparison that checks an expression is equal to
@@ -271,11 +271,11 @@ func (e *NullSafeEquals) WithChildren(children ...sql.Expression) (sql.Expressio
 }
 
 func (e *NullSafeEquals) String() string {
-	return fmt.Sprintf("%s <=> %s", e.Left(), e.Right())
+	return fmt.Sprintf("(%s <=> %s)", e.Left(), e.Right())
 }
 
 func (e *NullSafeEquals) DebugString() string {
-	return fmt.Sprintf("%s <=> %s", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
+	return fmt.Sprintf("(%s <=> %s)", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
 }
 
 // Regexp is a comparison that checks an expression matches a regexp.
@@ -406,11 +406,11 @@ func (re *Regexp) WithChildren(children ...sql.Expression) (sql.Expression, erro
 }
 
 func (re *Regexp) String() string {
-	return fmt.Sprintf("%s REGEXP %s", re.Left(), re.Right())
+	return fmt.Sprintf("(%s REGEXP %s)", re.Left(), re.Right())
 }
 
 func (re *Regexp) DebugString() string {
-	return fmt.Sprintf("%s REGEXP %s", sql.DebugString(re.Left()), sql.DebugString(re.Right()))
+	return fmt.Sprintf("(%s REGEXP %s)", sql.DebugString(re.Left()), sql.DebugString(re.Right()))
 }
 
 // GreaterThan is a comparison that checks an expression is greater than another.
@@ -446,11 +446,11 @@ func (gt *GreaterThan) WithChildren(children ...sql.Expression) (sql.Expression,
 }
 
 func (gt *GreaterThan) String() string {
-	return fmt.Sprintf("%s > %s", gt.Left(), gt.Right())
+	return fmt.Sprintf("(%s > %s)", gt.Left(), gt.Right())
 }
 
 func (gt *GreaterThan) DebugString() string {
-	return fmt.Sprintf("%s > %s", sql.DebugString(gt.Left()), sql.DebugString(gt.Right()))
+	return fmt.Sprintf("(%s > %s)", sql.DebugString(gt.Left()), sql.DebugString(gt.Right()))
 }
 
 // LessThan is a comparison that checks an expression is less than another.
@@ -486,11 +486,11 @@ func (lt *LessThan) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 func (lt *LessThan) String() string {
-	return fmt.Sprintf("%s < %s", lt.Left(), lt.Right())
+	return fmt.Sprintf("(%s < %s)", lt.Left(), lt.Right())
 }
 
 func (lt *LessThan) DebugString() string {
-	return fmt.Sprintf("%s < %s", sql.DebugString(lt.Left()), sql.DebugString(lt.Right()))
+	return fmt.Sprintf("(%s < %s)", sql.DebugString(lt.Left()), sql.DebugString(lt.Right()))
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -527,11 +527,11 @@ func (gte *GreaterThanOrEqual) WithChildren(children ...sql.Expression) (sql.Exp
 }
 
 func (gte *GreaterThanOrEqual) String() string {
-	return fmt.Sprintf("%s >= %s", gte.Left(), gte.Right())
+	return fmt.Sprintf("(%s >= %s)", gte.Left(), gte.Right())
 }
 
 func (gte *GreaterThanOrEqual) DebugString() string {
-	return fmt.Sprintf("%s >= %s", sql.DebugString(gte.Left()), sql.DebugString(gte.Right()))
+	return fmt.Sprintf("(%s >= %s)", sql.DebugString(gte.Left()), sql.DebugString(gte.Right()))
 }
 
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
@@ -568,11 +568,11 @@ func (lte *LessThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expres
 }
 
 func (lte *LessThanOrEqual) String() string {
-	return fmt.Sprintf("%s <= %s", lte.Left(), lte.Right())
+	return fmt.Sprintf("(%s <= %s)", lte.Left(), lte.Right())
 }
 
 func (lte *LessThanOrEqual) DebugString() string {
-	return fmt.Sprintf("%s <= %s", sql.DebugString(lte.Left()), sql.DebugString(lte.Right()))
+	return fmt.Sprintf("(%s <= %s)", sql.DebugString(lte.Left()), sql.DebugString(lte.Right()))
 }
 
 var (

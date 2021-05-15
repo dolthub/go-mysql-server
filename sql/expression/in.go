@@ -126,11 +126,11 @@ func (in *InTuple) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 func (in *InTuple) String() string {
-	return fmt.Sprintf("%s IN %s", in.Left(), in.Right())
+	return fmt.Sprintf("(%s IN %s)", in.Left(), in.Right())
 }
 
 func (in *InTuple) DebugString() string {
-	return fmt.Sprintf("%s IN %s", sql.DebugString(in.Left()), sql.DebugString(in.Right()))
+	return fmt.Sprintf("(%s IN %s)", sql.DebugString(in.Left()), sql.DebugString(in.Right()))
 }
 
 // Children implements the Expression interface.

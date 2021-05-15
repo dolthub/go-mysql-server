@@ -79,7 +79,7 @@ func TestShowCreateTable(t *testing.T) {
 	require.True(ErrNotView.Is(err), "wrong error kind")
 }
 
-func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
+func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	var require = require.New(t)
 	ctx := sql.NewEmptyContext()
 
@@ -128,6 +128,14 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 		},
 	}
 
+	showCreateTable.(*ShowCreateTable).Checks = sql.CheckConstraints{
+		{
+			Name:     "mycheck",
+			Expr:     expression.NewGreaterThan(expression.NewUnresolvedColumn("`zab`"), expression.NewLiteral(int8(0), sql.Int8)),
+			Enforced: true,
+		},
+	}
+
 	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
 	row, err := rowIter.Next()
@@ -146,7 +154,8 @@ func TestShowCreateTableWithIndexAndForeignKeys(t *testing.T) {
 			"  KEY `zug` (`pok`,`foo`) COMMENT 'test comment',\n"+
 			"  CONSTRAINT `fk1` FOREIGN KEY (`baz`,`zab`) REFERENCES `otherTable` (`a`,`b`) ON DELETE CASCADE,\n"+
 			"  CONSTRAINT `fk2` FOREIGN KEY (`foo`) REFERENCES `otherTable` (`b`) ON UPDATE RESTRICT,\n"+
-			"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`)\n"+
+			"  CONSTRAINT `fk3` FOREIGN KEY (`bza`) REFERENCES `otherTable` (`c`),\n"+
+			"  CONSTRAINT `mycheck` CHECK (`zab` > 0)\n"+
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 	)
 

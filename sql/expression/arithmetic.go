@@ -106,11 +106,11 @@ func NewMod(left, right sql.Expression) *Arithmetic {
 }
 
 func (a *Arithmetic) String() string {
-	return fmt.Sprintf("%s %s %s", a.Left, a.Op, a.Right)
+	return fmt.Sprintf("(%s %s %s)", a.Left, a.Op, a.Right)
 }
 
 func (a *Arithmetic) DebugString() string {
-	return fmt.Sprintf("%s %s %s", sql.DebugString(a.Left), a.Op, sql.DebugString(a.Right))
+	return fmt.Sprintf("(%s %s %s)", sql.DebugString(a.Left), a.Op, sql.DebugString(a.Right))
 }
 
 // IsNullable implements the sql.Expression interface.
