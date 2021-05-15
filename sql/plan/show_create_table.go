@@ -176,6 +176,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 			stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
 		}
 
+		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
 			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())
 		}

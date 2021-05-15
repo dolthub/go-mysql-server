@@ -66,12 +66,6 @@ type ForeignKeyHarness interface {
 	SupportsForeignKeys() bool
 }
 
-type ChecksHarness interface {
-	Harness
-
-	SupportsCheckConstraints() bool
-}
-
 // VersionedDBHarness is an extension to Harness that lets an integrator test their implementation of versioned (AS OF)
 // queries. Integrators must implement sql.VersionedDatabase. For each table version being created, there will be a
 // call to NewTableAsOf, some number of Delete and Insert operations, and then a call to SnapshotTable.
