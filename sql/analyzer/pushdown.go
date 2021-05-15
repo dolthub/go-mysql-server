@@ -147,7 +147,7 @@ func canDoPushdown(n sql.Node) bool {
 		return false
 	}
 
-	if plan.IsDdlNode(n) {
+	if plan.IsNoRowNode(n) {
 		return false
 	}
 

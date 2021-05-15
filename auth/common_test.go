@@ -195,7 +195,7 @@ func testAudit(
 	req.NoError(err)
 
 	for _, c := range tests {
-		t.Run(c.user, func(t *testing.T) {
+		t.Run(c.query, func(t *testing.T) {
 			r := require.New(t)
 
 			var db *dsql.DB

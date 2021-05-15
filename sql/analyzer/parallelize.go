@@ -36,7 +36,7 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	}
 
 	// Do not try to parallelize DDL or descriptive operations
-	return !plan.IsDdlNode(node)
+	return !plan.IsNoRowNode(node)
 }
 
 func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {

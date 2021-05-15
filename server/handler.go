@@ -15,7 +15,6 @@
 package server
 
 import (
-	"context"
 	"io"
 	"net"
 	"regexp"
@@ -245,13 +244,6 @@ func (h *Handler) doQuery(
 		return err
 	}
 
-	if !h.e.Async(ctx, query) {
-		newCtx, cancel := context.WithCancel(ctx)
-		ctx = ctx.WithContext(newCtx)
-
-		defer cancel()
-	}
-
 	handled, err := h.handleKill(c, query)
 	if err != nil {
 		return err
@@ -270,12 +262,8 @@ func (h *Handler) doQuery(
 
 	start := time.Now()
 
-	parsed, err := parse.Parse(ctx, query)
-	if err != nil {
-		return err
-	}
-
 	// TODO: move this elsewhere, or find a way to not parse twice
+	parsed, _ := parse.Parse(ctx, query)
 	switch n := parsed.(type) {
 	case *plan.LoadData:
 		if n.Local {
@@ -297,16 +285,12 @@ func (h *Handler) doQuery(
 	if len(bindings) == 0 {
 		schema, rows, err = h.e.Query(ctx, query)
 	} else {
-		sqlBindings, err := bindingsToExprs(bindings)
-		if err != nil {
-			return err
-		}
-		schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
-	}
+		var sqlBindings map[string]sql.Expression
+		sqlBindings, err = bindingsToExprs(bindings)
 
-	if err != nil {
-		logrus.Tracef("Error running query %s: %s", query, err)
-		return err
+		if err == nil {
+			schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
+		}
 	}
 
 	defer func() {
@@ -314,6 +298,11 @@ func (h *Handler) doQuery(
 			q.Query(ctx, time.Since(start), err)
 		}
 	}()
+
+	if err != nil {
+		logrus.Tracef("Error running query %s: %s", query, err)
+		return err
+	}
 
 	var r *sqltypes.Result
 	var proccesedAtLeastOneBatch bool

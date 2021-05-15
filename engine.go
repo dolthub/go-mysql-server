@@ -161,18 +161,22 @@ func (e *Engine) QueryWithBindings(
 		err              error
 	)
 
-	parsed, err := parse.Parse(ctx, query)
-	if err != nil {
-		return nil, nil, err
-	}
+	parsed, parseErr := parse.Parse(ctx, query)
 
-	finish := observeQuery(ctx, query)
-	defer finish(err)
-
+	// Even if we couldn't parse the query, we still need to do an auth check before anything else
+	// |parsed| will be nil in this case
 	err = e.authCheck(ctx, parsed)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// After auth, handle any parse error
+	if parseErr != nil {
+		return nil, nil, parseErr
+	}
+
+	finish := observeQuery(ctx, query)
+	defer finish(err)
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
 	if err != nil {
@@ -339,22 +343,21 @@ func setQueriedDatabase(ctx *sql.Context, parsed sql.Node) {
 	}
 }
 
-func (e *Engine) authCheck(ctx *sql.Context, parsed sql.Node) error {
+func (e *Engine) authCheck(ctx *sql.Context, node sql.Node) error {
 	var perm = auth.ReadPerm
-	switch parsed.(type) {
-	case *plan.CreateIndex:
+	if plan.IsDDLNode(node) {
 		perm = auth.ReadPerm | auth.WritePerm
-	case *plan.CreateForeignKey, *plan.CreateCheck, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateView,
-		*plan.DeleteFrom, *plan.DropIndex, *plan.DropView,
-		*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
-		*plan.Update:
+	}
+	switch node.(type) {
+	case
+		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
 		perm = auth.ReadPerm | auth.WritePerm
 	}
 
 	return e.Auth.Allowed(ctx, perm)
 }
 
-// ParseDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
+// ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
 // with the default values parsed and resolved.
 func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
 	ctx := sql.NewEmptyContext()
@@ -443,18 +446,6 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 		}
 	}
 	return newRow, nil
-}
-
-// Async returns true if the query is async. If there are any errors with the
-// query it returns false
-func (e *Engine) Async(ctx *sql.Context, query string) bool {
-	parsed, err := parse.Parse(ctx, query)
-	if err != nil {
-		return false
-	}
-
-	asyncNode, ok := parsed.(sql.AsyncNode)
-	return ok && asyncNode.IsAsync()
 }
 
 // AddDatabase adds the given database to the catalog.
