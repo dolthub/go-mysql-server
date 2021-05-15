@@ -419,6 +419,7 @@ var partitionSchema = Schema{
 	{Name: "partition_expression", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "subpartition_expression", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "partition_descriptor", Type: LongText, Default: nil, Nullable: true, Source: PartitionsTableName},
+	{Name: "partition_description", Type: LongText, Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "table_rows", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "avg_row_length", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "data_length", Type: Uint64, Default: nil, Nullable: true, Source: PartitionsTableName},
