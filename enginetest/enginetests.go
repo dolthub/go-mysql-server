@@ -1992,6 +1992,12 @@ CREATE TABLE t4
   c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
   CHECK (c1 > c3)
 );`, sql.ErrTableColumnNotFound)
+
+	// Test any scripts relevant to CheckConstraints. We do this separately from the rest of the scripts
+	// as certain integrators might not implement check constraints.
+	for _, script := range CreateCheckConstraintsScripts {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestChecksOnInsert(t *testing.T, harness Harness) {

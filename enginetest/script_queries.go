@@ -908,3 +908,182 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 }
+
+var CreateCheckConstraintsScripts = []ScriptTest{
+	{
+		Name: "Run SHOW CREATE TABLE with different types of check constraints",
+		SetUpScript: []string{
+			"CREATE TABLE mytable1(pk int PRIMARY KEY, CONSTRAINT check1 CHECK (pk = 5))",
+			"ALTER TABLE mytable1 ADD CONSTRAINT check11 CHECK (pk < 6)",
+			"CREATE TABLE mytable2(pk int PRIMARY KEY, v int, CONSTRAINT check2 CHECK (v < 5))",
+			"ALTER TABLE mytable2 ADD CONSTRAINT check12 CHECK (pk  + v = 6)",
+			"CREATE TABLE mytable3(pk int PRIMARY KEY, v int, CONSTRAINT check3 CHECK (pk > 2 AND v < 5))",
+			"ALTER TABLE mytable3 ADD CONSTRAINT check13 CHECK (pk BETWEEN 2 AND 100)",
+			"CREATE TABLE mytable4(pk int PRIMARY KEY, v int, CONSTRAINT check4 CHECK (pk > 2 AND v < 5 AND pk < 9))",
+			"CREATE TABLE mytable5(pk int PRIMARY KEY, v int, CONSTRAINT check5 CHECK (pk > 2 OR (v < 5 AND pk < 9)))",
+			"CREATE TABLE mytable6(pk int PRIMARY KEY, v int, CONSTRAINT check6 CHECK (NOT pk))",
+			"CREATE TABLE mytable7(pk int PRIMARY KEY, v int, CONSTRAINT check7 CHECK (pk != v))",
+			"CREATE TABLE mytable8(pk int PRIMARY KEY, v int, CONSTRAINT check8 CHECK (pk > 2 OR v < 5 OR pk < 10))",
+			"CREATE TABLE mytable9(pk int PRIMARY KEY, v int, CONSTRAINT check9 CHECK ((pk + v) / 2 >= 1))",
+			"CREATE TABLE mytable10(pk int PRIMARY KEY, v int, CONSTRAINT check10 CHECK (v < 5) NOT ENFORCED)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE TABLE mytable1",
+				Expected: []sql.Row{
+					{
+						"mytable1",
+						"CREATE TABLE `mytable1` (\n  `pk` int NOT NULL,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check1` CHECK (`pk` = 5),\n" +
+							"  CONSTRAINT `check11` CHECK (`pk` < 6)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable2",
+				Expected: []sql.Row{
+					{
+						"mytable2",
+						"CREATE TABLE `mytable2` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check2` CHECK (`v` < 5),\n" +
+							"  CONSTRAINT `check12` CHECK ((`pk` + `v`) = 6)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable3",
+				Expected: []sql.Row{
+					{
+						"mytable3",
+						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check3` CHECK ((`pk` > 2) AND (`v` < 5)),\n" +
+							"  CONSTRAINT `check13` CHECK (`pk` BETWEEN 2 AND 100)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable4",
+				Expected: []sql.Row{
+					{
+						"mytable4",
+						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check4` CHECK (((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable5",
+				Expected: []sql.Row{
+					{
+						"mytable5",
+						"CREATE TABLE `mytable5` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check5` CHECK ((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9)))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable6",
+				Expected: []sql.Row{
+					{
+						"mytable6",
+						"CREATE TABLE `mytable6` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check6` CHECK (NOT(`pk`))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable7",
+				Expected: []sql.Row{
+					{
+						"mytable7",
+						"CREATE TABLE `mytable7` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check7` CHECK (NOT((`pk` = `v`)))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable8",
+				Expected: []sql.Row{
+					{
+						"mytable8",
+						"CREATE TABLE `mytable8` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check8` CHECK (((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10))\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable9",
+				Expected: []sql.Row{
+					{
+						"mytable9",
+						"CREATE TABLE `mytable9` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check9` CHECK (((`pk` + `v`) / 2) >= 1)\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE mytable10",
+				Expected: []sql.Row{
+					{
+						"mytable10",
+						"CREATE TABLE `mytable10` (\n  `pk` int NOT NULL,\n" +
+							"  `v` int,\n" +
+							"  PRIMARY KEY (`pk`),\n" +
+							"  CONSTRAINT `check10` CHECK (`v` < 5) /*!80016 NOT ENFORCED */\n" +
+							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10), CONSTRAINT vcheck CHECK (height > 0))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "(height < 10)"},
+					{"def", "mydb", "mycheck", "(test_score >= 50)"},
+				},
+			},
+			{
+				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
+				Expected: []sql.Row{
+					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
+					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
+				},
+			},
+		},
+	},
+}

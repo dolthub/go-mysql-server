@@ -5453,7 +5453,7 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
+		Query:    "SELECT * FROM information_schema.check_constraints ORDER BY constraint_schema, constraint_name, check_clause ",
 		Expected: []sql.Row{},
 	},
 	{
@@ -5495,31 +5495,6 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "describe auto;",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "", "auto_increment"},
-				},
-			},
-		},
-	},
-	// TODO: Move this out of information_schema.queries.
-	{
-		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
-		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10), CONSTRAINT vcheck CHECK (height > 0))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
-				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "(height < 10)"},
-					{"def", "mydb", "mycheck", "(test_score >= 50)"},
-				},
-			},
-			{
-				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
-				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
 			},
 		},
