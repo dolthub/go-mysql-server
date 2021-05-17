@@ -484,4 +484,3 @@ func tableColsContains(strs []tableCol, target tableCol) bool {
 	}
 	return false
 }
-

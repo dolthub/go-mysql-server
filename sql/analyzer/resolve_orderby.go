@@ -45,7 +45,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		for _, col := range sort.Child.Schema() {
 			schemaCols = append(schemaCols, tableCol{
 				table: strings.ToLower(col.Source),
-				col: strings.ToLower(col.Name),
+				col:   strings.ToLower(col.Name),
 			})
 		}
 
