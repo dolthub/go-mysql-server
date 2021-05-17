@@ -476,6 +476,7 @@ rowLoop:
 	return callback(r)
 }
 
+// See https://dev.mysql.com/doc/internals/en/status-flags.html
 func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	ok, err := isSessionAutocommit(ctx)
 	if err != nil {
@@ -486,6 +487,7 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	} else {
 		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
 	}
+	// TODO(andy): implement SERVER_STATUS_IN_TRANS (0x0001) "a transaction is active"
 	return nil
 }
 
