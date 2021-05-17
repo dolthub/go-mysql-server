@@ -269,13 +269,11 @@ func (h *Handler) doQuery(
 
 	start := time.Now()
 
-	// TODO: move this elsewhere, or find a way to not parse twice
 	parsed, _ := parse.Parse(ctx, query)
 	switch n := parsed.(type) {
 	case *plan.LoadData:
 		if n.Local {
-			// tell the connection to undergo the load data process with this
-			// metadata
+			// tell the connection to undergo the load data process with this metadata
 			tmpdir, err := ctx.GetSessionVariable(ctx, "tmpdir")
 			if err != nil {
 				return err
@@ -289,16 +287,12 @@ func (h *Handler) doQuery(
 
 	logrus.WithField("query", query).Tracef("executing query")
 
-	var schema sql.Schema
-	var rows sql.RowIter
-	if len(bindings) == 0 {
-		schema, rows, err = h.e.Query(ctx, query)
-	} else {
-		var sqlBindings map[string]sql.Expression
+	var sqlBindings map[string]sql.Expression
+	if len(bindings) > 0 {
 		sqlBindings, err = bindingsToExprs(bindings)
-
-		if err == nil {
-			schema, rows, err = h.e.QueryWithBindings(ctx, query, sqlBindings)
+		if err != nil {
+			logrus.Tracef("Error processing bindings for query %s: %s", query, err)
+			return err
 		}
 	}
 
@@ -310,6 +304,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
+	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		logrus.Tracef("Error running query %s: %s", query, err)
 		return err

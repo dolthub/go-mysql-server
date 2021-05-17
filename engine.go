@@ -117,11 +117,21 @@ func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter,
 	return e.QueryWithBindings(ctx, query, nil)
 }
 
-// QueryWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used instead
-// of parsing the query from text.
+// QueryWithBindings executes the query given with the bindings provided
 func (e *Engine) QueryWithBindings(
 	ctx *sql.Context,
 	query string,
+	bindings map[string]sql.Expression,
+) (sql.Schema, sql.RowIter, error) {
+	return e.QueryNodeWithBindings(ctx, query, nil, bindings)
+}
+
+// QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
+// instead of parsing the query from text.
+func (e *Engine) QueryNodeWithBindings(
+	ctx *sql.Context,
+	query string,
+	parsed sql.Node,
 	bindings map[string]sql.Expression,
 ) (sql.Schema, sql.RowIter, error) {
 	var (
@@ -130,16 +140,18 @@ func (e *Engine) QueryWithBindings(
 		err              error
 	)
 
-	parsed, err := parse.Parse(ctx, query)
-	if err != nil {
-		return nil, nil, err
+	if parsed == nil {
+		var err error
+		parsed, err = parse.Parse(ctx, query)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	err = e.authCheck(ctx, parsed)
 	if err != nil {
 		return nil, nil, err
 	}
-
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
 	if err != nil {
