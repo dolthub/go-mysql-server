@@ -16,10 +16,7 @@ package sqle
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/go-kit/kit/metrics/discard"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/auth"
@@ -49,34 +46,6 @@ type Engine struct {
 type ColumnWithRawDefault struct {
 	SqlColumn *sql.Column
 	Default   string
-}
-
-var (
-	// QueryCounter describes a metric that accumulates number of queries monotonically.
-	QueryCounter = discard.NewCounter()
-
-	// QueryErrorCounter describes a metric that accumulates number of failed queries monotonically.
-	QueryErrorCounter = discard.NewCounter()
-
-	// QueryHistogram describes a queries latency.
-	QueryHistogram = discard.NewHistogram()
-)
-
-func observeQuery(ctx *sql.Context, query string) func(err error) {
-	logrus.WithField("query", query).Debug("executing query")
-	span, _ := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
-
-	t := time.Now()
-	return func(err error) {
-		if err != nil {
-			QueryErrorCounter.With("query", query, "error", err.Error()).Add(1)
-		} else {
-			QueryCounter.With("query", query).Add(1)
-			QueryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
-		}
-
-		span.Finish()
-	}
 }
 
 // New creates a new Engine with custom configuration. To create an Engine with
@@ -161,22 +130,16 @@ func (e *Engine) QueryWithBindings(
 		err              error
 	)
 
-	parsed, parseErr := parse.Parse(ctx, query)
+	parsed, err := parse.Parse(ctx, query)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	// Even if we couldn't parse the query, we still need to do an auth check before anything else
-	// |parsed| will be nil in this case
 	err = e.authCheck(ctx, parsed)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// After auth, handle any parse error
-	if parseErr != nil {
-		return nil, nil, parseErr
-	}
-
-	finish := observeQuery(ctx, query)
-	defer finish(err)
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
 	if err != nil {
@@ -241,6 +204,8 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (sql.Schema
 	return nil, nil, nil
 }
 
+// transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
+// during the Close() operation
 type transactionCommittingIter struct {
 	childIter sql.RowIter
 }

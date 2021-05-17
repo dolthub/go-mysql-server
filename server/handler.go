@@ -28,6 +28,8 @@ import (
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/go-kit/kit/metrics/discard"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -239,11 +241,6 @@ func (h *Handler) doQuery(
 ) error {
 	logrus.Tracef("received query %s", query)
 
-	ctx, err := h.sm.NewContextWithQuery(c, query)
-	if err != nil {
-		return err
-	}
-
 	handled, err := h.handleKill(c, query)
 	if err != nil {
 		return err
@@ -253,6 +250,16 @@ func (h *Handler) doQuery(
 		return callback(&sqltypes.Result{})
 	}
 
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return err
+	}
+
+	finish := observeQuery(ctx, query)
+	defer finish(err)
+
+	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
+	//  marked done until we're done spooling rows over the wire
 	ctx, err = h.e.Catalog.AddProcess(ctx, query)
 	defer func() {
 		if err != nil && ctx != nil {
@@ -280,6 +287,8 @@ func (h *Handler) doQuery(
 		}
 	}
 
+	logrus.WithField("query", query).Tracef("executing query")
+
 	var schema sql.Schema
 	var rows sql.RowIter
 	if len(bindings) == 0 {
@@ -293,6 +302,8 @@ func (h *Handler) doQuery(
 		}
 	}
 
+	// TODO: it would be nice to put this logic in the engine itself, not the handler, but we wouldn't get accurate
+	//  timing without some more work
 	defer func() {
 		if q, ok := h.e.Auth.(*auth.Audit); ok {
 			q.Query(ctx, time.Since(start), err)
@@ -314,7 +325,7 @@ func (h *Handler) doQuery(
 	// To close the goroutines
 	quit := make(chan struct{})
 
-	// Default waitTime is one minute if there is not timeout configured, in which case
+	// Default waitTime is one minute if there is no timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
 	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
 	// call Handler.CloseConnection()
@@ -598,4 +609,32 @@ func schemaToFields(s sql.Schema) []*query.Field {
 	}
 
 	return fields
+}
+
+
+var (
+	// QueryCounter describes a metric that accumulates number of queries monotonically.
+	QueryCounter = discard.NewCounter()
+
+	// QueryErrorCounter describes a metric that accumulates number of failed queries monotonically.
+	QueryErrorCounter = discard.NewCounter()
+
+	// QueryHistogram describes a queries latency.
+	QueryHistogram = discard.NewHistogram()
+)
+
+func observeQuery(ctx *sql.Context, query string) func(err error) {
+	span, _ := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
+
+	t := time.Now()
+	return func(err error) {
+		if err != nil {
+			QueryErrorCounter.With("query", query, "error", err.Error()).Add(1)
+		} else {
+			QueryCounter.With("query", query).Add(1)
+			QueryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
+		}
+
+		span.Finish()
+	}
 }
