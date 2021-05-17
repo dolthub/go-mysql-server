@@ -401,12 +401,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:           "select * from mytable t1 join mytable t2 on t2.i = t1.i where t2.i > 10",
-		Expected:        []sql.Row{},
+		Query:    "select * from mytable t1 join mytable t2 on t2.i = t1.i where t2.i > 10",
+		Expected: []sql.Row{},
 	},
 	{
-		Query:           "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
-		Expected:        []sql.Row{},
+		Query:    "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
+		Expected: []sql.Row{},
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",

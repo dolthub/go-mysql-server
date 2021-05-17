@@ -97,7 +97,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:           "select * from mytable t1 join mytable t2 on t2.i = t1.i where t2.i > 10",
+		Query:    "select * from mytable t1 join mytable t2 on t2.i = t1.i where t2.i > 10",
 		Expected: []sql.Row{},
 	}
 	fmt.Sprintf("%v", test)
