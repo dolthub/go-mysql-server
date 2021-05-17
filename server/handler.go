@@ -492,17 +492,8 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 }
 
 func setResultInfo(ctx *sql.Context, r *sqltypes.Result) error {
-	val, err := ctx.Session.GetSessionVariable(ctx, "last_insert_id")
-	if err != nil {
-		return err
-	}
-
-	val, err = sql.Uint64.Convert(val)
-	if err != nil {
-		return err
-	}
-	r.InsertID = val.(uint64)
-
+	lastId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
+	r.InsertID = uint64(lastId)
 	return nil
 }
 
