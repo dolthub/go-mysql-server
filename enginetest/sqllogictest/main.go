@@ -67,8 +67,8 @@ func parseTestResults(f string) {
 
 	err = writeResultsCsv(records)
 	if err != nil {
-			panic(err)
-		}
+		panic(err)
+	}
 }
 
 // fromResultCsvHeaders returns supported csv headers for a Result
