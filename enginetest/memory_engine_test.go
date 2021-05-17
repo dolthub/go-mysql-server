@@ -114,75 +114,19 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
 			Name: "found_rows() behavior",
 			SetUpScript: []string{
-				"create table b (x int primary key)",
-				"insert into b values (1), (2), (3), (4)",
+				"create table b (x int primary key, y int)",
+				"insert into b values (1, 1), (2, 1), (3, 3), (4, 4)",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select * from b",
-					Expected: []sql.Row{{1}, {2}, {3}, {4}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{4}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select * from b order by x  limit 3",
-					Expected: []sql.Row{{1}, {2}, {3}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{3}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select sql_calc_found_rows * from b order by x limit 3",
-					Expected: []sql.Row{{1}, {2}, {3}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{4}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{2}},
-				},
-				{
-					Query:    "select sql_calc_found_rows * from b where x <= 2 order by x limit 1",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "insert into b values (10), (11), (12), (13)",
-					Expected: []sql.Row{{sql.NewOkResult(4)}},
-				},
-				{
-					Query:    "select found_rows()",
-					Expected: []sql.Row{{2}},
+					Query:    "select SUM (DISTINCT y) from b;",
+					Expected: []sql.Row{{8}},
 				},
 			},
 		},

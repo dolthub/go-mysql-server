@@ -17,6 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -30,11 +31,11 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			return n, nil
 		}
 
-		return plan.TransformExpressionsUp(n, resolveFunctionsInExpr(a))
+		return plan.TransformExpressionsUp(n, resolveFunctionsInExpr(a, ctx))
 	})
 }
 
-func resolveFunctionsInExpr(a *Analyzer) sql.TransformExprFunc {
+func resolveFunctionsInExpr(a *Analyzer, ctx *sql.Context) sql.TransformExprFunc {
 	return func(e sql.Expression) (sql.Expression, error) {
 		if e.Resolved() {
 			return e, nil
@@ -61,6 +62,14 @@ func resolveFunctionsInExpr(a *Analyzer) sql.TransformExprFunc {
 		// functions don't have a window expression.
 		if wa, ok := rf.(sql.WindowAggregation); ok {
 			rf, err = wa.WithWindow(uf.Window)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		//Set distinct if this is a sum
+		if sm, ok := rf.(*aggregation.Sum); ok {
+			rf, err = sm.WithDistinctIterator(aggregation.NewAggregateDistinctOperator(ctx))
 			if err != nil {
 				return nil, err
 			}
