@@ -57,11 +57,11 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (e *Not) String() string {
-	return fmt.Sprintf("NOT(%s)", e.Child)
+	return fmt.Sprintf("(NOT(%s))", e.Child)
 }
 
 func (e *Not) DebugString() string {
-	return fmt.Sprintf("NOT(%s)", sql.DebugString(e.Child))
+	return fmt.Sprintf("(NOT(%s))", sql.DebugString(e.Child))
 }
 
 // WithChildren implements the Expression interface.

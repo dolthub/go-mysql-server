@@ -78,6 +78,7 @@ var Defaults = []sql.Function{
 	sql.Function2{Name: "instr", Fn: NewInstr},
 	sql.Function1{Name: "is_binary", Fn: NewIsBinary},
 	sql.Function1{Name: "is_uuid", Fn: NewIsUUID},
+	sql.Function1{Name: "isnull", Fn: NewIsNull},
 	sql.FunctionN{Name: "json_array", Fn: NewJSONArray},
 	sql.Function1{Name: "json_arrayagg", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewJSONArrayAgg(e) }},
 	sql.Function2{Name: "json_objectagg", Fn: aggregation.NewJSONObjectAgg},

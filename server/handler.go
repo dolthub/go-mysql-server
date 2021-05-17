@@ -239,7 +239,7 @@ func (h *Handler) doQuery(
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result) error,
 ) error {
-	logrus.Tracef("received query %s", query)
+	logrus.Tracef("connection %d: received query %s", c.ConnectionID, query)
 
 	handled, err := h.handleKill(c, query)
 	if err != nil {
@@ -285,7 +285,7 @@ func (h *Handler) doQuery(
 		}
 	}
 
-	logrus.WithField("query", query).Tracef("executing query")
+	logrus.WithField("query", query).Tracef("connection %d: executing query", c.ConnectionID)
 
 	var sqlBindings map[string]sql.Expression
 	if len(bindings) > 0 {
@@ -306,7 +306,7 @@ func (h *Handler) doQuery(
 
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
-		logrus.Tracef("Error running query %s: %s", query, err)
+		logrus.Tracef("connection %d: error running query: %s", c.ConnectionID, err)
 		return err
 	}
 
@@ -374,7 +374,7 @@ rowLoop:
 				break rowLoop
 			}
 
-			logrus.Tracef("got error %s", err.Error())
+			logrus.Tracef("connection %d: got error %s", c.ConnectionID, err.Error())
 			close(quit)
 			return err
 		case row := <-rowChan:
@@ -392,13 +392,13 @@ rowLoop:
 				return err
 			}
 
-			logrus.Tracef("spooling result row %s", outputRow)
+			logrus.Tracef("connection %d spooling result row %s", c.ConnectionID, outputRow)
 			r.Rows = append(r.Rows, outputRow)
 			r.RowsAffected++
 		case <-timer.C:
 			if h.readTimeout != 0 {
 				// Cancel and return so Vitess can call the CloseConnection callback
-				logrus.Tracef("got timeout")
+				logrus.Tracef("connection %d got timeout", c.ConnectionID)
 				close(quit)
 				return ErrRowTimeout.New()
 			}
@@ -412,11 +412,15 @@ rowLoop:
 		return err
 	}
 
+	if err = setConnStatusFlags(ctx, c); err != nil {
+		return err
+	}
+
 	switch len(r.Rows) {
 	case 0:
-		logrus.Tracef("returning empty result")
+		logrus.Tracef("connection %d returning empty result", c.ConnectionID)
 	case 1:
-		logrus.Tracef("returning result %v", r)
+		logrus.Tracef("connection %d returning result %v", c.ConnectionID, r)
 	}
 
 	// Even if r.RowsAffected = 0, the callback must be
@@ -428,6 +432,27 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
+	ok, err := isSessionAutocommit(ctx)
+	if err != nil {
+		return err
+	}
+	if ok {
+		c.StatusFlags |= uint16(mysql.ServerStatusAutocommit)
+	} else {
+		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
+	}
+	return nil
+}
+
+func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 // Call doQuery and cast known errors to SQLError
