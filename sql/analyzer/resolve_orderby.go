@@ -300,12 +300,10 @@ func findExprNameables(e sql.Expression) []sql.Nameable {
 	return result
 }
 
-func tableColFromNameable(n sql.Nameable) (tc tableCol) {
-	tc = tableCol{
-		col: n.Name(),
-	}
+func tableColFromNameable(n sql.Nameable) tableCol {
+	var tbl string
 	if t, ok := n.(sql.Tableable); ok {
-		tc.table = t.Table()
+		tbl = t.Table()
 	}
-	return
+	return newTableCol(tbl, n.Name())
 }
