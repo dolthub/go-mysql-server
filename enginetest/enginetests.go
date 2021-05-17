@@ -252,7 +252,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
 		`DROP INDEX foo ON mytable`,
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
-		`CREATE VIEW myview AS SELECT i FROM mytable`,
+		`CREATE VIEW myview3 AS SELECT i FROM mytable`,
 		`DROP VIEW myview`,
 	}
 
