@@ -38,7 +38,7 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) < 1 {
-		panic("Usage: logictest (run|parse) [version] file1 file2 ...")
+		panic("Usage: logictest (run|parse) file1 file2 ...")
 	}
 
 	if args[0] == "run" {
