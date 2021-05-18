@@ -70,14 +70,14 @@ func (f *Filter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 func (f *Filter) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Filter(%s)", f.Expression)
+	_ = pr.WriteNode("Filter%s", f.Expression)
 	_ = pr.WriteChildren(f.Child.String())
 	return pr.String()
 }
 
 func (f *Filter) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Filter(%s)", sql.DebugString(f.Expression))
+	_ = pr.WriteNode("Filter%s", sql.DebugString(f.Expression))
 	_ = pr.WriteChildren(sql.DebugString(f.Child))
 	return pr.String()
 }

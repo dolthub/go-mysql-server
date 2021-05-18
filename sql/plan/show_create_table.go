@@ -31,6 +31,7 @@ type ShowCreateTable struct {
 	*UnaryNode
 	IsView  bool
 	Indexes []sql.Index
+	Checks  sql.CheckConstraints
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
@@ -88,6 +89,7 @@ func (n *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		table:   n.Child,
 		isView:  n.IsView,
 		indexes: n.Indexes,
+		checks:  n.Checks,
 	}, nil
 }
 
@@ -112,6 +114,7 @@ type showCreateTablesIter struct {
 	isView       bool
 	ctx          *sql.Context
 	indexes      []sql.Index
+	checks       sql.CheckConstraints
 }
 
 func (i *showCreateTablesIter) Next() (sql.Row, error) {
@@ -173,6 +176,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 			stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
 		}
 
+		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
 			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())
 		}
@@ -240,6 +244,18 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
 			}
 			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
+		}
+	}
+
+	if i.checks != nil {
+		for _, check := range i.checks {
+			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK %s", check.Name, check.Expr.String())
+
+			if !check.Enforced {
+				fmted += " /*!80016 NOT ENFORCED */"
+			}
+
+			colStmts = append(colStmts, fmted)
 		}
 	}
 

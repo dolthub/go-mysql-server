@@ -153,14 +153,14 @@ func (j *InnerJoin) WithComment(comment string) sql.Node {
 
 func (j *InnerJoin) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InnerJoin(%s)", j.Cond)
+	_ = pr.WriteNode("InnerJoin%s", j.Cond)
 	_ = pr.WriteChildren(j.left.String(), j.right.String())
 	return pr.String()
 }
 
 func (j *InnerJoin) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("InnerJoin(%s), comment=%s", sql.DebugString(j.Cond), j.Comment())
+	_ = pr.WriteNode("InnerJoin%s, comment=%s", sql.DebugString(j.Cond), j.Comment())
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
 }
@@ -247,14 +247,14 @@ func (j *LeftJoin) WithComment(comment string) sql.Node {
 
 func (j *LeftJoin) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("LeftJoin(%s)", j.Cond)
+	_ = pr.WriteNode("LeftJoin%s", j.Cond)
 	_ = pr.WriteChildren(j.left.String(), j.right.String())
 	return pr.String()
 }
 
 func (j *LeftJoin) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("LeftJoin(%s)", sql.DebugString(j.Cond))
+	_ = pr.WriteNode("LeftJoin%s", sql.DebugString(j.Cond))
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
 }
@@ -341,14 +341,14 @@ func (j *RightJoin) WithComment(comment string) sql.Node {
 
 func (j *RightJoin) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("RightJoin(%s)", j.Cond)
+	_ = pr.WriteNode("RightJoin%s", j.Cond)
 	_ = pr.WriteChildren(j.left.String(), j.right.String())
 	return pr.String()
 }
 
 func (j *RightJoin) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("RightJoin(%s)", sql.DebugString(j.Cond))
+	_ = pr.WriteNode("RightJoin%s", sql.DebugString(j.Cond))
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
 }
@@ -546,6 +546,10 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 	if i.mode == memoryMode {
 		if len(i.secondaryRows.Get()) == 0 {
 			if err = i.loadSecondaryInMemory(); err != nil {
+				if err == io.EOF {
+					i.primaryRow = nil
+					i.pos = 0
+				}
 				return nil, err
 			}
 		}
