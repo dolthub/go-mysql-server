@@ -291,10 +291,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	}
 
 	tablesByName := byLowerCaseName(tableJoinOrder.tables())
-	joinNode, err := joinTreeToNodes(joinTree, tablesByName, scope)
-	if err != nil {
-		return nil, err
-	}
+	joinNode := joinTreeToNodes(joinTree, tablesByName, scope)
 
 	return joinNode, nil
 }
@@ -359,26 +356,18 @@ func (j JoinOrder) HintType() string {
 }
 
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
-func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) (sql.Node, error) {
+func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
 	if tree.isLeaf() {
-		nn, ok := tablesByName[tree.table]
+		nn, ok := tablesByName[strings.ToLower(tree.table)]
 		if !ok {
-			return nil, sql.ErrTableNotFound.New(tree.table)
+			panic(fmt.Sprintf("Could not find NameableNode for '%s'", tree.table))
 		}
-		return nn, nil
+		return nn
 	}
 
-	left, err := joinTreeToNodes(tree.left, tablesByName, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	right, err := joinTreeToNodes(tree.right, tablesByName, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema())), nil
+	left := joinTreeToNodes(tree.left, tablesByName, scope)
+	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
