@@ -101,5 +101,11 @@ func (m *Min) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 // Eval implements the Aggregation interface
 func (m *Min) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	min := buffer[0]
+
+	// Dispose the in memory hash table if the child is a distinct operation.
+	if t, ok := m.Child.(*expression.DistinctExpression); ok {
+		t.Dispose()
+	}
+
 	return min, nil
 }

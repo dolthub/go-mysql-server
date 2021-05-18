@@ -54,8 +54,8 @@ func (a *Avg) IsNullable() bool {
 
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
 func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	nulls := buffer[2].(bool)
-	if nulls {
+	// This case is toggled when no rows exist.
+	if buffer[0] == float64(0) && buffer[1] == int64(0) {
 		return nil, nil
 	}
 
@@ -82,26 +82,19 @@ func (a *Avg) NewBuffer() sql.Row {
 	const (
 		sum   = float64(0)
 		rows  = int64(0)
-		nulls = false
 	)
 
-	return sql.NewRow(sum, rows, nulls)
+	return sql.NewRow(sum, rows)
 }
 
 // Update implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	// if there are nulls already skip all the remainiing rows
-	if buffer[2].(bool) {
-		return nil
-	}
-
 	v, err := a.Child.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
 
 	if v == nil {
-		buffer[2] = true
 		return nil
 	}
 
@@ -120,15 +113,12 @@ func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 func (a *Avg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 	bsum := buffer[0].(float64)
 	brows := buffer[1].(int64)
-	bnulls := buffer[2].(bool)
 
 	psum := partial[0].(float64)
 	prows := partial[1].(int64)
-	pnulls := buffer[2].(bool)
 
 	buffer[0] = bsum + psum
 	buffer[1] = brows + prows
-	buffer[2] = bnulls || pnulls
 
 	return nil
 }

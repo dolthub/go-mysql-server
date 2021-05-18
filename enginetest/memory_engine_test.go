@@ -125,8 +125,8 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    "select SUM (DISTINCT y) from b;",
-					Expected: []sql.Row{{float64(8)}},
+					Query:    "select SUM (DISTINCT - y) from b;",
+					Expected: []sql.Row{{float64(-8)}},
 				},
 			},
 		},

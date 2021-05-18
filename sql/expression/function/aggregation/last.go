@@ -85,5 +85,10 @@ func (l *Last) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (l *Last) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
+	// Dispose the in memory hash table if the child is a distinct operation.
+	if t, ok := l.Child.(*expression.DistinctExpression); ok {
+		t.Dispose()
+	}
+
 	return buffer[0], nil
 }

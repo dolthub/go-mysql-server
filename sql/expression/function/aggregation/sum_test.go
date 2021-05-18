@@ -88,3 +88,74 @@ func TestSum(t *testing.T) {
 		})
 	}
 }
+
+func TestSumWithDistinct(t *testing.T) {
+	require := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	ad := expression.NewDistinctExpression(ctx, expression.NewGetField(0, nil, "myfield", false))
+	sum := NewSum(ad)
+
+	// first validate that the expression's name is correct
+ 	require.Equal("SUM(DISTINCT myfield)", sum.String())
+
+	testCases := []struct {
+		name     string
+		rows     []sql.Row
+		expected interface{}
+	}{
+		{
+			"string int values",
+			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"},{ "3"}, {"4"}, {"4"}},
+			float64(10),
+		},
+		{
+			"string float values",
+			[]sql.Row{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},
+			float64(10.5),
+		},
+		{
+			"string non-int values",
+			[]sql.Row{{"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}},
+			float64(0),
+		},
+		{
+			"float values",
+			[]sql.Row{{1.}, {2.5}, {3.}, {4.}},
+			float64(10.5),
+		},
+		{
+			"no rows",
+			[]sql.Row{},
+			nil,
+		},
+		{
+			"nil values",
+			[]sql.Row{{nil}, {nil}},
+			nil,
+		},
+		{
+			"int64 values",
+			[]sql.Row{{int64(1)}, {int64(3)}, {int64(3)}, {int64(3)}},
+			float64(4),
+		},
+		{
+			"int32 values",
+			[]sql.Row{{int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}},
+			float64(4),
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := sum.NewBuffer()
+			for _, row := range tt.rows {
+				require.NoError(sum.Update(sql.NewEmptyContext(), buf, row))
+			}
+
+			result, err := sum.Eval(sql.NewEmptyContext(), buf)
+			require.NoError(err)
+			require.Equal(tt.expected, result)
+		})
+	}
+}

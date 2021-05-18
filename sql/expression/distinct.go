@@ -21,19 +21,6 @@ func NewDistinctExpression(ctx *sql.Context, e sql.Expression) *DistinctExpressi
 	}
 }
 
-func (ad *DistinctExpression) ToExpression() sql.Expression {
-	return ad.Column
-}
-
-func (ad *DistinctExpression) FromExpression(e sql.Expression) (*DistinctExpression, error) {
-	return &DistinctExpression{
-		seen: nil,
-		dispose: nil,
-		Column: e,
-	}, nil
-}
-
-
 func (ad *DistinctExpression) shouldProcess(ctx *sql.Context, value interface{}) (bool, error) {
 	if ad.seen == nil {
 		cache, dispose := ctx.Memory.NewHistoryCache()
@@ -61,6 +48,9 @@ func (ad *DistinctExpression) Dispose() {
 	if ad.dispose != nil {
 		ad.dispose()
 	}
+
+	ad.dispose = nil
+	ad.seen = nil
 }
 
 func (ad *DistinctExpression) Resolved() bool {
@@ -106,5 +96,9 @@ func (ad *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expr
 		return nil, fmt.Errorf("ADO has an invalidnumber of children")
 	}
 
-	return ad.FromExpression(children[0])
+	return &DistinctExpression{
+		seen: nil,
+		dispose: nil,
+		Column: children[0],
+	}, nil
 }

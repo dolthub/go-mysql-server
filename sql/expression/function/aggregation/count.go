@@ -197,6 +197,11 @@ func (c *CountDistinct) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (c *CountDistinct) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
+	// Dispose the in memory hash table if the child is a distinct operation.
+	if t, ok := c.Child.(*expression.DistinctExpression); ok {
+		t.Dispose()
+	}
+
 	seen := buffer[0].(map[uint64]struct{})
 	return int64(len(seen)), nil
 }
