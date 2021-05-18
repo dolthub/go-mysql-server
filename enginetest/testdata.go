@@ -65,7 +65,7 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
 	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
-	// transaction without commiting the work done so far.
+	// transaction without committing the work done so far.
 	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
 	// when adding data to it
 	wrapInTransaction(t, myDb, harness, func() {

@@ -53,7 +53,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 						{2, 2},
@@ -70,7 +70,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 						{2, 2},
@@ -104,7 +104,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 					},
@@ -120,7 +120,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 					},
@@ -136,7 +136,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 						{2, 2},
@@ -153,7 +153,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 						{3, 3},
@@ -163,7 +163,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 						{2, 2},
@@ -180,7 +180,24 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
+					Expected:        []sql.Row{
+						{1, 1},
+						{2, 2},
+					},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "start transaction",
+					Expected:        []sql.Row{},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 						{2, 2},
@@ -191,7 +208,7 @@ var TransactionTests = []TransactionTest{
 			{
 				Client:              "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a",
+					Query:           "select * from a order by b",
 					Expected:        []sql.Row{
 						{1, 1},
 						{2, 2},
