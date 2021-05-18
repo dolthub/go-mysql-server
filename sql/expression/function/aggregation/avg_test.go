@@ -153,7 +153,6 @@ func TestAvg_NUMS_AND_NULLS(t *testing.T) {
 	require.Equal(3.0, eval(t, avgNode, buffer))
 }
 
-
 func TestAvg_Distinct(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

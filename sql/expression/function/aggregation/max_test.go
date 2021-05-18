@@ -108,3 +108,24 @@ func TestMax_Eval_Empty(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
+
+func TestMax_Distinct(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewMax(expression.NewDistinctExpression(ctx, expression.NewGetField(0, sql.Int32, "field", true)))
+	b := m.NewBuffer()
+
+	require.Equal(t, "MAX(DISTINCT field)", m.String())
+
+	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{2}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+
+	v, err := m.Eval(ctx, b)
+	assert.NoError(err)
+	assert.Equal(3, v)
+}
+

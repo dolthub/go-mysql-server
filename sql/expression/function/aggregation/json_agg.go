@@ -121,11 +121,6 @@ func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	// Dispose the in memory hash table if the child is a distinct operation.
-	if t, ok := j.Child.(*expression.DistinctExpression); ok {
-		t.Dispose()
-	}
-
 	return sql.JSONDocument{Val: buffer[0]}, nil
 }
 
