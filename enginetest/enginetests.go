@@ -941,6 +941,56 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 	}
 }
 
+func TestTransactionScripts(t *testing.T, harness Harness) {
+	for _, script := range TransactionTests {
+		TestTransactionScript(t, harness, script)
+	}
+}
+
+// TestTransactionScript runs the test script given, making any assertions given
+func TestTransactionScript(t *testing.T, harness Harness, script TransactionTest) bool {
+	return t.Run(script.Name, func(t *testing.T) {
+		myDb := harness.NewDatabase("mydb")
+		databases := []sql.Database{myDb}
+
+		var idxDriver sql.IndexDriver
+		if ih, ok := harness.(IndexDriverHarness); ok {
+			idxDriver = ih.IndexDriver(databases)
+		}
+		e := NewEngineWithDbs(t, harness, databases, idxDriver)
+
+		TestTransactionScriptWithEngine(t, e, harness, script)
+	})
+}
+
+// TestTransactionScriptWithEngine runs the transaction test script given with the engine provided.
+func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script TransactionTest) {
+	setupSession := NewContext(harness)
+	for _, statement := range script.SetUpScript {
+		RunQueryWithContext(t, e, setupSession, statement)
+	}
+
+	clientSessions := make(map[string]*sql.Context)
+	assertions := script.Assertions
+
+	for _, assertion := range assertions {
+		clientSession, ok := clientSessions[assertion.Client]
+		if !ok {
+			clientSession = NewContext(harness)
+			clientSessions[assertion.Client] = clientSession
+		}
+		if assertion.ExpectedErr != nil {
+			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+		} else if assertion.ExpectedErrStr != "" {
+			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+		} else if assertion.ExpectedWarning != 0 {
+			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+		} else {
+			TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
+		}
+	}
+}
+
 // This method is the only place we can reliably test newly created views, because view definitions live in the
 // context, as opposed to being defined by integrators with a ViewDatabase interface, and we lose that context with
 // our standard method of using a new context object per query.
@@ -3226,14 +3276,16 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 }
 
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
-	require := require.New(t)
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	require.NoError(err, "Unexpected error for query %s", q)
+	t.Run(q, func(t *testing.T) {
+		require := require.New(t)
+		sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+		require.NoError(err, "Unexpected error for query %s", q)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
-	require.NoError(err, "Unexpected error for query %s", q)
+		rows, err := sql.RowIterToRows(ctx, iter)
+		require.NoError(err, "Unexpected error for query %s", q)
 
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
+		checkResults(t, require, expected, expectedCols, sch, rows, q)
+	})
 }
 
 func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string) {

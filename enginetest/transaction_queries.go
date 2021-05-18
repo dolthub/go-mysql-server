@@ -80,4 +80,125 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		Name:        "autocommit off",
+		SetUpScript: []string {
+			"create table a (b int primary key, c int)",
+			"insert into a values (1, 1)",
+		},
+		Assertions:  []TransactionTestAssertion{
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "set autocommit = off",
+					Expected:        []sql.Row{{}},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "set autocommit = off",
+					Expected:        []sql.Row{{}},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a",
+					Expected:        []sql.Row{
+						{1, 1},
+					},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "insert into a values (2, 2)",
+					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+				},
+			},
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a",
+					Expected:        []sql.Row{
+						{1, 1},
+					},
+				},
+			},
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "insert into a values (3,3)",
+					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a",
+					Expected:        []sql.Row{
+						{1, 1},
+						{2, 2},
+					},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "commit",
+					Expected:        []sql.Row{},
+				},
+			},
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a",
+					Expected:        []sql.Row{
+						{1, 1},
+						{3, 3},
+					},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a",
+					Expected:        []sql.Row{
+						{1, 1},
+						{2, 2},
+					},
+				},
+			},
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "commit",
+					Expected:        []sql.Row{},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a",
+					Expected:        []sql.Row{
+						{1, 1},
+						{2, 2},
+						{3, 3},
+					},
+				},
+			},
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a",
+					Expected:        []sql.Row{
+						{1, 1},
+						{2, 2},
+						{3, 3},
+					},
+				},
+			},
+		},
+	},
 }
