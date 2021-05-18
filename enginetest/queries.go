@@ -4800,6 +4800,15 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.c')`,
 		Expected: []sql.Row{{true}},
 	},
+	{
+		Query: "select one_pk.pk, one_pk.c1 from one_pk join two_pk on one_pk.c1 = two_pk.c1 order by two_pk.c1",
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 10},
+			{2, 20},
+			{3, 30},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
