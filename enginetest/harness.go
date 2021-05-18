@@ -30,6 +30,9 @@ type Harness interface {
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
+	// NewSession returns a context with a new Session, rather than reusing an existing session from previous calls to
+	// NewContext() 
+	NewSession() *sql.Context
 }
 
 // SkippingHarness provides a way for integrators to skip tests that are known to be broken. E.g., integrators that

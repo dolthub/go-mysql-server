@@ -171,6 +171,8 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("db")
+
+	wrapInTransaction(t, db, harness, func() {
 	table, err := harness.NewTable(db, "members", sql.Schema{
 		{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
 		{Name: "team", Type: sql.Text, Source: "members"},
@@ -188,6 +190,8 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		sql.NewRow(int64(7), "orange"),
 		sql.NewRow(int64(8), "purple"),
 	)
+	})
+
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -198,6 +202,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	)
 	require.NoError(err)
 
+	ctx := NewContext(harness)
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
@@ -965,7 +970,7 @@ func TestTransactionScript(t *testing.T, harness Harness, script TransactionTest
 
 // TestTransactionScriptWithEngine runs the transaction test script given with the engine provided.
 func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script TransactionTest) {
-	setupSession := NewContext(harness)
+	setupSession := NewSession(harness)
 	for _, statement := range script.SetUpScript {
 		RunQueryWithContext(t, e, setupSession, statement)
 	}
@@ -976,7 +981,7 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 	for _, assertion := range assertions {
 		clientSession, ok := clientSessions[assertion.Client]
 		if !ok {
-			clientSession = NewContext(harness)
+			clientSession = NewSession(harness)
 			clientSessions[assertion.Client] = clientSession
 		}
 		if assertion.ExpectedErr != nil {
@@ -3201,7 +3206,25 @@ func NewContext(harness Harness) *sql.Context {
 	return ctx
 }
 
-var sessionId uint32
+func NewSession(harness Harness) *sql.Context {
+	ctx := harness.NewSession()
+	currentDB := ctx.GetCurrentDatabase()
+	if currentDB == "" {
+		currentDB = "mydb"
+		ctx.WithCurrentDB(currentDB)
+	}
+
+	_ = ctx.ViewRegistry.Register(currentDB,
+		plan.NewSubqueryAlias(
+			"myview",
+			"SELECT * FROM mytable",
+			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
+		).AsView())
+
+	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
+
+	return ctx
+}
 
 // Returns a new BaseSession compatible with these tests. Most tests will work with any session implementation, but for
 // full compatibility use a session based on this one.

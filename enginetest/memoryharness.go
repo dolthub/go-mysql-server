@@ -33,6 +33,10 @@ type MemoryHarness struct {
 	session                sql.Session
 }
 
+func (m *MemoryHarness) NewSession() *sql.Context {
+	return m.NewContext()
+}
+
 const testNumPartitions = 5
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer IndexDriverInitalizer) *MemoryHarness {
