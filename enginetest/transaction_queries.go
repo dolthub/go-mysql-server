@@ -218,4 +218,70 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		Name:        "autocommit on with explicit transactions",
+		SetUpScript: []string {
+			"create table a (b int primary key, c int)",
+			"insert into a values (1, 1)",
+		},
+		Assertions:  []TransactionTestAssertion{
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "start transaction",
+					Expected:        []sql.Row{},
+				},
+			},
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "insert into a values (2, 2)",
+					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a order by b",
+					Expected:        []sql.Row{{1, 1}},
+				},
+			},
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "commit",
+					Expected:        []sql.Row{},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a order by b",
+					Expected:        []sql.Row{
+						{1, 1},
+						{2, 2},
+					},
+				},
+			},
+			// After commit, autocommit turns back on
+			{
+				Client:              "a",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "insert into a values (3, 3)",
+					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+				},
+			},
+			{
+				Client:              "b",
+				ScriptTestAssertion: ScriptTestAssertion{
+					Query:           "select * from a order by b",
+					Expected:        []sql.Row{
+						{1, 1},
+						{2, 2},
+						{3, 3},
+					},
+				},
+			},
+		},
+	},
 }

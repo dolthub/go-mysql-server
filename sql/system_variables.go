@@ -294,7 +294,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              NewSystemBoolType("autocommit"),
-		Default:           int8(0),
+		Default:           int8(1),
 	},
 	"automatic_sp_privileges": {
 		Name:              "automatic_sp_privileges",
