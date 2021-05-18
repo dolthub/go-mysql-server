@@ -546,6 +546,10 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 	if i.mode == memoryMode {
 		if len(i.secondaryRows.Get()) == 0 {
 			if err = i.loadSecondaryInMemory(); err != nil {
+				if err == io.EOF {
+					i.primaryRow = nil
+					i.pos = 0
+				}
 				return nil, err
 			}
 		}
