@@ -755,4 +755,60 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Run through some complex queries with DISTINCT and aggregates",
+		SetUpScript: []string{
+			"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+			"CREATE TABLE tab2(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+			"INSERT INTO tab0 VALUES(97,1,99)",
+			"INSERT INTO tab0 VALUES(15,81,47)",
+			"INSERT INTO tab0 VALUES(87,21,10)",
+			"INSERT INTO tab1 VALUES(51,14,96)",
+			"INSERT INTO tab1 VALUES(85,5,59)",
+			"INSERT INTO tab1 VALUES(91,47,68)",
+			"INSERT INTO tab2 VALUES(64,77,40)",
+			"INSERT INTO tab2 VALUES(75,67,58)",
+			"INSERT INTO tab2 VALUES(46,51,23)",
+			"CREATE TABLE mytable (pk int, v1 int)",
+			"INSERT INTO mytable VALUES(1,1)",
+			"INSERT INTO mytable VALUES(1,1)",
+			"INSERT INTO mytable VALUES(1,2)",
+			"INSERT INTO mytable VALUES(2,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT DISTINCT + MIN( col2 ) AS col0 FROM tab1 WHERE 17 * col2 + col0 BETWEEN NULL AND NULL",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query: "SELECT - SUM( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
+				Expected: []sql.Row{{float64(-71)}},
+			},
+			{
+				Query: "SELECT - SUM ( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
+				Expected: []sql.Row{{float64(-71)}},
+			},
+			{
+				Query: "SELECT + MAX( DISTINCT ( - col0 ) ) FROM tab1 AS cor0",
+				Expected: []sql.Row{{-51}},
+			},
+			{
+				Query: "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
+				Expected: []sql.Row{{float64(-1455)}},
+			},
+			{
+				Query: "SELECT MIN (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{81},{21},{1}},
+			},
+			{
+				Query: "SELECT SUM (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{float64(81)},{float64(21)},{float64(1)}},
+			},
+			{
+				Query: "SELECT SUM(DISTINCT v1) FROM mytable GROUP BY pk ORDER BY pk",
+				Expected: []sql.Row{{3},{2}},
+			},
+		},
+	},
 }

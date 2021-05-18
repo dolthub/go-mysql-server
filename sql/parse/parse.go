@@ -2188,6 +2188,8 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return aggregation.NewCountDistinct(exprs[0]), nil
 		}
 
+		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
+		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
 		if v.Distinct {
 			if len(exprs) != 1 {
 				return nil, ErrUnsupportedSyntax.New("more than one expression with distinct")
