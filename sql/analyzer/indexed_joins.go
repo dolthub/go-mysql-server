@@ -358,7 +358,11 @@ func (j JoinOrder) HintType() string {
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
 	if tree.isLeaf() {
-		return tablesByName[tree.table]
+		nn, ok := tablesByName[strings.ToLower(tree.table)]
+		if !ok {
+			panic(fmt.Sprintf("Could not find NameableNode for '%s'", tree.table))
+		}
+		return nn
 	}
 
 	left := joinTreeToNodes(tree.left, tablesByName, scope)
