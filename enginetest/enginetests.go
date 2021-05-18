@@ -236,11 +236,15 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	_, err := harness.NewTable(db, "mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+
+	wrapInTransaction(t, db, harness, func() {
+		_, err := harness.NewTable(db, "mytable", sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s", Type: sql.Text, Source: "mytable"},
+		})
+		require.NoError(err)
 	})
-	require.NoError(err)
+
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -250,8 +254,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	a := analyzer.NewBuilder(catalog).Build()
 	e := sqle.New(catalog, a, cfg)
 
-	_, _, err = e.Query(NewContext(harness), `SELECT i FROM mytable`)
-	require.NoError(err)
+	RunQuery(t, e, harness, `SELECT i FROM mytable`)
 
 	writingQueries := []string{
 		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
@@ -262,9 +265,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	}
 
 	for _, query := range writingQueries {
-		_, _, err = e.Query(NewContext(harness), query)
-		require.Error(err)
-		require.True(auth.ErrNotAuthorized.Is(err))
+		AssertErr(t, e, harness, query, auth.ErrNotAuthorized)
 	}
 }
 
@@ -396,6 +397,8 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
+
+	wrapInTransaction(t, db, harness, func() {
 	table, err := harness.NewTable(db, "foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "foo"},
@@ -411,6 +414,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	require.NoError(err)
 
 	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
+	})
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -2297,6 +2301,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
+	wrapInTransaction(t, db, harness, func() {
 	t1, err := harness.NewTable(db, "t1", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t1"},
@@ -2320,6 +2325,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 		sql.NewRow("a_1", "b_1", "d_1"),
 		sql.NewRow("a_2", "b_2", "d_2"),
 		sql.NewRow("a_3", "b_3", "d_3"))
+	})
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -2335,6 +2341,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
+	wrapInTransaction(t, db, harness, func() {
 	t1, err := harness.NewTable(db, "t1", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 		{Name: "b", Type: sql.Text, Source: "t1"},
@@ -2358,6 +2365,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 		sql.NewRow("a_1", "b_1", "c_1"),
 		sql.NewRow("a_2", "b_2", "c_2"),
 		sql.NewRow("a_3", "b_3", "c_3"))
+	})
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -2373,6 +2381,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
+	wrapInTransaction(t, db, harness, func() {
 	t1, err := harness.NewTable(db, "t1", sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 	})
@@ -2391,6 +2400,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 		sql.NewRow("b1"),
 		sql.NewRow("b2"),
 		sql.NewRow("b3"))
+	})
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -2412,6 +2422,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
+	wrapInTransaction(t, db, harness, func() {
 	table1, err := harness.NewTable(db, "table1", sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "table1"},
 		{Name: "f", Type: sql.Float64, Source: "table1"},
@@ -2450,6 +2461,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 		sql.NewRow(int32(2), float64(2.2), "table3"),
 		sql.NewRow(int32(30), float64(2.2), "table3"),
 	)
+	})
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
