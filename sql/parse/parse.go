@@ -2188,6 +2188,14 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return aggregation.NewCountDistinct(exprs[0]), nil
 		}
 
+		// TODO: Is this correct?
+		if v.Distinct && len(exprs) != 1 {
+			return nil, ErrUnsupportedSyntax.New("more than one expression with distinct")
+		}
+
+		ad := expression.NewDistinctExpression(ctx, exprs[0])
+		exprs[0] = ad
+
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
 			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
 	case *sqlparser.GroupConcatExpr:

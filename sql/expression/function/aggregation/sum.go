@@ -18,21 +18,19 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/mitchellh/hashstructure"
 )
 
 // Sum agregation returns the sum of all values in the selected column.
 // It implements the Aggregation interface.
 type Sum struct {
 	expression.UnaryExpression
-	distinct *AggregateDistinctOperator
 }
 
 var _ sql.FunctionExpression = (*Sum)(nil)
 
 // NewSum returns a new Sum node.
 func NewSum(e sql.Expression) *Sum {
-	return &Sum{expression.UnaryExpression{Child: e}, nil}
+	return &Sum{expression.UnaryExpression{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -50,28 +48,13 @@ func (m *Sum) String() string {
 }
 
 func (m *Sum) Children() []sql.Expression {
-	if m.distinct != nil {
-		return []sql.Expression{m.Child, expression.NewLiteral(true, sql.Boolean)}
-	}
-
-	return []sql.Expression{m.Child, expression.NewLiteral(false, sql.Boolean)}
+	return []sql.Expression{m.Child}
 }
 
 // WithChildren implements the Expression interface.
 func (m *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) == 0 || len(children) > 2 {
+	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
-	}
-
-	if len(children) == 1 {
-		return NewSum(children[0]), nil
-	}
-
-	hasDistict := children[1].String() == "true"
-
-	if hasDistict {
-		expr := NewSum(children[0])
-		return expr.WithDistinctIterator(&AggregateDistinctOperator{seen: nil, dispose: nil})
 	}
 
 	return NewSum(children[0]), nil
@@ -87,17 +70,6 @@ func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	v, err := m.Child.Eval(ctx, row)
 	if err != nil {
 		return err
-	}
-
-	if m.distinct != nil {
-		shouldUseValue, err := m.distinct.ShouldProcess(ctx, v)
-		if err != nil {
-			return err
-		}
-
-		if !shouldUseValue {
-			return nil
-		}
 	}
 
 	if v == nil {
@@ -127,57 +99,10 @@ func (m *Sum) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 func (m *Sum) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	sum := buffer[0]
 
-	if m.distinct != nil {
-		m.distinct.dispose()
+	// Dispose the in memory hash table if the child is a distinct operation.
+	if t, ok := m.Child.(*expression.DistinctExpression); ok {
+		t.Dispose()
 	}
 
 	return sum, nil
-}
-
-func (m *Sum) WithDistinctIterator(distinct *AggregateDistinctOperator) (*Sum, error) {
-	nr := *m
-	nr.distinct = distinct
-	return &nr, nil
-}
-
-type AggregateDistinctOperator struct {
-	seen sql.KeyValueCache
-	dispose sql.DisposeFunc
-}
-
-func NewAggregateDistinctOperator(ctx *sql.Context) *AggregateDistinctOperator{
-	cache, dispose := ctx.Memory.NewHistoryCache()
-	return &AggregateDistinctOperator{
-		seen:      cache,
-		dispose:   dispose,
-	}
-}
-
-func (ad *AggregateDistinctOperator) ShouldProcess(ctx *sql.Context, value interface{}) (bool, error) {
-	if ad.seen == nil {
-		cache, dispose := ctx.Memory.NewHistoryCache()
-		ad.seen = cache
-		ad.dispose = dispose
-	}
-
-	hash, err := hashstructure.Hash(value, nil)
-	if err != nil {
-		return false, err
-	}
-
-	if _, err := ad.seen.Get(hash); err == nil {
-		return false, nil
-	}
-
-	if err := ad.seen.Put(hash, struct{}{}); err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (ad *AggregateDistinctOperator) Dispose() {
-	if ad.dispose != nil {
-		ad.dispose()
-	}
 }
