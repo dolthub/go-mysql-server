@@ -405,7 +405,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "select * from mytable t1 join mytable T2 on T2.i = t1.i where T2.i > 10",
+		Query:    "select * from mytable t1 join mytable T2 on t2.i = t1.i where T2.i > 10",
 		Expected: []sql.Row{},
 	},
 	{
