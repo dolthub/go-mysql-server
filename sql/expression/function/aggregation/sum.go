@@ -57,7 +57,6 @@ func (m *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-
 	return NewSum(children[0]), nil
 }
 
