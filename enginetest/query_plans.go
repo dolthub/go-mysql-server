@@ -584,7 +584,7 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT dt1.i FROM datetime_table dt1 
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1`,
-			ExpectedPlan: "Sort(dt1.i ASC)\n" +
+		ExpectedPlan: "Sort(dt1.i ASC)\n" +
 			" └─ Project(dt1.i)\n" +
 			"     └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
 			"         ├─ TableAlias(dt2)\n" +

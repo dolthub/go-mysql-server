@@ -97,7 +97,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
+		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
 		Expected: []sql.Row{{1}},
 	}
 	fmt.Sprintf("%v", test)
