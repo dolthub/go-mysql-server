@@ -1292,6 +1292,38 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
 	},
 	{
+		Query: "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: "select i from datetime_table where date_col = '2019-12-31T00:00:00'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: "select i from datetime_table where date_col = '2019-12-31T00:00:01'",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "select i from datetime_table where date_col = '2019-12-31'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: "select i from datetime_table where date_col = '2019/12/31'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: "select i from datetime_table where date_col > '2019-12-31' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query: "select i from datetime_table where date_col > '2019/12/31' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query: "select i from datetime_table where date_col > '2019-12-31T00:00:01' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
 		Expected: []sql.Row{{int64(3)}},
 	},
@@ -1406,7 +1438,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
-		Query:    "SELECT id FROM typestable WHERE da > '2019-12-31'",
+		Query:    "SELECT id FROM typestable WHERE da = '2019-12-31'",
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{

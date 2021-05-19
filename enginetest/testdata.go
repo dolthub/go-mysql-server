@@ -352,6 +352,23 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			}
 		}
 
+		if includeTable(includedTables, "datetime_table") {
+			table, err = harness.NewTable(myDb, "datetime_table", sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "datetime_table", Nullable: false, PrimaryKey: true},
+				{Name: "date_col", Type: sql.Date, Source: "datetime_table", Nullable: true},
+				{Name: "datetime_col", Type: sql.Datetime, Source: "datetime_table", Nullable: true},
+				{Name: "timestamp_col", Type: sql.Timestamp, Source: "datetime_table", Nullable: true},
+			})
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(1, mustParseDate("2019-12-31T12:00:00Z"), mustParseTime("2020-01-01T12:00:00Z"), mustParseTime("2020-01-02T12:00:00Z")),
+					sql.NewRow(2, mustParseDate("2020-01-03T12:00:00Z"), mustParseTime("2020-01-04T12:00:00Z"), mustParseTime("2020-01-05T12:00:00Z")),
+					sql.NewRow(3, mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z")),
+				)
+			}
+		}
+
 		if includeTable(includedTables, "stringandtable") {
 			table, err = harness.NewTable(myDb, "stringandtable", sql.Schema{
 				{Name: "k", Type: sql.Int64, Source: "stringandtable", PrimaryKey: true},
@@ -493,6 +510,22 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	return []sql.Database{myDb, foo}
 }
 
+func mustParseTime(datestring string) time.Time {
+	t, err := time.Parse(time.RFC3339, datestring)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+func mustParseDate(datestring string) time.Time {
+	t, err := time.Parse(time.RFC3339, datestring)
+	if err != nil {
+		panic(err)
+	}
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
 // createTestData uses the provided harness to create test tables and data for many of the other tests.
 func CreateTestData(t *testing.T, harness Harness) []sql.Database {
 	return CreateSubsetTestData(t, harness, nil)
@@ -542,6 +575,7 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 		"create index floattable_f on floattable (f64)",
 		"create index niltable_i2 on niltable (i2)",
 		"create index people_l_f on people (last_name,first_name)",
+
 	}
 
 	for _, q := range createIndexes {
