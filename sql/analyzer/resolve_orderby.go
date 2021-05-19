@@ -41,9 +41,12 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		}
 
 		childAliases := aliasesDefinedInNode(sort.Child)
-		var schemaCols []string
+		var schemaCols []tableCol
 		for _, col := range sort.Child.Schema() {
-			schemaCols = append(schemaCols, strings.ToLower(col.Name))
+			schemaCols = append(schemaCols, tableCol{
+				table: strings.ToLower(col.Source),
+				col:   strings.ToLower(col.Name),
+			})
 		}
 
 		var colsFromChild []string
@@ -55,7 +58,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 				name := strings.ToLower(n.Name())
 				if stringContains(childAliases, name) {
 					colsFromChild = append(colsFromChild, n.Name())
-				} else if !stringContains(schemaCols, name) {
+				} else if !tableColsContains(schemaCols, tableColFromNameable(n)) {
 					missingCols = append(missingCols, n.Name())
 				}
 			}
@@ -295,4 +298,12 @@ func findExprNameables(e sql.Expression) []sql.Nameable {
 		return true
 	})
 	return result
+}
+
+func tableColFromNameable(n sql.Nameable) tableCol {
+	var tbl string
+	if t, ok := n.(sql.Tableable); ok {
+		tbl = t.Table()
+	}
+	return newTableCol(tbl, n.Name())
 }

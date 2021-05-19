@@ -76,6 +76,17 @@ func newTableCol(table, col string) tableCol {
 	}
 }
 
+var _ sql.Tableable = tableCol{}
+var _ sql.Nameable = tableCol{}
+
+func (tc tableCol) Table() string {
+	return tc.table
+}
+
+func (tc tableCol) Name() string {
+	return tc.col
+}
+
 type indexedCol struct {
 	*sql.Column
 	index int

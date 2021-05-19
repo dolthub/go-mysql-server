@@ -453,6 +453,9 @@ rowLoop:
 	if err = setConnStatusFlags(ctx, c); err != nil {
 		return err
 	}
+	if err = setResultInfo(ctx, r); err != nil {
+		return err
+	}
 
 	switch len(r.Rows) {
 	case 0:
@@ -461,6 +464,7 @@ rowLoop:
 		logrus.Tracef("returning result %v", r)
 	}
 
+	// TODO(andy): logic doesn't match comment?
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener
 	// and avoid returning errors when the query doesn't
@@ -472,6 +476,7 @@ rowLoop:
 	return callback(r)
 }
 
+// See https://dev.mysql.com/doc/internals/en/status-flags.html
 func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	ok, err := isSessionAutocommit(ctx)
 	if err != nil {
@@ -482,6 +487,13 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	} else {
 		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
 	}
+	// TODO(andy): implement SERVER_STATUS_IN_TRANS (0x0001) "a transaction is active"
+	return nil
+}
+
+func setResultInfo(ctx *sql.Context, r *sqltypes.Result) error {
+	lastId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
+	r.InsertID = uint64(lastId)
 	return nil
 }
 
