@@ -300,6 +300,7 @@ func (i *groupByGroupingIter) compute() error {
 		if _, err := i.aggregations.Get(key); err != nil {
 			var buf = make([]sql.Row, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
+				disposeOfAggregationCaches(a) // TODO: Is this a trash solution?
 				buf[j] = newAggregationBuffer(a)
 			}
 
@@ -395,6 +396,15 @@ func updateBuffer(
 		}
 		buffers[idx] = sql.NewRow(val)
 		return nil
+	}
+}
+
+func disposeOfAggregationCaches(e sql.Expression) {
+	for _, child := range e.Children() {
+		switch childExp := child.(type) {
+		case *expression.DistinctExpression:
+			childExp.Dispose()
+		}
 	}
 }
 

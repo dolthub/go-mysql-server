@@ -67,7 +67,7 @@ func (m *Sum) NewBuffer() sql.Row {
 
 // Update implements the Aggregation interface.
 func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := m.Child.Eval(ctx, row)
+	v, err := m.Child.Eval(ctx, row) // TODO: Can I toggle a reset?
 	if err != nil {
 		return err
 	}

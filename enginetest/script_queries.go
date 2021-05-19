@@ -806,8 +806,8 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(81)},{float64(21)},{float64(1)}},
 			},
 			{
-				Query: "SELECT SUM(DISTINCT v1) FROM mytable GROUP BY pk ORDER BY pk",
-				Expected: []sql.Row{{3},{2}},
+				Query: "SELECT SUM(DISTINCT v1) FROM mytable GROUP BY pk",
+				Expected: []sql.Row{{float64(3)},{float64(2)}},
 			},
 		},
 	},
