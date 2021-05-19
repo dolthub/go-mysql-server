@@ -401,6 +401,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    "select * from mytable t1 join mytable t2 on t2.i = t1.i where t2.i > 10",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select * from mytable t1 join mytable T2 on t2.i = t1.i where T2.i > 10",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
+		Expected: []sql.Row{},
+	},
+	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -4792,6 +4804,15 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '{"d": 4}', '$.c')`,
 		Expected: []sql.Row{{true}},
 	},
+	{
+		Query: "select one_pk.pk, one_pk.c1 from one_pk join two_pk on one_pk.c1 = two_pk.c1 order by two_pk.c1",
+		Expected: []sql.Row{
+			{0, 0},
+			{1, 10},
+			{2, 20},
+			{3, 30},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -5495,30 +5516,6 @@ var InfoSchemaScripts = []ScriptTest{
 				Query: "describe auto;",
 				Expected: []sql.Row{
 					{"pk", "int", "NO", "PRI", "", "auto_increment"},
-				},
-			},
-		},
-	},
-	{
-		Name: "Create a table with a check and validate that it appears in check_constraints and table_constraints",
-		SetUpScript: []string{
-			"CREATE TABLE mytable (pk int primary key, test_score int, height int, CONSTRAINT mycheck CHECK (test_score >= 50), CONSTRAINT hcheck CHECK (height < 10), CONSTRAINT vcheck CHECK (height > 0))",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
-				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "height < 10"},
-					{"def", "mydb", "mycheck", "test_score >= 50"},
-				},
-			},
-			{
-				Query: "SELECT * FROM information_schema.table_constraints where table_name='mytable' ORDER BY constraint_type,constraint_name",
-				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
-					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
 			},
 		},

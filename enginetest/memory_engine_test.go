@@ -97,9 +97,12 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "CREATE DATABASE testdb",
+		Query: "select one_pk.pk, one_pk.c1 from one_pk join two_pk on one_pk.c1 = two_pk.c1 order by two_pk.c1",
 		Expected: []sql.Row{
-			{"second row"},
+			{0, 0},
+			{1, 10},
+			{2, 20},
+			{3, 30},
 		},
 	}
 	fmt.Sprintf("%v", test)

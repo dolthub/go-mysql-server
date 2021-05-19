@@ -121,6 +121,7 @@ examples on how to connect to go-mysql-server using them.
 |`IF(expr1, expr2, expr3)`| if `expr1` evaluates to true, retuns `expr2`. Otherwise returns `expr3`. |
 |`INSTR(str1, str2)`| returns the 1-based index of the first occurence of `str2` in `str1`, or 0 if it does not occur. |
 |`IS_BINARY(blob)`| returns whether a `blob` is a binary file or not.|
+|`ISNULL(expr)`| returns whether a `expr` is null or not.|
 |`JSON_EXTRACT(json_doc, path, ...)`| extracts data from a json document using json paths. Extracting a string will result in that string being quoted. To avoid this, use `JSON_UNQUOTE(JSON_EXTRACT(json_doc, path, ...))`.|
 |`JSON_UNQUOTE(json)`| unquotes JSON value and returns the result as a utf8mb4 string.|
 |`LAST(expr)`| returns the last value in a sequence of elements of an aggregation.|

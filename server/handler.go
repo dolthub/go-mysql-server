@@ -450,6 +450,13 @@ rowLoop:
 		ctx.SetTransaction(nil)
 	}
 
+	if err = setConnStatusFlags(ctx, c); err != nil {
+		return err
+	}
+	if err = setResultInfo(ctx, r); err != nil {
+		return err
+	}
+
 	switch len(r.Rows) {
 	case 0:
 		logrus.Tracef("returning empty result")
@@ -457,6 +464,7 @@ rowLoop:
 		logrus.Tracef("returning result %v", r)
 	}
 
+	// TODO(andy): logic doesn't match comment?
 	// Even if r.RowsAffected = 0, the callback must be
 	// called to update the state in the go-vitess' listener
 	// and avoid returning errors when the query doesn't
@@ -466,6 +474,35 @@ rowLoop:
 	}
 
 	return callback(r)
+}
+
+// See https://dev.mysql.com/doc/internals/en/status-flags.html
+func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
+	ok, err := isSessionAutocommit(ctx)
+	if err != nil {
+		return err
+	}
+	if ok {
+		c.StatusFlags |= uint16(mysql.ServerStatusAutocommit)
+	} else {
+		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
+	}
+	// TODO(andy): implement SERVER_STATUS_IN_TRANS (0x0001) "a transaction is active"
+	return nil
+}
+
+func setResultInfo(ctx *sql.Context, r *sqltypes.Result) error {
+	lastId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
+	r.InsertID = uint64(lastId)
+	return nil
+}
+
+func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 // Call doQuery and cast known errors to SQLError
@@ -544,14 +581,6 @@ func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
 	}
 
 	return nil, false
-}
-
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 func resultFromOkResult(result sql.OkResult) *sqltypes.Result {

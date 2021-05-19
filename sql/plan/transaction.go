@@ -456,7 +456,7 @@ func (r *ReleaseSavepoint) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, er
 		return sql.RowsToRowIter(), nil
 	}
 
-	err := tdb.RollbackToSavepoint(ctx, transaction, r.name)
+	err := tdb.ReleaseSavepoint(ctx, transaction, r.name)
 	if err != nil {
 		return nil, err
 	}

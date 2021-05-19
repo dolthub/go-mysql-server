@@ -1768,7 +1768,8 @@ CREATE TABLE t2
 	),
 	`SELECT 2 = 2 FROM foo`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewEquals(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(2), sql.Int8)),
+			expression.NewAlias("2 = 2",
+				expression.NewEquals(expression.NewLiteral(int8(2), sql.Int8), expression.NewLiteral(int8(2), sql.Int8))),
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
@@ -1922,7 +1923,8 @@ CREATE TABLE t2
 	),
 	`SELECT 1 + 1;`: plan.NewProject(
 		[]sql.Expression{
-			expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8)),
+			expression.NewAlias("1 + 1",
+				expression.NewPlus(expression.NewLiteral(int8(1), sql.Int8), expression.NewLiteral(int8(1), sql.Int8))),
 		},
 		plan.NewUnresolvedTable("dual", ""),
 	),

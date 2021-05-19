@@ -475,3 +475,12 @@ func stringContains(strs []string, target string) bool {
 	}
 	return false
 }
+
+func tableColsContains(strs []tableCol, target tableCol) bool {
+	for _, s := range strs {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}

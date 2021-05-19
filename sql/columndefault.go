@@ -109,6 +109,10 @@ func (e *ColumnDefaultValue) String() string {
 	if e == nil {
 		return ""
 	}
+
+	// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
+	// The default value specified in a DEFAULT clause can be a literal constant or an expression. With one exception,
+	// enclose expression default values within parentheses to distinguish them from literal constant default values.
 	if e.literal {
 		return e.Expression.String()
 	} else {
