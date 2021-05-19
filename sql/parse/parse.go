@@ -2180,6 +2180,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 
+		// NOTE: The count distinct expressions work differently due to the * syntax. eg. COUNT(*)
 		if v.Distinct && v.Name.Lowered() == "count" {
 			if len(exprs) != 1 {
 				return nil, ErrUnsupportedSyntax.New("more than one expression in COUNT")

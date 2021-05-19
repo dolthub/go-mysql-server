@@ -59,6 +59,11 @@ func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// Dispose the in memory hash table if the child is a distinct operation.
+	if t, ok := a.Child.(*expression.DistinctExpression); ok {
+		t.Dispose()
+	}
+
 	sum := buffer[0].(float64)
 	rows := buffer[1].(int64)
 
