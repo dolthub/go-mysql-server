@@ -128,4 +128,3 @@ func TestMax_Distinct(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(3, v)
 }
-

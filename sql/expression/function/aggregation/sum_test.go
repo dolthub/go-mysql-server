@@ -96,7 +96,7 @@ func TestSumWithDistinct(t *testing.T) {
 	sum := NewSum(ad)
 
 	// first validate that the expression's name is correct
- 	require.Equal("SUM(DISTINCT myfield)", sum.String())
+	require.Equal("SUM(DISTINCT myfield)", sum.String())
 
 	testCases := []struct {
 		name     string
@@ -105,7 +105,7 @@ func TestSumWithDistinct(t *testing.T) {
 	}{
 		{
 			"string int values",
-			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"},{ "3"}, {"4"}, {"4"}},
+			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
 			float64(10),
 		},
 		{

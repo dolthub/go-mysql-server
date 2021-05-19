@@ -2,14 +2,16 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/mitchellh/hashstructure"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type DistinctExpression struct {
-	seen sql.KeyValueCache
+	seen    sql.KeyValueCache
 	dispose sql.DisposeFunc
-	Column sql.Expression
+	Column  sql.Expression
 }
 
 func NewDistinctExpression(e sql.Expression) *DistinctExpression {
@@ -94,8 +96,8 @@ func (ad *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expr
 	}
 
 	return &DistinctExpression{
-		seen: nil,
+		seen:    nil,
 		dispose: nil,
-		Column: children[0],
+		Column:  children[0],
 	}, nil
 }

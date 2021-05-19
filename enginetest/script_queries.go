@@ -778,36 +778,36 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT DISTINCT + MIN( col2 ) AS col0 FROM tab1 WHERE 17 * col2 + col0 BETWEEN NULL AND NULL",
+				Query:    "SELECT DISTINCT + MIN( col2 ) AS col0 FROM tab1 WHERE 17 * col2 + col0 BETWEEN NULL AND NULL",
 				Expected: []sql.Row{{nil}},
 			},
 			{
-				Query: "SELECT - SUM( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
+				Query:    "SELECT - SUM( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
 				Expected: []sql.Row{{float64(-71)}},
 			},
 			{
-				Query: "SELECT - SUM ( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
+				Query:    "SELECT - SUM ( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
 				Expected: []sql.Row{{float64(-71)}},
 			},
 			{
-				Query: "SELECT + MAX( DISTINCT ( - col0 ) ) FROM tab1 AS cor0",
+				Query:    "SELECT + MAX( DISTINCT ( - col0 ) ) FROM tab1 AS cor0",
 				Expected: []sql.Row{{-51}},
 			},
 			{
-				Query: "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
+				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
 				Expected: []sql.Row{{float64(-1455)}},
 			},
 			{
-				Query: "SELECT MIN (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
-				Expected: []sql.Row{{81},{21},{1}},
+				Query:    "SELECT MIN (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{81}, {21}, {1}},
 			},
 			{
-				Query: "SELECT SUM (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
-				Expected: []sql.Row{{float64(81)},{float64(21)},{float64(1)}},
+				Query:    "SELECT SUM (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{float64(81)}, {float64(21)}, {float64(1)}},
 			},
 			{
-				Query: "SELECT SUM(DISTINCT v1) FROM mytable GROUP BY pk",
-				Expected: []sql.Row{{float64(3)},{float64(2)}},
+				Query:    "SELECT SUM(DISTINCT v1) FROM mytable GROUP BY pk",
+				Expected: []sql.Row{{float64(3)}, {float64(2)}},
 			},
 		},
 	},

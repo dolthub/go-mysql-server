@@ -80,8 +80,8 @@ func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 // NewBuffer implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) NewBuffer() sql.Row {
 	const (
-		sum   = float64(0)
-		rows  = int64(0)
+		sum  = float64(0)
+		rows = int64(0)
 	)
 
 	return sql.NewRow(sum, rows)
