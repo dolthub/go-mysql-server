@@ -3113,8 +3113,6 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
-	`SELECT AVG(DISTINCT foo) FROM b`:                         ErrUnsupportedSyntax,
-	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`:   ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
 	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    ErrUnknownIndexColumn,
 	`SELECT a, count(i) over (order by x) FROM foo`:           ErrUnsupportedFeature,
