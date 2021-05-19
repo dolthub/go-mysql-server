@@ -141,7 +141,6 @@ func (e *Engine) QueryNodeWithBindings(
 	)
 
 	if parsed == nil {
-		var err error
 		parsed, err = parse.Parse(ctx, query)
 		if err != nil {
 			return nil, nil, err
@@ -165,11 +164,9 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 	}
 
-	setQueriedDatabase(ctx, parsed)
-
-	schema, rowIter, err2 := e.beginTransaction(ctx, parsed)
-	if err2 != nil {
-		return schema, rowIter, err2
+	transactionDatabase, err := e.beginTransaction(ctx, parsed)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	iter, err = analyzed.RowIter(ctx, nil)
@@ -183,13 +180,13 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if autoCommit {
-		iter = transactionCommittingIter{iter}
+		iter = transactionCommittingIter{iter, transactionDatabase}
 	}
 
 	return analyzed.Schema(), iter, nil
 }
 
-func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (sql.Schema, sql.RowIter, error) {
+func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
 	// Before we begin a transaction, we need to know if the database being operated on is not the one
 	// currently selected
 	transactionDatabase := determineTransactionDatabase(ctx, parsed)
@@ -200,26 +197,28 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (sql.Schema
 		if len(transactionDatabase) > 0 {
 			database, err := e.Catalog.Database(transactionDatabase)
 			if err != nil {
-				return nil, nil, err
+				return "", err
 			}
 
 			tdb, ok := database.(sql.TransactionDatabase)
 			if ok {
 				tx, err := tdb.StartTransaction(ctx)
 				if err != nil {
-					return nil, nil, err
+					return "", err
 				}
 				ctx.SetTransaction(tx)
 			}
 		}
 	}
-	return nil, nil, nil
+
+	return transactionDatabase, nil
 }
 
 // transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
 // during the Close() operation
 type transactionCommittingIter struct {
-	childIter sql.RowIter
+	childIter           sql.RowIter
+	transactionDatabase string
 }
 
 func (t transactionCommittingIter) Next() (sql.Row, error) {
@@ -236,7 +235,7 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
 	if commitTransaction {
 		logrus.Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, getTransactionDbName(ctx), tx); err != nil {
+		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
 			return err
 		}
 
@@ -253,19 +252,6 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 		return false, err
 	}
 	return sql.ConvertToBool(autoCommitSessionVar)
-}
-
-func getTransactionDbName(ctx *sql.Context) string {
-	currentDbInUse := ctx.GetCurrentDatabase()
-	queriedDatabase := ctx.GetQueriedDatabase()
-
-	ctx.SetQueriedDatabase("") // reset the queried database variable
-
-	if queriedDatabase != "" {
-		return queriedDatabase
-	} else {
-		return currentDbInUse
-	}
 }
 
 func determineTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
@@ -297,27 +283,6 @@ func determineTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 	}
 
 	return transactionDatabase
-}
-
-func setQueriedDatabase(ctx *sql.Context, parsed sql.Node) {
-	switch n := parsed.(type) {
-	case *plan.CreateTable:
-		if n.Database() != nil && n.Database().Name() != "" {
-			ctx.SetQueriedDatabase(n.Database().Name())
-		}
-	case *plan.InsertInto:
-		if n.Database() != nil && n.Database().Name() != "" {
-			ctx.SetQueriedDatabase(n.Database().Name())
-		}
-	case *plan.DeleteFrom:
-		if n.Database() != "" {
-			ctx.SetQueriedDatabase(n.Database())
-		}
-	case *plan.Update:
-		if n.Database() != "" {
-			ctx.SetQueriedDatabase(n.Database())
-		}
-	}
 }
 
 func (e *Engine) authCheck(ctx *sql.Context, node sql.Node) error {

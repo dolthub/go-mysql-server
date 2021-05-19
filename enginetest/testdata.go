@@ -39,6 +39,8 @@ func includeTable(includedTables []string, tableName string) bool {
 	return false
 }
 
+// wrapInTransaction runs the function given surrounded in a transaction. If the db provided doesn't implement
+// sql.TransactionDatabase, then the function is simply run and the transaction logic is a no-op.
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
 	if tdb, ok := db.(sql.TransactionDatabase); ok {
 		ctx := NewContext(harness)
