@@ -758,12 +758,8 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "Run through some complex queries with DISTINCT and aggregates",
 		SetUpScript: []string{
-			"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
 			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
 			"CREATE TABLE tab2(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
-			"INSERT INTO tab0 VALUES(97,1,99)",
-			"INSERT INTO tab0 VALUES(15,81,47)",
-			"INSERT INTO tab0 VALUES(87,21,10)",
 			"INSERT INTO tab1 VALUES(51,14,96)",
 			"INSERT INTO tab1 VALUES(85,5,59)",
 			"INSERT INTO tab1 VALUES(91,47,68)",
@@ -794,12 +790,12 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(-1455)}},
 			},
 			{
-				Query:    "SELECT MIN (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
-				Expected: []sql.Row{{81}, {21}, {1}},
+				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{14}, {5}, {47}},
 			},
 			{
-				Query:    "SELECT SUM (DISTINCT col1) from tab0 GROUP BY col0 ORDER BY col0",
-				Expected: []sql.Row{{float64(81)}, {float64(21)}, {float64(1)}},
+				Query:    "SELECT SUM (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{float64(14)}, {float64(5)}, {float64(47)}},
 			},
 			{
 				Query:    "SELECT SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk",
