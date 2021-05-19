@@ -68,33 +68,11 @@ func (p PartitionProgress) String() string {
 	return fmt.Sprintf("%s (%d/%s rows)", p.Name, p.Done, p.totalString())
 }
 
-// ProcessType is the type of process.
-type ProcessType byte
-
-const (
-	// QueryProcess is a query process.
-	QueryProcess ProcessType = iota
-	// CreateIndexProcess is a process to create an index.
-	CreateIndexProcess
-)
-
-func (p ProcessType) String() string {
-	switch p {
-	case QueryProcess:
-		return "query"
-	case CreateIndexProcess:
-		return "create_index"
-	default:
-		return "invalid"
-	}
-}
-
 // Process represents a process in the SQL server.
 type Process struct {
 	Pid        uint64
 	Connection uint32
 	User       string
-	Type       ProcessType
 	Query      string
 	Progress   map[string]TableProgress
 	StartedAt  time.Time
@@ -133,7 +111,6 @@ var ErrPidAlreadyUsed = errors.NewKind("pid %d is already in use")
 // context will be cancelled if the process is killed.
 func (pl *ProcessList) AddProcess(
 	ctx *Context,
-	typ ProcessType,
 	query string,
 ) (*Context, error) {
 	pl.mu.Lock()
@@ -149,7 +126,6 @@ func (pl *ProcessList) AddProcess(
 	pl.procs[ctx.Pid()] = &Process{
 		Pid:        ctx.Pid(),
 		Connection: ctx.ID(),
-		Type:       typ,
 		Query:      query,
 		Progress:   make(map[string]TableProgress),
 		User:       ctx.Session.Client().User,
@@ -289,21 +265,6 @@ func (pl *ProcessList) Kill(connID uint32) {
 
 	for pid, proc := range pl.procs {
 		if proc.Connection == connID {
-			logrus.Infof("kill query: pid %d", pid)
-			proc.Done()
-			delete(pl.procs, pid)
-		}
-	}
-}
-
-// KillOnlyQueries kills all queries, but not index creation queries, for a
-// given connection id.
-func (pl *ProcessList) KillOnlyQueries(connID uint32) {
-	pl.mu.Lock()
-	defer pl.mu.Unlock()
-
-	for pid, proc := range pl.procs {
-		if proc.Connection == connID && proc.Type == QueryProcess {
 			logrus.Infof("kill query: pid %d", pid)
 			proc.Done()
 			delete(pl.procs, pid)

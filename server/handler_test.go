@@ -181,7 +181,7 @@ func TestHandlerKill(t *testing.T) {
 	require.NoError(err)
 	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
 	require.NoError(err)
-	ctx1, err = handler.e.Catalog.AddProcess(ctx1, sql.QueryProcess, "SELECT 1")
+	ctx1, err = handler.e.Catalog.AddProcess(ctx1, "SELECT 1")
 	require.NoError(err)
 
 	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result) error {

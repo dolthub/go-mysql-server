@@ -87,11 +87,6 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
-	// GetQueriedDatabase represents the database the user is running a query on that is NOT the current database.
-	// Should only be used internally by the engine.
-	GetQueriedDatabase() string
-	// SetQueriedDatabase sets the queried database. Should only be used internally by the engine.
-	SetQueriedDatabase(dbName string)
 	// SetLastQueryInfo sets session-level query info for the key given, applying to the query just executed.
 	SetLastQueryInfo(key string, value int64)
 	// GetLastQueryInfo returns the session-level query info for the key given, for the query most recently executed.

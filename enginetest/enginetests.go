@@ -171,23 +171,26 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("db")
-	table, err := harness.NewTable(db, "members", sql.Schema{
-		{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
-		{Name: "team", Type: sql.Text, Source: "members"},
+
+	wrapInTransaction(t, db, harness, func() {
+		table, err := harness.NewTable(db, "members", sql.Schema{
+			{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
+			{Name: "team", Type: sql.Text, Source: "members"},
+		})
+		require.NoError(err)
+
+		ctx := harness.NewContext()
+
+		InsertRows(
+			t, ctx, mustInsertableTable(t, table),
+			sql.NewRow(int64(3), "red"),
+			sql.NewRow(int64(4), "red"),
+			sql.NewRow(int64(5), "orange"),
+			sql.NewRow(int64(6), "orange"),
+			sql.NewRow(int64(7), "orange"),
+			sql.NewRow(int64(8), "purple"),
+		)
 	})
-	require.NoError(err)
-
-	ctx := harness.NewContext()
-
-	InsertRows(
-		t, ctx, mustInsertableTable(t, table),
-		sql.NewRow(int64(3), "red"),
-		sql.NewRow(int64(4), "red"),
-		sql.NewRow(int64(5), "orange"),
-		sql.NewRow(int64(6), "orange"),
-		sql.NewRow(int64(7), "orange"),
-		sql.NewRow(int64(8), "purple"),
-	)
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -198,6 +201,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	)
 	require.NoError(err)
 
+	ctx := NewContext(harness)
 	rows, err := sql.RowIterToRows(ctx, iter)
 	require.NoError(err)
 
@@ -231,11 +235,14 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	_, err := harness.NewTable(db, "mytable", sql.Schema{
-		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
-		{Name: "s", Type: sql.Text, Source: "mytable"},
+
+	wrapInTransaction(t, db, harness, func() {
+		_, err := harness.NewTable(db, "mytable", sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s", Type: sql.Text, Source: "mytable"},
+		})
+		require.NoError(err)
 	})
-	require.NoError(err)
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -245,21 +252,18 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	a := analyzer.NewBuilder(catalog).Build()
 	e := sqle.New(catalog, a, cfg)
 
-	_, _, err = e.Query(NewContext(harness), `SELECT i FROM mytable`)
-	require.NoError(err)
+	RunQuery(t, e, harness, `SELECT i FROM mytable`)
 
 	writingQueries := []string{
 		`CREATE INDEX foo USING BTREE ON mytable (i, s)`,
 		`DROP INDEX foo ON mytable`,
 		`INSERT INTO mytable (i, s) VALUES(42, 'yolo')`,
-		`CREATE VIEW myview AS SELECT i FROM mytable`,
+		`CREATE VIEW myview3 AS SELECT i FROM mytable`,
 		`DROP VIEW myview`,
 	}
 
 	for _, query := range writingQueries {
-		_, _, err = e.Query(NewContext(harness), query)
-		require.Error(err)
-		require.True(auth.ErrNotAuthorized.Is(err))
+		AssertErr(t, e, harness, query, auth.ErrNotAuthorized)
 	}
 }
 
@@ -391,21 +395,24 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	table, err := harness.NewTable(db, "foo", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "foo"},
+
+	wrapInTransaction(t, db, harness, func() {
+		table, err := harness.NewTable(db, "foo", sql.Schema{
+			{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "foo"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
+
+		table2, err := harness.NewTable(db, "bar", sql.Schema{
+			{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
+			{Name: "c", Type: sql.Int64, Source: "bar"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
 	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
-
-	table2, err := harness.NewTable(db, "bar", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
-		{Name: "c", Type: sql.Int64, Source: "bar"},
-	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -937,6 +944,56 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
+		}
+	}
+}
+
+func TestTransactionScripts(t *testing.T, harness Harness) {
+	for _, script := range TransactionTests {
+		TestTransactionScript(t, harness, script)
+	}
+}
+
+// TestTransactionScript runs the test script given, making any assertions given
+func TestTransactionScript(t *testing.T, harness Harness, script TransactionTest) bool {
+	return t.Run(script.Name, func(t *testing.T) {
+		myDb := harness.NewDatabase("mydb")
+		databases := []sql.Database{myDb}
+
+		var idxDriver sql.IndexDriver
+		if ih, ok := harness.(IndexDriverHarness); ok {
+			idxDriver = ih.IndexDriver(databases)
+		}
+		e := NewEngineWithDbs(t, harness, databases, idxDriver)
+
+		TestTransactionScriptWithEngine(t, e, harness, script)
+	})
+}
+
+// TestTransactionScriptWithEngine runs the transaction test script given with the engine provided.
+func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script TransactionTest) {
+	setupSession := NewSession(harness)
+	for _, statement := range script.SetUpScript {
+		RunQueryWithContext(t, e, setupSession, statement)
+	}
+
+	clientSessions := make(map[string]*sql.Context)
+	assertions := script.Assertions
+
+	for _, assertion := range assertions {
+		clientSession, ok := clientSessions[assertion.Client]
+		if !ok {
+			clientSession = NewSession(harness)
+			clientSessions[assertion.Client] = clientSession
+		}
+		if assertion.ExpectedErr != nil {
+			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+		} else if assertion.ExpectedErrStr != "" {
+			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+		} else if assertion.ExpectedWarning != 0 {
+			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+		} else {
+			TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 		}
 	}
 }
@@ -1689,8 +1746,6 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		TestQueryWithContext(t, ctx, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
 
-		e.Analyzer.Verbose = true
-		e.Analyzer.Debug = true
 		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Catalog.Database("testdb")
@@ -2244,29 +2299,31 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t1"},
-		{Name: "c", Type: sql.Text, Source: "t1"},
+	wrapInTransaction(t, db, harness, func() {
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t1"},
+			{Name: "c", Type: sql.Text, Source: "t1"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a_1", "b_1", "c_1"),
+			sql.NewRow("a_2", "b_2", "c_2"),
+			sql.NewRow("a_3", "b_3", "c_3"))
+
+		t2, err := harness.NewTable(db, "t2", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t2"},
+			{Name: "d", Type: sql.Text, Source: "t2"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+			sql.NewRow("a_1", "b_1", "d_1"),
+			sql.NewRow("a_2", "b_2", "d_2"),
+			sql.NewRow("a_3", "b_3", "d_3"))
 	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
-		sql.NewRow("a_1", "b_1", "c_1"),
-		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"))
-
-	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t2"},
-		{Name: "d", Type: sql.Text, Source: "t2"},
-	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
-		sql.NewRow("a_1", "b_1", "d_1"),
-		sql.NewRow("a_2", "b_2", "d_2"),
-		sql.NewRow("a_3", "b_3", "d_3"))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -2282,29 +2339,31 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t1"},
-		{Name: "c", Type: sql.Text, Source: "t1"},
+	wrapInTransaction(t, db, harness, func() {
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t1"},
+			{Name: "c", Type: sql.Text, Source: "t1"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a_1", "b_1", "c_1"),
+			sql.NewRow("a_2", "b_2", "c_2"),
+			sql.NewRow("a_3", "b_3", "c_3"))
+
+		t2, err := harness.NewTable(db, "t2", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t2"},
+			{Name: "c", Type: sql.Text, Source: "t2"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+			sql.NewRow("a_1", "b_1", "c_1"),
+			sql.NewRow("a_2", "b_2", "c_2"),
+			sql.NewRow("a_3", "b_3", "c_3"))
 	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
-		sql.NewRow("a_1", "b_1", "c_1"),
-		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"))
-
-	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t2"},
-		{Name: "c", Type: sql.Text, Source: "t2"},
-	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
-		sql.NewRow("a_1", "b_1", "c_1"),
-		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -2320,24 +2379,26 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-	})
-	require.NoError(err)
+	wrapInTransaction(t, db, harness, func() {
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
-		sql.NewRow("a1"),
-		sql.NewRow("a2"),
-		sql.NewRow("a3"))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a1"),
+			sql.NewRow("a2"),
+			sql.NewRow("a3"))
 
-	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
+		t2, err := harness.NewTable(db, "t2", sql.Schema{
+			{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
+		})
+		require.NoError(err)
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+			sql.NewRow("b1"),
+			sql.NewRow("b2"),
+			sql.NewRow("b3"))
 	})
-	require.NoError(err)
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
-		sql.NewRow("b1"),
-		sql.NewRow("b2"),
-		sql.NewRow("b3"))
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -2359,44 +2420,46 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	table1, err := harness.NewTable(db, "table1", sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "table1"},
-		{Name: "f", Type: sql.Float64, Source: "table1"},
-		{Name: "t", Type: sql.Text, Source: "table1"},
+	wrapInTransaction(t, db, harness, func() {
+		table1, err := harness.NewTable(db, "table1", sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "table1"},
+			{Name: "f", Type: sql.Float64, Source: "table1"},
+			{Name: "t", Type: sql.Text, Source: "table1"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
+			sql.NewRow(int32(1), float64(2.1), "table1"),
+			sql.NewRow(int32(1), float64(2.1), "table1"),
+			sql.NewRow(int32(10), float64(2.1), "table1"),
+		)
+
+		table2, err := harness.NewTable(db, "table2", sql.Schema{
+			{Name: "i2", Type: sql.Int32, Source: "table2"},
+			{Name: "f2", Type: sql.Float64, Source: "table2"},
+			{Name: "t2", Type: sql.Text, Source: "table2"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
+			sql.NewRow(int32(1), float64(2.2), "table2"),
+			sql.NewRow(int32(1), float64(2.2), "table2"),
+			sql.NewRow(int32(20), float64(2.2), "table2"),
+		)
+
+		table3, err := harness.NewTable(db, "table3", sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "table3"},
+			{Name: "f2", Type: sql.Float64, Source: "table3"},
+			{Name: "t3", Type: sql.Text, Source: "table3"},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
+			sql.NewRow(int32(1), float64(2.2), "table3"),
+			sql.NewRow(int32(2), float64(2.2), "table3"),
+			sql.NewRow(int32(30), float64(2.2), "table3"),
+		)
 	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
-		sql.NewRow(int32(1), float64(2.1), "table1"),
-		sql.NewRow(int32(1), float64(2.1), "table1"),
-		sql.NewRow(int32(10), float64(2.1), "table1"),
-	)
-
-	table2, err := harness.NewTable(db, "table2", sql.Schema{
-		{Name: "i2", Type: sql.Int32, Source: "table2"},
-		{Name: "f2", Type: sql.Float64, Source: "table2"},
-		{Name: "t2", Type: sql.Text, Source: "table2"},
-	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
-		sql.NewRow(int32(1), float64(2.2), "table2"),
-		sql.NewRow(int32(1), float64(2.2), "table2"),
-		sql.NewRow(int32(20), float64(2.2), "table2"),
-	)
-
-	table3, err := harness.NewTable(db, "table3", sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "table3"},
-		{Name: "f2", Type: sql.Float64, Source: "table3"},
-		{Name: "t3", Type: sql.Text, Source: "table3"},
-	})
-	require.NoError(err)
-
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
-		sql.NewRow(int32(1), float64(2.2), "table3"),
-		sql.NewRow(int32(2), float64(2.2), "table3"),
-		sql.NewRow(int32(30), float64(2.2), "table3"),
-	)
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -3153,7 +3216,25 @@ func NewContext(harness Harness) *sql.Context {
 	return ctx
 }
 
-var sessionId uint32
+func NewSession(harness Harness) *sql.Context {
+	ctx := harness.NewSession()
+	currentDB := ctx.GetCurrentDatabase()
+	if currentDB == "" {
+		currentDB = "mydb"
+		ctx.WithCurrentDB(currentDB)
+	}
+
+	_ = ctx.ViewRegistry.Register(currentDB,
+		plan.NewSubqueryAlias(
+			"myview",
+			"SELECT * FROM mytable",
+			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
+		).AsView())
+
+	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
+
+	return ctx
+}
 
 // Returns a new BaseSession compatible with these tests. Most tests will work with any session implementation, but for
 // full compatibility use a session based on this one.
@@ -3228,14 +3309,16 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 }
 
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
-	require := require.New(t)
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	require.NoError(err, "Unexpected error for query %s", q)
+	t.Run(q, func(t *testing.T) {
+		require := require.New(t)
+		sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+		require.NoError(err, "Unexpected error for query %s", q)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
-	require.NoError(err, "Unexpected error for query %s", q)
+		rows, err := sql.RowIterToRows(ctx, iter)
+		require.NoError(err, "Unexpected error for query %s", q)
 
-	checkResults(t, require, expected, expectedCols, sch, rows, q)
+		checkResults(t, require, expected, expectedCols, sch, rows, q)
+	})
 }
 
 func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string) {

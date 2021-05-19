@@ -120,7 +120,7 @@ func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			user:    proc.User,
 			time:    int64(proc.Seconds()),
 			state:   strings.Join(status, ""),
-			command: proc.Type.String(),
+			command: "Query",
 			host:    ctx.Session.Client().Address,
 			info:    proc.Query,
 			db:      p.Database,

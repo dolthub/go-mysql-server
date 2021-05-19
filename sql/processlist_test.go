@@ -28,7 +28,7 @@ func TestProcessList(t *testing.T) {
 	p := NewProcessList()
 	sess := NewSession("0.0.0.0:3306", "127.0.0.1:34567", "foo", 1)
 	ctx := NewContext(context.Background(), WithPid(1), WithSession(sess))
-	ctx, err := p.AddProcess(ctx, QueryProcess, "SELECT foo")
+	ctx, err := p.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
 
 	require.Equal(uint64(1), ctx.Pid())
@@ -40,7 +40,6 @@ func TestProcessList(t *testing.T) {
 	expectedProcess := &Process{
 		Pid:        1,
 		Connection: 1,
-		Type:       QueryProcess,
 		Progress: map[string]TableProgress{
 			"a": {Progress{Name: "a", Done: 0, Total: 5}, map[string]PartitionProgress{}},
 			"b": {Progress{Name: "b", Done: 0, Total: 6}, map[string]PartitionProgress{}},
@@ -71,7 +70,7 @@ func TestProcessList(t *testing.T) {
 	require.Equal(expectedProgress, p.procs[ctx.Pid()].Progress)
 
 	ctx = NewContext(context.Background(), WithPid(2), WithSession(sess))
-	ctx, err = p.AddProcess(ctx, CreateIndexProcess, "SELECT bar")
+	ctx, err = p.AddProcess(ctx, "SELECT bar")
 	require.NoError(err)
 
 	p.AddTableProgress(ctx.Pid(), "foo", 2)
@@ -133,7 +132,6 @@ func TestKillConnection(t *testing.T) {
 
 		_, err := pl.AddProcess(
 			NewContext(context.Background(), WithPid(i), WithSession(s)),
-			QueryProcess,
 			"foo",
 		)
 		require.NoError(t, err)
