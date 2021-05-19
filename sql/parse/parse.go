@@ -2195,7 +2195,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 				return nil, ErrUnsupportedSyntax.New("more than one expression with distinct")
 			}
 
-			exprs[0] = expression.NewDistinctExpression(ctx, exprs[0])
+			exprs[0] = expression.NewDistinctExpression(exprs[0])
 		}
 
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),

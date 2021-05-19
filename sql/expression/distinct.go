@@ -12,11 +12,8 @@ type DistinctExpression struct {
 	Column sql.Expression
 }
 
-func NewDistinctExpression(ctx *sql.Context, e sql.Expression) *DistinctExpression {
-	cache, dispose := ctx.Memory.NewHistoryCache()
+func NewDistinctExpression(e sql.Expression) *DistinctExpression {
 	return &DistinctExpression{
-		seen:      cache,
-		dispose:   dispose,
 		Column: e,
 	}
 }

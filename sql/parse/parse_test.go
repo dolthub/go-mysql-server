@@ -2592,6 +2592,14 @@ CREATE TABLE t2
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT AVG(DISTINCT a) FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewAlias("AVG(DISTINCT a)",
+				expression.NewUnresolvedFunction("avg", true, nil, expression.NewDistinctExpression(expression.NewUnresolvedColumn("a")))),
+		},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SELECT a, row_number() over (partition by s order by x) FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),

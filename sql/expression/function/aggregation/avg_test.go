@@ -157,7 +157,7 @@ func TestAvg_Distinct(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	ad := expression.NewDistinctExpression(ctx, expression.NewGetField(0, nil, "myfield", false))
+	ad := expression.NewDistinctExpression(expression.NewGetField(0, nil, "myfield", false))
 	avg := NewAvg(ad)
 
 	// first validate that the expression's name is correct

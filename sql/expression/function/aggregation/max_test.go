@@ -113,7 +113,7 @@ func TestMax_Distinct(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMax(expression.NewDistinctExpression(ctx, expression.NewGetField(0, sql.Int32, "field", true)))
+	m := NewMax(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
 	b := m.NewBuffer()
 
 	require.Equal(t, "MAX(DISTINCT field)", m.String())

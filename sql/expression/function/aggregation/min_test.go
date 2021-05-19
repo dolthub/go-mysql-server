@@ -115,7 +115,7 @@ func TestMin_Distinct(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewDistinctExpression(ctx, expression.NewGetField(0, sql.Int32, "field", true)))
+	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
 	b := m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
