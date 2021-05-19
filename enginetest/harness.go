@@ -31,7 +31,7 @@ type Harness interface {
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
 	// NewSession returns a context with a new Session, rather than reusing an existing session from previous calls to
-	// NewContext() 
+	// NewContext()
 	NewSession() *sql.Context
 }
 

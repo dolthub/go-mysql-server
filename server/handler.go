@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/netutil"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -38,6 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -630,7 +630,6 @@ func schemaToFields(s sql.Schema) []*query.Field {
 
 	return fields
 }
-
 
 var (
 	// QueryCounter describes a metric that accumulates number of queries monotonically.

@@ -31,47 +31,47 @@ type TransactionTest struct {
 type TransactionTestAssertion struct {
 	// Client the name of the client executing the assertions. If the client name hasn't been seen before during this
 	// script, a new session is created for them. Otherwise, the existing session for them will be reused.
-	Client      string
+	Client string
 	ScriptTestAssertion
 }
 
 var TransactionTests = []TransactionTest{
 	{
-		Name:        "autocommit on",
-		SetUpScript: []string {
+		Name: "autocommit on",
+		SetUpScript: []string{
 			"create table a (b int primary key, c int)",
 			"insert into a values (1, 1)",
 		},
-		Assertions:  []TransactionTestAssertion{
+		Assertions: []TransactionTestAssertion{
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "insert into a values (2, 2)",
-					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "insert into a values (2, 2)",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 					},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "insert into a values (3, 3)",
-					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "insert into a values (3, 3)",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 						{3, 3},
@@ -81,124 +81,124 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
-		Name:        "autocommit off",
-		SetUpScript: []string {
+		Name: "autocommit off",
+		SetUpScript: []string{
 			"create table a (b int primary key, c int)",
 			"insert into a values (1, 1)",
 		},
-		Assertions:  []TransactionTestAssertion{
+		Assertions: []TransactionTestAssertion{
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "set autocommit = off",
-					Expected:        []sql.Row{{}},
+					Query:    "set autocommit = off",
+					Expected: []sql.Row{{}},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "set autocommit = off",
-					Expected:        []sql.Row{{}},
+					Query:    "set autocommit = off",
+					Expected: []sql.Row{{}},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 					},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "insert into a values (2, 2)",
-					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "insert into a values (2, 2)",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 					},
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "insert into a values (3,3)",
-					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "insert into a values (3,3)",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 					},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "commit",
-					Expected:        []sql.Row{},
+					Query:    "commit",
+					Expected: []sql.Row{},
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{3, 3},
 					},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 					},
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "commit",
-					Expected:        []sql.Row{},
+					Query:    "commit",
+					Expected: []sql.Row{},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 					},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "start transaction",
-					Expected:        []sql.Row{},
+					Query:    "start transaction",
+					Expected: []sql.Row{},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 						{3, 3},
@@ -206,10 +206,10 @@ var TransactionTests = []TransactionTest{
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 						{3, 3},
@@ -219,45 +219,45 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
-		Name:        "autocommit on with explicit transactions",
-		SetUpScript: []string {
+		Name: "autocommit on with explicit transactions",
+		SetUpScript: []string{
 			"create table a (b int primary key, c int)",
 			"insert into a values (1, 1)",
 		},
-		Assertions:  []TransactionTestAssertion{
+		Assertions: []TransactionTestAssertion{
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "start transaction",
-					Expected:        []sql.Row{},
+					Query:    "start transaction",
+					Expected: []sql.Row{},
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "insert into a values (2, 2)",
-					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "insert into a values (2, 2)",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{{1, 1}},
+					Query:    "select * from a order by b",
+					Expected: []sql.Row{{1, 1}},
 				},
 			},
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "commit",
-					Expected:        []sql.Row{},
+					Query:    "commit",
+					Expected: []sql.Row{},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 					},
@@ -265,17 +265,17 @@ var TransactionTests = []TransactionTest{
 			},
 			// After commit, autocommit turns back on
 			{
-				Client:              "a",
+				Client: "a",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "insert into a values (3, 3)",
-					Expected:        []sql.Row{{sql.NewOkResult(1)}},
+					Query:    "insert into a values (3, 3)",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 			{
-				Client:              "b",
+				Client: "b",
 				ScriptTestAssertion: ScriptTestAssertion{
-					Query:           "select * from a order by b",
-					Expected:        []sql.Row{
+					Query: "select * from a order by b",
+					Expected: []sql.Row{
 						{1, 1},
 						{2, 2},
 						{3, 3},

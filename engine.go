@@ -136,8 +136,8 @@ func (e *Engine) QueryNodeWithBindings(
 ) (sql.Schema, sql.RowIter, error) {
 	var (
 		analyzed sql.Node
-		iter             sql.RowIter
-		err              error
+		iter     sql.RowIter
+		err      error
 	)
 
 	if parsed == nil {

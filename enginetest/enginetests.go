@@ -173,25 +173,24 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("db")
 
 	wrapInTransaction(t, db, harness, func() {
-	table, err := harness.NewTable(db, "members", sql.Schema{
-		{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
-		{Name: "team", Type: sql.Text, Source: "members"},
+		table, err := harness.NewTable(db, "members", sql.Schema{
+			{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
+			{Name: "team", Type: sql.Text, Source: "members"},
+		})
+		require.NoError(err)
+
+		ctx := harness.NewContext()
+
+		InsertRows(
+			t, ctx, mustInsertableTable(t, table),
+			sql.NewRow(int64(3), "red"),
+			sql.NewRow(int64(4), "red"),
+			sql.NewRow(int64(5), "orange"),
+			sql.NewRow(int64(6), "orange"),
+			sql.NewRow(int64(7), "orange"),
+			sql.NewRow(int64(8), "purple"),
+		)
 	})
-	require.NoError(err)
-
-	ctx := harness.NewContext()
-
-	InsertRows(
-		t, ctx, mustInsertableTable(t, table),
-		sql.NewRow(int64(3), "red"),
-		sql.NewRow(int64(4), "red"),
-		sql.NewRow(int64(5), "orange"),
-		sql.NewRow(int64(6), "orange"),
-		sql.NewRow(int64(7), "orange"),
-		sql.NewRow(int64(8), "purple"),
-	)
-	})
-
 
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
@@ -244,7 +243,6 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		})
 		require.NoError(err)
 	})
-
 
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(db)
@@ -399,21 +397,21 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
 
 	wrapInTransaction(t, db, harness, func() {
-	table, err := harness.NewTable(db, "foo", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "foo"},
-	})
-	require.NoError(err)
+		table, err := harness.NewTable(db, "foo", sql.Schema{
+			{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "foo"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
 
-	table2, err := harness.NewTable(db, "bar", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
-		{Name: "c", Type: sql.Int64, Source: "bar"},
-	})
-	require.NoError(err)
+		table2, err := harness.NewTable(db, "bar", sql.Schema{
+			{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
+			{Name: "c", Type: sql.Int64, Source: "bar"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
 	})
 
 	e := sqle.NewDefault()
@@ -2302,29 +2300,29 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t1"},
-		{Name: "c", Type: sql.Text, Source: "t1"},
-	})
-	require.NoError(err)
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t1"},
+			{Name: "c", Type: sql.Text, Source: "t1"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
-		sql.NewRow("a_1", "b_1", "c_1"),
-		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a_1", "b_1", "c_1"),
+			sql.NewRow("a_2", "b_2", "c_2"),
+			sql.NewRow("a_3", "b_3", "c_3"))
 
-	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t2"},
-		{Name: "d", Type: sql.Text, Source: "t2"},
-	})
-	require.NoError(err)
+		t2, err := harness.NewTable(db, "t2", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t2"},
+			{Name: "d", Type: sql.Text, Source: "t2"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
-		sql.NewRow("a_1", "b_1", "d_1"),
-		sql.NewRow("a_2", "b_2", "d_2"),
-		sql.NewRow("a_3", "b_3", "d_3"))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+			sql.NewRow("a_1", "b_1", "d_1"),
+			sql.NewRow("a_2", "b_2", "d_2"),
+			sql.NewRow("a_3", "b_3", "d_3"))
 	})
 
 	e := sqle.NewDefault()
@@ -2342,29 +2340,29 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t1"},
-		{Name: "c", Type: sql.Text, Source: "t1"},
-	})
-	require.NoError(err)
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t1"},
+			{Name: "c", Type: sql.Text, Source: "t1"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
-		sql.NewRow("a_1", "b_1", "c_1"),
-		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a_1", "b_1", "c_1"),
+			sql.NewRow("a_2", "b_2", "c_2"),
+			sql.NewRow("a_3", "b_3", "c_3"))
 
-	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
-		{Name: "b", Type: sql.Text, Source: "t2"},
-		{Name: "c", Type: sql.Text, Source: "t2"},
-	})
-	require.NoError(err)
+		t2, err := harness.NewTable(db, "t2", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
+			{Name: "b", Type: sql.Text, Source: "t2"},
+			{Name: "c", Type: sql.Text, Source: "t2"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
-		sql.NewRow("a_1", "b_1", "c_1"),
-		sql.NewRow("a_2", "b_2", "c_2"),
-		sql.NewRow("a_3", "b_3", "c_3"))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+			sql.NewRow("a_1", "b_1", "c_1"),
+			sql.NewRow("a_2", "b_2", "c_2"),
+			sql.NewRow("a_3", "b_3", "c_3"))
 	})
 
 	e := sqle.NewDefault()
@@ -2382,24 +2380,24 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-	t1, err := harness.NewTable(db, "t1", sql.Schema{
-		{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-	})
-	require.NoError(err)
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
-		sql.NewRow("a1"),
-		sql.NewRow("a2"),
-		sql.NewRow("a3"))
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a1"),
+			sql.NewRow("a2"),
+			sql.NewRow("a3"))
 
-	t2, err := harness.NewTable(db, "t2", sql.Schema{
-		{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
-	})
-	require.NoError(err)
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
-		sql.NewRow("b1"),
-		sql.NewRow("b2"),
-		sql.NewRow("b3"))
+		t2, err := harness.NewTable(db, "t2", sql.Schema{
+			{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
+		})
+		require.NoError(err)
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
+			sql.NewRow("b1"),
+			sql.NewRow("b2"),
+			sql.NewRow("b3"))
 	})
 
 	e := sqle.NewDefault()
@@ -2423,44 +2421,44 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-	table1, err := harness.NewTable(db, "table1", sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "table1"},
-		{Name: "f", Type: sql.Float64, Source: "table1"},
-		{Name: "t", Type: sql.Text, Source: "table1"},
-	})
-	require.NoError(err)
+		table1, err := harness.NewTable(db, "table1", sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "table1"},
+			{Name: "f", Type: sql.Float64, Source: "table1"},
+			{Name: "t", Type: sql.Text, Source: "table1"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
-		sql.NewRow(int32(1), float64(2.1), "table1"),
-		sql.NewRow(int32(1), float64(2.1), "table1"),
-		sql.NewRow(int32(10), float64(2.1), "table1"),
-	)
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
+			sql.NewRow(int32(1), float64(2.1), "table1"),
+			sql.NewRow(int32(1), float64(2.1), "table1"),
+			sql.NewRow(int32(10), float64(2.1), "table1"),
+		)
 
-	table2, err := harness.NewTable(db, "table2", sql.Schema{
-		{Name: "i2", Type: sql.Int32, Source: "table2"},
-		{Name: "f2", Type: sql.Float64, Source: "table2"},
-		{Name: "t2", Type: sql.Text, Source: "table2"},
-	})
-	require.NoError(err)
+		table2, err := harness.NewTable(db, "table2", sql.Schema{
+			{Name: "i2", Type: sql.Int32, Source: "table2"},
+			{Name: "f2", Type: sql.Float64, Source: "table2"},
+			{Name: "t2", Type: sql.Text, Source: "table2"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
-		sql.NewRow(int32(1), float64(2.2), "table2"),
-		sql.NewRow(int32(1), float64(2.2), "table2"),
-		sql.NewRow(int32(20), float64(2.2), "table2"),
-	)
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
+			sql.NewRow(int32(1), float64(2.2), "table2"),
+			sql.NewRow(int32(1), float64(2.2), "table2"),
+			sql.NewRow(int32(20), float64(2.2), "table2"),
+		)
 
-	table3, err := harness.NewTable(db, "table3", sql.Schema{
-		{Name: "i", Type: sql.Int32, Source: "table3"},
-		{Name: "f2", Type: sql.Float64, Source: "table3"},
-		{Name: "t3", Type: sql.Text, Source: "table3"},
-	})
-	require.NoError(err)
+		table3, err := harness.NewTable(db, "table3", sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "table3"},
+			{Name: "f2", Type: sql.Float64, Source: "table3"},
+			{Name: "t3", Type: sql.Text, Source: "table3"},
+		})
+		require.NoError(err)
 
-	InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
-		sql.NewRow(int32(1), float64(2.2), "table3"),
-		sql.NewRow(int32(2), float64(2.2), "table3"),
-		sql.NewRow(int32(30), float64(2.2), "table3"),
-	)
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
+			sql.NewRow(int32(1), float64(2.2), "table3"),
+			sql.NewRow(int32(2), float64(2.2), "table3"),
+			sql.NewRow(int32(30), float64(2.2), "table3"),
+		)
 	})
 
 	e := sqle.NewDefault()
