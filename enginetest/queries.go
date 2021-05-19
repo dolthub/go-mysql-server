@@ -1404,6 +1404,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{2}, {3}},
 	},
 	{
+		Query: "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.timestamp_col = dt2.timestamp_col order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query: "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day)) order by 1",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
 		Expected: []sql.Row{{int64(3)}},
 	},

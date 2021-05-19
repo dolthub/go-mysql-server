@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -150,6 +151,8 @@ func getType(val interface{}) (interface{}, sql.Type) {
 		return val, sql.LongText
 	case nil:
 		return nil, sql.Null
+	case time.Time:
+		return val, sql.Datetime
 	default:
 		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
 	}

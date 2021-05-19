@@ -575,7 +575,9 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 		"create index floattable_f on floattable (f64)",
 		"create index niltable_i2 on niltable (i2)",
 		"create index people_l_f on people (last_name,first_name)",
-
+		"create index datetime_table_d on datetime_table (date_col)",
+		"create index datetime_table_dt on datetime_table (datetime_col)",
+		"create index datetime_table_ts on datetime_table (timestamp_col)",
 	}
 
 	for _, q := range createIndexes {
