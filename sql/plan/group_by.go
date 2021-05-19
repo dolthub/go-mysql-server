@@ -300,7 +300,11 @@ func (i *groupByGroupingIter) compute() error {
 		if _, err := i.aggregations.Get(key); err != nil {
 			var buf = make([]sql.Row, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				disposeOfAggregationCaches(a) // TODO: Is this a trash solution?
+				// Each group by operation processes keys in order due to the implicit sort provided to it.
+				// So when a DISTINCT operation occurs with a group by, we can simply dispose and recreate a new cache
+				// within the wrapped DistinctExpression.
+				disposeOfAggregationCaches(a)
+
 				buf[j] = newAggregationBuffer(a)
 			}
 
@@ -399,6 +403,8 @@ func updateBuffer(
 	}
 }
 
+// disposeOfAggregationCaches looks for any children that wraps a DISTINCT expression and throws away its cache.
+// This is useful for aggregations that pair DISTINCT and groupby.
 func disposeOfAggregationCaches(e sql.Expression) {
 	for _, child := range e.Children() {
 		switch childExp := child.(type) {
