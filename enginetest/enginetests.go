@@ -1364,52 +1364,51 @@ func TestDropTable(t *testing.T, harness Harness) {
 }
 
 func TestRenameTable(t *testing.T, harness Harness) {
-	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
 	db, err := e.Catalog.Database("mydb")
 	require.NoError(err)
 
-	_, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	_, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 
 	TestQuery(t, harness, e, "RENAME TABLE mytable TO newTableName", []sql.Row(nil), nil, nil)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.False(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
 	require.NoError(err)
 	require.True(ok)
 
 	TestQuery(t, harness, e, "RENAME TABLE othertable to othertable2, newTableName to mytable", []sql.Row(nil), nil, nil)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "othertable")
 	require.NoError(err)
 	require.False(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "othertable2")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "othertable2")
 	require.NoError(err)
 	require.True(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
 	require.NoError(err)
 	require.False(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME newTableName", []sql.Row(nil), nil, nil)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.False(ok)
 
-	_, ok, err = db.GetTableInsensitive(ctx, "newTableName")
+	_, ok, err = db.GetTableInsensitive(NewContext(harness), "newTableName")
 	require.NoError(err)
 	require.True(ok)
 
@@ -1423,7 +1422,6 @@ func TestRenameTable(t *testing.T, harness Harness) {
 }
 
 func TestRenameColumn(t *testing.T, harness Harness) {
-	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
@@ -1432,7 +1430,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
@@ -1450,7 +1448,6 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 }
 
 func TestAddColumn(t *testing.T, harness Harness) {
-	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
@@ -1459,13 +1456,13 @@ func TestAddColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -1476,14 +1473,14 @@ func TestAddColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s2 TEXT COMMENT 'hello' AFTER i", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -1494,15 +1491,15 @@ func TestAddColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s3 VARCHAR(25) COMMENT 'hello' default 'yay' FIRST", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 	}, tbl.Schema())
 
 	TestQuery(t, harness, e, "SELECT * FROM mytable ORDER BY i", []sql.Row{
@@ -1514,15 +1511,15 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	// multiple column additions in a single ALTER
 	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN s4 VARCHAR(26), ADD COLUMN s5 VARCHAR(27)", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
-		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(ctx, "42", sql.Int32, true)},
+		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
 		{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 		{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 	}, tbl.Schema())
@@ -1541,7 +1538,6 @@ func TestAddColumn(t *testing.T, harness Harness) {
 }
 
 func TestModifyColumn(t *testing.T, harness Harness) {
-	ctx := NewContext(harness)
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
@@ -1550,7 +1546,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err := db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
@@ -1560,7 +1556,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
@@ -1570,7 +1566,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
@@ -1580,7 +1576,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'", []sql.Row(nil), nil, nil)
 
-	tbl, ok, err = db.GetTableInsensitive(ctx, "mytable")
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
@@ -3218,7 +3214,12 @@ func NewContext(harness Harness) *sql.Context {
 }
 
 func NewSession(harness Harness) *sql.Context {
-	ctx := harness.NewSession()
+	th, ok := harness.(TransactionHarness)
+	if !ok {
+		panic("Cannot use NewSession except on a TransactionHarness")
+	}
+
+	ctx := th.NewSession()
 	currentDB := ctx.GetCurrentDatabase()
 	if currentDB == "" {
 		currentDB = "mydb"

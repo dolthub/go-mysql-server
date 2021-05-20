@@ -62,8 +62,9 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 // createSubsetTestData creates test tables and data. Passing a non-nil slice for includedTables will restrict the
 // table creation to just those tables named.
 func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
-	myDb := harness.NewDatabase("mydb")
-	foo := harness.NewDatabase("foo")
+	dbs := harness.NewDatabases("mydb", "foo")
+	myDb := dbs[0]
+	foo := dbs[1]
 
 	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
 	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new

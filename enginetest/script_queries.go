@@ -49,6 +49,7 @@ type ScriptTestAssertion struct {
 	ExpectedWarning int
 }
 
+// ScriptTests are a set of test scripts to run.
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
@@ -317,10 +318,10 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `select xa from a 
-									join b on ya - 1 = xb 
-									join c on xc = za - 2 
-									join d on xd = yb - 1 
+				Query: `select xa from a
+									join b on ya - 1 = xb
+									join c on xc = za - 2
+									join d on xd = yb - 1
 									join e on xe = zb - 2 and ye = yc`,
 				Expected: []sql.Row{{1}},
 			},
