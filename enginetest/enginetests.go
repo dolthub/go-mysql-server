@@ -83,9 +83,10 @@ var infoSchemaTables = []string{
 	"fk_tbl",
 	"auto_increment_tbl",
 	"people",
+	"datetime_table",
 }
 
-// Runs tests of the information_schema database.
+// TestInfoSchema runs tests of the information_schema database
 func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
 	engine := NewEngineWithDbs(t, harness, dbs, nil)
