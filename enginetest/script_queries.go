@@ -15,8 +15,9 @@
 package enginetest
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -775,7 +776,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    `SELECT 
+				Query: `SELECT 
                              ((
                                SELECT COUNT(*)
                                FROM dcim_rack
@@ -803,12 +804,12 @@ var ScriptTests = []ScriptTest{
                              dcim_rackgroup.level 
                            FROM dcim_rackgroup`,
 
-			     // where clause contains random UUID ids
-                 //          WHERE dcim_rackgroup.id
-                 //          IN ('2e3774bc890642c1be575a3e481ba6cb','ddee2d62d9dd432e982ac3ed429b190a',
-                 //'9fbacbc1a1374dcaa7b594df2dd9b738','59426608cf1341a2806540e51981ca11',
-                 //'a330c1c6168c48b0b81186ca20c626a6')
-                 //          ORDER BY dcim_rackgroup.tree_id ASC,dcim_rackgroup.lft ASC;`,
+				// where clause contains random UUID ids
+				//          WHERE dcim_rackgroup.id
+				//          IN ('2e3774bc890642c1be575a3e481ba6cb','ddee2d62d9dd432e982ac3ed429b190a',
+				//'9fbacbc1a1374dcaa7b594df2dd9b738','59426608cf1341a2806540e51981ca11',
+				//'a330c1c6168c48b0b81186ca20c626a6')
+				//          ORDER BY dcim_rackgroup.tree_id ASC,dcim_rackgroup.lft ASC;`,
 
 				ExpectedErr: expression.ErrIndexOutOfBounds,
 			},
