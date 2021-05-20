@@ -15,11 +15,11 @@
 package window
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 type RowNumber struct {
@@ -34,16 +34,14 @@ func NewRowNumber() sql.Expression {
 	return &RowNumber{}
 }
 
+// Window implements sql.WindowExpression
+func (r *RowNumber) Window() *sql.Window {
+	return r.window
+}
+
 // IsNullable implements sql.Expression
 func (r *RowNumber) Resolved() bool {
 	return windowResolved(r.window)
-}
-
-func windowResolved(window *sql.Window) bool {
-	if window == nil {
-		return true
-	}
-	return expression.ExpressionsResolved(append(window.OrderBy.ToExpressions(), window.PartitionBy...)...)
 }
 
 func (r *RowNumber) NewBuffer() sql.Row {
@@ -125,7 +123,7 @@ func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
 	rows := buffer[0].([]sql.Row)
 	if len(rows) > 0 && r.window != nil && r.window.OrderBy != nil {
 		sorter := &expression.Sorter{
-			SortFields: append(partitionsToSortFields(r.window.PartitionBy), r.window.OrderBy...),
+			SortFields: append(partitionsToSortFields(r.Window().PartitionBy), r.Window().OrderBy...),
 			Rows:       rows,
 			Ctx:        ctx,
 		}
@@ -141,7 +139,7 @@ func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
 		var rowNum int
 		for _, row := range rows {
 			// every time we encounter a new partition, start the count over
-			isNew, err := r.isNewPartition(ctx, last, row)
+			isNew, err := r.IsNewPartition(ctx, last, row)
 			if err != nil {
 				return err
 			}
@@ -160,19 +158,7 @@ func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
 			return rows[i][originalOrderIdx].(int) < rows[j][originalOrderIdx].(int)
 		})
 	}
-
 	return nil
-}
-
-func partitionsToSortFields(partitionExprs []sql.Expression) sql.SortFields {
-	sfs := make(sql.SortFields, len(partitionExprs))
-	for i, expr := range partitionExprs {
-		sfs[i] = sql.SortField{
-			Column: expr,
-			Order:  sql.Ascending,
-		}
-	}
-	return sfs
 }
 
 // EvalRow implements sql.WindowAggregation
@@ -181,42 +167,6 @@ func (r *RowNumber) EvalRow(i int, buffer sql.Row) (interface{}, error) {
 	return rows[i][len(rows[i])-2], nil
 }
 
-func (r *RowNumber) isNewPartition(ctx *sql.Context, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
-		return true, nil
-	}
-
-	if len(r.window.PartitionBy) == 0 {
-		return false, nil
-	}
-
-	lastExp, err := evalExprs(ctx, r.window.PartitionBy, last)
-	if err != nil {
-		return false, err
-	}
-
-	thisExp, err := evalExprs(ctx, r.window.PartitionBy, row)
-	if err != nil {
-		return false, err
-	}
-
-	for i := range lastExp {
-		if lastExp[i] != thisExp[i] {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, error) {
-	result := make(sql.Row, len(exprs))
-	for i, expr := range exprs {
-		var err error
-		result[i], err = expr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return result, nil
+func (r *RowNumber) IsNewPartition(ctx *sql.Context, last sql.Row, row sql.Row) (bool, error) {
+	return isNewPartition(ctx, r, last, row)
 }

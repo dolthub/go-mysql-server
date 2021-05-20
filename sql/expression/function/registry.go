@@ -144,6 +144,7 @@ var Defaults = []sql.Function{
 	sql.FunctionN{Name: "round", Fn: NewRound},
 	sql.Function0{Name: "row_count", Fn: NewRowCount},
 	sql.Function0{Name: "row_number", Fn: window.NewRowNumber},
+	sql.Function0{Name: "percent_rank", Fn: window.NewPercentRank},
 	sql.FunctionN{Name: "rpad", Fn: NewPadFunc(rPadType)},
 	sql.Function1{Name: "rtrim", Fn: NewTrimFunc(rTrimType)},
 	sql.Function1{Name: "second", Fn: NewSecond},
