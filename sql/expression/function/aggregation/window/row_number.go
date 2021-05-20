@@ -15,9 +15,10 @@
 package window
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"sort"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
