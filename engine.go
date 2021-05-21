@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/sirupsen/logrus"
 
@@ -180,7 +181,7 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if autoCommit {
-		iter = transactionCommittingIter{iter, transactionDatabase}
+		iter = newTransactionCommittingIter(iter, transactionDatabase)
 	}
 
 	return analyzed.Schema(), iter, nil
@@ -219,24 +220,41 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 type transactionCommittingIter struct {
 	childIter           sql.RowIter
 	transactionDatabase string
+	sawErr 				bool
 }
 
-func (t transactionCommittingIter) Next() (sql.Row, error) {
-	return t.childIter.Next()
+func newTransactionCommittingIter(iter sql.RowIter, database string) sql.RowIter {
+	return &transactionCommittingIter{
+		childIter:           iter,
+		transactionDatabase: database,
+		sawErr:              false,
+	}
 }
 
-func (t transactionCommittingIter) Close(ctx *sql.Context) error {
+func (t *transactionCommittingIter) Next() (sql.Row, error) {
+	next, err := t.childIter.Next()
+	if err != nil && err != io.EOF {
+		t.sawErr = true
+	}
+	return next, err
+}
+
+func (t *transactionCommittingIter) Close(ctx *sql.Context) error {
 	err := t.childIter.Close(ctx)
 	if err != nil {
 		return err
 	}
 
 	tx := ctx.GetTransaction()
-	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
+	// TODO: this error handling probably isn't quite right, but some integrators (dolt) really can't tolerate a
+	//  a commit following an error
+	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit() && !t.sawErr
 	if commitTransaction {
 		logrus.Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
-			return err
+		if !t.sawErr {
+			if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
+				return err
+			}
 		}
 
 		// Clearing out the current transaction will tell us to start a new one the next time this session queries
