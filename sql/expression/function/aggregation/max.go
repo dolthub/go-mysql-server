@@ -22,7 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// Max agregation returns the greatest value of the selected column.
+// Max aggregation returns the greatest value of the selected column.
 // It implements the Aggregation interface
 type Max struct {
 	expression.UnaryExpression

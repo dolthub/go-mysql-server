@@ -110,3 +110,39 @@ func TestMin_Eval_Empty(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
+
+func TestMin_Distinct(t *testing.T) {
+	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	b := m.NewBuffer()
+
+	require.Equal(t, "MIN(DISTINCT field)", m.String())
+
+	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{2}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+
+	v, err := m.Eval(ctx, b)
+	assert.NoError(err)
+	assert.Equal(1, v)
+
+	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	b = m.NewBuffer()
+
+	require.Equal(t, "MIN(DISTINCT field)", m.String())
+
+	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{2}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{nil}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{nil}))
+	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+
+	v, err = m.Eval(ctx, b)
+	assert.NoError(err)
+	assert.Equal(1, v)
+}

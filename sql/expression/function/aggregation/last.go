@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// Last agregation returns the last of all values in the selected column.
+// Last aggregation returns the last of all values in the selected column.
 // It implements the Aggregation interface.
 type Last struct {
 	expression.UnaryExpression
