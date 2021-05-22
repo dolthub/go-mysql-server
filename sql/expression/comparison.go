@@ -91,6 +91,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	if sql.IsTuple(leftType) && sql.IsTuple(rightType) {
 		return left, right, c.Left().Type(), nil
 	}
+
 	if sql.IsNumber(leftType) || sql.IsNumber(rightType) {
 		if sql.IsDecimal(leftType) || sql.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type
@@ -130,6 +131,15 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		}
 
 		return l, r, sql.Uint64, nil
+	}
+
+	if sql.IsTime(leftType) || sql.IsTime(rightType) {
+		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return l, r, sql.Datetime, nil
 	}
 
 	left, right, err := convertLeftAndRight(left, right, ConvertToChar)

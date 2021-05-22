@@ -33,6 +33,10 @@ type MemoryHarness struct {
 	session                sql.Session
 }
 
+func (m *MemoryHarness) NewSession() *sql.Context {
+	return m.NewContext()
+}
+
 const testNumPartitions = 5
 
 func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, indexDriverInitalizer IndexDriverInitalizer) *MemoryHarness {
@@ -136,6 +140,14 @@ func (m *MemoryHarness) NewDatabase(name string) sql.Database {
 		database.EnablePrimaryKeyIndexes()
 	}
 	return database
+}
+
+func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
+	var dbs []sql.Database
+	for _, name := range names {
+		dbs = append(dbs, m.NewDatabase(name))
+	}
+	return dbs
 }
 
 func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error) {

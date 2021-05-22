@@ -16,10 +16,7 @@ package sqle
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/go-kit/kit/metrics/discard"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/auth"
@@ -49,34 +46,6 @@ type Engine struct {
 type ColumnWithRawDefault struct {
 	SqlColumn *sql.Column
 	Default   string
-}
-
-var (
-	// QueryCounter describes a metric that accumulates number of queries monotonically.
-	QueryCounter = discard.NewCounter()
-
-	// QueryErrorCounter describes a metric that accumulates number of failed queries monotonically.
-	QueryErrorCounter = discard.NewCounter()
-
-	// QueryHistogram describes a queries latency.
-	QueryHistogram = discard.NewHistogram()
-)
-
-func observeQuery(ctx *sql.Context, query string) func(err error) {
-	logrus.WithField("query", query).Debug("executing query")
-	span, _ := ctx.Span("query", opentracing.Tag{Key: "query", Value: query})
-
-	t := time.Now()
-	return func(err error) {
-		if err != nil {
-			QueryErrorCounter.With("query", query, "error", err.Error()).Add(1)
-		} else {
-			QueryCounter.With("query", query).Add(1)
-			QueryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
-		}
-
-		span.Finish()
-	}
 }
 
 // New creates a new Engine with custom configuration. To create an Engine with
@@ -143,76 +112,42 @@ func (e *Engine) AnalyzeQuery(
 	return analyzed.Schema(), nil
 }
 
-// Query executes a query.
-func (e *Engine) Query(
-	ctx *sql.Context,
-	query string,
-) (sql.Schema, sql.RowIter, error) {
+// Query executes a query. If parsed is non-nil, it will be used instead of parsing the query from text.
+func (e *Engine) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, error) {
 	return e.QueryWithBindings(ctx, query, nil)
 }
 
+// QueryWithBindings executes the query given with the bindings provided
 func (e *Engine) QueryWithBindings(
 	ctx *sql.Context,
 	query string,
 	bindings map[string]sql.Expression,
 ) (sql.Schema, sql.RowIter, error) {
+	return e.QueryNodeWithBindings(ctx, query, nil, bindings)
+}
+
+// QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
+// instead of parsing the query from text.
+func (e *Engine) QueryNodeWithBindings(
+	ctx *sql.Context,
+	query string,
+	parsed sql.Node,
+	bindings map[string]sql.Expression,
+) (sql.Schema, sql.RowIter, error) {
 	var (
-		parsed, analyzed sql.Node
-		iter             sql.RowIter
-		err              error
+		analyzed sql.Node
+		iter     sql.RowIter
+		err      error
 	)
 
-	finish := observeQuery(ctx, query)
-	defer finish(err)
-
-	parsed, err = parse.Parse(ctx, query)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var perm = auth.ReadPerm
-	var typ = sql.QueryProcess
-	switch parsed.(type) {
-	case *plan.CreateIndex:
-		typ = sql.CreateIndexProcess
-		perm = auth.ReadPerm | auth.WritePerm
-	case *plan.CreateForeignKey, *plan.CreateCheck, *plan.DropForeignKey, *plan.AlterIndex, *plan.CreateView,
-		*plan.DeleteFrom, *plan.DropIndex, *plan.DropView,
-		*plan.InsertInto, *plan.LockTables, *plan.UnlockTables,
-		*plan.Update:
-		perm = auth.ReadPerm | auth.WritePerm
-	}
-
-	switch n := parsed.(type) {
-	case *plan.CreateTable:
-		if n.Database() != nil && n.Database().Name() != "" {
-			ctx.SetQueriedDatabase(n.Database().Name())
-		}
-	case *plan.InsertInto:
-		if n.Database() != nil && n.Database().Name() != "" {
-			ctx.SetQueriedDatabase(n.Database().Name())
-		}
-	case *plan.DeleteFrom:
-		if n.Database() != "" {
-			ctx.SetQueriedDatabase(n.Database())
-		}
-	case *plan.Update:
-		if n.Database() != "" {
-			ctx.SetQueriedDatabase(n.Database())
+	if parsed == nil {
+		parsed, err = parse.Parse(ctx, query)
+		if err != nil {
+			return nil, nil, err
 		}
 	}
 
-	err = e.Auth.Allowed(ctx, perm)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	ctx, err = e.Catalog.AddProcess(ctx, typ, query)
-	defer func() {
-		if err != nil && ctx != nil {
-			e.Catalog.Done(ctx.Pid())
-		}
-	}()
+	err = e.authCheck(ctx, parsed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -229,15 +164,142 @@ func (e *Engine) QueryWithBindings(
 		}
 	}
 
+	transactionDatabase, err := e.beginTransaction(ctx, parsed)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	iter, err = analyzed.RowIter(ctx, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	autoCommit, err := isSessionAutocommit(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if autoCommit {
+		iter = transactionCommittingIter{iter, transactionDatabase}
+	}
+
 	return analyzed.Schema(), iter, nil
 }
 
-// ParseDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
+func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
+	// Before we begin a transaction, we need to know if the database being operated on is not the one
+	// currently selected
+	transactionDatabase := determineTransactionDatabase(ctx, parsed)
+
+	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
+	beginNewTransaction := ctx.GetTransaction() == nil
+	if beginNewTransaction {
+		if len(transactionDatabase) > 0 {
+			database, err := e.Catalog.Database(transactionDatabase)
+			if err != nil {
+				return "", err
+			}
+
+			tdb, ok := database.(sql.TransactionDatabase)
+			if ok {
+				tx, err := tdb.StartTransaction(ctx)
+				if err != nil {
+					return "", err
+				}
+				ctx.SetTransaction(tx)
+			}
+		}
+	}
+
+	return transactionDatabase, nil
+}
+
+// transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
+// during the Close() operation
+type transactionCommittingIter struct {
+	childIter           sql.RowIter
+	transactionDatabase string
+}
+
+func (t transactionCommittingIter) Next() (sql.Row, error) {
+	return t.childIter.Next()
+}
+
+func (t transactionCommittingIter) Close(ctx *sql.Context) error {
+	err := t.childIter.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	tx := ctx.GetTransaction()
+	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
+	if commitTransaction {
+		logrus.Tracef("committing transaction %s", tx)
+		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
+			return err
+		}
+
+		// Clearing out the current transaction will tell us to start a new one the next time this session queries
+		ctx.SetTransaction(nil)
+	}
+
+	return nil
+}
+
+func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+	return sql.ConvertToBool(autoCommitSessionVar)
+}
+
+func determineTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
+	// For USE DATABASE statements, we need to process them here, before executing the query, so that we can set the
+	// database for transactions appropriately
+	switch n := parsed.(type) {
+	case *plan.Use:
+		ctx.SetCurrentDatabase(n.Database().Name())
+	}
+	transactionDatabase := ctx.GetCurrentDatabase()
+
+	switch n := parsed.(type) {
+	case *plan.CreateTable:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.InsertInto:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.DeleteFrom:
+		if n.Database() != "" {
+			transactionDatabase = n.Database()
+		}
+	case *plan.Update:
+		if n.Database() != "" {
+			transactionDatabase = n.Database()
+		}
+	}
+
+	return transactionDatabase
+}
+
+func (e *Engine) authCheck(ctx *sql.Context, node sql.Node) error {
+	var perm = auth.ReadPerm
+	if plan.IsDDLNode(node) {
+		perm = auth.ReadPerm | auth.WritePerm
+	}
+	switch node.(type) {
+	case
+		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+		perm = auth.ReadPerm | auth.WritePerm
+	}
+
+	return e.Auth.Allowed(ctx, perm)
+}
+
+// ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
 // with the default values parsed and resolved.
 func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
 	ctx := sql.NewEmptyContext()
@@ -326,18 +388,6 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 		}
 	}
 	return newRow, nil
-}
-
-// Async returns true if the query is async. If there are any errors with the
-// query it returns false
-func (e *Engine) Async(ctx *sql.Context, query string) bool {
-	parsed, err := parse.Parse(ctx, query)
-	if err != nil {
-		return false
-	}
-
-	asyncNode, ok := parsed.(sql.AsyncNode)
-	return ok && asyncNode.IsAsync()
 }
 
 // AddDatabase adds the given database to the catalog.

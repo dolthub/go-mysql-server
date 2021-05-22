@@ -21,8 +21,11 @@ import "github.com/dolthub/go-mysql-server/sql"
 type Harness interface {
 	// Parallelism returns how many parallel go routines to use when constructing an engine for test.
 	Parallelism() int
-	// NewDatabase returns a new sql.Database to use for a test.
+	// NewDatabase returns a sql.Database to use for a test. This method will always be called before asking for a
+	// context or other information.
 	NewDatabase(name string) sql.Database
+	// NewDatabases returns a set of new databases, for test setup that requires more than one database.
+	NewDatabases(names ...string) []sql.Database
 	// NewTable takes a database previously created by NewDatabase and returns a table created with the given schema.
 	NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error)
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
@@ -86,4 +89,11 @@ type KeylessTableHarness interface {
 	Harness
 	// SupportsKeylessTables indicates integrator support for keyless tables.
 	SupportsKeylessTables() bool
+}
+
+type TransactionHarness interface {
+	Harness
+	// NewSession returns a context with a new Session, rather than reusing an existing session from previous calls to
+	// NewContext()
+	NewSession() *sql.Context
 }

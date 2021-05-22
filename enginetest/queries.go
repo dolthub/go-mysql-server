@@ -1292,6 +1292,126 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}, {int64(4)}, {int64(6)}},
 	},
 	{
+		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where date_col = '2019-12-31T00:00:00'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where date_col = '2019-12-31T00:00:01'",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select i from datetime_table where date_col = '2019-12-31'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where date_col = '2019/12/31'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where date_col > '2019-12-31' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where date_col >= '2019-12-31' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where date_col > '2019/12/31' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where date_col > '2019-12-31T00:00:01' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col = date('2020-01-01T12:00:00')",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col = '2020-01-01T12:00:00'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col = datetime('2020-01-01T12:00:00')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col = '2020-01-01T12:00:01'",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col > '2020-01-01T12:00:00' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col > '2020-01-01' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col >= '2020-01-01' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col > '2020/01/01' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col > datetime('2020-01-01T12:00:00') order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col = date('2020-01-02T12:00:00')",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:00'",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col = datetime('2020-01-02T12:00:00')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col = timestamp('2020-01-02T12:00:00')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col = '2020-01-02T12:00:01'",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col > '2020-01-02T12:00:00' order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col > '2020-01-02' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col >= '2020-01-02' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col > '2020/01/02' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where timestamp_col > datetime('2020-01-02T12:00:00') order by 1",
+		Expected: []sql.Row{{2}, {3}},
+	},
+	{
+		Query:    "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.timestamp_col = dt2.timestamp_col order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day)) order by 1",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
 		Expected: []sql.Row{{int64(3)}},
 	},
@@ -1406,7 +1526,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
-		Query:    "SELECT id FROM typestable WHERE da > '2019-12-31'",
+		Query:    "SELECT id FROM typestable WHERE da = '2019-12-31'",
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
@@ -5173,6 +5293,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"othertable"},
 			{"tabletest"},
 			{"people"},
+			{"datetime_table"},
 		},
 	},
 	{
@@ -5189,6 +5310,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
 			{"people", "BASE TABLE"},
+			{"datetime_table", "BASE TABLE"},
 		},
 	},
 	{
@@ -5206,6 +5328,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable"},
 			{"niltable"},
 			{"newlinetable"},
+			{"datetime_table"},
 		},
 	},
 	{
@@ -5304,6 +5427,7 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl"},
 			{"bigtable"},
+			{"datetime_table"},
 			{"fk_tbl"},
 			{"floattable"},
 			{"mytable"},
@@ -5342,6 +5466,9 @@ var InfoSchemaQueries = []QueryTest{
 			{"f64"},
 			{"b"},
 			{"f"},
+			{"date_col"},
+			{"datetime_col"},
+			{"timestamp_col"},
 		},
 	},
 	{
@@ -5361,6 +5488,9 @@ var InfoSchemaQueries = []QueryTest{
 			{"f64"},
 			{"b"},
 			{"f"},
+			{"date_col"},
+			{"datetime_col"},
+			{"timestamp_col"},
 		},
 	},
 	{
@@ -5380,6 +5510,9 @@ var InfoSchemaQueries = []QueryTest{
 			{"f64"},
 			{"b"},
 			{"f"},
+			{"date_col"},
+			{"datetime_col"},
+			{"timestamp_col"},
 		},
 	},
 	{
@@ -5439,6 +5572,7 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl", 4},
 			{"bigtable", nil},
+			{"datetime_table", nil},
 			{"fk_tbl", nil},
 			{"floattable", nil},
 			{"mytable", nil},
@@ -5460,6 +5594,7 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"def", "mydb", "PRIMARY", "mydb", "auto_increment_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "bigtable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "datetime_table", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
@@ -5483,6 +5618,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "foo", "PRIMARY", "def", "foo", "other_table", "text", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "auto_increment_tbl", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "bigtable", "t", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "datetime_table", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "fk_tbl", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
@@ -6059,6 +6195,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 		},
 	},
 	{
@@ -6070,6 +6207,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 		},
 	},
 	{
@@ -6097,6 +6235,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
 		},
 	},
 	{

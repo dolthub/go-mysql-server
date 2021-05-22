@@ -81,10 +81,11 @@ var (
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
-	// TODO: This should be a ErDupEntry instead
-	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given: %s")
+	// This is meant to wrap a sql.UniqueKey error, which provides the key string
+	ErrPrimaryKeyViolation = errors.NewKind("duplicate primary key given")
 
 	// ErrUniqueKeyViolation is returned when a unique key constraint is violated
+	// This is meant to wrap a sql.UniqueKey error, which provides the key string
 	ErrUniqueKeyViolation = errors.NewKind("duplicate unique key given")
 
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
@@ -346,9 +347,5 @@ func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
 }
 
 func (ue UniqueKeyError) Error() string {
-	if ue.IsPK {
-		return fmt.Sprintf("duplicate primary key given: %s", ue.keyStr)
-	} else {
-		return fmt.Sprintf("duplicate unique key given: %s", ue.keyStr)
-	}
+	return fmt.Sprintf("%s", ue.keyStr)
 }

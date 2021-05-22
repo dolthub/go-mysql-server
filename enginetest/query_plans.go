@@ -19,7 +19,7 @@ type QueryPlanTest struct {
 	ExpectedPlan string
 }
 
-// QueryPlanTest is a test of generating the right query plans for different queries in the presence of indexes and
+// PlanTests is a test of generating the right query plans for different queries in the presence of indexes and
 // other features. These tests are fragile because they rely on string representations of query plans, but they're much
 // easier to construct this way.
 var PlanTests = []QueryPlanTest{
@@ -519,6 +519,78 @@ var PlanTests = []QueryPlanTest{
 			"     └─ Projected table access on [s2 i2]\n" +
 			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
+	},
+	{
+		Query: `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
+		ExpectedPlan: "Filter(datetime_table.date_col = \"2020-01-01\")\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table where date_col > '2020-01-01'`,
+		ExpectedPlan: "Filter(datetime_table.date_col > \"2020-01-01\")\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table where datetime_col = '2020-01-01'`,
+		ExpectedPlan: "Filter(datetime_table.datetime_col = \"2020-01-01\")\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.datetime_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table where datetime_col > '2020-01-01'`,
+		ExpectedPlan: "Filter(datetime_table.datetime_col > \"2020-01-01\")\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.datetime_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table where timestamp_col = '2020-01-01'`,
+		ExpectedPlan: "Filter(datetime_table.timestamp_col = \"2020-01-01\")\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table where timestamp_col > '2020-01-01'`,
+		ExpectedPlan: "Filter(datetime_table.timestamp_col > \"2020-01-01\")\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.timestamp_col = dt2.timestamp_col`,
+		ExpectedPlan: "IndexedJoin(dt1.timestamp_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ Table(datetime_table)\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = dt2.timestamp_col`,
+		ExpectedPlan: "IndexedJoin(dt1.date_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ Table(datetime_table)\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table dt1 join datetime_table dt2 on dt1.datetime_col = dt2.timestamp_col`,
+		ExpectedPlan: "IndexedJoin(dt1.datetime_col = dt2.timestamp_col)\n" +
+			" ├─ TableAlias(dt1)\n" +
+			" │   └─ Table(datetime_table)\n" +
+			" └─ TableAlias(dt2)\n" +
+			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
+	},
+	{
+		Query: `SELECT dt1.i FROM datetime_table dt1 
+			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
+			order by 1`,
+		ExpectedPlan: "Sort(dt1.i ASC)\n" +
+			" └─ Project(dt1.i)\n" +
+			"     └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"         ├─ TableAlias(dt2)\n" +
+			"         │   └─ Table(datetime_table)\n" +
+			"         └─ TableAlias(dt1)\n" +
+			"             └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
 	},
 	{
 		Query: `SELECT pk FROM one_pk
