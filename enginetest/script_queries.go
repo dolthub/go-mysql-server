@@ -806,11 +806,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{int64(1), int64(1), int64(2)}, {int64(2), int64(2), int64(2)}},
 			},
 			{
-				Query: "SELECT SUM(DISTINCT pk * v1) from mytable",
+				Query:    "SELECT SUM(DISTINCT pk * v1) from mytable",
 				Expected: []sql.Row{{float64(7)}},
 			},
 			{
-				Query: "SELECT SUM(DISTINCT POWER(v1, 2)) FROM mytable",
+				Query:    "SELECT SUM(DISTINCT POWER(v1, 2)) FROM mytable",
 				Expected: []sql.Row{{float64(5)}},
 			},
 		},
