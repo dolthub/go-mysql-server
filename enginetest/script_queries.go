@@ -798,12 +798,20 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(14)}, {float64(5)}, {float64(47)}},
 			},
 			{
-				Query:    "SELECT SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk",
-				Expected: []sql.Row{{float64(3), int64(2)}, {float64(2), int64(2)}},
+				Query:    "SELECT pk, SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk",
+				Expected: []sql.Row{{int64(1), float64(3), int64(2)}, {int64(2), float64(2), int64(2)}},
 			},
 			{
-				Query:    "SELECT MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk",
-				Expected: []sql.Row{{int64(1), int64(2)}, {int64(2), int64(2)}},
+				Query:    "SELECT pk, MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk",
+				Expected: []sql.Row{{int64(1), int64(1), int64(2)}, {int64(2), int64(2), int64(2)}},
+			},
+			{
+				Query: "SELECT SUM(DISTINCT pk * v1) from mytable",
+				Expected: []sql.Row{{float64(7)}},
+			},
+			{
+				Query: "SELECT SUM(DISTINCT POWER(v1, 2)) FROM mytable",
+				Expected: []sql.Row{{float64(5)}},
 			},
 		},
 	},

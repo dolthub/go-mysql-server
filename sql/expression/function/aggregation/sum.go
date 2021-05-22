@@ -99,10 +99,5 @@ func (m *Sum) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
 func (m *Sum) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	sum := buffer[0]
 
-	// Dispose the in memory hash table if the child is a distinct operation.
-	if t, ok := m.Child.(*expression.DistinctExpression); ok {
-		t.Dispose()
-	}
-
 	return sum, nil
 }

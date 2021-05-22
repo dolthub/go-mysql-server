@@ -2600,6 +2600,36 @@ CREATE TABLE t2
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
 	),
+	`SELECT SUM(DISTINCT a*b) FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewAlias("SUM(DISTINCT a*b)",
+				expression.NewUnresolvedFunction("sum", true, nil,
+					expression.NewDistinctExpression(
+						expression.NewMult(expression.NewUnresolvedColumn("a"),
+							expression.NewUnresolvedColumn("b")))))},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT AVG(DISTINCT a / b) FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewAlias("AVG(DISTINCT a / b)",
+				expression.NewUnresolvedFunction("avg", true, nil,
+					expression.NewDistinctExpression(
+						expression.NewDiv(expression.NewUnresolvedColumn("a"),
+							expression.NewUnresolvedColumn("b")))))},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT SUM(DISTINCT POWER(a, 2)) FROM foo`: plan.NewGroupBy(
+		[]sql.Expression{
+			expression.NewAlias("SUM(DISTINCT POWER(a, 2))",
+				expression.NewUnresolvedFunction("sum", true, nil,
+					expression.NewDistinctExpression(
+						expression.NewUnresolvedFunction("power", false, nil,
+							expression.NewUnresolvedColumn("a"), expression.NewLiteral(int8(2), sql.Int8)))))},
+		[]sql.Expression{},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`SELECT a, row_number() over (partition by s order by x) FROM foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
@@ -2838,6 +2868,22 @@ CREATE TABLE t2
 			plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewUnresolvedTable("foo", ""),
+			),
+		),
+		false,
+	),
+	`CREATE VIEW myview AS SELECT AVG(DISTINCT foo) FROM b`: plan.NewCreateView(
+		sql.UnresolvedDatabase(""),
+		"myview",
+		[]string{},
+		plan.NewSubqueryAlias(
+			"myview", "SELECT AVG(DISTINCT foo) FROM b",
+			plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewUnresolvedFunction("avg", true, nil, expression.NewDistinctExpression(expression.NewUnresolvedColumn("foo"))),
+				},
+				[]sql.Expression{},
+				plan.NewUnresolvedTable("b", ""),
 			),
 		),
 		false,

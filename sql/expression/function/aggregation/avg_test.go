@@ -138,19 +138,46 @@ func TestAvg_NUMS_AND_NULLS(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(expression.NewGetField(0, sql.Uint64, "col1", true))
-	buffer := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(ctx, buffer))
 
-	err := avgNode.Update(ctx, buffer, sql.NewRow(2))
-	require.NoError(err)
+	testCases := []struct {
+		name     string
+		rows     []sql.Row
+		expected interface{}
+	}{
+		{
+			"float values with nil",
+			[]sql.Row{{2.0}, {2.0}, {3.}, {4.}, {nil}},
+			float64(2.75),
+		},
+		{
+			"float values with nil",
+			[]sql.Row{{1}, {2}, {3}, {nil}, {nil}},
+			float64(2.0),
+		},
+		{
+			"no rows",
+			[]sql.Row{},
+			nil,
+		},
+		{
+			"nil values",
+			[]sql.Row{{nil}, {nil}},
+			nil,
+		},
+	}
 
-	err = avgNode.Update(ctx, buffer, sql.NewRow(nil))
-	require.NoError(err)
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := avgNode.NewBuffer()
+			for _, row := range tt.rows {
+				require.NoError(avgNode.Update(ctx, buf, row))
+			}
 
-	err = avgNode.Update(ctx, buffer, sql.NewRow(4))
-	require.NoError(err)
-
-	require.Equal(3.0, eval(t, avgNode, buffer))
+			result, err := avgNode.Eval(ctx, buf)
+			require.NoError(err)
+			require.Equal(tt.expected, result)
+		})
+	}
 }
 
 func TestAvg_Distinct(t *testing.T) {
@@ -179,8 +206,18 @@ func TestAvg_Distinct(t *testing.T) {
 			float64(3.0),
 		},
 		{
+			"string float values",
+			[]sql.Row{{"2.0"}, {"2.0"}, {"3.0"}, {"4.0"}, {"4.0"}},
+			float64(3.0),
+		},
+		{
 			"float values",
 			[]sql.Row{{2.0}, {2.0}, {3.}, {4.}},
+			float64(3.0),
+		},
+		{
+			"float values with nil",
+			[]sql.Row{{2.0}, {2.0}, {3.}, {4.}, {nil}},
 			float64(3.0),
 		},
 		{
@@ -197,6 +234,9 @@ func TestAvg_Distinct(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			ad = expression.NewDistinctExpression(expression.NewGetField(0, nil, "myfield", false))
+			avg = NewAvg(ad)
+
 			buf := avg.NewBuffer()
 			for _, row := range tt.rows {
 				require.NoError(avg.Update(ctx, buf, row))

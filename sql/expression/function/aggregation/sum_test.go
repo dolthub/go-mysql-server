@@ -147,6 +147,9 @@ func TestSumWithDistinct(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			ad = expression.NewDistinctExpression(expression.NewGetField(0, nil, "myfield", false))
+			sum = NewSum(ad)
+
 			buf := sum.NewBuffer()
 			for _, row := range tt.rows {
 				require.NoError(sum.Update(sql.NewEmptyContext(), buf, row))

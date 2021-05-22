@@ -11,20 +11,22 @@ import (
 type DistinctExpression struct {
 	seen    sql.KeyValueCache
 	dispose sql.DisposeFunc
-	Column  sql.Expression
+	Child   sql.Expression
 }
+
+var _ sql.Disposable = (*DistinctExpression)(nil)
 
 func NewDistinctExpression(e sql.Expression) *DistinctExpression {
 	return &DistinctExpression{
-		Column: e,
+		Child: e,
 	}
 }
 
-func (ad *DistinctExpression) shouldProcess(ctx *sql.Context, value interface{}) (bool, error) {
-	if ad.seen == nil {
+func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bool, error) {
+	if de.seen == nil {
 		cache, dispose := ctx.Memory.NewHistoryCache()
-		ad.seen = cache
-		ad.dispose = dispose
+		de.seen = cache
+		de.dispose = dispose
 	}
 
 	hash, err := hashstructure.Hash(value, nil)
@@ -32,49 +34,51 @@ func (ad *DistinctExpression) shouldProcess(ctx *sql.Context, value interface{})
 		return false, err
 	}
 
-	if _, err := ad.seen.Get(hash); err == nil {
+	if _, err := de.seen.Get(hash); err == nil {
 		return false, nil
 	}
 
-	if err := ad.seen.Put(hash, struct{}{}); err != nil {
+	if err := de.seen.Put(hash, struct{}{}); err != nil {
 		return false, err
 	}
 
 	return true, nil
 }
 
-func (ad *DistinctExpression) Dispose() {
-	if ad.dispose != nil {
-		ad.dispose()
+func (de *DistinctExpression) Dispose() {
+	if de.dispose != nil {
+		de.dispose()
 	}
 
-	ad.dispose = nil
-	ad.seen = nil
+	de.dispose = nil
+	de.seen = nil
 }
 
-func (ad *DistinctExpression) Resolved() bool {
-	return ad.Column.Resolved()
+func (de *DistinctExpression) Resolved() bool {
+	return de.Child.Resolved()
 }
 
-func (ad *DistinctExpression) String() string {
-	return fmt.Sprintf("DISTINCT %s", ad.Column.String())
+func (de *DistinctExpression) String() string {
+	return fmt.Sprintf("DISTINCT %s", de.Child.String())
 }
 
-func (ad *DistinctExpression) Type() sql.Type {
-	return ad.Column.Type()
+func (de *DistinctExpression) Type() sql.Type {
+	return de.Child.Type()
 }
 
-func (ad *DistinctExpression) IsNullable() bool {
+func (de *DistinctExpression) IsNullable() bool {
 	return false
 }
 
-func (ad *DistinctExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := ad.Column.Eval(ctx, row)
+// Returns the child value if the cache hasn't seen the value before otherwise returns nil.
+// Since NULLs are ignored in aggregate expressions that use DISTINCT this is a valid return scheme.
+func (de *DistinctExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := de.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	should, err := ad.shouldProcess(ctx, val)
+	should, err := de.seenValue(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -86,18 +90,18 @@ func (ad *DistinctExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 	return nil, nil
 }
 
-func (ad *DistinctExpression) Children() []sql.Expression {
-	return []sql.Expression{ad.Column}
+func (de *DistinctExpression) Children() []sql.Expression {
+	return []sql.Expression{de.Child}
 }
 
-func (ad *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (de *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
-		return nil, fmt.Errorf("ADO has an invalidnumber of children")
+		return nil, fmt.Errorf("DistinctExpression has an invalid number of children")
 	}
 
 	return &DistinctExpression{
 		seen:    nil,
 		dispose: nil,
-		Column:  children[0],
+		Child:   children[0],
 	}, nil
 }

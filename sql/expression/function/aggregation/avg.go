@@ -54,14 +54,9 @@ func (a *Avg) IsNullable() bool {
 
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
 func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	// This case is toggled when no rows exist.
+	// This case is triggered when no rows exist.
 	if buffer[0] == float64(0) && buffer[1] == int64(0) {
 		return nil, nil
-	}
-
-	// Dispose the in memory hash table if the child is a distinct operation.
-	if t, ok := a.Child.(*expression.DistinctExpression); ok {
-		t.Dispose()
 	}
 
 	sum := buffer[0].(float64)
