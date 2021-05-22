@@ -49,21 +49,23 @@ func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, 
 	return result, nil
 }
 
-func isNewPartition(ctx *sql.Context, window sql.WindowExpression, last sql.Row, row sql.Row) (bool, error) {
+// isNewPartition compares the order by columns between two rows, returning true when the last row is null
+// or when next row is in a different partition than the last
+func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
 	if len(last) == 0 {
 		return true, nil
 	}
 
-	if len(window.Window().PartitionBy) == 0 {
+	if len(partitionBy) == 0 {
 		return false, nil
 	}
 
-	lastExp, err := evalExprs(ctx, window.Window().PartitionBy, last)
+	lastExp, err := evalExprs(ctx, partitionBy, last)
 	if err != nil {
 		return false, err
 	}
 
-	thisExp, err := evalExprs(ctx, window.Window().PartitionBy, row)
+	thisExp, err := evalExprs(ctx, partitionBy, row)
 	if err != nil {
 		return false, err
 	}
@@ -77,17 +79,19 @@ func isNewPartition(ctx *sql.Context, window sql.WindowExpression, last sql.Row,
 	return false, nil
 }
 
-func isNewOrderValue(ctx *sql.Context, window sql.WindowExpression, last sql.Row, row sql.Row) (bool, error) {
+// isNewOrderValue compares the order by columns between two rows, returning true when the last row is null or
+// when the next row's orderBy columns are unique
+func isNewOrderValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
 	if len(last) == 0 {
 		return true, nil
 	}
 
-	lastExp, err := evalExprs(ctx, window.Window().OrderBy.ToExpressions(), last)
+	lastExp, err := evalExprs(ctx, orderByExprs, last)
 	if err != nil {
 		return false, err
 	}
 
-	thisExp, err := evalExprs(ctx, window.Window().OrderBy.ToExpressions(), row)
+	thisExp, err := evalExprs(ctx, orderByExprs, row)
 	if err != nil {
 		return false, err
 	}

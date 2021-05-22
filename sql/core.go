@@ -73,13 +73,6 @@ type FunctionExpression interface {
 	FunctionName() string
 }
 
-// WindowExpression is an Expression that represents a window aggregation
-type WindowExpression interface {
-	Expression
-	Window() *Window
-	IsNewPartition(ctx *Context, last Row, row Row) (bool, error)
-}
-
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will
 // signal the engine to not cache their results when this would otherwise appear to be safe.
 type NonDeterministicExpression interface {
@@ -110,7 +103,9 @@ type Aggregation interface {
 // WindowAggregation is expected to track its input rows in the order received, and to return the value for the row
 // index given on demand.
 type WindowAggregation interface {
-	WindowExpression
+	Expression
+	// Window returns this expression's window
+	Window() *Window
 	// WithWindow returns a version of this window aggregation with the window given
 	WithWindow(window *Window) (WindowAggregation, error)
 	// NewBuffer creates a new buffer and returns it as a Row. This buffer will be provided for all further operations.

@@ -140,7 +140,7 @@ func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
 		var rowNum int
 		for _, row := range rows {
 			// every time we encounter a new partition, start the count over
-			isNew, err := r.IsNewPartition(ctx, last, row)
+			isNew, err := isNewPartition(ctx, r.window.PartitionBy, last, row)
 			if err != nil {
 				return err
 			}
@@ -166,8 +166,4 @@ func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
 func (r *RowNumber) EvalRow(i int, buffer sql.Row) (interface{}, error) {
 	rows := buffer[0].([]sql.Row)
 	return rows[i][len(rows[i])-2], nil
-}
-
-func (r *RowNumber) IsNewPartition(ctx *sql.Context, last sql.Row, row sql.Row) (bool, error) {
-	return isNewPartition(ctx, r, last, row)
 }

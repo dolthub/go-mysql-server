@@ -115,7 +115,7 @@ func (p *PercentRank) WithWindow(window *sql.Window) (sql.WindowAggregation, err
 func (p *PercentRank) Add(ctx *sql.Context, buffer, row sql.Row) error {
 	rows := buffer[0].([]sql.Row)
 	// order -> row, partitionCount, rowIndex, originalIndex
-	buffer[0] = append(rows, append(row, nil, nil, p.pos))
+	buffer[0] = append(rows, append(row, nil, 1, p.pos))
 	p.pos++
 	return nil
 }
@@ -146,7 +146,7 @@ func (p *PercentRank) Finish(ctx *sql.Context, buffer sql.Row) error {
 		partitionCnt := 0
 		for _, row := range rows {
 			// every time we encounter a new partition, start the count over
-			isNew, err = p.IsNewPartition(ctx, last, row)
+			isNew, err = isNewPartition(ctx, p.window.PartitionBy, last, row)
 			if err != nil {
 				return err
 			}
@@ -158,7 +158,7 @@ func (p *PercentRank) Finish(ctx *sql.Context, buffer sql.Row) error {
 				rowNum = 1
 			} else {
 				// only bump row num when we have unique order by columns
-				isNew, err = isNewOrderValue(ctx, p, last, row)
+				isNew, err = isNewOrderValue(ctx, p.window.OrderBy.ToExpressions(), last, row)
 				if err != nil {
 					return err
 				}
@@ -202,9 +202,4 @@ func (p *PercentRank) EvalRow(i int, buffer sql.Row) (interface{}, error) {
 	rowNum := rows[i][rowNumIdx].(int)
 
 	return float64(rowNum-1) / float64(partitionCount-1), nil
-}
-
-// IsNewPartition implements sql.WindowExpression
-func (p *PercentRank) IsNewPartition(ctx *sql.Context, last sql.Row, row sql.Row) (bool, error) {
-	return isNewPartition(ctx, p, last, row)
 }

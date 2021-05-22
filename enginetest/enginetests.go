@@ -2338,6 +2338,16 @@ func TestWindowAgg(t *testing.T, harness Harness) {
 		{4, 0.0},
 		{5, 0.0},
 	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQuery(t, harness, e, `SELECT a, percent_rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, 0.0},
+		{1, 0.0},
+		{2, 0.0},
+		{3, 0.0},
+		{4, 0.0},
+		{5, 0.0},
+	}, nil, nil)
 }
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
