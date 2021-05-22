@@ -48,10 +48,6 @@ func (m *Sum) String() string {
 	return fmt.Sprintf("SUM(%s)", m.Child)
 }
 
-func (m *Sum) Children() []sql.Expression {
-	return []sql.Expression{m.Child}
-}
-
 // WithChildren implements the Expression interface.
 func (m *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {

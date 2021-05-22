@@ -234,8 +234,7 @@ func TestAvg_Distinct(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			ad = expression.NewDistinctExpression(expression.NewGetField(0, nil, "myfield", false))
-			avg = NewAvg(ad)
+			ad.Dispose()
 
 			buf := avg.NewBuffer()
 			for _, row := range tt.rows {

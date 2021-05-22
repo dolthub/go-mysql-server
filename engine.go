@@ -279,7 +279,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 
 // ApplyDefaults applies the default values of the given column indices to the given row, and returns a new row with the updated values.
 // This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
-// present and in the order as represented by the schema. If no columns are given, then the given row is returned. Child indices should
+// present and in the order as represented by the schema. If no columns are given, then the given row is returned. Column indices should
 // be sorted and in ascending order, however this is not enforced.
 func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row) (sql.Row, error) {
 	if len(cols) == 0 {

@@ -1132,7 +1132,7 @@ func printTable(name string, tableSchema Schema) string {
 	var schema = make([]string, len(tableSchema))
 	for i, col := range tableSchema {
 		schema[i] = fmt.Sprintf(
-			"Child(%s, %s, nullable=%v)",
+			"Column(%s, %s, nullable=%v)",
 			col.Name,
 			col.Type.String(),
 			col.Nullable,

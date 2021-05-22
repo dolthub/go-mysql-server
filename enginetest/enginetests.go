@@ -3000,7 +3000,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		require.NotContains(sch[1].Default.String(), "t28")
 	})
 
-	t.Run("Child referenced with name change", func(t *testing.T) {
+	t.Run("Column referenced with name change", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t29(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT DEFAULT (v1 + 1))", []sql.Row(nil), nil, nil)
 
 		RunQuery(t, e, harness, "INSERT INTO t29 (pk, v1) VALUES (1, 2)")
