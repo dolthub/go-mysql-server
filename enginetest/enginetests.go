@@ -2292,6 +2292,60 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT fk1", sql.ErrUnknownConstraint)
 }
 
+func TestWindowAgg(t *testing.T, harness Harness) {
+	//require := require.New(t)
+
+	e := NewEngine(t, harness)
+
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0,0), (1,1,1), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+
+	TestQuery(t, harness, e, `SELECT a, percent_rank() over (order by b) FROM t1 order by a`, []sql.Row{
+		{0, 0.0},
+		{1, 0.4},
+		{2, 0.8},
+		{3, 0.0},
+		{4, 0.4},
+		{5, 1.0},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, percent_rank() over (order by b desc) FROM t1 order by a`, []sql.Row{
+		{0, 0.8},
+		{1, 0.4},
+		{2, 0.2},
+		{3, 0.8},
+		{4, 0.4},
+		{5, 0.0},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, percent_rank() over (partition by c order by b) FROM t1 order by a`, []sql.Row{
+		{0, 0.0},
+		{1, 0.0},
+		{2, 0.75},
+		{3, 0.0},
+		{4, 0.5},
+		{5, 1.0},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, percent_rank() over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+		{0, 0.0},
+		{1, 1.0},
+		{2, 0.0},
+		{3, 0.0},
+		{4, 0.0},
+		{5, 0.0},
+	}, nil, nil)
+
+	// no order by clause -> all rows are peers
+	TestQuery(t, harness, e, `SELECT a, percent_rank() over (partition by b) FROM t1 order by a`, []sql.Row{
+		{0, 0.0},
+		{1, 0.0},
+		{2, 0.0},
+		{3, 0.0},
+		{4, 0.0},
+		{5, 0.0},
+	}, nil, nil)
+}
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
