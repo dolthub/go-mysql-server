@@ -174,7 +174,7 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		// the condition's field indexes might need adjusting if the order of tables changed
-		cond, err := FixFieldIndexes(scope, nil, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
+		cond, err := FixFieldIndexes(scope, a, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
 		if err != nil {
 			return nil, false, err
 		}
