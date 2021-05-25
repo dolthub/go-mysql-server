@@ -1301,7 +1301,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), c.IfNotExists, tableSpec), nil
+		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), c.IfNotExists, tableSpec, c.Temporary), nil
 }
 
 type namedConstraint struct {

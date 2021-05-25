@@ -118,6 +118,7 @@ type CreateTable struct {
 	chDefs      []*sql.CheckConstraint
 	idxDefs     []*IndexDefinition
 	like        sql.Node
+	temporary   bool
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -125,7 +126,7 @@ var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, ifNotExists bool, tableSpec *TableSpec) *CreateTable {
+func NewCreateTable(db sql.Database, name string, ifNotExists bool, tableSpec *TableSpec, temporary bool) *CreateTable {
 	for _, s := range tableSpec.Schema {
 		s.Source = name
 	}
@@ -138,10 +139,12 @@ func NewCreateTable(db sql.Database, name string, ifNotExists bool, tableSpec *T
 		chDefs:      tableSpec.ChDefs,
 		idxDefs:     tableSpec.IdxDefs,
 		ifNotExists: ifNotExists,
+		temporary: temporary,
 	}
 }
 
 // NewCreateTableLike creates a new CreateTable node for CREATE TABLE LIKE statements
+// TODO: Can you do create temporary with LIKe?
 func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifNotExists bool) *CreateTable {
 	return &CreateTable{
 		ddlNode:     ddlNode{db},
@@ -174,78 +177,95 @@ func (c *CreateTable) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	creatable, ok := c.db.(sql.TableCreator)
-	if ok {
+	var err error
+	if c.temporary {
+		creatable, ok := c.db.(sql.TemporaryTableCreator)
+		if !ok {
+			return sql.RowsToRowIter(), fmt.Errorf("error: database does not support temporary tables")
+		}
+
 		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
 		}
 
-		err := creatable.CreateTable(ctx, c.name, c.schema)
-		if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists) {
+		err = creatable.CreateTemporaryTable(ctx, c.name, c.schema)
+	} else {
+		creatable, ok := c.db.(sql.TableCreator)
+		if !ok {
+			return sql.RowsToRowIter(), ErrCreateTableNotSupported.New(c.db.Name())
+		}
+
+		if err := c.validateDefaultPosition(); err != nil {
 			return sql.RowsToRowIter(), err
 		}
-		//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
-		//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
-		if len(c.idxDefs) > 0 || len(c.fkDefs) > 0 || len(c.chDefs) > 0 {
-			tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
-			if err != nil {
-				return sql.RowsToRowIter(), err
-			}
+
+		err = creatable.CreateTable(ctx, c.name, c.schema)
+	}
+
+	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists) {
+		return sql.RowsToRowIter(), err
+	}
+
+	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
+	//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
+	if len(c.idxDefs) > 0 || len(c.fkDefs) > 0 || len(c.chDefs) > 0 {
+		tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
+		if err != nil {
+			return sql.RowsToRowIter(), err
+		}
+		if !ok {
+			return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
+		}
+		if len(c.idxDefs) > 0 {
+			idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 			if !ok {
-				return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
+				return sql.RowsToRowIter(), ErrNotIndexable.New()
 			}
-			if len(c.idxDefs) > 0 {
-				idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
-				if !ok {
-					return sql.RowsToRowIter(), ErrNotIndexable.New()
-				}
-				for _, idxDef := range c.idxDefs {
-					err = idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
-					if err != nil {
-						return sql.RowsToRowIter(), err
-					}
-				}
-			}
-			if len(c.fkDefs) > 0 {
-				fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
-				if !ok {
-					return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
-				}
-				for _, fkDef := range c.fkDefs {
-					refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
-					if err != nil {
-						return sql.RowsToRowIter(), err
-					}
-					if !ok {
-						return sql.RowsToRowIter(), sql.ErrTableNotFound.New(fkDef.ReferencedTable)
-					}
-					err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
-					if err != nil {
-						return sql.RowsToRowIter(), err
-					}
-				}
-			}
-			if len(c.chDefs) > 0 {
-				chAlterable, ok := tableNode.(sql.CheckAlterableTable)
-				if !ok {
-					return sql.RowsToRowIter(), ErrNoCheckConstraintSupport.New(c.name)
-				}
-				for _, ch := range c.chDefs {
-					check, err := NewCheckDefinition(ch)
-					if err != nil {
-						return nil, err
-					}
-					err = chAlterable.CreateCheck(ctx, check)
-					if err != nil {
-						return sql.RowsToRowIter(), err
-					}
+			for _, idxDef := range c.idxDefs {
+				err = idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
+				if err != nil {
+					return sql.RowsToRowIter(), err
 				}
 			}
 		}
-		return sql.RowsToRowIter(), nil
+		if len(c.fkDefs) > 0 {
+			fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
+			if !ok {
+				return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
+			}
+			for _, fkDef := range c.fkDefs {
+				refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+				if !ok {
+					return sql.RowsToRowIter(), sql.ErrTableNotFound.New(fkDef.ReferencedTable)
+				}
+				err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+			}
+		}
+		if len(c.chDefs) > 0 {
+			chAlterable, ok := tableNode.(sql.CheckAlterableTable)
+			if !ok {
+				return sql.RowsToRowIter(), ErrNoCheckConstraintSupport.New(c.name)
+			}
+			for _, ch := range c.chDefs {
+				check, err := NewCheckDefinition(ch)
+				if err != nil {
+					return nil, err
+				}
+				err = chAlterable.CreateCheck(ctx, check)
+				if err != nil {
+					return sql.RowsToRowIter(), err
+				}
+			}
+		}
 	}
 
-	return nil, ErrCreateTableNotSupported.New(c.db.Name())
+	return sql.RowsToRowIter(), nil
 }
 
 // Children implements the Node interface.

@@ -620,6 +620,12 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema Schema) error
 }
 
+type TemporaryTableCreator interface {
+	// Creates the table with the given name and schema. If a table with that name already exists, must return
+	// sql.ErrTableAlreadyExists. A temporary table should not persist after a session.
+	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
+}
+
 // ViewCreator should be implemented by databases that want to know when a view
 // has been created.
 type ViewCreator interface {
