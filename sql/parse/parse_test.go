@@ -50,6 +50,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:     "a",
@@ -90,6 +91,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -107,6 +109,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY COMMENT "hello", b TEXT COMMENT "goodbye")`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -128,6 +131,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -145,6 +149,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -164,6 +169,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		true,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -181,6 +187,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -207,6 +214,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -231,6 +239,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b) COMMENT 'hi')`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -257,6 +266,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -281,6 +291,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -307,6 +318,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -331,6 +343,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b), INDEX (b, a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -363,6 +376,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -388,6 +402,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, CONSTRAINT fk_name FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -415,6 +430,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -440,6 +456,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON DELETE RESTRICT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -467,6 +484,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -493,6 +511,7 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, c_id BIGINT, FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -525,6 +544,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -556,6 +576,7 @@ var fixtures = map[string]sql.Node{
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -583,6 +604,7 @@ CREATE TABLE t4
 );`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t4",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{
@@ -644,6 +666,7 @@ CREATE TABLE t2
 );`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t2",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{
@@ -718,6 +741,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -738,6 +762,7 @@ CREATE TABLE t2
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, CONSTRAINT ch1 CHECK (a > 0))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
+		false,
 		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
@@ -760,6 +785,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -781,6 +807,7 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		"t1",
 		false,
+		false,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -795,6 +822,23 @@ CREATE TABLE t2
 					expression.NewLiteral(int8(0), sql.Int8),
 				),
 				Enforced: false,
+			}},
+		},
+	),
+	`CREATE TEMPORARY TABLE t1(a INTEGER, b TEXT)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		false,
+		true,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:     "a",
+				Type:     sql.Int32,
+				Nullable: true,
+			}, {
+				Name:     "b",
+				Type:     sql.Text,
+				Nullable: true,
 			}},
 		},
 	),

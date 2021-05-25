@@ -126,7 +126,7 @@ var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, ifNotExists bool, tableSpec *TableSpec, temporary bool) *CreateTable {
+func NewCreateTable(db sql.Database, name string, ifNotExists bool, temporary bool, tableSpec *TableSpec) *CreateTable {
 	for _, s := range tableSpec.Schema {
 		s.Source = name
 	}
@@ -390,6 +390,10 @@ func (c *CreateTable) Name() string {
 
 func (c *CreateTable) IfNotExists() bool {
 	return c.ifNotExists
+}
+
+func (c *CreateTable) Temporary() bool {
+	return c.temporary
 }
 
 func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {

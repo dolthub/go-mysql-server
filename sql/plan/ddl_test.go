@@ -37,7 +37,7 @@ func TestCreateTable(t *testing.T) {
 		{Name: "c2", Type: sql.Int32},
 	}
 
-	require.NoError(createTable(t, db, "testTable", s, false))
+	require.NoError(createTable(t, db, "testTable", s, false, false))
 
 	tables = db.Tables()
 
@@ -50,8 +50,35 @@ func TestCreateTable(t *testing.T) {
 		require.Equal("testTable", s.Source)
 	}
 
-	require.Error(createTable(t, db, "testTable", s, false))
-	require.NoError(createTable(t, db, "testTable", s, true))
+	require.Error(createTable(t, db, "testTable", s, false, false))
+	require.NoError(createTable(t, db, "testTable", s, true, false))
+}
+
+func TestCreateTemporaryTable(t *testing.T) {
+	require := require.New(t)
+
+	db := memory.NewDatabase("test")
+	tables := db.Tables()
+	_, ok := tables["testTable"]
+	require.False(ok)
+
+	s := sql.Schema{
+		{Name: "c1", Type: sql.Text},
+		{Name: "c2", Type: sql.Int32},
+	}
+
+	require.NoError(createTable(t, db, "testTable", s, false, true))
+
+	tables = db.Tables()
+
+	newTable, ok := tables["testTable"]
+	require.True(ok)
+
+	require.Equal(newTable.Schema(), s)
+
+	for _, s := range newTable.Schema() {
+		require.Equal("testTable", s.Source)
+	}
 }
 
 func TestDropTable(t *testing.T) {
@@ -64,9 +91,9 @@ func TestDropTable(t *testing.T) {
 		{Name: "c2", Type: sql.Int32},
 	}
 
-	require.NoError(createTable(t, db, "testTable1", s, false))
-	require.NoError(createTable(t, db, "testTable2", s, false))
-	require.NoError(createTable(t, db, "testTable3", s, false))
+	require.NoError(createTable(t, db, "testTable1", s, false, false))
+	require.NoError(createTable(t, db, "testTable2", s, false, false))
+	require.NoError(createTable(t, db, "testTable3", s, false, false))
 
 	d := NewDropTable(db, false, "testTable1", "testTable2")
 	rows, err := d.RowIter(sql.NewEmptyContext(), nil)
@@ -99,8 +126,8 @@ func TestDropTable(t *testing.T) {
 	require.False(ok)
 }
 
-func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, ifNotExists bool) error {
-	c := NewCreateTable(db, name, ifNotExists, &TableSpec{Schema: schema})
+func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, ifNotExists bool, temporary bool) error {
+	c := NewCreateTable(db, name, ifNotExists, temporary, &TableSpec{Schema: schema})
 
 	rows, err := c.RowIter(sql.NewEmptyContext(), nil)
 	if err != nil {
