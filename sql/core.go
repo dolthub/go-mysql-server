@@ -104,6 +104,8 @@ type Aggregation interface {
 // index given on demand.
 type WindowAggregation interface {
 	Expression
+	// Window returns this expression's window
+	Window() *Window
 	// WithWindow returns a version of this window aggregation with the window given
 	WithWindow(window *Window) (WindowAggregation, error)
 	// NewBuffer creates a new buffer and returns it as a Row. This buffer will be provided for all further operations.

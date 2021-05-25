@@ -757,6 +757,66 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Run through some complex queries with DISTINCT and aggregates",
+		SetUpScript: []string{
+			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+			"CREATE TABLE tab2(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+			"INSERT INTO tab1 VALUES(51,14,96)",
+			"INSERT INTO tab1 VALUES(85,5,59)",
+			"INSERT INTO tab1 VALUES(91,47,68)",
+			"INSERT INTO tab2 VALUES(64,77,40)",
+			"INSERT INTO tab2 VALUES(75,67,58)",
+			"INSERT INTO tab2 VALUES(46,51,23)",
+			"CREATE TABLE mytable (pk int, v1 int)",
+			"INSERT INTO mytable VALUES(1,1)",
+			"INSERT INTO mytable VALUES(1,1)",
+			"INSERT INTO mytable VALUES(1,2)",
+			"INSERT INTO mytable VALUES(2,2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT - SUM( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
+				Expected: []sql.Row{{float64(-71)}},
+			},
+			{
+				Query:    "SELECT - SUM ( DISTINCT - - 71 ) AS col2 FROM tab2 cor0",
+				Expected: []sql.Row{{float64(-71)}},
+			},
+			{
+				Query:    "SELECT + MAX( DISTINCT ( - col0 ) ) FROM tab1 AS cor0",
+				Expected: []sql.Row{{-51}},
+			},
+			{
+				Query:    "SELECT SUM( DISTINCT + col1 ) * - 22 - - ( - COUNT( * ) ) col0 FROM tab1 AS cor0",
+				Expected: []sql.Row{{float64(-1455)}},
+			},
+			{
+				Query:    "SELECT MIN (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{14}, {5}, {47}},
+			},
+			{
+				Query:    "SELECT SUM (DISTINCT col1) from tab1 GROUP BY col0 ORDER BY col0",
+				Expected: []sql.Row{{float64(14)}, {float64(5)}, {float64(47)}},
+			},
+			{
+				Query:    "SELECT pk, SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk",
+				Expected: []sql.Row{{int64(1), float64(3), int64(2)}, {int64(2), float64(2), int64(2)}},
+			},
+			{
+				Query:    "SELECT pk, MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk",
+				Expected: []sql.Row{{int64(1), int64(1), int64(2)}, {int64(2), int64(2), int64(2)}},
+			},
+			{
+				Query:    "SELECT SUM(DISTINCT pk * v1) from mytable",
+				Expected: []sql.Row{{float64(7)}},
+			},
+			{
+				Query:    "SELECT SUM(DISTINCT POWER(v1, 2)) FROM mytable",
+				Expected: []sql.Row{{float64(5)}},
+			},
+		},
+	},
+	{
 		Name: "Nested Subquery projections (NTC)",
 		SetUpScript: []string{
 			`CREATE TABLE dcim_site (id char(32) NOT NULL,created date,last_updated datetime,_custom_field_data json NOT NULL,name varchar(100) NOT NULL,_name varchar(100) NOT NULL,slug varchar(100) NOT NULL,facility varchar(50) NOT NULL,asn bigint,time_zone varchar(63) NOT NULL,description varchar(200) NOT NULL,physical_address varchar(200) NOT NULL,shipping_address varchar(200) NOT NULL,latitude decimal(8,6),longitude decimal(9,6),contact_name varchar(50) NOT NULL,contact_phone varchar(20) NOT NULL,contact_email varchar(254) NOT NULL,comments longtext NOT NULL,region_id char(32),status_id char(32),tenant_id char(32),PRIMARY KEY (id),KEY dcim_site_region_id_45210932 (region_id),KEY dcim_site_status_id_e6a50f56 (status_id),KEY dcim_site_tenant_id_15e7df63 (tenant_id),UNIQUE KEY name (name),UNIQUE KEY slug (slug)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,

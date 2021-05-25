@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// Sum agregation returns the sum of all values in the selected column.
+// Sum aggregation returns the sum of all values in the selected column.
 // It implements the Aggregation interface.
 type Sum struct {
 	expression.UnaryExpression

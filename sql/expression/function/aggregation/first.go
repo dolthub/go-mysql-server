@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// First agregation returns the first of all values in the selected column.
+// First aggregation returns the first of all values in the selected column.
 // It implements the Aggregation interface.
 type First struct {
 	expression.UnaryExpression
