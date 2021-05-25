@@ -86,7 +86,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	}
 
 	withIndexedTableAccess, replacedTableWithIndexedAccess, err := replaceTableAccessWithIndexedAccess(
-		newJoin, nil, scope, joinIndexes, tableAliases)
+		newJoin, a, nil, scope, joinIndexes, tableAliases)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +109,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 // from the left branches of parent nodes, which means there is no way to construct it given just the parent node.
 func replaceTableAccessWithIndexedAccess(
 	node sql.Node,
+	a *Analyzer,
 	schema sql.Schema,
 	scope *Scope,
 	joinIndexes joinIndexesByTable,
@@ -134,7 +135,7 @@ func replaceTableAccessWithIndexedAccess(
 				}
 
 				keyExprs := createIndexLookupKeyExpression(indexToApply, tableAliases)
-				keyExprs, err := FixFieldIndexesOnExpressions(scope, schema, keyExprs...)
+				keyExprs, err := FixFieldIndexesOnExpressions(scope, a, schema, keyExprs...)
 				if err != nil {
 					return nil, err
 				}
@@ -153,7 +154,7 @@ func replaceTableAccessWithIndexedAccess(
 		return node, replaced, nil
 	case *plan.IndexedJoin:
 		// Recurse the down the left side with the input schema
-		left, replacedLeft, err := replaceTableAccessWithIndexedAccess(node.Left(), schema, scope, joinIndexes, tableAliases)
+		left, replacedLeft, err := replaceTableAccessWithIndexedAccess(node.Left(), a, schema, scope, joinIndexes, tableAliases)
 		if err != nil {
 			return nil, false, err
 		}
@@ -163,7 +164,7 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		// then the right side, appending the schema from the left
-		right, replacedRight, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, left.Schema()...), scope, joinIndexes, tableAliases)
+		right, replacedRight, err := replaceTableAccessWithIndexedAccess(node.Right(), a, append(schema, left.Schema()...), scope, joinIndexes, tableAliases)
 		if err != nil {
 			return nil, false, err
 		}
@@ -173,29 +174,29 @@ func replaceTableAccessWithIndexedAccess(
 		}
 
 		// the condition's field indexes might need adjusting if the order of tables changed
-		cond, err := FixFieldIndexes(scope, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
+		cond, err := FixFieldIndexes(scope, nil, append(schema, append(left.Schema(), right.Schema()...)...), node.Cond)
 		if err != nil {
 			return nil, false, err
 		}
 
 		return plan.NewIndexedJoin(left, right, node.JoinType(), cond, len(scope.Schema())), replacedLeft || replacedRight, nil
 	case *plan.Limit:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.Sort:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.Filter:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.Project:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.GroupBy:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.Window:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.Distinct:
-		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, schema, scope, joinIndexes, tableAliases)
+		return replaceIndexedAccessInUnaryNode(node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.CrossJoin:
 		// TODO: be more principled about integrating cross joins into the overall join plan, no reason to keep them separate
-		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
+		newRight, replaced, err := replaceTableAccessWithIndexedAccess(node.Right(), a, append(schema, node.Left().Schema()...), scope, joinIndexes, tableAliases)
 		if err != nil {
 			return nil, false, err
 		}
@@ -212,12 +213,13 @@ func replaceTableAccessWithIndexedAccess(
 func replaceIndexedAccessInUnaryNode(
 	un plan.UnaryNode,
 	node sql.Node,
+	a *Analyzer,
 	schema sql.Schema,
 	scope *Scope,
 	joinIndexes joinIndexesByTable,
 	tableAliases TableAliases,
 ) (sql.Node, bool, error) {
-	newChild, replaced, err := replaceTableAccessWithIndexedAccess(un.Child, schema, scope, joinIndexes, tableAliases)
+	newChild, replaced, err := replaceTableAccessWithIndexedAccess(un.Child, a, schema, scope, joinIndexes, tableAliases)
 	if err != nil {
 		return nil, false, err
 	}
@@ -228,7 +230,7 @@ func replaceIndexedAccessInUnaryNode(
 
 	// For nodes that were above the join node, the field indexes might be wrong in the case that tables got reordered
 	// by join planning. So fix them.
-	newNode, err = FixFieldIndexesForExpressions(newNode, scope)
+	newNode, err = FixFieldIndexesForExpressions(a, newNode, scope)
 	if err != nil {
 		return nil, false, err
 	}

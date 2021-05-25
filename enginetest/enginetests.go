@@ -938,9 +938,13 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 
 	for _, assertion := range assertions {
 		if assertion.ExpectedErr != nil {
-			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+			})
 		} else if assertion.ExpectedErrStr != "" {
-			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+			})
 		} else if assertion.ExpectedWarning != 0 {
 			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
 		} else {
