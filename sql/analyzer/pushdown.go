@@ -312,31 +312,18 @@ func convertFiltersToIndexedAccess(
 				return nil, err
 			}
 
-			// Key expressions for aliased tables will have the name of the alias. Since the expression is on the table,
-			// not the alias, for consistency we should normalize them to the actual table name. This will allow other
-			// analyzer steps to match on them as necessary.
-			table, err = plan.TransformExpressionsUpWithNode(table, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
-				if _, ok := n.(*plan.TableAlias); ok {
-					return e, nil
-				}
-				return normalizeExpression(aliases, e), nil
-			})
-			if err != nil {
-				return nil, err
-			}
-
 			return plan.TransformUp(table, func(n sql.Node) (sql.Node, error) {
 				ita, ok := n.(*plan.IndexedTableAccess)
 				if !ok {
 					return n, nil
 				}
 
-				newExprs, err := FixFieldIndexes(scope, a, table.Schema(), ita.Expressions()[0])
+				newExprs, err := FixFieldIndexesOnExpressions(scope, a, table.Schema(), ita.Expressions()...)
 				if err != nil {
 					return nil, err
 				}
 
-				return ita.WithExpressions(newExprs)
+				return ita.WithExpressions(newExprs...)
 			})
 		case *plan.ResolvedTable:
 			table, err := pushdownIndexesToTable(a, node, indexes)

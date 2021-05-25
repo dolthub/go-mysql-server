@@ -93,12 +93,12 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    "select i from datetime_table where date_col = date('2019-12-31T12:00:00')",
-		Expected: []sql.Row{{1}},
+		Query:    "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
+		Expected: []sql.Row{},
 	}
 	fmt.Sprintf("%v", test)
 

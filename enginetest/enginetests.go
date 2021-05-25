@@ -3315,16 +3315,14 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 }
 
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
-	t.Run(q, func(t *testing.T) {
-		require := require.New(t)
-		sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-		require.NoError(err, "Unexpected error for query %s", q)
+	require := require.New(t)
+	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	require.NoError(err, "Unexpected error for query %s", q)
 
-		rows, err := sql.RowIterToRows(ctx, iter)
-		require.NoError(err, "Unexpected error for query %s", q)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(err, "Unexpected error for query %s", q)
 
-		checkResults(t, require, expected, expectedCols, sch, rows, q)
-	})
+	checkResults(t, require, expected, expectedCols, sch, rows, q)
 }
 
 func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string) {

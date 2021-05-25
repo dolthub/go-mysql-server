@@ -81,7 +81,7 @@ var OnceAfterDefault = []Rule{
 	{"optimize_joins", constructJoinPlan},
 	{"pushdown_filters", pushdownFilters},
 	{"subquery_indexes", applyIndexesFromOuterScope},
-	//{"in_subquery_indexes", applyIndexesForSubqueryComparisons},
+	{"in_subquery_indexes", applyIndexesForSubqueryComparisons},
 	{"pushdown_projections", pushdownProjections},
 	{"set_join_scope_len", setJoinScopeLen},
 	{"erase_projection", eraseProjection},
