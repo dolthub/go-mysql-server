@@ -421,7 +421,7 @@ var QueryTests = []QueryTest{
             	)
 			)) as greater_count
 			from mytable mt order by 1`,
-			Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
+		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
 	},
 	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
