@@ -97,8 +97,15 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
-		Expected: []sql.Row{},
+		Query: `select mt.i, 
+			((
+				select count(*) from mytable
+            	where i in (
+               		select mt2.i from mytable mt2 where mt2.i > mt.i
+            	)
+			)) as greater_count
+			from mytable mt order by 1`,
+		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
 	}
 	fmt.Sprintf("%v", test)
 
@@ -149,8 +156,6 @@ func TestSingleScript(t *testing.T) {
                                )
                              )) AS rack_count,
                              dcim_rackgroup.id,
-                             dcim_rackgroup.created,
-                             dcim_rackgroup.last_updated,
                              dcim_rackgroup._custom_field_data,
                              dcim_rackgroup.name,
                              dcim_rackgroup.slug,
@@ -161,18 +166,9 @@ func TestSingleScript(t *testing.T) {
                              dcim_rackgroup.rght,
                              dcim_rackgroup.tree_id,
                              dcim_rackgroup.level 
-                           FROM dcim_rackgroup`,
-
-					// where clause contains random UUID ids
-					//          WHERE dcim_rackgroup.id
-					//          IN ('2e3774bc890642c1be575a3e481ba6cb','ddee2d62d9dd432e982ac3ed429b190a',
-					//'9fbacbc1a1374dcaa7b594df2dd9b738','59426608cf1341a2806540e51981ca11',
-					//'a330c1c6168c48b0b81186ca20c626a6')
-					//          ORDER BY dcim_rackgroup.tree_id ASC,dcim_rackgroup.lft ASC;`,
-
-					Expected: []sql.Row{
-
-					},
+                           FROM dcim_rackgroup
+							order by 1 limit 1`,
+					Expected: []sql.Row{{0, "6707c20336a2406da6a9d394477f7e8c", sql.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 2", "parent-rack-group-2", "442bab8b517149ab87207e8fb5ba1569", interface{}(nil), "", uint64(1), uint64(2), uint64(2), uint64(0)}},
 				},
 			},
 		},
