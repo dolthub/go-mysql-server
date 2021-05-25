@@ -21,11 +21,11 @@ import (
 )
 
 // FixFieldIndexesOnExpressions executes FixFieldIndexes on a list of exprs.
-func FixFieldIndexesOnExpressions(scope *Scope, schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, error) {
+func FixFieldIndexesOnExpressions(scope *Scope, a *Analyzer, schema sql.Schema, expressions ...sql.Expression) ([]sql.Expression, error) {
 	var result = make([]sql.Expression, len(expressions))
 	for i, e := range expressions {
 		var err error
-		result[i], err = FixFieldIndexes(scope, schema, e)
+		result[i], err = FixFieldIndexes(scope, a, schema, e)
 		if err != nil {
 			return nil, err
 		}
@@ -36,7 +36,7 @@ func FixFieldIndexesOnExpressions(scope *Scope, schema sql.Schema, expressions .
 // FixFieldIndexes transforms the given expression by correcting the indexes of columns in GetField expressions,
 // according to the schema given. Used when combining multiple tables together into a single join result, or when
 // otherwise changing / combining schemas in the node tree.
-func FixFieldIndexes(scope *Scope, schema sql.Schema, exp sql.Expression) (sql.Expression, error) {
+func FixFieldIndexes(scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expression) (sql.Expression, error) {
 	scopeLen := len(scope.Schema())
 
 	return expression.TransformUp(exp, func(e sql.Expression) (sql.Expression, error) {
@@ -44,14 +44,19 @@ func FixFieldIndexes(scope *Scope, schema sql.Schema, exp sql.Expression) (sql.E
 		// For each GetField expression, re-index it with the appropriate index from the schema.
 		case *expression.GetField:
 			for i, col := range schema {
+				newIndex := scopeLen + i
 				if e.Name() == col.Name && e.Table() == col.Source {
-					return expression.NewGetFieldWithTable(
-						scopeLen+i,
-						e.Type(),
-						e.Table(),
-						e.Name(),
-						e.IsNullable(),
-					), nil
+					if newIndex != e.Index() {
+						a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
+						return expression.NewGetFieldWithTable(
+							newIndex,
+							e.Type(),
+							e.Table(),
+							e.Name(),
+							e.IsNullable(),
+						), nil
+					}
+					return e, nil
 				}
 			}
 
@@ -63,13 +68,18 @@ func FixFieldIndexes(scope *Scope, schema sql.Schema, exp sql.Expression) (sql.E
 				offset += len(schema)
 				for i, col := range schema {
 					if e.Name() == col.Name && e.Table() == col.Source {
-						return expression.NewGetFieldWithTable(
-							scopeLen-offset+i,
-							e.Type(),
-							e.Table(),
-							e.Name(),
-							e.IsNullable(),
-						), nil
+						newIndex := scopeLen - offset + i
+						if e.Index() != newIndex {
+							a.Log("Rewriting field %s.%s from index %d to %d", e.Table(), e.Name(), e.Index(), newIndex)
+							return expression.NewGetFieldWithTable(
+								newIndex,
+								e.Type(),
+								e.Table(),
+								e.Name(),
+								e.IsNullable(),
+							), nil
+						}
+						return e, nil
 					}
 				}
 			}
@@ -91,7 +101,7 @@ func schemas(nodes []sql.Node) sql.Schema {
 }
 
 // Transforms the expressions in the Node given, fixing the field indexes.
-func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error) {
+func FixFieldIndexesForExpressions(a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, nil
 	}
@@ -107,7 +117,7 @@ func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error
 
 	n, err := plan.TransformExpressions(node, func(e sql.Expression) (sql.Expression, error) {
 		for _, schema := range schemas {
-			fixed, err := FixFieldIndexes(scope, schema, e)
+			fixed, err := FixFieldIndexes(scope, a, schema, e)
 			if err == nil {
 				return fixed, nil
 			}
@@ -128,7 +138,7 @@ func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error
 
 	switch j := n.(type) {
 	case *plan.InnerJoin:
-		cond, err := FixFieldIndexes(scope, j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(scope, a, j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +148,7 @@ func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error
 			return nil, err
 		}
 	case *plan.RightJoin:
-		cond, err := FixFieldIndexes(scope, j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(scope, a, j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +158,7 @@ func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error
 			return nil, err
 		}
 	case *plan.LeftJoin:
-		cond, err := FixFieldIndexes(scope, j.Schema(), j.Cond)
+		cond, err := FixFieldIndexes(scope, a, j.Schema(), j.Cond)
 		if err != nil {
 			return nil, err
 		}
@@ -164,14 +174,14 @@ func FixFieldIndexesForExpressions(node sql.Node, scope *Scope) (sql.Node, error
 
 // Transforms the expressions in the Node given, fixing the field indexes. This is useful for Table nodes that have
 // expressions but no children.
-func FixFieldIndexesForTableNode(node sql.Node, scope *Scope) (sql.Node, error) {
+func FixFieldIndexesForTableNode(a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, nil
 	}
 
 	n, err := plan.TransformExpressions(node, func(e sql.Expression) (sql.Expression, error) {
 		schema := node.Schema()
-		fixed, err := FixFieldIndexes(scope, schema, e)
+		fixed, err := FixFieldIndexes(scope, a, schema, e)
 		if err != nil {
 			if ErrFieldMissing.Is(err) {
 				return e, nil

@@ -413,6 +413,28 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query: `select mt.i, 
+			((
+				select count(*) from mytable
+            	where i in (
+               		select mt2.i from mytable mt2 where mt2.i > mt.i
+            	)
+			)) as greater_count
+			from mytable mt order by 1`,
+		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
+	},
+	{
+		Query: `select mt.i, 
+			((
+				select count(*) from mytable
+            	where i in (
+               		select mt2.i from mytable mt2 where mt2.i = mt.i
+            	)
+			)) as eq_count
+			from mytable mt order by 1`,
+		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
+	},
+	{
 		Query: "WITH mt as (select i,s FROM mytable) SELECT s,i FROM mt;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
