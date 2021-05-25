@@ -93,7 +93,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
@@ -101,11 +101,11 @@ func TestSingleQuery(t *testing.T) {
 			((
 				select count(*) from mytable
             	where i in (
-               		select mt2.i from mytable mt2 where mt2.i > mt.i
+               		select mt2.i from mytable mt2 where mt2.i = mt.i
             	)
 			)) as greater_count
 			from mytable mt order by 1`,
-		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
+		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
 	}
 	fmt.Sprintf("%v", test)
 
@@ -119,7 +119,7 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
