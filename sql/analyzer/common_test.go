@@ -87,6 +87,10 @@ func gfCol(idx int, col *sql.Column) *expression.GetField {
 	return expression.NewGetFieldWithTable(idx, col.Type, col.Source, col.Name, true)
 }
 
+func gfColAlias(idx int, col *sql.Column, tableAlias string) *expression.GetField {
+	return expression.NewGetFieldWithTable(idx, col.Type, tableAlias, col.Name, true)
+}
+
 func uc(name string) *expression.UnresolvedColumn {
 	return expression.NewUnresolvedColumn(name)
 }
