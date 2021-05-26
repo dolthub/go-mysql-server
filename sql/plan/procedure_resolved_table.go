@@ -115,6 +115,10 @@ func (t *ProcedureResolvedTable) PartitionRows(ctx *sql.Context, partition sql.P
 	return rt.PartitionRows(ctx, partition)
 }
 
+func (t *ProcedureResolvedTable) IsTemporary() bool {
+	return t.ResolvedTable.IsTemporary()
+}
+
 // newestTable fetches the newest copy of the contained table from the database.
 func (t *ProcedureResolvedTable) newestTable(ctx *sql.Context) (*ResolvedTable, error) {
 	// If no database was given, such as with the "dual" table, then we return the given table as-is.
