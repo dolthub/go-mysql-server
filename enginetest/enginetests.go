@@ -180,10 +180,8 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		})
 		require.NoError(err)
 
-		ctx := harness.NewContext()
-
 		InsertRows(
-			t, ctx, mustInsertableTable(t, table),
+			t, NewContext(harness), mustInsertableTable(t, table),
 			sql.NewRow(int64(3), "red"),
 			sql.NewRow(int64(4), "red"),
 			sql.NewRow(int64(5), "orange"),
@@ -1000,7 +998,9 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 		} else if assertion.ExpectedWarning != 0 {
 			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
 		} else {
-			TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
+			t.Run(assertion.Query, func(t *testing.T) {
+				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
+			})
 		}
 	}
 }
