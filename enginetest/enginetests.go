@@ -986,10 +986,12 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 	assertions := script.Assertions
 
 	for _, assertion := range assertions {
-		clientSession, ok := clientSessions[assertion.Client]
+		client := getClient(assertion.Query)
+
+		clientSession, ok := clientSessions[client]
 		if !ok {
 			clientSession = NewSession(harness)
-			clientSessions[assertion.Client] = clientSession
+			clientSessions[client] = clientSession
 		}
 		if assertion.ExpectedErr != nil {
 			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
@@ -1001,6 +1003,21 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 			TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 		}
 	}
+}
+
+func getClient(query string) string {
+	startCommentIdx := strings.Index(query, "/*")
+	endCommentIdx := strings.Index(query, "*/")
+	if startCommentIdx < 0 || endCommentIdx < 0 {
+		panic("no client comment found in query " + query)
+	}
+
+	query = query[startCommentIdx+2:endCommentIdx]
+	if strings.Index(query, "client ") < 0 {
+		panic("no client comment found in query " + query)
+	}
+
+	return strings.TrimSpace(strings.TrimPrefix(query, "client"))
 }
 
 // This method is the only place we can reliably test newly created views, because view definitions live in the
