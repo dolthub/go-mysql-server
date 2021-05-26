@@ -861,8 +861,8 @@ var ScriptTests = []ScriptTest{
                              dcim_rackgroup.tree_id,
                              dcim_rackgroup.level 
                            FROM dcim_rackgroup
-							order by 1 limit 1`,
-				Expected: []sql.Row{{0, "6707c20336a2406da6a9d394477f7e8c", sql.JSONDocument{Val: map[string]interface{}{}}, "Parent Rack Group 2", "parent-rack-group-2", "442bab8b517149ab87207e8fb5ba1569", interface{}(nil), "", uint64(1), uint64(2), uint64(2), uint64(0)}},
+							order by 2 limit 1`,
+				Expected: []sql.Row{{1, "5c107f979f434bf7a7820622f18a5211", sql.JSONDocument{Val:map[string]interface {}{}}, "Parent Rack Group 1", "parent-rack-group-1", "f0471f313b694d388c8ec39d9590e396", interface {}(nil), "", uint64(1), uint64(2), uint64(1), uint64(0)}},
 			},
 		},
 	},
