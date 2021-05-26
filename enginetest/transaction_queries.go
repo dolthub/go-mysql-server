@@ -44,7 +44,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
@@ -52,7 +52,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
@@ -73,7 +73,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}},
 			},
 			{
@@ -91,7 +91,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
@@ -99,11 +99,11 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
@@ -111,7 +111,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
@@ -119,11 +119,11 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
@@ -148,7 +148,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}},
 			},
 			// should commit any pending transaction
@@ -157,17 +157,17 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{}},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}},
 			},
 			// client a sees the committed transaction from client b when it begins a new transaction
 			{
-				Query: "/* client a */ set autocommit = on",
+				Query:    "/* client a */ set autocommit = on",
 				Expected: []sql.Row{{}},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
-				Expected: []sql.Row{{1, 1}, {2,2}},
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 		},
 	},
@@ -195,7 +195,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			// After commit, autocommit turns back on
@@ -204,7 +204,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
@@ -241,7 +241,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
@@ -249,15 +249,15 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
-				Query: "/* client a */ rollback",
+				Query:    "/* client a */ rollback",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
@@ -265,23 +265,23 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
-				Query: "/* client a */ commit",
+				Query:    "/* client a */ commit",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
-				Query: "/* client b */ rollback",
+				Query:    "/* client b */ rollback",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
@@ -318,7 +318,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client a */ savepoint spa1",
+				Query:    "/* client a */ savepoint spa1",
 				Expected: []sql.Row{},
 			},
 			{
@@ -334,7 +334,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client a */ savepoint spa2",
+				Query:    "/* client a */ savepoint spa2",
 				Expected: []sql.Row{},
 			},
 			{
@@ -350,12 +350,12 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}, {6,6}},
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}, {6, 6}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{{1, 1}, {3, 3}, {5, 5}, {7,7}},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}, {5, 5}, {7, 7}},
 			},
 			{
 				Query:    "/* client a */ rollback to spa2",
@@ -366,19 +366,19 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}, {5, 5}},
 			},
 			{
-				Query:    "/* client a */ rollback to spa2",
+				Query:       "/* client a */ rollback to spa2",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
-				Query:    "/* client b */ rollback to spb2",
+				Query:       "/* client b */ rollback to spb2",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
@@ -390,27 +390,27 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
-				Query:    "/* client a */ rollback to spa2",
+				Query:       "/* client a */ rollback to spa2",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
-				Query:    "/* client b */ rollback to spb2",
+				Query:       "/* client b */ rollback to spb2",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
-				Query:    "/* client a */ rollback to spa1",
+				Query:       "/* client a */ rollback to spa1",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
-				Query:    "/* client b */ rollback to spb1",
+				Query:       "/* client b */ rollback to spb1",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
@@ -422,11 +422,11 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 		},
@@ -463,7 +463,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query: "/* client a */ savepoint spa1",
+				Query:    "/* client a */ savepoint spa1",
 				Expected: []sql.Row{},
 			},
 			{
@@ -471,7 +471,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ release savepoint spa1",
+				Query:    "/* client a */ release savepoint spa1",
 				Expected: []sql.Row{},
 			},
 			{
@@ -479,19 +479,19 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query:    "/* client a */ rollback to spa1",
+				Query:       "/* client a */ rollback to spa1",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
-				Query:    "/* client b */ rollback to spb1",
+				Query:       "/* client b */ rollback to spb1",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
-				Query: "/* client a */ select * from a order by b",
+				Query:    "/* client a */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
-				Query: "/* client b */ select * from a order by b",
+				Query:    "/* client b */ select * from a order by b",
 				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 		},

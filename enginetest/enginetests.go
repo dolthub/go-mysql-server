@@ -1013,7 +1013,7 @@ func getClient(query string) string {
 		panic("no client comment found in query " + query)
 	}
 
-	query = query[startCommentIdx+2:endCommentIdx]
+	query = query[startCommentIdx+2 : endCommentIdx]
 	if strings.Index(query, "client ") < 0 {
 		panic("no client comment found in query " + query)
 	}
