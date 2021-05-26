@@ -991,17 +991,18 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 			clientSession = NewSession(harness)
 			clientSessions[client] = clientSession
 		}
-		if assertion.ExpectedErr != nil {
-			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-		} else if assertion.ExpectedErrStr != "" {
-			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-		} else if assertion.ExpectedWarning != 0 {
-			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
-		} else {
-			t.Run(assertion.Query, func(t *testing.T) {
+
+		t.Run(assertion.Query, func(t *testing.T) {
+			if assertion.ExpectedErr != nil {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, assertion.ExpectedErr)
+			} else if assertion.ExpectedErrStr != "" {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
+			} else if assertion.ExpectedWarning != 0 {
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+			} else {
 				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
-			})
-		}
+			}
+		})
 	}
 }
 
@@ -2860,7 +2861,11 @@ func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query s
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	ctx := NewContext(harness)
+	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
+}
+
+// AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
+func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
 	_, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
