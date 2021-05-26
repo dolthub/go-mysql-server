@@ -15,8 +15,9 @@
 package enginetest
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -877,7 +878,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT dcim_interface.id, dcim_interface._custom_field_data, dcim_interface.device_id, dcim_interface.name, dcim_interface.label, dcim_interface.description, dcim_interface.cable_id, dcim_interface._cable_peer_type_id, dcim_interface._cable_peer_id, dcim_interface._path_id, dcim_interface.enabled, dcim_interface.mac_address, dcim_interface.mtu, dcim_interface.mode, dcim_interface._name, dcim_interface.lag_id, dcim_interface.type, dcim_interface.mgmt_only, dcim_interface.untagged_vlan_id FROM dcim_interface INNER JOIN dcim_device ON (dcim_interface.device_id = dcim_device.id) INNER JOIN dcim_interface T3 ON (dcim_interface.lag_id = T3.id) WHERE (dcim_interface.device_id IN (SELECT U0.id FROM dcim_device U0 WHERE U0.virtual_chassis_id = '943f8560f24746d3af1e69189d431a34') AND dcim_interface.lag_id IS NOT NULL AND NOT (T3.device_id = dcim_interface.device_id)) ORDER BY dcim_device._name ASC, (dcim_interface._name) COLLATE utf8mb4_bin ASC;`,
+				Query:       `SELECT dcim_interface.id, dcim_interface._custom_field_data, dcim_interface.device_id, dcim_interface.name, dcim_interface.label, dcim_interface.description, dcim_interface.cable_id, dcim_interface._cable_peer_type_id, dcim_interface._cable_peer_id, dcim_interface._path_id, dcim_interface.enabled, dcim_interface.mac_address, dcim_interface.mtu, dcim_interface.mode, dcim_interface._name, dcim_interface.lag_id, dcim_interface.type, dcim_interface.mgmt_only, dcim_interface.untagged_vlan_id FROM dcim_interface INNER JOIN dcim_device ON (dcim_interface.device_id = dcim_device.id) INNER JOIN dcim_interface T3 ON (dcim_interface.lag_id = T3.id) WHERE (dcim_interface.device_id IN (SELECT U0.id FROM dcim_device U0 WHERE U0.virtual_chassis_id = '943f8560f24746d3af1e69189d431a34') AND dcim_interface.lag_id IS NOT NULL AND NOT (T3.device_id = dcim_interface.device_id)) ORDER BY dcim_device._name ASC, (dcim_interface._name) COLLATE utf8mb4_bin ASC;`,
 				ExpectedErr: analyzer.ErrFieldMissing,
 			},
 		},
