@@ -209,6 +209,7 @@ type Table interface {
 	Schema() Schema
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
+	IsTemporary() bool
 }
 
 // TableWrapper is a node that wraps the real table. This is needed because
@@ -538,6 +539,12 @@ type TriggerDatabase interface {
 	// DropTrigger is called when a trigger should no longer be stored. The name has already been validated.
 	// Returns ErrTriggerDoesNotExist if the trigger was not found.
 	DropTrigger(ctx *Context, name string) error
+}
+
+// TemporaryTableDatabase is a database that can query the session (which stores temporary tables) to
+// retrieve the name of all temporary tables.
+type TemporaryTableDatabase interface {
+	GetAllTemporaryTables(ctx *Context) ([]Table, error)
 }
 
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.

@@ -31,7 +31,6 @@ type Database struct {
 
 var _ sql.Database = (*Database)(nil)
 var _ sql.TableCreator = (*Database)(nil)
-var _ sql.TemporaryTableCreator = (*Database)(nil)
 var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
@@ -144,13 +143,6 @@ func (d *Database) CreateTable(ctx *sql.Context, name string, schema sql.Schema)
 	d.tables[name] = table
 	return nil
 }
-
-// Since an in memory database doesn't have the concept of a session. We simply refer to
-// a temporary table as a normal table for testing purposes.
-func (d *Database) CreateTemporaryTable(ctx *sql.Context, name string, schema sql.Schema) error {
-	return d.CreateTable(ctx, name, schema)
-}
-
 
 // DropTable drops the table with the given name
 func (d *Database) DropTable(ctx *sql.Context, name string) error {
