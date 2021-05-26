@@ -45,10 +45,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
 				Query:    "/* client b */ insert into a values (3, 3)",
@@ -56,11 +53,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client a */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
 	},
@@ -81,9 +74,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-				},
+				Expected: []sql.Row{{1, 1}},
 			},
 			{
 				Query:    "/* client b */ insert into a values (2, 2)",
@@ -101,10 +92,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
 				Query:    "/* client b */ commit",
@@ -112,17 +100,11 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client a */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{3, 3},
-				},
+				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
 				Query:    "/* client a */ commit",
@@ -130,10 +112,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
 				Query:    "/* client b */ start transaction",
@@ -141,19 +120,54 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
 				Query: "/* client a */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+		},
+	},
+	{
+		Name: "toggle autocommit",
+		SetUpScript: []string{
+			"create table a (b int primary key, c int)",
+			"insert into a values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ insert into a values (2,2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query: "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}},
+			},
+			// should commit any pending transaction
+			{
+				Query:    "/* client b */ set autocommit = on",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}},
+			},
+			// client a sees the committed transaction from client b when it begins a new transaction
+			{
+				Query: "/* client a */ set autocommit = on",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query: "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2,2}},
 			},
 		},
 	},
@@ -182,10 +196,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			// After commit, autocommit turns back on
 			{
@@ -194,11 +205,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query: "/* client b */ select * from a order by b",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
 	},
