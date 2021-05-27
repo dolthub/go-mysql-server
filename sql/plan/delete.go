@@ -138,8 +138,13 @@ func (d *deleteIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema, ctx *sql.Context) *deleteIter {
-	return &deleteIter{deleter: deleter, childIter: childIter, schema: schema, ctx: ctx}
+func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema, ctx *sql.Context) sql.RowIter {
+	return NewTableEditorIter(ctx, deleter, &deleteIter{
+		deleter:   deleter,
+		childIter: childIter,
+		schema:    schema,
+		ctx:       ctx,
+	})
 }
 
 // WithChildren implements the Node interface.

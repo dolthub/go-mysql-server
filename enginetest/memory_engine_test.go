@@ -373,6 +373,12 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestScripts(t *testing.T) {
+	//TODO: when foreign keys are implemented in the memory table, we can do the following test
+	for i := len(enginetest.ScriptTests) - 1; i >= 0; i-- {
+		if enginetest.ScriptTests[i].Name == "failed statements data validation for DELETE, REPLACE" {
+			enginetest.ScriptTests = append(enginetest.ScriptTests[:i], enginetest.ScriptTests[i+1:]...)
+		}
+	}
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 

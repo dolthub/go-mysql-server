@@ -166,7 +166,7 @@ func newInsertIter(
 	checks sql.CheckConstraints,
 	row sql.Row,
 	ignore bool,
-) (*insertIter, error) {
+) (sql.RowIter, error) {
 	dstSchema := table.Schema()
 
 	insertable, err := GetInsertable(table)
@@ -194,8 +194,7 @@ func newInsertIter(
 	}
 
 	insertExpressions := getInsertExpressions(values)
-
-	return &insertIter{
+	insertIter := &insertIter{
 		schema:      dstSchema,
 		tableNode:   table,
 		inserter:    inserter,
@@ -207,7 +206,13 @@ func newInsertIter(
 		checks:      checks,
 		ctx:         ctx,
 		ignore:      ignore,
-	}, nil
+	}
+
+	if replacer != nil {
+		return NewTableEditorIter(ctx, replacer, insertIter), nil
+	} else {
+		return NewTableEditorIter(ctx, inserter, insertIter), nil
+	}
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
