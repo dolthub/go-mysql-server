@@ -209,14 +209,14 @@ func newUpdateIter(
 	schema sql.Schema,
 	updater sql.RowUpdater,
 	checks sql.CheckConstraints,
-) *updateIter {
-	return &updateIter{
+) sql.RowIter {
+	return NewTableEditorIter(ctx, updater, &updateIter{
 		childIter: childIter,
 		updater:   updater,
 		schema:    schema,
 		checks:    checks,
 		ctx:       ctx,
-	}
+	})
 }
 
 // RowIter implements the Node interface.

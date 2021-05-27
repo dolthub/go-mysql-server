@@ -56,6 +56,66 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		Name: "failed statements data validation for INSERT, UPDATE",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
+			"INSERT INTO test VALUES (1,1), (4,4), (5,5);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "INSERT INTO test VALUES (2,2), (3,3), (1,1);",
+				ExpectedErrStr: "duplicate primary key given: [1]",
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+			},
+			{
+				Query:          "UPDATE test SET pk = pk + 1;",
+				ExpectedErrStr: "duplicate primary key given: [5]",
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+			},
+		},
+	},
+	{
+		Name: "failed statements data validation for DELETE, REPLACE",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
+			"INSERT INTO test VALUES (1,1), (4,4), (5,5);",
+			"CREATE TABLE test2 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_test FOREIGN KEY (pk) REFERENCES test (v1));",
+			"INSERT INTO test2 VALUES (4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "DELETE FROM test WHERE pk > 0;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+			},
+			{
+				Query:    "SELECT * FROM test2;",
+				Expected: []sql.Row{{4}},
+			},
+			{
+				Query:       "REPLACE INTO test VALUES (1,7), (4,8), (5,9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+			},
+			{
+				Query:    "SELECT * FROM test2;",
+				Expected: []sql.Row{{4}},
+			},
+		},
+	},
+	{
 		Name: "delete with in clause",
 		SetUpScript: []string{
 			"create table a (x int primary key)",

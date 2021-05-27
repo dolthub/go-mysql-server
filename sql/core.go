@@ -341,6 +341,20 @@ type CheckAlterableTable interface {
 	DropCheck(ctx *Context, chName string) error
 }
 
+// TableEditor is the base interface for sub interfaces that can update rows in a table during an INSERT, REPLACE,
+// UPDATE, or DELETE statement.
+type TableEditor interface {
+	// StatementBegin is called before the first operation of a statement. Integrators should mark the state of the data
+	// in some way that it may be returned to in the case of an error.
+	StatementBegin(ctx *Context)
+	// DiscardChanges is called if a statement encounters an error, and all current changes since the statement beginning
+	// should be discarded.
+	DiscardChanges(ctx *Context, errorEncountered error) error
+	// StatementComplete is called after the last operation of the statement, indicating that it has successfully completed.
+	// The mark set in StatementBegin may be removed, and a new one should be created on the next StatementBegin.
+	StatementComplete(ctx *Context) error
+}
+
 // InsertableTable is a table that can process insertion of new rows.
 type InsertableTable interface {
 	Table
@@ -351,6 +365,7 @@ type InsertableTable interface {
 
 // RowInserter is an insert cursor that can insert one or more values to a table.
 type RowInserter interface {
+	TableEditor
 	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
 	// for the insert operation, which may involve many rows. After all rows in an operation have been processed, Close
 	// is called.
@@ -369,6 +384,7 @@ type DeletableTable interface {
 
 // RowDeleter is a delete cursor that can delete one or more rows from a table.
 type RowDeleter interface {
+	TableEditor
 	// Delete deletes the given row. Returns ErrDeleteRowNotFound if the row was not found. Delete will be called once for
 	// each row to process for the delete operation, which may involve many rows. After all rows have been processed,
 	// Close is called.
@@ -419,6 +435,7 @@ type Closer interface {
 // TODO: We can't embed those interfaces because go 1.13 doesn't allow for overlapping interfaces (they both declare
 //  Close). Go 1.14 fixes this problem, but we aren't ready to drop support for 1.13 yet.
 type RowReplacer interface {
+	TableEditor
 	// Insert inserts the row given, returning an error if it cannot. Insert will be called once for each row to process
 	// for the replace operation, which may involve many rows. After all rows in an operation have been processed, Close
 	// is called.
@@ -449,6 +466,7 @@ type UpdatableTable interface {
 
 // RowUpdater is an update cursor that can update one or more rows in a table.
 type RowUpdater interface {
+	TableEditor
 	// Update the given row. Provides both the old and new rows.
 	Update(ctx *Context, old Row, new Row) error
 	// Close finalizes the update operation, persisting the result.
