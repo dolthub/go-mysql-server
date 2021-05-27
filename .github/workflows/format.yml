@@ -44,7 +44,9 @@ jobs:
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
       - name: Install goimports
-        run: go get golang.org/x/tools/cmd/goimports
+        run: |
+          go mod download golang.org/x/tools
+          go install golang.org/x/tools/cmd/goimports
       - name: Format repo
         run: |
           ./format_repo.sh
