@@ -5,7 +5,34 @@ on:
     branches: [ master ]
 
 jobs:
+  verify:
+    name: Verify format
+    runs-on: ubuntu-18.04
+    outputs:
+      skip-format: ${{ steps.check_format.outputs.skip-format }}
+    steps:
+      - name: Setup Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Check all
+        id: check_format
+        run: |
+          ./check_repo.sh
+          succeeded=$(echo "$?")
+          if [ "$succeeded" -ne 0 ]; then
+            echo "::set-output name=skip-format::true"
+          fi
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          CHANGE_TARGET: ${{ github.base_ref }}
   format:
+    needs: verify
+    if: ${{ needs.verify.outputs.skip-format != 'true' }}
     name: Format PR
     runs-on: ubuntu-18.04
     steps:
@@ -37,22 +64,3 @@ jobs:
           message: "[ga-format-pr] Run ./format_repo.sh to fix formatting"
           add: "."
           cwd: "."
-  verify:
-    name: Verify format
-    runs-on: ubuntu-18.04
-    steps:
-      - name: Setup Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.15
-        id: go
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Check all
-        working-directory: ./
-        run: |
-          ./check_repo.sh
-        env:
-          BRANCH_NAME: ${{ github.head_ref }}
-          CHANGE_TARGET: ${{ github.base_ref }}
