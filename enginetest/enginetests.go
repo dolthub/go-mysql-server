@@ -180,10 +180,8 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		})
 		require.NoError(err)
 
-		ctx := harness.NewContext()
-
 		InsertRows(
-			t, ctx, mustInsertableTable(t, table),
+			t, NewContext(harness), mustInsertableTable(t, table),
 			sql.NewRow(int64(3), "red"),
 			sql.NewRow(int64(4), "red"),
 			sql.NewRow(int64(5), "orange"),
@@ -986,21 +984,41 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 	assertions := script.Assertions
 
 	for _, assertion := range assertions {
-		clientSession, ok := clientSessions[assertion.Client]
+		client := getClient(assertion.Query)
+
+		clientSession, ok := clientSessions[client]
 		if !ok {
 			clientSession = NewSession(harness)
-			clientSessions[assertion.Client] = clientSession
+			clientSessions[client] = clientSession
 		}
-		if assertion.ExpectedErr != nil {
-			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-		} else if assertion.ExpectedErrStr != "" {
-			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-		} else if assertion.ExpectedWarning != 0 {
-			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
-		} else {
-			TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
-		}
+
+		t.Run(assertion.Query, func(t *testing.T) {
+			if assertion.ExpectedErr != nil {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, assertion.ExpectedErr)
+			} else if assertion.ExpectedErrStr != "" {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
+			} else if assertion.ExpectedWarning != 0 {
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+			} else {
+				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
+			}
+		})
 	}
+}
+
+func getClient(query string) string {
+	startCommentIdx := strings.Index(query, "/*")
+	endCommentIdx := strings.Index(query, "*/")
+	if startCommentIdx < 0 || endCommentIdx < 0 {
+		panic("no client comment found in query " + query)
+	}
+
+	query = query[startCommentIdx+2 : endCommentIdx]
+	if strings.Index(query, "client ") < 0 {
+		panic("no client comment found in query " + query)
+	}
+
+	return strings.TrimSpace(strings.TrimPrefix(query, "client"))
 }
 
 // This method is the only place we can reliably test newly created views, because view definitions live in the
@@ -2843,7 +2861,11 @@ func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query s
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
-	ctx := NewContext(harness)
+	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
+}
+
+// AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
+func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
 	_, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)

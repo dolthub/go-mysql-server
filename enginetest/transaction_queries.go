@@ -25,14 +25,10 @@ type TransactionTest struct {
 	// Setup scripts are run as a distinct client separate from the client used in any assertions.
 	SetUpScript []string
 	// The set of assertions to make after setup, in order
-	Assertions []TransactionTestAssertion
-}
-
-type TransactionTestAssertion struct {
-	// Client the name of the client executing the assertions. If the client name hasn't been seen before during this
-	// script, a new session is created for them. Otherwise, the existing session for them will be reused.
-	Client string
-	ScriptTestAssertion
+	// The transaction test runner augments the ScriptTest runner by allowing embedding of a client string in a query
+	// comment to name the client running the query, like so:
+	// /* client a */ select * from myTable
+	Assertions []ScriptTestAssertion
 }
 
 var TransactionTests = []TransactionTest{
@@ -42,41 +38,22 @@ var TransactionTests = []TransactionTest{
 			"create table a (b int primary key, c int)",
 			"insert into a values (1, 1)",
 		},
-		Assertions: []TransactionTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "insert into a values (2, 2)",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
+				Query:    "/* client a */ insert into a values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-					},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "insert into a values (3, 3)",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
+				Query:    "/* client b */ insert into a values (3, 3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-						{3, 3},
-					},
-				},
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 		},
 	},
@@ -86,135 +63,111 @@ var TransactionTests = []TransactionTest{
 			"create table a (b int primary key, c int)",
 			"insert into a values (1, 1)",
 		},
-		Assertions: []TransactionTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "set autocommit = off",
-					Expected: []sql.Row{{}},
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "/* client b */ insert into a values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query: "/* client a */ select * from a order by b",
+				Expected: []sql.Row{
+					{1, 1},
 				},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "set autocommit = off",
-					Expected: []sql.Row{{}},
-				},
+				Query:    "/* client a */ insert into a values (3,3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-					},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "insert into a values (2, 2)",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
+				Query:    "/* client b */ commit",
+				Expected: []sql.Row{},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-					},
-				},
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "insert into a values (3,3)",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-					},
-				},
+				Query:    "/* client a */ commit",
+				Expected: []sql.Row{},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "commit",
-					Expected: []sql.Row{},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{3, 3},
-					},
-				},
+				Query:    "/* client b */ start transaction",
+				Expected: []sql.Row{},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-					},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "commit",
-					Expected: []sql.Row{},
-				},
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+		},
+	},
+	{
+		Name: "toggle autocommit",
+		SetUpScript: []string{
+			"create table a (b int primary key, c int)",
+			"insert into a values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-					},
-				},
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "start transaction",
-					Expected: []sql.Row{},
-				},
+				Query:    "/* client b */ insert into a values (2,2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-						{3, 3},
-					},
-				},
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}},
+			},
+			// should commit any pending transaction
+			{
+				Query:    "/* client b */ set autocommit = on",
+				Expected: []sql.Row{{}},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-						{3, 3},
-					},
-				},
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}},
+			},
+			// client a sees the committed transaction from client b when it begins a new transaction
+			{
+				Query:    "/* client a */ set autocommit = on",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 		},
 	},
@@ -224,63 +177,322 @@ var TransactionTests = []TransactionTest{
 			"create table a (b int primary key, c int)",
 			"insert into a values (1, 1)",
 		},
-		Assertions: []TransactionTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "start transaction",
-					Expected: []sql.Row{},
-				},
+				Query:    "/* client a */ start transaction",
+				Expected: []sql.Row{},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "insert into a values (2, 2)",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
+				Query:    "/* client a */ insert into a values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "select * from a order by b",
-					Expected: []sql.Row{{1, 1}},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}},
 			},
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "commit",
-					Expected: []sql.Row{},
-				},
+				Query:    "/* client a */ commit",
+				Expected: []sql.Row{},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-					},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
 			},
 			// After commit, autocommit turns back on
 			{
-				Client: "a",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query:    "insert into a values (3, 3)",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
+				Query:    "/* client a */ insert into a values (3, 3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Client: "b",
-				ScriptTestAssertion: ScriptTestAssertion{
-					Query: "select * from a order by b",
-					Expected: []sql.Row{
-						{1, 1},
-						{2, 2},
-						{3, 3},
-					},
-				},
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+		},
+	},
+	{
+		Name: "rollback",
+		SetUpScript: []string{
+			"create table a (b int primary key, c int)",
+			"insert into a values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into a values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into a values (3, 3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client b */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client a */ rollback",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+			{
+				Query:    "/* client a */ insert into a values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+			{
+				Query:    "/* client a */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+			{
+				Query:    "/* client b */ rollback",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+		},
+	},
+	{
+		Name: "rollback to savepoint",
+		SetUpScript: []string{
+			"create table a (b int primary key, c int)",
+			"insert into a values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into a values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into a values (3, 3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ savepoint spa1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ savepoint spb1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into a values (4, 4)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into a values (5, 5)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ savepoint spa2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ savepoint spb2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into a values (6, 6)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into a values (7, 7)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}, {6, 6}},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}, {5, 5}, {7, 7}},
+			},
+			{
+				Query:    "/* client a */ rollback to spa2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ rollback to spb2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {4, 4}},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}, {5, 5}},
+			},
+			{
+				Query:       "/* client a */ rollback to spa2",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:       "/* client b */ rollback to spb2",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:    "/* client a */ rollback to spa1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ rollback to spb1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+			{
+				Query:       "/* client a */ rollback to spa2",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:       "/* client b */ rollback to spb2",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:       "/* client a */ rollback to spa1",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:       "/* client b */ rollback to spb1",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:    "/* client a */ rollback",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+		},
+	},
+	{
+		Name: "release savepoint",
+		SetUpScript: []string{
+			"create table a (b int primary key, c int)",
+			"insert into a values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into a values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into a values (3, 3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ savepoint spa1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ savepoint spb1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ release savepoint spa1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ release savepoint spb1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "/* client a */ rollback to spa1",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:       "/* client b */ rollback to spb1",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:    "/* client a */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client b */ select * from a order by b",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
 			},
 		},
 	},
