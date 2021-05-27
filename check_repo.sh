@@ -2,6 +2,7 @@
 
 set -eo pipefail
 
+go mod download golang.org/x/tools
 go install golang.org/x/tools/cmd/goimports
 
 paths=`find . -maxdepth 1 -mindepth 1 \( -name gen -prune -o -type d -print -o -type f -name '*.go' -print \)`
