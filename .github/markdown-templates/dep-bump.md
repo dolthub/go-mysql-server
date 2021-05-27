@@ -5,7 +5,6 @@
 The initial changes contained in this PR were produced by `go get`ing the dependency.
 
 ```
-$ cd ./go
 $ go get github.com/dolthub/<dependency>/go@<commit>
 ```
 
