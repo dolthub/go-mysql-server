@@ -144,13 +144,13 @@ func NewCreateTable(db sql.Database, name string, ifNotExists bool, temporary bo
 }
 
 // NewCreateTableLike creates a new CreateTable node for CREATE TABLE LIKE statements
-// TODO: Can you do create temporary with LIKe?
-func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifNotExists bool) *CreateTable {
+func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifNotExists bool, temporary bool) *CreateTable {
 	return &CreateTable{
 		ddlNode:     ddlNode{db},
 		name:        name,
 		ifNotExists: ifNotExists,
 		like:        likeTable,
+		temporary: temporary,
 	}
 }
 

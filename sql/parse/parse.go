@@ -1203,6 +1203,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			c.Table.Name.String(),
 			plan.NewUnresolvedTable(c.OptLike.LikeTable.Name.String(), c.OptLike.LikeTable.Qualifier.String()),
 			c.IfNotExists,
+			c.Temporary,
 		), nil
 	}
 
