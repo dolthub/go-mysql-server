@@ -456,6 +456,71 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
+		Name: "release savepoint",
+		SetUpScript: []string{
+			"create table t (x int primary key, y int)",
+			"insert into t values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ insert into t values (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into t values (3, 3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ savepoint spa1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ savepoint spb1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ release savepoint Spa1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ release savepoint sPb1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "/* client a */ rollback to spa1",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:       "/* client b */ rollback to spb1",
+				ExpectedErr: sql.ErrSavepointDoesNotExist,
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client b */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+		},
+	},
+	{
 		Name: "overwrite savepoint",
 		SetUpScript: []string{
 			"create table t (x int primary key, y int)",
