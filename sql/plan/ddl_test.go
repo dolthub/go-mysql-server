@@ -54,33 +54,6 @@ func TestCreateTable(t *testing.T) {
 	require.NoError(createTable(t, db, "testTable", s, true, false))
 }
 
-func TestCreateTemporaryTable(t *testing.T) {
-	require := require.New(t)
-
-	db := memory.NewDatabase("test")
-	tables := db.Tables()
-	_, ok := tables["testTable"]
-	require.False(ok)
-
-	s := sql.Schema{
-		{Name: "c1", Type: sql.Text},
-		{Name: "c2", Type: sql.Int32},
-	}
-
-	require.NoError(createTable(t, db, "testTable", s, false, true))
-
-	tables = db.Tables()
-
-	newTable, ok := tables["testTable"]
-	require.True(ok)
-
-	require.Equal(newTable.Schema(), s)
-
-	for _, s := range newTable.Schema() {
-		require.Equal("testTable", s.Source)
-	}
-}
-
 func TestDropTable(t *testing.T) {
 	require := require.New(t)
 

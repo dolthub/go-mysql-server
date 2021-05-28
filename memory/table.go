@@ -58,9 +58,6 @@ type Table struct {
 	// AUTO_INCREMENT bookkeeping
 	autoIncVal interface{}
 	autoColIdx int
-
-	// TEMPORARY bookkeeping
-	temporary bool
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -83,15 +80,11 @@ var _ sql.ProjectedTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
-	return NewPartitionedTable(name, schema, 0, false)
-}
-
-func NewTemporaryTable(name string, schema sql.Schema) *Table {
-	return NewPartitionedTable(name, schema, 0, true)
+	return NewPartitionedTable(name, schema, 0)
 }
 
 // NewPartitionedTable creates a new Table with the given name, schema and number of partitions.
-func NewPartitionedTable(name string, schema sql.Schema, numPartitions int, temporary bool) *Table {
+func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 
@@ -122,7 +115,6 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int, temp
 		keys:       keys,
 		autoIncVal: autoIncVal,
 		autoColIdx: autoIncIdx,
-		temporary: temporary,
 	}
 }
 
@@ -191,8 +183,9 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 }
 
 // IsTemporary implements the sql.Table interface
+// TODO: Make memory table support temporary
 func (t *Table) IsTemporary() bool {
-	return t.temporary
+	return false
 }
 
 func (t *Table) NumRows(ctx *sql.Context) (uint64, error) {

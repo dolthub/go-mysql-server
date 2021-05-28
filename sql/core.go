@@ -541,7 +541,7 @@ type TriggerDatabase interface {
 	DropTrigger(ctx *Context, name string) error
 }
 
-// TemporaryTableDatabase is a database that can query the session (which stores temporary tables) to
+// TemporaryTableDatabase is a database that can query the session (which manages the temporary table state) to
 // retrieve the name of all temporary tables.
 type TemporaryTableDatabase interface {
 	GetAllTemporaryTables(ctx *Context) ([]Table, error)
@@ -628,7 +628,7 @@ type TableCreator interface {
 }
 
 type TemporaryTableCreator interface {
-	// Creates the table with the given name and schema. If a table with that name already exists, must return
+	// Creates the table with the given name and schema. If a temporary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     table with that name already exists, must return
 	// sql.ErrTableAlreadyExists. A temporary table should not persist after a session.
 	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
 }

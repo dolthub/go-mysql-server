@@ -133,6 +133,10 @@ func (t *dummyTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (s
 	return sql.RowsToRowIter(rows...), nil
 }
 
+func (t *dummyTable) IsTemporary() bool {
+	panic("not implemented")
+}
+
 type partition struct {
 	key []byte
 }
