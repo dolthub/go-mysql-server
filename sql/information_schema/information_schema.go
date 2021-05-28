@@ -1044,8 +1044,8 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				rowIter: emptyRowIter,
 			},
 			InnoDBTempTableName: &informationSchemaTable{
-				name: InnoDBTempTableName,
-				schema: innoDBTempTableSchema,
+				name:    InnoDBTempTableName,
+				schema:  innoDBTempTableSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
 			},

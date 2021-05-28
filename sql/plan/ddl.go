@@ -139,7 +139,7 @@ func NewCreateTable(db sql.Database, name string, ifNotExists bool, temporary bo
 		chDefs:      tableSpec.ChDefs,
 		idxDefs:     tableSpec.IdxDefs,
 		ifNotExists: ifNotExists,
-		temporary: temporary,
+		temporary:   temporary,
 	}
 }
 
@@ -150,7 +150,7 @@ func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifNotE
 		name:        name,
 		ifNotExists: ifNotExists,
 		like:        likeTable,
-		temporary: temporary,
+		temporary:   temporary,
 	}
 }
 
