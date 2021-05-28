@@ -519,7 +519,7 @@ var TransactionTests = []TransactionTest{
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 			{
-				Query:    "/* client a */ release savepoint spa1",
+				Query:       "/* client a */ release savepoint spa1",
 				ExpectedErr: sql.ErrSavepointDoesNotExist,
 			},
 		},
