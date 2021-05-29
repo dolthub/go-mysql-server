@@ -922,6 +922,29 @@ func keyColumnConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// innoDBTempTableIter returns info on the temporary tables stored in the session.
+// TODO: Since Table ids and Space are not yet supported this table is not completely accurate yet.
+func innoDBTempTableIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases() {
+		tb, ok := db.(TemporaryTableDatabase)
+		if !ok {
+			continue
+		}
+
+		tables, err := tb.GetAllTemporaryTables(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, table := range tables {
+			rows = append(rows, Row{i, table.String(), len(table.Schema()), 0})
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 func emptyRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
@@ -1047,7 +1070,7 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				name:    InnoDBTempTableName,
 				schema:  innoDBTempTableSchema,
 				catalog: cat,
-				rowIter: emptyRowIter,
+				rowIter: innoDBTempTableIter,
 			},
 		},
 	}
