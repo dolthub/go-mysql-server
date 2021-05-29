@@ -1226,6 +1226,21 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(2)}},
 	},
 	{
+		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT ?;",
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(1, sql.Int8),
+		},
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
+		Query:    "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(1, sql.Int8),
+			"v2": expression.NewLiteral(1, sql.Int8),
+		},
+		Expected: []sql.Row{{int64(3)}},
+	},
+	{
 		Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM (SELECT * FROM (SELECT i as i, s as s FROM mytable) f) s)",
 		Expected: []sql.Row{},
 	},

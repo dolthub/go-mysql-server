@@ -23,11 +23,11 @@ import (
 // Offset is a node that skips the first N rows.
 type Offset struct {
 	UnaryNode
-	Offset int64
+	Offset sql.Expression
 }
 
 // NewOffset creates a new Offset node.
-func NewOffset(n int64, child sql.Node) *Offset {
+func NewOffset(n sql.Expression, child sql.Node) *Offset {
 	return &Offset{
 		UnaryNode: UnaryNode{Child: child},
 		Offset:    n,
@@ -36,19 +36,24 @@ func NewOffset(n int64, child sql.Node) *Offset {
 
 // Resolved implements the Resolvable interface.
 func (o *Offset) Resolved() bool {
-	return o.Child.Resolved()
+	return o.Child.Resolved() && o.Offset.Resolved()
 }
 
 // RowIter implements the Node interface.
 func (o *Offset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Offset", opentracing.Tag{Key: "offset", Value: o.Offset})
 
+	offset, err := getInt64Value(ctx, o.Offset)
+	if err != nil {
+		return nil, err
+	}
+
 	it, err := o.Child.RowIter(ctx, row)
 	if err != nil {
 		span.Finish()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &offsetIter{o.Offset, it}), nil
+	return sql.NewSpanIter(span, &offsetIter{offset, it}), nil
 }
 
 // WithChildren implements the Node interface.
@@ -61,7 +66,7 @@ func (o *Offset) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (o Offset) String() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Offset(%d)", o.Offset)
+	_ = pr.WriteNode("Offset(%s)", o.Offset)
 	_ = pr.WriteChildren(o.Child.String())
 	return pr.String()
 }
