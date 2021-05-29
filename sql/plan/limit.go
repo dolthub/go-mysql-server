@@ -38,6 +38,19 @@ func NewLimit(size sql.Expression, child sql.Node) *Limit {
 	}
 }
 
+// Expressions implements sql.Expressioner
+func (o *Limit) Expressions() []sql.Expression {
+	return []sql.Expression{o.Limit}
+}
+
+// WithExpressions implements sql.Expressioner
+func (o *Limit) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(o, len(exprs), 1)
+	}
+	return NewLimit(exprs[0], o.Child), nil
+}
+
 // Resolved implements the Resolvable interface.
 func (l *Limit) Resolved() bool {
 	return l.UnaryNode.Child.Resolved() && l.Limit.Resolved()

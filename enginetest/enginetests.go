@@ -435,7 +435,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 					t.Skipf("skipping query %s", tt.Query)
 				}
 			}
-			AssertErr(t, engine, harness, tt.Query, tt.ExpectedErr)
+			AssertErrWithBindings(t, engine, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
 		})
 	}
 }
@@ -2862,6 +2862,25 @@ func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query s
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
 	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
+}
+
+// AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
+// type of error.
+func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query string, bindings map[string]sql.Expression, expectedErrKind *errors.Kind, errStrs ...string) {
+	ctx := NewContext(harness)
+	_, iter, err := e.QueryWithBindings(ctx, query, bindings)
+	if err == nil {
+		_, err = sql.RowIterToRows(ctx, iter)
+	}
+	require.Error(t, err)
+	if expectedErrKind != nil {
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+	}
+	// If there are multiple error strings then we only match against the first
+	if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
+	}
+
 }
 
 // AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness

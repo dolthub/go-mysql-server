@@ -5807,6 +5807,7 @@ var ExplodeQueries = []QueryTest{
 
 type QueryErrorTest struct {
 	Query       string
+	Bindings    map[string]sql.Expression
 	ExpectedErr *errors.Kind
 }
 
@@ -6009,6 +6010,34 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT a FROM (select i,s FROM mytable) mt (a,b,c) order by a desc;",
 		ExpectedErr: sql.ErrColumnCountMismatch,
+	},
+	{
+		Query:       "SELECT i FROM mytable limit ?",
+		ExpectedErr: sql.ErrInvalidSyntax,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(-100, sql.Int8),
+		},
+	},
+	{
+		Query:       "SELECT i FROM mytable limit ?",
+		ExpectedErr: sql.ErrInvalidType,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral("100", sql.LongText),
+		},
+	},
+	{
+		Query:       "SELECT i FROM mytable limit 10, ?",
+		ExpectedErr: sql.ErrInvalidSyntax,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(-100, sql.Int8),
+		},
+	},
+	{
+		Query:       "SELECT i FROM mytable limit 10, ?",
+		ExpectedErr: sql.ErrInvalidType,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral("100", sql.LongText),
+		},
 	},
 }
 

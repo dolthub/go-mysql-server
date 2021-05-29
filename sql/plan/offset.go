@@ -34,6 +34,19 @@ func NewOffset(n sql.Expression, child sql.Node) *Offset {
 	}
 }
 
+// Expressions implements sql.Expressioner
+func (o *Offset) Expressions() []sql.Expression {
+	return []sql.Expression{o.Offset}
+}
+
+// WithExpressions implements sql.Expressioner
+func (o *Offset) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(o, len(exprs), 1)
+	}
+	return NewOffset(exprs[0], o.Child), nil
+}
+
 // Resolved implements the Resolvable interface.
 func (o *Offset) Resolved() bool {
 	return o.Child.Resolved() && o.Offset.Resolved()
