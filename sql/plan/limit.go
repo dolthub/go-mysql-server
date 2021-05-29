@@ -39,16 +39,18 @@ func NewLimit(size sql.Expression, child sql.Node) *Limit {
 }
 
 // Expressions implements sql.Expressioner
-func (o *Limit) Expressions() []sql.Expression {
-	return []sql.Expression{o.Limit}
+func (l *Limit) Expressions() []sql.Expression {
+	return []sql.Expression{l.Limit}
 }
 
 // WithExpressions implements sql.Expressioner
-func (o *Limit) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (l Limit) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(o, len(exprs), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(l, len(exprs), 1)
 	}
-	return NewLimit(exprs[0], o.Child), nil
+	nl := &l
+	nl.Limit = exprs[0]
+	return nl, nil
 }
 
 // Resolved implements the Resolvable interface.
@@ -71,7 +73,7 @@ func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 	return sql.NewSpanIter(span, &limitIter{
-		l: l,
+		l:         l,
 		limit:     limit,
 		childIter: childIter,
 	}), nil

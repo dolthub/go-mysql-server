@@ -1222,6 +1222,10 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
+		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 0;",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
 		Expected: []sql.Row{{int64(2)}},
 	},
