@@ -198,7 +198,7 @@ func TestIsParallelizable(t *testing.T) {
 		{
 			"limit",
 			plan.NewLimit(
-				5,
+				expression.NewLiteral(5, sql.Int8),
 				plan.NewResolvedTable(nil, nil, nil),
 			),
 			false,
@@ -206,7 +206,7 @@ func TestIsParallelizable(t *testing.T) {
 		{
 			"offset",
 			plan.NewOffset(
-				5,
+				expression.NewLiteral(5, sql.Int8),
 				plan.NewResolvedTable(nil, nil, nil),
 			),
 			false,

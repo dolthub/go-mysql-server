@@ -98,6 +98,16 @@ func getInt64Value(ctx *sql.Context, expr sql.Expression) (int64, error) {
 		return int64(i), nil
 	case int64:
 		return i, nil
+	case uint:
+		return int64(i), nil
+	case uint8:
+		return int64(i), nil
+	case uint16:
+		return int64(i), nil
+	case uint32:
+		return int64(i), nil
+	case uint64:
+		return int64(i), nil
 	default:
 		// analyzer should catch this already
 		panic(fmt.Sprintf("Unsupported type for limit %T", i))
