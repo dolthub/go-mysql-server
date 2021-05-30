@@ -17,10 +17,10 @@ package plan
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 func TestOffsetPlan(t *testing.T) {
