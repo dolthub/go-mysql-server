@@ -32,4 +32,4 @@ require (
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 )
 
-go 1.13
+go 1.15
