@@ -180,10 +180,8 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		})
 		require.NoError(err)
 
-		ctx := harness.NewContext()
-
 		InsertRows(
-			t, ctx, mustInsertableTable(t, table),
+			t, NewContext(harness), mustInsertableTable(t, table),
 			sql.NewRow(int64(3), "red"),
 			sql.NewRow(int64(4), "red"),
 			sql.NewRow(int64(5), "orange"),
@@ -437,7 +435,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 					t.Skipf("skipping query %s", tt.Query)
 				}
 			}
-			AssertErr(t, engine, harness, tt.Query, tt.ExpectedErr)
+			AssertErrWithBindings(t, engine, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
 		})
 	}
 }
@@ -938,9 +936,13 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 
 	for _, assertion := range assertions {
 		if assertion.ExpectedErr != nil {
-			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
+			})
 		} else if assertion.ExpectedErrStr != "" {
-			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
+			})
 		} else if assertion.ExpectedWarning != 0 {
 			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
 		} else {
@@ -982,21 +984,41 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 	assertions := script.Assertions
 
 	for _, assertion := range assertions {
-		clientSession, ok := clientSessions[assertion.Client]
+		client := getClient(assertion.Query)
+
+		clientSession, ok := clientSessions[client]
 		if !ok {
 			clientSession = NewSession(harness)
-			clientSessions[assertion.Client] = clientSession
+			clientSessions[client] = clientSession
 		}
-		if assertion.ExpectedErr != nil {
-			AssertErr(t, e, harness, assertion.Query, assertion.ExpectedErr)
-		} else if assertion.ExpectedErrStr != "" {
-			AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
-		} else if assertion.ExpectedWarning != 0 {
-			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
-		} else {
-			TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
-		}
+
+		t.Run(assertion.Query, func(t *testing.T) {
+			if assertion.ExpectedErr != nil {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, assertion.ExpectedErr)
+			} else if assertion.ExpectedErrStr != "" {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
+			} else if assertion.ExpectedWarning != 0 {
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+			} else {
+				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
+			}
+		})
 	}
+}
+
+func getClient(query string) string {
+	startCommentIdx := strings.Index(query, "/*")
+	endCommentIdx := strings.Index(query, "*/")
+	if startCommentIdx < 0 || endCommentIdx < 0 {
+		panic("no client comment found in query " + query)
+	}
+
+	query = query[startCommentIdx+2 : endCommentIdx]
+	if strings.Index(query, "client ") < 0 {
+		panic("no client comment found in query " + query)
+	}
+
+	return strings.TrimSpace(strings.TrimPrefix(query, "client"))
 }
 
 // This method is the only place we can reliably test newly created views, because view definitions live in the
@@ -2839,7 +2861,30 @@ func RunQueryWithContext(t *testing.T, e *sqle.Engine, ctx *sql.Context, query s
 
 // AssertErr asserts that the given query returns an error during its execution, optionally specifying a type of error.
 func AssertErr(t *testing.T, e *sqle.Engine, harness Harness, query string, expectedErrKind *errors.Kind, errStrs ...string) {
+	AssertErrWithCtx(t, e, NewContext(harness), query, expectedErrKind, errStrs...)
+}
+
+// AssertErrWithBindings asserts that the given query returns an error during its execution, optionally specifying a
+// type of error.
+func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query string, bindings map[string]sql.Expression, expectedErrKind *errors.Kind, errStrs ...string) {
 	ctx := NewContext(harness)
+	_, iter, err := e.QueryWithBindings(ctx, query, bindings)
+	if err == nil {
+		_, err = sql.RowIterToRows(ctx, iter)
+	}
+	require.Error(t, err)
+	if expectedErrKind != nil {
+		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+	}
+	// If there are multiple error strings then we only match against the first
+	if len(errStrs) >= 1 {
+		require.Equal(t, errStrs[0], err.Error())
+	}
+
+}
+
+// AssertErrWithCtx is the same as AssertErr, but uses the context given instead of creating one from a harness
+func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query string, expectedErrKind *errors.Kind, errStrs ...string) {
 	_, iter, err := e.Query(ctx, query)
 	if err == nil {
 		_, err = sql.RowIterToRows(ctx, iter)
@@ -3365,16 +3410,14 @@ func TestQuery(t *testing.T, harness Harness, e *sqle.Engine, q string, expected
 }
 
 func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q string, expected []sql.Row, expectedCols []*sql.Column, bindings map[string]sql.Expression) {
-	t.Run(q, func(t *testing.T) {
-		require := require.New(t)
-		sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-		require.NoError(err, "Unexpected error for query %s", q)
+	require := require.New(t)
+	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
+	require.NoError(err, "Unexpected error for query %s", q)
 
-		rows, err := sql.RowIterToRows(ctx, iter)
-		require.NoError(err, "Unexpected error for query %s", q)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(err, "Unexpected error for query %s", q)
 
-		checkResults(t, require, expected, expectedCols, sch, rows, q)
-	})
+	checkResults(t, require, expected, expectedCols, sch, rows, q)
 }
 
 func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string) {

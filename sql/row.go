@@ -99,6 +99,7 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 		}
 
 		if err != nil {
+			_ = i.Close(ctx)
 			return nil, err
 		}
 

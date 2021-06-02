@@ -192,16 +192,16 @@ func transformPushdownFilters(a *Analyzer, n sql.Node, scope *Scope, tableAliase
 				if err != nil {
 					return nil, err
 				}
-				return FixFieldIndexesForExpressions(n, scope)
+				return FixFieldIndexesForExpressions(a, n, scope)
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
 				table, err := pushdownFiltersToTable(a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
 					return nil, err
 				}
 				return table, nil
-				return FixFieldIndexesForExpressions(table, scope)
+				return FixFieldIndexesForExpressions(a, table, scope)
 			default:
-				return FixFieldIndexesForExpressions(node, scope)
+				return FixFieldIndexesForExpressions(a, node, scope)
 			}
 		})
 	}
@@ -239,7 +239,7 @@ func transformPushdownSubqueryAliasFilters(a *Analyzer, n sql.Node, scope *Scope
 			case *plan.Filter:
 				return removePushedDownPredicates(a, node, filters)
 			case *plan.SubqueryAlias:
-				return pushdownFiltersUnderSubqueryAlias(node, filters)
+				return pushdownFiltersUnderSubqueryAlias(a, node, filters)
 			default:
 				return node, nil
 			}
@@ -312,24 +312,18 @@ func convertFiltersToIndexedAccess(
 				return nil, err
 			}
 
-			// Key expressions for aliased tables will have the name of the alias. Since the expression is on the table,
-			// not the alias, for consistency we should normalize them to the actual table name. This will allow other
-			// analyzer steps to match on them as necessary.
-			table, err = plan.TransformExpressionsUpWithNode(table, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
-				if _, ok := n.(*plan.TableAlias); ok {
-					return e, nil
-				}
-				return normalizeExpression(aliases, e), nil
-			})
-			if err != nil {
-				return nil, err
-			}
-
 			return plan.TransformUp(table, func(n sql.Node) (sql.Node, error) {
-				if _, ok := n.(*plan.IndexedTableAccess); !ok {
+				ita, ok := n.(*plan.IndexedTableAccess)
+				if !ok {
 					return n, nil
 				}
-				return FixFieldIndexesForTableNode(n, scope)
+
+				newExprs, err := FixFieldIndexesOnExpressions(scope, a, table.Schema(), ita.Expressions()...)
+				if err != nil {
+					return nil, err
+				}
+
+				return ita.WithExpressions(newExprs...)
 			})
 		case *plan.ResolvedTable:
 			table, err := pushdownIndexesToTable(a, node, indexes)
@@ -339,9 +333,9 @@ func convertFiltersToIndexedAccess(
 
 			// We can't use FixFieldIndexesForExpressions here, because it uses the schema of children, and
 			// ResolvedTable doesn't have any.
-			return FixFieldIndexesForTableNode(table, scope)
+			return FixFieldIndexesForTableNode(a, table, scope)
 		default:
-			return FixFieldIndexesForExpressions(node, scope)
+			return FixFieldIndexesForExpressions(a, node, scope)
 		}
 	})
 
@@ -361,7 +355,7 @@ func pushdownFiltersToTable(
 	tableAliases TableAliases,
 ) (sql.Node, error) {
 	if sa, ok := tableNode.(*plan.SubqueryAlias); ok {
-		return pushdownFiltersUnderSubqueryAlias(sa, filters)
+		return pushdownFiltersUnderSubqueryAlias(a, sa, filters)
 	}
 
 	table := getTable(tableNode)
@@ -378,7 +372,7 @@ func pushdownFiltersToTable(
 		filters.markFiltersHandled(handled...)
 		schema := table.Schema()
 
-		handled, err := FixFieldIndexesOnExpressions(scope, schema, handled...)
+		handled, err := FixFieldIndexesOnExpressions(scope, a, schema, handled...)
 		if err != nil {
 			return nil, err
 		}
@@ -402,7 +396,7 @@ func pushdownFiltersToTable(
 		filters.markFiltersHandled(tableFilters...)
 
 		schema := tableNode.Schema()
-		handled, err := FixFieldIndexesOnExpressions(scope, schema, tableFilters...)
+		handled, err := FixFieldIndexesOnExpressions(scope, a, schema, tableFilters...)
 		if err != nil {
 			return nil, err
 		}
@@ -439,14 +433,14 @@ func pushdownFiltersToTable(
 // Opaque, it behaves a little bit like a FilteredTable, and pushing the
 // filters down below it can help find index usage opportunities later in the
 // analysis phase.
-func pushdownFiltersUnderSubqueryAlias(sa *plan.SubqueryAlias, filters *filterSet) (sql.Node, error) {
+func pushdownFiltersUnderSubqueryAlias(a *Analyzer, sa *plan.SubqueryAlias, filters *filterSet) (sql.Node, error) {
 	handled := filters.availableFiltersForTable(sa.Name())
 	if len(handled) == 0 {
 		return sa, nil
 	}
 	filters.markFiltersHandled(handled...)
 	schema := sa.Schema()
-	handled, err := FixFieldIndexesOnExpressions(nil, schema, handled...)
+	handled, err := FixFieldIndexesOnExpressions(nil, a, schema, handled...)
 	if err != nil {
 		return nil, err
 	}
@@ -579,9 +573,9 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 			if err != nil {
 				return nil, err
 			}
-			return FixFieldIndexesForExpressions(table, scope)
+			return FixFieldIndexesForExpressions(a, table, scope)
 		} else {
-			return FixFieldIndexesForExpressions(node, scope)
+			return FixFieldIndexesForExpressions(a, node, scope)
 		}
 	})
 

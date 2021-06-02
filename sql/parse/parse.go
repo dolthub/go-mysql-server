@@ -627,7 +627,7 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		}
 	} else if ok, val := sql.HasDefaultValue(ctx, ctx.Session, "sql_select_limit"); !ok {
 		limit := mustCastNumToInt64(val)
-		node = plan.NewLimit(limit, node)
+		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
 	}
 
 	// Finally, if common table expressions were provided, wrap the top-level node in a With node to capture them
@@ -1870,13 +1870,9 @@ func limitToLimit(
 	limit sqlparser.Expr,
 	child sql.Node,
 ) (*plan.Limit, error) {
-	rowCount, err := getInt64Value(ctx, limit, "LIMIT with non-integer literal")
+	rowCount, err := ExprToExpression(ctx, limit)
 	if err != nil {
 		return nil, err
-	}
-
-	if rowCount < 0 {
-		return nil, ErrUnsupportedSyntax.New("LIMIT must be >= 0")
 	}
 
 	return plan.NewLimit(rowCount, child), nil
@@ -1896,16 +1892,12 @@ func offsetToOffset(
 	offset sqlparser.Expr,
 	child sql.Node,
 ) (*plan.Offset, error) {
-	o, err := getInt64Value(ctx, offset, "OFFSET with non-integer literal")
+	rowCount, err := ExprToExpression(ctx, offset)
 	if err != nil {
 		return nil, err
 	}
 
-	if o < 0 {
-		return nil, ErrUnsupportedSyntax.New("OFFSET must be >= 0")
-	}
-
-	return plan.NewOffset(o, child), nil
+	return plan.NewOffset(rowCount, child), nil
 }
 
 // getInt64Literal returns an int64 *expression.Literal for the value given, or an unsupported error with the string
@@ -1916,6 +1908,12 @@ func getInt64Literal(ctx *sql.Context, expr sqlparser.Expr, errStr string) (*exp
 		return nil, err
 	}
 
+	switch e := e.(type) {
+	case *expression.Literal:
+		if !sql.IsInteger(e.Type()) {
+			return nil, ErrUnsupportedFeature.New(errStr)
+		}
+	}
 	nl, ok := e.(*expression.Literal)
 	if !ok || !sql.IsInteger(nl.Type()) {
 		return nil, ErrUnsupportedFeature.New(errStr)

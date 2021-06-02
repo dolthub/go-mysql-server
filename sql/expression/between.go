@@ -36,6 +36,10 @@ func (b *Between) String() string {
 	return fmt.Sprintf("(%s BETWEEN %s AND %s)", b.Val, b.Lower, b.Upper)
 }
 
+func (b *Between) DebugString() string {
+	return fmt.Sprintf("(%s BETWEEN %s AND %s)", sql.DebugString(b.Val), sql.DebugString(b.Lower), sql.DebugString(b.Upper))
+}
+
 // Children implements the Expression interface.
 func (b *Between) Children() []sql.Expression {
 	return []sql.Expression{b.Val, b.Lower, b.Upper}

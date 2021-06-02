@@ -285,6 +285,10 @@ var (
 	// ErrTableCreatedNotFound is thrown when an integrator attempts to create a temporary tables without temporary table
 	// support.
 	ErrTemporaryTableNotSupported = errors.NewKind("database does not support temporary tables")
+
+	// ErrInvalidSyntax is returned for syntax errors that aren't picked up by the parser, e.g. the wrong type of
+	// expression used in part of statement.
+	ErrInvalidSyntax = errors.NewKind("Invalid syntax: %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

@@ -42,8 +42,8 @@ func includeTable(includedTables []string, tableName string) bool {
 // wrapInTransaction runs the function given surrounded in a transaction. If the db provided doesn't implement
 // sql.TransactionDatabase, then the function is simply run and the transaction logic is a no-op.
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
+	ctx := NewContext(harness).WithCurrentDB(db.Name())
 	if tdb, ok := db.(sql.TransactionDatabase); ok {
-		ctx := NewContext(harness)
 		tx, err := tdb.StartTransaction(ctx)
 		require.NoError(t, err)
 		ctx.SetTransaction(tx)
@@ -52,10 +52,12 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 	fn()
 
 	if tdb, ok := db.(sql.TransactionDatabase); ok {
-		ctx := NewContext(harness)
-		err := tdb.CommitTransaction(ctx, ctx.GetTransaction())
-		require.NoError(t, err)
-		ctx.SetTransaction(nil)
+		tx := ctx.GetTransaction()
+		if tx != nil {
+			err := tdb.CommitTransaction(ctx, tx)
+			require.NoError(t, err)
+			ctx.SetTransaction(nil)
+		}
 	}
 }
 
@@ -71,11 +73,12 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	// transaction without committing the work done so far.
 	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
 	// when adding data to it
-	wrapInTransaction(t, myDb, harness, func() {
-		var table sql.Table
-		var err error
+	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+	var table sql.Table
+	var err error
 
-		if includeTable(includedTables, "mytable") {
+	if includeTable(includedTables, "mytable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "mytable", sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 				{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
@@ -89,9 +92,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "mytable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "one_pk") {
+	if includeTable(includedTables, "one_pk") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "one_pk", sql.Schema{
 				{Name: "pk", Type: sql.Int8, Source: "one_pk", PrimaryKey: true},
 				{Name: "c1", Type: sql.Int8, Source: "one_pk"},
@@ -110,9 +115,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "two_pk") {
+	if includeTable(includedTables, "two_pk") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "two_pk", sql.Schema{
 				{Name: "pk1", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
 				{Name: "pk2", Type: sql.Int8, Source: "two_pk", PrimaryKey: true},
@@ -132,9 +139,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "two_pk", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "othertable") {
+	if includeTable(includedTables, "othertable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "othertable", sql.Schema{
 				{Name: "s2", Type: sql.Text, Source: "othertable"},
 				{Name: "i2", Type: sql.Int64, Source: "othertable", PrimaryKey: true},
@@ -148,9 +157,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "othertable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "tabletest") {
+	if includeTable(includedTables, "tabletest") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "tabletest", sql.Schema{
 				{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
 				{Name: "s", Type: sql.Text, Source: "tabletest"},
@@ -164,9 +175,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "tabletest", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "emptytable") {
+	if includeTable(includedTables, "emptytable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "emptytable", sql.Schema{
 				{Name: "i", Type: sql.Int32, Source: "emptytable", PrimaryKey: true},
 				{Name: "s", Type: sql.Text, Source: "emptytable"},
@@ -175,9 +188,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			if err != nil {
 				t.Logf("Warning: could not create table %s: %s", "tabletest", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "other_table") {
+	if includeTable(includedTables, "other_table") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(foo, "other_table", sql.Schema{
 				{Name: "text", Type: sql.Text, Source: "other_table", PrimaryKey: true},
 				{Name: "number", Type: sql.Int32, Source: "other_table"},
@@ -191,9 +206,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "other_table", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "bigtable") {
+	if includeTable(includedTables, "bigtable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "bigtable", sql.Schema{
 				{Name: "t", Type: sql.Text, Source: "bigtable", PrimaryKey: true},
 				{Name: "n", Type: sql.Int64, Source: "bigtable"},
@@ -218,9 +235,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "bigtable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "floattable") {
+	if includeTable(includedTables, "floattable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "floattable", sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "floattable", PrimaryKey: true},
 				{Name: "f32", Type: sql.Float32, Source: "floattable"},
@@ -238,9 +257,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "floattable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "people") {
+	if includeTable(includedTables, "people") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "people", sql.Schema{
 				{Name: "dob", Type: sql.Date, Source: "people", PrimaryKey: true},
 				{Name: "first_name", Type: sql.Text, Source: "people", PrimaryKey: true},
@@ -260,9 +281,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "niltable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "niltable") {
+	if includeTable(includedTables, "niltable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "niltable", sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "niltable", PrimaryKey: true},
 				{Name: "i2", Type: sql.Int64, Source: "niltable", Nullable: true},
@@ -281,9 +304,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "niltable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "newlinetable") {
+	if includeTable(includedTables, "newlinetable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "newlinetable", sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "newlinetable", PrimaryKey: true},
 				{Name: "s", Type: sql.Text, Source: "newlinetable"},
@@ -299,9 +324,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "newlinetable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "typestable") {
+	if includeTable(includedTables, "typestable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "typestable", sql.Schema{
 				{Name: "id", Type: sql.Int64, Source: "typestable", PrimaryKey: true},
 				{Name: "i8", Type: sql.Int8, Source: "typestable", Nullable: true},
@@ -351,9 +378,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "typestable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "datetime_table") {
+	if includeTable(includedTables, "datetime_table") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "datetime_table", sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "datetime_table", Nullable: false, PrimaryKey: true},
 				{Name: "date_col", Type: sql.Date, Source: "datetime_table", Nullable: true},
@@ -368,9 +397,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					sql.NewRow(3, mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z")),
 				)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "stringandtable") {
+	if includeTable(includedTables, "stringandtable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "stringandtable", sql.Schema{
 				{Name: "k", Type: sql.Int64, Source: "stringandtable", PrimaryKey: true},
 				{Name: "i", Type: sql.Int64, Source: "stringandtable", Nullable: true},
@@ -389,9 +420,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "stringandtable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "reservedWordsTable") {
+	if includeTable(includedTables, "reservedWordsTable") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "reservedWordsTable", sql.Schema{
 				{Name: "Timestamp", Type: sql.Text, Source: "reservedWordsTable", PrimaryKey: true},
 				{Name: "and", Type: sql.Text, Source: "reservedWordsTable", Nullable: true},
@@ -405,9 +438,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "reservedWordsTable", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "fk_tbl") {
+	if includeTable(includedTables, "fk_tbl") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "fk_tbl", sql.Schema{
 				{Name: "pk", Type: sql.Int64, Source: "fk_tbl", PrimaryKey: true},
 				{Name: "a", Type: sql.Int64, Source: "fk_tbl", Nullable: true},
@@ -423,9 +458,11 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "fk_tbl", err)
 			}
-		}
+		})
+	}
 
-		if includeTable(includedTables, "auto_increment_tbl") {
+	if includeTable(includedTables, "auto_increment_tbl") {
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "auto_increment_tbl", sql.Schema{
 				{Name: "pk", Type: sql.Int64, Source: "auto_increment_tbl", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
 				{Name: "c0", Type: sql.Int64, Source: "auto_increment_tbl", Nullable: true},
@@ -442,15 +479,17 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
 			}
+		})
+	}
+
+	if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
+		includeTable(includedTables, "myhistorytable") {
+		versionedDb, ok := myDb.(sql.VersionedDatabase)
+		if !ok {
+			panic("VersionedDbTestHarness must provide a VersionedDatabase implementation")
 		}
 
-		if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
-			includeTable(includedTables, "myhistorytable") {
-			versionedDb, ok := myDb.(sql.VersionedDatabase)
-			if !ok {
-				panic("VersionedDbTestHarness must provide a VersionedDatabase implementation")
-			}
-
+		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
 				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
@@ -464,9 +503,13 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
 			}
+		})
 
+		wrapInTransaction(t, myDb, harness, func() {
 			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-01"))
+		})
 
+		wrapInTransaction(t, myDb, harness, func() {
 			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.Schema{
 				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
 				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
@@ -484,13 +527,18 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "myhistorytable", err)
 			}
+		})
 
+		wrapInTransaction(t, myDb, harness, func() {
 			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02"))
-		}
+		})
+	}
 
-		if keyless, ok := harness.(KeylessTableHarness); ok &&
-			keyless.SupportsKeylessTables() &&
-			includeTable(includedTables, "keyless") {
+	if keyless, ok := harness.(KeylessTableHarness); ok &&
+		keyless.SupportsKeylessTables() &&
+		includeTable(includedTables, "keyless") {
+
+		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "keyless", sql.Schema{
 				{Name: "c0", Type: sql.Int64, Source: "keyless", Nullable: true},
 				{Name: "c1", Type: sql.Int64, Source: "keyless", Nullable: true},
@@ -505,8 +553,8 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "keyless", err)
 			}
-		}
-	})
+		})
+	}
 
 	return []sql.Database{myDb, foo}
 }

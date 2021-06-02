@@ -105,6 +105,60 @@ var DefaultValidationRules = []Rule{
 	{validateUnionSchemasMatchRule, validateUnionSchemasMatch},
 }
 
+// validateLimitAndOffset ensures that only integer literals are used for limit and offset values
+func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.Limit:
+			switch e := n.Limit.(type) {
+			case *expression.Literal:
+				if !sql.IsInteger(e.Type()) {
+					return nil, sql.ErrInvalidType.New(e.Type().String())
+				}
+				i, err := e.Eval(ctx, nil)
+				if err != nil {
+					return nil, err
+				}
+
+				i64, err := sql.Int64.Convert(i)
+				if err != nil {
+					return nil, err
+				}
+				if i64.(int64) < 0 {
+					return nil, sql.ErrInvalidSyntax.New("negative limit")
+				}
+			default:
+				return nil, sql.ErrInvalidType.New(e.Type().String())
+			}
+			return n, nil
+		case *plan.Offset:
+			switch e := n.Offset.(type) {
+			case *expression.Literal:
+				if !sql.IsInteger(e.Type()) {
+					return nil, sql.ErrInvalidType.New(e.Type().String())
+				}
+				i, err := e.Eval(ctx, nil)
+				if err != nil {
+					return nil, err
+				}
+
+				i64, err := sql.Int64.Convert(i)
+				if err != nil {
+					return nil, err
+				}
+				if i64.(int64) < 0 {
+					return nil, sql.ErrInvalidSyntax.New("negative offset")
+				}
+			default:
+				return nil, sql.ErrInvalidType.New(e.Type().String())
+			}
+			return n, nil
+		default:
+			return n, nil
+		}
+	})
+}
+
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("validate_is_resolved")
 	defer span.Finish()
