@@ -60,6 +60,8 @@ func (p *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 func (p *Literal) String() string {
 	switch v := p.value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%d", v)
 	case string:
 		return fmt.Sprintf("%q", v)
 	case []byte:

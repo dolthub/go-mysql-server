@@ -281,6 +281,10 @@ var (
 	// ErrSavepointDoesNotExist is returned when a RELEASE SAVEPOINT or ROLLBACK TO SAVEPOINT statement references a
 	// non-existent savepoint identifier
 	ErrSavepointDoesNotExist = errors.NewKind("SAVEPOINT %s does not exist")
+
+	// ErrInvalidSyntax is returned for syntax errors that aren't picked up by the parser, e.g. the wrong type of
+	// expression used in part of statement.
+	ErrInvalidSyntax = errors.NewKind("Invalid syntax: %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

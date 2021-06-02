@@ -25,6 +25,7 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -78,7 +79,7 @@ func parseShowWarnings(ctx *sql.Context, s string) (sql.Node, error) {
 			return nil, errInvalidIndex.New("offset", offset)
 		}
 	}
-	node = plan.NewOffset(int64(offset), node)
+	node = plan.NewOffset(expression.NewLiteral(offset, sql.Int64), node)
 	if cntstr != "" {
 		if count, err = strconv.Atoi(cntstr); err != nil {
 			return nil, err
@@ -87,7 +88,7 @@ func parseShowWarnings(ctx *sql.Context, s string) (sql.Node, error) {
 			return nil, errInvalidIndex.New("count", count)
 		}
 		if count > 0 {
-			node = plan.NewLimit(int64(count), node)
+			node = plan.NewLimit(expression.NewLiteral(count, sql.Int64), node)
 		}
 	}
 

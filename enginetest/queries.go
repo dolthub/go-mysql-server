@@ -1222,8 +1222,27 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(1)}},
 	},
 	{
+		Query:    "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT 0;",
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    "SELECT i FROM mytable ORDER BY i LIMIT 1 OFFSET 1;",
 		Expected: []sql.Row{{int64(2)}},
+	},
+	{
+		Query: "SELECT i FROM mytable WHERE s = 'first row' ORDER BY i DESC LIMIT ?;",
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(1, sql.Int8),
+		},
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
+		Query: "SELECT i FROM mytable ORDER BY i LIMIT ? OFFSET 2;",
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(1, sql.Int8),
+			"v2": expression.NewLiteral(1, sql.Int8),
+		},
+		Expected: []sql.Row{{int64(3)}},
 	},
 	{
 		Query:    "SELECT i FROM mytable WHERE i NOT IN (SELECT i FROM (SELECT * FROM (SELECT i as i, s as s FROM mytable) f) s)",
@@ -5792,6 +5811,7 @@ var ExplodeQueries = []QueryTest{
 
 type QueryErrorTest struct {
 	Query       string
+	Bindings    map[string]sql.Expression
 	ExpectedErr *errors.Kind
 }
 
@@ -5994,6 +6014,34 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT a FROM (select i,s FROM mytable) mt (a,b,c) order by a desc;",
 		ExpectedErr: sql.ErrColumnCountMismatch,
+	},
+	{
+		Query:       "SELECT i FROM mytable limit ?",
+		ExpectedErr: sql.ErrInvalidSyntax,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(-100, sql.Int8),
+		},
+	},
+	{
+		Query:       "SELECT i FROM mytable limit ?",
+		ExpectedErr: sql.ErrInvalidType,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral("100", sql.LongText),
+		},
+	},
+	{
+		Query:       "SELECT i FROM mytable limit 10, ?",
+		ExpectedErr: sql.ErrInvalidSyntax,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(-100, sql.Int8),
+		},
+	},
+	{
+		Query:       "SELECT i FROM mytable limit 10, ?",
+		ExpectedErr: sql.ErrInvalidType,
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral("100", sql.LongText),
+		},
 	},
 }
 

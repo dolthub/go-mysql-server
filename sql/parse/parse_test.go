@@ -1226,7 +1226,7 @@ CREATE TABLE t2
 			}),
 			"a"),
 	),
-	`SELECT column_0 FROM (values row(1,2), row(3,4)) a limit 1`: plan.NewLimit(1,
+	`SELECT column_0 FROM (values row(1,2), row(3,4)) a limit 1`: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("column_0"),
@@ -1283,7 +1283,7 @@ CREATE TABLE t2
 			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
-	`SELECT foo, bar FROM foo LIMIT 10;`: plan.NewLimit(10,
+	`SELECT foo, bar FROM foo LIMIT 10;`: plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8),
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
@@ -1302,7 +1302,7 @@ CREATE TABLE t2
 			plan.NewUnresolvedTable("foo", ""),
 		),
 	),
-	`SELECT foo, bar FROM foo WHERE foo = bar LIMIT 10;`: plan.NewLimit(10,
+	`SELECT foo, bar FROM foo WHERE foo = bar LIMIT 10;`: plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8),
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
@@ -1317,7 +1317,7 @@ CREATE TABLE t2
 			),
 		),
 	),
-	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
+	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
 		plan.NewSort(
 			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 			plan.NewProject(
@@ -1329,7 +1329,7 @@ CREATE TABLE t2
 			),
 		),
 	),
-	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(1,
+	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
 		plan.NewSort(
 			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
 			plan.NewProject(
@@ -1545,8 +1545,8 @@ CREATE TABLE t2
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	`SELECT foo, bar FROM foo LIMIT 2 OFFSET 5;`: plan.NewLimit(2,
-		plan.NewOffset(5, plan.NewProject(
+	`SELECT foo, bar FROM foo LIMIT 2 OFFSET 5;`: plan.NewLimit(expression.NewLiteral(int8(2), sql.Int8),
+		plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
@@ -1554,8 +1554,8 @@ CREATE TABLE t2
 			plan.NewUnresolvedTable("foo", ""),
 		)),
 	),
-	`SELECT foo, bar FROM foo LIMIT 5,2;`: plan.NewLimit(2,
-		plan.NewOffset(5, plan.NewProject(
+	`SELECT foo, bar FROM foo LIMIT 5,2;`: plan.NewLimit(expression.NewLiteral(int8(2), sql.Int8),
+		plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
 				expression.NewUnresolvedColumn("bar"),
@@ -2151,7 +2151,7 @@ CREATE TABLE t2
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	`SELECT /*+ JOIN_ORDER(a,b) */ * FROM b join a on c = d limit 5`: plan.NewLimit(5,
+	`SELECT /*+ JOIN_ORDER(a,b) */ * FROM b join a on c = d limit 5`: plan.NewLimit(expression.NewLiteral(int8(5), sql.Int8),
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewStar(),
@@ -2277,9 +2277,9 @@ CREATE TABLE t2
 	`SHOW CREATE SCHEMA foo`:                   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	`SHOW CREATE DATABASE IF NOT EXISTS foo`:   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	`SHOW CREATE SCHEMA IF NOT EXISTS foo`:     plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
-	`SHOW WARNINGS`:                            plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
-	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(10, plan.NewOffset(0, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
-	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(10, plan.NewOffset(5, plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+	`SHOW WARNINGS`:                            plan.NewOffset(expression.NewLiteral(0, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
+	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(expression.NewLiteral(10, sql.Int64), plan.NewOffset(expression.NewLiteral(0, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(expression.NewLiteral(10, sql.Int64), plan.NewOffset(expression.NewLiteral(5, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 	"SHOW CREATE DATABASE `foo`":               plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	"SHOW CREATE SCHEMA `foo`":                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	"SHOW CREATE DATABASE IF NOT EXISTS `foo`": plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
@@ -3159,8 +3159,6 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SHOW METHEMONEY`:                                         ErrUnsupportedFeature,
 	`LOCK TABLES foo AS READ`:                                 errUnexpectedSyntax,
 	`LOCK TABLES foo LOW_PRIORITY READ`:                       errUnexpectedSyntax,
-	`SELECT * FROM mytable LIMIT -100`:                        ErrUnsupportedSyntax,
-	`SELECT * FROM mytable LIMIT 100 OFFSET -1`:               ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
@@ -3182,7 +3180,7 @@ func TestParseErrors(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			_, err := Parse(ctx, query)
 			require.Error(err)
-			require.True(expectedError.Is(err))
+			require.True(expectedError.Is(err), "Expected %T but got %T", expectedError, err)
 		})
 	}
 }
