@@ -49,7 +49,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, c DATE, d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, g DATETIME, h CHAR(40))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:     "a",
@@ -89,7 +90,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY, b TEXT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -107,7 +109,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY COMMENT "hello", b TEXT COMMENT "goodbye")`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -127,7 +130,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -145,7 +149,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -163,7 +168,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE IF NOT EXISTS t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		true,
+		plan.IfNotExists,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -181,7 +187,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -206,7 +213,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -231,7 +239,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b) COMMENT 'hi')`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -256,7 +265,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE INDEX (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -281,7 +291,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, UNIQUE (b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -306,7 +317,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b, a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -331,7 +343,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b), INDEX (b, a))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -362,7 +375,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -388,7 +402,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, CONSTRAINT fk_name FOREIGN KEY (b_id) REFERENCES t0(b))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -414,7 +429,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE CASCADE)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -440,7 +456,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON DELETE RESTRICT)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -466,7 +483,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, FOREIGN KEY (b_id) REFERENCES t0(b) ON UPDATE SET NULL ON DELETE NO ACTION)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -493,7 +511,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, c_id BIGINT, FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -524,7 +543,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b_id INTEGER, c_id BIGINT, CONSTRAINT fk_name FOREIGN KEY (b_id, c_id) REFERENCES t0(b, c) ON UPDATE RESTRICT ON DELETE CASCADE)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -555,7 +575,8 @@ var fixtures = map[string]sql.Node{
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, CHECK (a > 0))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -583,7 +604,8 @@ CREATE TABLE t4
 );`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t4",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{
 				{
@@ -644,7 +666,8 @@ CREATE TABLE t2
 );`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t2",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{
 				{
@@ -717,7 +740,8 @@ CREATE TABLE t2
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -738,7 +762,8 @@ CREATE TABLE t2
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, CONSTRAINT ch1 CHECK (a > 0))`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -759,7 +784,8 @@ CREATE TABLE t2
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0) ENFORCED)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -780,7 +806,8 @@ CREATE TABLE t2
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY CHECK (a > 0) NOT ENFORCED)`: plan.NewCreateTable(
 		sql.UnresolvedDatabase(""),
 		"t1",
-		false,
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
 		&plan.TableSpec{
 			Schema: sql.Schema{{
 				Name:       "a",
@@ -795,6 +822,23 @@ CREATE TABLE t2
 					expression.NewLiteral(int8(0), sql.Int8),
 				),
 				Enforced: false,
+			}},
+		},
+	),
+	`CREATE TEMPORARY TABLE t1(a INTEGER, b TEXT)`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		plan.IfNotExistsAbsent,
+		plan.IsTempTable,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:     "a",
+				Type:     sql.Int32,
+				Nullable: true,
+			}, {
+				Name:     "b",
+				Type:     sql.Text,
+				Nullable: true,
 			}},
 		},
 	),

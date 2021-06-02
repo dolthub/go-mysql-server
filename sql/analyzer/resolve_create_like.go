@@ -77,5 +77,5 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		IdxDefs: idxDefs,
 	}
 
-	return plan.NewCreateTable(planCreate.Database(), planCreate.Name(), planCreate.IfNotExists(), tableSpec), nil
+	return plan.NewCreateTable(planCreate.Database(), planCreate.Name(), planCreate.IfNotExists(), planCreate.Temporary(), tableSpec), nil
 }

@@ -211,6 +211,10 @@ type Table interface {
 	PartitionRows(*Context, Partition) (RowIter, error)
 }
 
+type TemporaryTable interface {
+	IsTemporary() bool
+}
+
 // TableWrapper is a node that wraps the real table. This is needed because
 // wrappers cannot implement some methods the table may implement.
 type TableWrapper interface {
@@ -483,7 +487,8 @@ type Database interface {
 	// strategy is not defined.
 	GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error)
 
-	// GetTableNames returns the table names of every table in the database
+	// GetTableNames returns the table names of every table in the database. It does not return the names of temporary
+	// tables
 	GetTableNames(ctx *Context) ([]string, error)
 }
 
@@ -556,6 +561,12 @@ type TriggerDatabase interface {
 	// DropTrigger is called when a trigger should no longer be stored. The name has already been validated.
 	// Returns ErrTriggerDoesNotExist if the trigger was not found.
 	DropTrigger(ctx *Context, name string) error
+}
+
+// TemporaryTableDatabase is a database that can query the session (which manages the temporary table state) to
+// retrieve the name of all temporary tables.
+type TemporaryTableDatabase interface {
+	GetAllTemporaryTables(ctx *Context) ([]Table, error)
 }
 
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
@@ -636,6 +647,15 @@ type TableCreator interface {
 	// Creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
 	CreateTable(ctx *Context, name string, schema Schema) error
+}
+
+// TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
+// Note that temporary tables with the same name as persisted tables take precedence in most SQL operations.
+type TemporaryTableCreator interface {
+	Database
+	// Creates the table with the given name and schema. If a temporary table with that name already exists, must
+	// return sql.ErrTableAlreadyExists
+	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
 }
 
 // ViewCreator should be implemented by databases that want to know when a view

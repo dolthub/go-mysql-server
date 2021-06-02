@@ -71,6 +71,8 @@ const (
 	CheckConstraintsTableName = "check_constraints"
 	// PartitionsTableName is the name of the partitions table
 	PartitionsTableName = "partitions"
+	// InnoDBTempTableName is the name of the INNODB_TEMP_TABLE_INFO table
+	InnoDBTempTableName = "innodb_temp_table_info"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -432,6 +434,13 @@ var partitionSchema = Schema{
 	{Name: "partition_comment", Type: LongText, Default: nil, Nullable: false, Source: PartitionsTableName},
 	{Name: "nodegroup", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: PartitionsTableName},
 	{Name: "tablespace_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 258), Default: nil, Nullable: true, Source: PartitionsTableName},
+}
+
+var innoDBTempTableSchema = Schema{
+	{Name: "table_id", Type: Int64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
+	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBTempTableName},
+	{Name: "n_cols", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
+	{Name: "space", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
 }
 
 func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
@@ -909,6 +918,29 @@ func keyColumnConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+// innoDBTempTableIter returns info on the temporary tables stored in the session.
+// TODO: Since Table ids and Space are not yet supported this table is not completely accurate yet.
+func innoDBTempTableIter(ctx *Context, c *Catalog) (RowIter, error) {
+	var rows []Row
+	for _, db := range c.AllDatabases() {
+		tb, ok := db.(TemporaryTableDatabase)
+		if !ok {
+			continue
+		}
+
+		tables, err := tb.GetAllTemporaryTables(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, table := range tables {
+			rows = append(rows, Row{i, table.String(), len(table.Schema()), 0})
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 func emptyRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
@@ -1029,6 +1061,12 @@ func NewInformationSchemaDatabase(cat *Catalog) Database {
 				schema:  partitionSchema,
 				catalog: cat,
 				rowIter: emptyRowIter,
+			},
+			InnoDBTempTableName: &informationSchemaTable{
+				name:    InnoDBTempTableName,
+				schema:  innoDBTempTableSchema,
+				catalog: cat,
+				rowIter: innoDBTempTableIter,
 			},
 		},
 	}

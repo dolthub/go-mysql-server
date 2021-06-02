@@ -37,7 +37,7 @@ func TestCreateTable(t *testing.T) {
 		{Name: "c2", Type: sql.Int32},
 	}
 
-	require.NoError(createTable(t, db, "testTable", s, false))
+	require.NoError(createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent))
 
 	tables = db.Tables()
 
@@ -50,8 +50,8 @@ func TestCreateTable(t *testing.T) {
 		require.Equal("testTable", s.Source)
 	}
 
-	require.Error(createTable(t, db, "testTable", s, false))
-	require.NoError(createTable(t, db, "testTable", s, true))
+	require.Error(createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent))
+	require.NoError(createTable(t, db, "testTable", s, IfNotExists, IsTempTableAbsent))
 }
 
 func TestDropTable(t *testing.T) {
@@ -64,9 +64,9 @@ func TestDropTable(t *testing.T) {
 		{Name: "c2", Type: sql.Int32},
 	}
 
-	require.NoError(createTable(t, db, "testTable1", s, false))
-	require.NoError(createTable(t, db, "testTable2", s, false))
-	require.NoError(createTable(t, db, "testTable3", s, false))
+	require.NoError(createTable(t, db, "testTable1", s, IfNotExistsAbsent, IsTempTableAbsent))
+	require.NoError(createTable(t, db, "testTable2", s, IfNotExistsAbsent, IsTempTableAbsent))
+	require.NoError(createTable(t, db, "testTable3", s, IfNotExistsAbsent, IsTempTableAbsent))
 
 	d := NewDropTable(db, false, "testTable1", "testTable2")
 	rows, err := d.RowIter(sql.NewEmptyContext(), nil)
@@ -99,8 +99,8 @@ func TestDropTable(t *testing.T) {
 	require.False(ok)
 }
 
-func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, ifNotExists bool) error {
-	c := NewCreateTable(db, name, ifNotExists, &TableSpec{Schema: schema})
+func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, ifNotExists IfNotExistsOption, temporary TempTableOption) error {
+	c := NewCreateTable(db, name, ifNotExists, temporary, &TableSpec{Schema: schema})
 
 	rows, err := c.RowIter(sql.NewEmptyContext(), nil)
 	if err != nil {

@@ -323,7 +323,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 		return unresolvedSchema, nil
 	}
 	// *plan.CreateTable properly handles resolving default values, so we hijack it
-	createTable := plan.NewCreateTable(db, tableName, false, &plan.TableSpec{Schema: unresolvedSchema})
+	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: unresolvedSchema})
 	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
 	if err != nil {
 		return nil, err

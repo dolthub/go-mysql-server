@@ -30,6 +30,8 @@ var (
 	ErrForeignKeyMissingColumns = errors.NewKind("cannot create a foreign key without columns")
 	// ErrAddForeignKeyDuplicateColumn is returned when an ALTER TABLE ADD FOREIGN KEY statement has the same column multiple times
 	ErrAddForeignKeyDuplicateColumn = errors.NewKind("cannot have duplicates of columns in a foreign key: `%v`")
+	// ErrTemporaryTablesForeignKeySupport is returns when a user tries to create a temporary table with a foreign key
+	ErrTemporaryTablesForeignKeySupport = errors.NewKind("temporary tables do not support foreign keys")
 )
 
 type CreateForeignKey struct {
@@ -122,6 +124,10 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 
 // executeCreateForeignKey verifies the foreign key definition and calls CreateForeignKey on the given table.
 func executeCreateForeignKey(ctx *sql.Context, fkAlterable sql.ForeignKeyAlterableTable, refTbl sql.Table, fkDef *sql.ForeignKeyConstraint) error {
+	if t, ok := fkAlterable.(sql.TemporaryTable); ok && t.IsTemporary() {
+		return ErrTemporaryTablesForeignKeySupport.New()
+	}
+
 	if len(fkDef.Columns) == 0 {
 		return ErrForeignKeyMissingColumns.New()
 	}
