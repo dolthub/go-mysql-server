@@ -300,6 +300,69 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT a.* FROM mytable a WHERE a.s is not null`,
+		ExpectedPlan: "Filter(NOT(a.s IS NULL))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.s is not null`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.s)\n" +
+			"     ├─ Filter(NOT(a.s IS NULL))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: `SELECT /*+ JOIN_ORDER(b, a) */ a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.s is not null`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.s)\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ Filter(NOT(a.s IS NULL))\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.s not in ('1', '2', '3', '4')`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.s)\n" +
+			"     ├─ Filter(NOT((a.s IN (\"1\", \"2\", \"3\", \"4\"))))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.s)\n" +
+			"     ├─ Filter(a.i IN (1, 2, 3, 4))\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i BETWEEN 10 AND 20`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.s)\n" +
+			"     ├─ Filter(a.i BETWEEN 10 AND 20)\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
 		Query: `SELECT lefttable.i, righttable.s
 			FROM (SELECT * FROM mytable) lefttable
 			JOIN (SELECT * FROM mytable) righttable
