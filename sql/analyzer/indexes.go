@@ -497,8 +497,13 @@ func getNegatedIndexes(
 			return nil, err
 		}
 
+		getField := extractGetField(left)
+		if getField == nil {
+			return nil, nil
+		}
+
 		result := indexLookupsByTable{
-			idx.Table(): {
+			getField.Table(): {
 				exprs:   []sql.Expression{left},
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
