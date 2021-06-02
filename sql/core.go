@@ -466,7 +466,8 @@ type Database interface {
 	// strategy is not defined.
 	GetTableInsensitive(ctx *Context, tblName string) (Table, bool, error)
 
-	// GetTableNames returns the table names of every table in the database
+	// GetTableNames returns the table names of every table in the database. It does not return the names of temporary
+	// tables
 	GetTableNames(ctx *Context) ([]string, error)
 }
 
@@ -628,8 +629,10 @@ type TableCreator interface {
 }
 
 type TemporaryTableCreator interface {
-	// Creates the table with the given name and schema. If a temporary                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     table with that name already exists, must return
-	// sql.ErrTableAlreadyExists. A temporary table should not persist after a session.
+	// TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session
+	// If a temporary table with that name already exists, must return sql.ErrTableAlreadyExists.
+	Database
+
 	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
 }
 

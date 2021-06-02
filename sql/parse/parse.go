@@ -1202,8 +1202,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			sql.UnresolvedDatabase(""),
 			c.Table.Name.String(),
 			plan.NewUnresolvedTable(c.OptLike.LikeTable.Name.String(), c.OptLike.LikeTable.Qualifier.String()),
-			c.IfNotExists,
-			c.Temporary,
+			plan.IfNotExistsOperator(c.IfNotExists),
+			plan.TempTableOperator(c.Temporary),
 		), nil
 	}
 
@@ -1302,7 +1302,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	return plan.NewCreateTable(
-		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), c.IfNotExists, c.Temporary, tableSpec), nil
+		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), plan.IfNotExistsOperator(c.IfNotExists), plan.TempTableOperator(c.Temporary), tableSpec), nil
 }
 
 type namedConstraint struct {

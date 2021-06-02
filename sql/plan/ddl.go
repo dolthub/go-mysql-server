@@ -42,6 +42,16 @@ var ErrNullDefault = errors.NewKind("column declared not null must have a non-nu
 // ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
 var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
 
+// ErrTableCreatedNotFound is thrown when an integrator attempts to create a temporary tables without temporary table
+// support.
+var ErrTemporaryTableNotSupported = errors.NewKind("database does not support temporary tables")
+
+type IfNotExistsOperator bool
+type TempTableOperator bool
+
+const IfNotExists = true
+const IsTempTable = true
+
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
 	db sql.Database
@@ -113,12 +123,12 @@ type CreateTable struct {
 	ddlNode
 	name        string
 	schema      sql.Schema
-	ifNotExists bool
+	ifNotExists IfNotExistsOperator
 	fkDefs      []*sql.ForeignKeyConstraint
 	chDefs      []*sql.CheckConstraint
 	idxDefs     []*IndexDefinition
 	like        sql.Node
-	temporary   bool
+	temporary   TempTableOperator
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -126,7 +136,7 @@ var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, ifNotExists bool, temporary bool, tableSpec *TableSpec) *CreateTable {
+func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOperator, temp TempTableOperator, tableSpec *TableSpec) *CreateTable {
 	for _, s := range tableSpec.Schema {
 		s.Source = name
 	}
@@ -138,19 +148,19 @@ func NewCreateTable(db sql.Database, name string, ifNotExists bool, temporary bo
 		fkDefs:      tableSpec.FkDefs,
 		chDefs:      tableSpec.ChDefs,
 		idxDefs:     tableSpec.IdxDefs,
-		ifNotExists: ifNotExists,
-		temporary:   temporary,
+		ifNotExists: ifn,
+		temporary:   temp,
 	}
 }
 
 // NewCreateTableLike creates a new CreateTable node for CREATE TABLE LIKE statements
-func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifNotExists bool, temporary bool) *CreateTable {
+func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn IfNotExistsOperator, temp TempTableOperator) *CreateTable {
 	return &CreateTable{
 		ddlNode:     ddlNode{db},
 		name:        name,
-		ifNotExists: ifNotExists,
+		ifNotExists: ifn,
 		like:        likeTable,
-		temporary:   temporary,
+		temporary:   temp,
 	}
 }
 
@@ -178,10 +188,10 @@ func (c *CreateTable) Resolved() bool {
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
-	if c.temporary {
+	if c.temporary == IsTempTable {
 		creatable, ok := c.db.(sql.TemporaryTableCreator)
 		if !ok {
-			return sql.RowsToRowIter(), fmt.Errorf("error: database does not support temporary tables")
+			return sql.RowsToRowIter(), ErrTemporaryTableNotSupported.New()
 		}
 
 		if err := c.validateDefaultPosition(); err != nil {
@@ -202,70 +212,101 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		err = creatable.CreateTable(ctx, c.name, c.schema)
 	}
 
-	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && c.ifNotExists) {
+	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
 		return sql.RowsToRowIter(), err
 	}
 
 	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
 	//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
-	if len(c.idxDefs) > 0 || len(c.fkDefs) > 0 || len(c.chDefs) > 0 {
-		tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
+	tableNode, ok, err := c.db.GetTableInsensitive(ctx, c.name)
+	if err != nil {
+		return sql.RowsToRowIter(), err
+	}
+	if !ok {
+		return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
+	}
+
+	if len(c.idxDefs) > 0 {
+		err = c.createIndexes(ctx, tableNode)
 		if err != nil {
 			return sql.RowsToRowIter(), err
 		}
-		if !ok {
-			return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
+	}
+
+	if len(c.fkDefs) > 0 {
+		err = c.createForeignKeys(ctx, tableNode)
+		if err != nil {
+			return sql.RowsToRowIter(), err
 		}
-		if len(c.idxDefs) > 0 {
-			idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
-			if !ok {
-				return sql.RowsToRowIter(), ErrNotIndexable.New()
-			}
-			for _, idxDef := range c.idxDefs {
-				err = idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
-				if err != nil {
-					return sql.RowsToRowIter(), err
-				}
-			}
-		}
-		if len(c.fkDefs) > 0 {
-			fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
-			if !ok {
-				return sql.RowsToRowIter(), ErrNoForeignKeySupport.New(c.name)
-			}
-			for _, fkDef := range c.fkDefs {
-				refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
-				if err != nil {
-					return sql.RowsToRowIter(), err
-				}
-				if !ok {
-					return sql.RowsToRowIter(), sql.ErrTableNotFound.New(fkDef.ReferencedTable)
-				}
-				err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
-				if err != nil {
-					return sql.RowsToRowIter(), err
-				}
-			}
-		}
-		if len(c.chDefs) > 0 {
-			chAlterable, ok := tableNode.(sql.CheckAlterableTable)
-			if !ok {
-				return sql.RowsToRowIter(), ErrNoCheckConstraintSupport.New(c.name)
-			}
-			for _, ch := range c.chDefs {
-				check, err := NewCheckDefinition(ch)
-				if err != nil {
-					return nil, err
-				}
-				err = chAlterable.CreateCheck(ctx, check)
-				if err != nil {
-					return sql.RowsToRowIter(), err
-				}
-			}
+	}
+
+	if len(c.chDefs) > 0 {
+		err = c.createChecks(ctx, tableNode)
+		if err != nil {
+			return sql.RowsToRowIter(), err
 		}
 	}
 
 	return sql.RowsToRowIter(), nil
+}
+
+func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table) error {
+	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
+	if !ok {
+		return ErrNotIndexable.New()
+	}
+
+	for _, idxDef := range c.idxDefs {
+		err := idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) error {
+	fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
+	if !ok {
+		return ErrNoForeignKeySupport.New(c.name)
+	}
+
+	for _, fkDef := range c.fkDefs {
+		refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return sql.ErrTableNotFound.New(fkDef.ReferencedTable)
+		}
+		err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *CreateTable) createChecks(ctx *sql.Context, tableNode sql.Table) error {
+	chAlterable, ok := tableNode.(sql.CheckAlterableTable)
+	if !ok {
+		return ErrNoCheckConstraintSupport.New(c.name)
+	}
+
+	for _, ch := range c.chDefs {
+		check, err := NewCheckDefinition(ch)
+		if err != nil {
+			return err
+		}
+		err = chAlterable.CreateCheck(ctx, check)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Children implements the Node interface.
@@ -388,11 +429,11 @@ func (c *CreateTable) Name() string {
 	return c.name
 }
 
-func (c *CreateTable) IfNotExists() bool {
+func (c *CreateTable) IfNotExists() IfNotExistsOperator {
 	return c.ifNotExists
 }
 
-func (c *CreateTable) Temporary() bool {
+func (c *CreateTable) Temporary() TempTableOperator {
 	return c.temporary
 }
 
