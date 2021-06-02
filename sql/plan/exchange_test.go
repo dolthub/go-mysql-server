@@ -150,10 +150,6 @@ func (partitionable) Schema() sql.Schema {
 
 func (partitionable) Name() string { return "partitionable" }
 
-func (partitionable) IsTemporary() bool {
-	panic("not implemented")
-}
-
 type Partition string
 
 func (p Partition) Key() []byte {

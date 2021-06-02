@@ -42,22 +42,18 @@ var ErrNullDefault = errors.NewKind("column declared not null must have a non-nu
 // ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
 var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
 
-// ErrTableCreatedNotFound is thrown when an integrator attempts to create a temporary tables without temporary table
-// support.
-var ErrTemporaryTableNotSupported = errors.NewKind("database does not support temporary tables")
-
-type IfNotExistsOperator bool
+type IfNotExistsOption bool
 
 const (
-	IfNotExists       IfNotExistsOperator = true
-	IfNotExistsAbsent IfNotExistsOperator = false
+	IfNotExists       IfNotExistsOption = true
+	IfNotExistsAbsent IfNotExistsOption = false
 )
 
-type TempTableOperator bool
+type TempTableOption bool
 
 const (
-	IsTempTable       TempTableOperator = true
-	IsTempTableAbsent TempTableOperator = false
+	IsTempTable       TempTableOption = true
+	IsTempTableAbsent TempTableOption = false
 )
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
@@ -131,12 +127,12 @@ type CreateTable struct {
 	ddlNode
 	name        string
 	schema      sql.Schema
-	ifNotExists IfNotExistsOperator
+	ifNotExists IfNotExistsOption
 	fkDefs      []*sql.ForeignKeyConstraint
 	chDefs      []*sql.CheckConstraint
 	idxDefs     []*IndexDefinition
 	like        sql.Node
-	temporary   TempTableOperator
+	temporary   TempTableOption
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -144,7 +140,7 @@ var _ sql.Node = (*CreateTable)(nil)
 var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
-func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOperator, temp TempTableOperator, tableSpec *TableSpec) *CreateTable {
+func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
 	for _, s := range tableSpec.Schema {
 		s.Source = name
 	}
@@ -162,7 +158,7 @@ func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOperator, temp 
 }
 
 // NewCreateTableLike creates a new CreateTable node for CREATE TABLE LIKE statements
-func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn IfNotExistsOperator, temp TempTableOperator) *CreateTable {
+func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
 	return &CreateTable{
 		ddlNode:     ddlNode{db},
 		name:        name,
@@ -199,7 +195,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	if c.temporary == IsTempTable {
 		creatable, ok := c.db.(sql.TemporaryTableCreator)
 		if !ok {
-			return sql.RowsToRowIter(), ErrTemporaryTableNotSupported.New()
+			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
 
 		if err := c.validateDefaultPosition(); err != nil {
@@ -437,11 +433,11 @@ func (c *CreateTable) Name() string {
 	return c.name
 }
 
-func (c *CreateTable) IfNotExists() IfNotExistsOperator {
+func (c *CreateTable) IfNotExists() IfNotExistsOption {
 	return c.ifNotExists
 }
 
-func (c *CreateTable) Temporary() TempTableOperator {
+func (c *CreateTable) Temporary() TempTableOption {
 	return c.temporary
 }
 

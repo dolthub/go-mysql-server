@@ -124,7 +124,7 @@ func (p *CreateForeignKey) Execute(ctx *sql.Context) error {
 
 // executeCreateForeignKey verifies the foreign key definition and calls CreateForeignKey on the given table.
 func executeCreateForeignKey(ctx *sql.Context, fkAlterable sql.ForeignKeyAlterableTable, refTbl sql.Table, fkDef *sql.ForeignKeyConstraint) error {
-	if fkAlterable.IsTemporary() {
+	if t, ok := fkAlterable.(sql.TemporaryTable); ok && t.IsTemporary() {
 		return ErrTemporaryTablesForeignKeySupport.New()
 	}
 

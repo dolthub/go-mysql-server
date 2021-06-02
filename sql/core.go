@@ -209,6 +209,9 @@ type Table interface {
 	Schema() Schema
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
+}
+
+type TemporaryTable interface {
 	IsTemporary() bool
 }
 
@@ -628,11 +631,11 @@ type TableCreator interface {
 	CreateTable(ctx *Context, name string, schema Schema) error
 }
 
+// TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
 type TemporaryTableCreator interface {
-	// TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session
-	// If a temporary table with that name already exists, must return sql.ErrTableAlreadyExists.
 	Database
-
+	// Creates the table with the given name and schema. If a temporary table with that name already exists, must
+	// return sql.ErrTableAlreadyExists
 	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
 }
 

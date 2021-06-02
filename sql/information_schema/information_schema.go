@@ -89,10 +89,6 @@ type informationSchemaTable struct {
 	rowIter func(*Context, *Catalog) (RowIter, error)
 }
 
-func (t *informationSchemaTable) IsTemporary() bool {
-	return false
-}
-
 type informationSchemaPartition struct {
 	key []byte
 }

@@ -182,12 +182,6 @@ func (t *Table) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.Ro
 	}, nil
 }
 
-// IsTemporary implements the sql.Table interface
-// TODO: Make memory table support temporary
-func (t *Table) IsTemporary() bool {
-	return false
-}
-
 func (t *Table) NumRows(ctx *sql.Context) (uint64, error) {
 	var count uint64 = 0
 	for _, rows := range t.partitions {
