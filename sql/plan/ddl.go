@@ -47,10 +47,18 @@ var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be
 var ErrTemporaryTableNotSupported = errors.NewKind("database does not support temporary tables")
 
 type IfNotExistsOperator bool
+
+const (
+	IfNotExists       IfNotExistsOperator = true
+	IfNotExistsAbsent IfNotExistsOperator = false
+)
+
 type TempTableOperator bool
 
-const IfNotExists = true
-const IsTempTable = true
+const (
+	IsTempTable       TempTableOperator = true
+	IsTempTableAbsent TempTableOperator = false
+)
 
 // Ddl nodes have a reference to a database, but no children and a nil schema.
 type ddlNode struct {
