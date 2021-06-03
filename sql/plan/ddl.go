@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -98,28 +99,28 @@ type TableSpec struct {
 	IdxDefs []*IndexDefinition
 }
 
-func (c *TableSpec) WithSchema(schema sql.Schema) (*TableSpec, error) {
+func (c *TableSpec) WithSchema(schema sql.Schema) *TableSpec {
 	nc := *c
 	nc.Schema = schema
-	return &nc, nil
+	return &nc
 }
 
-func (c *TableSpec) WithForeignKeys(fkDefs []*sql.ForeignKeyConstraint) (*TableSpec, error) {
+func (c *TableSpec) WithForeignKeys(fkDefs []*sql.ForeignKeyConstraint) *TableSpec {
 	nc := *c
 	nc.FkDefs = fkDefs
-	return &nc, nil
+	return &nc
 }
 
-func (c *TableSpec) WithCheckConstraints(chDefs []*sql.CheckConstraint) (*TableSpec, error) {
+func (c *TableSpec) WithCheckConstraints(chDefs []*sql.CheckConstraint) *TableSpec {
 	nc := *c
 	nc.ChDefs = chDefs
-	return &nc, nil
+	return &nc
 }
 
-func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) (*TableSpec, error) {
+func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) *TableSpec {
 	nc := *c
 	nc.IdxDefs = idxDefs
-	return &nc, nil
+	return &nc
 }
 
 // CreateTable is a node describing the creation of some table.
@@ -133,6 +134,8 @@ type CreateTable struct {
 	idxDefs     []*IndexDefinition
 	like        sql.Node
 	temporary   TempTableOption
+	selectNode  sql.Node
+	asKeyword   bool
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -168,11 +171,35 @@ func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn If
 	}
 }
 
+// NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
+func NewCreateTableSelect(db sql.Database, name string, asKeyword bool, selectNode sql.Node, tableSpec *TableSpec) *CreateTable {
+	for _, s := range tableSpec.Schema {
+		s.Source = name
+	}
+
+	return &CreateTable{
+		ddlNode:     ddlNode{db: db},
+		schema:      tableSpec.Schema,
+		fkDefs:      tableSpec.FkDefs,
+		chDefs:      tableSpec.ChDefs,
+		idxDefs:     tableSpec.IdxDefs,
+		name: name,
+		asKeyword: asKeyword,
+		selectNode: selectNode,
+	}
+}
+
 // WithDatabase implements the sql.Databaser interface.
 func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *c
 	nc.db = db
 	return &nc, nil
+}
+
+func (c *CreateTable) WithSelect(selectNode sql.Node) sql.Node {
+	nc := *c
+	nc.selectNode = selectNode
+	return &nc
 }
 
 // Schema implements the sql.Node interface.
@@ -251,7 +278,37 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
+	if c.selectNode != nil {
+		err = c.addDatatoTable(ctx, tableNode, row)
+		if err != nil {
+			return sql.RowsToRowIter(), err
+		}
+	}
+
+
 	return sql.RowsToRowIter(), nil
+}
+
+
+func (c *CreateTable) addDatatoTable(ctx *sql.Context, tableNode sql.Table, row sql.Row) error {
+	ii := NewInsertInto(c.db, NewResolvedTable(tableNode, c.db, nil), c.selectNode, false, nil, nil, false)
+
+	ri, err := ii.RowIter(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	row, err = ri.Next()
+	for err != io.EOF {
+		row, err = ri.Next()
+	}
+
+	err = ri.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table) error {
@@ -317,6 +374,8 @@ func (c *CreateTable) createChecks(ctx *sql.Context, tableNode sql.Table) error 
 func (c *CreateTable) Children() []sql.Node {
 	if c.like != nil {
 		return []sql.Node{c.like}
+	} else if c.selectNode != nil {
+		return []sql.Node{c.selectNode}
 	}
 	return nil
 }
@@ -326,8 +385,16 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) == 0 {
 		return c, nil
 	} else if len(children) == 1 {
+		child := children[0]
 		nc := *c
-		nc.like = children[0]
+
+		switch child.(type){
+		case *Project, *Limit:
+			nc.selectNode = child
+		default:
+			nc.like = child
+		}
+
 		return &nc, nil
 	} else {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
@@ -427,6 +494,21 @@ func (c *CreateTable) Expressions() []sql.Expression {
 
 func (c *CreateTable) Like() sql.Node {
 	return c.like
+}
+
+func (c *CreateTable) Select() sql.Node {
+	return c.selectNode
+}
+
+func (c *CreateTable) TableSpec() TableSpec {
+	tableSpec := TableSpec{}
+
+	ret := tableSpec.WithSchema(c.schema)
+	ret = tableSpec.WithForeignKeys(c.fkDefs)
+	ret = tableSpec.WithIndices(c.idxDefs)
+	ret = tableSpec.WithCheckConstraints(c.chDefs)
+
+	return *ret
 }
 
 func (c *CreateTable) Name() string {

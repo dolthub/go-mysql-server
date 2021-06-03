@@ -1207,6 +1207,17 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		), nil
 	}
 
+	if c.TableSpec == nil && c.OptSelect != nil {
+		tableSpec := &plan.TableSpec{}
+
+		selectNode, err := convertSelectStatement(ctx, c.OptSelect.Select)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(c.Table.Qualifier.String()), c.Table.Name.String(), c.OptSelect.As, selectNode, tableSpec), nil
+	}
+
 	schema, err := TableSpecToSchema(nil, c.TableSpec)
 	if err != nil {
 		return nil, err
@@ -1300,6 +1311,16 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		FkDefs:  fkDefs,
 		ChDefs:  chDefs,
 	}
+
+	if c.OptSelect != nil {
+		selectNode, err := convertSelectStatement(ctx, c.OptSelect.Select)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), c.OptSelect.As, selectNode, tableSpec), nil
+	}
+
 
 	return plan.NewCreateTable(
 		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary), tableSpec), nil
@@ -1514,6 +1535,10 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
+	if tableSpec == nil {
+		return nil, nil
+	}
+
 	err := validateIndexes(tableSpec)
 
 	if err != nil {

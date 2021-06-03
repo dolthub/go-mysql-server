@@ -943,6 +943,36 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "CREATE TABLE (SELECT )",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (pk int PRIMARY KEY, v1 varchar(10))`,
+			`INSERT INTO t1 VALUES (1,"1"), (2,"2"), (3,"3")`,
+			`CREATE TABLE t2 AS SELECT * FROM t1`,
+			//`CREATE TABLE t3(v0 int) AS SELECT pk FROM t1`, // parser problems
+			`CREATE TABLE t3 AS SELECT pk FROM t1`,
+			`CREATE TABLE t4 AS SELECT pk, v1 FROM t1`,
+			`CREATE TABLE t5 SELECT * FROM t1 ORDER BY pk LIMIT 1`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM t2`,
+				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
+			},
+			{
+				Query: `SELECT * FROM t3`,
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query: `SELECT * FROM t4`,
+				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
+			},
+			{
+				Query: `SELECT * FROM t5`,
+				Expected: []sql.Row{{1, "1"}},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
