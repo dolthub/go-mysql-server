@@ -65,7 +65,7 @@ func testParseCollation(t *testing.T, charset *string, collation *string, binary
 			assert.Error(t, err)
 		} else {
 			require.NoError(t, err)
-			assert.Equal(t, expectedCollation, col)
+			assert.True(t, expectedCollation.Equals(col))
 		}
 	})
 }

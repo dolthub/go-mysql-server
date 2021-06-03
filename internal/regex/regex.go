@@ -44,6 +44,12 @@ type Disposer interface {
 	Dispose()
 }
 
+// DisposableMatcher implements both Disposer and Matcher
+type DisposableMatcher interface {
+	Matcher
+	Disposer
+}
+
 // Constructor creates a new Matcher.
 type Constructor func(re string) (Matcher, Disposer, error)
 
@@ -94,6 +100,29 @@ func New(name, re string) (Matcher, Disposer, error) {
 	}
 
 	return n(re)
+}
+
+type disposableMatcher struct {
+	m Matcher
+	d Disposer
+}
+
+func (dm *disposableMatcher) Match(s string) bool {
+	return dm.m.Match(s)
+}
+
+func (dm *disposableMatcher) Dispose() {
+	dm.d.Dispose()
+}
+
+func NewDisposableMatcher(name, re string) (DisposableMatcher, error) {
+	m, d, err := New(name, re)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &disposableMatcher{m, d}, nil
 }
 
 // Default returns the default regex engine.
