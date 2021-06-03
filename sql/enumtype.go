@@ -71,7 +71,7 @@ func CreateEnumType(values []string, collation Collation) (EnumType, error) {
 	}
 	valToIndex := make(map[string]int)
 	for i, value := range values {
-		if collation != Collation_binary {
+		if !collation.Equals(Collation_binary) {
 			/// Trailing spaces are automatically deleted from ENUM member values in the table definition when a table is created.
 			value = strings.TrimRight(value, " ")
 		}
@@ -240,7 +240,7 @@ func (t enumType) String() string {
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
-	if t.collation != Collation_Default {
+	if !t.collation.Equals(Collation_Default) {
 		s += " COLLATE " + t.collation.String()
 	}
 	return s

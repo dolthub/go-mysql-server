@@ -81,7 +81,7 @@ func TestEnumCreate(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, test.collation, typ.Collation())
+				assert.True(t, test.collation.Equals(typ.Collation()))
 				for val, i := range test.expectedValToIndex {
 					str, ok := typ.At(i)
 					if assert.True(t, ok) {

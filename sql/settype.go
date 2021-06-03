@@ -79,8 +79,8 @@ func CreateSetType(values []string, collation Collation) (SetType, error) {
 		}
 		/// For binary or case-sensitive collations, lettercase is taken into account when assigning values to the column.
 		//TODO: add the other case-sensitive collations
-		switch collation {
-		case Collation_binary:
+		switch collation.Name {
+		case Collation_binary.Name:
 			if _, ok := compareToOriginal[value]; ok {
 				return nil, ErrDuplicateEntrySet.New(value)
 			}
@@ -220,7 +220,7 @@ func (t setType) String() string {
 	if t.CharacterSet() != Collation_Default.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
-	if t.collation != Collation_Default {
+	if !t.collation.Equals(Collation_Default) {
 		s += " COLLATE " + t.collation.String()
 	}
 	return s
@@ -349,8 +349,8 @@ func (t setType) convertStringToBitField(str string) (uint64, error) {
 	vals := strings.Split(str, ",")
 	for _, val := range vals {
 		var compareVal string
-		switch t.collation {
-		case Collation_binary:
+		switch t.collation.Name {
+		case Collation_binary.Name:
 			compareVal = val
 		default:
 			compareVal = strings.ToLower(strings.TrimRight(val, " "))

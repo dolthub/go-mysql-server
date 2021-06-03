@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/internal/regex"
 	"io"
 	"strconv"
 	"strings"
@@ -63,6 +64,10 @@ type Type interface {
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
+}
+
+type LikeMatcher interface {
+	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }
 
 // SystemVariableType represents a SQL type specifically (and only) used in system variables. Assigning any non-system

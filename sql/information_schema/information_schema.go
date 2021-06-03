@@ -592,7 +592,8 @@ func schemataRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 
 func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	var rows []Row
-	for c := range CollationToMySQLVals {
+	for cName := range CollationToMySQLVals {
+		c := Collations[cName]
 		rows = append(rows, Row{
 			c.String(),
 			c.CharacterSet().String(),
