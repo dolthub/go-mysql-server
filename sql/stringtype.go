@@ -67,9 +67,9 @@ type StringType interface {
 }
 
 type stringType struct {
-	baseType       query.Type
-	charLength     int64
-	collationName  string
+	baseType      query.Type
+	charLength    int64
+	collationName string
 }
 
 // CreateString creates a StringType.
