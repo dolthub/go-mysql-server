@@ -1349,7 +1349,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, `INSERT INTO t10 VALUES (1, "1"), (2, "2")`, []sql.Row{sql.Row{sql.OkResult{RowsAffected:0x2, InsertID:0x0, Info:fmt.Stringer(nil)}}}, nil, nil)
 
 		// Create the table with the data from t10
-		TestQuery(t, harness, e, "CREATE TABLE t10a SELECT * from t10", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "CREATE TABLE t10a SELECT * from t10", []sql.Row{sql.Row{sql.OkResult{RowsAffected:0x2, InsertID:0x0, Info:fmt.Stringer(nil)}}}, nil, nil)
 
 		db, err := e.Catalog.Database("mydb")
 		require.NoError(t, err)

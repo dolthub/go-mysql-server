@@ -373,7 +373,8 @@ func (c *CreateTable) processSelectAndInsert(ctx *sql.Context, tableNode sql.Tab
 		return sql.RowsToRowIter(), err
 	}
 
-	return sql.RowsToRowIter([]sql.Row{{ri.(*accumulatorIter).updateRowHandler.okResult()}}...) , nil
+	rowsUpdated := int(ctx.GetLastQueryInfo(sql.RowCount))
+	return sql.RowsToRowIter([]sql.Row{{sql.NewOkResult(rowsUpdated)}}...) , nil
 }
 
 // canBeCopied determines whether the newly created table's data can just be copied from the source table
