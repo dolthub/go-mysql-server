@@ -569,6 +569,13 @@ type TemporaryTableDatabase interface {
 	GetAllTemporaryTables(ctx *Context) ([]Table, error)
 }
 
+// TableCopierDatabase is a database that can copy a source table's data (without preserving indexed, fks, etc.) into
+// another destination table.
+type TableCopierDatabase interface {
+	// CopyTableData copies the sourceTable data to the destinationTable and returns the number of rows copied.
+	CopyTableData(ctx *Context, sourceTable string, destinationTable string) (uint64, error)
+}
+
 // GetTableInsensitive implements a case insensitive map lookup for tables keyed off of the table name.
 // Looks for exact matches first.  If no exact matches are found then any table matching the name case insensitively
 // should be returned.  If there is more than one table that matches a case insensitive comparison the resolution

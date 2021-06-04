@@ -971,6 +971,14 @@ var ScriptTests = []ScriptTest{
 				Query: `SELECT * FROM t5`,
 				Expected: []sql.Row{{1, "1"}},
 			},
+			{
+				Query: `CREATE TABLE test SELECT * FROM t1`,
+				Expected: []sql.Row{sql.Row{sql.OkResult{
+					RowsAffected: 3,
+					InsertID:     0,
+					Info:         nil,
+				}}},
+			},
 		},
 	},
 }
