@@ -31,8 +31,14 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	newSpec := inputSpec.WithSchema(newSch)
 
 	newCreateTable := plan.NewCreateTable(planCreate.Database(), planCreate.Name(), planCreate.IfNotExists(), planCreate.Temporary(), newSpec)
+	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)
+	if err != nil {
+		return nil, err
+	}
 
-	return newCreateTable.WithSelect(stripQueryProcess(analyzedSelect)), nil
+	newCopier := plan.NewTableCopierWithCreate(planCreate.Database(), stripQueryProcess(analyzedCreate), stripQueryProcess(analyzedSelect), plan.CopierProps{})
+
+	return newCopier, nil
 }
 
 // mergeSchemas takes in the table spec of the CREATE TABLE and merges it with the schema used by the

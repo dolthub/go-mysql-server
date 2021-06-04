@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -276,14 +275,14 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	if c.selectNode != nil {
-		ri, err := c.processSelectAndInsert(ctx, tableNode, row)
-		if err != nil {
-			return sql.RowsToRowIter(), err
-		}
-
-		return ri, nil
-	}
+	//if c.selectNode != nil {
+	//	ri, err := c.processSelectAndInsert(ctx, tableNode, row)
+	//	if err != nil {
+	//		return sql.RowsToRowIter(), err
+	//	}
+	//
+	//	return ri, nil
+	//}
 
 	return sql.RowsToRowIter(), nil
 }
@@ -359,22 +358,7 @@ func (c *CreateTable) processSelectAndInsert(ctx *sql.Context, tableNode sql.Tab
 	// Wrap the insert into a row update accumulator
 	roa := NewRowUpdateAccumulator(ii, UpdateTypeInsert)
 
-	ri, err := roa.RowIter(ctx, row)
-	if err != nil {
-		return sql.RowsToRowIter(), err
-	}
-
-	for err != io.EOF {
-		row, err = ri.Next()
-	}
-
-	err = ri.Close(ctx)
-	if err != nil {
-		return sql.RowsToRowIter(), err
-	}
-
-	rowsUpdated := int(ctx.GetLastQueryInfo(sql.RowCount))
-	return sql.RowsToRowIter([]sql.Row{{sql.NewOkResult(rowsUpdated)}}...) , nil
+	return roa.RowIter(ctx, row)
 }
 
 // canBeCopied determines whether the newly created table's data can just be copied from the source table
