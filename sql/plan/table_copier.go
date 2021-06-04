@@ -119,8 +119,8 @@ func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 
 // copyTableOver is used with queries of the form CREATE TABLE [] AS SELECT * ... as we can guarantee the new
 // table will have the exact same row data as the source data.
-func (c *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, destinationTable string) (sql.RowIter, error) {
-	db, ok := c.db.(sql.TableCopierDatabase)
+func (tc *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, destinationTable string) (sql.RowIter, error) {
+	db, ok := tc.db.(sql.TableCopierDatabase)
 	if !ok {
 		return sql.RowsToRowIter(), sql.ErrTableCopyingNotSupported.New()
 	}
@@ -148,5 +148,9 @@ func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 
 func (tc *TableCopier) Resolved() bool {
 	return tc.source.Resolved()
+}
+
+func (tc *TableCopier) String() string {
+	return fmt.Sprintf("TABLE_COPY SRC: %s into DST: %s", tc.source, tc.destination)
 }
 
