@@ -135,7 +135,6 @@ type CreateTable struct {
 	like        sql.Node
 	temporary   TempTableOption
 	selectNode  sql.Node
-	asKeyword   bool
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -172,7 +171,7 @@ func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn If
 }
 
 // NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
-func NewCreateTableSelect(db sql.Database, name string, asKeyword bool, selectNode sql.Node, tableSpec *TableSpec) *CreateTable {
+func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec) *CreateTable {
 	for _, s := range tableSpec.Schema {
 		s.Source = name
 	}
@@ -184,7 +183,6 @@ func NewCreateTableSelect(db sql.Database, name string, asKeyword bool, selectNo
 		chDefs:      tableSpec.ChDefs,
 		idxDefs:     tableSpec.IdxDefs,
 		name: name,
-		asKeyword: asKeyword,
 		selectNode: selectNode,
 	}
 }
@@ -419,8 +417,7 @@ func (c *CreateTable) canBeCopied(tableNode sql.Table) bool {
 func (c *CreateTable) copyTableOver(ctx *sql.Context, sourceTable string, destinationTable string) (sql.RowIter, error) {
 	db, ok := c.db.(sql.TableCopierDatabase)
 	if !ok {
-		// TODO: move to errors.go
-		return sql.RowsToRowIter(), fmt.Errorf("error: table does not supporty copying")
+		return sql.RowsToRowIter(), sql.ErrTableCopyingNotSupported.New()
 	}
 
 	rowsUpdated, err := db.CopyTableData(ctx, sourceTable, destinationTable)
@@ -449,11 +446,12 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 		child := children[0]
 		nc := *c
 
+		// CREATE TABLE LIKE needs a ResolvedTable to operate properly
 		switch child.(type){
-		case *Project, *Limit:
-			nc.selectNode = child
-		default:
+		case *ResolvedTable:
 			nc.like = child
+		default:
+			nc.selectNode = child
 		}
 
 		return &nc, nil

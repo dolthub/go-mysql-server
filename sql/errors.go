@@ -289,6 +289,10 @@ var (
 	// ErrInvalidSyntax is returned for syntax errors that aren't picked up by the parser, e.g. the wrong type of
 	// expression used in part of statement.
 	ErrInvalidSyntax = errors.NewKind("Invalid syntax: %s")
+
+	// ErrTableCopyingNotSupported is returned when a table invokes the TableCopierDatabase interface's
+	// CopyTableData method without supporting the interface
+	ErrTableCopyingNotSupported = errors.NewKind("error: Table copying not supported")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

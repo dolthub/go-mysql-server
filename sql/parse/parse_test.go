@@ -842,6 +842,11 @@ CREATE TABLE t2
 			}},
 		},
 	),
+	`CREATE TABLE mytable AS SELECT * from othertable`: plan.NewCreateTableSelect(
+		sql.UnresolvedDatabase(""),
+		"mytable",
+		plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("othertable", "")),
+		&plan.TableSpec{}),
 	`DROP TABLE foo;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), false, "foo",
 	),
@@ -3215,6 +3220,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT a, count(i) over (partition by y) FROM foo`:       ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a) group by 1`:     ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a), max(b)`:        ErrUnsupportedFeature,
+	//`CREATE TABLE mytable(pk int) AS SELECT * from t2`:		   vterrors.SyntaxError{}, // TODO: Fix parsing here/
 }
 
 func TestParseErrors(t *testing.T) {

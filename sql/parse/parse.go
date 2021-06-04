@@ -1207,6 +1207,8 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		), nil
 	}
 
+	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE noder.
+	// if the table spec != nil it will get parsed below.
 	if c.TableSpec == nil && c.OptSelect != nil {
 		tableSpec := &plan.TableSpec{}
 
@@ -1215,7 +1217,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			return nil, err
 		}
 
-		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(c.Table.Qualifier.String()), c.Table.Name.String(), c.OptSelect.As, selectNode, tableSpec), nil
+		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(c.Table.Qualifier.String()), c.Table.Name.String(), selectNode, tableSpec), nil
 	}
 
 	schema, err := TableSpecToSchema(nil, c.TableSpec)
@@ -1318,7 +1320,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			return nil, err
 		}
 
-		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), c.OptSelect.As, selectNode, tableSpec), nil
+		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), selectNode, tableSpec), nil
 	}
 
 
@@ -1535,10 +1537,6 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
-	if tableSpec == nil {
-		return nil, nil
-	}
-
 	err := validateIndexes(tableSpec)
 
 	if err != nil {
