@@ -23,20 +23,13 @@ type CopierProps struct {
 	ignore bool
 }
 
-func NewTableCopierWithCreate(db sql.Database, createTableNode sql.Node, source sql.Node, prop CopierProps) *TableCopier {
+// TODO: Update INSERT INTO SELECT FROM to use the copier optimization
+func NewTableCopier(db sql.Database, createTableNode sql.Node, source sql.Node, prop CopierProps) *TableCopier {
 	return &TableCopier{
 		source: source,
 		destination: createTableNode,
 		db: db,
 		options: prop,
-	}
-}
-
-func NewCopierWithInsert(db sql.Database, destination *ResolvedTable, source sql.Node) *TableCopier {
-	return &TableCopier{
-		db: db,
-		source: source,
-		destination: destination,
 	}
 }
 
@@ -85,6 +78,7 @@ func (tc *TableCopier) processCreateTable(ctx *sql.Context, row sql.Row) (sql.Ro
 		return tc.copyTableOver(ctx, tc.source.Schema()[0].Source, table.Name())
 	}
 
+	// TODO: Improve parsing for CREATE TABLE SELECT to allow for IGNORE/REPLACE and custom specs
 	ii := NewInsertInto(tc.db, NewResolvedTable(table, tc.db, nil), tc.source, tc.options.replace, nil, nil, tc.options.ignore)
 
 	// Wrap the insert into a row update accumulator
@@ -135,7 +129,7 @@ func (c *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, destin
 		return sql.RowsToRowIter(), err
 	}
 
-	return sql.RowsToRowIter([]sql.Row{sql.Row{sql.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
+	return sql.RowsToRowIter([]sql.Row{{sql.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
 }
 
 
@@ -147,7 +141,7 @@ func (tc *TableCopier) Children() []sql.Node {
 	return nil
 }
 
-func (tc *TableCopier) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 	return tc, nil
 }
 
