@@ -446,12 +446,11 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 		child := children[0]
 		nc := *c
 
-		// CREATE TABLE LIKE needs a ResolvedTable to operate properly
 		switch child.(type){
-		case *ResolvedTable:
-			nc.like = child
-		default:
+		case *Project, *Limit:
 			nc.selectNode = child
+		default:
+			nc.like = child
 		}
 
 		return &nc, nil
