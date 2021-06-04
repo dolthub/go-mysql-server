@@ -193,12 +193,6 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
-func (c *CreateTable) WithSelect(selectNode sql.Node) sql.Node {
-	nc := *c
-	nc.selectNode = selectNode
-	return &nc
-}
-
 // Schema implements the sql.Node interface.
 func (c *CreateTable) Schema() sql.Schema {
 	return c.schema
@@ -275,15 +269,6 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	//if c.selectNode != nil {
-	//	ri, err := c.processSelectAndInsert(ctx, tableNode, row)
-	//	if err != nil {
-	//		return sql.RowsToRowIter(), err
-	//	}
-	//
-	//	return ri, nil
-	//}
-
 	return sql.RowsToRowIter(), nil
 }
 
@@ -344,73 +329,6 @@ func (c *CreateTable) createChecks(ctx *sql.Context, tableNode sql.Table) error 
 	}
 
 	return nil
-}
-
-// processSelectAndInsert takes in the Select Node and INSERTs it into the newly created table
-func (c *CreateTable) processSelectAndInsert(ctx *sql.Context, tableNode sql.Table, row sql.Row) (sql.RowIter, error) {
-	if c.canBeCopied(tableNode) {
-		return c.copyTableOver(ctx, c.selectNode.Schema()[0].Source, tableNode.Name())
-	}
-
-	// TODO: Add more options such as REPLACE and IGNORE
-	ii := NewInsertInto(c.db, NewResolvedTable(tableNode, c.db, nil), c.selectNode, false, nil, nil, false)
-
-	// Wrap the insert into a row update accumulator
-	roa := NewRowUpdateAccumulator(ii, UpdateTypeInsert)
-
-	return roa.RowIter(ctx, row)
-}
-
-// canBeCopied determines whether the newly created table's data can just be copied from the source table
-func (c *CreateTable) canBeCopied(tableNode sql.Table) bool {
-	// If the CREATE TABLE comes with its own schema we cannot simply copy over the table eg. CREATE TABLE (pk int) SELECT ...
-	// It must be inserted and revalidated. That means expressions of the form CREATE TABLE SELECT * ... are the only
-	// expressions that should go through the copying procedure.
-	if c.TableSpec().Schema != nil {
-		return false
-	}
-
-	// The differences in LIMIT between integrators prevent us from using a copy
-	if _, ok := c.selectNode.(*Limit); ok {
-		return false
-	}
-
-	// If the DB does not implement the TableCopierDatabase interface we cannot copy over the table.
-	if _, ok := c.db.(sql.TableCopierDatabase); !ok {
-		return false
-	}
-
-	selectNodeSchema := c.selectNode.Schema()
-	tableNodeSchema := tableNode.Schema()
-
-	if len(selectNodeSchema) != len(tableNodeSchema) {
-		return false
-	}
-
-	// Validate that column names match between the tableNode's schema and the SELECT schema.
-	for i, sn := range selectNodeSchema {
-		if sn.Name != tableNodeSchema[i].Name {
-			return false
-		}
-	}
-
-	return true
-}
-
-// copyTableOver is used with queries of the form CREATE TABLE [] AS SELECT * ... as we can guarantee the new
-// table will have the exact same row data as the source data.
-func (c *CreateTable) copyTableOver(ctx *sql.Context, sourceTable string, destinationTable string) (sql.RowIter, error) {
-	db, ok := c.db.(sql.TableCopierDatabase)
-	if !ok {
-		return sql.RowsToRowIter(), sql.ErrTableCopyingNotSupported.New()
-	}
-
-	rowsUpdated, err := db.CopyTableData(ctx, sourceTable, destinationTable)
-	if err != nil {
-		return sql.RowsToRowIter(), err
-	}
-
-	return sql.RowsToRowIter([]sql.Row{sql.Row{sql.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
 }
 
 // Children implements the Node interface.
