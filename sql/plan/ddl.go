@@ -461,7 +461,7 @@ func (c *CreateTable) Select() sql.Node {
 	return c.selectNode
 }
 
-func (c *CreateTable) TableSpec() TableSpec {
+func (c *CreateTable) TableSpec() *TableSpec {
 	tableSpec := TableSpec{}
 
 	ret := tableSpec.WithSchema(c.schema)
@@ -469,7 +469,7 @@ func (c *CreateTable) TableSpec() TableSpec {
 	ret = tableSpec.WithIndices(c.idxDefs)
 	ret = tableSpec.WithCheckConstraints(c.chDefs)
 
-	return *ret
+	return ret
 }
 
 func (c *CreateTable) Name() string {

@@ -944,7 +944,7 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "CREATE TABLE (SELECT )",
+		Name: "CREATE TABLE SELECT Queries",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (pk int PRIMARY KEY, v1 varchar(10))`,
 			`INSERT INTO t1 VALUES (1,"1"), (2,"2"), (3,"3")`,

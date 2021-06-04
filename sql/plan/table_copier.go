@@ -5,7 +5,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// TableCopier is used into case 1. CREATE TABLE SELECT 2) INSERT INTO <Empty Table> SELECT *
+// TableCopier is a supporting node that allows for the optimization of copying tables. It should be used in two cases.
+// 1) CREATE TABLE SELECT *
+// 2) INSERT INTO SELECT * where the inserted table is empty. // TODO: Implement this optimization
 type TableCopier struct {
 	sql.Node
 
@@ -23,7 +25,6 @@ type CopierProps struct {
 	ignore bool
 }
 
-// TODO: Update INSERT INTO SELECT FROM to use the copier optimization
 func NewTableCopier(db sql.Database, createTableNode sql.Node, source sql.Node, prop CopierProps) *TableCopier {
 	return &TableCopier{
 		source: source,
