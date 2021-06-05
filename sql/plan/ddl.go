@@ -181,10 +181,10 @@ func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tab
 		fkDefs:      tableSpec.FkDefs,
 		chDefs:      tableSpec.ChDefs,
 		idxDefs:     tableSpec.IdxDefs,
-		name: name,
-		selectNode: selectNode,
+		name:        name,
+		selectNode:  selectNode,
 		ifNotExists: ifn,
-		temporary: temp,
+		temporary:   temp,
 	}
 }
 
@@ -351,7 +351,7 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 		child := children[0]
 		nc := *c
 
-		switch child.(type){
+		switch child.(type) {
 		case *Project, *Limit:
 			nc.selectNode = child
 		default:

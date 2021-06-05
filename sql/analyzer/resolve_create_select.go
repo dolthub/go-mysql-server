@@ -49,7 +49,7 @@ func mergeSchemas(inputSchema sql.Schema, selectSchema sql.Schema) sql.Schema {
 
 	// Get the matching columns between the two via name
 	matchingColumns := make([]*sql.Column, 0)
-	leftExclusive :=make([]*sql.Column, 0)
+	leftExclusive := make([]*sql.Column, 0)
 	for _, col := range inputSchema {
 		found := false
 		for _, col2 := range selectSchema {

@@ -15,8 +15,9 @@
 package enginetest
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -955,19 +956,19 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT * FROM t2`,
+				Query:    `SELECT * FROM t2`,
 				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
 			},
 			{
-				Query: `SELECT * FROM t3`,
+				Query:    `SELECT * FROM t3`,
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
 			{
-				Query: `SELECT * FROM t4`,
+				Query:    `SELECT * FROM t4`,
 				Expected: []sql.Row{{1, "1"}, {2, "2"}, {3, "3"}},
 			},
 			{
-				Query: `SELECT * FROM t5`,
+				Query:    `SELECT * FROM t5`,
 				Expected: []sql.Row{{1, "1"}},
 			},
 			{

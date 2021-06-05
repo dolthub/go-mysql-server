@@ -1323,7 +1323,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
 	}
 
-
 	return plan.NewCreateTable(
 		sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary), tableSpec), nil
 }

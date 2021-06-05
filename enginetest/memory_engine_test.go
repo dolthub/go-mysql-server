@@ -128,10 +128,10 @@ func TestSingleScript(t *testing.T) {
 				`CREATE TABLE t1(pk int PRIMARY KEY)`,
 				`INSERT INTO t1 VALUES (1)`,
 				`CREATE TABLE t2 SELECT * from t1`,
-				},
+			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: `SELECT * FROM t2`,
+					Query:    `SELECT * FROM t2`,
 					Expected: []sql.Row{{1}},
 				},
 			},

@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -11,10 +12,10 @@ import (
 type TableCopier struct {
 	sql.Node
 
-	source sql.Node
+	source      sql.Node
 	destination sql.Node
-	db sql.Database
-	options CopierProps
+	db          sql.Database
+	options     CopierProps
 }
 
 var _ sql.Databaser = (*TableCopier)(nil)
@@ -22,15 +23,15 @@ var _ sql.Node = (*TableCopier)(nil)
 
 type CopierProps struct {
 	replace bool
-	ignore bool
+	ignore  bool
 }
 
 func NewTableCopier(db sql.Database, createTableNode sql.Node, source sql.Node, prop CopierProps) *TableCopier {
 	return &TableCopier{
-		source: source,
+		source:      source,
 		destination: createTableNode,
-		db: db,
-		options: prop,
+		db:          db,
+		options:     prop,
 	}
 }
 
@@ -133,7 +134,6 @@ func (tc *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, desti
 	return sql.RowsToRowIter([]sql.Row{{sql.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
 }
 
-
 func (tc *TableCopier) Schema() sql.Schema {
 	return tc.destination.Schema()
 }
@@ -153,4 +153,3 @@ func (tc *TableCopier) Resolved() bool {
 func (tc *TableCopier) String() string {
 	return fmt.Sprintf("TABLE_COPY SRC: %s into DST: %s", tc.source, tc.destination)
 }
-
