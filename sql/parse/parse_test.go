@@ -3220,7 +3220,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT a, count(i) over (partition by y) FROM foo`:       ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a) group by 1`:     ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a), max(b)`:        ErrUnsupportedFeature,
-	//`CREATE TABLE mytable(pk int) AS SELECT * from t2`:		   vterrors.SyntaxError{}, // TODO: Fix parsing here/
+	//`CREATE TABLE mytable(pk int) AS SELECT * from t2`:		   vterrors.SyntaxError{}, // TODO: Fix parsing here
 }
 
 func TestParseErrors(t *testing.T) {

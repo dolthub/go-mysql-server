@@ -40,7 +40,8 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 // mergeSchemas takes in the table spec of the CREATE TABLE and merges it with the schema used by the
-// select query
+// select query. The ultimate structure for the new table will be [CREATE TABLE exclusive columns, columns with the same
+// name, SELECT exclusive columns]
 func mergeSchemas(inputSchema sql.Schema, selectSchema sql.Schema) sql.Schema {
 	if inputSchema == nil {
 		return selectSchema
