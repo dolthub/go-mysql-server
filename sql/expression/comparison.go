@@ -333,7 +333,7 @@ func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type matcherErrTuple struct {
-	matcher regex.Matcher
+	matcher regex.DisposableMatcher
 	err     error
 }
 
@@ -347,17 +347,14 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 		return nil, err
 	}
 
-	var (
-		matcher  regex.Matcher
-		disposer regex.Disposer
-	)
+	var matcher regex.DisposableMatcher
 
 	if !re.cached {
 		right, rerr := re.evalRight(ctx, row)
 		if rerr != nil || right == nil {
 			return right, rerr
 		}
-		matcher, disposer, err = regex.New(regex.Default(), *right)
+		matcher, err = regex.NewDisposableMatcher(regex.Default(), *right)
 	} else {
 		re.once.Do(func() {
 			right, err := re.evalRight(ctx, row)
@@ -366,8 +363,8 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 					if err != nil || right == nil {
 						return matcherErrTuple{nil, err}
 					}
-					r, _, e := regex.New(regex.Default(), *right)
-					return matcherErrTuple{r, e}
+					m, e := regex.NewDisposableMatcher(regex.Default(), *right)
+					return matcherErrTuple{m, e}
 				},
 			}
 		})
@@ -384,7 +381,7 @@ func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, err
 	ok := matcher.Match(left.(string))
 
 	if !re.cached {
-		disposer.Dispose()
+		matcher.Dispose()
 	} else {
 		re.pool.Put(matcherErrTuple{matcher, nil})
 	}

@@ -21,12 +21,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/internal/regex"
 )
 
 var (
@@ -63,6 +64,10 @@ type Type interface {
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
+}
+
+type LikeMatcher interface {
+	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }
 
 // SystemVariableType represents a SQL type specifically (and only) used in system variables. Assigning any non-system

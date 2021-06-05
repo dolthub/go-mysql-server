@@ -113,7 +113,7 @@ func TestSetCreate(t *testing.T) {
 				require.NoError(t, err)
 				concreteType, ok := typ.(setType)
 				require.True(t, ok)
-				assert.Equal(t, test.collation, typ.Collation())
+				assert.True(t, test.collation.Equals(typ.Collation()))
 				for val, bit := range test.expectedVals {
 					bitField, err := concreteType.convertStringToBitField(val)
 					if assert.NoError(t, err) {

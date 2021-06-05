@@ -201,7 +201,12 @@ func getIndexes(
 					return nil, err
 				}
 
-				result[idx.Table()] = &indexLookup{
+				getField := extractGetField(e.Left())
+				if getField == nil {
+					return result, nil
+				}
+
+				result[getField.Table()] = &indexLookup{
 					exprs:   []sql.Expression{e},
 					indexes: []sql.Index{idx},
 					lookup:  lookup,
@@ -260,8 +265,13 @@ func getIndexes(
 					return nil, err
 				}
 
-				result[idx.Table()] = &indexLookup{
-					exprs:   []sql.Expression{extractGetField(e)},
+				getField := extractGetField(e)
+				if getField == nil {
+					return result, nil
+				}
+
+				result[getField.Table()] = &indexLookup{
+					exprs:   []sql.Expression{getField},
 					indexes: []sql.Index{idx},
 					lookup:  lookup,
 				}
@@ -497,8 +507,13 @@ func getNegatedIndexes(
 			return nil, err
 		}
 
+		getField := extractGetField(left)
+		if getField == nil {
+			return nil, nil
+		}
+
 		result := indexLookupsByTable{
-			idx.Table(): {
+			getField.Table(): {
 				exprs:   []sql.Expression{left},
 				indexes: []sql.Index{idx},
 				lookup:  lookup,
@@ -550,8 +565,13 @@ func getNegatedIndexes(
 					}
 				}
 
+				getField := extractGetField(e.Left())
+				if getField == nil {
+					return nil, nil
+				}
+
 				return indexLookupsByTable{
-					idx.Table(): {
+					getField.Table(): {
 						exprs:   []sql.Expression{e.Left()},
 						indexes: []sql.Index{idx},
 						lookup:  lookup,

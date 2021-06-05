@@ -20,11 +20,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/internal/regex"
 )
 
 const (
@@ -66,9 +67,9 @@ type StringType interface {
 }
 
 type stringType struct {
-	baseType   query.Type
-	charLength int64
-	collation  Collation
+	baseType      query.Type
+	charLength    int64
+	collationName string
 }
 
 // CreateString creates a StringType.
@@ -87,13 +88,13 @@ func CreateString(baseType query.Type, length int64, collation Collation) (Strin
 
 	switch baseType {
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
-		if collation != Collation_binary {
-			return nil, ErrBinaryCollation.New()
+		if !collation.Equals(Collation_binary) {
+			return nil, ErrBinaryCollation.New(collation.Name, Collation_binary)
 		}
 	}
 
 	// If the CharacterSet is binary, then we convert the type to the binary equivalent
-	if collation == Collation_binary {
+	if collation.Equals(Collation_binary) {
 		switch baseType {
 		case sqltypes.Char:
 			baseType = sqltypes.Binary
@@ -135,7 +136,7 @@ func CreateString(baseType query.Type, length int64, collation Collation) (Strin
 		}
 	}
 
-	return stringType{baseType, length, collation}, nil
+	return stringType{baseType, length, collation.Name}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.
@@ -210,6 +211,11 @@ func (t stringType) Compare(a interface{}, b interface{}) (int, error) {
 		}
 		bs = bi.(string)
 	}
+
+	// TODO: should be comparing based on the collation for many cases, but the way this function is used throughout the
+	// codebase causes problems if made case insensitive.  Need to revisit usings strings.Compare for now.
+	//
+	// return Collations[t.collationName].Compare(as, bs), nil
 
 	return strings.Compare(as, bs), nil
 }
@@ -304,7 +310,7 @@ func (t stringType) MustConvert(v interface{}) interface{} {
 func (t stringType) Promote() Type {
 	switch t.baseType {
 	case sqltypes.Char, sqltypes.VarChar, sqltypes.Text:
-		return MustCreateString(sqltypes.Text, longTextBlobMax, t.collation)
+		return MustCreateString(sqltypes.Text, longTextBlobMax, Collations[t.collationName])
 	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
 		return LongBlob
 	default:
@@ -366,8 +372,8 @@ func (t stringType) String() string {
 		if t.CharacterSet() != Collation_Default.CharacterSet() {
 			s += " CHARACTER SET " + t.CharacterSet().String()
 		}
-		if t.collation != Collation_Default {
-			s += " COLLATE " + t.collation.String()
+		if t.collationName != Collation_Default.Name {
+			s += " COLLATE " + t.collationName
 		}
 	}
 
@@ -385,11 +391,11 @@ func (t stringType) Zero() interface{} {
 }
 
 func (t stringType) CharacterSet() CharacterSet {
-	return t.collation.CharacterSet()
+	return Collations[t.collationName].CharacterSet()
 }
 
 func (t stringType) Collation() Collation {
-	return t.collation
+	return Collations[t.collationName]
 }
 
 // MaxCharacterLength is the maximum character length for this type.
@@ -400,4 +406,9 @@ func (t stringType) MaxCharacterLength() int64 {
 // MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
 func (t stringType) MaxByteLength() int64 {
 	return t.charLength * t.CharacterSet().MaxLength()
+}
+
+func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {
+	c := t.Collation()
+	return c.LikeMatcher(likeStr)
 }

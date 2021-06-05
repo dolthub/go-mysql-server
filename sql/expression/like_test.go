@@ -65,6 +65,7 @@ func TestLike(t *testing.T) {
 		{"a%b", "ab", true},
 		{"a%b", "a", false},
 		{"a_b", "ab", false},
+		{"aa:%", "AA:BB:CC:DD:EE:FF", true},
 	}
 
 	for _, tt := range testCases {

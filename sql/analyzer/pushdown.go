@@ -298,6 +298,11 @@ func convertFiltersToIndexedAccess(
 			return childNum == 0
 		case *plan.RightJoin:
 			return childNum == 1
+		case *plan.TableAlias:
+			// For a TableAlias, we apply this pushdown to the
+			// TableAlias, but not to the resolved table directly
+			// beneath it.
+			return false
 		}
 		return true
 	}
