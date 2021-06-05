@@ -170,7 +170,7 @@ func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn If
 }
 
 // NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
-func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec) *CreateTable {
+func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
 	for _, s := range tableSpec.Schema {
 		s.Source = name
 	}
@@ -183,6 +183,8 @@ func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tab
 		idxDefs:     tableSpec.IdxDefs,
 		name: name,
 		selectNode: selectNode,
+		ifNotExists: ifn,
+		temporary: temp,
 	}
 }
 

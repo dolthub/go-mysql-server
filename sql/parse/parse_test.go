@@ -846,7 +846,9 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""),
 		"mytable",
 		plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("othertable", "")),
-		&plan.TableSpec{}),
+		&plan.TableSpec{},
+		plan.IfNotExistsAbsent,
+		plan.IsTempTable),
 	`DROP TABLE foo;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), false, "foo",
 	),
