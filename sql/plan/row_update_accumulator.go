@@ -230,6 +230,13 @@ func (a *accumulatorIter) Close(ctx *sql.Context) error {
 
 	result := a.updateRowHandler.okResult()
 	ctx.SetLastQueryInfo(sql.RowCount, int64(result.RowsAffected))
+
+	// For UPDATE, the affected-rows value is the number of rows “found”; that is, matched by the WHERE clause for FOUND_ROWS
+	// cc. https://dev.mysql.com/doc/c-api/8.0/en/mysql-affected-rows.html
+	if au, ok := a.updateRowHandler.(*updateRowHandler); ok {
+		ctx.SetLastQueryInfo(sql.FoundRows, int64(au.rowsMatched))
+	}
+
 	return nil
 }
 

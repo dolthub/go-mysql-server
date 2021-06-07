@@ -109,6 +109,8 @@ func (p *QueryProcess) shouldSetFoundRows() bool {
 		case *Limit:
 			limit = n
 			return false
+		case *Update:
+			return false
 		default:
 			return false
 		}
