@@ -415,7 +415,7 @@ rowLoop:
 	if err = setConnStatusFlags(ctx, c); err != nil {
 		return err
 	}
-	if err = setResultInfo(ctx, r); err != nil {
+	if err = setResultInfo(ctx, c, r); err != nil {
 		return err
 	}
 
@@ -453,9 +453,16 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	return nil
 }
 
-func setResultInfo(ctx *sql.Context, r *sqltypes.Result) error {
+func setResultInfo(ctx *sql.Context, conn *mysql.Conn, r *sqltypes.Result) error {
 	lastId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
 	r.InsertID = uint64(lastId)
+
+	// cc. https://dev.mysql.com/doc/internals/en/capability-flags.html
+	// Check if the CLIENT_FOUND_ROWS Compatibility Flag is set
+	if (conn.Capabilities & mysql.CapabilityClientFoundRows) > 0 {
+		r.RowsAffected = uint64(ctx.GetLastQueryInfo(sql.FoundRows))
+	}
+
 	return nil
 }
 
