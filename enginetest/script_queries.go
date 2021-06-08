@@ -667,6 +667,22 @@ var ScriptTests = []ScriptTest{
 				Query:    "select found_rows()",
 				Expected: []sql.Row{{2}},
 			},
+			{
+				Query:    "update b set x = x where x < 40",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 8}}}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{8}},
+			},
+			{
+				Query:    "update b set x = x where x > 10",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0, InsertID: 0, Info: plan.UpdateInfo{Matched: 3}}}},
+			},
+			{
+				Query:    "select found_rows()",
+				Expected: []sql.Row{{3}},
+			},
 		},
 	},
 	{
