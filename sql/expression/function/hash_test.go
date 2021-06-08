@@ -66,7 +66,7 @@ func TestSHA1(t *testing.T) {
 		{expression.NewLiteral("abcd", sql.Text), "81fe8bfe87576c3ecb22426f8e57847382917acf"},
 		{expression.NewLiteral(float32(2.5), sql.Float32), "555a5c5c92b230dccab828d90e89ec66847ab9ce"},
 		{expression.NewLiteral("2.5", sql.Text), "555a5c5c92b230dccab828d90e89ec66847ab9ce"},
-		{NewSHA1(sql.NewEmptyContext() ,expression.NewLiteral(int8(10), sql.Int8)), "f270819294d6d015758421bdcb1202fd353c6f06"},
+		{NewSHA1(sql.NewEmptyContext(), expression.NewLiteral(int8(10), sql.Int8)), "f270819294d6d015758421bdcb1202fd353c6f06"},
 	}
 
 	for _, test := range tests {
