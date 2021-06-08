@@ -320,7 +320,7 @@ func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 				return n, nil
 			}
 
-			return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+			return plan.TransformExpressions(ctx, n, func(e sql.Expression) (sql.Expression, error) {
 				gf, ok := e.(*expression.GetField)
 				if !ok {
 					return e, nil

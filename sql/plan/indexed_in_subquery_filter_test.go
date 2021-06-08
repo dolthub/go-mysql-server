@@ -104,7 +104,7 @@ func TestIndexedInSubqueryFilter(t *testing.T) {
 		sql.Row{"three"},
 	})
 
-	c, err := function.NewConcat(expression.NewGetField(0, sql.Text, "t", true), expression.NewLiteral("_some_stuff", sql.Text))
+	c, err := function.NewConcat(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "t", true), expression.NewLiteral("_some_stuff", sql.Text))
 	require.NoError(t, err)
 	rows, err = sql.NodeToRows(ctx, plan.NewIndexedInSubqueryFilter(
 		plan.NewSubquery(

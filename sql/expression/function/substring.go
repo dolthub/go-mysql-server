@@ -37,7 +37,7 @@ type Substring struct {
 var _ sql.FunctionExpression = (*Substring)(nil)
 
 // NewSubstring creates a new substring UDF.
-func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
+func NewSubstring(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var str, start, ln sql.Expression
 	switch len(args) {
 	case 2:
@@ -164,8 +164,8 @@ func (s *Substring) Resolved() bool {
 func (*Substring) Type() sql.Type { return sql.LongText }
 
 // WithChildren implements the Expression interface.
-func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewSubstring(children...)
+func (*Substring) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewSubstring(ctx, children...)
 }
 
 // SubstringIndex returns the substring from string str before count occurrences of the delimiter delim.
@@ -181,7 +181,7 @@ type SubstringIndex struct {
 var _ sql.FunctionExpression = (*SubstringIndex)(nil)
 
 // NewSubstringIndex creates a new SubstringIndex UDF.
-func NewSubstringIndex(str, delim, count sql.Expression) sql.Expression {
+func NewSubstringIndex(ctx *sql.Context, str, delim, count sql.Expression) sql.Expression {
 	return &SubstringIndex{str, delim, count}
 }
 
@@ -279,11 +279,11 @@ func (s *SubstringIndex) Resolved() bool {
 func (*SubstringIndex) Type() sql.Type { return sql.LongText }
 
 // WithChildren implements the Expression interface.
-func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *SubstringIndex) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 3)
 	}
-	return NewSubstringIndex(children[0], children[1], children[2]), nil
+	return NewSubstringIndex(ctx, children[0], children[1], children[2]), nil
 }
 
 // Left is a function that returns the first N characters of a string expression.
@@ -295,7 +295,7 @@ type Left struct {
 var _ sql.FunctionExpression = Left{}
 
 // NewLeft creates a new LEFT function.
-func NewLeft(str, len sql.Expression) sql.Expression {
+func NewLeft(ctx *sql.Context, str, len sql.Expression) sql.Expression {
 	return Left{str, len}
 }
 
@@ -374,11 +374,11 @@ func (l Left) Resolved() bool {
 func (Left) Type() sql.Type { return sql.LongText }
 
 // WithChildren implements the Expression interface.
-func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l Left) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}
-	return NewLeft(children[0], children[1]), nil
+	return NewLeft(ctx, children[0], children[1]), nil
 }
 
 type Instr struct {
@@ -389,7 +389,7 @@ type Instr struct {
 var _ sql.FunctionExpression = Instr{}
 
 // NewInstr creates a new instr UDF.
-func NewInstr(str, substr sql.Expression) sql.Expression {
+func NewInstr(ctx *sql.Context, str, substr sql.Expression) sql.Expression {
 	return Instr{str, substr}
 }
 
@@ -475,9 +475,9 @@ func (i Instr) Resolved() bool {
 func (Instr) Type() sql.Type { return sql.Int64 }
 
 // WithChildren implements the Expression interface.
-func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i Instr) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
 	}
-	return NewInstr(children[0], children[1]), nil
+	return NewInstr(ctx, children[0], children[1]), nil
 }

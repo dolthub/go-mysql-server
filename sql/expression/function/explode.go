@@ -29,7 +29,7 @@ type Explode struct {
 var _ sql.FunctionExpression = (*Explode)(nil)
 
 // NewExplode creates a new Explode function.
-func NewExplode(child sql.Expression) sql.Expression {
+func NewExplode(ctx *sql.Context, child sql.Expression) sql.Expression {
 	return &Explode{child}
 }
 
@@ -62,11 +62,11 @@ func (e *Explode) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *Explode) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *Explode) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewExplode(children[0]), nil
+	return NewExplode(ctx, children[0]), nil
 }
 
 // Generate is a function that generates a row for each value of its child.
@@ -76,7 +76,7 @@ type Generate struct {
 }
 
 // NewGenerate creates a new Generate function.
-func NewGenerate(child sql.Expression) sql.Expression {
+func NewGenerate(ctx *sql.Context, child sql.Expression) sql.Expression {
 	return &Generate{child}
 }
 
@@ -104,9 +104,9 @@ func (e *Generate) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *Generate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *Generate) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewGenerate(children[0]), nil
+	return NewGenerate(ctx, children[0]), nil
 }

@@ -64,7 +64,7 @@ type Expression interface {
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
-	WithChildren(children ...Expression) (Expression, error)
+	WithChildren(ctx *Context, children ...Expression) (Expression, error)
 }
 
 // FunctionExpression is an Expression that represents a function.

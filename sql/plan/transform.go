@@ -124,19 +124,19 @@ func TransformUpWithSelector(node sql.Node, selector ChildSelector, f sql.Transf
 
 // TransformExpressionsUp applies a transformation function to all expressions
 // on the given tree from the bottom up.
-func TransformExpressionsUpWithNode(node sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
+func TransformExpressionsUpWithNode(ctx *sql.Context, node sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
 	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
-		return TransformExpressionsWithNode(node, f)
+		return TransformExpressionsWithNode(ctx, node, f)
 	}
 
 	children := node.Children()
 	if len(children) == 0 {
-		return TransformExpressionsWithNode(node, f)
+		return TransformExpressionsWithNode(ctx, node, f)
 	}
 
 	newChildren := make([]sql.Node, len(children))
 	for i, c := range children {
-		c, err := TransformExpressionsUpWithNode(c, f)
+		c, err := TransformExpressionsUpWithNode(ctx, c, f)
 		if err != nil {
 			return nil, err
 		}
@@ -148,24 +148,24 @@ func TransformExpressionsUpWithNode(node sql.Node, f expression.TransformExprWit
 		return nil, err
 	}
 
-	return TransformExpressionsWithNode(node, f)
+	return TransformExpressionsWithNode(ctx, node, f)
 }
 
 // TransformExpressionsUp applies a transformation function to all expressions
 // on the given tree from the bottom up.
-func TransformExpressionsUp(node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
+func TransformExpressionsUp(ctx *sql.Context, node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
 	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
-		return TransformExpressions(node, f)
+		return TransformExpressions(ctx, node, f)
 	}
 
 	children := node.Children()
 	if len(children) == 0 {
-		return TransformExpressions(node, f)
+		return TransformExpressions(ctx, node, f)
 	}
 
 	newChildren := make([]sql.Node, len(children))
 	for i, c := range children {
-		c, err := TransformExpressionsUp(c, f)
+		c, err := TransformExpressionsUp(ctx, c, f)
 		if err != nil {
 			return nil, err
 		}
@@ -177,12 +177,12 @@ func TransformExpressionsUp(node sql.Node, f sql.TransformExprFunc) (sql.Node, e
 		return nil, err
 	}
 
-	return TransformExpressions(node, f)
+	return TransformExpressions(ctx, node, f)
 }
 
 // TransformExpressions applies a transformation function to all expressions
 // on the given node.
-func TransformExpressions(node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
+func TransformExpressions(ctx *sql.Context, node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
 	e, ok := node.(sql.Expressioner)
 	if !ok {
 		return node, nil
@@ -195,7 +195,7 @@ func TransformExpressions(node sql.Node, f sql.TransformExprFunc) (sql.Node, err
 
 	newExprs := make([]sql.Expression, len(exprs))
 	for i, e := range exprs {
-		e, err := expression.TransformUp(e, f)
+		e, err := expression.TransformUp(ctx, e, f)
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +207,7 @@ func TransformExpressions(node sql.Node, f sql.TransformExprFunc) (sql.Node, err
 
 // TransformExpressions applies a transformation function to all expressions
 // on the given node.
-func TransformExpressionsWithNode(n sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
+func TransformExpressionsWithNode(ctx *sql.Context, n sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
 	e, ok := n.(sql.Expressioner)
 	if !ok {
 		return n, nil
@@ -220,7 +220,7 @@ func TransformExpressionsWithNode(n sql.Node, f expression.TransformExprWithNode
 
 	newExprs := make([]sql.Expression, len(exprs))
 	for i, e := range exprs {
-		e, err := expression.TransformUpWithNode(n, e, f)
+		e, err := expression.TransformUpWithNode(ctx, n, e, f)
 		if err != nil {
 			return nil, err
 		}

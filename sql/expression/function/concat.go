@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*Concat)(nil)
 var ErrConcatArrayWithOthers = errors.NewKind("can't concat a string array with any other elements")
 
 // NewConcat creates a new Concat UDF.
-func NewConcat(args ...sql.Expression) (sql.Expression, error) {
+func NewConcat(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("CONCAT", "1 or more", 0)
 	}
@@ -86,8 +86,8 @@ func (f *Concat) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (*Concat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewConcat(children...)
+func (*Concat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewConcat(ctx, children...)
 }
 
 // Resolved implements the Expression interface.

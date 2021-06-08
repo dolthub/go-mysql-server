@@ -115,7 +115,7 @@ func (c *Convert) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Convert) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Convert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}

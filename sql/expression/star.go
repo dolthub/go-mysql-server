@@ -70,7 +70,7 @@ func (*Star) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Star) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Star) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}

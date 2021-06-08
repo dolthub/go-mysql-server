@@ -50,7 +50,7 @@ func (bv *BindVar) Children() []sql.Expression {
 	return nil
 }
 
-func (bv *BindVar) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (bv *BindVar) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(bv, len(children), 0)
 

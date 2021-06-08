@@ -27,9 +27,9 @@ import (
 )
 
 func TestUUID(t *testing.T) {
-	// Generate a UUID and validate that is a legitimate uuid
-	uuidE := NewUUIDFunc()
 	ctx := sql.NewEmptyContext()
+	// Generate a UUID and validate that is a legitimate uuid
+	uuidE := NewUUIDFunc(ctx)
 
 	result, err := uuidE.Eval(ctx, sql.Row{nil})
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestUUID(t *testing.T) {
 	require.NoError(t, err)
 
 	// validate that generated uuid is legitimate for IsUUID
-	val := NewIsUUID(uuidE)
+	val := NewIsUUID(ctx, uuidE)
 	require.Equal(t, int8(1), eval(t, val, sql.Row{nil}))
 
 	// Use a UUID regex as a sanity check
@@ -65,7 +65,8 @@ func TestIsUUID(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewIsUUID(expression.NewLiteral(tt.value, tt.rowType))
+		ctx := sql.NewEmptyContext()
+		f := NewIsUUID(ctx, expression.NewLiteral(tt.value, tt.rowType))
 
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, eval(t, f, sql.Row{nil}))
@@ -97,16 +98,17 @@ func TestUUIDToBinValid(t *testing.T) {
 		var f sql.Expression
 		var err error
 
+		ctx := sql.NewEmptyContext()
 		if tt.hasSwap {
-			f, err = NewUUIDToBin(expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+			f, err = NewUUIDToBin(ctx, expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
 		} else {
-			f, err = NewUUIDToBin(expression.NewLiteral(tt.uuid, tt.uuidType))
+			f, err = NewUUIDToBin(ctx, expression.NewLiteral(tt.uuid, tt.uuidType))
 		}
 
 		require.NoError(t, err)
 
 		// Convert to hex to make testing easier
-		h := NewHex(f)
+		h := NewHex(ctx, f)
 
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, eval(t, h, sql.Row{nil}))
@@ -131,7 +133,8 @@ func TestUUIDToBinFailing(t *testing.T) {
 	}
 
 	for _, tt := range failingTestCases {
-		f, err := NewUUIDToBin(expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+		ctx := sql.NewEmptyContext()
+		f, err := NewUUIDToBin(ctx, expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
 		require.NoError(t, err)
 
 		t.Run(tt.name, func(t *testing.T) {
@@ -143,13 +146,14 @@ func TestUUIDToBinFailing(t *testing.T) {
 }
 
 func TestBinToUUID(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	// Test that UUID_TO_BIN to BIN_TO_UUID is reflexive
-	uuidE := eval(t, NewUUIDFunc(), sql.Row{nil})
+	uuidE := eval(t, NewUUIDFunc(ctx), sql.Row{nil})
 
-	f, err := NewUUIDToBin(expression.NewLiteral(uuidE, sql.LongText))
+	f, err := NewUUIDToBin(ctx, expression.NewLiteral(uuidE, sql.LongText))
 	require.NoError(t, err)
 
-	retUUID, err := NewBinToUUID(f)
+	retUUID, err := NewBinToUUID(ctx, f)
 	require.NoError(t, err)
 
 	require.Equal(t, uuidE, eval(t, retUUID, sql.Row{nil}))
@@ -174,10 +178,11 @@ func TestBinToUUID(t *testing.T) {
 		var f sql.Expression
 		var err error
 
+		ctx := sql.NewEmptyContext()
 		if tt.hasSwap {
-			f, err = NewBinToUUID(expression.NewLiteral(tt.binary, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+			f, err = NewBinToUUID(ctx, expression.NewLiteral(tt.binary, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
 		} else {
-			f, err = NewBinToUUID(expression.NewLiteral(tt.binary, tt.uuidType))
+			f, err = NewBinToUUID(ctx, expression.NewLiteral(tt.binary, tt.uuidType))
 		}
 		require.NoError(t, err)
 
@@ -204,7 +209,8 @@ func TestBinToUUIDFailing(t *testing.T) {
 	}
 
 	for _, tt := range failingTestCases {
-		f, err := NewBinToUUID(expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
+		ctx := sql.NewEmptyContext()
+		f, err := NewBinToUUID(ctx, expression.NewLiteral(tt.uuid, tt.uuidType), expression.NewLiteral(tt.swapValue, tt.swapType))
 		require.NoError(t, err)
 
 		t.Run(tt.name, func(t *testing.T) {

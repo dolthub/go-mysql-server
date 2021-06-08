@@ -309,10 +309,10 @@ func TestCreateIndexWithIter(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	columns, exprs, err := GetColumnsAndPrepareExpressions(ci.Exprs)
+	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	columns, exprs, err := GetColumnsAndPrepareExpressions(ctx, ci.Exprs)
 	require.NoError(err)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
 	iter, err := foo.IndexKeyValues(ctx, columns)
 	require.NoError(err)
 

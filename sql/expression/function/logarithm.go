@@ -30,9 +30,9 @@ import (
 var ErrInvalidArgumentForLogarithm = errors.NewKind("invalid argument value for logarithm: %v")
 
 // NewLogBaseFunc returns LogBase creator function with a specific base.
-func NewLogBaseFunc(base float64) func(e sql.Expression) sql.Expression {
-	return func(e sql.Expression) sql.Expression {
-		return NewLogBase(base, e)
+func NewLogBaseFunc(base float64) func(ctx *sql.Context, e sql.Expression) sql.Expression {
+	return func(ctx *sql.Context, e sql.Expression) sql.Expression {
+		return NewLogBase(ctx, base, e)
 	}
 }
 
@@ -45,7 +45,7 @@ type LogBase struct {
 var _ sql.FunctionExpression = (*LogBase)(nil)
 
 // NewLogBase creates a new LogBase expression.
-func NewLogBase(base float64, e sql.Expression) sql.Expression {
+func NewLogBase(ctx *sql.Context, base float64, e sql.Expression) sql.Expression {
 	return &LogBase{UnaryExpression: expression.UnaryExpression{Child: e}, base: base}
 }
 
@@ -77,11 +77,11 @@ func (l *LogBase) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *LogBase) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *LogBase) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLogBase(l.base, children[0]), nil
+	return NewLogBase(ctx, l.base, children[0]), nil
 }
 
 // Type returns the resultant type of the function.
@@ -123,7 +123,7 @@ type Log struct {
 var _ sql.FunctionExpression = (*Log)(nil)
 
 // NewLog creates a new Log expression.
-func NewLog(args ...sql.Expression) (sql.Expression, error) {
+func NewLog(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen == 0 || argLen > 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("LOG", "1 or 2", argLen)
@@ -146,8 +146,8 @@ func (l *Log) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Log) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLog(children...)
+func (l *Log) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewLog(ctx, children...)
 }
 
 // Children implements the Expression interface.

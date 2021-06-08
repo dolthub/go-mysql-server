@@ -81,7 +81,7 @@ func (e *IsTrue) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *IsTrue) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *IsTrue) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, errors.New("incorrect number of children")
 	}

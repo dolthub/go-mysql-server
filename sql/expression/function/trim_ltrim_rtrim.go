@@ -33,14 +33,14 @@ const (
 )
 
 // NewTrimFunc returns a Trim creator function with a specific trimType.
-func NewTrimFunc(tType trimType) func(e sql.Expression) sql.Expression {
-	return func(e sql.Expression) sql.Expression {
-		return NewTrim(tType, e)
+func NewTrimFunc(tType trimType) func(ctx *sql.Context, e sql.Expression) sql.Expression {
+	return func(ctx *sql.Context, e sql.Expression) sql.Expression {
+		return NewTrim(ctx, tType, e)
 	}
 }
 
 // NewTrim creates a new Trim expression.
-func NewTrim(tType trimType, str sql.Expression) sql.Expression {
+func NewTrim(ctx *sql.Context, tType trimType, str sql.Expression) sql.Expression {
 	return &Trim{expression.UnaryExpression{Child: str}, tType}
 }
 
@@ -86,11 +86,11 @@ func (t *Trim) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (t *Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *Trim) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewTrim(t.trimType, children[0]), nil
+	return NewTrim(ctx, t.trimType, children[0]), nil
 }
 
 // Eval implements the Expression interface.

@@ -200,7 +200,7 @@ var _ sql.FunctionExpression = (*Greatest)(nil)
 var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/least argument: %T")
 
 // NewGreatest creates a new Greatest UDF
-func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
+func NewGreatest(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &Greatest{Args: args}, nil
 }
 
@@ -236,8 +236,8 @@ func (f *Greatest) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Greatest) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGreatest(children...)
+func (f *Greatest) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGreatest(ctx, children...)
 }
 
 // Resolved implements the Expression interface.
@@ -309,7 +309,7 @@ type Least struct {
 var _ sql.FunctionExpression = (*Least)(nil)
 
 // NewLeast creates a new Least UDF
-func NewLeast(args ...sql.Expression) (sql.Expression, error) {
+func NewLeast(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &Least{Args: args}, nil
 }
 
@@ -345,8 +345,8 @@ func (f *Least) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Least) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLeast(children...)
+func (f *Least) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewLeast(ctx, children...)
 }
 
 // Resolved implements the Expression interface.

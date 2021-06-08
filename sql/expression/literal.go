@@ -92,7 +92,7 @@ func (p *Literal) DebugString() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Literal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *Literal) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}

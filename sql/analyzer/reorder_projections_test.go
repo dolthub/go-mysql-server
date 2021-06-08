@@ -164,7 +164,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 						plan.NewSubquery(
 							plan.NewGroupBy(
 								[]sql.Expression{
-									aggregation.NewMax(uqc("two_pk", "pk1")),
+									aggregation.NewMax(sql.NewEmptyContext(), uqc("two_pk", "pk1")),
 								},
 								nil,
 								plan.NewFilter(
@@ -191,7 +191,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 						plan.NewSubquery(
 							plan.NewGroupBy(
 								[]sql.Expression{
-									aggregation.NewMax(uqc("one_pk", "pk")),
+									aggregation.NewMax(sql.NewEmptyContext(), uqc("one_pk", "pk")),
 								},
 								nil,
 								plan.NewFilter(
@@ -214,7 +214,7 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 						plan.NewSubquery(
 							plan.NewGroupBy(
 								[]sql.Expression{
-									aggregation.NewMax(uqc("one_pk", "pk")),
+									aggregation.NewMax(sql.NewEmptyContext(), uqc("one_pk", "pk")),
 								},
 								nil,
 								plan.NewFilter(

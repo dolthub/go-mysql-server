@@ -101,7 +101,7 @@ func TestHexRoundTrip(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %s", test.val, test.typ.String()), func(t *testing.T) {
 			lit := expression.NewLiteral(test.val, test.typ)
-			f := NewHex(NewUnhex(lit))
+			f := NewHex(sql.NewEmptyContext(), NewUnhex(sql.NewEmptyContext(), lit))
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.out, res)

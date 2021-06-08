@@ -131,7 +131,7 @@ func (c *CreateCheck) Execute(ctx *sql.Context) error {
 		}
 	}
 
-	check, err := NewCheckDefinition(c.Check)
+	check, err := NewCheckDefinition(ctx, c.Check)
 	if err != nil {
 		return err
 	}
@@ -201,11 +201,11 @@ func (p DropCheck) String() string {
 	return pr.String()
 }
 
-func NewCheckDefinition(check *sql.CheckConstraint) (*sql.CheckDefinition, error) {
+func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.CheckDefinition, error) {
 	// When transforming an analyzed CheckConstraint into a CheckDefinition (for storage), we strip off any table
 	// qualifiers that got resolved during analysis. This is to naively match the MySQL behavior, which doesn't print
 	// any table qualifiers in check expressions.
-	unqualifiedCols, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+	unqualifiedCols, err := expression.TransformUp(ctx, check.Expr, func(e sql.Expression) (sql.Expression, error) {
 		gf, ok := e.(*expression.GetField)
 		if ok {
 			return expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable()), nil

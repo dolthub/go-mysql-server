@@ -24,7 +24,7 @@ import (
 )
 
 func TestEmptyCoalesce(t *testing.T) {
-	_, err := NewCoalesce()
+	_, err := NewCoalesce(sql.NewEmptyContext())
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 }
 
@@ -44,7 +44,7 @@ func TestCoalesce(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		c, err := NewCoalesce(tt.input...)
+		c, err := NewCoalesce(sql.NewEmptyContext(), tt.input...)
 		require.NoError(t, err)
 
 		require.Equal(t, tt.typ, c.Type())
@@ -56,24 +56,25 @@ func TestCoalesce(t *testing.T) {
 }
 
 func TestComposeCoalasce(t *testing.T) {
-	c1, err := NewCoalesce(nil)
+	ctx := sql.NewEmptyContext()
+	c1, err := NewCoalesce(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, c1.Type())
-	v, err := c1.Eval(sql.NewEmptyContext(), nil)
+	v, err := c1.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, nil, v)
 
-	c2, err := NewCoalesce(nil, expression.NewLiteral(1, sql.Int32))
+	c2, err := NewCoalesce(ctx, nil, expression.NewLiteral(1, sql.Int32))
 	require.NoError(t, err)
 	require.Equal(t, sql.Int32, c2.Type())
-	v, err = c2.Eval(sql.NewEmptyContext(), nil)
+	v, err = c2.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, v)
 
-	c, err := NewCoalesce(nil, c1, c2)
+	c, err := NewCoalesce(ctx, nil, c1, c2)
 	require.NoError(t, err)
 	require.Equal(t, sql.Int32, c.Type())
-	v, err = c.Eval(sql.NewEmptyContext(), nil)
+	v, err = c.Eval(ctx, nil)
 	require.NoError(t, err)
 	require.Equal(t, 1, v)
 }

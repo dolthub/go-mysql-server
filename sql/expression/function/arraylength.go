@@ -29,7 +29,7 @@ type ArrayLength struct {
 var _ sql.FunctionExpression = (*ArrayLength)(nil)
 
 // NewArrayLength creates a new ArrayLength UDF.
-func NewArrayLength(array sql.Expression) sql.Expression {
+func NewArrayLength(ctx *sql.Context, array sql.Expression) sql.Expression {
 	return &ArrayLength{expression.UnaryExpression{Child: array}}
 }
 
@@ -48,11 +48,11 @@ func (f *ArrayLength) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *ArrayLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *ArrayLength) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewArrayLength(children[0]), nil
+	return NewArrayLength(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.

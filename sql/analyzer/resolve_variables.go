@@ -35,7 +35,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
 		sf, ok := e.(*expression.SetField)
 		if !ok {
 			return e, nil
@@ -92,9 +92,9 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 		}
 		if _, ok := setExpr.(*expression.SystemVar); ok {
-			return sf.WithChildren(setExpr, setVal)
+			return sf.WithChildren(ctx, setExpr, setVal)
 		} else if _, ok := setExpr.(*expression.UserVar); ok {
-			return sf.WithChildren(setExpr, setVal)
+			return sf.WithChildren(ctx, setExpr, setVal)
 		}
 		return sf, nil
 	})
@@ -109,7 +109,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
 		sf, ok := e.(*expression.SetField)
 		if !ok {
 			return e, nil
@@ -138,7 +138,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				}
 			}
 
-			return sf.WithChildren(expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
+			return sf.WithChildren(ctx, expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
 		}
 
 		return sf, nil

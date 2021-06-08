@@ -27,11 +27,13 @@ import (
 func TestJSONContains(t *testing.T) {
 	// Quickly assert that an error is thrown with < 2 and > 3 arguments
 	_, err := NewJSONContains(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.JSON, "arg1", false),
 	)
 	require.Error(t, err)
 
 	_, err = NewJSONContains(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.JSON, "arg1", false),
 		expression.NewGetField(1, sql.JSON, "arg2", false),
 		expression.NewGetField(2, sql.LongText, "arg3", false),
@@ -40,6 +42,7 @@ func TestJSONContains(t *testing.T) {
 	require.Error(t, err)
 
 	f, err := NewJSONContains(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.JSON, "arg1", false),
 		expression.NewGetField(1, sql.JSON, "arg2", false),
 		expression.NewGetField(2, sql.LongText, "arg3", false),
@@ -47,6 +50,7 @@ func TestJSONContains(t *testing.T) {
 	require.NoError(t, err)
 
 	f2, err := NewJSONContains(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.JSON, "arg1", false),
 		expression.NewGetField(1, sql.JSON, "arg2", false),
 	)

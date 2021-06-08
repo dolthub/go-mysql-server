@@ -35,11 +35,11 @@ func TestMD5(t *testing.T) {
 		{expression.NewLiteral("abcd", sql.Text), "e2fc714c4727ee9395f324cd2e7f331f"},
 		{expression.NewLiteral(float32(2.5), sql.Float32), "8221435bcce913b5c2dc22eaf6cb6590"},
 		{expression.NewLiteral("2.5", sql.Text), "8221435bcce913b5c2dc22eaf6cb6590"},
-		{NewMD5(expression.NewLiteral(int8(10), sql.Int8)), "8d8e353b98d5191d5ceea1aa3eb05d43"},
+		{NewMD5(sql.NewEmptyContext(), expression.NewLiteral(int8(10), sql.Int8)), "8d8e353b98d5191d5ceea1aa3eb05d43"},
 	}
 
 	for _, test := range tests {
-		f := NewMD5(test.val)
+		f := NewMD5(sql.NewEmptyContext(), test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -48,7 +48,7 @@ func TestMD5(t *testing.T) {
 	}
 
 	// Test nil
-	f := NewMD5(expression.NewLiteral(nil, sql.Null))
+	f := NewMD5(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.Null))
 	t.Run(f.String(), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
@@ -66,11 +66,11 @@ func TestSHA1(t *testing.T) {
 		{expression.NewLiteral("abcd", sql.Text), "81fe8bfe87576c3ecb22426f8e57847382917acf"},
 		{expression.NewLiteral(float32(2.5), sql.Float32), "555a5c5c92b230dccab828d90e89ec66847ab9ce"},
 		{expression.NewLiteral("2.5", sql.Text), "555a5c5c92b230dccab828d90e89ec66847ab9ce"},
-		{NewSHA1(expression.NewLiteral(int8(10), sql.Int8)), "f270819294d6d015758421bdcb1202fd353c6f06"},
+		{NewSHA1(sql.NewEmptyContext(), expression.NewLiteral(int8(10), sql.Int8)), "f270819294d6d015758421bdcb1202fd353c6f06"},
 	}
 
 	for _, test := range tests {
-		f := NewSHA1(test.val)
+		f := NewSHA1(sql.NewEmptyContext(), test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestSHA1(t *testing.T) {
 	}
 
 	// Test nil
-	f := NewSHA1(expression.NewLiteral(nil, sql.Null))
+	f := NewSHA1(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.Null))
 	t.Run(f.String(), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestSHA2(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewSHA2(test.arg, test.count)
+		f := NewSHA2(sql.NewEmptyContext(), test.arg, test.count)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -266,7 +266,7 @@ func TestSHA2Null(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewSHA2(test.arg, test.count)
+		f := NewSHA2(sql.NewEmptyContext(), test.arg, test.count)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)

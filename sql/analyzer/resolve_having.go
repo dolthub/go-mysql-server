@@ -42,7 +42,7 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (
 		var requiresProjection bool
 		if containsAggregation(having.Cond) {
 			var err error
-			having, requiresProjection, err = replaceAggregations(having)
+			having, requiresProjection, err = replaceAggregations(ctx, having)
 			if err != nil {
 				return nil, err
 			}
@@ -290,7 +290,7 @@ func pushColumnsUp(node sql.Node, columns []int) (sql.Node, []int, error) {
 	}
 }
 
-func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
+func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, bool, error) {
 	groupBy, err := findGroupBy(having)
 	if err != nil {
 		return nil, false, err
@@ -312,14 +312,14 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 	// indexes after they have been pushed up. This is because some of these
 	// may have already been projected in some projection and we cannot ensure
 	// from here what the final index will be.
-	cond, err := expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, error) {
+	cond, err := expression.TransformUp(ctx, having.Cond, func(e sql.Expression) (sql.Expression, error) {
 		agg, ok := e.(sql.Aggregation)
 		if !ok {
 			return e, nil
 		}
 
 		for i, expr := range groupBy.SelectedExprs {
-			if aggregationEquals(agg, expr) {
+			if aggregationEquals(ctx, agg, expr) {
 				token := pushUpToken
 				pushUpToken--
 				pushUp = append(pushUp, i)
@@ -366,7 +366,7 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 
 	// Now, the tokens are replaced with the actual columns, now that we know
 	// what the indexes are.
-	cond, err = expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, error) {
+	cond, err = expression.TransformUp(ctx, having.Cond, func(e sql.Expression) (sql.Expression, error) {
 		f, ok := e.(*expression.GetField)
 		if !ok {
 			return e, nil
@@ -388,7 +388,7 @@ func replaceAggregations(having *plan.Having) (*plan.Having, bool, error) {
 	return plan.NewHaving(cond, having.Child), requiresProjection, nil
 }
 
-func aggregationEquals(a, b sql.Expression) bool {
+func aggregationEquals(ctx *sql.Context, a, b sql.Expression) bool {
 	// First unwrap aliases
 	if alias, ok := b.(*expression.Alias); ok {
 		b = alias.Child
@@ -413,49 +413,49 @@ func aggregationEquals(a, b sql.Expression) bool {
 			return false
 		}
 
-		return aggregationChildEquals(a.Child, b.Child)
+		return aggregationChildEquals(ctx, a.Child, b.Child)
 	case *aggregation.Avg:
 		b, ok := b.(*aggregation.Avg)
 		if !ok {
 			return false
 		}
 
-		return aggregationChildEquals(a.Child, b.Child)
+		return aggregationChildEquals(ctx, a.Child, b.Child)
 	case *aggregation.Min:
 		b, ok := b.(*aggregation.Min)
 		if !ok {
 			return false
 		}
 
-		return aggregationChildEquals(a.Child, b.Child)
+		return aggregationChildEquals(ctx, a.Child, b.Child)
 	case *aggregation.Max:
 		b, ok := b.(*aggregation.Max)
 		if !ok {
 			return false
 		}
 
-		return aggregationChildEquals(a.Child, b.Child)
+		return aggregationChildEquals(ctx, a.Child, b.Child)
 	case *aggregation.First:
 		b, ok := b.(*aggregation.First)
 		if !ok {
 			return false
 		}
 
-		return aggregationChildEquals(a.Child, b.Child)
+		return aggregationChildEquals(ctx, a.Child, b.Child)
 	case *aggregation.Last:
 		b, ok := b.(*aggregation.Last)
 		if !ok {
 			return false
 		}
 
-		return aggregationChildEquals(a.Child, b.Child)
+		return aggregationChildEquals(ctx, a.Child, b.Child)
 	case *aggregation.JSONArrayAgg:
 		b, ok := b.(*aggregation.JSONArrayAgg)
 		if !ok {
 			return false
 		}
 
-		return aggregationChildEquals(a.Child, b.Child)
+		return aggregationChildEquals(ctx, a.Child, b.Child)
 	default:
 		return false
 	}
@@ -465,7 +465,7 @@ func aggregationEquals(a, b sql.Expression) bool {
 // matches expression b coming from the group by. To do that, columns in
 // a need to be replaced to match the ones in b if their name or table and
 // name match.
-func aggregationChildEquals(a, b sql.Expression) bool {
+func aggregationChildEquals(ctx *sql.Context, a, b sql.Expression) bool {
 	var fieldsByName = make(map[string]sql.Expression)
 	var fieldsByTableCol = make(map[tableCol]sql.Expression)
 	sql.Inspect(b, func(e sql.Expression) bool {
@@ -480,7 +480,7 @@ func aggregationChildEquals(a, b sql.Expression) bool {
 		return true
 	})
 
-	a, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, error) {
+	a, err := expression.TransformUp(ctx, a, func(e sql.Expression) (sql.Expression, error) {
 		var table, name string
 		switch e := e.(type) {
 		case column:

@@ -28,7 +28,7 @@ func TestLength(t *testing.T) {
 		name      string
 		input     interface{}
 		inputType sql.Type
-		fn        func(sql.Expression) sql.Expression
+		fn        func(*sql.Context, sql.Expression) sql.Expression
 		expected  interface{}
 	}{
 		{
@@ -107,7 +107,7 @@ func TestLength(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, err := tt.fn(expression.NewGetField(0, tt.inputType, "foo", false)).Eval(
+			result, err := tt.fn(sql.NewEmptyContext(), expression.NewGetField(0, tt.inputType, "foo", false)).Eval(
 				sql.NewEmptyContext(),
 				sql.Row{tt.input},
 			)
