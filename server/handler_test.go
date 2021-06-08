@@ -426,3 +426,36 @@ func TestBindingsToExprs(t *testing.T) {
 		})
 	}
 }
+
+// Tests the CLIENT_FOUND_ROWS capabilities flag
+func TestHandlerFoundRowsCapabilities(t *testing.T) {
+	e := setupMemDB(require.New(t))
+	dummyConn := &mysql.Conn{ConnectionID: 1}
+
+	// Set the capabilities to include found rows
+	dummyConn.Capabilities = mysql.CapabilityClientFoundRows
+
+	// Setup the handler
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			testSessionBuilder,
+			opentracing.NoopTracer{},
+			func(db string) bool { return db == "test" },
+			sql.NewMemoryManager(nil),
+			"foo",
+		),
+		0,
+	)
+	handler.NewConnection(dummyConn)
+	handler.ComInitDB(dummyConn, "test")
+
+	var rowsAffected uint64
+	// Run the Update Query
+	err := handler.ComQuery(dummyConn, "UPDATE test set c1 = c1 where c1 < 10", func(res *sqltypes.Result) error {
+		rowsAffected = res.RowsAffected
+		return nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 10, int(rowsAffected)) // The correct answer is 10 since 10 rows were matched.
+}
