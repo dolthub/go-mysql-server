@@ -37,7 +37,7 @@ type FuncTest struct {
 
 func (ft FuncTest) Run(t *testing.T, ctx *sql.Context, r sql.Row) {
 	t.Run(ft.name, func(t *testing.T) {
-		expr, err := ft.expr.WithChildren(nil, ft.expr.Children()...)
+		expr, err := ft.expr.WithChildren(ctx, ft.expr.Children()...)
 		require.NoError(t, err)
 
 		res, err := expr.Eval(ctx, r)
