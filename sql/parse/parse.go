@@ -2141,13 +2141,13 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		if v.To == nil {
-			return function.NewSubstring(name, from)
+			return function.NewSubstring(ctx, name, from)
 		}
 		to, err := ExprToExpression(ctx, v.To)
 		if err != nil {
 			return nil, err
 		}
-		return function.NewSubstring(name, from, to)
+		return function.NewSubstring(ctx, name, from, to)
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(ctx, v)
 	case *sqlparser.IsExpr:
@@ -2223,7 +2223,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 		groupConcatMaxLen := gcml.(uint64)
 
-		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
+		return aggregation.NewGroupConcat(ctx, v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:

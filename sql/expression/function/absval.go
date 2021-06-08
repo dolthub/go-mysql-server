@@ -31,7 +31,7 @@ type AbsVal struct {
 var _ sql.FunctionExpression = (*AbsVal)(nil)
 
 // NewAbsVal creates a new AbsVal expression.
-func NewAbsVal(e sql.Expression) sql.Expression {
+func NewAbsVal(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &AbsVal{expression.UnaryExpression{Child: e}}
 }
 
@@ -115,11 +115,11 @@ func (t *AbsVal) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (t *AbsVal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *AbsVal) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewAbsVal(children[0]), nil
+	return NewAbsVal(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.

@@ -28,6 +28,7 @@ import (
 
 func TestFlattenAggregationExprs(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
@@ -47,6 +48,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewArithmetic(
 						aggregation.NewSum(
+							ctx,
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 						expression.NewLiteral(int64(1), sql.Int64),
@@ -70,6 +72,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				plan.NewGroupBy(
 					[]sql.Expression{
 						aggregation.NewSum(
+							ctx,
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 					},
@@ -87,6 +90,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 					expression.NewAlias("x",
 						expression.NewArithmetic(
 							aggregation.NewSum(
+								ctx,
 								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 							),
 							expression.NewLiteral(int64(1), sql.Int64),
@@ -110,6 +114,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				plan.NewGroupBy(
 					[]sql.Expression{
 						aggregation.NewSum(
+							ctx,
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 					},
@@ -126,9 +131,11 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				[]sql.Expression{
 					expression.NewArithmetic(
 						aggregation.NewSum(
+							ctx,
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 						aggregation.NewCount(
+							ctx,
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 						"/",
@@ -153,9 +160,11 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				plan.NewGroupBy(
 					[]sql.Expression{
 						aggregation.NewSum(
+							ctx,
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 						aggregation.NewCount(
+							ctx,
 							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 						),
 						expression.NewGetFieldWithTable(1, sql.Int64, "foo", "b", false),

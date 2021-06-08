@@ -27,7 +27,7 @@ import (
 func TestMin_Name(t *testing.T) {
 	assert := require.New(t)
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
 	assert.Equal("MIN(field)", m.String())
 }
 
@@ -35,7 +35,7 @@ func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
 
 	m.Update(ctx, b, sql.NewRow(int32(7)))
@@ -51,7 +51,7 @@ func TestMin_Eval_Text(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Text, "field", true))
+	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "field", true))
 	b := m.NewBuffer()
 
 	m.Update(ctx, b, sql.NewRow("a"))
@@ -67,7 +67,7 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Timestamp, "field", true))
+	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Timestamp, "field", true))
 	b := m.NewBuffer()
 
 	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2006-01-02 15:04:05")
@@ -87,7 +87,7 @@ func TestMin_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
 
 	m.Update(ctx, b, sql.NewRow(nil))
@@ -103,7 +103,7 @@ func TestMin_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
 	b := m.NewBuffer()
 
 	v, err := m.Eval(ctx, b)
@@ -115,7 +115,7 @@ func TestMin_Distinct(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	m := NewMin(sql.NewEmptyContext(), expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
 	b := m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
@@ -130,7 +130,7 @@ func TestMin_Distinct(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(1, v)
 
-	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	m = NewMin(sql.NewEmptyContext(), expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
 	b = m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())

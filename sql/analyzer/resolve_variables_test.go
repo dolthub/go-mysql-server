@@ -25,6 +25,7 @@ import (
 )
 
 func TestResolveSetVariables(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	rule := getRuleFrom(OnceBeforeDefault, "resolve_set_variables")
 
 	var testCases = []analyzerFnTestCase{
@@ -78,13 +79,13 @@ func TestResolveSetVariables(t *testing.T) {
 			node: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("@@auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},
@@ -93,13 +94,13 @@ func TestResolveSetVariables(t *testing.T) {
 			node: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},
@@ -108,7 +109,7 @@ func TestResolveSetVariables(t *testing.T) {
 			node: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(uc("sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(uc("sql_mode"), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},

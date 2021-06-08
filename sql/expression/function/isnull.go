@@ -29,7 +29,7 @@ type IsNull struct {
 var _ sql.FunctionExpression = (*IsNull)(nil)
 
 // NewIsNull creates a new IsNull expression.
-func NewIsNull(e sql.Expression) sql.Expression {
+func NewIsNull(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsNull{expression.UnaryExpression{Child: e}}
 }
 
@@ -57,11 +57,11 @@ func (ib *IsNull) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (ib *IsNull) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (ib *IsNull) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ib, len(children), 1)
 	}
-	return NewIsNull(children[0]), nil
+	return NewIsNull(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.

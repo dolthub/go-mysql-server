@@ -27,17 +27,17 @@ import (
 //
 // This applies binding substitutions across *SubqueryAlias nodes, but will
 // fail to apply bindings across other |sql.Opaque| nodes.
-func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
+func ApplyBindings(ctx *sql.Context, n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
 	withSubqueries, err := TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *SubqueryAlias:
-			child, err := ApplyBindings(n.Child, bindings)
+			child, err := ApplyBindings(ctx, n.Child, bindings)
 			if err != nil {
 				return nil, err
 			}
 			return n.WithChildren(child)
 		case *InsertInto:
-			source, err := ApplyBindings(n.Source, bindings)
+			source, err := ApplyBindings(ctx, n.Source, bindings)
 			if err != nil {
 				return nil, err
 			}
@@ -49,7 +49,7 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 	if err != nil {
 		return nil, err
 	}
-	return TransformExpressionsUp(withSubqueries, func(e sql.Expression) (sql.Expression, error) {
+	return TransformExpressionsUp(ctx, withSubqueries, func(e sql.Expression) (sql.Expression, error) {
 		if bv, ok := e.(*expression.BindVar); ok {
 			val, found := bindings[bv.Name]
 			if found {

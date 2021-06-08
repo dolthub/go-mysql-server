@@ -82,7 +82,7 @@ func (v *SystemVar) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (v *SystemVar) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (v *SystemVar) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 0)
 	}
@@ -126,7 +126,7 @@ func (v *UserVar) Resolved() bool { return true }
 func (v *UserVar) String() string { return "@" + v.Name }
 
 // WithChildren implements the Expression interface.
-func (v *UserVar) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (v *UserVar) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 0)
 	}

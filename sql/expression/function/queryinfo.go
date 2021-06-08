@@ -5,7 +5,7 @@ import "github.com/dolthub/go-mysql-server/sql"
 // RowCount implements the ROW_COUNT() function
 type RowCount struct{}
 
-func NewRowCount() sql.Expression {
+func NewRowCount(ctx *sql.Context) sql.Expression {
 	return RowCount{}
 }
 
@@ -42,7 +42,7 @@ func (r RowCount) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (r RowCount) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r RowCount) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return sql.NillaryWithChildren(r, children...)
 }
 
@@ -54,7 +54,7 @@ func (r RowCount) FunctionName() string {
 // LastInsertId implements the LAST_INSERT_ID() function
 type LastInsertId struct{}
 
-func NewLastInsertId() sql.Expression {
+func NewLastInsertId(ctx *sql.Context) sql.Expression {
 	return LastInsertId{}
 }
 
@@ -91,7 +91,7 @@ func (r LastInsertId) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (r LastInsertId) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r LastInsertId) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return sql.NillaryWithChildren(r, children...)
 }
 
@@ -103,7 +103,7 @@ func (r LastInsertId) FunctionName() string {
 // FoundRows implements the FOUND_ROWS() function
 type FoundRows struct{}
 
-func NewFoundRows() sql.Expression {
+func NewFoundRows(ctx *sql.Context) sql.Expression {
 	return FoundRows{}
 }
 
@@ -140,7 +140,7 @@ func (r FoundRows) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (r FoundRows) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r FoundRows) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return sql.NillaryWithChildren(r, children...)
 }
 

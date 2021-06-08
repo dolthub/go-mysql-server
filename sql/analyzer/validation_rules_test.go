@@ -50,7 +50,7 @@ func TestValidateOrderBy(t *testing.T) {
 	require.NoError(err)
 
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, plan.NewSort(
-		[]sql.SortField{{Column: aggregation.NewCount(nil), Order: sql.Descending}},
+		[]sql.SortField{{Column: aggregation.NewCount(sql.NewEmptyContext(), nil), Order: sql.Descending}},
 		nil,
 	), nil)
 	require.Error(err)
@@ -89,7 +89,7 @@ func TestValidateGroupBy(t *testing.T) {
 		[]sql.Expression{
 			expression.NewAlias("alias", expression.NewGetField(0, sql.Text, "col1", true)),
 			expression.NewGetField(0, sql.Text, "col1", true),
-			aggregation.NewCount(expression.NewGetField(1, sql.Int64, "col2", true)),
+			aggregation.NewCount(sql.NewEmptyContext(), expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Text, "col1", true),
@@ -645,6 +645,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateAdd(
+						sql.NewEmptyContext(),
 						expression.NewLiteral("2018-05-01", sql.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), sql.Int64),
@@ -661,6 +662,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateSub(
+						sql.NewEmptyContext(),
 						expression.NewLiteral("2018-05-01", sql.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), sql.Int64),
@@ -748,6 +750,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 }
 
 func TestValidateExplodeUsage(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -759,7 +762,7 @@ func TestValidateExplodeUsage(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewAlias("foo", function.NewGenerate(
-							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+							ctx, expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 						)),
 					},
 					plan.NewUnresolvedTable("dual", ""),
@@ -772,15 +775,16 @@ func TestValidateExplodeUsage(t *testing.T) {
 			"where",
 			plan.NewFilter(
 				function.NewArrayLength(
+					ctx,
 					function.NewExplode(
-						expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
+						ctx, expression.NewGetField(0, sql.CreateArray(sql.Int64), "foo", false),
 					),
 				),
 				plan.NewGenerate(
 					plan.NewProject(
 						[]sql.Expression{
 							expression.NewAlias("foo", function.NewGenerate(
-								expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+								ctx, expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 							)),
 						},
 						plan.NewUnresolvedTable("dual", ""),
@@ -796,12 +800,12 @@ func TestValidateExplodeUsage(t *testing.T) {
 				plan.NewGroupBy(
 					[]sql.Expression{
 						expression.NewAlias("foo", function.NewExplode(
-							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+							ctx, expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 						)),
 					},
 					[]sql.Expression{
 						expression.NewAlias("foo", function.NewExplode(
-							expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
+							ctx, expression.NewGetField(0, sql.CreateArray(sql.Int64), "f", false),
 						)),
 					},
 					plan.NewUnresolvedTable("dual", ""),

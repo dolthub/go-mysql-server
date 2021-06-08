@@ -106,7 +106,7 @@ func TestAbsValue(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			for sqlType, conv := range test.typeToConv {
-				f := NewAbsVal(expression.NewGetField(0, sqlType, "blob", true))
+				f := NewAbsVal(sql.NewEmptyContext(), expression.NewGetField(0, sqlType, "blob", true))
 
 				row := sql.NewRow(conv(test.val))
 				res, err := f.Eval(sql.NewEmptyContext(), row)

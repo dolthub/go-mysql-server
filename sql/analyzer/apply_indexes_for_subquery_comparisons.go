@@ -68,7 +68,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 		return nil
 	}
 	defer indexes.releaseUsedIndexes()
-	idx := indexes.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(tableAliases, gf)...)
+	idx := indexes.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, gf)...)
 	if idx == nil {
 		return nil
 	}

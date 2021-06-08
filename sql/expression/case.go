@@ -191,7 +191,7 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Case) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Case) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	var expected = len(c.Branches) * 2
 	if c.Expr != nil {
 		expected++

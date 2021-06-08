@@ -164,7 +164,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (i *Interval) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Interval) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}

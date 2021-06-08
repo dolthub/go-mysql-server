@@ -30,7 +30,7 @@ type Sqrt struct {
 var _ sql.FunctionExpression = (*Sqrt)(nil)
 
 // NewSqrt creates a new Sqrt expression.
-func NewSqrt(e sql.Expression) sql.Expression {
+func NewSqrt(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Sqrt{expression.UnaryExpression{Child: e}}
 }
 
@@ -54,11 +54,11 @@ func (s *Sqrt) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Sqrt) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Sqrt) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSqrt(children[0]), nil
+	return NewSqrt(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -89,7 +89,7 @@ type Power struct {
 var _ sql.FunctionExpression = (*Power)(nil)
 
 // NewPower creates a new Power expression.
-func NewPower(e1, e2 sql.Expression) sql.Expression {
+func NewPower(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &Power{
 		expression.BinaryExpression{
 			Left:  e1,
@@ -114,11 +114,11 @@ func (p *Power) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Power) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *Power) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
-	return NewPower(children[0], children[1]), nil
+	return NewPower(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.

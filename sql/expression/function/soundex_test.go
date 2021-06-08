@@ -52,7 +52,7 @@ func TestSoundex(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewSoundex(expression.NewGetField(0, tt.rowType, "", true))
+		f := NewSoundex(sql.NewEmptyContext(), expression.NewGetField(0, tt.rowType, "", true))
 
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, eval(t, f, tt.row))

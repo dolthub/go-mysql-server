@@ -216,6 +216,7 @@ func TestPushdownSortWindow(t *testing.T) {
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 	})
 
+	ctx := sql.NewEmptyContext()
 	tests := []analyzerFnTestCase{
 		{
 			name: "no change required",
@@ -226,7 +227,7 @@ func TestPushdownSortWindow(t *testing.T) {
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						mustExpr(window.NewRowNumber(ctx).(*window.RowNumber).WithWindow(
 							sql.NewWindow(
 								[]sql.Expression{
 									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
@@ -252,7 +253,7 @@ func TestPushdownSortWindow(t *testing.T) {
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						mustExpr(window.NewRowNumber(ctx).(*window.RowNumber).WithWindow(
 							sql.NewWindow(
 								[]sql.Expression{
 									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
@@ -271,7 +272,7 @@ func TestPushdownSortWindow(t *testing.T) {
 			expected: plan.NewWindow(
 				[]sql.Expression{
 					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+					mustExpr(window.NewRowNumber(ctx).(*window.RowNumber).WithWindow(
 						sql.NewWindow(
 							[]sql.Expression{
 								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
@@ -301,7 +302,7 @@ func TestPushdownSortWindow(t *testing.T) {
 				plan.NewWindow(
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
-						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+						mustExpr(window.NewRowNumber(ctx).(*window.RowNumber).WithWindow(
 							sql.NewWindow(
 								[]sql.Expression{
 									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
@@ -320,7 +321,7 @@ func TestPushdownSortWindow(t *testing.T) {
 			expected: plan.NewWindow(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+					mustExpr(window.NewRowNumber(ctx).(*window.RowNumber).WithWindow(
 						sql.NewWindow(
 							[]sql.Expression{
 								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),

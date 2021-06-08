@@ -120,19 +120,19 @@ func newFilterSet(filtersByTable filtersByTable, tableAliases TableAliases) *fil
 
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
 // handled)
-func (fs *filterSet) availableFiltersForTable(table string) []sql.Expression {
+func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table string) []sql.Expression {
 	filters, ok := fs.filtersByTable[table]
 	if !ok {
 		return nil
 	}
-	return fs.subtractUsedIndexes(subtractExprSet(filters, fs.handledFilters))
+	return fs.subtractUsedIndexes(ctx, subtractExprSet(filters, fs.handledFilters))
 }
 
 // availableFilters returns the filters that are still available (not previously marked handled)
-func (fs *filterSet) availableFilters() []sql.Expression {
+func (fs *filterSet) availableFilters(ctx *sql.Context) []sql.Expression {
 	var available []sql.Expression
 	for _, es := range fs.filtersByTable {
-		available = append(available, fs.subtractUsedIndexes(subtractExprSet(es, fs.handledFilters))...)
+		available = append(available, fs.subtractUsedIndexes(ctx, subtractExprSet(es, fs.handledFilters))...)
 	}
 	return available
 }
@@ -191,13 +191,13 @@ func subtractExprSet(all, toSubtract []sql.Expression) []sql.Expression {
 }
 
 // subtractUsedIndexes returns the filter expressions given with used indexes subtracted off.
-func (fs *filterSet) subtractUsedIndexes(all []sql.Expression) []sql.Expression {
+func (fs *filterSet) subtractUsedIndexes(ctx *sql.Context, all []sql.Expression) []sql.Expression {
 	var remainder []sql.Expression
 
 	// Careful: index expressions are always normalized (contain actual table names), whereas filter expressions can
 	// contain aliases for both expressions and table names. We want to normalize all expressions for comparison, but
 	// return the original expressions.
-	normalized := normalizeExpressions(fs.tableAliases, all...)
+	normalized := normalizeExpressions(ctx, fs.tableAliases, all...)
 
 	for i, e := range normalized {
 		var found bool

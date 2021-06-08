@@ -55,7 +55,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
 			// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
 			// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
-			asOfExpr, err := expression.TransformUp(t.AsOf, resolveFunctionsInExpr(a))
+			asOfExpr, err := expression.TransformUp(ctx, t.AsOf, resolveFunctionsInExpr(ctx, a))
 			if err != nil {
 				return nil, err
 			}

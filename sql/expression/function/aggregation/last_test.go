@@ -34,7 +34,7 @@ func TestLast(t *testing.T) {
 		{"three rows", []sql.Row{{"first"}, {"second"}, {"last"}}, "last"},
 	}
 
-	agg := NewLast(expression.NewGetField(0, sql.Text, "", false))
+	agg := NewLast(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "", false))
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			result := aggregate(t, agg, tt.rows...)

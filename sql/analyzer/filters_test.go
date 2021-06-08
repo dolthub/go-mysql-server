@@ -196,7 +196,7 @@ func TestExprToTableFilters(t *testing.T) {
 	assert.Error(t, err)
 
 	_, err = exprToTableFilters(expression.NewAnd(
-		expression.NewEquals(lit(1), mustExpr(function.NewRand())),
+		expression.NewEquals(lit(1), mustExpr(function.NewRand(sql.NewEmptyContext()))),
 		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
 	))
 	assert.Error(t, err)

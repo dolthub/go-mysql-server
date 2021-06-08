@@ -25,6 +25,7 @@ import (
 
 func TestLPad(t *testing.T) {
 	f, err := NewPad(
+		sql.NewEmptyContext(),
 		lPadType,
 		expression.NewGetField(0, sql.LongText, "str", false),
 		expression.NewGetField(1, sql.Int64, "len", false),
@@ -75,6 +76,7 @@ func TestLPad(t *testing.T) {
 
 func TestRPad(t *testing.T) {
 	f, err := NewPad(
+		sql.NewEmptyContext(),
 		rPadType,
 		expression.NewGetField(0, sql.LongText, "str", false),
 		expression.NewGetField(1, sql.Int64, "len", false),

@@ -131,7 +131,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return nil, ErrInvalidIndexDriver.New(c.Driver)
 	}
 
-	columns, exprs, err := GetColumnsAndPrepareExpressions(c.Exprs)
+	columns, exprs, err := GetColumnsAndPrepareExpressions(ctx, c.Exprs)
 	if err != nil {
 		return nil, err
 	}
@@ -294,6 +294,7 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 // those expressions and fixes the indexes of the GetFields in the expressions
 // to match a row with only the returned columns in that same order.
 func GetColumnsAndPrepareExpressions(
+	ctx *sql.Context,
 	exprs []sql.Expression,
 ) ([]string, []sql.Expression, error) {
 	var columns []string
@@ -301,7 +302,7 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+		ex, err := expression.TransformUp(ctx, e, func(e sql.Expression) (sql.Expression, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
 				return e, nil

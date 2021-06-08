@@ -98,7 +98,7 @@ func (w *Wrapper) Unwrap() sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (w *Wrapper) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (w *Wrapper) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 {
 		return WrapExpression(nil), nil
 	} else if len(children) != 1 {

@@ -153,7 +153,7 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if len(bindings) > 0 {
-		parsed, err = plan.ApplyBindings(parsed, bindings)
+		parsed, err = plan.ApplyBindings(ctx, parsed, bindings)
 		if err != nil {
 			return nil, nil, err
 		}

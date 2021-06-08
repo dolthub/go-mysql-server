@@ -200,7 +200,7 @@ func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (e *Equals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *Equals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
@@ -273,7 +273,7 @@ func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 // WithChildren implements the Expression interface.
-func (e *NullSafeEquals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *NullSafeEquals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
@@ -405,7 +405,7 @@ func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (re *Regexp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (re *Regexp) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(re, len(children), 2)
 	}
@@ -445,7 +445,7 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (gt *GreaterThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (gt *GreaterThan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gt, len(children), 2)
 	}
@@ -485,7 +485,7 @@ func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (lt *LessThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (lt *LessThan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lt, len(children), 2)
 	}
@@ -526,7 +526,7 @@ func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{},
 }
 
 // WithChildren implements the Expression interface.
-func (gte *GreaterThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (gte *GreaterThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gte, len(children), 2)
 	}
@@ -567,7 +567,7 @@ func (lte *LessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 }
 
 // WithChildren implements the Expression interface.
-func (lte *LessThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (lte *LessThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lte, len(children), 2)
 	}

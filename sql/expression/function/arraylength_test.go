@@ -25,7 +25,7 @@ import (
 )
 
 func TestArrayLength(t *testing.T) {
-	f := NewArrayLength(expression.NewGetField(0, sql.CreateArray(sql.Int64), "", false))
+	f := NewArrayLength(sql.NewEmptyContext(), expression.NewGetField(0, sql.CreateArray(sql.Int64), "", false))
 
 	testCases := []struct {
 		name     string
@@ -53,7 +53,7 @@ func TestArrayLength(t *testing.T) {
 		})
 	}
 
-	f = NewArrayLength(expression.NewGetField(0, sql.CreateTuple(sql.Int64, sql.Int64), "", false))
+	f = NewArrayLength(sql.NewEmptyContext(), expression.NewGetField(0, sql.CreateTuple(sql.Int64, sql.Int64), "", false))
 	require := require.New(t)
 	v, err := f.Eval(sql.NewEmptyContext(), []interface{}{int64(1), int64(2)})
 	require.NoError(err)

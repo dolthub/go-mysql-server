@@ -349,7 +349,7 @@ func (s *Subquery) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Subquery) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Subquery) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}

@@ -32,7 +32,7 @@ type Reverse struct {
 var _ sql.FunctionExpression = (*Reverse)(nil)
 
 // NewReverse creates a new Reverse expression.
-func NewReverse(e sql.Expression) sql.Expression {
+func NewReverse(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Reverse{expression.UnaryExpression{Child: e}}
 }
 
@@ -72,11 +72,11 @@ func (r *Reverse) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (r *Reverse) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *Reverse) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
-	return NewReverse(children[0]), nil
+	return NewReverse(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.
@@ -94,7 +94,7 @@ type Repeat struct {
 var _ sql.FunctionExpression = (*Repeat)(nil)
 
 // NewRepeat creates a new Repeat expression.
-func NewRepeat(str sql.Expression, count sql.Expression) sql.Expression {
+func NewRepeat(ctx *sql.Context, str sql.Expression, count sql.Expression) sql.Expression {
 	return &Repeat{expression.BinaryExpression{Left: str, Right: count}}
 }
 
@@ -113,11 +113,11 @@ func (r *Repeat) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (r *Repeat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *Repeat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 2)
 	}
-	return NewRepeat(children[0], children[1]), nil
+	return NewRepeat(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.
@@ -161,7 +161,7 @@ type Replace struct {
 var _ sql.FunctionExpression = (*Replace)(nil)
 
 // NewReplace creates a new Replace expression.
-func NewReplace(str sql.Expression, fromStr sql.Expression, toStr sql.Expression) sql.Expression {
+func NewReplace(ctx *sql.Context, str sql.Expression, fromStr sql.Expression, toStr sql.Expression) sql.Expression {
 	return &Replace{str, fromStr, toStr}
 }
 
@@ -195,11 +195,11 @@ func (r *Replace) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (r *Replace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *Replace) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 3)
 	}
-	return NewReplace(children[0], children[1], children[2]), nil
+	return NewReplace(ctx, children[0], children[1], children[2]), nil
 }
 
 // Eval implements the Expression interface.

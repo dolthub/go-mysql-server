@@ -30,7 +30,7 @@ type Lower struct {
 var _ sql.FunctionExpression = (*Lower)(nil)
 
 // NewLower creates a new Lower expression.
-func NewLower(e sql.Expression) sql.Expression {
+func NewLower(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Lower{expression.UnaryExpression{Child: e}}
 }
 
@@ -66,11 +66,11 @@ func (l *Lower) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Lower) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Lower) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLower(children[0]), nil
+	return NewLower(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.
@@ -91,7 +91,7 @@ func (u *Upper) FunctionName() string {
 }
 
 // NewUpper creates a new Lower expression.
-func NewUpper(e sql.Expression) sql.Expression {
+func NewUpper(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Upper{expression.UnaryExpression{Child: e}}
 }
 
@@ -122,11 +122,11 @@ func (u *Upper) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (u *Upper) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u *Upper) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
-	return NewUpper(children[0]), nil
+	return NewUpper(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.

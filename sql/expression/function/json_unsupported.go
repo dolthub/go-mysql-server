@@ -47,7 +47,7 @@ type JSONContainsPath struct {
 var _ sql.FunctionExpression = JSONContainsPath{}
 
 // NewJSONContainsPath creates a new JSONContainsPath function.
-func NewJSONContainsPath(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONContainsPath(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONContainsPath{}.FunctionName())
 }
 
@@ -73,7 +73,7 @@ type JSONKeys struct {
 var _ sql.FunctionExpression = JSONKeys{}
 
 // NewJSONKeys creates a new JSONKeys function.
-func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONKeys(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONKeys{}.FunctionName())
 }
 
@@ -102,7 +102,7 @@ type JSONOverlaps struct {
 var _ sql.FunctionExpression = JSONOverlaps{}
 
 // NewJSONOverlaps creates a new JSONOverlaps function.
-func NewJSONOverlaps(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONOverlaps(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONOverlaps{}.FunctionName())
 }
 
@@ -143,7 +143,7 @@ type JSONSearch struct {
 var _ sql.FunctionExpression = JSONSearch{}
 
 // NewJSONSearch creates a new NewJSONSearch function.
-func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSearch(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONSearch{}.FunctionName())
 }
 
@@ -165,7 +165,7 @@ type JSONValue struct {
 var _ sql.FunctionExpression = JSONValue{}
 
 // NewJSONValue creates a new JSONValue function.
-func NewJSONValue(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONValue(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONValue{}.FunctionName())
 }
 
@@ -200,7 +200,7 @@ type JSONArray struct {
 var _ sql.FunctionExpression = JSONArray{}
 
 // NewJSONArray creates a new JSONArray function.
-func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONArray(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONArray{}.FunctionName())
 }
 
@@ -222,7 +222,7 @@ type JSONObject struct {
 var _ sql.FunctionExpression = JSONObject{}
 
 // NewJSONObject creates a new JSONObject function.
-func NewJSONObject(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONObject(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONObject{}.FunctionName())
 }
 
@@ -248,7 +248,7 @@ type JSONQuote struct {
 var _ sql.FunctionExpression = JSONQuote{}
 
 // NewJSONQuote creates a new JSONQuote function.
-func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONQuote(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONQuote{}.FunctionName())
 }
 
@@ -278,7 +278,7 @@ type JSONArrayAppend struct {
 var _ sql.FunctionExpression = JSONArrayAppend{}
 
 // NewJSONArrayAppend creates a new JSONArrayAppend function.
-func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONArrayAppend(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONArrayAppend{}.FunctionName())
 }
 
@@ -306,7 +306,7 @@ type JSONArrayInsert struct {
 var _ sql.FunctionExpression = JSONArrayInsert{}
 
 // NewJSONArrayInsert creates a new JSONArrayInsert function.
-func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONArrayInsert(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONArrayInsert{}.FunctionName())
 }
 
@@ -336,7 +336,7 @@ type JSONInsert struct {
 var _ sql.FunctionExpression = JSONInsert{}
 
 // NewJSONInsert creates a new JSONInsert function.
-func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONInsert(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONInsert{}.FunctionName())
 }
 
@@ -377,7 +377,7 @@ type JSONMergePatch struct {
 var _ sql.FunctionExpression = JSONMergePatch{}
 
 // NewJSONMergePatch creates a new JSONMergePatch function.
-func NewJSONMergePatch(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONMergePatch(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONMergePatch{}.FunctionName())
 }
 
@@ -424,7 +424,7 @@ type JSONMergePreserve struct {
 var _ sql.FunctionExpression = JSONMergePreserve{}
 
 // NewJSONMergePreserve creates a new JSONMergePreserve function.
-func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONMergePreserve(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONMergePreserve{}.FunctionName())
 }
 
@@ -449,7 +449,7 @@ type JSONRemove struct {
 var _ sql.FunctionExpression = JSONRemove{}
 
 // NewJSONRemove creates a new JSONRemove function.
-func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONRemove(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONRemove{}.FunctionName())
 }
 
@@ -475,7 +475,7 @@ type JSONReplace struct {
 var _ sql.FunctionExpression = JSONReplace{}
 
 // NewJSONReplace creates a new JSONReplace function.
-func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONReplace(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONReplace{}.FunctionName())
 }
 
@@ -506,7 +506,7 @@ type JSONSet struct {
 var _ sql.FunctionExpression = JSONSet{}
 
 // NewJSONSet creates a new JSONSet function.
-func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSet(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONSet{}.FunctionName())
 }
 
@@ -534,7 +534,7 @@ type JSONDepth struct {
 var _ sql.FunctionExpression = JSONDepth{}
 
 // NewJSONDepth creates a new JSONDepth function.
-func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONDepth(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONDepth{}.FunctionName())
 }
 
@@ -562,7 +562,7 @@ type JSONLength struct {
 var _ sql.FunctionExpression = JSONLength{}
 
 // NewJSONLength creates a new JSONLength function.
-func NewJSONLength(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONLength(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONLength{}.FunctionName())
 }
 
@@ -584,7 +584,7 @@ type JSONType struct {
 var _ sql.FunctionExpression = JSONType{}
 
 // NewJSONType creates a new JSONType function.
-func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONType(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONType{}.FunctionName())
 }
 
@@ -605,7 +605,7 @@ type JSONValid struct {
 var _ sql.FunctionExpression = JSONValid{}
 
 // NewJSONValid creates a new JSONValid function.
-func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONValid(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONValid{}.FunctionName())
 }
 
@@ -631,7 +631,7 @@ type JSONTable struct {
 var _ sql.FunctionExpression = JSONTable{}
 
 // NewJSONTable creates a new JSONTable function.
-func NewJSONTable(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONTable(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONTable{}.FunctionName())
 }
 
@@ -657,7 +657,7 @@ type JSONSchemaValid struct {
 var _ sql.FunctionExpression = JSONSchemaValid{}
 
 // NewJSONSchemaValid creates a new JSONSchemaValid function.
-func NewJSONSchemaValid(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSchemaValid(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValid{}.FunctionName())
 }
 
@@ -691,7 +691,7 @@ type JSONSchemaValidationReport struct {
 var _ sql.FunctionExpression = JSONSchemaValidationReport{}
 
 // NewJSONSchemaValidationReport creates a new JSONSchemaValidationReport function.
-func NewJSONSchemaValidationReport(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONSchemaValidationReport(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONSchemaValidationReport{}.FunctionName())
 }
 
@@ -728,7 +728,7 @@ type JSONPretty struct {
 var _ sql.FunctionExpression = JSONPretty{}
 
 // NewJSONPretty creates a new JSONPretty function.
-func NewJSONPretty(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONPretty(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONPretty{}.FunctionName())
 }
 
@@ -757,7 +757,7 @@ type JSONStorageFree struct {
 var _ sql.FunctionExpression = JSONStorageFree{}
 
 // NewJSONStorageFree creates a new JSONStorageFree function.
-func NewJSONStorageFree(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONStorageFree(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONStorageFree{}.FunctionName())
 }
 
@@ -784,7 +784,7 @@ type JSONStorageSize struct {
 var _ sql.FunctionExpression = JSONStorageSize{}
 
 // NewJSONStorageSize creates a new JSONStorageSize function.
-func NewJSONStorageSize(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONStorageSize(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return nil, ErrUnsupportedJSONFunction.New(JSONStorageSize{}.FunctionName())
 }
 

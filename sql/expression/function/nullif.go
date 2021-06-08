@@ -29,7 +29,7 @@ type NullIf struct {
 var _ sql.FunctionExpression = (*NullIf)(nil)
 
 // NewNullIf returns a new NULLIF UDF
-func NewNullIf(ex1, ex2 sql.Expression) sql.Expression {
+func NewNullIf(ctx *sql.Context, ex1, ex2 sql.Expression) sql.Expression {
 	return &NullIf{
 		expression.BinaryExpression{
 			Left:  ex1,
@@ -79,9 +79,9 @@ func (f *NullIf) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *NullIf) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *NullIf) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewNullIf(children[0], children[1]), nil
+	return NewNullIf(ctx, children[0], children[1]), nil
 }

@@ -29,7 +29,7 @@ type Coalesce struct {
 var _ sql.FunctionExpression = (*Coalesce)(nil)
 
 // NewCoalesce creates a new Coalesce sql.Expression.
-func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
+func NewCoalesce(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("COALESCE", "1 or more", 0)
 	}
@@ -81,8 +81,8 @@ func (c *Coalesce) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (*Coalesce) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewCoalesce(children...)
+func (*Coalesce) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewCoalesce(ctx, children...)
 }
 
 // Resolved implements the sql.Expression interface.

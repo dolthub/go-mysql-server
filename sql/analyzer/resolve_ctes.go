@@ -45,7 +45,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	}
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	n, err := plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+	n, err := plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
 		sq, ok := e.(*plan.Subquery)
 		if !ok {
 			return e, nil

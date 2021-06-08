@@ -33,7 +33,7 @@ type Values struct {
 var _ sql.FunctionExpression = (*Values)(nil)
 
 // NewValues creates a new Values function.
-func NewValues(col sql.Expression) sql.Expression {
+func NewValues(ctx *sql.Context, col sql.Expression) sql.Expression {
 	return &Values{
 		UnaryExpression: expression.UnaryExpression{Child: col},
 		Value:           nil,
@@ -63,9 +63,9 @@ func (v *Values) Type() sql.Type {
 }
 
 // WithChildren implements sql.FunctionExpression.
-func (v *Values) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (v *Values) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 1)
 	}
-	return NewValues(children[0]), nil
+	return NewValues(ctx, children[0]), nil
 }

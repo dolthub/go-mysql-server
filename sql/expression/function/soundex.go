@@ -34,7 +34,7 @@ type Soundex struct {
 var _ sql.FunctionExpression = (*Soundex)(nil)
 
 // NewSoundex creates a new Soundex expression.
-func NewSoundex(e sql.Expression) sql.Expression {
+func NewSoundex(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Soundex{expression.UnaryExpression{Child: e}}
 }
 
@@ -109,11 +109,11 @@ func (s *Soundex) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Soundex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Soundex) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSoundex(children[0]), nil
+	return NewSoundex(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.

@@ -31,7 +31,7 @@ type Min struct {
 var _ sql.FunctionExpression = (*Min)(nil)
 
 // NewMin creates a new Min node.
-func NewMin(e sql.Expression) *Min {
+func NewMin(ctx *sql.Context, e sql.Expression) *Min {
 	return &Min{expression.UnaryExpression{Child: e}}
 }
 
@@ -55,11 +55,11 @@ func (m *Min) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (m *Min) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (m *Min) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewMin(children[0]), nil
+	return NewMin(ctx, children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.

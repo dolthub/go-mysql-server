@@ -68,7 +68,7 @@ func (*DefaultColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (c *DefaultColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *DefaultColumn) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
 	}

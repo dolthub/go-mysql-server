@@ -28,7 +28,7 @@ import (
 )
 
 func TestRand(t *testing.T) {
-	r, _ := NewRand()
+	r, _ := NewRand(sql.NewEmptyContext())
 
 	assert.Equal(t, sql.Float64, r.Type())
 	assert.Equal(t, "RAND()", r.String())
@@ -50,7 +50,7 @@ func TestRand(t *testing.T) {
 }
 
 func TestRandWithSeed(t *testing.T) {
-	r, _ := NewRand(expression.NewLiteral(10, sql.Int8))
+	r, _ := NewRand(sql.NewEmptyContext(), expression.NewLiteral(10, sql.Int8))
 
 	assert.Equal(t, sql.Float64, r.Type())
 	assert.Equal(t, "RAND(10)", r.String())
@@ -68,7 +68,7 @@ func TestRandWithSeed(t *testing.T) {
 
 	assert.Equal(t, f64, f642)
 
-	r, _ = NewRand(expression.NewLiteral("not a number", sql.LongText))
+	r, _ = NewRand(sql.NewEmptyContext(), expression.NewLiteral("not a number", sql.LongText))
 	assert.Equal(t, `RAND("not a number")`, r.String())
 
 	f, err = r.Eval(nil, nil)
@@ -112,7 +112,7 @@ func TestDegrees(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			degrees := f.Fn(expression.NewLiteral(test.input, nil))
+			degrees := f.Fn(sql.NewEmptyContext(), expression.NewLiteral(test.input, nil))
 			res, err := degrees.Eval(nil, nil)
 			require.NoError(t, err)
 			assert.True(t, withinRoundingErr(test.expected, res.(float64)))
@@ -150,20 +150,20 @@ func TestCRC32(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			crc32 := f.Fn(expression.NewLiteral(test.input, nil))
+			crc32 := f.Fn(sql.NewEmptyContext(), expression.NewLiteral(test.input, nil))
 			res, err := crc32.Eval(nil, nil)
 			assert.NoError(t, err)
 			assert.Equal(t, test.expected, res)
 		})
 	}
 
-	crc32 := f.Fn(nil)
+	crc32 := f.Fn(sql.NewEmptyContext(), nil)
 	res, err := crc32.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
 
 	nullLiteral := expression.NewLiteral(nil, sql.Null)
-	crc32 = f.Fn(nullLiteral)
+	crc32 = f.Fn(sql.NewEmptyContext(), nullLiteral)
 	res, err = crc32.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
@@ -182,11 +182,11 @@ func TestTrigFunctions(t *testing.T) {
 	for i := 0; i <= numChecks; i++ {
 		theta := delta * float64(i)
 		thetaLiteral := expression.NewLiteral(theta, nil)
-		sinVal, err := sin.Fn(thetaLiteral).Eval(nil, nil)
+		sinVal, err := sin.Fn(sql.NewEmptyContext(), thetaLiteral).Eval(nil, nil)
 		assert.NoError(t, err)
-		cosVal, err := cos.Fn(thetaLiteral).Eval(nil, nil)
+		cosVal, err := cos.Fn(sql.NewEmptyContext(), thetaLiteral).Eval(nil, nil)
 		assert.NoError(t, err)
-		tanVal, err := tan.Fn(thetaLiteral).Eval(nil, nil)
+		tanVal, err := tan.Fn(sql.NewEmptyContext(), thetaLiteral).Eval(nil, nil)
 		assert.NoError(t, err)
 
 		sinF, _ := sinVal.(float64)
@@ -197,11 +197,11 @@ func TestTrigFunctions(t *testing.T) {
 		assert.True(t, withinRoundingErr(math.Cos(theta), cosF))
 		assert.True(t, withinRoundingErr(math.Tan(theta), tanF))
 
-		asinVal, err := asin.Fn(expression.NewLiteral(sinF, nil)).Eval(nil, nil)
+		asinVal, err := asin.Fn(sql.NewEmptyContext(), expression.NewLiteral(sinF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
-		acosVal, err := acos.Fn(expression.NewLiteral(cosF, nil)).Eval(nil, nil)
+		acosVal, err := acos.Fn(sql.NewEmptyContext(), expression.NewLiteral(cosF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
-		atanVal, err := atan.Fn(expression.NewLiteral(tanF, nil)).Eval(nil, nil)
+		atanVal, err := atan.Fn(sql.NewEmptyContext(), expression.NewLiteral(tanF, nil)).Eval(nil, nil)
 		assert.NoError(t, err)
 
 		assert.True(t, withinRoundingErr(math.Asin(sinF), asinVal.(float64)))

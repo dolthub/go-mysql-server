@@ -41,7 +41,7 @@ type RegexpLike struct {
 var _ sql.FunctionExpression = (*RegexpLike)(nil)
 
 // NewRegexpLike creates a new RegexpLike expression.
-func NewRegexpLike(args ...sql.Expression) (sql.Expression, error) {
+func NewRegexpLike(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	var r *RegexpLike
 	switch len(args) {
 	case 3:
@@ -87,7 +87,7 @@ func (r *RegexpLike) Resolved() bool {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (r *RegexpLike) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *RegexpLike) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	required := 2
 	if r.Flags != nil {
 		required = 3
@@ -95,7 +95,7 @@ func (r *RegexpLike) WithChildren(children ...sql.Expression) (sql.Expression, e
 	if len(children) != required {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), required)
 	}
-	return NewRegexpLike(children...)
+	return NewRegexpLike(ctx, children...)
 }
 
 func (r *RegexpLike) String() string {
