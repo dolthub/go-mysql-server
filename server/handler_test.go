@@ -447,15 +447,48 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		),
 		0,
 	)
-	handler.NewConnection(dummyConn)
-	handler.ComInitDB(dummyConn, "test")
 
-	var rowsAffected uint64
-	// Run the Update Query
-	err := handler.ComQuery(dummyConn, "UPDATE test set c1 = c1 where c1 < 10", func(res *sqltypes.Result) error {
-		rowsAffected = res.RowsAffected
-		return nil
-	})
-	require.NoError(t, err)
-	require.Equal(t, 10, int(rowsAffected)) // The correct answer is 10 since 10 rows were matched.
+	tests := []struct {
+		name                 string
+		handler              *Handler
+		conn                 *mysql.Conn
+		query                string
+		expectedRowsAffected uint64
+	}{
+		{
+			name:                 "Update query should return number of rows matched instead of rows affected",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "UPDATE test set c1 = c1 where c1 < 10",
+			expectedRowsAffected: uint64(10),
+		},
+		{
+			name:                 "SQL_CALC_ROWS should not affect CLIENT_FOUND_ROWS output",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "SELECT SQL_CALC_FOUND_ROWS * FROM test LIMIT 5",
+			expectedRowsAffected: uint64(5),
+		},
+		{
+			name:                 "INSERT returns rows affected",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "INSERT into test VALUES (10000),(10001),(10002)",
+			expectedRowsAffected: uint64(3),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler.ComInitDB(test.conn, "test")
+			var rowsAffected uint64
+			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
+				rowsAffected = uint64(res.RowsAffected)
+				return nil
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, test.expectedRowsAffected, rowsAffected)
+		})
+	}
 }
