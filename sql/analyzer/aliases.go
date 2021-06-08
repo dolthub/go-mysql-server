@@ -50,6 +50,10 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	var passAliases TableAliases
 	var aliasFn func(node sql.Node) bool
 	var analysisErr error
+	var recScope *Scope
+	if scope != nil {
+		recScope = recScope.withMemos(scope.memos)
+	}
 
 	aliasFn = func(node sql.Node) bool {
 		if node == nil {
@@ -88,7 +92,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		case *plan.Block:
 			// blocks should not be parsed as a whole, just their statements individually
 			for _, child := range node.Children() {
-				_, analysisErr = getTableAliases(child, scope)
+				_, analysisErr = getTableAliases(child, recScope)
 				if analysisErr != nil {
 					break
 				}
@@ -128,6 +132,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 		if analysisErr != nil {
 			return nil, analysisErr
 		}
+		recScope = recScope.newScope(scopeNode)
 		aliases.putAll(passAliases)
 	}
 
