@@ -33,7 +33,7 @@ func TestJSONContains(t *testing.T) {
 	require.Error(t, err)
 
 	_, err = NewJSONContains(
-			sql.NewEmptyContext(),
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.JSON, "arg1", false),
 		expression.NewGetField(1, sql.JSON, "arg2", false),
 		expression.NewGetField(2, sql.LongText, "arg3", false),

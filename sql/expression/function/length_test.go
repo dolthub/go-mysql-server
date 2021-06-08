@@ -28,7 +28,7 @@ func TestLength(t *testing.T) {
 		name      string
 		input     interface{}
 		inputType sql.Type
-		fn        func(	*sql.Context, sql.Expression) sql.Expression
+		fn        func(*sql.Context, sql.Expression) sql.Expression
 		expected  interface{}
 	}{
 		{

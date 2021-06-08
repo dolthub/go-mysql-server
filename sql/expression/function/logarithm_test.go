@@ -158,7 +158,7 @@ func TestLog10(t *testing.T) {
 }
 
 func TestLogInvalidArguments(t *testing.T) {
-	_, err := NewLog(sql.NewEmptyContext(), )
+	_, err := NewLog(sql.NewEmptyContext())
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 
 	_, err = NewLog(sql.NewEmptyContext(),
