@@ -128,6 +128,7 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	}
 
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
+	// TODO: If CLIENT_FOUND_ROWS is set, the affected-rows value is 1 (not 0) if an existing row is set to its current values.
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
