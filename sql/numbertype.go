@@ -357,7 +357,7 @@ func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
 	case sqltypes.Uint16:
 		return sqltypes.MakeTrusted(sqltypes.Uint16, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Int24:
-		return sqltypes.MakeTrusted(sqltypes.Int24, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Int24, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
 	case sqltypes.Uint24:
 		return sqltypes.MakeTrusted(sqltypes.Uint24, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
 	case sqltypes.Int32:
