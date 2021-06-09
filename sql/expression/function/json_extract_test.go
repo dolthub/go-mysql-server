@@ -60,11 +60,11 @@ func TestJSONExtract(t *testing.T) {
 			[]interface{}{float64(1), float64(2)},
 			[]interface{}{float64(3), float64(4)},
 		},
-		"f": map[string]interface{} {
-			`key.with.dots`: 0,
-			`key with spaces`: 1,
-			`key"with"dquotes`: 2,
-			`key'with'squotes`: 3,
+		"f": map[string]interface{}{
+			`key.with.dots`:        0,
+			`key with spaces`:      1,
+			`key"with"dquotes`:     2,
+			`key'with'squotes`:     3,
 			`key\with\backslashes`: 4,
 		},
 	}
@@ -105,7 +105,7 @@ func TestJSONExtract(t *testing.T) {
 			paths = append(paths, path.(string))
 		}
 
-		t.Run(tt.f.String() + "." + strings.Join(paths, ","), func(t *testing.T) {
+		t.Run(tt.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err == nil {
