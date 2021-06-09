@@ -16,6 +16,7 @@ package function
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,6 +60,13 @@ func TestJSONExtract(t *testing.T) {
 			[]interface{}{float64(1), float64(2)},
 			[]interface{}{float64(3), float64(4)},
 		},
+		"f": map[string]interface{} {
+			`key.with.dots`: 0,
+			`key with spaces`: 1,
+			`key"with"dquotes`: 2,
+			`key'with'squotes`: 3,
+			`key\with\backslashes`: 4,
+		},
 	}
 
 	testCases := []struct {
@@ -77,19 +85,55 @@ func TestJSONExtract(t *testing.T) {
 			true,
 			[]interface{}{1., 2.},
 		}}, nil},
+
+		{f2, sql.Row{json, `$.f."key.with.dots"`}, sql.JSONDocument{Val: 0}, nil},
+		{f2, sql.Row{json, `$.f."key with spaces"`}, sql.JSONDocument{Val: 1}, nil},
+		{f2, sql.Row{json, `$.f.key with spaces`}, sql.JSONDocument{Val: 1}, nil},
+		{f2, sql.Row{json, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},
+		{f2, sql.Row{json, `$.f.key'with'squotes`}, sql.JSONDocument{Val: 3}, nil},
+		{f2, sql.Row{json, `$.f."key'with'squotes"`}, sql.JSONDocument{Val: 3}, nil},
+		{f2, sql.Row{json, `$.f.key\'with\'squotes`}, sql.JSONDocument{Val: 3}, nil},
+		{f2, sql.Row{json, `$.f.key\\with\\backslashes`}, sql.JSONDocument{Val: 4}, nil},
+		{f2, sql.Row{json, `$.f."key\\with\\backslashes"`}, sql.JSONDocument{Val: 4}, nil},
 	}
 
 	for _, tt := range testCases {
-		t.Run(tt.f.String(), func(t *testing.T) {
+		var paths []string
+		for _, path := range tt.row[1:] {
+			paths = append(paths, path.(string))
+		}
+
+		t.Run(tt.f.String() + "." + strings.Join(paths, ","), func(t *testing.T) {
 			require := require.New(t)
 			result, err := tt.f.Eval(sql.NewEmptyContext(), tt.row)
 			if tt.err == nil {
 				require.NoError(err)
 			} else {
-				require.Equal(err.Error(), tt.err.Error())
+				require.Error(tt.err, err)
 			}
 
 			require.Equal(tt.expected, result)
 		})
 	}
 }
+
+/*func TestUnquoteColumns(t *testing.T) {
+	tests := []struct{
+		str string
+		expected string
+	} {
+		{"", ""},
+		{"$", "$"},
+		{"$.", "$."},
+		{"$.'", "$.'"},
+		{"$.''", "$."},
+		{"$.'col'", "$.col"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.str, func(t *testing.T) {
+			res := unquoteColumns(test.str)
+			assert.Equal(t, test.expected, res)
+		})
+	}
+}*/
