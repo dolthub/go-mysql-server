@@ -58,9 +58,6 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 }
 
 func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	if n.Resolved() {
-		return n, nil
-	}
 	// Procedures explicitly handle unions
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, nil
