@@ -842,7 +842,7 @@ CREATE TABLE t2
 			}},
 		},
 	),
-	`CREATE TABLE mytable AS SELECT * from othertable`: plan.NewCreateTableSelect(
+	`CREATE TEMPORARY TABLE mytable AS SELECT * from othertable`: plan.NewCreateTableSelect(
 		sql.UnresolvedDatabase(""),
 		"mytable",
 		plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("othertable", "")),
