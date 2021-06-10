@@ -101,6 +101,8 @@ func TestJSONContains(t *testing.T) {
 		{f, sql.Row{json, goodMap, "$"}, true, nil},
 		{f2, sql.Row{json, []float64{1, 2}}, false, nil},
 		{f2, sql.Row{"[1,2,3,4]", []float64{1, 2}}, true, nil},
+		{f2, sql.Row{"[1,2,3,4]", float64(1)}, true, nil},
+		{f2, sql.Row{`["apple", "orange", "banana"]`, `"orange"`}, true, nil},
 		{f2, sql.Row{`"hello"`, `"hello"`}, true, nil},
 		{f2, sql.Row{"{}", "{}"}, true, nil},
 		{f2, sql.Row{"hello", "hello"}, nil, sql.ErrInvalidJSONText.New("hello")},
