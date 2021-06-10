@@ -2289,11 +2289,8 @@ CREATE TABLE t2
 	`LOCK TABLES foo123 READ`: plan.NewLockTables([]*plan.TableLock{
 		{Table: plan.NewUnresolvedTable("foo123", "")},
 	}),
-	`LOCK TABLES foo f READ`: plan.NewLockTables([]*plan.TableLock{
-		{Table: plan.NewUnresolvedTable("foo", "")},
-	}),
 	`LOCK TABLES foo AS f READ`: plan.NewLockTables([]*plan.TableLock{
-		{Table: plan.NewUnresolvedTable("foo", "")},
+		{Table: plan.NewTableAlias("f", plan.NewUnresolvedTable("foo", ""))},
 	}),
 	`LOCK TABLES foo READ LOCAL`: plan.NewLockTables([]*plan.TableLock{
 		{Table: plan.NewUnresolvedTable("foo", "")},
@@ -3201,8 +3198,6 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 
 var fixturesErrors = map[string]*errors.Kind{
 	`SHOW METHEMONEY`:                                         ErrUnsupportedFeature,
-	`LOCK TABLES foo AS READ`:                                 errUnexpectedSyntax,
-	`LOCK TABLES foo LOW_PRIORITY READ`:                       errUnexpectedSyntax,
 	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
