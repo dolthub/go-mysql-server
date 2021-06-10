@@ -64,8 +64,6 @@ var (
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
-	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
-	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 	setRegex             = regexp.MustCompile(`^set\s+`)
 )
 
@@ -939,7 +937,7 @@ func convertLockTables(ctx *sql.Context, s *sqlparser.LockTables) (sql.Node, err
 
 		write := tbl.Lock == sqlparser.LockWrite || tbl.Lock == sqlparser.LockLowPriorityWrite
 
-		// TODO: Allow for other types of locks
+		// TODO: Allow for other types of locks (LOW PRIORITY WRITE & LOCAL READ)
 		tables[i] = &plan.TableLock{Table: tableNode, Write: write}
 	}
 
