@@ -449,7 +449,13 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	} else {
 		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
 	}
-	// TODO(andy): implement SERVER_STATUS_IN_TRANS (0x0001) "a transaction is active"
+
+	if t := ctx.GetTransaction(); t != nil {
+		c.StatusFlags |= uint16(mysql.ServerInTransaction)
+	} else {
+		c.StatusFlags &= ^uint16(mysql.ServerInTransaction)
+	}
+
 	return nil
 }
 
