@@ -46,7 +46,6 @@ func (tc *TableCopier) Database() sql.Database {
 }
 
 func (tc *TableCopier) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// If the source is a Create Table go ahead and create the table.
 	if _, ok := tc.destination.(*CreateTable); ok {
 		return tc.processCreateTable(ctx, row)
 	}
@@ -118,8 +117,7 @@ func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 	return true
 }
 
-// copyTableOver is used with queries of the form CREATE TABLE [] AS SELECT * ... as we can guarantee the new
-// table will have the exact same row data as the source data.
+// copyTableOver is used when we can guarantee the destination table will have the same data as the source table.
 func (tc *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, destinationTable string) (sql.RowIter, error) {
 	db, ok := tc.db.(sql.TableCopierDatabase)
 	if !ok {
