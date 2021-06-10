@@ -167,7 +167,7 @@ func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
 		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
 			return c.Child, nil
 		}
@@ -244,7 +244,7 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql
 			return node, nil
 		}
 
-		e, err := expression.TransformUp(filter.Expression, func(e sql.Expression) (sql.Expression, error) {
+		e, err := expression.TransformUp(ctx, filter.Expression, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case *expression.Or:
 				if isTrue(e.Left) {

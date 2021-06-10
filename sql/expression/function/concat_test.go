@@ -26,7 +26,7 @@ import (
 func TestConcat(t *testing.T) {
 	t.Run("concat multiple arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(
+		f, err := NewConcat(sql.NewEmptyContext(),
 			expression.NewLiteral("foo", sql.LongText),
 			expression.NewLiteral(5, sql.LongText),
 			expression.NewLiteral(true, sql.Boolean),
@@ -40,7 +40,7 @@ func TestConcat(t *testing.T) {
 
 	t.Run("some argument is nil", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(
+		f, err := NewConcat(sql.NewEmptyContext(),
 			expression.NewLiteral("foo", sql.LongText),
 			expression.NewLiteral(nil, sql.LongText),
 			expression.NewLiteral(true, sql.Boolean),
@@ -54,7 +54,7 @@ func TestConcat(t *testing.T) {
 
 	t.Run("concat array", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(
+		f, err := NewConcat(sql.NewEmptyContext(),
 			expression.NewLiteral([]interface{}{5, "bar", true}, sql.CreateArray(sql.LongText)),
 		)
 		require.NoError(err)
@@ -68,18 +68,18 @@ func TestConcat(t *testing.T) {
 func TestNewConcat(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)))
+	_, err := NewConcat(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.CreateArray(sql.LongText)))
 	require.NoError(err)
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcat(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.CreateArray(sql.LongText)), expression.NewLiteral(nil, sql.Int64))
 	require.Error(err)
 	require.True(ErrConcatArrayWithOthers.Is(err))
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateTuple(sql.LongText, sql.LongText)))
+	_, err = NewConcat(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.CreateTuple(sql.LongText, sql.LongText)))
 	require.Error(err)
 	require.True(sql.ErrInvalidType.Is(err))
 
-	_, err = NewConcat(
+	_, err = NewConcat(sql.NewEmptyContext(),
 		expression.NewLiteral(nil, sql.LongText),
 		expression.NewLiteral(nil, sql.Boolean),
 		expression.NewLiteral(nil, sql.Int64),

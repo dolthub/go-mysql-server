@@ -25,17 +25,18 @@ import (
 )
 
 func TestResolveHaving(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	testCases := []analyzerFnTestCase{
 		{
 			name: "replace existing aggregation in group by",
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
-					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
+					aggregation.NewAvg(ctx, expression.NewUnresolvedColumn("foo")),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+						expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -49,7 +50,7 @@ func TestResolveHaving(t *testing.T) {
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+						expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -61,12 +62,12 @@ func TestResolveHaving(t *testing.T) {
 			name: "replace existing aggregation in group by, deferred column",
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
-					aggregation.NewAvg(&deferredColumn{expression.NewUnresolvedColumn("foo")}),
+					aggregation.NewAvg(ctx, &deferredColumn{expression.NewUnresolvedColumn("foo")}),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+						expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -80,7 +81,7 @@ func TestResolveHaving(t *testing.T) {
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+						expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 						expression.NewGetField(0, sql.Int64, "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -92,12 +93,12 @@ func TestResolveHaving(t *testing.T) {
 			name: "push down aggregation to group by",
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
-					aggregation.NewCount(expression.NewStar()),
+					aggregation.NewCount(ctx, expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewGroupBy(
 					[]sql.Expression{
-						expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false))),
+						expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetField(0, sql.Int64, "foo", false))),
 						expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 					},
 					[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -116,9 +117,9 @@ func TestResolveHaving(t *testing.T) {
 					),
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false))),
+							expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetField(0, sql.Int64, "foo", false))),
 							expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
-							aggregation.NewCount(expression.NewStar()),
+							aggregation.NewCount(ctx, expression.NewStar()),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
 						plan.NewResolvedTable(memory.NewTable("t", nil), nil, nil),
@@ -224,7 +225,7 @@ func TestResolveHaving(t *testing.T) {
 			name: "push down aggregations with nodes in between",
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
-					aggregation.NewCount(expression.NewStar()),
+					aggregation.NewCount(ctx, expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewProject(
@@ -234,7 +235,7 @@ func TestResolveHaving(t *testing.T) {
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false)),
+							aggregation.NewAvg(ctx, expression.NewGetField(0, sql.Int64, "foo", false)),
 							expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -260,9 +261,9 @@ func TestResolveHaving(t *testing.T) {
 						},
 						plan.NewGroupBy(
 							[]sql.Expression{
-								aggregation.NewAvg(expression.NewGetField(0, sql.Int64, "foo", false)),
+								aggregation.NewAvg(ctx, expression.NewGetField(0, sql.Int64, "foo", false)),
 								expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false),
-								aggregation.NewCount(expression.NewStar()),
+								aggregation.NewCount(ctx, expression.NewStar()),
 							},
 							[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
 							plan.NewResolvedTable(memory.NewTable("t", nil), nil, nil),
@@ -275,7 +276,7 @@ func TestResolveHaving(t *testing.T) {
 			name: "replace existing aggregation in group by with nodes in between",
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
-					aggregation.NewAvg(expression.NewUnresolvedColumn("foo")),
+					aggregation.NewAvg(ctx, expression.NewUnresolvedColumn("foo")),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewProject(
@@ -285,7 +286,7 @@ func TestResolveHaving(t *testing.T) {
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+							expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 							expression.NewGetField(0, sql.Int64, "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -305,7 +306,7 @@ func TestResolveHaving(t *testing.T) {
 					},
 					plan.NewGroupBy(
 						[]sql.Expression{
-							expression.NewAlias("x", aggregation.NewAvg(expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
+							expression.NewAlias("x", aggregation.NewAvg(ctx, expression.NewGetFieldWithTable(0, sql.Int64, "t", "foo", false))),
 							expression.NewGetField(0, sql.Int64, "foo", false),
 						},
 						[]sql.Expression{expression.NewGetField(0, sql.Int64, "foo", false)},
@@ -318,7 +319,7 @@ func TestResolveHaving(t *testing.T) {
 			name: "missing groupby",
 			node: plan.NewHaving(
 				expression.NewGreaterThan(
-					aggregation.NewCount(expression.NewStar()),
+					aggregation.NewCount(ctx, expression.NewStar()),
 					expression.NewLiteral(int64(5), sql.Int64),
 				),
 				plan.NewResolvedTable(memory.NewTable("t", nil), nil, nil),

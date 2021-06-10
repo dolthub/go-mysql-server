@@ -24,7 +24,7 @@ import (
 )
 
 func TestReverse(t *testing.T) {
-	f := NewReverse(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewReverse(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -55,6 +55,7 @@ func TestReverse(t *testing.T) {
 
 func TestRepeat(t *testing.T) {
 	f := NewRepeat(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "", false),
 		expression.NewGetField(1, sql.Int32, "", false),
 	)
@@ -90,6 +91,7 @@ func TestRepeat(t *testing.T) {
 
 func TestReplace(t *testing.T) {
 	f := NewReplace(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "", false),
 		expression.NewGetField(1, sql.LongText, "", false),
 		expression.NewGetField(2, sql.LongText, "", false),

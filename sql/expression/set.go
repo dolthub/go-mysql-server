@@ -74,7 +74,7 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (s *SetField) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *SetField) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 2)
 	}

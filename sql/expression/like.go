@@ -139,7 +139,7 @@ func (l *Like) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Like) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Like) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}

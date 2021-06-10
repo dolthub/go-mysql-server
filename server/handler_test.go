@@ -426,3 +426,69 @@ func TestBindingsToExprs(t *testing.T) {
 		})
 	}
 }
+
+// Tests the CLIENT_FOUND_ROWS capabilities flag
+func TestHandlerFoundRowsCapabilities(t *testing.T) {
+	e := setupMemDB(require.New(t))
+	dummyConn := &mysql.Conn{ConnectionID: 1}
+
+	// Set the capabilities to include found rows
+	dummyConn.Capabilities = mysql.CapabilityClientFoundRows
+
+	// Setup the handler
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			testSessionBuilder,
+			opentracing.NoopTracer{},
+			func(db string) bool { return db == "test" },
+			sql.NewMemoryManager(nil),
+			"foo",
+		),
+		0,
+	)
+
+	tests := []struct {
+		name                 string
+		handler              *Handler
+		conn                 *mysql.Conn
+		query                string
+		expectedRowsAffected uint64
+	}{
+		{
+			name:                 "Update query should return number of rows matched instead of rows affected",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "UPDATE test set c1 = c1 where c1 < 10",
+			expectedRowsAffected: uint64(10),
+		},
+		{
+			name:                 "SQL_CALC_ROWS should not affect CLIENT_FOUND_ROWS output",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "SELECT SQL_CALC_FOUND_ROWS * FROM test LIMIT 5",
+			expectedRowsAffected: uint64(5),
+		},
+		{
+			name:                 "INSERT returns rows affected",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "INSERT into test VALUES (10000),(10001),(10002)",
+			expectedRowsAffected: uint64(3),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler.ComInitDB(test.conn, "test")
+			var rowsAffected uint64
+			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
+				rowsAffected = uint64(res.RowsAffected)
+				return nil
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, test.expectedRowsAffected, rowsAffected)
+		})
+	}
+}

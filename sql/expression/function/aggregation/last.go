@@ -30,7 +30,7 @@ type Last struct {
 var _ sql.FunctionExpression = (*Last)(nil)
 
 // NewLast returns a new Last node.
-func NewLast(e sql.Expression) *Last {
+func NewLast(ctx *sql.Context, e sql.Expression) *Last {
 	return &Last{expression.UnaryExpression{Child: e}}
 }
 
@@ -49,11 +49,11 @@ func (l *Last) String() string {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (l *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Last) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLast(children[0]), nil
+	return NewLast(ctx, children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.

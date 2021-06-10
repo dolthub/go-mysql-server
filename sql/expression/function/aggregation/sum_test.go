@@ -24,7 +24,7 @@ import (
 )
 
 func TestSum(t *testing.T) {
-	sum := NewSum(expression.NewGetField(0, nil, "", false))
+	sum := NewSum(sql.NewEmptyContext(), expression.NewGetField(0, nil, "", false))
 
 	testCases := []struct {
 		name     string
@@ -93,7 +93,7 @@ func TestSumWithDistinct(t *testing.T) {
 	require := require.New(t)
 
 	ad := expression.NewDistinctExpression(expression.NewGetField(0, nil, "myfield", false))
-	sum := NewSum(ad)
+	sum := NewSum(sql.NewEmptyContext(), ad)
 
 	// first validate that the expression's name is correct
 	require.Equal("SUM(DISTINCT myfield)", sum.String())

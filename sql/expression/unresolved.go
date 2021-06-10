@@ -79,7 +79,7 @@ func (*UnresolvedColumn) Eval(ctx *sql.Context, r sql.Row) (interface{}, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (uc *UnresolvedColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (uc *UnresolvedColumn) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(uc, len(children), 0)
 	}
@@ -171,7 +171,7 @@ func (*UnresolvedFunction) Eval(ctx *sql.Context, r sql.Row) (interface{}, error
 }
 
 // WithChildren implements the Expression interface.
-func (uf *UnresolvedFunction) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (uf *UnresolvedFunction) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != len(uf.Arguments)+len(uf.Window.ToExpressions()) {
 		return nil, sql.ErrInvalidChildrenNumber.New(uf, len(children), len(uf.Arguments)+len(uf.Window.ToExpressions()))
 	}

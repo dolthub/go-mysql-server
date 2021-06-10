@@ -32,7 +32,7 @@ type ConcatWithSeparator struct {
 var _ sql.FunctionExpression = (*ConcatWithSeparator)(nil)
 
 // NewConcatWithSeparator creates a new NewConcatWithSeparator UDF.
-func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
+func NewConcatWithSeparator(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("CONCAT_WS", "1 or more", 0)
 	}
@@ -83,8 +83,8 @@ func (f *ConcatWithSeparator) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (*ConcatWithSeparator) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewConcatWithSeparator(children...)
+func (*ConcatWithSeparator) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewConcatWithSeparator(ctx, children...)
 }
 
 // Resolved implements the Expression interface.

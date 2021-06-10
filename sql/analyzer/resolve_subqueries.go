@@ -94,7 +94,7 @@ func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUpWithNode(ctx, n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
 		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 		// query might cause them to need to shift their field indexes.
@@ -203,7 +203,7 @@ func isDeterminstic(n sql.Node) bool {
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // and if all expressions in the subquery are deterministic.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUpWithNode(ctx, n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
 		if !ok || !s.Resolved() {
 			return e, nil

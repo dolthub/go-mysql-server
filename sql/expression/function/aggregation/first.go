@@ -30,7 +30,7 @@ type First struct {
 var _ sql.FunctionExpression = (*First)(nil)
 
 // NewFirst returns a new First node.
-func NewFirst(e sql.Expression) *First {
+func NewFirst(ctx *sql.Context, e sql.Expression) *First {
 	return &First{expression.UnaryExpression{Child: e}}
 }
 
@@ -49,11 +49,11 @@ func (f *First) String() string {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (f *First) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *First) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewFirst(children[0]), nil
+	return NewFirst(ctx, children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.

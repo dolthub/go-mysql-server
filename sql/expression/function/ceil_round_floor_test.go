@@ -47,7 +47,7 @@ func TestCeil(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewCeil(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewCeil(sql.NewEmptyContext(), expression.NewGetField(0, tt.rowType, "", false))
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -102,7 +102,7 @@ func TestFloor(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewFloor(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewFloor(sql.NewEmptyContext(), expression.NewGetField(0, tt.rowType, "", false))
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -234,7 +234,7 @@ func TestRound(t *testing.T) {
 		var args = make([]sql.Expression, 2)
 		args[0] = expression.NewGetField(0, tt.xType, "", false)
 		args[1] = expression.NewGetField(1, tt.dType, "", false)
-		f, err := NewRound(args...)
+		f, err := NewRound(sql.NewEmptyContext(), args...)
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -269,7 +269,7 @@ func TestRound(t *testing.T) {
 	args[0] = expression.NewGetField(0, sql.Blob, "", false)
 	args[1] = expression.NewGetField(1, sql.Int32, "", false)
 
-	f, err := NewRound(args...)
+	f, err := NewRound(sql.NewEmptyContext(), args...)
 	req := require.New(t)
 	req.Nil(err)
 

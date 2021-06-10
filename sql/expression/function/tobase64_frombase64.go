@@ -33,7 +33,7 @@ type ToBase64 struct {
 var _ sql.FunctionExpression = (*ToBase64)(nil)
 
 // NewToBase64 creates a new ToBase64 expression.
-func NewToBase64(e sql.Expression) sql.Expression {
+func NewToBase64(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &ToBase64{expression.UnaryExpression{Child: e}}
 }
 
@@ -94,11 +94,11 @@ func (t *ToBase64) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (t *ToBase64) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *ToBase64) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewToBase64(children[0]), nil
+	return NewToBase64(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.
@@ -115,7 +115,7 @@ type FromBase64 struct {
 var _ sql.FunctionExpression = (*FromBase64)(nil)
 
 // NewFromBase64 creates a new FromBase64 expression.
-func NewFromBase64(e sql.Expression) sql.Expression {
+func NewFromBase64(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &FromBase64{expression.UnaryExpression{Child: e}}
 }
 
@@ -160,11 +160,11 @@ func (t *FromBase64) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (t *FromBase64) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *FromBase64) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewFromBase64(children[0]), nil
+	return NewFromBase64(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.

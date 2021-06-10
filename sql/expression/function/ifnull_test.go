@@ -38,6 +38,7 @@ func TestIfNull(t *testing.T) {
 	}
 
 	f := NewIfNull(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "expression", true),
 		expression.NewGetField(1, sql.LongText, "value", true),
 	)

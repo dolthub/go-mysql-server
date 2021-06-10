@@ -320,7 +320,7 @@ func (c *CreateTable) createChecks(ctx *sql.Context, tableNode sql.Table) error 
 	}
 
 	for _, ch := range c.chDefs {
-		check, err := NewCheckDefinition(ch)
+		check, err := NewCheckDefinition(ctx, ch)
 		if err != nil {
 			return err
 		}

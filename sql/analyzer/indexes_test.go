@@ -1123,7 +1123,7 @@ func TestGetIndexes(t *testing.T) {
 			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
 			ia, err := getIndexesForNode(ctx, a, nil)
 			require.NoError(err)
-			testExpr := convertIsNullForIndexes(tt.expr)
+			testExpr := convertIsNullForIndexes(ctx, tt.expr)
 
 			result, err := getIndexes(ctx, a, ia, testExpr, nil)
 			if tt.ok {

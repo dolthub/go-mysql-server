@@ -31,7 +31,7 @@ type Ceil struct {
 var _ sql.FunctionExpression = (*Ceil)(nil)
 
 // NewCeil creates a new Ceil expression.
-func NewCeil(num sql.Expression) sql.Expression {
+func NewCeil(ctx *sql.Context, num sql.Expression) sql.Expression {
 	return &Ceil{expression.UnaryExpression{Child: num}}
 }
 
@@ -54,11 +54,11 @@ func (c *Ceil) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Ceil) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Ceil) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCeil(children[0]), nil
+	return NewCeil(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -104,7 +104,7 @@ type Floor struct {
 var _ sql.FunctionExpression = (*Floor)(nil)
 
 // NewFloor returns a new Floor expression.
-func NewFloor(num sql.Expression) sql.Expression {
+func NewFloor(ctx *sql.Context, num sql.Expression) sql.Expression {
 	return &Floor{expression.UnaryExpression{Child: num}}
 }
 
@@ -127,11 +127,11 @@ func (f *Floor) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Floor) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *Floor) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewFloor(children[0]), nil
+	return NewFloor(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -180,7 +180,7 @@ type Round struct {
 var _ sql.FunctionExpression = (*Round)(nil)
 
 // NewRound returns a new Round expression.
-func NewRound(args ...sql.Expression) (sql.Expression, error) {
+func NewRound(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen == 0 || argLen > 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ROUND", "1 or 2", argLen)
@@ -327,6 +327,6 @@ func (r *Round) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (r *Round) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewRound(children...)
+func (r *Round) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewRound(ctx, children...)
 }

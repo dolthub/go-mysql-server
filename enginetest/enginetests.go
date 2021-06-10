@@ -2978,7 +2978,7 @@ func (c customFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return int64(5), nil
 }
 
-func (c customFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c customFunc) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return &customFunc{expression.UnaryExpression{children[0]}}, nil
 }
 
@@ -2988,7 +2988,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	err := e.Catalog.Register(sql.Function1{
 		Name: "customfunc",
-		Fn: func(e1 sql.Expression) sql.Expression {
+		Fn: func(ctx *sql.Context, e1 sql.Expression) sql.Expression {
 			return &customFunc{expression.UnaryExpression{e1}}
 		},
 	})

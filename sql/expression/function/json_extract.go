@@ -33,7 +33,7 @@ type JSONExtract struct {
 var _ sql.FunctionExpression = (*JSONExtract)(nil)
 
 // NewJSONExtract creates a new JSONExtract UDF.
-func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONExtract(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_EXTRACT", 2, len(args))
 	}
@@ -123,8 +123,8 @@ func (j *JSONExtract) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONExtract) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewJSONExtract(children...)
+func (j *JSONExtract) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewJSONExtract(ctx, children...)
 }
 
 func (j *JSONExtract) String() string {

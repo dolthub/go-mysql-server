@@ -65,7 +65,7 @@ func (e *Not) DebugString() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *Not) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *Not) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}

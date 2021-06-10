@@ -26,20 +26,21 @@ import (
 
 func TestDateAdd(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
-	_, err := NewDateAdd()
+	_, err := NewDateAdd(ctx)
 	require.Error(err)
 
-	_, err = NewDateAdd(expression.NewLiteral("2018-05-02", sql.LongText))
+	_, err = NewDateAdd(ctx, expression.NewLiteral("2018-05-02", sql.LongText))
 	require.Error(err)
 
-	_, err = NewDateAdd(
+	_, err = NewDateAdd(ctx,
 		expression.NewLiteral("2018-05-02", sql.LongText),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 	require.Error(err)
 
-	f, err := NewDateAdd(
+	f, err := NewDateAdd(ctx,
 		expression.NewGetField(0, sql.Text, "foo", false),
 		expression.NewInterval(
 			expression.NewLiteral(int64(1), sql.Int64),
@@ -48,7 +49,6 @@ func TestDateAdd(t *testing.T) {
 	)
 	require.NoError(err)
 
-	ctx := sql.NewEmptyContext()
 	expected := time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)
 
 	result, err := f.Eval(ctx, sql.Row{"2018-05-02"})
@@ -65,20 +65,21 @@ func TestDateAdd(t *testing.T) {
 
 func TestDateSub(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
-	_, err := NewDateSub()
+	_, err := NewDateSub(ctx)
 	require.Error(err)
 
-	_, err = NewDateSub(expression.NewLiteral("2018-05-02", sql.LongText))
+	_, err = NewDateSub(ctx, expression.NewLiteral("2018-05-02", sql.LongText))
 	require.Error(err)
 
-	_, err = NewDateSub(
+	_, err = NewDateSub(ctx,
 		expression.NewLiteral("2018-05-02", sql.LongText),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 	require.Error(err)
 
-	f, err := NewDateSub(
+	f, err := NewDateSub(ctx,
 		expression.NewGetField(0, sql.Text, "foo", false),
 		expression.NewInterval(
 			expression.NewLiteral(int64(1), sql.Int64),
@@ -87,7 +88,6 @@ func TestDateSub(t *testing.T) {
 	)
 	require.NoError(err)
 
-	ctx := sql.NewEmptyContext()
 	expected := time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)
 
 	result, err := f.Eval(ctx, sql.Row{"2018-05-02"})
@@ -105,16 +105,17 @@ func TestDateSub(t *testing.T) {
 func TestUnixTimestamp(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewUnixTimestamp()
+	ctx := sql.NewEmptyContext()
+	_, err := NewUnixTimestamp(ctx)
 	require.NoError(err)
 
-	_, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", sql.LongText))
+	_, err = NewUnixTimestamp(ctx, expression.NewLiteral("2018-05-02", sql.LongText))
 	require.NoError(err)
 
-	_, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", sql.LongText))
+	_, err = NewUnixTimestamp(ctx, expression.NewLiteral("2018-05-02", sql.LongText))
 	require.NoError(err)
 
-	_, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", sql.LongText), expression.NewLiteral("2018-05-02", sql.LongText))
+	_, err = NewUnixTimestamp(ctx, expression.NewLiteral("2018-05-02", sql.LongText), expression.NewLiteral("2018-05-02", sql.LongText))
 	require.Error(err)
 
 	date := time.Date(2018, time.December, 2, 16, 25, 0, 0, time.Local)
@@ -122,9 +123,9 @@ func TestUnixTimestamp(t *testing.T) {
 		return date
 	}
 
-	var ctx *sql.Context
+	var ctx2 *sql.Context
 	err = sql.RunWithNowFunc(testNowFunc, func() error {
-		ctx = sql.NewEmptyContext()
+		ctx2 = sql.NewEmptyContext()
 		return nil
 	})
 	require.NoError(err)
@@ -133,18 +134,18 @@ func TestUnixTimestamp(t *testing.T) {
 	var expected interface{}
 	ut = &UnixTimestamp{nil}
 	expected = float64(date.Unix())
-	result, err := ut.Eval(ctx, nil)
+	result, err := ut.Eval(ctx2, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 
-	ut, err = NewUnixTimestamp(expression.NewLiteral("2018-05-02", sql.LongText))
+	ut, err = NewUnixTimestamp(ctx, expression.NewLiteral("2018-05-02", sql.LongText))
 	require.NoError(err)
 	expected = float64(time.Date(2018, 5, 2, 0, 0, 0, 0, time.UTC).Unix())
 	result, err = ut.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 
-	ut, err = NewUnixTimestamp(expression.NewLiteral(nil, sql.Null))
+	ut, err = NewUnixTimestamp(ctx, expression.NewLiteral(nil, sql.Null))
 	require.NoError(err)
 	expected = nil
 	result, err = ut.Eval(ctx, nil)

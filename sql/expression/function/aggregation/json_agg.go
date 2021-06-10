@@ -42,7 +42,7 @@ type JSONArrayAgg struct {
 var _ sql.FunctionExpression = &JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
-func NewJSONArrayAgg(arg sql.Expression) *JSONArrayAgg {
+func NewJSONArrayAgg(ctx *sql.Context, arg sql.Expression) *JSONArrayAgg {
 	return &JSONArrayAgg{expression.UnaryExpression{Child: arg}}
 }
 
@@ -81,11 +81,11 @@ func (j *JSONArrayAgg) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONArrayAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONArrayAgg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 1)
 	}
-	return NewJSONArrayAgg(children[0]), nil
+	return NewJSONArrayAgg(ctx, children[0]), nil
 }
 
 // Update implements the Aggregation interface.
@@ -141,7 +141,7 @@ type JSONObjectAgg struct {
 var _ sql.FunctionExpression = JSONObjectAgg{}
 
 // NewJSONObjectAgg creates a new JSONArrayAgg function.
-func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
+func NewJSONObjectAgg(ctx *sql.Context, key, value sql.Expression) sql.Expression {
 	return JSONObjectAgg{key: key, value: value}
 }
 
@@ -170,12 +170,12 @@ func (j JSONObjectAgg) Children() []sql.Expression {
 	return []sql.Expression{j.key, j.value}
 }
 
-func (j JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONObjectAgg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
 
-	return NewJSONObjectAgg(children[0], children[1]), nil
+	return NewJSONObjectAgg(ctx, children[0], children[1]), nil
 }
 
 // NewBuffer implements the Aggregation interface.

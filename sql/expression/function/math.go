@@ -40,7 +40,7 @@ var _ sql.NonDeterministicExpression = (*Rand)(nil)
 var _ sql.FunctionExpression = (*Rand)(nil)
 
 // NewRand creates a new Rand expression.
-func NewRand(exprs ...sql.Expression) (sql.Expression, error) {
+func NewRand(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, error) {
 	if len(exprs) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("rand", "0 or 1", len(exprs))
 	}
@@ -83,7 +83,7 @@ func (r *Rand) String() string {
 }
 
 // WithChildren implements sql.Expression.
-func (r *Rand) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *Rand) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) > 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
@@ -91,7 +91,7 @@ func (r *Rand) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return r, nil
 	}
 
-	return NewRand(children[0])
+	return NewRand(ctx, children[0])
 }
 
 // Children implements sql.Expression
@@ -135,7 +135,7 @@ type Sin struct {
 var _ sql.FunctionExpression = (*Sin)(nil)
 
 // NewSin returns a new SIN function expression
-func NewSin(arg sql.Expression) sql.Expression {
+func NewSin(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Sin{NewUnaryFunc(arg, "SIN", sql.Float64)}
 }
 
@@ -159,11 +159,11 @@ func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (s *Sin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Sin) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSin(children[0]), nil
+	return NewSin(ctx, children[0]), nil
 }
 
 type Cos struct {
@@ -173,7 +173,7 @@ type Cos struct {
 var _ sql.FunctionExpression = (*Cos)(nil)
 
 // NewCos returns a new COS function expression
-func NewCos(arg sql.Expression) sql.Expression {
+func NewCos(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Cos{NewUnaryFunc(arg, "COS", sql.Float64)}
 }
 
@@ -197,11 +197,11 @@ func (s *Cos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c *Cos) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Cos) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCos(children[0]), nil
+	return NewCos(ctx, children[0]), nil
 }
 
 type Tan struct {
@@ -211,7 +211,7 @@ type Tan struct {
 var _ sql.FunctionExpression = (*Tan)(nil)
 
 // NewTan returns a new TAN function expression
-func NewTan(arg sql.Expression) sql.Expression {
+func NewTan(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Tan{NewUnaryFunc(arg, "TAN", sql.Float64)}
 }
 
@@ -235,11 +235,11 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (t *Tan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *Tan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewTan(children[0]), nil
+	return NewTan(ctx, children[0]), nil
 }
 
 type Asin struct {
@@ -249,7 +249,7 @@ type Asin struct {
 var _ sql.FunctionExpression = (*Asin)(nil)
 
 // NewAsin returns a new ASIN function expression
-func NewAsin(arg sql.Expression) sql.Expression {
+func NewAsin(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Asin{NewUnaryFunc(arg, "ASIN", sql.Float64)}
 }
 
@@ -273,11 +273,11 @@ func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (a *Asin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *Asin) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return NewAsin(children[0]), nil
+	return NewAsin(ctx, children[0]), nil
 }
 
 type Acos struct {
@@ -287,7 +287,7 @@ type Acos struct {
 var _ sql.FunctionExpression = (*Acos)(nil)
 
 // NewAcos returns a new ACOS function expression
-func NewAcos(arg sql.Expression) sql.Expression {
+func NewAcos(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Acos{NewUnaryFunc(arg, "ACOS", sql.Float64)}
 }
 
@@ -311,11 +311,11 @@ func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (a *Acos) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *Acos) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return NewAcos(children[0]), nil
+	return NewAcos(ctx, children[0]), nil
 }
 
 type Atan struct {
@@ -325,7 +325,7 @@ type Atan struct {
 var _ sql.FunctionExpression = (*Atan)(nil)
 
 // NewAtan returns a new ATAN function expression
-func NewAtan(arg sql.Expression) sql.Expression {
+func NewAtan(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Atan{NewUnaryFunc(arg, "ATAN", sql.Float64)}
 }
 
@@ -349,11 +349,11 @@ func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (a *Atan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *Atan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return NewAtan(children[0]), nil
+	return NewAtan(ctx, children[0]), nil
 }
 
 type Cot struct {
@@ -363,7 +363,7 @@ type Cot struct {
 var _ sql.FunctionExpression = (*Cot)(nil)
 
 // NewCot returns a new COT function expression
-func NewCot(arg sql.Expression) sql.Expression {
+func NewCot(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Cot{NewUnaryFunc(arg, "COT", sql.Float64)}
 }
 
@@ -387,11 +387,11 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c *Cot) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Cot) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCot(children[0]), nil
+	return NewCot(ctx, children[0]), nil
 }
 
 type Degrees struct {
@@ -401,7 +401,7 @@ type Degrees struct {
 var _ sql.FunctionExpression = (*Degrees)(nil)
 
 // NewDegrees returns a new DEGREES function expression
-func NewDegrees(arg sql.Expression) sql.Expression {
+func NewDegrees(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Degrees{NewUnaryFunc(arg, "DEGREES", sql.Float64)}
 }
 
@@ -425,11 +425,11 @@ func (d *Degrees) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (d *Degrees) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *Degrees) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
-	return NewDegrees(children[0]), nil
+	return NewDegrees(ctx, children[0]), nil
 }
 
 type Radians struct {
@@ -439,7 +439,7 @@ type Radians struct {
 var _ sql.FunctionExpression = (*Radians)(nil)
 
 // NewRadians returns a new RADIANS function expression
-func NewRadians(arg sql.Expression) sql.Expression {
+func NewRadians(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Radians{NewUnaryFunc(arg, "RADIANS", sql.Float64)}
 }
 
@@ -463,11 +463,11 @@ func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (r *Radians) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *Radians) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
-	return NewRadians(children[0]), nil
+	return NewRadians(ctx, children[0]), nil
 }
 
 type Crc32 struct {
@@ -477,7 +477,7 @@ type Crc32 struct {
 var _ sql.FunctionExpression = (*Crc32)(nil)
 
 // NewCrc32 returns a new CRC32 function expression
-func NewCrc32(arg sql.Expression) sql.Expression {
+func NewCrc32(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Crc32{NewUnaryFunc(arg, "CRC32", sql.Uint32)}
 }
 
@@ -532,11 +532,11 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c *Crc32) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Crc32) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCrc32(children[0]), nil
+	return NewCrc32(ctx, children[0]), nil
 }
 
 func floatToString(f float64) string {
@@ -557,7 +557,7 @@ type Sign struct {
 var _ sql.FunctionExpression = (*Sign)(nil)
 
 // NewSign returns a new SIGN function expression
-func NewSign(arg sql.Expression) sql.Expression {
+func NewSign(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Sign{NewUnaryFunc(arg, "SIGN", sql.Int8)}
 }
 
@@ -630,9 +630,9 @@ func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (s *Sign) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Sign) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSign(children[0]), nil
+	return NewSign(ctx, children[0]), nil
 }

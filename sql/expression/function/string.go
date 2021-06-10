@@ -34,7 +34,7 @@ type Ascii struct {
 
 var _ sql.FunctionExpression = (*Ascii)(nil)
 
-func NewAscii(arg sql.Expression) sql.Expression {
+func NewAscii(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
 }
 
@@ -72,11 +72,11 @@ func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the sql.Expression interface
-func (a *Ascii) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *Ascii) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return NewAscii(children[0]), nil
+	return NewAscii(ctx, children[0]), nil
 }
 
 // Hex implements the sql function "hex" which returns the hexadecimal representation of the string or numeric value
@@ -86,7 +86,7 @@ type Hex struct {
 
 var _ sql.FunctionExpression = (*Hex)(nil)
 
-func NewHex(arg sql.Expression) sql.Expression {
+func NewHex(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
 }
 
@@ -156,11 +156,11 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the sql.Expression interface
-func (h *Hex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (h *Hex) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
-	return NewHex(children[0]), nil
+	return NewHex(ctx, children[0]), nil
 }
 
 func hexChar(b byte) byte {
@@ -219,7 +219,7 @@ type Unhex struct {
 
 var _ sql.FunctionExpression = (*Unhex)(nil)
 
-func NewUnhex(arg sql.Expression) sql.Expression {
+func NewUnhex(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.LongBlob)}
 }
 
@@ -262,11 +262,11 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the sql.Expression interface
-func (h *Unhex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (h *Unhex) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
-	return NewUnhex(children[0]), nil
+	return NewUnhex(ctx, children[0]), nil
 }
 
 // MySQL expects the 64 bit 2s complement representation for negative integer values. Typical methods for converting a
@@ -292,7 +292,7 @@ type Bin struct {
 
 var _ sql.FunctionExpression = (*Bin)(nil)
 
-func NewBin(arg sql.Expression) sql.Expression {
+func NewBin(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
 }
 
@@ -329,11 +329,11 @@ func (h *Bin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the sql.Expression interface
-func (h *Bin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (h *Bin) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
-	return NewBin(children[0]), nil
+	return NewBin(ctx, children[0]), nil
 }
 
 // Bitlength implements the sql function "bit_length" which returns the data length of the argument in bits
@@ -343,7 +343,7 @@ type Bitlength struct {
 
 var _ sql.FunctionExpression = (*Bitlength)(nil)
 
-func NewBitlength(arg sql.Expression) sql.Expression {
+func NewBitlength(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}
 }
 
@@ -377,9 +377,9 @@ func (h *Bitlength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the sql.Expression interface
-func (h *Bitlength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (h *Bitlength) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
-	return NewBitlength(children[0]), nil
+	return NewBitlength(ctx, children[0]), nil
 }

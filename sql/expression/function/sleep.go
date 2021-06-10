@@ -33,7 +33,7 @@ type Sleep struct {
 var _ sql.FunctionExpression = (*Sleep)(nil)
 
 // NewSleep creates a new Sleep expression.
-func NewSleep(e sql.Expression) sql.Expression {
+func NewSleep(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Sleep{expression.UnaryExpression{Child: e}}
 }
 
@@ -81,11 +81,11 @@ func (s *Sleep) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (s *Sleep) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Sleep) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSleep(children[0]), nil
+	return NewSleep(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.

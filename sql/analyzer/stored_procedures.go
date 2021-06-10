@@ -76,7 +76,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 				if err != nil {
 					return nil, err
 				}
-				analyzedNode, err = resolveProcedureParams(paramNames, analyzedNode)
+				analyzedNode, err = resolveProcedureParams(ctx, paramNames, analyzedNode)
 				if err != nil {
 					return nil, err
 				}
@@ -137,7 +137,7 @@ func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 	if err != nil {
 		return nil, err
 	}
-	proc, err := resolveProcedureParams(paramNames, cp.Procedure)
+	proc, err := resolveProcedureParams(ctx, paramNames, cp.Procedure)
 	if err != nil {
 		return nil, err
 	}
@@ -219,8 +219,8 @@ func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string
 }
 
 // resolveProcedureParams resolves all of the named parameters and declared variables inside of a stored procedure.
-func resolveProcedureParams(paramNames map[string]struct{}, proc sql.Node) (sql.Node, error) {
-	newProcNode, err := resolveProcedureParamsTransform(paramNames, proc)
+func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, proc sql.Node) (sql.Node, error) {
+	newProcNode, err := resolveProcedureParamsTransform(ctx, paramNames, proc)
 	if err != nil {
 		return nil, err
 	}
@@ -228,17 +228,17 @@ func resolveProcedureParams(paramNames map[string]struct{}, proc sql.Node) (sql.
 	newProcNode, err = plan.TransformUp(newProcNode, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.InsertInto:
-			newSource, err := resolveProcedureParamsTransform(paramNames, n.Source)
+			newSource, err := resolveProcedureParamsTransform(ctx, paramNames, n.Source)
 			if err != nil {
 				return nil, err
 			}
 			return n.WithSource(newSource), nil
 		case *plan.Union:
-			newLeft, err := resolveProcedureParamsTransform(paramNames, n.Left())
+			newLeft, err := resolveProcedureParamsTransform(ctx, paramNames, n.Left())
 			if err != nil {
 				return nil, err
 			}
-			newRight, err := resolveProcedureParamsTransform(paramNames, n.Right())
+			newRight, err := resolveProcedureParamsTransform(ctx, paramNames, n.Right())
 			if err != nil {
 				return nil, err
 			}
@@ -259,8 +259,8 @@ func resolveProcedureParams(paramNames map[string]struct{}, proc sql.Node) (sql.
 
 // resolveProcedureParamsTransform resolves all of the named parameters and declared variables inside of a node.
 // In cases where an expression contains nodes, this will also walk those nodes.
-func resolveProcedureParamsTransform(paramNames map[string]struct{}, n sql.Node) (sql.Node, error) {
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+func resolveProcedureParamsTransform(ctx *sql.Context, paramNames map[string]struct{}, n sql.Node) (sql.Node, error) {
+	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "" {
@@ -277,7 +277,7 @@ func resolveProcedureParamsTransform(paramNames map[string]struct{}, n sql.Node)
 			}
 			return e, nil
 		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
-			newQuery, err := resolveProcedureParamsTransform(paramNames, e.Query)
+			newQuery, err := resolveProcedureParamsTransform(ctx, paramNames, e.Query)
 			if err != nil {
 				return nil, err
 			}
@@ -326,7 +326,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		case *expression.ProcedureParam:
 			return expr.WithParamReference(pRef), nil
 		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
-			newQuery, err := plan.TransformExpressionsUp(expr.Query, procParamTransformFunc)
+			newQuery, err := plan.TransformExpressionsUp(ctx, expr.Query, procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}
@@ -337,7 +337,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			return e, nil
 		}
 	}
-	transformedProcedure, err := plan.TransformExpressionsUp(procedure, procParamTransformFunc)
+	transformedProcedure, err := plan.TransformExpressionsUp(ctx, procedure, procParamTransformFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -345,17 +345,17 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	transformedProcedure, err = plan.TransformUp(transformedProcedure, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.InsertInto:
-			newSource, err := plan.TransformExpressionsUp(n.Source, procParamTransformFunc)
+			newSource, err := plan.TransformExpressionsUp(ctx, n.Source, procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}
 			return n.WithSource(newSource), nil
 		case *plan.Union:
-			newLeft, err := plan.TransformExpressionsUp(n.Left(), procParamTransformFunc)
+			newLeft, err := plan.TransformExpressionsUp(ctx, n.Left(), procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}
-			newRight, err := plan.TransformExpressionsUp(n.Right(), procParamTransformFunc)
+			newRight, err := plan.TransformExpressionsUp(ctx, n.Right(), procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}

@@ -28,8 +28,8 @@ type Version string
 var _ sql.FunctionExpression = (Version)("")
 
 // NewVersion creates a new Version UDF.
-func NewVersion(versionPostfix string) func(...sql.Expression) (sql.Expression, error) {
-	return func(...sql.Expression) (sql.Expression, error) {
+func NewVersion(versionPostfix string) func(*sql.Context, ...sql.Expression) (sql.Expression, error) {
+	return func(*sql.Context, ...sql.Expression) (sql.Expression, error) {
 		return Version(versionPostfix), nil
 	}
 }
@@ -52,7 +52,7 @@ func (f Version) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f Version) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f Version) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 0)
 	}

@@ -209,6 +209,7 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Catalog.Database("foo")
 				require.NoError(t, err)
 				greatest, err := function.NewGreatest(
+					sql.NewEmptyContext(),
 					expression.NewLiteral("abc123", sql.LongText),
 					expression.NewLiteral("cde456", sql.LongText),
 				)
@@ -223,6 +224,7 @@ func TestAnalyzer(t *testing.T) {
 				db, err := engine.Catalog.Database("foo")
 				require.NoError(t, err)
 				timestamp, err := function.NewTimestamp(
+					sql.NewEmptyContext(),
 					expression.NewLiteral("20200101:120000Z", sql.LongText),
 				)
 				require.NoError(t, err)

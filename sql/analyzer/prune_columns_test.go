@@ -287,7 +287,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(expression.NewUnresolvedQualifiedColumn("t2", "baz")),
+									aggregation.NewMax(sql.NewEmptyContext(), expression.NewUnresolvedQualifiedColumn("t2", "baz")),
 								},
 								plan.NewResolvedTable(t2, nil, nil),
 							),
@@ -310,7 +310,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(gf(3, "t2", "baz")),
+									aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "baz")),
 								},
 								plan.NewResolvedTable(t2, nil, nil),
 							),
@@ -339,7 +339,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(gf(4, "t2", "baz")),
+									aggregation.NewMax(sql.NewEmptyContext(), gf(4, "t2", "baz")),
 								},
 								plan.NewResolvedTable(t2, nil, nil),
 							),
@@ -369,7 +369,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(gf(2, "t2", "baz")),
+									aggregation.NewMax(sql.NewEmptyContext(), gf(2, "t2", "baz")),
 								},
 								plan.NewResolvedTable(t2, nil, nil),
 							),
@@ -395,7 +395,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(gf(2, "t2", "baz")),
+									aggregation.NewMax(sql.NewEmptyContext(), gf(2, "t2", "baz")),
 								},
 								plan.NewResolvedTable(t2, nil, nil),
 							),
@@ -424,7 +424,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(gf(6, "t2", "baz")),
+									aggregation.NewMax(sql.NewEmptyContext(), gf(6, "t2", "baz")),
 								},
 								plan.NewResolvedTable(t2, nil, nil),
 							),
@@ -446,7 +446,7 @@ func TestPruneColumns(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						aggregation.NewMax(gf(6, "t2", "baz")),
+						aggregation.NewMax(sql.NewEmptyContext(), gf(6, "t2", "baz")),
 					},
 					plan.NewResolvedTable(t2, nil, nil),
 				),
@@ -458,7 +458,7 @@ func TestPruneColumns(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						aggregation.NewMax(gf(3, "t2", "baz")),
+						aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "baz")),
 					},
 					plan.NewResolvedTable(t2, nil, nil),
 				),
@@ -477,7 +477,7 @@ func TestPruneColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(gf(6, "t2", "baz")),
+									aggregation.NewMax(sql.NewEmptyContext(), gf(6, "t2", "baz")),
 								},
 								plan.NewResolvedTable(t2, nil, nil),
 							),
@@ -500,7 +500,7 @@ func TestPruneColumns(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						aggregation.NewMax(gf(6, "t2", "baz")),
+						aggregation.NewMax(sql.NewEmptyContext(), gf(6, "t2", "baz")),
 					},
 					plan.NewResolvedTable(t2, nil, nil),
 				),
@@ -512,7 +512,7 @@ func TestPruneColumns(t *testing.T) {
 				),
 				plan.NewProject(
 					[]sql.Expression{
-						aggregation.NewMax(gf(4, "t2", "baz")),
+						aggregation.NewMax(sql.NewEmptyContext(), gf(4, "t2", "baz")),
 					},
 					plan.NewResolvedTable(t2, nil, nil),
 				),

@@ -30,7 +30,7 @@ type IsBinary struct {
 var _ sql.FunctionExpression = (*IsBinary)(nil)
 
 // NewIsBinary creates a new IsBinary expression.
-func NewIsBinary(e sql.Expression) sql.Expression {
+func NewIsBinary(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsBinary{expression.UnaryExpression{Child: e}}
 }
 
@@ -67,11 +67,11 @@ func (ib *IsBinary) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (ib *IsBinary) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (ib *IsBinary) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ib, len(children), 1)
 	}
-	return NewIsBinary(children[0]), nil
+	return NewIsBinary(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.

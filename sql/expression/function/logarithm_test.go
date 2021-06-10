@@ -47,7 +47,7 @@ func TestLn(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(math.E)(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewLogBaseFunc(math.E)(sql.NewEmptyContext(), expression.NewGetField(0, tt.rowType, "", false))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -63,7 +63,7 @@ func TestLn(t *testing.T) {
 	}
 
 	// Test Nil
-	f := NewLogBaseFunc(math.E)(expression.NewGetField(0, sql.Float64, "", true))
+	f := NewLogBaseFunc(math.E)(sql.NewEmptyContext(), expression.NewGetField(0, sql.Float64, "", true))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
@@ -90,7 +90,7 @@ func TestLog2(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(float64(2))(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewLogBaseFunc(float64(2))(sql.NewEmptyContext(), expression.NewGetField(0, tt.rowType, "", false))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -106,7 +106,7 @@ func TestLog2(t *testing.T) {
 	}
 
 	// Test Nil
-	f := NewLogBaseFunc(float64(2))(expression.NewGetField(0, sql.Float64, "", true))
+	f := NewLogBaseFunc(float64(2))(sql.NewEmptyContext(), expression.NewGetField(0, sql.Float64, "", true))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
@@ -133,7 +133,7 @@ func TestLog10(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f := NewLogBaseFunc(float64(10))(expression.NewGetField(0, tt.rowType, "", false))
+		f := NewLogBaseFunc(float64(10))(sql.NewEmptyContext(), expression.NewGetField(0, tt.rowType, "", false))
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -149,7 +149,7 @@ func TestLog10(t *testing.T) {
 	}
 
 	// Test Nil
-	f := NewLogBaseFunc(float64(10))(expression.NewGetField(0, sql.Float64, "", true))
+	f := NewLogBaseFunc(float64(10))(sql.NewEmptyContext(), expression.NewGetField(0, sql.Float64, "", true))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(nil))
 	require.NoError(err)
@@ -158,10 +158,10 @@ func TestLog10(t *testing.T) {
 }
 
 func TestLogInvalidArguments(t *testing.T) {
-	_, err := NewLog()
+	_, err := NewLog(sql.NewEmptyContext())
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 
-	_, err = NewLog(
+	_, err = NewLog(sql.NewEmptyContext(),
 		expression.NewLiteral(1, sql.Float64),
 		expression.NewLiteral(1, sql.Float64),
 		expression.NewLiteral(1, sql.Float64),
@@ -199,7 +199,7 @@ func TestLog(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f, _ := NewLog(tt.input...)
+		f, _ := NewLog(sql.NewEmptyContext(), tt.input...)
 		t.Run(tt.name, func(t *testing.T) {
 			t.Helper()
 			require := require.New(t)
@@ -215,7 +215,7 @@ func TestLog(t *testing.T) {
 	}
 
 	// Test Nil
-	f, _ := NewLog(expression.NewLiteral(nil, sql.Float64))
+	f, _ := NewLog(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.Float64))
 	require := require.New(t)
 	result, err := f.Eval(sql.NewEmptyContext(), nil)
 	require.NoError(err)

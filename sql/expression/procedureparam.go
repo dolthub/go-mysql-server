@@ -151,7 +151,7 @@ func (pp *ProcedureParam) Eval(ctx *sql.Context, r sql.Row) (interface{}, error)
 }
 
 // WithChildren implements the sql.Expression interface.
-func (pp *ProcedureParam) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (pp *ProcedureParam) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(pp, len(children), 0)
 	}

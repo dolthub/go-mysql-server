@@ -42,12 +42,12 @@ const (
 )
 
 // NewLength returns a new LENGTH function.
-func NewLength(e sql.Expression) sql.Expression {
+func NewLength(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Length{expression.UnaryExpression{Child: e}, NumBytes}
 }
 
 // NewCharLength returns a new CHAR_LENGTH function.
-func NewCharLength(e sql.Expression) sql.Expression {
+func NewCharLength(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Length{expression.UnaryExpression{Child: e}, NumChars}
 }
 
@@ -63,7 +63,7 @@ func (l *Length) FunctionName() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Length) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}

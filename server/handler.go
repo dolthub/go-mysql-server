@@ -415,7 +415,7 @@ rowLoop:
 	if err = setConnStatusFlags(ctx, c); err != nil {
 		return err
 	}
-	if err = setResultInfo(ctx, r); err != nil {
+	if err = setResultInfo(ctx, c, r, parsed); err != nil {
 		return err
 	}
 
@@ -449,14 +449,43 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	} else {
 		c.StatusFlags &= ^uint16(mysql.ServerStatusAutocommit)
 	}
-	// TODO(andy): implement SERVER_STATUS_IN_TRANS (0x0001) "a transaction is active"
+
+	if t := ctx.GetTransaction(); t != nil {
+		c.StatusFlags |= uint16(mysql.ServerInTransaction)
+	} else {
+		c.StatusFlags &= ^uint16(mysql.ServerInTransaction)
+	}
+
 	return nil
 }
 
-func setResultInfo(ctx *sql.Context, r *sqltypes.Result) error {
+func setResultInfo(ctx *sql.Context, conn *mysql.Conn, r *sqltypes.Result, parsedQuery sql.Node) error {
 	lastId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
 	r.InsertID = uint64(lastId)
+
+	// cc. https://dev.mysql.com/doc/internals/en/capability-flags.html
+	// Check if the CLIENT_FOUND_ROWS Compatibility Flag is set
+	if shouldUseFoundRowsOutput(conn, parsedQuery) {
+		r.RowsAffected = uint64(ctx.GetLastQueryInfo(sql.FoundRows))
+	}
+
 	return nil
+}
+
+// When CLIENT_FOUND_ROWS is set we should return the number of rows MATCHED as the number of affected.
+// This should only happen on UPDATE and INSERT ON DUPLICATE queries
+func shouldUseFoundRowsOutput(conn *mysql.Conn, parsedQuery sql.Node) bool {
+	if (conn.Capabilities & mysql.CapabilityClientFoundRows) < 0 {
+		return false
+	}
+
+	// TODO: Add support for INSERT ON DUPLICATE
+	switch parsedQuery.(type) {
+	case *plan.Update:
+		return true
+	default:
+		return false
+	}
 }
 
 func isSessionAutocommit(ctx *sql.Context) (bool, error) {

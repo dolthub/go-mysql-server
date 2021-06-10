@@ -37,7 +37,7 @@ type MD5 struct {
 var _ sql.FunctionExpression = (*MD5)(nil)
 
 // NewMD5 returns a new MD5 function expression
-func NewMD5(arg sql.Expression) sql.Expression {
+func NewMD5(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &MD5{NewUnaryFunc(arg, "MD5", sql.LongText)}
 }
 
@@ -65,11 +65,11 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (f *MD5) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *MD5) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewMD5(children[0]), nil
+	return NewMD5(ctx, children[0]), nil
 }
 
 // SHA1 function returns the SHA1 hash of the input.
@@ -81,7 +81,7 @@ type SHA1 struct {
 var _ sql.FunctionExpression = (*SHA1)(nil)
 
 // NewSHA1 returns a new SHA1 function expression
-func NewSHA1(arg sql.Expression) sql.Expression {
+func NewSHA1(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &SHA1{NewUnaryFunc(arg, "SHA1", sql.LongText)}
 }
 
@@ -109,11 +109,11 @@ func (f *SHA1) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (f *SHA1) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *SHA1) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewSHA1(children[0]), nil
+	return NewSHA1(ctx, children[0]), nil
 }
 
 // SHA2 function returns the SHA-224/256/384/512 hash of the input.
@@ -125,7 +125,7 @@ type SHA2 struct {
 var _ sql.FunctionExpression = (*SHA2)(nil)
 
 // NewSHA2 returns a new SHA2 function expression
-func NewSHA2(arg, count sql.Expression) sql.Expression {
+func NewSHA2(ctx *sql.Context, arg, count sql.Expression) sql.Expression {
 	return &SHA2{expression.BinaryExpression{Left: arg, Right: count}}
 }
 
@@ -192,9 +192,9 @@ func (f *SHA2) Type() sql.Type {
 }
 
 // WithChildren implements sql.Expression
-func (f *SHA2) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *SHA2) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewSHA2(children[0], children[1]), nil
+	return NewSHA2(ctx, children[0], children[1]), nil
 }

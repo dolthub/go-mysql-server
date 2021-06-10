@@ -31,21 +31,22 @@ func TestFunctionRegistry(t *testing.T) {
 	var expected sql.Expression = expression.NewStar()
 	c.MustRegister(sql.Function1{
 		Name: name,
-		Fn:   func(arg sql.Expression) sql.Expression { return expected },
+		Fn:   func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected },
 	})
 
 	f, err := c.Function(name)
 	require.NoError(err)
 
-	e, err := f.NewInstance(nil)
+	ctx := sql.NewEmptyContext()
+	e, err := f.NewInstance(ctx, nil)
 	require.Error(err)
 	require.Nil(e)
 
-	e, err = f.NewInstance([]sql.Expression{expression.NewStar()})
+	e, err = f.NewInstance(ctx, []sql.Expression{expression.NewStar()})
 	require.NoError(err)
 	require.Equal(expected, e)
 
-	e, err = f.NewInstance([]sql.Expression{expression.NewStar(), expression.NewStar()})
+	e, err = f.NewInstance(ctx, []sql.Expression{expression.NewStar(), expression.NewStar()})
 	require.Error(err)
 	require.Nil(e)
 }

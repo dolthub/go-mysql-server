@@ -118,10 +118,11 @@ func TestGreatest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			f, err := NewGreatest(tt.args...)
+			ctx := sql.NewEmptyContext()
+			f, err := NewGreatest(ctx, tt.args...)
 			require.NoError(err)
 
-			output, err := f.Eval(sql.NewEmptyContext(), nil)
+			output, err := f.Eval(ctx, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, output)
 		})
@@ -130,6 +131,7 @@ func TestGreatest(t *testing.T) {
 
 func TestGreatestUnsignedOverflow(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	var x int
 	var gr sql.Expression
@@ -137,13 +139,13 @@ func TestGreatestUnsignedOverflow(t *testing.T) {
 
 	switch unsafe.Sizeof(x) {
 	case 4:
-		gr, err = NewGreatest(
+		gr, err = NewGreatest(ctx,
 			expression.NewLiteral(int32(1), sql.Int32),
 			expression.NewLiteral(uint32(4294967295), sql.Uint32),
 		)
 		require.NoError(err)
 	case 8:
-		gr, err = NewGreatest(
+		gr, err = NewGreatest(ctx,
 			expression.NewLiteral(int64(1), sql.Int64),
 			expression.NewLiteral(uint64(18446744073709551615), sql.Uint64),
 		)
@@ -153,7 +155,7 @@ func TestGreatestUnsignedOverflow(t *testing.T) {
 		return
 	}
 
-	_, err = gr.Eval(sql.NewEmptyContext(), nil)
+	_, err = gr.Eval(ctx, nil)
 	require.EqualError(err, "Unsigned integer too big to fit on signed integer")
 }
 
@@ -232,12 +234,13 @@ func TestLeast(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
 			require := require.New(t)
 
-			f, err := NewLeast(tt.args...)
+			f, err := NewLeast(ctx, tt.args...)
 			require.NoError(err)
 
-			output, err := f.Eval(sql.NewEmptyContext(), nil)
+			output, err := f.Eval(ctx, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, output)
 		})

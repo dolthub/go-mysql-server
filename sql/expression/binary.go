@@ -51,7 +51,7 @@ func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return convertValue(expr, ConvertToBinary)
 }
 
-func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (b *Binary) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("BINARY", "1", len(children))
 	}

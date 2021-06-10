@@ -45,7 +45,7 @@ func (f *If) Children() []sql.Expression {
 }
 
 // NewIf returns a new IF UDF
-func NewIf(expr, ifTrue, ifFalse sql.Expression) sql.Expression {
+func NewIf(ctx *sql.Context, expr, ifTrue, ifFalse sql.Expression) sql.Expression {
 	return &If{
 		expr:    expr,
 		ifTrue:  ifTrue,
@@ -92,9 +92,9 @@ func (f *If) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *If) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *If) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 3)
 	}
-	return NewIf(children[0], children[1], children[2]), nil
+	return NewIf(ctx, children[0], children[1], children[2]), nil
 }

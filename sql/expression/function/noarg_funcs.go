@@ -47,7 +47,7 @@ func (fn NoArgFunc) Resolved() bool { return true }
 func (fn NoArgFunc) Children() []sql.Expression { return nil }
 
 // WithChildren implements the Expression interface.
-func NoArgFuncWithChildren(fn sql.Expression, children []sql.Expression) (sql.Expression, error) {
+func NoArgFuncWithChildren(ctx *sql.Context, fn sql.Expression, children []sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(fn, len(children), 0)
 	}

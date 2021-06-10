@@ -29,7 +29,7 @@ type IfNull struct {
 var _ sql.FunctionExpression = (*IfNull)(nil)
 
 // NewIfNull returns a new IFNULL UDF
-func NewIfNull(ex, value sql.Expression) sql.Expression {
+func NewIfNull(ctx *sql.Context, ex, value sql.Expression) sql.Expression {
 	return &IfNull{
 		expression.BinaryExpression{
 			Left:  ex,
@@ -87,9 +87,9 @@ func (f *IfNull) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *IfNull) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *IfNull) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewIfNull(children[0], children[1]), nil
+	return NewIfNull(ctx, children[0], children[1]), nil
 }

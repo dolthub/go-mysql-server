@@ -92,7 +92,7 @@ func (t Tuple) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (t Tuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t Tuple) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != len(t) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), len(t))
 	}

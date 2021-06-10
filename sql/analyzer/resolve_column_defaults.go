@@ -440,7 +440,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	// This is kind of hacky: we rely on the fact that we know that CreateTable returns the default for every
 	// column in the table, and they get evaluated in order below
 	colIndex := 0
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUpWithNode(ctx, n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {
 			return e, nil
@@ -489,7 +489,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 	}
 
 	var err error
-	newDefault.Expression, err = expression.TransformUp(newDefault.Expression, func(e sql.Expression) (sql.Expression, error) {
+	newDefault.Expression, err = expression.TransformUp(ctx, newDefault.Expression, func(e sql.Expression) (sql.Expression, error) {
 		if expr, ok := e.(*expression.GetField); ok {
 			// Default values can only reference their host table, so we can remove the table name, removing
 			// the necessity to update default values on table renames.

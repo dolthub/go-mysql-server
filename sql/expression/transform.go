@@ -24,7 +24,7 @@ type TransformExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, e
 
 // TransformUp applies a transformation function to the given expression from the
 // bottom up.
-func TransformUp(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, error) {
+func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(e)
@@ -32,14 +32,14 @@ func TransformUp(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, err
 
 	newChildren := make([]sql.Expression, len(children))
 	for i, c := range children {
-		c, err := TransformUp(c, f)
+		c, err := TransformUp(ctx, c, f)
 		if err != nil {
 			return nil, err
 		}
 		newChildren[i] = c
 	}
 
-	e, err := e.WithChildren(newChildren...)
+	e, err := e.WithChildren(ctx, newChildren...)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func TransformUp(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, err
 }
 
 // TransformUpWithNode applies a transformation function to the given expression from the bottom up.
-func TransformUpWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, error) {
+func TransformUpWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(n, e)
@@ -56,14 +56,14 @@ func TransformUpWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFu
 
 	newChildren := make([]sql.Expression, len(children))
 	for i, c := range children {
-		c, err := TransformUpWithNode(n, c, f)
+		c, err := TransformUpWithNode(ctx, n, c, f)
 		if err != nil {
 			return nil, err
 		}
 		newChildren[i] = c
 	}
 
-	e, err := e.WithChildren(newChildren...)
+	e, err := e.WithChildren(ctx, newChildren...)
 	if err != nil {
 		return nil, err
 	}

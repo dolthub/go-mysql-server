@@ -34,14 +34,14 @@ const (
 )
 
 // NewPadFunc returns a Pad creator function with a specific padType.
-func NewPadFunc(pType padType) func(e ...sql.Expression) (sql.Expression, error) {
-	return func(e ...sql.Expression) (sql.Expression, error) {
-		return NewPad(pType, e...)
+func NewPadFunc(pType padType) func(ctx *sql.Context, e ...sql.Expression) (sql.Expression, error) {
+	return func(ctx *sql.Context, e ...sql.Expression) (sql.Expression, error) {
+		return NewPad(ctx, pType, e...)
 	}
 }
 
 // NewPad creates a new Pad expression.
-func NewPad(pType padType, args ...sql.Expression) (sql.Expression, error) {
+func NewPad(ctx *sql.Context, pType padType, args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
 	if argLen != 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New(string(pType)+"pad", "3", argLen)
@@ -97,8 +97,8 @@ func (p *Pad) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Pad) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPad(p.padType, children...)
+func (p *Pad) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewPad(ctx, p.padType, children...)
 }
 
 // Eval implements the Expression interface.

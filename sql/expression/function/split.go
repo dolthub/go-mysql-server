@@ -31,7 +31,7 @@ type Split struct {
 var _ sql.FunctionExpression = (*Split)(nil)
 
 // NewSplit creates a new Split UDF.
-func NewSplit(str, delimiter sql.Expression) sql.Expression {
+func NewSplit(ctx *sql.Context, str, delimiter sql.Expression) sql.Expression {
 	return &Split{expression.BinaryExpression{
 		Left:  str,
 		Right: delimiter,
@@ -98,9 +98,9 @@ func (f *Split) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Split) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *Split) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewSplit(children[0], children[1]), nil
+	return NewSplit(ctx, children[0], children[1]), nil
 }

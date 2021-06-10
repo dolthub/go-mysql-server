@@ -37,7 +37,7 @@ func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 		projection := p.Projections
 
-		g, err := findGenerator(projection)
+		g, err := findGenerator(ctx, projection)
 		if err != nil {
 			return nil, err
 		}
@@ -74,18 +74,18 @@ type generator struct {
 // If there are is than one generator or the argument to explode is not an
 // array it will fail.
 // All occurrences of Explode will be replaced with Generate.
-func findGenerator(exprs []sql.Expression) (*generator, error) {
+func findGenerator(ctx *sql.Context, exprs []sql.Expression) (*generator, error) {
 	var g = &generator{idx: -1}
 	for i, e := range exprs {
 		var found bool
 		switch e := e.(type) {
 		case *function.Explode:
 			found = true
-			g.expr = function.NewGenerate(e.Child)
+			g.expr = function.NewGenerate(ctx, e.Child)
 		case *expression.Alias:
 			if exp, ok := e.Child.(*function.Explode); ok {
 				found = true
-				g.expr = expression.NewAlias(e.Name(), function.NewGenerate(exp.Child))
+				g.expr = expression.NewAlias(e.Name(), function.NewGenerate(ctx, exp.Child))
 			}
 		}
 

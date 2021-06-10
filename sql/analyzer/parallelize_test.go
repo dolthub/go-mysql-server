@@ -127,7 +127,7 @@ func TestIsParallelizable(t *testing.T) {
 					lit(1),
 					plan.NewSubquery(
 						plan.NewProject([]sql.Expression{gf(0, "", "row_number()")},
-							plan.NewWindow([]sql.Expression{window.NewRowNumber()}, plan.NewResolvedTable(table, nil, nil)),
+							plan.NewWindow([]sql.Expression{window.NewRowNumber(sql.NewEmptyContext())}, plan.NewResolvedTable(table, nil, nil)),
 						),
 						"select row_number over () from table",
 					),
@@ -165,7 +165,7 @@ func TestIsParallelizable(t *testing.T) {
 			plan.NewProject([]sql.Expression{
 				plan.NewSubquery(
 					plan.NewProject([]sql.Expression{gf(0, "", "row_number()")},
-						plan.NewWindow([]sql.Expression{window.NewRowNumber()}, plan.NewResolvedTable(table, nil, nil)),
+						plan.NewWindow([]sql.Expression{window.NewRowNumber(sql.NewEmptyContext())}, plan.NewResolvedTable(table, nil, nil)),
 					),
 					"select row_number over () from table",
 				),

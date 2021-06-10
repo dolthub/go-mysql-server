@@ -164,27 +164,27 @@ func TestDateFormatEval(t *testing.T) {
 	format := expression.NewLiteral("%Y-%m-%d %H:%i:%s.%f", sql.Text)
 	nullLiteral := expression.NewLiteral(nil, sql.Null)
 
-	dateFormat := NewDateFormat(dateLit, format)
+	dateFormat := NewDateFormat(sql.NewEmptyContext(), dateLit, format)
 	res, err := dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "2020-02-03 04:05:06.000007", res)
 
-	dateFormat = NewDateFormat(dateLit, nil)
+	dateFormat = NewDateFormat(sql.NewEmptyContext(), dateLit, nil)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, nil)
 
-	dateFormat = NewDateFormat(nil, format)
+	dateFormat = NewDateFormat(sql.NewEmptyContext(), nil, format)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, nil)
 
-	dateFormat = NewDateFormat(dateLit, nullLiteral)
+	dateFormat = NewDateFormat(sql.NewEmptyContext(), dateLit, nullLiteral)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, nil)
 
-	dateFormat = NewDateFormat(nullLiteral, format)
+	dateFormat = NewDateFormat(sql.NewEmptyContext(), nullLiteral, format)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, nil, nil)

@@ -55,7 +55,7 @@ type UUIDFunc struct{}
 
 var _ sql.FunctionExpression = &UUIDFunc{}
 
-func NewUUIDFunc() sql.Expression {
+func NewUUIDFunc(ctx *sql.Context) sql.Expression {
 	return UUIDFunc{}
 }
 
@@ -76,7 +76,7 @@ func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return nUUID.String(), nil
 }
 
-func (u UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u UUIDFunc) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
 	}
@@ -116,7 +116,7 @@ type IsUUID struct {
 
 var _ sql.FunctionExpression = &IsUUID{}
 
-func NewIsUUID(arg sql.Expression) sql.Expression {
+func NewIsUUID(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return IsUUID{child: arg}
 }
 
@@ -158,7 +158,7 @@ func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-func (u IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u IsUUID) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
@@ -214,7 +214,7 @@ type UUIDToBin struct {
 
 var _ sql.FunctionExpression = (*UUIDToBin)(nil)
 
-func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
+func NewUUIDToBin(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
 		return UUIDToBin{inputUUID: args[0]}, nil
@@ -311,8 +311,8 @@ func swapUUIDBytes(cur uuid.UUID) []byte {
 	return ret
 }
 
-func (ub UUIDToBin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewUUIDToBin(children...)
+func (ub UUIDToBin) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewUUIDToBin(ctx, children...)
 }
 
 func (ub UUIDToBin) FunctionName() string {
@@ -364,7 +364,7 @@ type BinToUUID struct {
 
 var _ sql.FunctionExpression = (*BinToUUID)(nil)
 
-func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
+func NewBinToUUID(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
 		return BinToUUID{inputBinary: args[0]}, nil
@@ -459,8 +459,8 @@ func unswapUUIDBytes(cur uuid.UUID) []byte {
 	return ret
 }
 
-func (bu BinToUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewBinToUUID(children...)
+func (bu BinToUUID) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewBinToUUID(ctx, children...)
 }
 
 func (bu BinToUUID) FunctionName() string {

@@ -42,21 +42,21 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 				return n, nil
 			}
 
-			return flattenedWindow(n.SelectExprs, n.Child)
+			return flattenedWindow(ctx, n.SelectExprs, n.Child)
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs) {
 				return n, nil
 			}
 
-			return flattenedGroupBy(n.SelectedExprs, n.GroupByExprs, n.Child)
+			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child)
 		default:
 			return n, nil
 		}
 	})
 }
 
-func flattenedGroupBy(projection, grouping []sql.Expression, child sql.Node) (sql.Node, error) {
-	newProjection, newAggregates, err := replaceAggregatesWithGetFieldProjections(projection)
+func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, error) {
+	newProjection, newAggregates, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
 		return nil, err
 	}
@@ -72,13 +72,13 @@ func flattenedGroupBy(projection, grouping []sql.Expression, child sql.Node) (sq
 // new set of project expressions, and the new set of aggregations. The former always matches the size of the projection
 // expressions passed in. The latter will have the size of the number of aggregate expressions contained in the input
 // slice.
-func replaceAggregatesWithGetFieldProjections(projection []sql.Expression) (projections, aggregations []sql.Expression, err error) {
+func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
 
 	for i, p := range projection {
 		var transformed bool
-		e, err := expression.TransformUp(p, func(e sql.Expression) (sql.Expression, error) {
+		e, err := expression.TransformUp(ctx, p, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
 				// continue on
@@ -110,8 +110,8 @@ func replaceAggregatesWithGetFieldProjections(projection []sql.Expression) (proj
 	return newProjection, newAggregates, nil
 }
 
-func flattenedWindow(projection []sql.Expression, child sql.Node) (sql.Node, error) {
-	newProjection, newAggregates, err := replaceAggregatesWithGetFieldProjections(projection)
+func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, error) {
+	newProjection, newAggregates, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
 		return nil, err
 	}

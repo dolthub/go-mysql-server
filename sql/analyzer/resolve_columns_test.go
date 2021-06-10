@@ -270,7 +270,7 @@ func TestQualifyColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(uc("y")),
+									aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
 								},
 								plan.NewResolvedTable(table2, nil, nil),
 							),
@@ -290,7 +290,7 @@ func TestQualifyColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(uc("y")),
+									aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
 								},
 								plan.NewResolvedTable(table2, nil, nil),
 							),
@@ -308,7 +308,7 @@ func TestQualifyColumns(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(uc("y")),
+								aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
 							},
 							plan.NewFilter(
 								gt(
@@ -324,7 +324,7 @@ func TestQualifyColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(uc("y")),
+					aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -336,7 +336,7 @@ func TestQualifyColumns(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(uqc("mytable2", "y")),
+					aggregation.NewMax(sql.NewEmptyContext(), uqc("mytable2", "y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -355,7 +355,7 @@ func TestQualifyColumns(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(uqc("mytable2", "y")),
+								aggregation.NewMax(sql.NewEmptyContext(), uqc("mytable2", "y")),
 							},
 							plan.NewFilter(
 								gt(
@@ -371,7 +371,7 @@ func TestQualifyColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(uqc("mytable2", "y")),
+					aggregation.NewMax(sql.NewEmptyContext(), uqc("mytable2", "y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -574,7 +574,7 @@ func TestResolveColumns(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(gf(3, "t2", "y")),
+								aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "y")),
 							},
 							plan.NewFilter(
 								gt(
@@ -590,7 +590,7 @@ func TestResolveColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(gf(3, "t2", "y")),
+					aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -602,7 +602,7 @@ func TestResolveColumns(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(gf(3, "t2", "y")),
+					aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "y")),
 				},
 				plan.NewFilter(
 					gt(

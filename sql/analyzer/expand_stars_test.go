@@ -25,6 +25,7 @@ import (
 )
 
 func TestExpandStars(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	f := getRule("expand_stars")
 
 	table := memory.NewTable("mytable", sql.Schema{
@@ -152,7 +153,7 @@ func TestExpandStars(t *testing.T) {
 				[]sql.Expression{
 					expression.NewStar(),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+					mustExpr(window.NewRowNumber(ctx).(*window.RowNumber).WithWindow(
 						sql.NewWindow(
 							[]sql.Expression{
 								expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
@@ -172,7 +173,7 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+					mustExpr(window.NewRowNumber(ctx).(*window.RowNumber).WithWindow(
 						sql.NewWindow(
 							[]sql.Expression{
 								expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),

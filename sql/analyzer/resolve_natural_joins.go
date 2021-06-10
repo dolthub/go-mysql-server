@@ -33,7 +33,7 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.NaturalJoin:
 			return resolveNaturalJoin(n, replacements)
 		case sql.Expressioner:
-			return replaceExpressionsForNaturalJoin(node, replacements)
+			return replaceExpressionsForNaturalJoin(ctx, node, replacements)
 		default:
 			return n, nil
 		}
@@ -123,10 +123,11 @@ func findCol(s sql.Schema, name string) (int, *sql.Column) {
 }
 
 func replaceExpressionsForNaturalJoin(
+	ctx *sql.Context,
 	n sql.Node,
 	replacements map[tableCol]tableCol,
 ) (sql.Node, error) {
-	return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressions(ctx, n, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
 			var tableName = strings.ToLower(e.(sql.Tableable).Table())

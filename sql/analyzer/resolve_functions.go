@@ -30,11 +30,11 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			return n, nil
 		}
 
-		return plan.TransformExpressionsUp(n, resolveFunctionsInExpr(a))
+		return plan.TransformExpressionsUp(ctx, n, resolveFunctionsInExpr(ctx, a))
 	})
 }
 
-func resolveFunctionsInExpr(a *Analyzer) sql.TransformExprFunc {
+func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) sql.TransformExprFunc {
 	return func(e sql.Expression) (sql.Expression, error) {
 		if e.Resolved() {
 			return e, nil
@@ -51,7 +51,7 @@ func resolveFunctionsInExpr(a *Analyzer) sql.TransformExprFunc {
 			return nil, err
 		}
 
-		rf, err := f.NewInstance(uf.Arguments)
+		rf, err := f.NewInstance(ctx, uf.Arguments)
 		if err != nil {
 			return nil, err
 		}
