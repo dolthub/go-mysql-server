@@ -937,7 +937,7 @@ func convertLockTables(ctx *sql.Context, s *sqlparser.LockTables) (sql.Node, err
 			return nil, err
 		}
 
-		write := tbl.Lock == "write" || tbl.Lock == "low_priority write"
+		write := tbl.Lock == sqlparser.LockWrite || tbl.Lock == sqlparser.LockLowPriorityWrite
 
 		// TODO: Allow for other types of locks
 		tables[i] = &plan.TableLock{Table: tableNode, Write: write}
