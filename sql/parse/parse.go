@@ -1227,6 +1227,19 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		), nil
 	}
 
+	// In the case that no table spec is given but a SELECT Statement return the CREATE TABLE noder.
+	// if the table spec != nil it will get parsed below.
+	if c.TableSpec == nil && c.OptSelect != nil {
+		tableSpec := &plan.TableSpec{}
+
+		selectNode, err := convertSelectStatement(ctx, c.OptSelect.Select)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(c.Table.Qualifier.String()), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
+	}
+
 	schema, err := TableSpecToSchema(nil, c.TableSpec)
 	if err != nil {
 		return nil, err
@@ -1319,6 +1332,15 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		IdxDefs: idxDefs,
 		FkDefs:  fkDefs,
 		ChDefs:  chDefs,
+	}
+
+	if c.OptSelect != nil {
+		selectNode, err := convertSelectStatement(ctx, c.OptSelect.Select)
+		if err != nil {
+			return nil, err
+		}
+
+		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(qualifier), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
 	}
 
 	return plan.NewCreateTable(

@@ -32,6 +32,7 @@ var OnceBeforeDefault = []Rule{
 	{"load_check_constraints", loadChecks},
 	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_create_like", resolveCreateLike},
+	{"resolve_create_select", resolveCreateSelect},
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_unions", resolveUnions},
 	{"resolve_describe_query", resolveDescribeQuery},

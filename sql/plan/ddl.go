@@ -98,28 +98,28 @@ type TableSpec struct {
 	IdxDefs []*IndexDefinition
 }
 
-func (c *TableSpec) WithSchema(schema sql.Schema) (*TableSpec, error) {
+func (c *TableSpec) WithSchema(schema sql.Schema) *TableSpec {
 	nc := *c
 	nc.Schema = schema
-	return &nc, nil
+	return &nc
 }
 
-func (c *TableSpec) WithForeignKeys(fkDefs []*sql.ForeignKeyConstraint) (*TableSpec, error) {
+func (c *TableSpec) WithForeignKeys(fkDefs []*sql.ForeignKeyConstraint) *TableSpec {
 	nc := *c
 	nc.FkDefs = fkDefs
-	return &nc, nil
+	return &nc
 }
 
-func (c *TableSpec) WithCheckConstraints(chDefs []*sql.CheckConstraint) (*TableSpec, error) {
+func (c *TableSpec) WithCheckConstraints(chDefs []*sql.CheckConstraint) *TableSpec {
 	nc := *c
 	nc.ChDefs = chDefs
-	return &nc, nil
+	return &nc
 }
 
-func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) (*TableSpec, error) {
+func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) *TableSpec {
 	nc := *c
 	nc.IdxDefs = idxDefs
-	return &nc, nil
+	return &nc
 }
 
 // CreateTable is a node describing the creation of some table.
@@ -133,6 +133,7 @@ type CreateTable struct {
 	idxDefs     []*IndexDefinition
 	like        sql.Node
 	temporary   TempTableOption
+	selectNode  sql.Node
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -164,6 +165,25 @@ func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn If
 		name:        name,
 		ifNotExists: ifn,
 		like:        likeTable,
+		temporary:   temp,
+	}
+}
+
+// NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
+func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
+	for _, s := range tableSpec.Schema {
+		s.Source = name
+	}
+
+	return &CreateTable{
+		ddlNode:     ddlNode{db: db},
+		schema:      tableSpec.Schema,
+		fkDefs:      tableSpec.FkDefs,
+		chDefs:      tableSpec.ChDefs,
+		idxDefs:     tableSpec.IdxDefs,
+		name:        name,
+		selectNode:  selectNode,
+		ifNotExists: ifn,
 		temporary:   temp,
 	}
 }
@@ -317,6 +337,8 @@ func (c *CreateTable) createChecks(ctx *sql.Context, tableNode sql.Table) error 
 func (c *CreateTable) Children() []sql.Node {
 	if c.like != nil {
 		return []sql.Node{c.like}
+	} else if c.selectNode != nil {
+		return []sql.Node{c.selectNode}
 	}
 	return nil
 }
@@ -326,8 +348,16 @@ func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) == 0 {
 		return c, nil
 	} else if len(children) == 1 {
+		child := children[0]
 		nc := *c
-		nc.like = children[0]
+
+		switch child.(type) {
+		case *Project, *Limit:
+			nc.selectNode = child
+		default:
+			nc.like = child
+		}
+
 		return &nc, nil
 	} else {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
@@ -427,6 +457,21 @@ func (c *CreateTable) Expressions() []sql.Expression {
 
 func (c *CreateTable) Like() sql.Node {
 	return c.like
+}
+
+func (c *CreateTable) Select() sql.Node {
+	return c.selectNode
+}
+
+func (c *CreateTable) TableSpec() *TableSpec {
+	tableSpec := TableSpec{}
+
+	ret := tableSpec.WithSchema(c.schema)
+	ret = tableSpec.WithForeignKeys(c.fkDefs)
+	ret = tableSpec.WithIndices(c.idxDefs)
+	ret = tableSpec.WithCheckConstraints(c.chDefs)
+
+	return ret
 }
 
 func (c *CreateTable) Name() string {

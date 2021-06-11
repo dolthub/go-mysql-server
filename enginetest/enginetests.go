@@ -1343,6 +1343,34 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.True(t, indexFound)
 	})
 
+	t.Run("CREATE TABLE (SELECT * )", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t10 (a INTEGER NOT NULL PRIMARY KEY, "+
+			"b VARCHAR(10))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, `INSERT INTO t10 VALUES (1, "1"), (2, "2")`, []sql.Row{sql.Row{sql.OkResult{RowsAffected: 0x2, InsertID: 0x0, Info: fmt.Stringer(nil)}}}, nil, nil)
+
+		// Create the table with the data from t10
+		TestQuery(t, harness, e, "CREATE TABLE t10a SELECT * from t10", []sql.Row{sql.Row{sql.OkResult{RowsAffected: 0x2, InsertID: 0x0, Info: fmt.Stringer(nil)}}}, nil, nil)
+
+		db, err := e.Catalog.Database("mydb")
+		require.NoError(t, err)
+
+		t10Table, ok, err := db.GetTableInsensitive(ctx, "t10")
+		require.NoError(t, err)
+		require.True(t, ok)
+		t10aTable, ok, err := db.GetTableInsensitive(ctx, "t10a")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		require.Equal(t, sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t10"},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t10"},
+		}, t10Table.Schema())
+		require.Equal(t, sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t10a"},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t10a"},
+		}, t10aTable.Schema())
+	})
+
 	//TODO: Implement "CREATE TABLE otherDb.tableName"
 }
 

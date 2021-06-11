@@ -842,6 +842,13 @@ CREATE TABLE t2
 			}},
 		},
 	),
+	`CREATE TEMPORARY TABLE mytable AS SELECT * from othertable`: plan.NewCreateTableSelect(
+		sql.UnresolvedDatabase(""),
+		"mytable",
+		plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("othertable", "")),
+		&plan.TableSpec{},
+		plan.IfNotExistsAbsent,
+		plan.IsTempTable),
 	`DROP TABLE foo;`: plan.NewDropTable(
 		sql.UnresolvedDatabase(""), false, "foo",
 	),
