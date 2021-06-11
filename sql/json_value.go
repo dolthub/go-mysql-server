@@ -184,6 +184,16 @@ func containsJSONArray(a []interface{}, b interface{}) (bool, error) {
 
 		return true, nil
 	default:
+		for _, aa := range a {
+			cmp, err := compareJSON(aa, b)
+			if err != nil {
+				return false, err
+			}
+
+			if cmp == 0 {
+				return true, nil
+			}
+		}
 		return false, nil
 	}
 }

@@ -64,8 +64,6 @@ var (
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
 	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
-	unlockTablesRegex    = regexp.MustCompile(`^unlock\s+tables$`)
-	lockTablesRegex      = regexp.MustCompile(`^lock\s+tables\s`)
 	setRegex             = regexp.MustCompile(`^set\s+`)
 )
 
@@ -127,10 +125,6 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		return parseShowWarnings(ctx, s)
 	case fullProcessListRegex.MatchString(lowerQuery):
 		return plan.NewShowProcessList(), nil
-	case unlockTablesRegex.MatchString(lowerQuery):
-		return plan.NewUnlockTables(), nil
-	case lockTablesRegex.MatchString(lowerQuery):
-		return parseLockTables(ctx, s)
 	case setRegex.MatchString(lowerQuery):
 		s = fixSetQuery(s)
 	}
@@ -214,6 +208,10 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDeclare(ctx, n)
 	case *sqlparser.Signal:
 		return convertSignal(ctx, n)
+	case *sqlparser.LockTables:
+		return convertLockTables(ctx, n)
+	case *sqlparser.UnlockTables:
+		return convertUnlockTables(ctx, n)
 	}
 }
 
@@ -926,6 +924,28 @@ func convertSignal(ctx *sql.Context, s *sqlparser.Signal) (sql.Node, error) {
 		}
 		return plan.NewSignal(s.SqlStateValue, signalInfo), nil
 	}
+}
+
+func convertLockTables(ctx *sql.Context, s *sqlparser.LockTables) (sql.Node, error) {
+	tables := make([]*plan.TableLock, len(s.Tables))
+
+	for i, tbl := range s.Tables {
+		tableNode, err := tableExprToTable(ctx, tbl.Table)
+		if err != nil {
+			return nil, err
+		}
+
+		write := tbl.Lock == sqlparser.LockWrite || tbl.Lock == sqlparser.LockLowPriorityWrite
+
+		// TODO: Allow for other types of locks (LOW PRIORITY WRITE & LOCAL READ)
+		tables[i] = &plan.TableLock{Table: tableNode, Write: write}
+	}
+
+	return plan.NewLockTables(tables), nil
+}
+
+func convertUnlockTables(ctx *sql.Context, s *sqlparser.UnlockTables) (sql.Node, error) {
+	return plan.NewUnlockTables(), nil
 }
 
 func convertSignalConditionItemName(name sqlparser.SignalConditionItemName) (plan.SignalConditionItemName, error) {
