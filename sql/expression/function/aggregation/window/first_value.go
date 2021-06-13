@@ -63,7 +63,7 @@ func (f *FirstValue) String() string {
 
 func (f *FirstValue) DebugString() string {
 	sb := strings.Builder{}
-	//sb.WriteString(fmt.Sprintf("first_value(%s)", f.Child.String()))
+	sb.WriteString(fmt.Sprintf("first_value(%s)", f.Child.String()))
 	if f.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(sql.DebugString(f.window))
@@ -101,6 +101,10 @@ func (f *FirstValue) Children() []sql.Expression {
 
 // WithChildren implements sql.Expression
 func (f *FirstValue) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	if len(children) < 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
+	}
+
 	nf := *f
 	window, err := f.window.FromExpressions(children[:len(children)-1])
 	if err != nil {

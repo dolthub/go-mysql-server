@@ -2422,6 +2422,15 @@ func TestWindowAgg(t *testing.T, harness Harness) {
 		{4, 3},
 		{5, 4},
 	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, first_value(c) over (partition by b) FROM t1 order by a*b,a`, []sql.Row{
+		{0, 0},
+		{3, 0},
+		{1, 1},
+		{2, 0},
+		{4, 1},
+		{5, 0},
+	}, nil, nil)
 }
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
