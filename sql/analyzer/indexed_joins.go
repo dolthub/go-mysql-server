@@ -117,6 +117,35 @@ func replaceTableAccessWithIndexedAccess(
 	tableAliases TableAliases,
 ) (sql.Node, bool, error) {
 
+	var toIndexedTableAccess func(node *plan.ResolvedTable, indexToApply *joinIndex) (sql.Node, bool, error)
+	toIndexedTableAccess = func(node *plan.ResolvedTable, indexToApply *joinIndex) (sql.Node, bool, error) {
+		if _, ok := node.Table.(sql.IndexAddressableTable); !ok {
+			return node, false, nil
+		}
+
+		if indexToApply.index != nil {
+			keyExprs := createIndexLookupKeyExpression(ctx, indexToApply, tableAliases)
+			keyExprs, err := FixFieldIndexesOnExpressions(ctx, scope, a, schema, keyExprs...)
+			if err != nil {
+				return nil, false, err
+			}
+			return plan.NewIndexedTableAccess(node, indexToApply.index, keyExprs), true, nil
+		} else {
+			ln, lr, lerr := toIndexedTableAccess(node, indexToApply.disjunction[0])
+			if lerr != nil {
+				return node, false, lerr
+			}
+			rn, rr, rerr := toIndexedTableAccess(node, indexToApply.disjunction[1])
+			if rerr != nil {
+				return node, false, rerr
+			}
+			if lr && rr {
+				return plan.NewDistinct(plan.NewUnion(ln, rn)), true, nil
+			}
+			return node, false, nil
+		}
+	}
+
 	switch node := node.(type) {
 	case *plan.TableAlias, *plan.ResolvedTable:
 		// If the available schema makes an index on this table possible, use it, replacing the table with indexed access
@@ -131,18 +160,9 @@ func replaceTableAccessWithIndexedAccess(
 		node, err := plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
 			switch node := node.(type) {
 			case *plan.ResolvedTable:
-				if _, ok := node.Table.(sql.IndexAddressableTable); !ok {
-					return node, nil
-				}
-
-				keyExprs := createIndexLookupKeyExpression(ctx, indexToApply, tableAliases)
-				keyExprs, err := FixFieldIndexesOnExpressions(ctx, scope, a, schema, keyExprs...)
-				if err != nil {
-					return nil, err
-				}
-
-				replaced = true
-				return plan.NewIndexedTableAccess(node, indexToApply.index, keyExprs), nil
+				n, r, err := toIndexedTableAccess(node, indexToApply)
+				replaced = r
+				return n, err
 			default:
 				return node, nil
 			}
@@ -402,6 +422,10 @@ type joinIndex struct {
 	table string
 	// The index that can be used in this join, if any. nil otherwise
 	index sql.Index
+	// If this is set, the join condition is a top-level OR
+	// expression which can potentially make use of two (or more)
+	// different indexes. `index` of this value be `nil`.
+	disjunction [2]*joinIndex
 	// The join condition
 	joinCond sql.Expression
 	// The join type
@@ -418,13 +442,23 @@ type joinIndex struct {
 	comparandExprs []sql.Expression
 }
 
+func (ji *joinIndex) hasIndex() bool {
+	if ji.index != nil {
+		return true
+	}
+	if ji.disjunction[0] != nil {
+		return ji.disjunction[0].hasIndex() && ji.disjunction[1].hasIndex()
+	}
+	return false
+}
+
 type joinIndexes []*joinIndex
 type joinIndexesByTable map[string]joinIndexes
 
 // getUsableIndex returns an index that can be satisfied by the schema given, or nil if no such index exists.
 func (j joinIndexes) getUsableIndex(schema sql.Schema) *joinIndex {
 	for _, joinIndex := range j {
-		if joinIndex.index == nil {
+		if !joinIndex.hasIndex() {
 			continue
 		}
 		// If every comparand for this join index is present in the schema given, we can use the corresponding index
@@ -577,14 +611,14 @@ func getJoinIndexes(
 	ctx *sql.Context,
 	a *Analyzer,
 	ia *indexAnalyzer,
-	joinCond joinCond,
+	jc joinCond,
 	tableAliases TableAliases,
 ) joinIndexesByTable {
 
-	switch joinCond.cond.(type) {
+	switch cond := jc.cond.(type) {
 	case *expression.Equals, *expression.NullSafeEquals:
 		result := make(joinIndexesByTable)
-		left, right := getEqualityIndexes(ctx, a, ia, joinCond, tableAliases)
+		left, right := getEqualityIndexes(ctx, a, ia, jc, tableAliases)
 
 		// If we can't identify a join index for this condition, return nothing.
 		if left == nil || right == nil {
@@ -595,7 +629,7 @@ func getJoinIndexes(
 		result[right.table] = append(result[right.table], right)
 		return result
 	case *expression.And:
-		exprs := splitConjunction(joinCond.cond)
+		exprs := splitConjunction(jc.cond)
 		for _, expr := range exprs {
 			switch expr.(type) {
 			case *expression.Equals, *expression.NullSafeEquals:
@@ -604,7 +638,48 @@ func getJoinIndexes(
 			}
 		}
 
-		return getJoinIndex(ctx, joinCond, exprs, ia, tableAliases)
+		return getJoinIndex(ctx, jc, exprs, ia, tableAliases)
+	case *expression.Or:
+		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable}
+		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable}
+		leftIdxByTbl := getJoinIndexes(ctx, a, ia, leftCond, tableAliases)
+		rightIdxByTbl := getJoinIndexes(ctx, a, ia, rightCond, tableAliases)
+		result := make(joinIndexesByTable)
+		for table, lefts := range leftIdxByTbl {
+			if rights, ok := rightIdxByTbl[table]; ok {
+				var v joinIndexes
+				for _, left := range lefts {
+					for _, right := range rights {
+						cols := make([]*expression.GetField, 0, len(left.cols) + len(right.cols))
+						cols = append(cols, left.cols...)
+						cols = append(cols, right.cols...)
+						colExprs := make([]sql.Expression, 0, len(left.colExprs) + len(right.colExprs))
+						colExprs = append(colExprs, left.colExprs...)
+						colExprs = append(colExprs, right.colExprs...)
+						comparandCols := make([]*expression.GetField, 0, len(left.comparandCols) + len(right.comparandCols))
+						comparandCols = append(comparandCols, left.comparandCols...)
+						comparandCols = append(comparandCols, right.comparandCols...)
+						comparandExprs := make([]sql.Expression, 0, len(left.comparandExprs) + len(right.comparandExprs))
+						comparandExprs = append(comparandExprs, left.comparandExprs...)
+						comparandExprs = append(comparandExprs, right.comparandExprs...)
+						v = append(v, &joinIndex{
+							table:          table,
+							index:          nil,
+							disjunction:    [2]*joinIndex{left, right},
+							joinCond:       jc.cond,
+							joinType:       jc.joinType,
+							joinPosition:   left.joinPosition,
+							cols:           cols,
+							colExprs:       colExprs,
+							comparandCols:  comparandCols,
+							comparandExprs: comparandExprs,
+						})
+					}
+				}
+				result[table] = v
+			}
+		}
+		return result
 	}
 	// TODO: handle additional kinds of expressions other than equality
 
