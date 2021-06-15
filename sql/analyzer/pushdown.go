@@ -357,9 +357,8 @@ func pushdownFiltersToTable(
 		tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
 		handled := ft.HandledFilters(normalizeExpressions(ctx, tableAliases, tableFilters...))
 		filters.markFiltersHandled(handled...)
-		schema := table.Schema()
 
-		handled, err := FixFieldIndexesOnExpressions(ctx, scope, a, schema, handled...)
+		handled, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), handled...)
 		if err != nil {
 			return nil, err
 		}
