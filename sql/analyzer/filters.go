@@ -24,19 +24,33 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-type filtersByTable map[string][]sql.Expression
+type filtersByTable struct {
+	// filter expressions referring to a single table
+	single map[string][]sql.Expression
+	// filter expressions referring to multiple tables
+	multi  []sql.Expression
+}
+
+func newFiltersByTable() filtersByTable {
+	return filtersByTable{single: make(map[string][]sql.Expression)}
+}
 
 func (f filtersByTable) merge(f2 filtersByTable) {
-	for k, exprs := range f2 {
-		f[k] = append(f[k], exprs...)
+	for k, exprs := range f2.single {
+		f.single[k] = append(f.single[k], exprs...)
 	}
+	f.multi = append(f.multi, f2.multi...)
+}
+
+func (f filtersByTable) size() int {
+	return len(f.single) + len(f.multi)
 }
 
 // getFiltersByTable returns a map of table name to filter expressions on that table for the node provided. Returns an
 // error only the case that the filters contained in the node given cannot all be separated into tables (some of them
 // have more than one table, or no table)
 func getFiltersByTable(n sql.Node) (filtersByTable, error) {
-	filters := make(filtersByTable)
+	filters := newFiltersByTable()
 	var err error
 	plan.Inspect(n, func(node sql.Node) bool {
 		if err != nil {
@@ -59,7 +73,7 @@ func getFiltersByTable(n sql.Node) (filtersByTable, error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return filtersByTable{}, err
 	}
 
 	return filters, err
@@ -69,7 +83,7 @@ func getFiltersByTable(n sql.Node) (filtersByTable, error) {
 // given, split at AND. Returns an error only the case that the expressions cannot all be separated into tables (some
 // of them have more than one table, or no table)
 func exprToTableFilters(expr sql.Expression) (filtersByTable, error) {
-	filtersByTable := make(filtersByTable)
+	filters := newFiltersByTable()
 	for _, expr := range splitConjunction(expr) {
 		var seenTables = make(map[string]bool)
 		var lastTable string
@@ -90,16 +104,19 @@ func exprToTableFilters(expr sql.Expression) (filtersByTable, error) {
 		})
 
 		if hasSubquery {
-			return nil, fmt.Errorf("cannot factor tables in expression because it contains a subquery: %s", expr.String())
+			return // handledCount returns the number of filter expressions that have been marked as handled
+			func (fs *filterSet) handledCount() int {
+				return len(fs.handledIndexFilters) + len(fs.handledFilters)
+			}{}, fmt.Errorf("cannot factor tables in expression because it contains a subquery: %s", expr.String())
 		}
 		if len(seenTables) == 1 {
-			filtersByTable[lastTable] = append(filtersByTable[lastTable], expr)
+			filters.single[lastTable] = append(filters.single[lastTable], expr)
 		} else {
-			return nil, fmt.Errorf("didn't find table for expression %s", expr.String())
+			filters.multi = append(filters.multi, expr)
 		}
 	}
 
-	return filtersByTable, nil
+	return filters, nil
 }
 
 type filterSet struct {
@@ -121,7 +138,8 @@ func newFilterSet(filtersByTable filtersByTable, tableAliases TableAliases) *fil
 // availableFiltersForTable returns the filters that are still available for the table given (not previously marked
 // handled)
 func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table string) []sql.Expression {
-	filters, ok := fs.filtersByTable[table]
+	// don't provide multi-table filter expressions
+	filters, ok := fs.filtersByTable.single[table]
 	if !ok {
 		return nil
 	}
@@ -131,9 +149,10 @@ func (fs *filterSet) availableFiltersForTable(ctx *sql.Context, table string) []
 // availableFilters returns the filters that are still available (not previously marked handled)
 func (fs *filterSet) availableFilters(ctx *sql.Context) []sql.Expression {
 	var available []sql.Expression
-	for _, es := range fs.filtersByTable {
+	for _, es := range fs.filtersByTable.single {
 		available = append(available, fs.subtractUsedIndexes(ctx, subtractExprSet(es, fs.handledFilters))...)
 	}
+	available = append(available, fs.filtersByTable.multi...)
 	return available
 }
 

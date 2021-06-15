@@ -198,7 +198,6 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if err != nil {
 					return nil, err
 				}
-				return table, nil
 				return FixFieldIndexesForExpressions(ctx, a, table, scope)
 			default:
 				return FixFieldIndexesForExpressions(ctx, a, node, scope)
