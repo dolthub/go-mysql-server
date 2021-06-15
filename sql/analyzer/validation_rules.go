@@ -252,12 +252,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 func isValidAgg(validAggs []string, expr sql.Expression) bool {
 	switch expr := expr.(type) {
-	case sql.Aggregation:
-		return true
 	case *expression.Alias:
 		return stringContains(validAggs, expr.String()) || isValidAgg(validAggs, expr.Child)
+	// Pretty much all expressions can be treated as an aggregations on GROUP BY
 	default:
-		return stringContains(validAggs, expr.String())
+		return true
 	}
 }
 
