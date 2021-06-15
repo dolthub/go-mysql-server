@@ -140,7 +140,7 @@ func replaceTableAccessWithIndexedAccess(
 				return node, false, rerr
 			}
 			if lr && rr {
-				return plan.NewTransformedNamedNode(plan.NewDistinct(plan.NewUnion(ln, rn)), node.Name()), true, nil
+				return plan.NewTransformedNamedNode(plan.NewConcat(ln, rn), node.Name()), true, nil
 			}
 			return node, false, nil
 		}
