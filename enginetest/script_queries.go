@@ -891,11 +891,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(5)}},
 			},
 			{
-				Query:   "SELECT + + 97 FROM tab1 GROUP BY tab1.col1",
+				Query:    "SELECT + + 97 FROM tab1 GROUP BY tab1.col1",
 				Expected: []sql.Row{{97}, {97}, {97}},
 			},
 			{
-				Query:   "SELECT ALL - cor0.col0 * + cor0.col0 AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
+				Query:    "SELECT ALL - cor0.col0 * + cor0.col0 AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
 				Expected: []sql.Row{{-2601}, {-7225}, {-8281}},
 			},
 			{
