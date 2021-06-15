@@ -211,17 +211,8 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
 			// Even if they appear multiple times, only the first one will be used.
-			filtersByTable, err := getFiltersByTable(n)
-
-			// An error returned by getFiltersByTable means that we can't cleanly separate all the filters into tables.
-			// In that case, skip pushing down the filters.
-			// TODO: we could also handle this by keeping track of the filters we can't handle and re-applying them at the end
-			if err != nil {
-				return n, nil
-			}
-
-			filters = newFilterSet(filtersByTable, tableAliases)
-
+			filtersByTable := getFiltersByTable(n)
+			filters = newFilterSet(n.Expression, filtersByTable, tableAliases)
 			return transformFilterNode(n)
 		default:
 			return n, nil
@@ -250,18 +241,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
-			// Even if they appear multiple times, only the first one will be used.
-			filtersByTable, err := getFiltersByTable(n)
-
-			// An error returned by getFiltersByTable means that we can't cleanly separate all the filters into tables.
-			// In that case, skip pushing down the filters.
-			// TODO: we could also handle this by keeping track of the filters we can't handle and re-applying them at the end
-			if err != nil {
-				return n, nil
-			}
-
-			filters = newFilterSet(filtersByTable, tableAliases)
-
+			filtersByTable := getFiltersByTable(n)
+			filters = newFilterSet(n.Expression, filtersByTable, tableAliases)
 			return transformFilterNode(n)
 		default:
 			return n, nil
@@ -600,7 +581,7 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 		return node, nil
 	}
 
-	unhandled := filters.availableFilters(ctx)
+	unhandled := filters.unhandledPredicates(ctx)
 	if len(unhandled) == 0 {
 		a.Log("filter node has no unhandled filters, so it will be removed")
 		return node.Child, nil
