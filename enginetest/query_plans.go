@@ -590,11 +590,13 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: no reason to split the filter predicates up into two nodes like this
 		Query: `SELECT * FROM (SELECT * FROM othertable WHERE i2 = 1) othertable_alias WHERE othertable_alias.i2 = 1`,
 		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
-			" └─ Filter((othertable.i2 = 1) AND (othertable.i2 = 1))\n" +
-			"     └─ Projected table access on [s2 i2]\n" +
-			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			" └─ Filter(othertable.i2 = 1)\n" +
+			"     └─ Filter(othertable.i2 = 1)\n" +
+			"         └─ Projected table access on [i2 s2]\n" +
+			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{
@@ -1269,15 +1271,14 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		// TODO: no reason to have two filter nodes wrapped like this
 		Query: `SELECT i FROM mytable mt
 		WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
 		AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL`,
-		ExpectedPlan: "Project(mt.i)\n └─ Filter((NOT((Project(mytable.i)\n" +
-			"     └─ Filter(mytable.i = mt.i)\n" +
-			"         └─ Filter(mytable.i > 2)\n" +
-			"             └─ Projected table access on [i]\n" +
-			"                 └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+		ExpectedPlan: "Project(mt.i)\n" +
+			" └─ Filter((NOT((Project(mytable.i)\n" +
+			"     └─ Filter((mytable.i = mt.i) AND (mytable.i > 2))\n" +
+			"         └─ Projected table access on [i]\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"    ) IS NULL)) AND (NOT((Project(othertable.i2)\n" +
 			"     └─ Filter(othertable.i2 = mt.i)\n" +
 			"         └─ Projected table access on [i2]\n" +

@@ -44,7 +44,7 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return nil, err
 	}
 
-	n, err = convertFiltersToIndexedAccess(ctx, a, n, scope, indexes, tableAliases)
+	n, err = convertFiltersToIndexedAccess(ctx, a, n, scope, indexes)
 	if err != nil {
 		return nil, err
 	}
@@ -181,10 +181,31 @@ func filterPushdownChildSelector(parent sql.Node, child sql.Node, childNum int) 
 	return true
 }
 
-func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
-	var filters *filterSet
+// Like filterPushdownChildSelector, but for pushing filters down via the introduction of additional Filter nodes
+// (for tables that can't treat the filter as an index lookup or accept it directly). In this case, we want to avoid
+// introducing additional Filter nodes unnecessarily. This means only introducing new filter nodes when they are being
+// pushed below a join or other structure.
+func filterPushdownAboveTablesChildSelector(parent sql.Node, child sql.Node, childNum int) bool {
+	// All the same restrictions that apply to pushing filters down in general apply here as well
+	if !filterPushdownChildSelector(parent, child, childNum) {
+		return false
+	}
+	switch parent.(type) {
+	case *plan.Filter:
+		switch child.(type) {
+		// Don't bother pushing filters down above tables if the direct child node is a table. At best this
+		// just splits the predicates into multiple filter nodes, and at worst it breaks other parts of the
+		// analyzer that don't expect this structure in the tree.
+		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+			return false
+		}
+	}
 
-	transformFilterNode := func(n *plan.Filter) (sql.Node, error) {
+	return true
+}
+
+func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
+	applyFilteredTables := func(n *plan.Filter, filters *filterSet) (sql.Node, error) {
 		return plan.TransformUpWithSelector(n, filterPushdownChildSelector, func(node sql.Node) (sql.Node, error) {
 			switch node := node.(type) {
 			case *plan.Filter:
@@ -205,15 +226,44 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		})
 	}
 
+	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, error) {
+		return plan.TransformUpWithSelector(n, filterPushdownAboveTablesChildSelector, func(node sql.Node) (sql.Node, error) {
+			switch node := node.(type) {
+			case *plan.Filter:
+				n, err := removePushedDownPredicates(ctx, a, node, filters)
+				if err != nil {
+					return nil, err
+				}
+				return FixFieldIndexesForExpressions(ctx, a, n, scope)
+			case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+				table, err := pushdownFiltersToAboveTable(ctx, a, node.(NameableNode), scope, filters)
+				if err != nil {
+					return nil, err
+				}
+				return FixFieldIndexesForExpressions(ctx, a, table, scope)
+			default:
+				return FixFieldIndexesForExpressions(ctx, a, node, scope)
+			}
+		})
+	}
+
 	// For each filter node, we want to push its predicates as low as possible.
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.Filter:
-			// First step is to find all col exprs and group them by the table they mention.
-			// Even if they appear multiple times, only the first one will be used.
+			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
+			// have been pushed down and need to be removed from the parent filter
 			filtersByTable := getFiltersByTable(n)
-			filters = newFilterSet(n.Expression, filtersByTable, tableAliases)
-			return transformFilterNode(n)
+			filters := newFilterSet(n.Expression, filtersByTable, tableAliases)
+
+			// Two passes: first push filters to any tables that implement sql.Filtered table directly
+			node, err := applyFilteredTables(n, filters)
+			if err != nil {
+				return nil, err
+			}
+
+			// Then move filter predicates directly above their respective tables in joins
+			return pushdownAboveTables(node, filters)
 		default:
 			return n, nil
 		}
@@ -257,7 +307,6 @@ func convertFiltersToIndexedAccess(
 	n sql.Node,
 	scope *Scope,
 	indexes indexLookupsByTable,
-	aliases TableAliases,
 ) (sql.Node, error) {
 	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
 		switch child.(type) {
@@ -341,10 +390,6 @@ func pushdownFiltersToTable(
 	filters *filterSet,
 	tableAliases TableAliases,
 ) (sql.Node, error) {
-	if sa, ok := tableNode.(*plan.SubqueryAlias); ok {
-		return pushdownFiltersUnderSubqueryAlias(ctx, a, sa, filters)
-	}
-
 	table := getTable(tableNode)
 	if table == nil {
 		return tableNode, nil
@@ -352,7 +397,7 @@ func pushdownFiltersToTable(
 
 	var newTableNode sql.Node = tableNode
 
-	// First push remaining filters onto the table itself if it's a sql.FilteredTable
+	// Push any filters for this table onto the table itself if it's a sql.FilteredTable
 	if ft, ok := table.(sql.FilteredTable); ok && len(filters.availableFiltersForTable(ctx, tableNode.Name())) > 0 {
 		tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
 		handled := ft.HandledFilters(normalizeExpressions(ctx, tableAliases, tableFilters...))
@@ -376,13 +421,33 @@ func pushdownFiltersToTable(
 		)
 	}
 
-	// Then move any remaining filters for the table directly above the table itself
+	switch tableNode.(type) {
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+		return withTable(newTableNode, table)
+	default:
+		return nil, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
+	}
+}
+
+// pushdownFiltersToAboveTable introduces a filter node with the given predicate
+func pushdownFiltersToAboveTable(
+	ctx *sql.Context,
+	a *Analyzer,
+	tableNode NameableNode,
+	scope *Scope,
+	filters *filterSet,
+) (sql.Node,error) {
+	table := getTable(tableNode)
+	if table == nil {
+		return tableNode, nil
+	}
+
+	// Move any remaining filters for the table directly above the table itself
 	var pushedDownFilterExpression sql.Expression
 	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
 
-		schema := tableNode.Schema()
-		handled, err := FixFieldIndexesOnExpressions(ctx, scope, a, schema, tableFilters...)
+		handled, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), tableFilters...)
 		if err != nil {
 			return nil, err
 		}
@@ -390,7 +455,8 @@ func pushdownFiltersToTable(
 		pushedDownFilterExpression = expression.JoinAnd(handled...)
 
 		a.Log(
-			"pushed down filters above table %q, %d filters handled of %d",
+			"pushed down filters %s above table %q, %d filters handled of %d",
+			handled,
 			tableNode.Name(),
 			len(handled),
 			len(tableFilters),
@@ -399,7 +465,7 @@ func pushdownFiltersToTable(
 
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		node, err := withTable(newTableNode, table)
+		node, err := withTable(tableNode, table)
 		if err != nil {
 			return nil, err
 		}
@@ -410,7 +476,7 @@ func pushdownFiltersToTable(
 
 		return node, nil
 	default:
-		return nil, ErrInvalidNodeType.New("pushdown", tableNode)
+		return nil, ErrInvalidNodeType.New("pushdownFiltersToAboveTable", tableNode)
 	}
 }
 
@@ -587,10 +653,25 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 	}
 
 	a.Log(
-		"%d handled filters removed from filter node, filter has now %d filters",
-		len(filters.handledFilters),
+		"filters removed from filter node: %s\nfilter has now %d filters",
+		filters.handledFilters,
 		len(unhandled),
 	)
 
 	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child), nil
 }
+
+type exprSlice []sql.Expression
+
+func (es exprSlice) String() string {
+	var sb strings.Builder
+	for i, e := range es {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(e.String())
+	}
+	return sb.String()
+}
+
+
