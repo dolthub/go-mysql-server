@@ -650,16 +650,16 @@ func getJoinIndexes(
 				var v joinIndexes
 				for _, left := range lefts {
 					for _, right := range rights {
-						cols := make([]*expression.GetField, 0, len(left.cols) + len(right.cols))
+						cols := make([]*expression.GetField, 0, len(left.cols)+len(right.cols))
 						cols = append(cols, left.cols...)
 						cols = append(cols, right.cols...)
-						colExprs := make([]sql.Expression, 0, len(left.colExprs) + len(right.colExprs))
+						colExprs := make([]sql.Expression, 0, len(left.colExprs)+len(right.colExprs))
 						colExprs = append(colExprs, left.colExprs...)
 						colExprs = append(colExprs, right.colExprs...)
-						comparandCols := make([]*expression.GetField, 0, len(left.comparandCols) + len(right.comparandCols))
+						comparandCols := make([]*expression.GetField, 0, len(left.comparandCols)+len(right.comparandCols))
 						comparandCols = append(comparandCols, left.comparandCols...)
 						comparandCols = append(comparandCols, right.comparandCols...)
-						comparandExprs := make([]sql.Expression, 0, len(left.comparandExprs) + len(right.comparandExprs))
+						comparandExprs := make([]sql.Expression, 0, len(left.comparandExprs)+len(right.comparandExprs))
 						comparandExprs = append(comparandExprs, left.comparandExprs...)
 						comparandExprs = append(comparandExprs, right.comparandExprs...)
 						v = append(v, &joinIndex{
