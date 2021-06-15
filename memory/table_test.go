@@ -246,7 +246,7 @@ func TestFiltered(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			filtered := table.WithFilters(test.filters)
+			filtered := table.WithFilters(sql.NewEmptyContext(), test.filters)
 
 			filteredRows := getAllRows(t, filtered)
 			require.Len(filteredRows, len(test.expectedFiltered))
@@ -289,7 +289,7 @@ func TestFilterAndProject(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			filtered := table.WithFilters(test.filters)
+			filtered := table.WithFilters(sql.NewEmptyContext(), test.filters)
 			projected := filtered.(*memory.FilteredTable).WithProjection(test.columns)
 
 			rows := getAllRows(t, projected)

@@ -372,8 +372,9 @@ func pushdownFiltersToTable(
 
 	var newTableNode sql.Node = tableNode
 
+	ft, ftOK := table.(sql.FilteredTable)
 	// First push remaining filters onto the table itself if it's a sql.FilteredTable
-	if ft, ok := table.(sql.FilteredTable); ok && len(filters.availableFiltersForTable(ctx, tableNode.Name())) > 0 {
+	if ftOK && len(filters.availableFiltersForTable(ctx, tableNode.Name())) > 0 {
 		tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
 		handled := ft.HandledFilters(normalizeExpressions(ctx, tableAliases, tableFilters...))
 		filters.markFiltersHandled(handled...)
@@ -384,7 +385,7 @@ func pushdownFiltersToTable(
 			return nil, err
 		}
 
-		table = ft.WithFilters(handled)
+		table = ft.WithFilters(ctx, handled)
 		newTableNode = plan.NewDecoratedNode(
 			fmt.Sprintf("Filtered table access on %v", handled),
 			newTableNode)

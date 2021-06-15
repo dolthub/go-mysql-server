@@ -933,7 +933,7 @@ func NewFilteredTable(name string, schema sql.Schema) *FilteredTable {
 }
 
 // WithFilters implements the sql.FilteredTable interface.
-func (t *FilteredTable) WithFilters(filters []sql.Expression) sql.Table {
+func (t *FilteredTable) WithFilters(ctx *sql.Context, filters []sql.Expression) sql.Table {
 	if len(filters) == 0 {
 		return t
 	}

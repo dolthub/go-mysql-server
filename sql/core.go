@@ -233,7 +233,7 @@ type PartitionCounter interface {
 type FilteredTable interface {
 	Table
 	HandledFilters(filters []Expression) []Expression
-	WithFilters(filters []Expression) Table
+	WithFilters(ctx *Context, filters []Expression) Table
 }
 
 // ProjectedTable is a table that can produce a specific RowIter
