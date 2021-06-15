@@ -104,10 +104,7 @@ func exprToTableFilters(expr sql.Expression) (filtersByTable, error) {
 		})
 
 		if hasSubquery {
-			return // handledCount returns the number of filter expressions that have been marked as handled
-			func (fs *filterSet) handledCount() int {
-				return len(fs.handledIndexFilters) + len(fs.handledFilters)
-			}{}, fmt.Errorf("cannot factor tables in expression because it contains a subquery: %s", expr.String())
+			return filtersByTable{}, fmt.Errorf("cannot factor tables in expression because it contains a subquery: %s", expr.String())
 		}
 		if len(seenTables) == 1 {
 			filters.single[lastTable] = append(filters.single[lastTable], expr)
