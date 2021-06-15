@@ -910,6 +910,10 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT col0 BETWEEN 2 and 4 from tab1 group by col0",
 				Expected: []sql.Row{{false}, {false}, {false}},
 			},
+			{
+				Query:    "SELECT col1 * cor0.col1 * 56 AS col1 FROM tab2 AS cor0 GROUP BY cor0.col1",
+				Expected: []sql.Row{{332024}, {251384}, {145656}},
+			},
 		},
 	},
 	{
