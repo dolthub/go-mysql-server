@@ -178,32 +178,74 @@ func TestExprToTableFilters(t *testing.T) {
 		},
 	}
 
-	filters, err := exprToTableFilters(expr)
-	require.NoError(t, err)
+	filters := exprToTableFilters(expr)
 	assert.Equal(t, expected, filters)
 
-	// Test various error conditions -- anytime we can't neatly split the expressions into tables
-	_, err = exprToTableFilters(expression.NewAnd(
+	// Test various complex conditions -- anytime we can't neatly split the expressions into tables
+	filters = exprToTableFilters(expression.NewAnd(
 		lit(0),
 		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
 	))
-	assert.Error(t, err)
+	expected = filtersByTable{
+		"mytable": []sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+		},
+	}
+	assert.Equal(t, expected, filters)
 
-	_, err = exprToTableFilters(expression.NewAnd(
+	filters = exprToTableFilters(expression.NewAnd(
 		expression.NewLiteral(nil, sql.Null),
 		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
 	))
-	assert.Error(t, err)
+	expected = filtersByTable{
+		"mytable": []sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+		},
+	}
+	assert.Equal(t, expected, filters)
 
-	_, err = exprToTableFilters(expression.NewAnd(
+	filters = exprToTableFilters(expression.NewAnd(
 		expression.NewEquals(lit(1), mustExpr(function.NewRand(sql.NewEmptyContext()))),
 		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
 	))
-	assert.Error(t, err)
+	expected = filtersByTable{
+		"mytable": []sql.Expression{
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+		},
+	}
+	assert.Equal(t, expected, filters)
 
-	_, err = exprToTableFilters(expression.NewOr(
+	filters = exprToTableFilters(expression.NewOr(
 		expression.NewLiteral(nil, sql.Null),
 		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
 	))
-	assert.NoError(t, err)
+	expected = filtersByTable{
+		"mytable": []sql.Expression{
+			expression.NewOr(
+				expression.NewLiteral(nil, sql.Null),
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+			),
+		},
+	}
+	assert.Equal(t, expected, filters)
+
+	filters = exprToTableFilters(expression.NewAnd(
+		eq(
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "a", false),
+			lit(1),
+		),
+		eq(
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
+			expression.NewGetFieldWithTable(0, sql.Int64, "mytable2", "i", false),
+		),
+	))
+	expected = filtersByTable{
+		"mytable": []sql.Expression{
+			eq(
+				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "a", false),
+				lit(1),
+			),
+		},
+	}
+	assert.Equal(t, expected, filters)
 }
