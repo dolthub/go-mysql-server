@@ -103,8 +103,8 @@ type filterSet struct {
 func newFilterSet(filter sql.Expression, filtersByTable filtersByTable, tableAliases TableAliases) *filterSet {
 	return &filterSet{
 		filterPredicates: splitConjunction(filter),
-		filtersByTable: filtersByTable,
-		tableAliases:   tableAliases,
+		filtersByTable:   filtersByTable,
+		tableAliases:     tableAliases,
 	}
 }
 

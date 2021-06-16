@@ -481,10 +481,10 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
 				},
 				plan.NewFilter(
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
-							expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
-						),
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+						expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+					),
 					plan.NewCrossJoin(
 						plan.NewFilter(
 							expression.NewEquals(

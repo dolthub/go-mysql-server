@@ -436,7 +436,7 @@ func pushdownFiltersToAboveTable(
 	tableNode NameableNode,
 	scope *Scope,
 	filters *filterSet,
-) (sql.Node,error) {
+) (sql.Node, error) {
 	table := getTable(tableNode)
 	if table == nil {
 		return tableNode, nil
@@ -673,5 +673,3 @@ func (es exprSlice) String() string {
 	}
 	return sb.String()
 }
-
-
