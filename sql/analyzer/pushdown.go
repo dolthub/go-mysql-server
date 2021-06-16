@@ -408,7 +408,7 @@ func pushdownFiltersToTable(
 			return nil, err
 		}
 
-		table = ft.WithFilters(handled)
+		table = ft.WithFilters(ctx, handled)
 		newTableNode = plan.NewDecoratedNode(
 			fmt.Sprintf("Filtered table access on %v", handled),
 			newTableNode)
