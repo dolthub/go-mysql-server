@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -911,8 +912,8 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{false}, {false}, {false}},
 			},
 			{
-				Query:    "SELECT col1 * cor0.col1 * 56 AS col1 FROM tab2 AS cor0 GROUP BY cor0.col1",
-				Expected: []sql.Row{{332024}, {251384}, {145656}},
+				Query:    "SELECT col0, col1 FROM tab1 GROUP by col0;",
+				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
 		},
 	},

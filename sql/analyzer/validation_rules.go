@@ -252,11 +252,24 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 func isValidAgg(validAggs []string, expr sql.Expression) bool {
 	switch expr := expr.(type) {
+	case sql.Aggregation, *expression.Literal:
+		return true
 	case *expression.Alias:
 		return stringContains(validAggs, expr.String()) || isValidAgg(validAggs, expr.Child)
-	// Pretty much all expressions can be treated as an aggregations on GROUP BY
+	// cc: https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html
+	// Each part of the SelectExpr must refer to the aggregated columns in some way
 	default:
-		return true
+		if stringContains(validAggs, expr.String()) {
+			return true
+		}
+
+		for _, child := range expr.Children() {
+			if isValidAgg(validAggs, child) {
+				return true
+			}
+		}
+
+		return false
 	}
 }
 
