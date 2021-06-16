@@ -1826,6 +1826,36 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 order by 1, 3",
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{1, "first row", 3, "first"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 1, "third"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 order by 1, 3",
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{1, "first row", 3, "first"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 1, "third"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: "SELECT i, s, i2, s2 FROM mytable INNER JOIN othertable ON SUBSTRING_INDEX(s, ' ', 2) = s2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR i = i2 order by 1, 3",
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{1, "first row", 3, "first"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 1, "third"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2
 				from mytable join othertable on i = i2 order by 1`,
 		Expected: []sql.Row{

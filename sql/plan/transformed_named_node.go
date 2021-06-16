@@ -23,6 +23,9 @@ type TransformedNamedNode struct {
 	name string
 }
 
+// TransformedNamedNode is a wrapper for arbitrary logic to represent a table
+// factor assembled from other nodes at some point in by the analyzer. See
+// e.g., Concat.
 func NewTransformedNamedNode(child sql.Node, name string) *TransformedNamedNode {
 	return &TransformedNamedNode{UnaryNode{child}, name}
 }

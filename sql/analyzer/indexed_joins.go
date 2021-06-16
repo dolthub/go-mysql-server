@@ -422,9 +422,11 @@ type joinIndex struct {
 	table string
 	// The index that can be used in this join, if any. nil otherwise
 	index sql.Index
-	// If this is set, the join condition is a top-level OR
-	// expression which can potentially make use of two (or more)
-	// different indexes. `index` of this value be `nil`.
+	// This field stores exactly two joinIndexes, representing the two
+	// branches of an OR expression when the top-level condition is an OR
+	// expression that could potentially make use of different indexes. If
+	// disjunction[0] != nil, disjunction[1] will also be nonnil and index
+	// will be nil.
 	disjunction [2]*joinIndex
 	// The join condition
 	joinCond sql.Expression
