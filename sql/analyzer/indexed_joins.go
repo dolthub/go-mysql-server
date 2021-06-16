@@ -597,8 +597,12 @@ func getJoinIndexes(
 	case *expression.And:
 		exprs := splitConjunction(joinCond.cond)
 		for _, expr := range exprs {
-			switch expr.(type) {
-			case *expression.Equals, *expression.NullSafeEquals:
+			switch e := expr.(type) {
+			case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+			case *expression.Not:
+				if _, ok := e.Child.(*expression.IsNull); !ok {
+					return nil
+				}
 			default:
 				return nil
 			}
