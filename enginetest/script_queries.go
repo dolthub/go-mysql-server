@@ -933,7 +933,7 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
 			{
-				Query:    "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
+				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
 				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
 		},
