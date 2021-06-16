@@ -448,8 +448,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 			),
 		},
 		{
-			// TODO: we could push down only the non-join predicates, but we currently just pass entirely
-			name: "filter contains join condition (no pushdown currently possible, but see TODO)",
+			name: "filter contains join condition",
 			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
@@ -474,6 +473,33 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 					plan.NewCrossJoin(
 						plan.NewResolvedTable(table, nil, nil),
 						plan.NewResolvedTable(table2, nil, nil),
+					),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+				},
+				plan.NewFilter(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "i", true),
+							expression.NewGetFieldWithTable(3, sql.Int32, "mytable2", "i2", true),
+						),
+					plan.NewCrossJoin(
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+								expression.NewLiteral(3.14, sql.Float64),
+							),
+							plan.NewResolvedTable(table, nil, nil),
+						),
+						plan.NewFilter(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int32, "mytable2", "i2", true),
+								expression.NewLiteral(20, sql.Int32),
+							),
+							plan.NewResolvedTable(table2, nil, nil),
+						),
 					),
 				),
 			),
@@ -665,19 +691,19 @@ func TestPushdownIndex(t *testing.T) {
 				},
 				plan.NewFilter(
 					and(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
+							expression.NewLiteral(3.14, sql.Float64),
+						),
 						and(
-							expression.NewEquals(
-								expression.NewGetFieldWithTable(1, sql.Float64, "mytable", "f", true),
-								expression.NewLiteral(3.14, sql.Float64),
-							),
 							expression.NewEquals(
 								expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
 								expression.NewLiteral("hello", sql.Text),
 							),
-						),
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
-							expression.NewLiteral("goodbye", sql.Text),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(2, sql.Text, "mytable", "t", true),
+								expression.NewLiteral("goodbye", sql.Text),
+							),
 						),
 					),
 					plan.NewStaticIndexedTableAccess(
