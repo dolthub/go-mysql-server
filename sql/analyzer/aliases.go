@@ -66,7 +66,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 
 		if at, ok := node.(*plan.TableAlias); ok {
 			switch t := at.Child.(type) {
-			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable:
+			case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode:
 				analysisErr = passAliases.add(at, t.(NameableNode))
 			case *plan.DecoratedNode:
 				rt := getResolvedTable(at.Child)
@@ -102,7 +102,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			rt := getResolvedTable(node.Destination)
 			analysisErr = passAliases.add(rt, rt)
 			return false
-		case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable:
+		case *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TransformedNamedNode:
 			analysisErr = passAliases.add(node.(sql.Nameable), node.(sql.Nameable))
 			return false
 		case *plan.DecoratedNode:

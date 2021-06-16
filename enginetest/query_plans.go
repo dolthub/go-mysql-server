@@ -134,6 +134,49 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR s = s2`,
+		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ IndexedJoin((mytable.i = othertable.i2) OR (mytable.s = othertable.s2))\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Concat\n" +
+			"         ├─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ot ON i = i2 OR s = s2`,
+		ExpectedPlan: "Project(mytable.i, ot.i2, ot.s2)\n" +
+			" └─ IndexedJoin((mytable.i = ot.i2) OR (mytable.s = ot.s2))\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ TableAlias(ot)\n" +
+			"         └─ Concat\n" +
+			"             ├─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"             └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2`,
+		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ IndexedJoin((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, \" \", &{1 {257}}) = othertable.s2))\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Concat\n" +
+			"         ├─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR SUBSTRING_INDEX(s, ' ', 2) = s2`,
+		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			" └─ IndexedJoin(((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, \" \", &{1 {257}}) = othertable.s2)) OR (SUBSTRING_INDEX(mytable.s, \" \", &{2 {257}}) = othertable.s2))\n" +
+			"     ├─ Table(mytable)\n" +
+			"     └─ Concat\n" +
+			"         ├─ Concat\n" +
+			"         │   ├─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"         │   └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 UNION SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2`,
 		ExpectedPlan: "Distinct\n" +
 			" └─ Union\n" +
@@ -529,6 +572,16 @@ var PlanTests = []QueryPlanTest{
 			" └─ IndexedJoin((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2))\n" +
 			"     ├─ Table(one_pk)\n" +
 			"     └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON one_pk.pk=two_pk.pk1 AND one_pk.pk=two_pk.pk2 OR one_pk.c2 = two_pk.c3`,
+		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ InnerJoin(((one_pk.pk = two_pk.pk1) AND (one_pk.pk = two_pk.pk2)) OR (one_pk.c2 = two_pk.c3))\n" +
+			"     ├─ Projected table access on [pk c2]\n" +
+			"     │   └─ Table(one_pk)\n" +
+			"     └─ Projected table access on [pk1 pk2 c3]\n" +
+			"         └─ Table(two_pk)\n" +
 			"",
 	},
 	{
