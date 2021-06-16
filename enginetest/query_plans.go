@@ -590,11 +590,13 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: no reason to split the filter predicates up into two nodes like this
 		Query: `SELECT * FROM (SELECT * FROM othertable WHERE i2 = 1) othertable_alias WHERE othertable_alias.i2 = 1`,
 		ExpectedPlan: "SubqueryAlias(othertable_alias)\n" +
-			" └─ Filter((othertable.i2 = 1) AND (othertable.i2 = 1))\n" +
-			"     └─ Projected table access on [s2 i2]\n" +
-			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			" └─ Filter(othertable.i2 = 1)\n" +
+			"     └─ Filter(othertable.i2 = 1)\n" +
+			"         └─ Projected table access on [i2 s2]\n" +
+			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{
