@@ -836,11 +836,9 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,i,f FROM one_pk LEFT JOIN niltable ON pk=i AND f IS NOT NULL`,
 		ExpectedPlan: "Project(one_pk.pk, niltable.i, niltable.f)\n" +
-			" └─ LeftJoin((one_pk.pk = niltable.i) AND (NOT(niltable.f IS NULL)))\n" +
-			"     ├─ Projected table access on [pk]\n" +
-			"     │   └─ Table(one_pk)\n" +
-			"     └─ Projected table access on [i f]\n" +
-			"         └─ Table(niltable)\n" +
+			" └─ LeftIndexedJoin((one_pk.pk = niltable.i) AND (NOT(niltable.f IS NULL)))\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ IndexedTableAccess(niltable on [niltable.i])\n" +
 			"",
 	},
 	{
