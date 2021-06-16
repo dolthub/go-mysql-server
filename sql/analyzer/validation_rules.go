@@ -49,7 +49,7 @@ var (
 	ErrValidationOrderBy = errors.NewKind("OrderBy does not support aggregation expressions")
 	// ErrValidationGroupBy is returned when the aggregation expression does not
 	// appear in the grouping columns.
-	ErrValidationGroupBy = errors.NewKind("GroupBy aggregate expression '%v' doesn't appear in the grouping columns")
+	ErrValidationGroupBy = errors.NewKind("expression '%v' doesn't appear in the group by expressions")
 	// ErrValidationSchemaSource is returned when there is any column source
 	// that does not match the table name.
 	ErrValidationSchemaSource = errors.NewKind("one or more schema sources are empty")
@@ -228,17 +228,14 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 			return n, nil
 		}
 
-		var validAggs []string
+		var groupBys []string
 		for _, expr := range n.GroupByExprs {
-			validAggs = append(validAggs, expr.String())
+			groupBys = append(groupBys, expr.String())
 		}
 
-		// TODO: validate columns inside aggregations
-		// and allow any kind of expression that make use of the grouping
-		// columns.
 		for _, expr := range n.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
-				if !isValidAgg(validAggs, expr) {
+				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
 					return nil, ErrValidationGroupBy.New(expr.String())
 				}
 			}
@@ -250,15 +247,35 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	return n, nil
 }
 
-func isValidAgg(validAggs []string, expr sql.Expression) bool {
-	switch expr := expr.(type) {
-	case sql.Aggregation:
-		return true
-	case *expression.Alias:
-		return stringContains(validAggs, expr.String()) || isValidAgg(validAggs, expr.Child)
-	default:
-		return stringContains(validAggs, expr.String())
-	}
+func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {
+	valid := true
+	sql.Inspect(expr, func(expr sql.Expression) bool {
+		switch expr := expr.(type) {
+		case nil, sql.Aggregation, *expression.Literal:
+			return false
+		case *expression.Alias, sql.FunctionExpression:
+			if stringContains(groupBys, expr.String()) {
+				return false
+			}
+			return true
+		// cc: https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html
+		// Each part of the SelectExpr must refer to the aggregated columns in some way
+		// TODO: this isn't complete, it's overly restrictive. Dependant columns are fine to reference.
+		default:
+			if stringContains(groupBys, expr.String()) {
+				return true
+			}
+
+			if len(expr.Children()) == 0 {
+				valid = false
+				return false
+			}
+
+			return true
+		}
+	})
+
+	return valid
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {

@@ -17,6 +17,8 @@ package enginetest
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -963,6 +965,50 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT SUM(DISTINCT POWER(v1, 2)) FROM mytable",
 				Expected: []sql.Row{{float64(5)}},
+			},
+			{
+				Query:    "SELECT + + 97 FROM tab1 GROUP BY tab1.col1",
+				Expected: []sql.Row{{97}, {97}, {97}},
+			},
+			{
+				Query:    "SELECT rand(10) FROM tab1 GROUP BY tab1.col1",
+				Expected: []sql.Row{{0.5660920659323543}, {0.5660920659323543}, {0.5660920659323543}},
+			},
+			{
+				Query:    "SELECT ALL - cor0.col0 * + cor0.col0 AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
+				Expected: []sql.Row{{-2601}, {-7225}, {-8281}},
+			},
+			{
+				Query:    "SELECT cor0.col0 * cor0.col0 + cor0.col0 AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0 order by 1",
+				Expected: []sql.Row{{2652}, {7310}, {8372}},
+			},
+			{
+				Query:    "SELECT - floor(cor0.col0) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
+				Expected: []sql.Row{{-2601}, {-7225}, {-8281}},
+			},
+			{
+				Query:    "SELECT col0 FROM tab1 AS cor0 GROUP BY cor0.col0",
+				Expected: []sql.Row{{51}, {85}, {91}},
+			},
+			{
+				Query:    "SELECT - cor0.col0 FROM tab1 AS cor0 GROUP BY cor0.col0",
+				Expected: []sql.Row{{-51}, {-85}, {-91}},
+			},
+			{
+				Query:    "SELECT col0 BETWEEN 2 and 4 from tab1 group by col0",
+				Expected: []sql.Row{{false}, {false}, {false}},
+			},
+			{
+				Query:       "SELECT col0, col1 FROM tab1 GROUP by col0;",
+				ExpectedErr: analyzer.ErrValidationGroupBy,
+			},
+			{
+				Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
+				ExpectedErr: analyzer.ErrValidationGroupBy,
+			},
+			{
+				Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
+				ExpectedErr: analyzer.ErrValidationGroupBy,
 			},
 		},
 	},
