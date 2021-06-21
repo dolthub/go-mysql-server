@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
+	istrings "github.com/dolthub/go-mysql-server/internal/strings"
 )
 
 const (
@@ -272,7 +273,15 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 			return "", nil
 		}
 
-		return s.ToString(nil)
+		str, err := s.ToString(nil)
+		if err != nil {
+			return nil, err
+		}
+
+		val, err = istrings.Unquote(str)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrConvertToSQL.New(t)
 	}
