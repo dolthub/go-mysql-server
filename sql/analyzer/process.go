@@ -37,7 +37,10 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
-			case *plan.ProcessTable, *plan.ProcessIndexableTable:
+			case
+				*plan.ProcessTable,
+				*plan.ProcessIndexableTable,
+				*plan.ProcessDriverIndexableTable:
 				return n, nil
 			}
 
@@ -74,6 +77,8 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 			var t sql.Table
 			switch table := n.Table.(type) {
 			case sql.DriverIndexableTable:
+				t = plan.NewProcessDriverIndexableTable(table, onPartitionDone, onPartitionStart, onRowNext)
+			case sql.IndexAddressableTable:
 				t = plan.NewProcessIndexableTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			default:
 				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
