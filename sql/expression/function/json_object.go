@@ -38,15 +38,6 @@ func NewJSONObject(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, e
 	if len(exprs)%2 != 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_OBJECT", "an even number of", len(exprs))
 	}
-	for i, expr := range exprs {
-		if i%2 != 0 {
-			continue
-		}
-		if _, ok := expr.Type().(sql.StringType); !ok {
-			// JSON object keys must be strings
-			return nil, sql.ErrInvalidType.New(expr.Type())
-		}
-	}
 
 	return JSONObject{keyValPairs: exprs}, nil
 }
@@ -95,7 +86,10 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			key = val.(string)
+			var ok bool
+			if key, ok = val.(string); !ok {
+				return nil, sql.ErrInvalidType.New(expr.Type())
+			}
 		} else {
 			obj[key] = val
 		}

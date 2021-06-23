@@ -6112,6 +6112,14 @@ var errorQueries = []QueryErrorTest{
 			"v1": expression.NewLiteral("100", sql.LongText),
 		},
 	},
+	{
+		Query:       `SELECT JSON_OBJECT("a","b","c") FROM dual`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       `SELECT JSON_OBJECT(1, 2) FROM dual`,
+		ExpectedErr: sql.ErrInvalidType,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
