@@ -5029,6 +5029,20 @@ var QueryTests = []QueryTest{
 			{3, 30},
 		},
 	},
+	{
+		Query: `SELECT JSON_OBJECT("i",i,"s",s) as js FROM mytable;`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"i": 1, "s": "first row"}`)},
+			{sql.MustJSON(`{"i": 2, "s": "second row"}`)},
+			{sql.MustJSON(`{"i": 3, "s": "third row"}`)},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "js",
+				Type: sql.JSON,
+			},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
