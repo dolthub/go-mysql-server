@@ -396,8 +396,8 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 // NewSession creates a new session with data.
 func NewSession(server string, client Client, id uint32) Session {
 	return &BaseSession{
-		addr: server,
-		client: client,
+		addr:          server,
+		client:        client,
 		id:            id,
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),

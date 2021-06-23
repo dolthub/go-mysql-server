@@ -16,9 +16,10 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"io"
 	"sync"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -116,8 +117,8 @@ func (r *replaceRowHandler) okResult() sql.OkResult {
 }
 
 type onDuplicateUpdateHandler struct {
-	rowsAffected int
-	schema       sql.Schema
+	rowsAffected           int
+	schema                 sql.Schema
 	clientFoundRowsToggled bool
 }
 
@@ -136,7 +137,7 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
 		if equals {
 			if o.clientFoundRowsToggled {
-				o.rowsAffected ++
+				o.rowsAffected++
 			}
 		} else {
 			o.rowsAffected += 2
