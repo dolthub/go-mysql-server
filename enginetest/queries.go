@@ -5029,6 +5029,20 @@ var QueryTests = []QueryTest{
 			{3, 30},
 		},
 	},
+	{
+		Query: `SELECT JSON_OBJECT("i",i,"s",s) as js FROM mytable;`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"i": 1, "s": "first row"}`)},
+			{sql.MustJSON(`{"i": 2, "s": "second row"}`)},
+			{sql.MustJSON(`{"i": 3, "s": "third row"}`)},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "js",
+				Type: sql.JSON,
+			},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -6097,6 +6111,14 @@ var errorQueries = []QueryErrorTest{
 		Bindings: map[string]sql.Expression{
 			"v1": expression.NewLiteral("100", sql.LongText),
 		},
+	},
+	{
+		Query:       `SELECT JSON_OBJECT("a","b","c") FROM dual`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       `SELECT JSON_OBJECT(1, 2) FROM dual`,
+		ExpectedErr: sql.ErrInvalidType,
 	},
 }
 
