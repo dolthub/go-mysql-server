@@ -463,6 +463,13 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			expectedRowsAffected: uint64(10),
 		},
 		{
+			name:                 "INSERT ON UPDATE returns +1 for every row that already exists",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "INSERT INTO test VALUES (1), (2), (3) ON DUPLICATE KEY UPDATE c1=c1",
+			expectedRowsAffected: uint64(3),
+		},
+		{
 			name:                 "SQL_CALC_ROWS should not affect CLIENT_FOUND_ROWS output",
 			handler:              handler,
 			conn:                 dummyConn,

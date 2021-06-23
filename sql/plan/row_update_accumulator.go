@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"io"
 	"sync"
 
@@ -117,6 +118,7 @@ func (r *replaceRowHandler) okResult() sql.OkResult {
 type onDuplicateUpdateHandler struct {
 	rowsAffected int
 	schema       sql.Schema
+	clientFoundRowsToggled bool
 }
 
 func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
@@ -132,10 +134,12 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
-		if !equals {
-			o.rowsAffected += 2
+		if equals {
+			if o.clientFoundRowsToggled {
+				o.rowsAffected ++
+			}
 		} else {
-			o.rowsAffected += 1
+			o.rowsAffected += 2
 		}
 	} else {
 		o.rowsAffected++
@@ -256,7 +260,8 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	case UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case UpdateTypeDuplicateKeyUpdate:
-		rowHandler = &onDuplicateUpdateHandler{schema: r.Child.Schema()}
+		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
+		rowHandler = &onDuplicateUpdateHandler{schema: r.Child.Schema(), clientFoundRowsToggled: clientFoundRowsToggled}
 	case UpdateTypeUpdate:
 		schema := r.Child.Schema()
 		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /
