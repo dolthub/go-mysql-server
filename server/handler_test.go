@@ -149,7 +149,7 @@ func TestHandlerKill(t *testing.T) {
 		e,
 		NewSessionManager(
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
-				return sql.NewSession(addr, "", "", conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
+				return sql.NewSession(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 			},
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },

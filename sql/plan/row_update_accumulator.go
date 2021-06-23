@@ -134,6 +134,8 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
 		if !equals {
 			o.rowsAffected += 2
+		} else {
+			o.rowsAffected += 1
 		}
 	} else {
 		o.rowsAffected++
