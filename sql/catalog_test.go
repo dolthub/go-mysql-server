@@ -27,7 +27,7 @@ import (
 func TestAllDatabases(t *testing.T) {
 	require := require.New(t)
 
-	var dbs = sql.Databases{
+	var dbs = []sql.Database{
 		memory.NewDatabase("a"),
 		memory.NewDatabase("b"),
 		memory.NewDatabase("c"),

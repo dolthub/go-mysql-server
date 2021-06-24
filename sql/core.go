@@ -477,6 +477,15 @@ type RowUpdater interface {
 	Closer
 }
 
+// DatabaseProvider is a collection of Database.
+type DatabaseProvider interface {
+	Database(name string) (Database, error)
+	HasDatabase(name string) bool
+	AllDatabases() []Database
+	AddDatabase(db Database)
+	DropDatabase(name string)
+}
+
 // Database represents the database.
 type Database interface {
 	Nameable
