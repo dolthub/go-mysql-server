@@ -40,8 +40,15 @@ func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return getDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
+	case *SubqueryAlias:
+		return nil, ErrDeleteFromNotSupported.New()
+	case *TriggerExecutor:
+		return getDeletable(node.Left())
 	case sql.TableWrapper:
 		return getDeletableTable(node.Underlying())
+	}
+	if len(node.Children()) > 1 {
+		return nil, ErrDeleteFromNotSupported.New()
 	}
 	for _, child := range node.Children() {
 		deleter, _ := getDeletable(child)
