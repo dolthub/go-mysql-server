@@ -37,7 +37,7 @@ var ErrAsOfNotSupported = errors.NewKind("AS OF not supported for database %s")
 // expression with a view when the view definition has its own AS OF expressions.
 var ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
 
-// Catalog holds sliceProvider, tables and functions.
+// Catalog holds databases, tables and functions.
 type Catalog struct {
 	FunctionRegistry
 	*ProcessList
@@ -56,7 +56,7 @@ type sessionLocks map[uint32]dbLocks
 
 // NewCatalog returns a new empty Catalog.
 func NewCatalog() *Catalog {
-	return NewCatalogWithDbProvider(&sliceProvider{})
+	return NewCatalogWithDbProvider(&sliceDBProvider{})
 }
 
 // NewCatalogWithDbProvider returns a new empty Catalog.
@@ -70,7 +70,7 @@ func NewCatalogWithDbProvider(provider DatabaseProvider) *Catalog {
 	}
 }
 
-// AllDatabases returns all sliceProvider in the catalog.
+// AllDatabases returns all sliceDBProvider in the catalog.
 func (c *Catalog) AllDatabases() []Database {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -227,13 +227,13 @@ func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName stri
 	return ErrTableNotFound.New(tableName + similar)
 }
 
-// sliceProvider is a collection of Database.
-type sliceProvider []Database
+// sliceDBProvider is a collection of Database.
+type sliceDBProvider []Database
 
-var _ DatabaseProvider = &sliceProvider{}
+var _ DatabaseProvider = &sliceDBProvider{}
 
 // Database returns the Database with the given name if it exists.
-func (d *sliceProvider) Database(name string) (Database, error) {
+func (d *sliceDBProvider) Database(name string) (Database, error) {
 	if len(*d) == 0 {
 		return nil, ErrDatabaseNotFound.New(name)
 	}
@@ -251,7 +251,7 @@ func (d *sliceProvider) Database(name string) (Database, error) {
 }
 
 // HasDatabase returns the Database with the given name if it exists.
-func (d *sliceProvider) HasDatabase(name string) bool {
+func (d *sliceDBProvider) HasDatabase(name string) bool {
 	name = strings.ToLower(name)
 	for _, db := range *d {
 		if strings.ToLower(db.Name()) == name {
@@ -262,17 +262,17 @@ func (d *sliceProvider) HasDatabase(name string) bool {
 }
 
 // AllDatabases returns the Database with the given name if it exists.
-func (d *sliceProvider) AllDatabases() []Database {
+func (d *sliceDBProvider) AllDatabases() []Database {
 	return *d
 }
 
 // AddDatabase adds a new database.
-func (d *sliceProvider) AddDatabase(db Database) {
+func (d *sliceDBProvider) AddDatabase(db Database) {
 	*d = append(*d, db)
 }
 
 // DropDatabase removes a database.
-func (d *sliceProvider) DropDatabase(dbName string) {
+func (d *sliceDBProvider) DropDatabase(dbName string) {
 	idx := -1
 	for i, db := range *d {
 		if db.Name() == dbName {
