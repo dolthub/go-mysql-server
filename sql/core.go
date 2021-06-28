@@ -487,6 +487,10 @@ type DatabaseProvider interface {
 
 	// AllDatabases returns a slice of all Databases in the provider.
 	AllDatabases() []Database
+}
+
+type MutableDatabaseProvider interface {
+	DatabaseProvider
 
 	// AddDatabase adds a new Database to the provider's collection.
 	AddDatabase(db Database)

@@ -44,7 +44,7 @@ type Catalog struct {
 	*MemoryManager
 
 	mu       sync.RWMutex
-	provider DatabaseProvider
+	provider MutableDatabaseProvider
 	locks    sessionLocks
 }
 
@@ -60,7 +60,7 @@ func NewCatalog() *Catalog {
 }
 
 // NewCatalogWithDbProvider returns a new empty Catalog.
-func NewCatalogWithDbProvider(provider DatabaseProvider) *Catalog {
+func NewCatalogWithDbProvider(provider MutableDatabaseProvider) *Catalog {
 	return &Catalog{
 		FunctionRegistry: NewFunctionRegistry(),
 		MemoryManager:    NewMemoryManager(ProcessMemory),
