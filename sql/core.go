@@ -479,10 +479,19 @@ type RowUpdater interface {
 
 // DatabaseProvider is a collection of Database.
 type DatabaseProvider interface {
+	// Database gets a Database from the provider.
 	Database(name string) (Database, error)
+
+	// HasDatabase checks if the Database exists in the provider.
 	HasDatabase(name string) bool
+
+	// AllDatabases returns a slice of all Databases in the provider.
 	AllDatabases() []Database
+
+	// AddDatabase adds a new Database to the provider's collection.
 	AddDatabase(db Database)
+
+	// DropDatabase removes a database from the providers's collection.
 	DropDatabase(name string)
 }
 
