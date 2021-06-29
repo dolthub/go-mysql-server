@@ -115,6 +115,34 @@ func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	}
 }
 
+func TestReadOnlyDatabases(t *testing.T, harness Harness) {
+	ro, ok := harness.(ReadOnlyDatabaseHarness)
+	if !ok {
+		t.Fatal("harness is not ReadOnlyDatabaseHarness")
+	}
+	dbs := createReadOnlyDatabases(ro)
+	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
+	engine := NewEngineWithDbs(t, harness, dbs, nil)
+
+	for _, tt := range QueryTests {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+	}
+
+	for _, tt := range InsertQueries {
+		t.Run(tt.WriteQuery, func(t *testing.T) {
+			AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzer.ErrReadOnlyDatabase)
+		})
+	}
+}
+
+func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) []sql.Database {
+	return []sql.Database{
+		h.NewReadOnlyDatabase("mydb"),
+		h.NewReadOnlyDatabase("foo"),
+	}
+
+}
+
 // Tests generating the correct query plans for various queries using databases and tables provided by the given
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {

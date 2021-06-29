@@ -65,9 +65,10 @@ func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()
 // table creation to just those tables named.
 func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
 	dbs := harness.NewDatabases("mydb", "foo")
-	myDb := dbs[0]
-	foo := dbs[1]
+	return createSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
+}
 
+func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
 	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
 	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
 	// transaction without committing the work done so far.
