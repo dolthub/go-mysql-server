@@ -88,6 +88,9 @@ var (
 	ErrUnionSchemasMatch = errors.NewKind(
 		"the schema of the left side of union does not match the right side, expected %s to match %s",
 	)
+
+	// ErrReadOnlyDatabase is returned when a write is attempted to a ReadOnlyDatabse.
+	ErrReadOnlyDatabase = errors.NewKind("Database %s is read-only.")
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -554,4 +557,64 @@ func tableColsContains(strs []tableCol, target tableCol) bool {
 		}
 	}
 	return false
+}
+
+func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	valid := true
+	var readOnlyDB sql.ReadOnlyDatabase
+
+	// if a ReadOnlyDatabase is found, invalidate the query
+	readOnlyDBSearch := func(node sql.Node) bool {
+		if rt, ok := node.(*plan.ResolvedTable); ok {
+			if ro, ok := rt.Database.(sql.ReadOnlyDatabase); ok {
+				if ro.IsReadOnly() {
+					readOnlyDB = ro
+					valid = false
+				}
+			}
+		}
+		return valid
+	}
+
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.DeleteFrom, *plan.Update, *plan.LockTables, *plan.UnlockTables:
+			plan.Inspect(node, readOnlyDBSearch)
+			return false
+
+		case *plan.InsertInto:
+			// ReadOnlyDatabase can be an insertion Source,
+			// only inspect the Destination tree
+			plan.Inspect(n.Destination, readOnlyDBSearch)
+			return false
+
+		case *plan.CreateTable:
+			if ro, ok := n.Database().(sql.ReadOnlyDatabase); ok {
+				if ro.IsReadOnly() {
+					readOnlyDB = ro
+					valid = false
+				}
+			}
+			// "CREATE TABLE ... LIKE ..." and
+			// "CREATE TABLE ... AS ..."
+			// can both use ReadOnlyDatabases as a source,
+			// so don't descend here.
+			return false
+
+		default:
+			// CreateTable is the only DDL node that may
+			// contain a ReadOnlyDatabase
+			if plan.IsDDLNode(n) {
+				plan.Inspect(n, readOnlyDBSearch)
+				return false
+			}
+		}
+
+		return valid
+	})
+	if !valid {
+		return nil, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+	}
+
+	return n, nil
 }

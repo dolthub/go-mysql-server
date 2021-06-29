@@ -514,6 +514,13 @@ type Database interface {
 	GetTableNames(ctx *Context) ([]string, error)
 }
 
+type ReadOnlyDatabase interface {
+	Database
+
+	// IsReadOnly returns whether this database is read-only.
+	IsReadOnly() bool
+}
+
 // VersionedDatabase is a Database that can return tables as they existed at different points in time. The engine
 // supports queries on historical table data via the AS OF construct introduced in SQL 2011.
 type VersionedDatabase interface {
