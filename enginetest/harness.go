@@ -100,6 +100,7 @@ type TransactionHarness interface {
 
 type ReadOnlyDatabaseHarness interface {
 	Harness
-	// NewReadOnlyDatabase returns a sql.ReadOnlyDatabase to use for a test.
-	NewReadOnlyDatabase(name string) sql.ReadOnlyDatabase
+
+	// NewReadOnlyDatabases returns a []sql.ReadOnlyDatabase to use for a test.
+	NewReadOnlyDatabases(name ...string) []sql.ReadOnlyDatabase
 }
