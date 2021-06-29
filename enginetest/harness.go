@@ -97,3 +97,9 @@ type TransactionHarness interface {
 	// NewContext()
 	NewSession() *sql.Context
 }
+
+type ReadOnlyDatabaseHarness interface {
+	Harness
+	// NewReadOnlyDatabase returns a sql.ReadOnlyDatabase to use for a test.
+	NewReadOnlyDatabase(name string) sql.ReadOnlyDatabase
+}

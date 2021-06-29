@@ -239,3 +239,18 @@ func (d *Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 	}
 	return nil
 }
+
+type ReadOnlyDatabase struct {
+	*HistoryDatabase
+}
+
+var _ sql.ReadOnlyDatabase = ReadOnlyDatabase{}
+
+func NewReadOnlyDatabase(name string) ReadOnlyDatabase {
+	h := NewHistoryDatabase(name)
+	return ReadOnlyDatabase{h}
+}
+
+func (d ReadOnlyDatabase) IsReadOnly() bool {
+	return true
+}
