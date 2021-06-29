@@ -148,12 +148,11 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	}
 }
 
-func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) []sql.Database {
-	return []sql.Database{
-		h.NewReadOnlyDatabase("mydb"),
-		h.NewReadOnlyDatabase("foo"),
+func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) (dbs []sql.Database) {
+	for _, r := range h.NewReadOnlyDatabases("mydb", "foo") {
+		dbs = append(dbs, sql.Database(r)) // FURP
 	}
-
+	return dbs
 }
 
 // Tests generating the correct query plans for various queries using databases and tables provided by the given

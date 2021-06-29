@@ -169,6 +169,10 @@ func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Schema
 	return table, nil
 }
 
-func (m *MemoryHarness) NewReadOnlyDatabase(name string) sql.ReadOnlyDatabase {
-	return memory.NewReadOnlyDatabase(name)
+func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyDatabase {
+	dbs := make([]sql.ReadOnlyDatabase, len(names))
+	for i, name := range names {
+		dbs[i] = memory.NewReadOnlyDatabase(name)
+	}
+	return dbs
 }
