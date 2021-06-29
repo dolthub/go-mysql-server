@@ -124,14 +124,27 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
 	engine := NewEngineWithDbs(t, harness, dbs, nil)
 
-	for _, tt := range QueryTests {
-		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+	for _, querySet := range [][]QueryTest{
+		QueryTests,
+		KeylessQueries,
+		VersionedQueries,
+	} {
+		for _, tt := range querySet {
+			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+		}
 	}
 
-	for _, tt := range InsertQueries {
-		t.Run(tt.WriteQuery, func(t *testing.T) {
-			AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzer.ErrReadOnlyDatabase)
-		})
+	for _, querySet := range [][]WriteQueryTest{
+		InsertQueries,
+		UpdateTests,
+		DeleteTests,
+		ReplaceQueries,
+	} {
+		for _, tt := range querySet {
+			t.Run(tt.WriteQuery, func(t *testing.T) {
+				AssertErrWithBindings(t, engine, harness, tt.WriteQuery, tt.Bindings, analyzer.ErrReadOnlyDatabase)
+			})
+		}
 	}
 }
 
