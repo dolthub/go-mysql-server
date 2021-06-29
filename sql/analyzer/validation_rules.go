@@ -559,6 +559,7 @@ func tableColsContains(strs []tableCol, target tableCol) bool {
 	return false
 }
 
+// validateReadOnlyDatabase invalidates queries that attempt to write to ReadOnlyDatabases.
 func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	valid := true
 	var readOnlyDB sql.ReadOnlyDatabase
@@ -602,8 +603,8 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			return false
 
 		default:
-			// CreateTable is the only DDL node that may
-			// contain a ReadOnlyDatabase
+			// CreateTable is the only DDL node allowed
+			// to contain a ReadOnlyDatabase
 			if plan.IsDDLNode(n) {
 				plan.Inspect(n, readOnlyDBSearch)
 				return false
