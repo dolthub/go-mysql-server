@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/regex"
+	istrings "github.com/dolthub/go-mysql-server/internal/strings"
 )
 
 const (
@@ -267,12 +268,16 @@ func (t stringType) Convert(v interface{}) (interface{}, error) {
 			return nil, nil
 		}
 		val = s.Decimal.String()
-	case JSONDocument:
-		if s.Val == nil {
-			return "", nil
+	case JSONValue:
+		str, err := s.ToString(nil)
+		if err != nil {
+			return nil, err
 		}
 
-		return s.ToString(nil)
+		val, err = istrings.Unquote(str)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, ErrConvertToSQL.New(t)
 	}

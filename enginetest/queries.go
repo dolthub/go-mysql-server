@@ -2689,6 +2689,22 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"\t2"}},
 	},
 	{
+		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = '"hello"'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":null}', '$.xid'))`,
+		Expected: []sql.Row{{"null"}},
+	},
+	{
 		Query:    `SELECT CONNECTION_ID()`,
 		Expected: []sql.Row{{uint32(1)}},
 	},

@@ -316,6 +316,7 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateStringWithDefaults(sqltypes.Text, 3), strings.Repeat("𒁏", int(tinyTextBlobMax/Collation_Default.CharacterSet().MaxLength())+1), nil, true},
 		{MustCreateBinary(sqltypes.VarBinary, 3), []byte{01, 02, 03, 04}, nil, true},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 3), []byte("abcd"), nil, true},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: nil}, "null", false},
 	}
 
 	for _, test := range tests {
