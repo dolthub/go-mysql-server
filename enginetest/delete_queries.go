@@ -152,4 +152,12 @@ var DeleteErrorTests = []GenericErrorQueryTest{
 		Name:  "missing keyword from",
 		Query: "DELETE mytable WHERE id = 1;",
 	},
+	{
+		Name:  "targets join",
+		Query: "DELETE FROM mytable one, mytable two WHERE id = 1;",
+	},
+	{
+		Name:  "targets subquery alias",
+		Query: "DELETE FROM (SELECT * FROM mytable) mytable WHERE id = 1;",
+	},
 }
