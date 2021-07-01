@@ -597,7 +597,6 @@ var TransactionTests = []TransactionTest{
 			"CREATE table t3 (x int PRIMARY KEY AUTO_INCREMENT, y int);",
 			"insert into t (y) values (1);",
 			"insert into t2 values (10, 10);",
-			"insert into t3 values (100, 100);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -727,7 +726,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ select * from t2 order by x",
-				Expected: []sql.Row{{10, 10}, {12, 12}}, // TODO: Why does it not have (11, 11)
+				Expected: []sql.Row{{10, 10}, {12, 12}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -766,6 +765,7 @@ var TransactionTests = []TransactionTest{
 				Query:    "/* client c */ select * from t2 order by x",
 				Expected: []sql.Row{{10, 10}, {11, 11}, {12, 12}},
 			},
+			// Client a does a skip ahead
 			{
 				Query:    "/* client a */ insert into t values (10, 10)",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
@@ -774,13 +774,26 @@ var TransactionTests = []TransactionTest{
 				Query:    "/* client b */ insert into t (y) values (11)",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
+			// Client c skips ahead
+			{
+				Query:    "/* client c */ insert into t values (50, 50)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into t (y) values (51)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
 			{
 				Query:    "/* client a */ select * from t order by x",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {11, 11}},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {11, 11}, {51, 51}},
+			},
+			{
+				Query:    "/* client c */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {50, 50}},
 			},
 			{
 				Query:    "/* client a */ commit",
@@ -791,12 +804,20 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{},
 			},
 			{
+				Query:    "/* client c */ commit",
+				Expected: []sql.Row{},
+			},
+			{
 				Query:    "/* client a */ select * from t order by x",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}},
+			},
+			{
+				Query:    "/* client c */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}},
 			},
 		},
 	},
