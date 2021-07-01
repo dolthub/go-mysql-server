@@ -659,11 +659,11 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
-				Query:   "/* client a */ insert into t values (10, 10)",
-				Expected:  []sql.Row{{sql.NewOkResult(1)}},
+				Query:    "/* client a */ insert into t values (10, 10)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:   "/* client b */ insert into t (y) values (11)",
+				Query:    "/* client b */ insert into t (y) values (11)",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
