@@ -701,7 +701,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
-				Expected: []sql.Row{{1, 1}, {2, 2}, {3,3}},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
 				Query:    "/* client a */ select * from t2 order by x",
@@ -712,7 +712,7 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{10, 10}, {11, 11}},
 			},
 			{
-				Query:     "/* client c */ select * from t order by x",
+				Query:    "/* client c */ select * from t order by x",
 				Expected: []sql.Row{{1, 1}},
 			},
 			// Client c commits
@@ -730,7 +730,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
-				Expected: []sql.Row{{1, 1}, {2,2}, {3, 3}},
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
 			},
 			{
 				Query:    "/* client b */ select * from t2 order by x",
