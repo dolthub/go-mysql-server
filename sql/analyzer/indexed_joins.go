@@ -397,23 +397,7 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
 // RowIter method of an IndexedTableAccess node. Column expressions must match the declared column order of the index.
 func createIndexLookupKeyExpression(ctx *sql.Context, ji *joinIndex, tableAliases TableAliases) []sql.Expression {
-
-	keyExprs := make([]sql.Expression, len(ji.index.Expressions()))
-IndexExpressions:
-	for i, idxExpr := range ji.index.Expressions() {
-		for j, col := range ji.cols {
-			if idxExpr == normalizeExpression(ctx, tableAliases, col).String() {
-				keyExprs[i] = ji.comparandExprs[j]
-				continue IndexExpressions
-			}
-		}
-
-		// If we finished this loop, we didn't find a column of the index in the join expression.
-		// This should be impossible.
-		return nil
-	}
-
-	return keyExprs
+	return normalizeExpressions(ctx, tableAliases, ji.comparandExprs...)
 }
 
 // A joinIndex captures an index to use in a join between two or more tables.
