@@ -189,7 +189,9 @@ func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return n.WithChildren(newRt)
+			n2 := *n
+			n2.ResolvedTable = newRt
+			return &n2, nil
 		default:
 			return n, nil
 		}

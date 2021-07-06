@@ -124,24 +124,6 @@ func (i *IndexedTableAccess) DebugString() string {
 	return fmt.Sprintf("IndexedTableAccess(%s, using fields %s)", i.Name(), strings.Join(keyExprs, ", "))
 }
 
-func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
-	}
-
-	resolvedTable, ok := children[0].(*ResolvedTable)
-	if !ok {
-		return nil, sql.ErrInvalidChildType.New(i, children[0], (*ResolvedTable)(nil))
-	}
-
-	return &IndexedTableAccess{
-		ResolvedTable: resolvedTable,
-		index:         i.index,
-		keyExprs:      i.keyExprs,
-		lookup:        i.lookup,
-	}, nil
-}
-
 // Expressions implements sql.Expressioner
 func (i *IndexedTableAccess) Expressions() []sql.Expression {
 	return i.keyExprs
