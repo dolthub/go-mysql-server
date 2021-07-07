@@ -654,6 +654,10 @@ var TransactionTests = []TransactionTest{
 				Query:    "/* client b */ select * from t2 order by x",
 				Expected: []sql.Row{{10, 10}},
 			},
+			{
+				Query:    "/* client c */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}},
+			},
 			// Client a inserts into t2
 			{
 				Query:    "/* client a */ insert into t2 (y) values (12)",

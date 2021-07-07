@@ -32,7 +32,6 @@ var (
 // AutoIncrement implements AUTO_INCREMENT
 type AutoIncrement struct {
 	UnaryExpression
-	autoIncVal *Literal
 	autoTbl    sql.AutoIncrementTable
 	autoCol    *sql.Column
 }
@@ -42,11 +41,6 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 	autoTbl, ok := table.(sql.AutoIncrementTable)
 	if !ok {
 		return nil, ErrAutoIncrementUnsupported.New(table.Name())
-	}
-
-	last, err := autoTbl.GetAutoIncrementValue(ctx)
-	if err != nil {
-		return nil, err
 	}
 
 	var autoCol *sql.Column
@@ -62,7 +56,6 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 
 	return &AutoIncrement{
 		UnaryExpression{Child: given},
-		&Literal{last, autoCol.Type},
 		autoTbl,
 		autoCol,
 	}, nil
@@ -93,30 +86,16 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	if given != nil && cmp != 0 {
-		// check if the given value is greater than autoIncVal
-		cmp, err := i.Type().Compare(given, i.autoIncVal.value)
-		if err != nil {
-			return nil, err
-		}
-		if cmp <= 0 {
-			// if it's less, return it and don't increment
-			return given, nil
-		}
-		i.autoIncVal = NewLiteral(given, i.Type())
+		return given, nil
 	}
 
-	val, err := i.autoIncVal.Eval(ctx, row)
+	// Integrator answer
+	last, err := i.autoTbl.GetAutoIncrementValue(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	nextVal, err := NewIncrement(i.autoIncVal).Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	i.autoIncVal = NewLiteral(nextVal, i.Type())
-
-	return val, nil
+	return last, nil
 }
 
 func (i *AutoIncrement) String() string {
@@ -130,7 +109,6 @@ func (i *AutoIncrement) WithChildren(ctx *sql.Context, children ...sql.Expressio
 	}
 	return &AutoIncrement{
 		UnaryExpression{Child: children[0]},
-		i.autoIncVal,
 		i.autoTbl,
 		i.autoCol,
 	}, nil
