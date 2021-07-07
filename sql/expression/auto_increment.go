@@ -32,8 +32,8 @@ var (
 // AutoIncrement implements AUTO_INCREMENT
 type AutoIncrement struct {
 	UnaryExpression
-	autoTbl    sql.AutoIncrementTable
-	autoCol    *sql.Column
+	autoTbl sql.AutoIncrementTable
+	autoCol *sql.Column
 }
 
 // NewAutoIncrement creates a new AutoIncrement expression.

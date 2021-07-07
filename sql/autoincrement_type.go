@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -27,7 +28,7 @@ type AutoIncrementType interface {
 
 type autoIncrementType struct {
 	placeholder interface{}
-	underlying Type
+	underlying  Type
 }
 
 var _ AutoIncrementType = (*autoIncrementType)(nil)
@@ -35,7 +36,7 @@ var _ AutoIncrementType = (*autoIncrementType)(nil)
 func CreateAutoIncrementType(currentValue interface{}, underlying Type) AutoIncrementType {
 	return autoIncrementType{
 		placeholder: currentValue,
-		underlying: underlying,
+		underlying:  underlying,
 	}
 }
 
