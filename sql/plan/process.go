@@ -122,11 +122,11 @@ func (p *QueryProcess) shouldSetFoundRows() bool {
 }
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
-// that support indexing.
+// that supports indexing.
 // It notifies the process manager about the status of a query when a
 // partition is processed.
 type ProcessIndexableTable struct {
-	sql.DriverIndexableTable
+	sql.IndexAddressableTable
 	OnPartitionDone  NamedNotifyFunc
 	OnPartitionStart NamedNotifyFunc
 	OnRowNext        NamedNotifyFunc
@@ -140,17 +140,76 @@ func (t *ProcessIndexableTable) DebugString() string {
 }
 
 // NewProcessIndexableTable returns a new ProcessIndexableTable.
-func NewProcessIndexableTable(t sql.DriverIndexableTable, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessIndexableTable {
+func NewProcessIndexableTable(t sql.IndexAddressableTable, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessIndexableTable {
 	return &ProcessIndexableTable{t, onPartitionDone, onPartitionStart, OnRowNext}
 }
 
 // Underlying implements sql.TableWrapper interface.
 func (t *ProcessIndexableTable) Underlying() sql.Table {
+	return t.IndexAddressableTable
+}
+
+// PartitionRows implements the sql.Table interface.
+func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.RowIter, error) {
+	iter, err := t.IndexAddressableTable.PartitionRows(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	partitionName := partitionName(p)
+	if t.OnPartitionStart != nil {
+		t.OnPartitionStart(partitionName)
+	}
+
+	var onDone NotifyFunc
+	if t.OnPartitionDone != nil {
+		onDone = func() {
+			t.OnPartitionDone(partitionName)
+		}
+	}
+
+	var onNext NotifyFunc
+	if t.OnRowNext != nil {
+		onNext = func() {
+			t.OnRowNext(partitionName)
+		}
+	}
+
+	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+}
+
+var _ sql.IndexAddressableTable = (*ProcessIndexableTable)(nil)
+
+// ProcessDriverIndexableTable is a wrapper for sql.Tables inside a query process
+// that supports driver indexing.
+// It notifies the process manager about the status of a query when a
+// partition is processed.
+type ProcessDriverIndexableTable struct {
+	sql.DriverIndexableTable
+	OnPartitionDone  NamedNotifyFunc
+	OnPartitionStart NamedNotifyFunc
+	OnRowNext        NamedNotifyFunc
+}
+
+func (t *ProcessDriverIndexableTable) DebugString() string {
+	tp := sql.NewTreePrinter()
+	_ = tp.WriteNode("ProcessDriverIndexableTable")
+	_ = tp.WriteChildren(sql.DebugString(t.Underlying()))
+	return tp.String()
+}
+
+// NewProcessDriverIndexableTable returns a new ProcessDriverIndexableTable.
+func NewProcessDriverIndexableTable(t sql.DriverIndexableTable, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessDriverIndexableTable {
+	return &ProcessDriverIndexableTable{t, onPartitionDone, onPartitionStart, OnRowNext}
+}
+
+// Underlying implements sql.TableWrapper interface.
+func (t *ProcessDriverIndexableTable) Underlying() sql.Table {
 	return t.DriverIndexableTable
 }
 
-// IndexKeyValues implements the sql.IndexableTable interface.
-func (t *ProcessIndexableTable) IndexKeyValues(
+// IndexKeyValues implements the sql.DriverIndexableTable interface.
+func (t *ProcessDriverIndexableTable) IndexKeyValues(
 	ctx *sql.Context,
 	columns []string,
 ) (sql.PartitionIndexKeyValueIter, error) {
@@ -163,7 +222,7 @@ func (t *ProcessIndexableTable) IndexKeyValues(
 }
 
 // PartitionRows implements the sql.Table interface.
-func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.RowIter, error) {
+func (t *ProcessDriverIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.RowIter, error) {
 	iter, err := t.DriverIndexableTable.PartitionRows(ctx, p)
 	if err != nil {
 		return nil, err
@@ -191,7 +250,7 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
 }
 
-var _ sql.DriverIndexableTable = (*ProcessIndexableTable)(nil)
+var _ sql.DriverIndexableTable = (*ProcessDriverIndexableTable)(nil)
 
 // NamedNotifyFunc is a function to notify about some event with a string argument.
 type NamedNotifyFunc func(name string)
