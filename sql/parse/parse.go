@@ -2653,6 +2653,16 @@ func unaryExprToExpression(ctx *sql.Context, e *sqlparser.UnaryExpr) (sql.Expres
 }
 
 func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Expression, error) {
+
+	l, err := ExprToExpression(ctx, be.Left)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := ExprToExpression(ctx, be.Right)
+	if err != nil {
+		return nil, err
+	}
 	switch strings.ToLower(be.Operator) {
 	case
 		sqlparser.PlusStr,
@@ -2667,16 +2677,6 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		sqlparser.IntDivStr,
 		sqlparser.ModStr:
 
-		l, err := ExprToExpression(ctx, be.Left)
-		if err != nil {
-			return nil, err
-		}
-
-		r, err := ExprToExpression(ctx, be.Right)
-		if err != nil {
-			return nil, err
-		}
-
 		_, lok := l.(*expression.Interval)
 		_, rok := r.(*expression.Interval)
 		if lok && be.Operator == "-" {
@@ -2688,11 +2688,14 @@ func binaryExprToExpression(ctx *sql.Context, be *sqlparser.BinaryExpr) (sql.Exp
 		}
 
 		return expression.NewArithmetic(l, r, be.Operator), nil
-	case
-		sqlparser.JSONExtractOp,
-		sqlparser.JSONUnquoteExtractOp:
-		return nil, ErrUnsupportedFeature.New(fmt.Sprintf("(%s) JSON operators not supported", be.Operator))
-
+	case sqlparser.JSONExtractOp:
+		return function.NewJSONExtract(l, r)
+	case sqlparser.JSONUnquoteExtractOp:
+		j, err := function.NewJSONExtract(l, r)
+		if err != nil {
+			return nil, err
+		}
+		return function.NewJSONUnquote(j), nil
 	default:
 		return nil, ErrUnsupportedFeature.New(be.Operator)
 	}
