@@ -85,12 +85,12 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	if given != nil && cmp != 0 {
-		return given, nil
+	if cmp == 0 {
+		given = nil
 	}
 
 	// Integrator answer
-	last, err := i.autoTbl.GetAutoIncrementValue(ctx)
+	last, err := i.autoTbl.GetNextAutoIncrementValue(ctx, given)
 	if err != nil {
 		return nil, err
 	}

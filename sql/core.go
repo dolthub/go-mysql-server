@@ -412,10 +412,13 @@ type TruncateableTable interface {
 // and AUTO_INCREMENT column in their schema.
 type AutoIncrementTable interface {
 	Table
-	// GetAutoIncrementValue gets the next AUTO_INCREMENT value.
+	// PeekNextAutoIncrementValue returns the expected next AUTO_INCREMENT value but does not require
+	// implementations to update their state.
+	PeekNextAutoIncrementValue(*Context) (interface{}, error)
+	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value.
 	// Implementations are responsible for updating their
 	// state to provide the correct values.
-	GetAutoIncrementValue(*Context) (interface{}, error)
+	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (interface{}, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
 }
