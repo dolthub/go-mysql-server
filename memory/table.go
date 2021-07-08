@@ -684,9 +684,18 @@ func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (interface{}, error) {
 	return t.autoIncVal, nil
 }
 
-// GetNextAutoIncrementValue gets the next auto increment value. For the memory table the increment.
-// TODO: Fix this
-func (t *Table) GetNextAutoIncrementValue(*sql.Context, interface{}) (interface{}, error) {
+// GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
+func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (interface{}, error) {
+	autoIncCol := t.schema[t.autoColIdx]
+	cmp, err := autoIncCol.Type.Compare(insertVal, t.autoIncVal)
+	if err != nil {
+		return nil, err
+	}
+
+	if cmp > 0 {
+		t.autoIncVal = insertVal
+	}
+
 	return t.autoIncVal, nil
 }
 
