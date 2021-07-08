@@ -90,6 +90,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// Integrator answer
+	// TODO: Calling Eval in general should be safe but since this gets called per row this should be fine.
 	last, err := i.autoTbl.GetNextAutoIncrementValue(ctx, given)
 	if err != nil {
 		return nil, err
