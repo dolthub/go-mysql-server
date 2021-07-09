@@ -124,6 +124,13 @@ func (i *IndexedTableAccess) DebugString() string {
 	return fmt.Sprintf("IndexedTableAccess(%s, using fields %s)", i.Name(), strings.Join(keyExprs, ", "))
 }
 
+func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 0)
+	}
+	return i, nil
+}
+
 // Expressions implements sql.Expressioner
 func (i *IndexedTableAccess) Expressions() []sql.Expression {
 	return i.keyExprs
