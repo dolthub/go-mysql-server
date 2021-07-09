@@ -152,3 +152,14 @@ func TestUnixTimestamp(t *testing.T) {
 	require.NoError(err)
 	require.Equal(expected, result)
 }
+
+func TestFromUnixtime(t *testing.T) {
+	require := require.New(t)
+
+	ctx := sql.NewEmptyContext()
+	_, err := NewUnixTimestamp(ctx, expression.NewLiteral(0, sql.Int64))
+	require.NoError(err)
+
+	_, err = NewUnixTimestamp(ctx, expression.NewLiteral(1447430881, sql.Int64))
+	require.NoError(err)
+}

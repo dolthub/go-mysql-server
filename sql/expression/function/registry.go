@@ -171,6 +171,7 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "ucase", Fn: NewUpper},
 	sql.Function1{Name: "unhex", Fn: NewUnhex},
 	sql.FunctionN{Name: "unix_timestamp", Fn: NewUnixTimestamp},
+	sql.Function1{Name: "from_unixtime", Fn: NewFromUnixtime},
 	sql.Function1{Name: "upper", Fn: NewUpper},
 	sql.NewFunction0("user", NewUser),
 	sql.FunctionN{Name: "utc_timestamp", Fn: NewUTCTimestamp},
