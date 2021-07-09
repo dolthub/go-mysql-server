@@ -49,8 +49,15 @@ func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return getUpdatable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
+	case *SubqueryAlias:
+		return nil, ErrUpdateNotSupported.New()
+	case *TriggerExecutor:
+		return getUpdatable(node.Left())
 	case sql.TableWrapper:
 		return getUpdatableTable(node.Underlying())
+	}
+	if len(node.Children()) > 1 {
+		return nil, ErrUpdateNotSupported.New()
 	}
 	for _, child := range node.Children() {
 		updater, _ := getUpdatable(child)

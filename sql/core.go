@@ -481,6 +481,28 @@ type RowUpdater interface {
 	Closer
 }
 
+// DatabaseProvider is a collection of Database.
+type DatabaseProvider interface {
+	// Database gets a Database from the provider.
+	Database(name string) (Database, error)
+
+	// HasDatabase checks if the Database exists in the provider.
+	HasDatabase(name string) bool
+
+	// AllDatabases returns a slice of all Databases in the provider.
+	AllDatabases() []Database
+}
+
+type MutableDatabaseProvider interface {
+	DatabaseProvider
+
+	// AddDatabase adds a new Database to the provider's collection.
+	AddDatabase(db Database)
+
+	// DropDatabase removes a database from the providers's collection.
+	DropDatabase(name string)
+}
+
 // Database represents the database.
 type Database interface {
 	Nameable
@@ -494,6 +516,13 @@ type Database interface {
 	// GetTableNames returns the table names of every table in the database. It does not return the names of temporary
 	// tables
 	GetTableNames(ctx *Context) ([]string, error)
+}
+
+type ReadOnlyDatabase interface {
+	Database
+
+	// IsReadOnly returns whether this database is read-only.
+	IsReadOnly() bool
 }
 
 // VersionedDatabase is a Database that can return tables as they existed at different points in time. The engine

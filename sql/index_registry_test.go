@@ -283,7 +283,7 @@ func TestLoadIndexes(t *testing.T) {
 	registry.RegisterIndexDriver(d1)
 	registry.RegisterIndexDriver(d2)
 
-	dbs := Databases{
+	dbs := []Database{
 		dummyDB{
 			name: "db1",
 			tables: map[string]Table{
@@ -331,7 +331,7 @@ func TestLoadOutdatedIndexes(t *testing.T) {
 	registry := NewIndexRegistry()
 	registry.RegisterIndexDriver(d)
 
-	dbs := Databases{
+	dbs := []Database{
 		dummyDB{
 			name: "db1",
 			tables: map[string]Table{
