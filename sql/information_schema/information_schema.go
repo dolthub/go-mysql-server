@@ -1188,7 +1188,7 @@ func partitionKey(tableName string) []byte {
 func getAutoIncrementValue(ctx *Context, t Table) (val interface{}) {
 	for _, c := range t.Schema() {
 		if c.AutoIncrement {
-			val, _ = t.(AutoIncrementTable).GetAutoIncrementValue(ctx)
+			val, _ = t.(AutoIncrementTable).PeekNextAutoIncrementValue(ctx)
 			// ignore errors
 			break
 		}

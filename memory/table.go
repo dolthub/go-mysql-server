@@ -679,8 +679,23 @@ func columnsMatch(colIndexes []int, row sql.Row, row2 sql.Row) bool {
 	return true
 }
 
-// GetAutoIncrementValue gets the last AUTO_INCREMENT value
-func (t *Table) GetAutoIncrementValue(*sql.Context) (interface{}, error) {
+// PeekNextAutoIncrementValue peeks at the next AUTO_INCREMENT value
+func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (interface{}, error) {
+	return t.autoIncVal, nil
+}
+
+// GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
+func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (interface{}, error) {
+	autoIncCol := t.schema[t.autoColIdx]
+	cmp, err := autoIncCol.Type.Compare(insertVal, t.autoIncVal)
+	if err != nil {
+		return nil, err
+	}
+
+	if cmp > 0 {
+		t.autoIncVal = insertVal
+	}
+
 	return t.autoIncVal, nil
 }
 

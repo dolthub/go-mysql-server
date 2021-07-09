@@ -129,7 +129,7 @@ func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 // getAutoIncrementValue takes in a ctx and table and returns the next autoincrement value.
 func getAutoIncrementValue(ctx *sql.Context, table sql.Table) (interface{}, error) {
 	if autoTbl, ok := table.(sql.AutoIncrementTable); ok {
-		next, err := autoTbl.GetAutoIncrementValue(ctx)
+		next, err := autoTbl.PeekNextAutoIncrementValue(ctx)
 		if errors.Is(err, sql.ErrNoAutoIncrementCol) {
 			return nil, nil
 		} else if err != nil {
