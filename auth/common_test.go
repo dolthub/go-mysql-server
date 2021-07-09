@@ -158,7 +158,7 @@ func testAuthorization(
 		t.Run(fmt.Sprintf("%s-%s", c.user, c.query), func(t *testing.T) {
 			req := require.New(t)
 
-			session := sql.NewSession("localhost", "client", c.user, uint32(i))
+			session := sql.NewSession("localhost", sql.Client{Address: "client", User: c.user}, uint32(i))
 			ctx := sql.NewContext(context.TODO(),
 				sql.WithSession(session),
 				sql.WithPid(uint64(i)),

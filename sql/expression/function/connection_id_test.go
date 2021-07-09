@@ -26,7 +26,7 @@ import (
 func TestConnectionID(t *testing.T) {
 	require := require.New(t)
 
-	session := sql.NewSession("", "", "", 2)
+	session := sql.NewSession("", sql.Client{}, 2)
 	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
 
 	connIDFunc := sql.NewFunction0("connection_id", NewConnectionID)

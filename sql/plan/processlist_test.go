@@ -30,7 +30,7 @@ func TestShowProcessList(t *testing.T) {
 
 	n := NewShowProcessList()
 	p := sql.NewProcessList()
-	sess := sql.NewSession("0.0.0.0:3306", addr, "foo", 1)
+	sess := sql.NewSession("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 
 	ctx, err := p.AddProcess(ctx, "SELECT foo")

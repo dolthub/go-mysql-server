@@ -149,7 +149,7 @@ func TestHandlerKill(t *testing.T) {
 		e,
 		NewSessionManager(
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
-				return sql.NewSession(addr, "", "", conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
+				return sql.NewSession(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 			},
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
@@ -461,6 +461,13 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			conn:                 dummyConn,
 			query:                "UPDATE test set c1 = c1 where c1 < 10",
 			expectedRowsAffected: uint64(10),
+		},
+		{
+			name:                 "INSERT ON UPDATE returns +1 for every row that already exists",
+			handler:              handler,
+			conn:                 dummyConn,
+			query:                "INSERT INTO test VALUES (1), (2), (3) ON DUPLICATE KEY UPDATE c1=c1",
+			expectedRowsAffected: uint64(3),
 		},
 		{
 			name:                 "SQL_CALC_ROWS should not affect CLIENT_FOUND_ROWS output",

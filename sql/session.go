@@ -46,6 +46,8 @@ type Client struct {
 	User string
 	// Address of the client.
 	Address string
+	// Capabilities of the client
+	Capabilities uint32
 }
 
 // Session holds the session data.
@@ -392,13 +394,10 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 }
 
 // NewSession creates a new session with data.
-func NewSession(server, client, user string, id uint32) Session {
+func NewSession(server string, client Client, id uint32) Session {
 	return &BaseSession{
-		addr: server,
-		client: Client{
-			Address: client,
-			User:    user,
-		},
+		addr:          server,
+		client:        client,
 		id:            id,
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),

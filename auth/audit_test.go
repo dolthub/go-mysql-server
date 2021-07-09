@@ -190,7 +190,7 @@ func TestAuditLog(t *testing.T) {
 	m["err"] = err
 	require.Equal(m, e.Data)
 
-	s := sql.NewSession("server", "client", "user", id)
+	s := sql.NewSession("server", sql.Client{Address: "client", User: "user"}, id)
 	ctx := sql.NewContext(context.TODO(),
 		sql.WithSession(s),
 		sql.WithPid(pid),
