@@ -78,7 +78,18 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	
+
+	// todo: |given| is int8 while |i.Right.Zero()| is int64
+	// When a row passes in 0 as the auto_increment value it is equivalent to NULL.
+	cmp, err := i.Type().Compare(given, i.Type().Zero())
+	if err != nil {
+		return nil, err
+	}
+
+	if cmp == 0 {
+		given = nil
+	}
+
 	// Integrator answer
 	// TODO: Calling Eval in general should be safe but since this gets called per row this should be fine.
 	// If auto increment ends up skipping keys, this could potentially be the cause.
