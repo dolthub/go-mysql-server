@@ -823,6 +823,15 @@ var TransactionTests = []TransactionTest{
 				Query:    "/* client c */ select * from t order by x",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}},
 			},
+			// Client a does a simple insert to ensure merging worked
+			{
+				Query:    "/* client a */ insert into t values (NULL, 52)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}, {52, 52}},
+			},
 		},
 	},
 	{
