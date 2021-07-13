@@ -91,8 +91,8 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// Integrator answer
-	// TODO: Calling Eval in general should be safe but since this gets called per row this should be fine.
-	// If auto increment ends up skipping keys, this could potentially be the cause.
+	// TODO: This being in Eval could potentially be a problem. If Eval is called multiple times on one row we could
+	// skip keys unexpectedly.
 	next, err := i.autoTbl.GetNextAutoIncrementValue(ctx, given)
 	if err != nil {
 		return nil, err
