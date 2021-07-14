@@ -380,6 +380,42 @@ func (ut *UnixTimestamp) String() string {
 	}
 }
 
+// FromUnixtime converts the argument to a datetime.
+type FromUnixtime struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*FromUnixtime)(nil)
+
+func NewFromUnixtime(ctx *sql.Context, arg sql.Expression) sql.Expression {
+	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", sql.Datetime)}
+}
+
+func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	val, err := r.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	n, err := sql.Int64.Convert(val)
+	if err != nil {
+		return nil, err
+	}
+
+	return time.Unix(n.(int64), 0), nil
+}
+
+func (r *FromUnixtime) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
+	}
+	return NewFromUnixtime(ctx, children[0]), nil
+}
+
 type CurrDate struct {
 	NoArgFunc
 }
