@@ -2424,6 +2424,22 @@ var QueryTests = []QueryTest{
 			{64},
 		},
 	},
+	{
+		Query: "select date_format(datetime_col, '%D') from datetime_table order by 1",
+		Expected: []sql.Row{
+			{"1st"},
+			{"4th"},
+			{"7th"},
+		},
+	},
+	{
+		Query: "select from_unixtime(i) from mytable order by 1",
+		Expected: []sql.Row{
+			{ time.Unix(1, 0) },
+			{ time.Unix(2, 0) },
+			{ time.Unix(3, 0) },
+		},
+	},
 	// TODO: add additional tests for other functions. Every function needs an engine test to ensure it works correctly
 	//  with the analyzer.
 	{
@@ -5248,11 +5264,6 @@ var BrokenQueries = []QueryTest{
 	},
 	{
 		Query: "SELECT json_value() FROM dual;",
-	},
-	// This isn't broken, it's just difficult to test this. We want to evaluate date_format with a column argument.
-	// FROM_UNIXTIME() would be great to have here.
-	{
-		Query: "select date_format(unix_timestamp(i), '%s') from mytable order by 1",
 	},
 	// This gets an error "unable to cast "second row" of type string to int64"
 	// Should throw sql.ErrAmbiguousColumnInOrderBy
