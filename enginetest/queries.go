@@ -1469,7 +1469,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1}, {2}},
 	},
 	{
-		Query:    "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
+		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
 		Expected: []sql.Row{
 			{1577966400, 1.0},
 			{1578225600, 2.0},

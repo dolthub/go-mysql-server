@@ -120,8 +120,8 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name:        "Issue #499",
-			SetUpScript: []string {
+			Name: "Issue #499",
+			SetUpScript: []string{
 				"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
 				`INSERT INTO test VALUES 
 			("2021-07-04 10:00:00", 1.0),
