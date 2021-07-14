@@ -93,15 +93,15 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
 		Query: "SELECT floor(i), avg(char_length(s)) FROM mytable mt group by 1 ORDER BY floor(i) DESC",
 		Expected: []sql.Row{
-			{3, "third row"},
-			{2, "second row"},
-			{1, "first row"},
+			{3, 9.0},
+			{2, 10.0},
+			{1, 9.0},
 		},
 	}
 

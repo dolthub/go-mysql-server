@@ -648,7 +648,18 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		return n, nil
 	}
 
+	// replacedAliases is a map of original expression string to alias that has been pushed down below the GroupBy in
+	// the new projection node.
+	replacedAliases := make(map[string]string)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
+		// GroupBy itself.
+		ex, ok := n.(sql.Expressioner)
+		if ok && len(replacedAliases) > 0 {
+			newExprs := replaceExpressionsWithAliases(ex.Expressions(), replacedAliases)
+			return ex.WithExpressions(newExprs...)
+		}
+
 		g, ok := n.(*plan.GroupBy)
 		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
 			return n, nil
@@ -683,7 +694,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		var newSelectedExprs []sql.Expression
-		replacements := make(map[string]string)
 		var projection []sql.Expression
 		// Aliases will keep the aliases that have been pushed down and their
 		// index in the new aggregate.
@@ -710,7 +720,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				delete(groupingColumns, name)
 
 				projection = append(projection, expr)
-				replacements[alias.Child.String()] = alias.Name()
+				replacedAliases[alias.Child.String()] = alias.Name()
 				newSelectedExprs = append(newSelectedExprs, expression.NewUnresolvedColumn(alias.Name()))
 			} else {
 				newSelectedExprs = append(newSelectedExprs, expr)
@@ -725,14 +735,8 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// expressions with a reference to that alias. This is so that we can directly compare the group by an select
 		// expressions for validation, which requires us to know that (table.column as col) and (table.column) are the
 		// same expressions. So if we replace one, replace both.
-		var newGroupBys []sql.Expression
-		for _, expr := range g.GroupByExprs {
-			if alias, ok := replacements[expr.String()]; ok {
-				newGroupBys = append(newGroupBys, expression.NewUnresolvedColumn(alias))
-			} else {
-				newGroupBys = append(newGroupBys, expr)
-			}
-		}
+		// TODO: this is pretty fragile and relies on string matching, need a better solution
+		newGroupBys := replaceExpressionsWithAliases(g.GroupByExprs, replacedAliases)
 
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
@@ -799,6 +803,21 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			plan.NewProject(projection, g.Child),
 		), nil
 	})
+}
+
+// replaceExpressionsWithAliases replaces any expressions in the slice given that match the map of aliases given with
+// their alias expression. This is necessary when pushing aliases down the tree, since we introduce a projection node
+// that effectively erases the original columns of a table.
+func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[string]string) []sql.Expression {
+	var newExprs []sql.Expression
+	for _, expr := range exprs {
+		if alias, ok := replacedAliases[expr.String()]; ok {
+			newExprs = append(newExprs, expression.NewUnresolvedColumn(alias))
+		} else {
+			newExprs = append(newExprs, expr)
+		}
+	}
+	return newExprs
 }
 
 func findAllColumns(e sql.Expression) []string {
