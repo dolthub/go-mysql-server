@@ -163,6 +163,14 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		v = ti.UTC().Unix()
 	}
 
+	if jv, ok := v.(JSONValue); ok {
+		jd, err := jv.Unmarshall(nil)
+		if err != nil {
+			return nil, err
+		}
+		v = jd.Val
+	}
+
 	switch t.baseType {
 	case sqltypes.Int8:
 		if dec, ok := v.(decimal.Decimal); ok {
