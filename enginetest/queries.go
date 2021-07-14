@@ -2705,11 +2705,11 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"null"}},
 	},
 	{
-		Query: `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
+		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
 		Expected: []sql.Row{{233.0}},
 	},
 	{
-		Query: `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
+		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
 		Expected: []sql.Row{{true}},
 	},
 	{
@@ -5903,9 +5903,9 @@ var ExplodeQueries = []QueryTest{
 }
 
 type QueryErrorTest struct {
-	Query       string
-	Bindings    map[string]sql.Expression
-	ExpectedErr *errors.Kind
+	Query          string
+	Bindings       map[string]sql.Expression
+	ExpectedErr    *errors.Kind
 	ExpectedErrStr string
 }
 
@@ -6146,11 +6146,11 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidType,
 	},
 	{
-		Query: `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
+		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
 		ExpectedErrStr: "unable to cast \"abc\" of type string to float64",
 	},
 	{
-		Query: `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
+		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
 		ExpectedErrStr: `unable to cast map[string]interface {}{"a":"abc"} of type map[string]interface {} to float64`,
 	},
 }
