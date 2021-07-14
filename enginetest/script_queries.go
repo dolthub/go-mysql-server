@@ -1100,6 +1100,33 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "Issue #499",
+		SetUpScript: []string {
+			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
+			`INSERT INTO test VALUES 
+			("2021-07-04 10:00:00", 1.0),
+			("2021-07-03 10:00:00", 2.0),
+			("2021-07-02 10:00:00", 3.0),
+			("2021-07-01 10:00:00", 4.0);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT
+				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
+				avg(value) AS "value"
+				FROM test
+				GROUP BY 1
+				ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
+				Expected: []sql.Row{
+					{1625133600, 4.0},
+					{1625220000, 3.0},
+					{1625306400, 2.0},
+					{1625392800, 1.0},
+				},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
