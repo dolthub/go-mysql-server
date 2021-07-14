@@ -93,18 +93,18 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	// t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT i FROM mytable mt
-						 WHERE (SELECT i FROM mytable where i = mt.i and i > 2) IS NOT NULL
-						 AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL
-						 ORDER BY i`,
+		Query: "SELECT floor(i), avg(char_length(s)) FROM mytable mt group by 1 ORDER BY floor(i) DESC",
 		Expected: []sql.Row{
-			{3},
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
 		},
 	}
+
 	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
 	engine := enginetest.NewEngine(t, harness)

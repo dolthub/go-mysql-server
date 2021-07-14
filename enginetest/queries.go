@@ -225,6 +225,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT floor(i), s FROM mytable mt ORDER BY floor(i) DESC",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
+		Query: "SELECT floor(i), avg(char_length(s)) FROM mytable mt group by 1 ORDER BY floor(i) DESC",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
 		Query:    "SELECT i AS x FROM mytable ORDER BY x DESC",
 		Expected: []sql.Row{{3}, {2}, {1}},
 	},
