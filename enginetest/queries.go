@@ -2435,9 +2435,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: "select from_unixtime(i) from mytable order by 1",
 		Expected: []sql.Row{
-			{ time.Unix(1, 0) },
-			{ time.Unix(2, 0) },
-			{ time.Unix(3, 0) },
+			{time.Unix(1, 0)},
+			{time.Unix(2, 0)},
+			{time.Unix(3, 0)},
 		},
 	},
 	// TODO: add additional tests for other functions. Every function needs an engine test to ensure it works correctly
