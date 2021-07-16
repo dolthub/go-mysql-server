@@ -26,7 +26,7 @@ func TestSessionConfig(t *testing.T) {
 	require := require.New(t)
 	ctx := NewEmptyContext()
 
-	sess := NewSession("foo", "baz", "bar", 1)
+	sess := NewSession("foo", Client{Address: "baz", User: "bar"}, 1)
 	typ, v, err := sess.GetUserVariable(ctx, "foo")
 	require.NoError(err)
 	require.Equal(Null, typ)
@@ -56,7 +56,7 @@ func TestSessionConfig(t *testing.T) {
 func TestHasDefaultValue(t *testing.T) {
 	require := require.New(t)
 	ctx := NewEmptyContext()
-	sess := NewSession("foo", "baz", "bar", 1)
+	sess := NewSession("foo", Client{Address: "baz", User: "bar"}, 1)
 
 	err := sess.SetSessionVariable(NewEmptyContext(), "auto_increment_increment", 123)
 	require.NoError(err)

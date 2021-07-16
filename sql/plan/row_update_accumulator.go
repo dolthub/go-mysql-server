@@ -19,6 +19,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -115,8 +117,9 @@ func (r *replaceRowHandler) okResult() sql.OkResult {
 }
 
 type onDuplicateUpdateHandler struct {
-	rowsAffected int
-	schema       sql.Schema
+	rowsAffected              int
+	schema                    sql.Schema
+	clientFoundRowsCapability bool
 }
 
 func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
@@ -128,11 +131,15 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(row sql.Row) error {
 	}
 
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
-	// TODO: If CLIENT_FOUND_ROWS is set, the affected-rows value is 1 (not 0) if an existing row is set to its current values.
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(newRow, o.schema); err == nil {
-		if !equals {
+		if equals {
+			// Ig the CLIENT_FOUND_ROWS capabilities flag is set, increment by 1 if a row stays the same.
+			if o.clientFoundRowsCapability {
+				o.rowsAffected++
+			}
+		} else {
 			o.rowsAffected += 2
 		}
 	} else {
@@ -254,7 +261,8 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	case UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case UpdateTypeDuplicateKeyUpdate:
-		rowHandler = &onDuplicateUpdateHandler{schema: r.Child.Schema()}
+		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
+		rowHandler = &onDuplicateUpdateHandler{schema: r.Child.Schema(), clientFoundRowsCapability: clientFoundRowsToggled}
 	case UpdateTypeUpdate:
 		schema := r.Child.Schema()
 		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /
