@@ -43,9 +43,9 @@ type Catalog struct {
 	*ProcessList
 	*MemoryManager
 
-	mu    sync.RWMutex
-	dbs   Databases
-	locks sessionLocks
+	mu       sync.RWMutex
+	provider MutableDatabaseProvider
+	locks    sessionLocks
 }
 
 type tableLocks map[string]struct{}
@@ -56,169 +56,53 @@ type sessionLocks map[uint32]dbLocks
 
 // NewCatalog returns a new empty Catalog.
 func NewCatalog() *Catalog {
+	return NewCatalogWithDbProvider(&sliceDBProvider{})
+}
+
+// NewCatalogWithDbProvider returns a new empty Catalog.
+func NewCatalogWithDbProvider(provider MutableDatabaseProvider) *Catalog {
 	return &Catalog{
 		FunctionRegistry: NewFunctionRegistry(),
 		MemoryManager:    NewMemoryManager(ProcessMemory),
 		ProcessList:      NewProcessList(),
+		provider:         provider,
 		locks:            make(sessionLocks),
 	}
 }
 
-// AllDatabases returns all databases in the catalog.
-func (c *Catalog) AllDatabases() Databases {
+// AllDatabases returns all sliceDBProvider in the catalog.
+func (c *Catalog) AllDatabases() []Database {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	var result = make(Databases, len(c.dbs))
-	copy(result, c.dbs)
-	return result
+	return c.provider.AllDatabases()
 }
 
 // AddDatabase adds a new database to the catalog.
 func (c *Catalog) AddDatabase(db Database) {
 	c.mu.Lock()
-	c.dbs.Add(db)
-	c.mu.Unlock()
+	defer c.mu.Unlock()
+	c.provider.AddDatabase(db)
 }
 
 // RemoveDatabase removes a database from the catalog.
 func (c *Catalog) RemoveDatabase(dbName string) {
 	c.mu.Lock()
-	c.dbs.Delete(dbName)
-	c.mu.Unlock()
+	defer c.mu.Unlock()
+	c.provider.DropDatabase(dbName)
 }
 
 func (c *Catalog) HasDB(db string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	_, err := c.dbs.Database(db)
-
-	return err == nil
+	return c.provider.HasDatabase(db)
 }
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(db string) (Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.dbs.Database(db)
-}
-
-// Table returns the table in the given database with the given name.
-func (c *Catalog) Table(ctx *Context, db, table string) (Table, Database, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.dbs.Table(ctx, db, table)
-}
-
-// TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
-// named must support timed queries.
-func (c *Catalog) TableAsOf(ctx *Context, db, table string, time interface{}) (Table, Database, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.dbs.TableAsOf(ctx, db, table, time)
-}
-
-// Databases is a collection of Database.
-type Databases []Database
-
-// Database returns the Database with the given name if it exists.
-func (d Databases) Database(name string) (Database, error) {
-	if len(d) == 0 {
-		return nil, ErrDatabaseNotFound.New(name)
-	}
-
-	name = strings.ToLower(name)
-	var dbNames []string
-	for _, db := range d {
-		if strings.ToLower(db.Name()) == name {
-			return db, nil
-		}
-		dbNames = append(dbNames, db.Name())
-	}
-	similar := similartext.Find(dbNames, name)
-	return nil, ErrDatabaseNotFound.New(name + similar)
-}
-
-// Add adds a new database.
-func (d *Databases) Add(db Database) {
-	*d = append(*d, db)
-}
-
-// Delete removes a database.
-func (d *Databases) Delete(dbName string) {
-	idx := -1
-	for i, db := range *d {
-		if db.Name() == dbName {
-			idx = i
-			break
-		}
-	}
-
-	if idx != -1 {
-		*d = append((*d)[:idx], (*d)[idx+1:]...)
-	}
-}
-
-// Table returns the Table with the given name if it exists.
-func (d Databases) Table(ctx *Context, dbName string, tableName string) (Table, Database, error) {
-	db, err := d.Database(dbName)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
-
-	if err != nil {
-		return nil, nil, err
-	} else if !ok {
-		return nil, nil, suggestSimilarTables(db, ctx, tableName)
-	}
-
-	return tbl, db, nil
-}
-
-func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
-	tableNames, err := db.GetTableNames(ctx)
-	if err != nil {
-		return err
-	}
-
-	similar := similartext.Find(tableNames, tableName)
-	return ErrTableNotFound.New(tableName + similar)
-}
-
-// TableAsOf returns the table with the name given at the time given, if it existed. The database named must implement
-// sql.VersionedDatabase or an error is returned.
-func (d Databases) TableAsOf(ctx *Context, dbName string, tableName string, asOf interface{}) (Table, Database, error) {
-	db, err := d.Database(dbName)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	versionedDb, ok := db.(VersionedDatabase)
-	if !ok {
-		return nil, nil, ErrAsOfNotSupported.New(tableName)
-	}
-
-	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
-
-	if err != nil {
-		return nil, nil, err
-	} else if !ok {
-		return nil, nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, asOf)
-	}
-
-	return tbl, versionedDb, nil
-}
-
-func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName string, time interface{}) error {
-	tableNames, err := db.GetTableNamesAsOf(ctx, time)
-	if err != nil {
-		return err
-	}
-
-	similar := similartext.Find(tableNames, tableName)
-	return ErrTableNotFound.New(tableName + similar)
+	return c.provider.Database(db)
 }
 
 // LockTable adds a lock for the given table and session client. It is assumed
@@ -250,7 +134,12 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			table, _, err := c.dbs.Table(ctx, db, t)
+			database, err := c.provider.Database(db)
+			if err != nil {
+				return err
+			}
+
+			table, _, err := database.GetTableInsensitive(ctx, t)
 			if err == nil {
 				if lockable, ok := table.(Lockable); ok {
 					if e := lockable.Unlock(ctx, id); e != nil {
@@ -269,4 +158,130 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 	}
 
 	return nil
+}
+
+// Table returns the table in the given database with the given name.
+func (c *Catalog) Table(ctx *Context, dbName, tableName string) (Table, Database, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	db, err := c.Database(dbName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
+	if err != nil {
+		return nil, nil, err
+	} else if !ok {
+		return nil, nil, suggestSimilarTables(db, ctx, tableName)
+	}
+
+	return tbl, db, nil
+}
+
+// TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
+// named must support timed queries.
+func (c *Catalog) TableAsOf(ctx *Context, dbName, tableName string, asOf interface{}) (Table, Database, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	db, err := c.Database(dbName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	versionedDb, ok := db.(VersionedDatabase)
+	if !ok {
+		return nil, nil, ErrAsOfNotSupported.New(tableName)
+	}
+
+	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
+
+	if err != nil {
+		return nil, nil, err
+	} else if !ok {
+		return nil, nil, suggestSimilarTablesAsOf(versionedDb, ctx, tableName, asOf)
+	}
+
+	return tbl, versionedDb, nil
+}
+
+func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
+	tableNames, err := db.GetTableNames(ctx)
+	if err != nil {
+		return err
+	}
+
+	similar := similartext.Find(tableNames, tableName)
+	return ErrTableNotFound.New(tableName + similar)
+}
+
+func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName string, time interface{}) error {
+	tableNames, err := db.GetTableNamesAsOf(ctx, time)
+	if err != nil {
+		return err
+	}
+
+	similar := similartext.Find(tableNames, tableName)
+	return ErrTableNotFound.New(tableName + similar)
+}
+
+// sliceDBProvider is a collection of Database.
+type sliceDBProvider []Database
+
+var _ DatabaseProvider = &sliceDBProvider{}
+
+// Database returns the Database with the given name if it exists.
+func (d *sliceDBProvider) Database(name string) (Database, error) {
+	if len(*d) == 0 {
+		return nil, ErrDatabaseNotFound.New(name)
+	}
+
+	name = strings.ToLower(name)
+	var dbNames []string
+	for _, db := range *d {
+		if strings.ToLower(db.Name()) == name {
+			return db, nil
+		}
+		dbNames = append(dbNames, db.Name())
+	}
+	similar := similartext.Find(dbNames, name)
+	return nil, ErrDatabaseNotFound.New(name + similar)
+}
+
+// HasDatabase returns the Database with the given name if it exists.
+func (d *sliceDBProvider) HasDatabase(name string) bool {
+	name = strings.ToLower(name)
+	for _, db := range *d {
+		if strings.ToLower(db.Name()) == name {
+			return true
+		}
+	}
+	return false
+}
+
+// AllDatabases returns the Database with the given name if it exists.
+func (d *sliceDBProvider) AllDatabases() []Database {
+	return *d
+}
+
+// AddDatabase adds a new database.
+func (d *sliceDBProvider) AddDatabase(db Database) {
+	*d = append(*d, db)
+}
+
+// DropDatabase removes a database.
+func (d *sliceDBProvider) DropDatabase(dbName string) {
+	idx := -1
+	for i, db := range *d {
+		if db.Name() == dbName {
+			idx = i
+			break
+		}
+	}
+
+	if idx != -1 {
+		*d = append((*d)[:idx], (*d)[idx+1:]...)
+	}
 }

@@ -91,7 +91,7 @@ func (r *IndexRegistry) RegisterIndexDriver(driver IndexDriver) {
 
 // LoadIndexes creates load functions for all indexes for all dbs, tables and drivers.  These functions are called
 // as needed by the query
-func (r *IndexRegistry) LoadIndexes(ctx *Context, dbs Databases) error {
+func (r *IndexRegistry) LoadIndexes(ctx *Context, dbs []Database) error {
 	r.driversMut.RLock()
 	defer r.driversMut.RUnlock()
 	r.mut.Lock()

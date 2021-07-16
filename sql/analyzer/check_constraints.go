@@ -139,6 +139,10 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.Update:
 			rtable := getResolvedTable(node)
 
+			if rtable == nil {
+				return node, nil
+			}
+
 			table, ok := rtable.Table.(sql.CheckTable)
 			if !ok {
 				return node, nil

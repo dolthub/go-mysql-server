@@ -412,10 +412,14 @@ type TruncateableTable interface {
 // and AUTO_INCREMENT column in their schema.
 type AutoIncrementTable interface {
 	Table
-	// GetAutoIncrementValue gets the next AUTO_INCREMENT value.
-	// Implementations are responsible for updating their
-	// state to provide the correct values.
-	GetAutoIncrementValue(*Context) (interface{}, error)
+	// PeekNextAutoIncrementValue returns the expected next AUTO_INCREMENT value but does not require
+	// implementations to update their state.
+	PeekNextAutoIncrementValue(*Context) (interface{}, error)
+	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
+	// column is passed in a row with the autoinc column failed, the next auto increment value must
+	// update its internal state accordingly and use the insert val at runtime.
+	//Implementations are responsible for updating their state to provide the correct values.
+	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (interface{}, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
 }
@@ -477,6 +481,28 @@ type RowUpdater interface {
 	Closer
 }
 
+// DatabaseProvider is a collection of Database.
+type DatabaseProvider interface {
+	// Database gets a Database from the provider.
+	Database(name string) (Database, error)
+
+	// HasDatabase checks if the Database exists in the provider.
+	HasDatabase(name string) bool
+
+	// AllDatabases returns a slice of all Databases in the provider.
+	AllDatabases() []Database
+}
+
+type MutableDatabaseProvider interface {
+	DatabaseProvider
+
+	// AddDatabase adds a new Database to the provider's collection.
+	AddDatabase(db Database)
+
+	// DropDatabase removes a database from the providers's collection.
+	DropDatabase(name string)
+}
+
 // Database represents the database.
 type Database interface {
 	Nameable
@@ -490,6 +516,13 @@ type Database interface {
 	// GetTableNames returns the table names of every table in the database. It does not return the names of temporary
 	// tables
 	GetTableNames(ctx *Context) ([]string, error)
+}
+
+type ReadOnlyDatabase interface {
+	Database
+
+	// IsReadOnly returns whether this database is read-only.
+	IsReadOnly() bool
 }
 
 // VersionedDatabase is a Database that can return tables as they existed at different points in time. The engine

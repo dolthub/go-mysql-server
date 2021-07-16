@@ -239,4 +239,12 @@ var UpdateErrorTests = []GenericErrorQueryTest{
 		Name:  "set null on non-nullable",
 		Query: "UPDATE mytable SET s = NULL;",
 	},
+	{
+		Name:  "targets join",
+		Query: "UPDATE mytable one, mytable two SET s = NULL;",
+	},
+	{
+		Name:  "targets subquery alias",
+		Query: "UPDATE (SELECT * FROM mytable) mytable SET s = NULL;",
+	},
 }

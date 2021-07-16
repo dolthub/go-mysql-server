@@ -209,28 +209,6 @@ func (j JSONArray) FunctionName() string {
 	return "json_array"
 }
 
-// JSON_OBJECT([key, val[, key, val] ...])
-//
-// JSONObject Evaluates a (possibly empty) list of key-value pairs and returns a JSON object containing those pairs. An
-// error occurs if any key name is NULL or the number of arguments is odd.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-object
-type JSONObject struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONObject{}
-
-// NewJSONObject creates a new JSONObject function.
-func NewJSONObject(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONObject{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONObject) FunctionName() string {
-	return "json_object"
-}
-
 // JSON_QUOTE(string)
 //
 // JSONQuote Quotes a string as a JSON value by wrapping it with double quote characters and escaping interior quote and

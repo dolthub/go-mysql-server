@@ -41,6 +41,7 @@ var OnceBeforeDefault = []Rule{
 	{"validate_create_trigger", validateCreateTrigger},
 	{"validate_create_procedure", validateCreateProcedure},
 	{"assign_info_schema", assignInfoSchema},
+	{"validate_read_only_database", validateReadOnlyDatabase},
 }
 
 // DefaultRules to apply when analyzing nodes.

@@ -2689,6 +2689,22 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"\t2"}},
 	},
 	{
+		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = '"hello"'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":null}', '$.xid'))`,
+		Expected: []sql.Row{{"null"}},
+	},
+	{
 		Query:    `SELECT CONNECTION_ID()`,
 		Expected: []sql.Row{{uint32(1)}},
 	},
@@ -5029,6 +5045,20 @@ var QueryTests = []QueryTest{
 			{3, 30},
 		},
 	},
+	{
+		Query: `SELECT JSON_OBJECT("i",i,"s",s) as js FROM mytable;`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"i": 1, "s": "first row"}`)},
+			{sql.MustJSON(`{"i": 2, "s": "second row"}`)},
+			{sql.MustJSON(`{"i": 3, "s": "third row"}`)},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "js",
+				Type: sql.JSON,
+			},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -6097,6 +6127,14 @@ var errorQueries = []QueryErrorTest{
 		Bindings: map[string]sql.Expression{
 			"v1": expression.NewLiteral("100", sql.LongText),
 		},
+	},
+	{
+		Query:       `SELECT JSON_OBJECT("a","b","c") FROM dual`,
+		ExpectedErr: sql.ErrInvalidArgumentNumber,
+	},
+	{
+		Query:       `SELECT JSON_OBJECT(1, 2) FROM dual`,
+		ExpectedErr: sql.ErrInvalidType,
 	},
 }
 

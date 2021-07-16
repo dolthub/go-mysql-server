@@ -589,4 +589,274 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		Name: "Test AUTO INCREMENT with no autocommit",
+		SetUpScript: []string{
+			"CREATE table t (x int PRIMARY KEY AUTO_INCREMENT, y int);",
+			"CREATE table t2 (x int PRIMARY KEY AUTO_INCREMENT, y int);",
+			"CREATE table t3 (x int PRIMARY KEY AUTO_INCREMENT, y int);",
+			"insert into t (y) values (1);",
+			"insert into t2 values (10, 10);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client b */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client c */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			// Client a starts by insert into t
+			{
+				Query:    "/* client a */ insert into t (y) values (2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "/* client c*/ select * from t order by x",
+				Expected: []sql.Row{{1, 1}},
+			},
+			// Client b inserts into t
+			{
+				Query:    "/* client b */ insert into t (y) values (3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query: "/* client a */ select * from t order by x",
+				Expected: []sql.Row{
+					{1, 1}, {2, 2},
+				},
+			},
+			{
+				Query: "/* client c */ select * from t order by x",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			// Client c inserts into t2
+			{
+				Query:    "/* client c */ insert into t2 (y) values (11)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}},
+			},
+			{
+				Query:    "/* client b */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}},
+			},
+			{
+				Query:    "/* client c */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}},
+			},
+			// Client a inserts into t2
+			{
+				Query:    "/* client a */ insert into t2 (y) values (12)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {12, 12}},
+			},
+			{
+				Query:    "/* client b */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}},
+			},
+			{
+				Query:    "/* client c */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}},
+			},
+			// Client a commits
+			{
+				Query:    "/* client a */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {3, 3}},
+			},
+			{
+				Query:    "/* client b */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}},
+			},
+			{
+				Query:    "/* client c */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}},
+			},
+			{
+				Query: "/* client c */ select * from t order by x",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			// Client b commits
+			{
+				Query:    "/* client b */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:    "/* client a */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {12, 12}},
+			},
+			{
+				Query:    "/* client c */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}},
+			},
+			{
+				Query:    "/* client c */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}},
+			},
+			// Client c commits
+			{
+				Query:    "/* client c */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:    "/* client a */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {12, 12}},
+			},
+			{
+				Query:    "/* client b */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:    "/* client b */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}, {12, 12}},
+			},
+			// Client a starts transactions
+			{
+				Query:    "/* client a */ start transaction",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:    "/* client b */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:    "/* client c */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+			{
+				Query:    "/* client a */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}, {12, 12}},
+			},
+			{
+				Query:    "/* client b */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}, {12, 12}},
+			},
+			{
+				Query:    "/* client c */ select * from t2 order by x",
+				Expected: []sql.Row{{10, 10}, {11, 11}, {12, 12}},
+			},
+			// Client a does a skip ahead
+			{
+				Query:    "/* client a */ insert into t values (10, 10)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into t (y) values (11)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			// Client c skips ahead
+			{
+				Query:    "/* client c */ insert into t values (50, 50)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ insert into t (y) values (51)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}},
+			},
+			{
+				Query:    "/* client b */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {11, 11}, {51, 51}},
+			},
+			{
+				Query:    "/* client c */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {50, 50}},
+			},
+			{
+				Query:    "/* client a */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client c */ commit",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}},
+			},
+			{
+				Query:    "/* client b */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}},
+			},
+			{
+				Query:    "/* client c */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}},
+			},
+			// Client a does a simple insert to ensure merging worked
+			{
+				Query:    "/* client a */ insert into t values (NULL, 52)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from t order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}, {10, 10}, {11, 11}, {50, 50}, {51, 51}, {52, 52}},
+			},
+		},
+	},
+	{
+		Name: "AUTO_INCREMENT transactions off",
+		SetUpScript: []string{
+			"CREATE table t2 (x int PRIMARY KEY AUTO_INCREMENT, y int);",
+			"insert into t2 (y) values (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ insert into t2 (y) values (2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client b */ select * from t2 order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}},
+			},
+			{
+				Query:    "/* client b */ insert into t2 (y) values (3)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ select * from t2 order by x",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+		},
+	},
 }
