@@ -475,7 +475,7 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 					t.Skipf("skipping query %s", tt.Query)
 				}
 			}
-			AssertErrWithBindings(t, engine, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
+			AssertErrWithBindings(t, engine, harness, tt.Query, tt.Bindings, tt.ExpectedErr, tt.ExpectedErrStr)
 		})
 	}
 }
@@ -2979,9 +2979,7 @@ func AssertErrWithBindings(t *testing.T, e *sqle.Engine, harness Harness, query 
 	require.Error(t, err)
 	if expectedErrKind != nil {
 		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
-	}
-	// If there are multiple error strings then we only match against the first
-	if len(errStrs) >= 1 {
+	} else if len(errStrs) >= 1 {
 		require.Equal(t, errStrs[0], err.Error())
 	}
 
@@ -3444,7 +3442,7 @@ func NewSession(harness Harness) *sql.Context {
 // Returns a new BaseSession compatible with these tests. Most tests will work with any session implementation, but for
 // full compatibility use a session based on this one.
 func NewBaseSession() sql.Session {
-	return sql.NewSession("address", "client", "user", 1)
+	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1)
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {

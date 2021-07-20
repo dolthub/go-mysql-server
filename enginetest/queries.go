@@ -2424,6 +2424,22 @@ var QueryTests = []QueryTest{
 			{64},
 		},
 	},
+	{
+		Query: "select date_format(datetime_col, '%D') from datetime_table order by 1",
+		Expected: []sql.Row{
+			{"1st"},
+			{"4th"},
+			{"7th"},
+		},
+	},
+	{
+		Query: "select from_unixtime(i) from mytable order by 1",
+		Expected: []sql.Row{
+			{time.Unix(1, 0)},
+			{time.Unix(2, 0)},
+			{time.Unix(3, 0)},
+		},
+	},
 	// TODO: add additional tests for other functions. Every function needs an engine test to ensure it works correctly
 	//  with the analyzer.
 	{
@@ -2703,6 +2719,14 @@ var QueryTests = []QueryTest{
 	{
 		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":null}', '$.xid'))`,
 		Expected: []sql.Row{{"null"}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
+		Expected: []sql.Row{{233.0}},
+	},
+	{
+		Query:    `select JSON_EXTRACT('{"id":234}', '$.id') = 234;`,
+		Expected: []sql.Row{{true}},
 	},
 	{
 		Query:    `SELECT CONNECTION_ID()`,
@@ -5265,11 +5289,6 @@ var BrokenQueries = []QueryTest{
 	{
 		Query: "SELECT json_value() FROM dual;",
 	},
-	// This isn't broken, it's just difficult to test this. We want to evaluate date_format with a column argument.
-	// FROM_UNIXTIME() would be great to have here.
-	{
-		Query: "select date_format(unix_timestamp(i), '%s') from mytable order by 1",
-	},
 	// This gets an error "unable to cast "second row" of type string to int64"
 	// Should throw sql.ErrAmbiguousColumnInOrderBy
 	{
@@ -5895,9 +5914,10 @@ var ExplodeQueries = []QueryTest{
 }
 
 type QueryErrorTest struct {
-	Query       string
-	Bindings    map[string]sql.Expression
-	ExpectedErr *errors.Kind
+	Query          string
+	Bindings       map[string]sql.Expression
+	ExpectedErr    *errors.Kind
+	ExpectedErrStr string
 }
 
 var errorQueries = []QueryErrorTest{
@@ -6135,6 +6155,14 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT JSON_OBJECT(1, 2) FROM dual`,
 		ExpectedErr: sql.ErrInvalidType,
+	},
+	{
+		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
+		ExpectedErrStr: "unable to cast \"abc\" of type string to float64",
+	},
+	{
+		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
+		ExpectedErrStr: `unable to cast map[string]interface {}{"a":"abc"} of type map[string]interface {} to float64`,
 	},
 }
 
