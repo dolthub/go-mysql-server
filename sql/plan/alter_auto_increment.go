@@ -47,7 +47,7 @@ func (p *AlterAutoIncrement) Execute(ctx *sql.Context) error {
 
 	_, err = autoTbl.PeekNextAutoIncrementValue(ctx)
 
-	// Noop if the table doesn't already have an auto increment column.
+	// No-op if the table doesn't already have an auto increment column.
 	if errors.Is(err, sql.ErrNoAutoIncrementCol) {
 		return nil
 	}
