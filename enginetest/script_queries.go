@@ -917,7 +917,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM test",
+				Query:    "SELECT * FROM test",
 				Expected: []sql.Row{{1}},
 			},
 		},
