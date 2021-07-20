@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -42,6 +43,13 @@ func (p *AlterAutoIncrement) Execute(ctx *sql.Context) error {
 	autoTbl, ok := insertable.(sql.AutoIncrementTable)
 	if !ok {
 		return ErrAutoIncrementNotSupported.New(insertable.Name())
+	}
+
+	_, err = autoTbl.PeekNextAutoIncrementValue(ctx)
+
+	// Noop if the table doesn't already have an auto increment column.
+	if errors.Is(err, sql.ErrNoAutoIncrementCol) {
+		return nil
 	}
 
 	return autoTbl.AutoIncrementSetter(ctx).SetAutoIncrementValue(ctx, p.autoVal)
