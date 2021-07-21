@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -45,14 +44,22 @@ func (p *AlterAutoIncrement) Execute(ctx *sql.Context) error {
 		return ErrAutoIncrementNotSupported.New(insertable.Name())
 	}
 
-	_, err = autoTbl.PeekNextAutoIncrementValue(ctx)
-
 	// No-op if the table doesn't already have an auto increment column.
-	if errors.Is(err, sql.ErrNoAutoIncrementCol) {
+	if !hasAutoIncrementInSchema(autoTbl.Schema()) {
 		return nil
 	}
 
 	return autoTbl.AutoIncrementSetter(ctx).SetAutoIncrementValue(ctx, p.autoVal)
+}
+
+func hasAutoIncrementInSchema(sch sql.Schema) bool {
+	for _, s := range sch {
+		if s.AutoIncrement {
+			return true
+		}
+	}
+
+	return false
 }
 
 // RowIter implements the Node interface.

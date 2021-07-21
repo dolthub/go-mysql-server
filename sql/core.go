@@ -413,8 +413,7 @@ type TruncateableTable interface {
 type AutoIncrementTable interface {
 	Table
 	// PeekNextAutoIncrementValue returns the expected next AUTO_INCREMENT value but does not require
-	// implementations to update their state. sql.ErrNoAutoIncrementCol should be returned if the table does
-	// not have an auto increment column.
+	// implementations to update their state.
 	PeekNextAutoIncrementValue(*Context) (interface{}, error)
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
