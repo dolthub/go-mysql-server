@@ -5084,7 +5084,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `DELETE FROM tabletest where 's' = 'something'`,
+		Query:    `DELETE FROM tabletest where 's' = 'something'`,
 		Expected: []sql.Row{{sql.OkResult{RowsAffected: 0}}},
 	},
 }
