@@ -96,6 +96,7 @@ func (p *DeleteFrom) Database() string {
 // RowIter implements the Node interface.
 func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// If an empty table is passed in (potentially from a bad filter) return an empty row iter.
+	// Note: emptyTable could also implement sql.DetetableTable
 	if _, ok := p.Child.(*emptyTable); ok {
 		return sql.RowsToRowIter(), nil
 	}
