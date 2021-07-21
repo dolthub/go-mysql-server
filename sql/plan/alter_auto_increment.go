@@ -45,21 +45,11 @@ func (p *AlterAutoIncrement) Execute(ctx *sql.Context) error {
 	}
 
 	// No-op if the table doesn't already have an auto increment column.
-	if !hasAutoIncrementInSchema(autoTbl.Schema()) {
+	if !autoTbl.Schema().HasAutoIncrement() {
 		return nil
 	}
 
 	return autoTbl.AutoIncrementSetter(ctx).SetAutoIncrementValue(ctx, p.autoVal)
-}
-
-func hasAutoIncrementInSchema(sch sql.Schema) bool {
-	for _, s := range sch {
-		if s.AutoIncrement {
-			return true
-		}
-	}
-
-	return false
 }
 
 // RowIter implements the Node interface.
