@@ -183,6 +183,7 @@ func TestDatetimeConvert(t *testing.T) {
 		{Timestamp, "2010-06-03T12:12:12.000012Z", time.Date(2010, 6, 3, 12, 12, 12, 12000, time.UTC), false},
 		{Timestamp, "20100603", time.Date(2010, 6, 3, 0, 0, 0, 0, time.UTC), false},
 		{Timestamp, "20100603121212", time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC), false},
+		{Timestamp, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC).UTC().String(), time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC), false},
 
 		{Date, time.Date(500, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
 		{Date, time.Date(10000, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
