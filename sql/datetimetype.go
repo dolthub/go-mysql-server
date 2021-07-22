@@ -69,7 +69,7 @@ var (
 		"20060102150405",
 		"20060102",
 		"2006/01/02",
-		"2006-01-02 15:04:05 -0700 MST",
+		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
 	}
 
 	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
