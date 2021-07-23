@@ -909,6 +909,20 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key)",
+			"ALTER TABLE `test` auto_increment = 2;",
+			"INSERT INTO test VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "Run through some complex queries with DISTINCT and aggregates",
 		SetUpScript: []string{
 			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER)",

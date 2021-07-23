@@ -44,6 +44,11 @@ func (p *AlterAutoIncrement) Execute(ctx *sql.Context) error {
 		return ErrAutoIncrementNotSupported.New(insertable.Name())
 	}
 
+	// No-op if the table doesn't already have an auto increment column.
+	if !autoTbl.Schema().HasAutoIncrement() {
+		return nil
+	}
+
 	return autoTbl.AutoIncrementSetter(ctx).SetAutoIncrementValue(ctx, p.autoVal)
 }
 

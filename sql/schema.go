@@ -82,3 +82,14 @@ func (s Schema) Equals(s2 Schema) bool {
 
 	return true
 }
+
+// HasAutoIncrement returns true if the schema has an auto increment column.
+func (s Schema) HasAutoIncrement() bool {
+	for _, c := range s {
+		if c.AutoIncrement {
+			return true
+		}
+	}
+
+	return false
+}
