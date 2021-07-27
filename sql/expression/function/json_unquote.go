@@ -70,6 +70,9 @@ func (js *JSONUnquote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
+	if ex == nil {
+		return nil, nil
+	}
 	str, ok := ex.(string)
 	if !ok {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(ex).String())
