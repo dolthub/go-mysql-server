@@ -270,6 +270,7 @@ const (
 	IndexConstraint_Unique
 	IndexConstraint_Fulltext
 	IndexConstraint_Spatial
+	IndexConstraint_Primary
 )
 
 // IndexColumn is the column by which to add to an index.
