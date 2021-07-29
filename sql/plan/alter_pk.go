@@ -28,7 +28,7 @@ type AlterPK struct {
 
 	Table sql.Node
 
-	Columns []sql.IndexColumn
+	Columns []sql.IndexColumn // TODO: This shouldn't need to be an index columns
 }
 
 func NewAlterCreatePk(table sql.Node, columns []sql.IndexColumn) *AlterPK {
@@ -62,8 +62,53 @@ func (a AlterPK) Children() []sql.Node {
 	return []sql.Node{a.Table}
 }
 
+func getPrimaryKeyAlterable(node sql.Node) (sql.PrimaryKeyAlterableTable, error) {
+	switch node := node.(type) {
+	case sql.PrimaryKeyAlterableTable:
+		return node, nil
+	case *ResolvedTable:
+		return getPrimaryKeyAlterableTable(node.Table)
+	case sql.TableWrapper:
+		return getPrimaryKeyAlterableTable(node.Underlying())
+	default:
+		return nil, ErrNotIndexable.New() // todo fix
+	}
+}
+
+func getPrimaryKeyAlterableTable(t sql.Table) (sql.PrimaryKeyAlterableTable, error) {
+	switch t := t.(type) {
+	case sql.PrimaryKeyAlterableTable:
+		return t, nil
+	case sql.TableWrapper:
+		return getPrimaryKeyAlterableTable(t.Underlying())
+	default:
+		return nil, ErrNotIndexable.New()
+	}
+}
+
 func (a AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("implement me")
+	pkAlterable, err := getPrimaryKeyAlterable(a.Table)
+	if err != nil {
+		return nil, err
+	}
+
+	switch a.Action {
+	case PrimaryKeyAction_Create:
+		cols := make([]string, len(a.Columns))
+		for i, col := range a.Columns {
+			cols[i] = col.Name
+		}
+
+		err = pkAlterable.CreatePrimaryKey(ctx, cols)
+	case PrimaryKeyAction_Drop:
+		err = pkAlterable.DropPrimaryKey(ctx)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(), nil
 }
 
 func (a AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {

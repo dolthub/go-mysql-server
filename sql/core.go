@@ -346,6 +346,14 @@ type CheckAlterableTable interface {
 	DropCheck(ctx *Context, chName string) error
 }
 
+type PrimaryKeyAlterableTable interface {
+	Table
+
+	CreatePrimaryKey(ctx *Context, columns []string) error
+
+	DropPrimaryKey(ctx *Context) error
+}
+
 // TableEditor is the base interface for sub interfaces that can update rows in a table during an INSERT, REPLACE,
 // UPDATE, or DELETE statement.
 type TableEditor interface {
