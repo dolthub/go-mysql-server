@@ -1141,6 +1141,35 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "WHERE clause considers ENUM/SET types for comparisons",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
+			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
