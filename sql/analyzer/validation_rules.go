@@ -130,6 +130,8 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				if i64.(int64) < 0 {
 					return nil, sql.ErrInvalidSyntax.New("negative limit")
 				}
+			case *expression.BindVar:
+				return n, nil
 			default:
 				return nil, sql.ErrInvalidType.New(e.Type().String())
 			}
@@ -152,6 +154,8 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				if i64.(int64) < 0 {
 					return nil, sql.ErrInvalidSyntax.New("negative offset")
 				}
+			case *expression.BindVar:
+				return n, nil
 			default:
 				return nil, sql.ErrInvalidType.New(e.Type().String())
 			}
