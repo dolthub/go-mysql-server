@@ -225,6 +225,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT floor(i), s FROM mytable mt ORDER BY floor(i) DESC",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
+		Query: "SELECT floor(i), avg(char_length(s)) FROM mytable mt group by 1 ORDER BY floor(i) DESC",
+		Expected: []sql.Row{
+			{3, 9.0},
+			{2, 10.0},
+			{1, 9.0},
+		},
+	},
+	{
 		Query:    "SELECT i AS x FROM mytable ORDER BY x DESC",
 		Expected: []sql.Row{{3}, {2}, {1}},
 	},
@@ -1451,6 +1467,13 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day)) order by 1",
 		Expected: []sql.Row{{1}, {2}},
+	},
+	{
+		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
+		Expected: []sql.Row{
+			{1577966400, 1.0},
+			{1578225600, 2.0},
+			{1578398400, 3.0}},
 	},
 	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
