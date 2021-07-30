@@ -2946,6 +2946,55 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 	}
 }
 
+func TestAddDropPks(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("mydb")
+
+	wrapInTransaction(t, db, harness, func() {
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "pk", Type: sql.Text, Source: "t1", PrimaryKey: true},
+			{Name: "v", Type: sql.Text, Source: "t1", PrimaryKey: true},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a1", "a2"),
+			sql.NewRow("a2", "a3"),
+			sql.NewRow("a3", "a4"))
+	})
+
+	e := sqle.NewDefault()
+	e.AddDatabase(db)
+
+	TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
+
+	// Assert the table is still queryable
+	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+		{"a1", "a2"},
+		{"a2", "a3"},
+		{"a3", "a4"},
+	}, nil, nil)
+
+	// Assert that the table is insertable
+	TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a4", "a5")`, []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+		{"a1", "a2"},
+		{"a2", "a3"},
+		{"a3", "a4"},
+		{"a4", "a5"},
+	}, nil, nil)
+
+	// Add back a new primary key and assert the table is queryable
+	TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, []sql.Row{}, nil, nil)
+	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+		{"a1", "a2"},
+		{"a2", "a3"},
+		{"a3", "a4"},
+		{"a4", "a5"},
+	}, nil, nil)
+}
+
 // RunQuery runs the query given and asserts that it doesn't result in an error.
 func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 	ctx := NewContext(harness)

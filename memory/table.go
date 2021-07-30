@@ -77,6 +77,7 @@ var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
+var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
@@ -1260,6 +1261,40 @@ Top:
 		}
 		return name
 	}
+}
+
+// CreatePrimaryKey implements the PrimaryKeyAlterableTable
+func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
+	// First check that a primary key already exists
+	for _, col := range t.schema {
+		if col.PrimaryKey {
+			return sql.ErrMultiplePrimaryKeyDefined.New()
+		}
+	}
+
+	// TODO: Validation that columns don't exist
+	for _ , currCol := range t.schema {
+		for _, newCol := range columns {
+			if strings.ToLower(currCol.Name) == strings.ToLower(newCol) {
+				currCol.PrimaryKey = true
+			}
+		}
+	}
+
+	return nil
+}
+
+// DropPrimaryKey implements the PrimaryKeyAlterableTable
+func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
+	if t.autoIncVal != nil {
+		return sql.ErrWrongAutoKey.New()
+	}
+
+	for _, col := range t.schema {
+		col.PrimaryKey = false
+	}
+
+	return nil
 }
 
 type partitionIndexKeyValueIter struct {

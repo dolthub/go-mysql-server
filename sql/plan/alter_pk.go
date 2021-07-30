@@ -41,7 +41,7 @@ func NewAlterCreatePk(table sql.Node, columns []sql.IndexColumn) *AlterPK {
 
 func NewAlterDropPk(table sql.Node) *AlterPK {
 	return &AlterPK{
-		Action: PrimaryKeyAction_Create,
+		Action: PrimaryKeyAction_Drop,
 		Table: table,
 	}
 }
