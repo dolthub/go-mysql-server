@@ -2993,6 +2993,16 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		{"a3", "a4"},
 		{"a4", "a5"},
 	}, nil, nil)
+
+	// Drop the original Pk, create an index, create a new primary key
+	TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
+	TestQuery(t, harness, e, `ALTER TABLE t1 ADD INDEX myidx (v)`, []sql.Row{}, nil, nil)
+	TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`, []sql.Row{}, nil, nil)
+
+	// Assert that an indexed based query still functions appropriately
+	TestQuery(t, harness, e, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
+		{"a2", "a3"},
+	}, nil, nil)
 }
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.
