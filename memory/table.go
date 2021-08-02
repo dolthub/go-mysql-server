@@ -1272,12 +1272,17 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
 		}
 	}
 
-	// TODO: Validation that columns don't exist
-	for _ , currCol := range t.schema {
-		for _, newCol := range columns {
+	for _, newCol := range columns {
+		found := false
+		for _, currCol := range t.schema {
 			if strings.ToLower(currCol.Name) == strings.ToLower(newCol) {
 				currCol.PrimaryKey = true
+				found = true
 			}
+		}
+
+		if !found {
+			return sql.ErrKeyColumnDoesNotExist.New(newCol)
 		}
 	}
 

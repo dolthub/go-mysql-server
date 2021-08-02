@@ -301,6 +301,9 @@ var (
 	// ErrWrongAutoKey is returned when a table invokes DropPrimaryKey without first removing the auto increment property
 	// (if it exists) on it.
 	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition; there can be only one auto column and it must be defined as a key")
+
+	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
+	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -343,6 +346,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERMultiplePriKey
 	case ErrWrongAutoKey.Is(err):
 		code = mysql.ERWrongAutoKey
+	case ErrKeyColumnDoesNotExist.Is(err):
+		code = mysql.ERKeyColumnDoesNotExist
 	default:
 		code = mysql.ERUnknownError
 	}

@@ -14,7 +14,13 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"fmt"
+
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 type PKAction byte
 
@@ -23,18 +29,19 @@ const (
 	PrimaryKeyAction_Drop
 )
 
+// ErrNotPrimaryKeyAlterable is return when a table cannot be determines to be primary key alterable
+var ErrNotPrimaryKeyAlterable = errors.NewKind("error: table is not primary key alterable")
+
 type AlterPK struct {
-	Action PKAction
-
-	Table sql.Node
-
-	Columns []sql.IndexColumn // TODO: This shouldn't need to be an index columns
+	Action  PKAction
+	Table   sql.Node
+	Columns []sql.IndexColumn
 }
 
 func NewAlterCreatePk(table sql.Node, columns []sql.IndexColumn) *AlterPK {
 	return &AlterPK{
-		Action: PrimaryKeyAction_Create,
-		Table: table,
+		Action:  PrimaryKeyAction_Create,
+		Table:   table,
 		Columns: columns,
 	}
 }
@@ -42,7 +49,7 @@ func NewAlterCreatePk(table sql.Node, columns []sql.IndexColumn) *AlterPK {
 func NewAlterDropPk(table sql.Node) *AlterPK {
 	return &AlterPK{
 		Action: PrimaryKeyAction_Drop,
-		Table: table,
+		Table:  table,
 	}
 }
 
@@ -51,7 +58,12 @@ func (a AlterPK) Resolved() bool {
 }
 
 func (a AlterPK) String() string {
-	return "TODO" // TODO:
+	action := "add"
+	if a.Action == PrimaryKeyAction_Drop {
+		action = "drop"
+	}
+
+	return fmt.Sprintf("alter table %s %s primary key", a.Table.String(), action)
 }
 
 func (a AlterPK) Schema() sql.Schema {
@@ -71,7 +83,7 @@ func getPrimaryKeyAlterable(node sql.Node) (sql.PrimaryKeyAlterableTable, error)
 	case sql.TableWrapper:
 		return getPrimaryKeyAlterableTable(node.Underlying())
 	default:
-		return nil, ErrNotIndexable.New() // todo fix
+		return nil, ErrNotPrimaryKeyAlterable.New()
 	}
 }
 
@@ -82,7 +94,7 @@ func getPrimaryKeyAlterableTable(t sql.Table) (sql.PrimaryKeyAlterableTable, err
 	case sql.TableWrapper:
 		return getPrimaryKeyAlterableTable(t.Underlying())
 	default:
-		return nil, ErrNotIndexable.New()
+		return nil, ErrNotPrimaryKeyAlterable.New()
 	}
 }
 

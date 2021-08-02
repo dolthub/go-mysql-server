@@ -1000,7 +1000,6 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	if ddl.IndexSpec != nil {
 		return convertAlterIndex(ctx, ddl)
 	}
-
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
 		db := sql.UnresolvedDatabase(ddl.Table.Qualifier.String())
 		table := tableNameToUnresolvedTable(ddl.Table)
@@ -1119,7 +1118,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 
-		if constraint == sql.IndexConstraint_Primary  {
+		if constraint == sql.IndexConstraint_Primary {
 			return plan.NewAlterCreatePk(table, columns), nil
 		}
 
