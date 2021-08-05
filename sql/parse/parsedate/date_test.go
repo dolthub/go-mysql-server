@@ -25,6 +25,11 @@ func TestParseDate(t *testing.T) {
 		{"with_time", "Jan 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", "2000-01-03 22:23:00 -0600 CST"},
 		{"with_pm", "Jan 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
 		{"lowercase_pm", "Jan 3, 10:23:00 pm 2000", "%b %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
+
+		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
+
+		{"day_with_suffix", "Jan 3rd, 10:23:00 pm 2000", "%b %D, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
+		{"day_with_suffix", "Jan 21st, 10:23:00 pm 2000", "%b %D, %H:%i:%s %p %Y", "2000-01-21 22:23:00 -0600 CST"},
 	}
 
 	for _, tt := range tests {

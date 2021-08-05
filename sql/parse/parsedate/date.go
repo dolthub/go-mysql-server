@@ -80,10 +80,10 @@ type datetime struct {
 	// true = AM, false = PM, nil = unspecified
 	am *bool
 
-	week    *uint
-	hours   *uint
-	minutes *uint
-	seconds *uint
+	week        *uint
+	hours       *uint
+	minutes     *uint
+	seconds     *uint
 	miliseconds *uint
 }
 
@@ -142,8 +142,25 @@ var spec = map[byte]Parser{
 		result.month = &month
 		return trimPrefix(3, chars), nil
 	},
-	'c': nil,
-	'D': nil,
+	// %c	Month, numeric (0..12)
+	'c': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'c', chars}
+		}
+		month := time.Month(num)
+		result.month = &month
+		return rest, nil
+	},
+	// %D Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
+	'D': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'D', chars}
+		}
+		result.day = uintPtr(uint(num))
+		return trimPrefix(2, rest), nil
+	},
 	'd': nil,
 	// %e	Day of the month, numeric (0..31)
 	'e': func(result *datetime, chars string) (rest string, err error) {
