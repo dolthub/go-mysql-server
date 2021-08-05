@@ -2,11 +2,20 @@ package parsedate
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
 
+// ParseDateWithFormat parses the date string according to the given
+// format string, as defined in the MySQL specification.
+//
+// Reference the MySQL docs for valid format specifiers.
+// This implementation attempts to match the spec to the extent possible.
+//
+//
+// More info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
+//
+// Even more info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date
 func ParseDateWithFormat(date, format string) (interface{}, error) {
 	parsers, err := parseFormatter(format)
 	if err != nil {
@@ -19,7 +28,7 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	var result datetime
 	target := date
 	for _, parser := range parsers {
-		target = takeAll(' ')(target)
+		_, target = takeAll(target, isChar(' '))
 		rest, err := parser(&result, target)
 		if err != nil {
 			return nil, err
@@ -56,7 +65,7 @@ func parseFormatter(format string) ([]Parser, error) {
 }
 
 type datetime struct {
-	// this is completely ignored, but we will still parse it for correctness
+	// this is completely ignored, but we still parse it for correctness
 	weekday *time.Weekday
 
 	// day of the month
@@ -71,6 +80,8 @@ type datetime struct {
 	week    *uint
 	hours   *uint
 	minutes *uint
+	seconds *uint
+	miliseconds *uint
 }
 
 type parseErr struct {
@@ -84,24 +95,12 @@ func (p parseErr) Error() string {
 
 type Parser func(result *datetime, chars string) (rest string, err error)
 
-func takeAll(char rune) func(chars string) (rest string) {
-	return func(chars string) (rest string) {
-		for i, ch := range chars {
-			if ch != char {
-				return trimPrefix(i, chars)
-			}
-		}
-		return chars
-	}
-
-}
-
 func literalParser(literal byte) Parser {
 	return func(dt *datetime, chars string) (rest string, err error) {
 		if len(chars) < 1 && literal != ' ' {
 			return "", fmt.Errorf("expected literal \"%c\", found empty string", literal)
 		}
-		chars = takeAll(' ')(chars)
+		_, chars = takeAll(chars, isChar(' '))
 		if literal == ' ' {
 			return chars, nil
 		}
@@ -145,25 +144,34 @@ var spec = map[byte]Parser{
 	'd': nil,
 	// %e	Day of the month, numeric (0..31)
 	'e': func(result *datetime, chars string) (rest string, err error) {
-		if len(chars) > 1 {
-			day, err := strconv.ParseUint(chars[:2], 10, 4)
-			if err == nil {
-				result.day = uintPtr(uint(day))
-				return trimPrefix(2, chars), nil
-			}
-		}
-		day, err := strconv.ParseUint(chars[:1], 10, 4)
+		num, rest, err := takeNumber(chars)
 		if err != nil {
 			return "", parseErr{'e', chars}
 		}
-		result.day = uintPtr(uint(day))
-		return trimPrefix(1, chars), nil
+		result.day = uintPtr(uint(num))
+		return rest, nil
 	},
 	'f': nil,
-	'H': nil,
+	// %H			Hour (00..23)
+	'H': func(result *datetime, chars string) (rest string, err error) {
+		hour, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'H', chars}
+		}
+		result.hours = uintPtr(uint(hour))
+		return rest, nil
+	},
 	'h': nil,
 	'I': nil,
-	'i': nil,
+	// %i			Minutes, numeric (00..59)
+	'i': func(result *datetime, chars string) (rest string, err error) {
+		min, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'i', chars}
+		}
+		result.minutes = uintPtr(uint(min))
+		return rest, nil
+	},
 	'j': nil,
 	'k': nil,
 	'l': nil,
@@ -172,7 +180,14 @@ var spec = map[byte]Parser{
 	'p': nil,
 	'r': nil,
 	'S': nil,
-	's': nil,
+	's': func(result *datetime, chars string) (rest string, err error) {
+		sec, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'i', chars}
+		}
+		result.seconds = uintPtr(uint(sec))
+		return rest, nil
+	},
 	'T': nil,
 	'U': nil,
 	'u': nil,
@@ -187,12 +202,12 @@ var spec = map[byte]Parser{
 		if len(chars) < 4 {
 			return "", parseErr{'Y', chars}
 		}
-		year, err := strconv.ParseUint(chars[:4], 10, 16)
+		year, rest, err := takeNumber(chars)
 		if err != nil {
 			return "", parseErr{'Y', chars}
 		}
 		result.year = uintPtr(uint(year))
-		return trimPrefix(4, chars), nil
+		return rest, nil
 	},
 	'y': nil,
 	'%': literalParser('%'),
