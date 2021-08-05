@@ -57,6 +57,9 @@ func parseFormatter(format string) ([]Parser, error) {
 			if !ok {
 				return nil, fmt.Errorf("unknown format specifier \"%c\"", format[i+1])
 			}
+			if parser == nil {
+				return nil, fmt.Errorf("format specifier \"%c\" not supported", format[i+1])
+			}
 			parsers = append(parsers, parser)
 			i += 2
 		} else {
@@ -203,8 +206,24 @@ var spec = map[byte]Parser{
 	'j': nil,
 	'k': nil,
 	'l': nil,
-	'M': nil,
-	'm': nil,
+	'M': func(result *datetime, chars string) (rest string, err error) {
+		month, charCount, ok := monthName(chars)
+		if !ok {
+			return "", parseErr{'M', chars}
+		}
+		result.month = &month
+		return trimPrefix(charCount, chars), nil
+	},
+	// %m Month, numeric (00..12)
+	'm': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'m', chars}
+		}
+		month := time.Month(num)
+		result.month = &month
+		return rest, nil
+	},
 	// %p AM or PM
 	'p': func(result *datetime, chars string) (rest string, err error) {
 		if len(chars) < 2 {
@@ -278,7 +297,26 @@ var spec = map[byte]Parser{
 		result.year = uintPtr(uint(year))
 		return rest, nil
 	},
-	'y': nil,
+// %y	Year, numeric (two digits)
+	'y': func(result *datetime, chars string) (rest string, err error) {
+		if len(chars) < 2 {
+			return "", parseErr{'Y', chars}
+		}
+		year, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'y', chars}
+		}
+		if year >= 100 {
+			return "", parseErr{'y', chars}
+		}
+		if year >= 70 {
+			year += 1900
+		} else {
+			year += 2000
+		}
+		result.year = uintPtr(uint(year))
+		return rest, nil
+	},
 	'%': literalParser('%'),
 }
 
@@ -340,6 +378,18 @@ func monthAbbrev(abbrev string) (time.Month, bool) {
 		return time.December, true
 	}
 	return 0, false
+}
+
+// TODO: allow this to match partial months
+// janu should match janurary
+func monthName(name string) (month time.Month, charCount int, ok bool) {
+	for i := 1; i < 13; i++ {
+		m := time.Month(i)
+		if strings.HasPrefix(name, strings.ToLower(m.String())) {
+			return m, len(m.String()), true
+		}
+	}
+	return 0, 0, false
 }
 
 // Specifier	Description
