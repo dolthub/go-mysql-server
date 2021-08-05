@@ -161,7 +161,15 @@ var spec = map[byte]Parser{
 		result.day = uintPtr(uint(num))
 		return trimPrefix(2, rest), nil
 	},
-	'd': nil,
+	// %d	Day of the month, numeric (00..31)
+	'd': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'d', chars}
+		}
+		result.day = uintPtr(uint(num))
+		return rest, nil
+	},
 	// %e	Day of the month, numeric (0..31)
 	'e': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
@@ -223,7 +231,33 @@ var spec = map[byte]Parser{
 		result.seconds = uintPtr(uint(sec))
 		return rest, nil
 	},
-	'T': nil,
+	// %T	Time, 24-hour (hh:mm:ss)
+	'T': func(result *datetime, chars string) (rest string, err error) {
+		hour, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'T', chars}
+		}
+		rest, err = literalParser(':')(result, rest)
+		if err != nil {
+			return "", err
+		}
+		minute, rest, err := takeNumber(rest)
+		if err != nil {
+			return "", parseErr{'T', chars}
+		}
+		rest, err = literalParser(':')(result, rest)
+		if err != nil {
+			return "", err
+		}
+		seconds, rest, err := takeNumber(rest)
+		if err != nil {
+			return "", parseErr{'T', chars}
+		}
+		result.hours = uintPtr(uint(hour))
+		result.minutes = uintPtr(uint(minute))
+		result.seconds = uintPtr(uint(seconds))
+		return rest, err
+	},
 	'U': nil,
 	'u': nil,
 	'V': nil,
