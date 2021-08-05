@@ -58,6 +58,7 @@ var Defaults = []sql.Function{
 	sql.Function2{Name: "date_format", Fn: NewDateFormat},
 	sql.FunctionN{Name: "date_sub", Fn: NewDateSub},
 	sql.FunctionN{Name: "datetime", Fn: NewDatetime},
+	sql.FunctionN{Name: "str_to_date", Fn: NewStrToDate},
 	sql.Function1{Name: "day", Fn: NewDay},
 	sql.Function1{Name: "dayname", Fn: NewDayName},
 	sql.Function1{Name: "dayofmonth", Fn: NewDay},

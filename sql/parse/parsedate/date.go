@@ -1,0 +1,292 @@
+package parsedate
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+)
+
+func ParseDateWithFormat(date, format string) (interface{}, error) {
+	parsers, err := parseFormatter(format)
+	if err != nil {
+		return nil, err
+	}
+
+	// trim all leading and trailing whitespace
+	date = strings.TrimSpace(date)
+
+	var result datetime
+	target := date
+	for _, parser := range parsers {
+		target = takeAll(' ')(target)
+		rest, err := parser(&result, target)
+		if err != nil {
+			return nil, err
+		}
+		target = rest
+	}
+
+	return evaluate(result)
+}
+
+func parseFormatter(format string) ([]Parser, error) {
+	i := 0
+	parsers := make([]Parser, 0, 0)
+	for {
+		if len(format) <= i {
+			break
+		}
+		if format[i] == '%' {
+			if len(format) <= i+1 {
+				return nil, fmt.Errorf("\"%%\" found at end of format string")
+			}
+			parser, ok := spec[format[i+1]]
+			if !ok {
+				return nil, fmt.Errorf("unknown format specifier \"%c\"", format[i+1])
+			}
+			parsers = append(parsers, parser)
+			i += 2
+		} else {
+			parsers = append(parsers, literalParser(format[i]))
+			i++
+		}
+	}
+	return parsers, nil
+}
+
+type datetime struct {
+	// this is completely ignored, but we will still parse it for correctness
+	weekday *time.Weekday
+
+	// day of the month
+	day *uint
+
+	month *time.Month
+	year  *uint
+
+	// true = AM, false = PM, nil = unspecified
+	am *bool
+
+	week    *uint
+	hours   *uint
+	minutes *uint
+}
+
+type parseErr struct {
+	specifier byte
+	tokens    string
+}
+
+func (p parseErr) Error() string {
+	return fmt.Sprintf("format specifier \"%%%c\" failed to match \"%s\"", p.specifier, p.tokens)
+}
+
+type Parser func(result *datetime, chars string) (rest string, err error)
+
+func takeAll(char rune) func(chars string) (rest string) {
+	return func(chars string) (rest string) {
+		for i, ch := range chars {
+			if ch != char {
+				return trimPrefix(i, chars)
+			}
+		}
+		return chars
+	}
+
+}
+
+func literalParser(literal byte) Parser {
+	return func(dt *datetime, chars string) (rest string, err error) {
+		if len(chars) < 1 && literal != ' ' {
+			return "", fmt.Errorf("expected literal \"%c\", found empty string", literal)
+		}
+		chars = takeAll(' ')(chars)
+		if literal == ' ' {
+			return chars, nil
+		}
+		if chars[0] != literal {
+			return "", fmt.Errorf("expected literal \"%c\", got \"%c\"", literal, chars[0])
+		}
+		return trimPrefix(1, chars), nil
+	}
+}
+
+// spec defines the formatting directives for parsing and formatting dates.
+//
+// Reference: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
+var spec = map[byte]Parser{
+	// %a	Abbreviated weekday name (Sun..Sat)
+	'a': func(result *datetime, chars string) (rest string, err error) {
+		if len(chars) < 3 {
+			return "", parseErr{'a', chars}
+		}
+		weekday, ok := weekdayAbbrev(chars[:3])
+		if !ok {
+			return "", parseErr{'a', chars}
+		}
+		result.weekday = &weekday
+		return trimPrefix(3, chars), nil
+	},
+	// %b	Abbreviated month name (Jan..Dec)
+	'b': func(result *datetime, chars string) (rest string, err error) {
+		if len(chars) < 3 {
+			return "", parseErr{'b', chars}
+		}
+		month, ok := monthAbbrev(chars[:3])
+		if !ok {
+			return "", parseErr{'b', chars}
+		}
+		result.month = &month
+		return trimPrefix(3, chars), nil
+	},
+	'c': nil,
+	'D': nil,
+	'd': nil,
+	// %e	Day of the month, numeric (0..31)
+	'e': func(result *datetime, chars string) (rest string, err error) {
+		if len(chars) > 1 {
+			day, err := strconv.ParseUint(chars[:2], 10, 4)
+			if err == nil {
+				result.day = uintPtr(uint(day))
+				return trimPrefix(2, chars), nil
+			}
+		}
+		day, err := strconv.ParseUint(chars[:1], 10, 4)
+		if err != nil {
+			return "", parseErr{'e', chars}
+		}
+		result.day = uintPtr(uint(day))
+		return trimPrefix(1, chars), nil
+	},
+	'f': nil,
+	'H': nil,
+	'h': nil,
+	'I': nil,
+	'i': nil,
+	'j': nil,
+	'k': nil,
+	'l': nil,
+	'M': nil,
+	'm': nil,
+	'p': nil,
+	'r': nil,
+	'S': nil,
+	's': nil,
+	'T': nil,
+	'U': nil,
+	'u': nil,
+	'V': nil,
+	'v': nil,
+	'W': nil,
+	'w': nil,
+	'X': nil,
+	'x': nil,
+	// %Y	Year, numeric, four digits
+	'Y': func(result *datetime, chars string) (rest string, err error) {
+		if len(chars) < 4 {
+			return "", parseErr{'Y', chars}
+		}
+		year, err := strconv.ParseUint(chars[:4], 10, 16)
+		if err != nil {
+			return "", parseErr{'Y', chars}
+		}
+		result.year = uintPtr(uint(year))
+		return trimPrefix(4, chars), nil
+	},
+	'y': nil,
+	'%': literalParser('%'),
+}
+
+func trimPrefix(count int, str string) string {
+	if len(str) > count {
+		return str[count:]
+	}
+	return ""
+}
+
+func uintPtr(a uint) *uint { return &a }
+
+func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
+	switch abbrev {
+	case "Sun":
+		return time.Sunday, true
+	case "Mon":
+		return time.Monday, true
+	case "Tue":
+		return time.Tuesday, true
+	case "Wed":
+		return time.Wednesday, true
+	case "Thu":
+		return time.Thursday, true
+	case "Fri":
+		return time.Friday, true
+	case "Sat":
+		return time.Saturday, true
+	}
+	return 0, false
+}
+
+func monthAbbrev(abbrev string) (time.Month, bool) {
+	switch abbrev {
+	case "Jan":
+		return time.January, true
+	case "Feb":
+		return time.February, true
+	case "Mar":
+		return time.March, true
+	case "Apr":
+		return time.April, true
+	case "May":
+		return time.May, true
+	case "Jun":
+		return time.June, true
+	case "Jul":
+		return time.July, true
+	case "Aug":
+		return time.August, true
+	case "Sep":
+		return time.September, true
+	case "Oct":
+		return time.October, true
+	case "Nov":
+		return time.November, true
+	case "Dec":
+		return time.December, true
+	}
+	return 0, false
+}
+
+// Specifier	Description
+// %a			Abbreviated weekday name (Sun..Sat)
+// %b			Abbreviated month name (Jan..Dec)
+// %c			Month, numeric (0..12)
+// %D			Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
+// %d			Day of the month, numeric (00..31)
+// %e			Day of the month, numeric (0..31)
+// %f			Microseconds (000000..999999)
+// %H			Hour (00..23)
+// %h			Hour (01..12)
+// %I			Hour (01..12)
+// %i			Minutes, numeric (00..59)
+// %j			Day of year (001..366)
+// %k			Hour (0..23)
+// %l			Hour (1..12)
+// %M			Month name (January..December)
+// %m			Month, numeric (00..12)
+// %p			AM or PM
+// %r			Time, 12-hour (hh:mm:ss followed by AM or PM)
+// %S			Seconds (00..59)
+// %s			Seconds (00..59)
+// %T			Time, 24-hour (hh:mm:ss)
+// %U			Week (00..53), where Sunday is the first day of the week; WEEK() mode 0
+// %u			Week (00..53), where Monday is the first day of the week; WEEK() mode 1
+// %V			Week (01..53), where Sunday is the first day of the week; WEEK() mode 2; used with %X
+// %v			Week (01..53), where Monday is the first day of the week; WEEK() mode 3; used with %x
+// %W			Weekday name (Sunday..Saturday)
+// %w			Day of the week (0=Sunday..6=Saturday)
+// %X			Year for the week where Sunday is the first day of the week, numeric, four digits; used with %V
+// %x			Year for the week, where Monday is the first day of the week, numeric, four digits; used with %v
+// %Y			Year, numeric, four digits
+// %y			Year, numeric (two digits)
+// %%			A literal % character
