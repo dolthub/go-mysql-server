@@ -37,6 +37,10 @@ func TestParseDate(t *testing.T) {
 		{"month_name_2", "january: 3, 20", "%M: %e, %y", "2020-01-03 00:00:00 -0600 CST"},
 		{"month_name_2", "january: 3, 70", "%M: %e, %y", "1970-01-03 00:00:00 -0600 CST"},
 		{"month_name_2", "january: 3, 69", "%M: %e, %y", "2069-01-03 00:00:00 -0600 CST"},
+
+		{"microseconds", "01/02/99 314", "%m/%e/%y %f", "1999-01-02 00:00:00.000314 -0600 CST"},
+		{"hour_number", "01/02/99 5:14", "%m/%e/%y %h:%i", "1999-01-02 05:14:00 -0600 CST"},
+		{"hour_number", "01/02/99 5:14", "%m/%e/%y %I:%i", "1999-01-02 05:14:00 -0600 CST"},
 	}
 
 	for _, tt := range tests {

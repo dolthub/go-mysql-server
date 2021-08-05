@@ -83,11 +83,13 @@ type datetime struct {
 	// true = AM, false = PM, nil = unspecified
 	am *bool
 
-	week        *uint
-	hours       *uint
-	minutes     *uint
-	seconds     *uint
-	miliseconds *uint
+	week         *uint
+	hours        *uint
+	minutes      *uint
+	seconds      *uint
+	miliseconds  *uint
+	microseconds *uint
+	nanoseconds  *uint
 }
 
 type parseErr struct {
@@ -182,7 +184,15 @@ var spec = map[byte]Parser{
 		result.day = uintPtr(uint(num))
 		return rest, nil
 	},
-	'f': nil,
+	// %f Microseconds (000000..999999)
+	'f': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'f', chars}
+		}
+		result.microseconds = uintPtr(uint(num))
+		return rest, nil
+	},
 	// %H			Hour (00..23)
 	'H': func(result *datetime, chars string) (rest string, err error) {
 		hour, rest, err := takeNumber(chars)
@@ -192,8 +202,24 @@ var spec = map[byte]Parser{
 		result.hours = uintPtr(uint(hour))
 		return rest, nil
 	},
-	'h': nil,
-	'I': nil,
+	// %h	Hour (01..12)
+	'h': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'h', chars}
+		}
+		result.hours = uintPtr(uint(num))
+		return rest, nil
+	},
+	// %I Hour (01..12)
+	'I': func(result *datetime, chars string) (rest string, err error) {
+		hour, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", parseErr{'I', chars}
+		}
+		result.hours = uintPtr(uint(hour))
+		return rest, nil
+	},
 	// %i			Minutes, numeric (00..59)
 	'i': func(result *datetime, chars string) (rest string, err error) {
 		min, rest, err := takeNumber(chars)
@@ -297,7 +323,7 @@ var spec = map[byte]Parser{
 		result.year = uintPtr(uint(year))
 		return rest, nil
 	},
-// %y	Year, numeric (two digits)
+	// %y	Year, numeric (two digits)
 	'y': func(result *datetime, chars string) (rest string, err error) {
 		if len(chars) < 2 {
 			return "", parseErr{'Y', chars}

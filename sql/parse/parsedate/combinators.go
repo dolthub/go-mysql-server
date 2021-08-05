@@ -22,7 +22,7 @@ func takeAll(str string, match predicate) (captured, rest string) {
 
 func takeNumber(chars string) (num int, rest string, err error) {
 	numChars, rest := takeAll(chars, isNumeral)
-	parsedNum, err := strconv.ParseInt(numChars, 10, 16)
+	parsedNum, err := strconv.ParseInt(numChars, 10, 32)
 	if err != nil {
 		return 0, "", err
 	}
