@@ -12,6 +12,9 @@ func evaluate(dt datetime) (time.Time, error) {
 	}
 	var hour, minute, second, msecond int
 	if dt.hours != nil {
+		if *dt.hours < 13 && dt.am != nil && !*dt.am {
+			*dt.hours += 12
+		}
 		hour = int(*dt.hours)
 	}
 	if dt.minutes != nil {

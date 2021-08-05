@@ -25,6 +25,9 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	// trim all leading and trailing whitespace
 	date = strings.TrimSpace(date)
 
+	// conver to all lowercase
+	date = strings.ToLower(date)
+
 	var result datetime
 	target := date
 	for _, parser := range parsers {
@@ -177,7 +180,22 @@ var spec = map[byte]Parser{
 	'l': nil,
 	'M': nil,
 	'm': nil,
-	'p': nil,
+	// %p AM or PM
+	'p': func(result *datetime, chars string) (rest string, err error) {
+		if len(chars) < 2 {
+			return "", parseErr{'p', chars}
+		}
+		switch chars[:2] {
+		case "am":
+			result.am = boolPtr(true)
+		case "pm":
+			result.am = boolPtr(false)
+		default:
+			return "", parseErr{'p', chars}
+		}
+		return trimPrefix(2, chars), nil
+
+	},
 	'r': nil,
 	'S': nil,
 	's': func(result *datetime, chars string) (rest string, err error) {
@@ -221,22 +239,23 @@ func trimPrefix(count int, str string) string {
 }
 
 func uintPtr(a uint) *uint { return &a }
+func boolPtr(a bool) *bool { return &a }
 
 func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
 	switch abbrev {
-	case "Sun":
+	case "sun":
 		return time.Sunday, true
-	case "Mon":
+	case "mon":
 		return time.Monday, true
-	case "Tue":
+	case "tue":
 		return time.Tuesday, true
-	case "Wed":
+	case "wed":
 		return time.Wednesday, true
-	case "Thu":
+	case "thu":
 		return time.Thursday, true
-	case "Fri":
+	case "fri":
 		return time.Friday, true
-	case "Sat":
+	case "sat":
 		return time.Saturday, true
 	}
 	return 0, false
@@ -244,29 +263,29 @@ func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
 
 func monthAbbrev(abbrev string) (time.Month, bool) {
 	switch abbrev {
-	case "Jan":
+	case "jan":
 		return time.January, true
-	case "Feb":
+	case "feb":
 		return time.February, true
-	case "Mar":
+	case "mar":
 		return time.March, true
-	case "Apr":
+	case "apr":
 		return time.April, true
-	case "May":
+	case "may":
 		return time.May, true
-	case "Jun":
+	case "jun":
 		return time.June, true
-	case "Jul":
+	case "jul":
 		return time.July, true
-	case "Aug":
+	case "aug":
 		return time.August, true
-	case "Sep":
+	case "sep":
 		return time.September, true
-	case "Oct":
+	case "oct":
 		return time.October, true
-	case "Nov":
+	case "nov":
 		return time.November, true
-	case "Dec":
+	case "dec":
 		return time.December, true
 	}
 	return 0, false
