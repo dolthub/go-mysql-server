@@ -304,6 +304,12 @@ var (
 
 	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
 	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
+
+	// ErrCantDropFieldOrKey is returned when a table invokes DropPrimaryKey on a keyless table.
+	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")
+
+	// ErrCantDropIndex is return when a table can't drop an index due to a foreign key relationship.
+	ErrCantDropIndex = errors.NewKind("error: can't drop index '%s': needed in a foreign key constraint")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -348,6 +354,10 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERWrongAutoKey
 	case ErrKeyColumnDoesNotExist.Is(err):
 		code = mysql.ERKeyColumnDoesNotExist
+	case ErrCantDropFieldOrKey.Is(err):
+		code = mysql.ERCantDropFieldOrKey
+	case ErrCantDropIndex.Is(err):
+		code = 1553 // TODO: Needs to be added to vitess
 	default:
 		code = mysql.ERUnknownError
 	}

@@ -2967,50 +2967,52 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	e := sqle.NewDefault()
 	e.AddDatabase(db)
 
-	TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
+	wrapInTransaction(t, db, harness, func() {
+		TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
 
-	// Assert the table is still queryable
-	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-	}, nil, nil)
+		// Assert the table is still queryable
+		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 
-	// Assert that the table is insertable
-	TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a4", "a5")`, []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-		{"a4", "a5"},
-	}, nil, nil)
+		// Assert that the table is insertable
+		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a4", "a5")`, []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+			{"a4", "a5"},
+		}, nil, nil)
 
-	// Add back a new primary key and assert the table is queryable
-	TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, []sql.Row{}, nil, nil)
-	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
-		{"a1", "a2"},
-		{"a2", "a3"},
-		{"a3", "a4"},
-		{"a4", "a5"},
-	}, nil, nil)
+		// Add back a new primary key and assert the table is queryable
+		TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, []sql.Row{}, nil, nil)
+		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+			{"a4", "a5"},
+		}, nil, nil)
 
-	// Drop the original Pk, create an index, create a new primary key
-	TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
-	TestQuery(t, harness, e, `ALTER TABLE t1 ADD INDEX myidx (v)`, []sql.Row{}, nil, nil)
-	TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`, []sql.Row{}, nil, nil)
+		// Drop the original Pk, create an index, create a new primary key
+		TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
+		TestQuery(t, harness, e, `ALTER TABLE t1 ADD INDEX myidx (v)`, []sql.Row{}, nil, nil)
+		TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`, []sql.Row{}, nil, nil)
 
-	// Assert that an indexed based query still functions appropriately
-	TestQuery(t, harness, e, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
-		{"a2", "a3"},
-	}, nil, nil)
+		// Assert that an indexed based query still functions appropriately
+		TestQuery(t, harness, e, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
+			{"a2", "a3"},
+		}, nil, nil)
 
-	// Assert that query plan this follows correctly uses an IndexedTableAccess
-	expectedPlan := "Filter(t1.v = \"a3\")\n" +
-		" └─ Projected table access on [pk v]\n" +
-		"     └─ IndexedTableAccess(t1 on [t1.v])\n" +
-		""
+		// Assert that query plan this follows correctly uses an IndexedTableAccess
+		expectedPlan := "Filter(t1.v = \"a3\")\n" +
+			" └─ Projected table access on [pk v]\n" +
+			"     └─ IndexedTableAccess(t1 on [t1.v])\n" +
+			""
 
-	TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
+		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
+	})
 }
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.
