@@ -16,10 +16,10 @@ import (
 // More info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
 //
 // Even more info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date
-func ParseDateWithFormat(date, format string) (interface{}, error) {
+func ParseDateWithFormat(date, format string) (time.Time, error) {
 	parsers, err := parseFormatter(format)
 	if err != nil {
-		return nil, err
+		return time.Time{}, err
 	}
 
 	// trim all leading and trailing whitespace
@@ -34,7 +34,7 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 		target = takeAllSpaces(target)
 		rest, err := parser.parser(&result, target)
 		if err != nil {
-			return nil, parser.wrapErr(target, err)
+			return time.Time{}, parser.wrapErr(target, err)
 		}
 		target = rest
 	}
@@ -58,6 +58,7 @@ func parseFormatter(format string) ([]failableParser, error) {
 			if len(format) <= i+1 {
 				return nil, fmt.Errorf("\"%%\" found at end of format string")
 			}
+			specifier := format[i+1]
 			parser, ok := formatSpecifiers[format[i+1]]
 			if !ok {
 				return nil, fmt.Errorf("unknown format specifier \"%c\"", format[i+1])
@@ -69,7 +70,7 @@ func parseFormatter(format string) ([]failableParser, error) {
 				parser: parser,
 				wrapErr: func(tokens string, err error) error {
 					return ParseSpecifierErr{
-						Specifier: format[i+1],
+						Specifier: specifier,
 						Tokens:    tokens,
 						Err:       err,
 					}

@@ -52,7 +52,7 @@ func TestParseDate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			actual, err := ParseDateWithFormat(tt.date, tt.format)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, actual.(time.Time).String())
+			require.Equal(t, tt.expected, actual.String())
 		})
 	}
 }
@@ -63,6 +63,6 @@ func setupTimezone(t *testing.T) {
 		t.Fatal(err)
 	}
 	old := time.Local
-    time.Local = loc
+	time.Local = loc
 	t.Cleanup(func() { time.Local = old })
 }

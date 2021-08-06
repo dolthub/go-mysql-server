@@ -2,6 +2,7 @@ package function
 
 import (
 	"testing"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -9,14 +10,16 @@ import (
 )
 
 func TestStrToDate(t *testing.T) {
+	setupTimezone(t)
+
 	testCases := [...]struct {
 		name     string
 		dateStr  string
 		fmtStr   string
-		expected interface{}
+		expected string
 		// TODO: add expected error case
 	}{
-		{"standard", "invaliddate", "%s:%s", nil},
+		{"standard", "Dec 26, 2000 2:13:15", "%b %e, %Y %T", "2000-12-26 02:13:15 -0600 CST"},
 	}
 
 	for _, tt := range testCases {
@@ -28,9 +31,20 @@ func TestStrToDate(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, eval(t, f, sql.NewRow(tt.dateStr, tt.fmtStr)))
+			dtime := eval(t, f, sql.NewRow(tt.dateStr, tt.fmtStr))
+			require.Equal(t, tt.expected, dtime.(time.Time).String())
 		})
 		req := require.New(t)
 		req.True(f.IsNullable())
 	}
+}
+
+func setupTimezone(t *testing.T) {
+	loc, err := time.LoadLocation("America/Chicago")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := time.Local
+	time.Local = loc
+	t.Cleanup(func() { time.Local = old })
 }
