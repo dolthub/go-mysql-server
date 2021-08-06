@@ -32,9 +32,16 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	target := date
 	for _, parser := range parsers {
 		_, target = takeAll(target, isChar(' '))
-		rest, err := parser(&result, target)
+		rest, err := parser.Parser(&result, target)
 		if err != nil {
-			return nil, err
+			switch parser.typ {
+			case parserLiteral:
+				return nil, ParseLiteralErr{parser.cause, target, err}
+			case parserSpecifier:
+				return nil, ParseSpecifierErr{parser.cause, target, err}
+			default:
+				panic("unreachable. invalid parser type")
+			}
 		}
 		target = rest
 	}
@@ -42,9 +49,22 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	return evaluate(result)
 }
 
-func parseFormatter(format string) ([]Parser, error) {
+type parserKind int
+
+const (
+	parserSpecifier parserKind = iota
+	parserLiteral
+)
+
+type namedParser struct {
+	typ   parserKind
+	cause byte
+	Parser
+}
+
+func parseFormatter(format string) ([]namedParser, error) {
 	i := 0
-	parsers := make([]Parser, 0, 0)
+	parsers := make([]namedParser, 0, 0)
 	for {
 		if len(format) <= i {
 			break
@@ -60,10 +80,19 @@ func parseFormatter(format string) ([]Parser, error) {
 			if parser == nil {
 				return nil, fmt.Errorf("format specifier \"%c\" not supported", format[i+1])
 			}
-			parsers = append(parsers, parser)
+			parsers = append(parsers, namedParser{
+				Parser: parser,
+				typ:    parserSpecifier,
+				cause:  format[i+1],
+			})
 			i += 2
 		} else {
-			parsers = append(parsers, literalParser(format[i]))
+			parsers = append(parsers, namedParser{
+				Parser: literalParser(format[i]),
+				typ:    parserLiteral,
+				cause:  format[i],
+			})
+
 			i++
 		}
 	}
@@ -83,6 +112,8 @@ type datetime struct {
 	// true = AM, false = PM, nil = unspecified
 	am *bool
 
+	dayOfYear *uint
+
 	week         *uint
 	hours        *uint
 	minutes      *uint
@@ -92,13 +123,28 @@ type datetime struct {
 	nanoseconds  *uint
 }
 
-type parseErr struct {
-	specifier byte
-	tokens    string
+type ParseSpecifierErr struct {
+	Specifier byte
+	Tokens    string
+	Err       error
 }
 
-func (p parseErr) Error() string {
-	return fmt.Sprintf("format specifier \"%%%c\" failed to match \"%s\"", p.specifier, p.tokens)
+func (p ParseSpecifierErr) Unwrap() error { return p.Err }
+
+func (p ParseSpecifierErr) Error() string {
+	return fmt.Sprintf("specifier %%%c failed to parse \"%s\"", p.Specifier, p.Tokens)
+}
+
+type ParseLiteralErr struct {
+	Literal byte
+	Tokens    string
+	Err       error
+}
+
+func (p ParseLiteralErr) Unwrap() error { return p.Err }
+
+func (p ParseLiteralErr) Error() string {
+	return fmt.Sprintf("literal %c not matched in \"%s\"", p.Literal, p.Tokens)
 }
 
 type Parser func(result *datetime, chars string) (rest string, err error)
@@ -126,11 +172,11 @@ var spec = map[byte]Parser{
 	// %a	Abbreviated weekday name (Sun..Sat)
 	'a': func(result *datetime, chars string) (rest string, err error) {
 		if len(chars) < 3 {
-			return "", parseErr{'a', chars}
+			return "", err
 		}
 		weekday, ok := weekdayAbbrev(chars[:3])
 		if !ok {
-			return "", parseErr{'a', chars}
+			return "", err
 		}
 		result.weekday = &weekday
 		return trimPrefix(3, chars), nil
@@ -138,11 +184,11 @@ var spec = map[byte]Parser{
 	// %b	Abbreviated month name (Jan..Dec)
 	'b': func(result *datetime, chars string) (rest string, err error) {
 		if len(chars) < 3 {
-			return "", parseErr{'b', chars}
+			return "", err
 		}
 		month, ok := monthAbbrev(chars[:3])
 		if !ok {
-			return "", parseErr{'b', chars}
+			return "", err
 		}
 		result.month = &month
 		return trimPrefix(3, chars), nil
@@ -151,7 +197,7 @@ var spec = map[byte]Parser{
 	'c': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'c', chars}
+			return "", err
 		}
 		month := time.Month(num)
 		result.month = &month
@@ -161,7 +207,7 @@ var spec = map[byte]Parser{
 	'D': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'D', chars}
+			return "", err
 		}
 		result.day = uintPtr(uint(num))
 		return trimPrefix(2, rest), nil
@@ -170,7 +216,7 @@ var spec = map[byte]Parser{
 	'd': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'d', chars}
+			return "", err
 		}
 		result.day = uintPtr(uint(num))
 		return rest, nil
@@ -179,7 +225,7 @@ var spec = map[byte]Parser{
 	'e': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'e', chars}
+			return "", err
 		}
 		result.day = uintPtr(uint(num))
 		return rest, nil
@@ -188,7 +234,7 @@ var spec = map[byte]Parser{
 	'f': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'f', chars}
+			return "", err
 		}
 		result.microseconds = uintPtr(uint(num))
 		return rest, nil
@@ -197,7 +243,7 @@ var spec = map[byte]Parser{
 	'H': func(result *datetime, chars string) (rest string, err error) {
 		hour, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'H', chars}
+			return "", err
 		}
 		result.hours = uintPtr(uint(hour))
 		return rest, nil
@@ -206,7 +252,7 @@ var spec = map[byte]Parser{
 	'h': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'h', chars}
+			return "", err
 		}
 		result.hours = uintPtr(uint(num))
 		return rest, nil
@@ -215,7 +261,7 @@ var spec = map[byte]Parser{
 	'I': func(result *datetime, chars string) (rest string, err error) {
 		hour, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'I', chars}
+			return "", err
 		}
 		result.hours = uintPtr(uint(hour))
 		return rest, nil
@@ -224,18 +270,42 @@ var spec = map[byte]Parser{
 	'i': func(result *datetime, chars string) (rest string, err error) {
 		min, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'i', chars}
+			return "", err
 		}
 		result.minutes = uintPtr(uint(min))
 		return rest, nil
 	},
-	'j': nil,
-	'k': nil,
-	'l': nil,
+	// %j	Day of year (001..366)
+	'j': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", err
+		}
+		result.dayOfYear = uintPtr(uint(num))
+		return "", nil
+	},
+	// %k	Hour (0..23)
+	'k': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", err
+		}
+		result.hours = uintPtr(uint(num))
+		return rest, nil
+	},
+	// %l	Hour (1..12)
+	'l': func(result *datetime, chars string) (rest string, err error) {
+		num, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", err
+		}
+		result.hours = uintPtr(uint(num))
+		return rest, nil
+	},
 	'M': func(result *datetime, chars string) (rest string, err error) {
 		month, charCount, ok := monthName(chars)
 		if !ok {
-			return "", parseErr{'M', chars}
+			return "", err
 		}
 		result.month = &month
 		return trimPrefix(charCount, chars), nil
@@ -244,34 +314,59 @@ var spec = map[byte]Parser{
 	'm': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'m', chars}
+			return "", err
 		}
 		month := time.Month(num)
 		result.month = &month
 		return rest, nil
 	},
 	// %p AM or PM
-	'p': func(result *datetime, chars string) (rest string, err error) {
-		if len(chars) < 2 {
-			return "", parseErr{'p', chars}
+	'p': parseAmPm,
+	// %r	Time, 12-hour (hh:mm:ss followed by AM or PM)
+	'r': func(result *datetime, chars string) (rest string, err error) {
+		hour, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", err
 		}
-		switch chars[:2] {
-		case "am":
-			result.am = boolPtr(true)
-		case "pm":
-			result.am = boolPtr(false)
-		default:
-			return "", parseErr{'p', chars}
+		rest, err = literalParser(':')(result, rest)
+		if err != nil {
+			return "", err
 		}
-		return trimPrefix(2, chars), nil
-
+		min, rest, err := takeNumber(rest)
+		if err != nil {
+			return "", err
+		}
+		rest, err = literalParser(':')(result, rest)
+		if err != nil {
+			return "", err
+		}
+		sec, rest, err := takeNumber(rest)
+		if err != nil {
+			return "", err
+		}
+		_, rest = takeAll(rest, isChar(' '))
+		rest, err = parseAmPm(result, rest)
+		if err != nil {
+			return "", err
+		}
+		result.seconds = uintPtr(uint(sec))
+		result.minutes = uintPtr(uint(min))
+		result.hours = uintPtr(uint(hour))
+		return rest, nil
 	},
-	'r': nil,
-	'S': nil,
+	// %S	Seconds (00..59)
+	'S': func(result *datetime, chars string) (rest string, err error) {
+		sec, rest, err := takeNumber(chars)
+		if err != nil {
+			return "", err
+		}
+		result.seconds = uintPtr(uint(sec))
+		return rest, nil
+	},
 	's': func(result *datetime, chars string) (rest string, err error) {
 		sec, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'i', chars}
+			return "", err
 		}
 		result.seconds = uintPtr(uint(sec))
 		return rest, nil
@@ -280,7 +375,7 @@ var spec = map[byte]Parser{
 	'T': func(result *datetime, chars string) (rest string, err error) {
 		hour, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'T', chars}
+			return "", err
 		}
 		rest, err = literalParser(':')(result, rest)
 		if err != nil {
@@ -288,7 +383,7 @@ var spec = map[byte]Parser{
 		}
 		minute, rest, err := takeNumber(rest)
 		if err != nil {
-			return "", parseErr{'T', chars}
+			return "", err
 		}
 		rest, err = literalParser(':')(result, rest)
 		if err != nil {
@@ -296,7 +391,7 @@ var spec = map[byte]Parser{
 		}
 		seconds, rest, err := takeNumber(rest)
 		if err != nil {
-			return "", parseErr{'T', chars}
+			return "", err
 		}
 		result.hours = uintPtr(uint(hour))
 		result.minutes = uintPtr(uint(minute))
@@ -314,11 +409,11 @@ var spec = map[byte]Parser{
 	// %Y	Year, numeric, four digits
 	'Y': func(result *datetime, chars string) (rest string, err error) {
 		if len(chars) < 4 {
-			return "", parseErr{'Y', chars}
+			return "", err
 		}
 		year, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'Y', chars}
+			return "", err
 		}
 		result.year = uintPtr(uint(year))
 		return rest, nil
@@ -326,14 +421,14 @@ var spec = map[byte]Parser{
 	// %y	Year, numeric (two digits)
 	'y': func(result *datetime, chars string) (rest string, err error) {
 		if len(chars) < 2 {
-			return "", parseErr{'Y', chars}
+			return "", err
 		}
 		year, rest, err := takeNumber(chars)
 		if err != nil {
-			return "", parseErr{'y', chars}
+			return "", err
 		}
 		if year >= 100 {
-			return "", parseErr{'y', chars}
+			return "", err
 		}
 		if year >= 70 {
 			year += 1900
@@ -344,6 +439,21 @@ var spec = map[byte]Parser{
 		return rest, nil
 	},
 	'%': literalParser('%'),
+}
+
+func parseAmPm(result *datetime, chars string) (rest string, err error) {
+	if len(chars) < 2 {
+		return "", fmt.Errorf("expected > 2 chars, found %d", len(chars))
+	}
+	switch chars[:2] {
+	case "am":
+		result.am = boolPtr(true)
+	case "pm":
+		result.am = boolPtr(false)
+	default:
+		return "", err
+	}
+	return trimPrefix(2, chars), nil
 }
 
 func trimPrefix(count int, str string) string {
