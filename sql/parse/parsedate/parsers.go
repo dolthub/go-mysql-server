@@ -84,7 +84,7 @@ func parseDayOfMonthNumeric(result *datetime, chars string) (rest string, err er
 	if err != nil {
 		return "", err
 	}
-	result.day = uintPtr(uint(num))
+	result.day = &num
 	return rest, nil
 }
 
@@ -93,7 +93,7 @@ func parseMicrosecondsNumeric(result *datetime, chars string) (rest string, err 
 	if err != nil {
 		return "", err
 	}
-	result.microseconds = uintPtr(uint(num))
+	result.microseconds = &num
 	return rest, nil
 }
 
@@ -102,7 +102,7 @@ func parse24HourNumeric(result *datetime, chars string) (rest string, err error)
 	if err != nil {
 		return "", err
 	}
-	result.hours = uintPtr(uint(hour))
+	result.hours = &hour
 	return rest, nil
 }
 
@@ -111,7 +111,7 @@ func parse12HourNumeric(result *datetime, chars string) (rest string, err error)
 	if err != nil {
 		return "", err
 	}
-	result.hours = uintPtr(uint(num))
+	result.hours = &num
 	return rest, nil
 }
 
@@ -120,7 +120,7 @@ func parseMinuteNumeric(result *datetime, chars string) (rest string, err error)
 	if err != nil {
 		return "", err
 	}
-	result.minutes = uintPtr(uint(min))
+	result.minutes = &min
 	return rest, nil
 }
 
@@ -159,9 +159,9 @@ func parse12HourTimestamp(result *datetime, chars string) (rest string, err erro
 	if err != nil {
 		return "", err
 	}
-	result.seconds = uintPtr(uint(sec))
-	result.minutes = uintPtr(uint(min))
-	result.hours = uintPtr(uint(hour))
+	result.seconds = &sec
+	result.minutes = &min
+	result.hours = &hour
 	return rest, nil
 }
 
@@ -170,7 +170,7 @@ func parseSecondsNumeric(result *datetime, chars string) (rest string, err error
 	if err != nil {
 		return "", err
 	}
-	result.seconds = uintPtr(uint(sec))
+	result.seconds = &sec
 	return rest, nil
 }
 
@@ -195,9 +195,9 @@ func parse24HourTimestamp(result *datetime, chars string) (rest string, err erro
 	if err != nil {
 		return "", err
 	}
-	result.hours = uintPtr(uint(hour))
-	result.minutes = uintPtr(uint(minute))
-	result.seconds = uintPtr(uint(seconds))
+	result.hours = &hour
+	result.minutes = &minute
+	result.seconds = &seconds
 	return rest, err
 }
 
@@ -217,7 +217,7 @@ func parseYear2DigitNumeric(result *datetime, chars string) (rest string, err er
 	} else {
 		year += 2000
 	}
-	result.year = uintPtr(uint(year))
+	result.year = &year
 	return rest, nil
 }
 
@@ -229,7 +229,7 @@ func parseYear4DigitNumeric(result *datetime, chars string) (rest string, err er
 	if err != nil {
 		return "", err
 	}
-	result.year = uintPtr(uint(year))
+	result.year = &year
 	return rest, nil
 }
 
@@ -238,6 +238,6 @@ func parseDayNumericWithEnglishSuffix(result *datetime, chars string) (rest stri
 	if err != nil {
 		return "", err
 	}
-	result.day = uintPtr(uint(num))
+	result.day = &num
 	return trimPrefix(2, rest), nil
 }

@@ -25,13 +25,13 @@ func takeAllSpaces(str string) (rest string) {
 	return rest
 }
 
-func takeNumber(chars string) (num int, rest string, err error) {
+func takeNumber(chars string) (num uint, rest string, err error) {
 	numChars, rest := takeAll(chars, isNumeral)
-	parsedNum, err := strconv.ParseInt(numChars, 10, 32)
+	parsedNum, err := strconv.ParseUint(numChars, 10, 32)
 	if err != nil {
 		return 0, "", err
 	}
-	return int(parsedNum), rest, nil
+	return uint(parsedNum), rest, nil
 }
 
 func isNumeral(r rune) bool {

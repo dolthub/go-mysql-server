@@ -178,7 +178,7 @@ var formatSpecifiers = map[byte]Parser{
 		if err != nil {
 			return "", err
 		}
-		result.dayOfYear = uintPtr(uint(num))
+		result.dayOfYear = &num
 		return rest, nil
 	},
 	// %k	Hour (0..23)
@@ -214,7 +214,6 @@ var formatSpecifiers = map[byte]Parser{
 	'%': literalParser('%'),
 }
 
-func uintPtr(a uint) *uint { return &a }
 func boolPtr(a bool) *bool { return &a }
 
 func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
