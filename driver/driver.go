@@ -26,6 +26,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
+// SOME CHANGE
+
 // ScanKind indicates how values should be scanned.
 type ScanKind int
 
