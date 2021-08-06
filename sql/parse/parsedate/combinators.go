@@ -20,6 +20,11 @@ func takeAll(str string, match predicate) (captured, rest string) {
 	return result.String(), ""
 }
 
+func takeAllSpaces(str string) (rest string) {
+	_, rest = takeAll(str, isChar(' '))
+	return rest
+}
+
 func takeNumber(chars string) (num int, rest string, err error) {
 	numChars, rest := takeAll(chars, isNumeral)
 	parsedNum, err := strconv.ParseInt(numChars, 10, 32)

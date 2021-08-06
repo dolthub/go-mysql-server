@@ -8,7 +8,7 @@ import (
 // TODO: make this return a sql type directly, (then choose between date/datetime/timestamp)
 func evaluate(dt datetime) (time.Time, error) {
 	if dt.year == nil || dt.month == nil || dt.day == nil {
-		return time.Time{}, fmt.Errorf("ambiguous datetime specification") 
+		return time.Time{}, fmt.Errorf("ambiguous datetime specification")
 	}
 	var hour, minute, second, miliseconds, microseconds, nanoseconds int
 	if dt.hours != nil {
@@ -33,7 +33,7 @@ func evaluate(dt datetime) (time.Time, error) {
 		nanoseconds = int(*dt.nanoseconds)
 	}
 	// convert partial seconds to nanoseconds
-	nanosecondDuration := time.Microsecond * time.Duration(microseconds) + time.Millisecond * time.Duration(miliseconds) + time.Nanosecond * time.Duration(nanoseconds)
+	nanosecondDuration := time.Microsecond*time.Duration(microseconds) + time.Millisecond*time.Duration(miliseconds) + time.Nanosecond*time.Duration(nanoseconds)
 
 	return time.Date(int(*dt.year), *dt.month, int(*dt.day), hour, minute, second, int(nanosecondDuration), time.Local), nil
 }

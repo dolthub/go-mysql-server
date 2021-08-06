@@ -25,16 +25,16 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	// trim all leading and trailing whitespace
 	date = strings.TrimSpace(date)
 
-	// conver to all lowercase
+	// convert to all lowercase
 	date = strings.ToLower(date)
 
 	var result datetime
 	target := date
 	for _, parser := range parsers {
-		_, target = takeAll(target, isChar(' '))
+		target = takeAllSpaces(target)
 		rest, err := parser.parser(&result, target)
 		if err != nil {
-			return nil, parser.newErr(target, err)
+			return nil, parser.wrapErr(target, err)
 		}
 		target = rest
 	}
@@ -43,8 +43,8 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 }
 
 type failableParser struct {
-	parser Parser
-	newErr func(tokens string, err error) error
+	parser  Parser
+	wrapErr func(tokens string, err error) error
 }
 
 func parseFormatter(format string) ([]failableParser, error) {
@@ -58,16 +58,16 @@ func parseFormatter(format string) ([]failableParser, error) {
 			if len(format) <= i+1 {
 				return nil, fmt.Errorf("\"%%\" found at end of format string")
 			}
-			parser, ok := spec[format[i+1]]
+			parser, ok := formatSpecifiers[format[i+1]]
 			if !ok {
 				return nil, fmt.Errorf("unknown format specifier \"%c\"", format[i+1])
 			}
 			if parser == nil {
-				return nil, fmt.Errorf("format specifier \"%c\" not supported", format[i+1])
+				return nil, fmt.Errorf("format specifier \"%c\" not yet supported", format[i+1])
 			}
 			parsers = append(parsers, failableParser{
 				parser: parser,
-				newErr: func(tokens string, err error) error {
+				wrapErr: func(tokens string, err error) error {
 					return ParseSpecifierErr{
 						Specifier: format[i+1],
 						Tokens:    tokens,
@@ -79,7 +79,7 @@ func parseFormatter(format string) ([]failableParser, error) {
 		} else {
 			parsers = append(parsers, failableParser{
 				parser: literalParser(format[i]),
-				newErr: func(tokens string, err error) error {
+				wrapErr: func(tokens string, err error) error {
 					return ParseLiteralErr{
 						Literal: format[i],
 						Tokens:  tokens,
@@ -117,6 +117,8 @@ type datetime struct {
 	nanoseconds  *uint
 }
 
+// ParseSpecifierErr defines a error when attempting to parse
+// the date string input according to a specified format directive.
 type ParseSpecifierErr struct {
 	Specifier byte
 	Tokens    string
@@ -129,6 +131,9 @@ func (p ParseSpecifierErr) Error() string {
 	return fmt.Sprintf("specifier %%%c failed to parse \"%s\"", p.Specifier, p.Tokens)
 }
 
+// ParseLiteralErr defines a error when attempting to parse
+// the date string input according to a literal character specified
+// in the format string.
 type ParseLiteralErr struct {
 	Literal byte
 	Tokens  string
@@ -141,134 +146,32 @@ func (p ParseLiteralErr) Error() string {
 	return fmt.Sprintf("literal %c not matched in \"%s\"", p.Literal, p.Tokens)
 }
 
-type Parser func(result *datetime, chars string) (rest string, err error)
-
-func literalParser(literal byte) Parser {
-	return func(dt *datetime, chars string) (rest string, err error) {
-		if len(chars) < 1 && literal != ' ' {
-			return "", fmt.Errorf("expected literal \"%c\", found empty string", literal)
-		}
-		_, chars = takeAll(chars, isChar(' '))
-		if literal == ' ' {
-			return chars, nil
-		}
-		if chars[0] != literal {
-			return "", fmt.Errorf("expected literal \"%c\", got \"%c\"", literal, chars[0])
-		}
-		return trimPrefix(1, chars), nil
-	}
-}
-
-// spec defines the formatting directives for parsing and formatting dates.
+// formatSpecifiers defines the formatting directives for parsing and formatting dates.
 //
 // Reference: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
-var spec = map[byte]Parser{
+var formatSpecifiers = map[byte]Parser{
 	// %a	Abbreviated weekday name (Sun..Sat)
-	'a': func(result *datetime, chars string) (rest string, err error) {
-		if len(chars) < 3 {
-			return "", err
-		}
-		weekday, ok := weekdayAbbrev(chars[:3])
-		if !ok {
-			return "", err
-		}
-		result.weekday = &weekday
-		return trimPrefix(3, chars), nil
-	},
+	'a': parseWeedayAbbreviation,
 	// %b	Abbreviated month name (Jan..Dec)
-	'b': func(result *datetime, chars string) (rest string, err error) {
-		if len(chars) < 3 {
-			return "", err
-		}
-		month, ok := monthAbbrev(chars[:3])
-		if !ok {
-			return "", err
-		}
-		result.month = &month
-		return trimPrefix(3, chars), nil
-	},
+	'b': parseMonthAbbreviation,
 	// %c	Month, numeric (0..12)
-	'c': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		month := time.Month(num)
-		result.month = &month
-		return rest, nil
-	},
+	'c': parseMonthNumeric,
 	// %D Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
-	'D': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.day = uintPtr(uint(num))
-		return trimPrefix(2, rest), nil
-	},
+	'D': dayNumericWithEnglishSuffix,
 	// %d	Day of the month, numeric (00..31)
-	'd': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.day = uintPtr(uint(num))
-		return rest, nil
-	},
+	'd': parseDayOfMonthNumeric,
 	// %e	Day of the month, numeric (0..31)
-	'e': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.day = uintPtr(uint(num))
-		return rest, nil
-	},
+	'e': parseDayOfMonthNumeric,
 	// %f Microseconds (000000..999999)
-	'f': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.microseconds = uintPtr(uint(num))
-		return rest, nil
-	},
+	'f': parseMicrosecondsNumeric,
 	// %H			Hour (00..23)
-	'H': func(result *datetime, chars string) (rest string, err error) {
-		hour, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.hours = uintPtr(uint(hour))
-		return rest, nil
-	},
+	'H': parse24HourNumeric,
 	// %h	Hour (01..12)
-	'h': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.hours = uintPtr(uint(num))
-		return rest, nil
-	},
+	'h': parse12HourNumeric,
 	// %I Hour (01..12)
-	'I': func(result *datetime, chars string) (rest string, err error) {
-		hour, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.hours = uintPtr(uint(hour))
-		return rest, nil
-	},
+	'I': parse12HourNumeric,
 	// %i			Minutes, numeric (00..59)
-	'i': func(result *datetime, chars string) (rest string, err error) {
-		min, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.minutes = uintPtr(uint(min))
-		return rest, nil
-	},
+	'i': parseMinuteNumeric,
 	// %j	Day of year (001..366)
 	'j': func(result *datetime, chars string) (rest string, err error) {
 		num, rest, err := takeNumber(chars)
@@ -279,119 +182,23 @@ var spec = map[byte]Parser{
 		return rest, nil
 	},
 	// %k	Hour (0..23)
-	'k': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.hours = uintPtr(uint(num))
-		return rest, nil
-	},
+	'k': parse24HourNumeric,
 	// %l	Hour (1..12)
-	'l': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.hours = uintPtr(uint(num))
-		return rest, nil
-	},
-	'M': func(result *datetime, chars string) (rest string, err error) {
-		month, charCount, ok := monthName(chars)
-		if !ok {
-			return "", err
-		}
-		result.month = &month
-		return trimPrefix(charCount, chars), nil
-	},
+	'l': parse12HourNumeric,
+	// %M			Month name (January..December)
+	'M': parseMonthName,
 	// %m Month, numeric (00..12)
-	'm': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		month := time.Month(num)
-		result.month = &month
-		return rest, nil
-	},
+	'm': parseMonthNumeric,
 	// %p AM or PM
 	'p': parseAmPm,
 	// %r	Time, 12-hour (hh:mm:ss followed by AM or PM)
-	'r': func(result *datetime, chars string) (rest string, err error) {
-		hour, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		rest, err = literalParser(':')(result, rest)
-		if err != nil {
-			return "", err
-		}
-		min, rest, err := takeNumber(rest)
-		if err != nil {
-			return "", err
-		}
-		rest, err = literalParser(':')(result, rest)
-		if err != nil {
-			return "", err
-		}
-		sec, rest, err := takeNumber(rest)
-		if err != nil {
-			return "", err
-		}
-		_, rest = takeAll(rest, isChar(' '))
-		rest, err = parseAmPm(result, rest)
-		if err != nil {
-			return "", err
-		}
-		result.seconds = uintPtr(uint(sec))
-		result.minutes = uintPtr(uint(min))
-		result.hours = uintPtr(uint(hour))
-		return rest, nil
-	},
+	'r': parse12HourTimestamp,
 	// %S	Seconds (00..59)
-	'S': func(result *datetime, chars string) (rest string, err error) {
-		sec, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.seconds = uintPtr(uint(sec))
-		return rest, nil
-	},
-	's': func(result *datetime, chars string) (rest string, err error) {
-		sec, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.seconds = uintPtr(uint(sec))
-		return rest, nil
-	},
+	'S': parseSecondsNumeric,
+	// %s	Seconds (00..59)
+	's': parseSecondsNumeric,
 	// %T	Time, 24-hour (hh:mm:ss)
-	'T': func(result *datetime, chars string) (rest string, err error) {
-		hour, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		rest, err = literalParser(':')(result, rest)
-		if err != nil {
-			return "", err
-		}
-		minute, rest, err := takeNumber(rest)
-		if err != nil {
-			return "", err
-		}
-		rest, err = literalParser(':')(result, rest)
-		if err != nil {
-			return "", err
-		}
-		seconds, rest, err := takeNumber(rest)
-		if err != nil {
-			return "", err
-		}
-		result.hours = uintPtr(uint(hour))
-		result.minutes = uintPtr(uint(minute))
-		result.seconds = uintPtr(uint(seconds))
-		return rest, err
-	},
+	'T': parse24HourTimestamp,
 	'U': nil,
 	'u': nil,
 	'V': nil,
@@ -401,60 +208,10 @@ var spec = map[byte]Parser{
 	'X': nil,
 	'x': nil,
 	// %Y	Year, numeric, four digits
-	'Y': func(result *datetime, chars string) (rest string, err error) {
-		if len(chars) < 4 {
-			return "", err
-		}
-		year, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.year = uintPtr(uint(year))
-		return rest, nil
-	},
+	'Y': year4DigitNumeric,
 	// %y	Year, numeric (two digits)
-	'y': func(result *datetime, chars string) (rest string, err error) {
-		if len(chars) < 2 {
-			return "", err
-		}
-		year, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		if year >= 100 {
-			return "", err
-		}
-		if year >= 70 {
-			year += 1900
-		} else {
-			year += 2000
-		}
-		result.year = uintPtr(uint(year))
-		return rest, nil
-	},
+	'y': year2DigitNumeric,
 	'%': literalParser('%'),
-}
-
-func parseAmPm(result *datetime, chars string) (rest string, err error) {
-	if len(chars) < 2 {
-		return "", fmt.Errorf("expected > 2 chars, found %d", len(chars))
-	}
-	switch chars[:2] {
-	case "am":
-		result.am = boolPtr(true)
-	case "pm":
-		result.am = boolPtr(false)
-	default:
-		return "", err
-	}
-	return trimPrefix(2, chars), nil
-}
-
-func trimPrefix(count int, str string) string {
-	if len(str) > count {
-		return str[count:]
-	}
-	return ""
 }
 
 func uintPtr(a uint) *uint { return &a }

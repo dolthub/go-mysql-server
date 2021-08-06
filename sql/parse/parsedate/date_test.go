@@ -8,6 +8,8 @@ import (
 )
 
 func TestParseDate(t *testing.T) {
+	setupTimezone(t)
+
 	tests := [...]struct {
 		name     string
 		date     string
@@ -53,4 +55,14 @@ func TestParseDate(t *testing.T) {
 			require.Equal(t, tt.expected, actual.(time.Time).String())
 		})
 	}
+}
+
+func setupTimezone(t *testing.T) {
+	loc, err := time.LoadLocation("America/Chicago")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := time.Local
+    time.Local = loc
+	t.Cleanup(func() { time.Local = old })
 }
