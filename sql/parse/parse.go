@@ -1455,18 +1455,22 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	columnWithDefaultValues := make(map[int]bool)
 
 	if e, ok := src.(*plan.Values); ok {
-		var needCols []sql.Expression
-		for i, s := range e.ExpressionTuples[0] {
-			if _, ok := s.(*expression.DefaultColumn); ok {
-				columnWithDefaultValues[i] = true
-			} else {
-				needCols = append(needCols, s)
+		for i, tuple := range e.ExpressionTuples {
+			var needCols []sql.Expression
+			for j, s := range tuple {
+				if _, ok := s.(*expression.DefaultColumn); ok {
+					columnWithDefaultValues[j] = true
+				} else {
+					needCols = append(needCols, s)
+				}
 			}
-		}
 
-		// Only re-assign if found column with default values
-		if len(columnWithDefaultValues) > 0 {
-			e.ExpressionTuples[0] = needCols
+			// Only re-assign if found column with default values
+			if len(columnWithDefaultValues) == 0 {
+				break
+			}
+
+			e.ExpressionTuples[i] = needCols
 		}
 	}
 
