@@ -32,16 +32,9 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	target := date
 	for _, parser := range parsers {
 		_, target = takeAll(target, isChar(' '))
-		rest, err := parser.Parser(&result, target)
+		rest, err := parser.parser(&result, target)
 		if err != nil {
-			switch parser.typ {
-			case parserLiteral:
-				return nil, ParseLiteralErr{parser.cause, target, err}
-			case parserSpecifier:
-				return nil, ParseSpecifierErr{parser.cause, target, err}
-			default:
-				panic("unreachable. invalid parser type")
-			}
+			return nil, parser.newErr(target, err)
 		}
 		target = rest
 	}
@@ -49,22 +42,14 @@ func ParseDateWithFormat(date, format string) (interface{}, error) {
 	return evaluate(result)
 }
 
-type parserKind int
-
-const (
-	parserSpecifier parserKind = iota
-	parserLiteral
-)
-
-type namedParser struct {
-	typ   parserKind
-	cause byte
-	Parser
+type failableParser struct {
+	parser Parser
+	newErr func(tokens string, err error) error
 }
 
-func parseFormatter(format string) ([]namedParser, error) {
+func parseFormatter(format string) ([]failableParser, error) {
 	i := 0
-	parsers := make([]namedParser, 0, 0)
+	parsers := make([]failableParser, 0, 0)
 	for {
 		if len(format) <= i {
 			break
@@ -80,19 +65,28 @@ func parseFormatter(format string) ([]namedParser, error) {
 			if parser == nil {
 				return nil, fmt.Errorf("format specifier \"%c\" not supported", format[i+1])
 			}
-			parsers = append(parsers, namedParser{
-				Parser: parser,
-				typ:    parserSpecifier,
-				cause:  format[i+1],
+			parsers = append(parsers, failableParser{
+				parser: parser,
+				newErr: func(tokens string, err error) error {
+					return ParseSpecifierErr{
+						Specifier: format[i+1],
+						Tokens:    tokens,
+						Err:       err,
+					}
+				},
 			})
 			i += 2
 		} else {
-			parsers = append(parsers, namedParser{
-				Parser: literalParser(format[i]),
-				typ:    parserLiteral,
-				cause:  format[i],
+			parsers = append(parsers, failableParser{
+				parser: literalParser(format[i]),
+				newErr: func(tokens string, err error) error {
+					return ParseLiteralErr{
+						Literal: format[i],
+						Tokens:  tokens,
+						Err:     err,
+					}
+				},
 			})
-
 			i++
 		}
 	}
@@ -137,8 +131,8 @@ func (p ParseSpecifierErr) Error() string {
 
 type ParseLiteralErr struct {
 	Literal byte
-	Tokens    string
-	Err       error
+	Tokens  string
+	Err     error
 }
 
 func (p ParseLiteralErr) Unwrap() error { return p.Err }
@@ -282,7 +276,7 @@ var spec = map[byte]Parser{
 			return "", err
 		}
 		result.dayOfYear = uintPtr(uint(num))
-		return "", nil
+		return rest, nil
 	},
 	// %k	Hour (0..23)
 	'k': func(result *datetime, chars string) (rest string, err error) {
