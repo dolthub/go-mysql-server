@@ -1503,6 +1503,9 @@ CREATE TABLE t2
 	`INSERT INTO t1 VALUES (b'0111')`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral(uint64(7), sql.Uint64),
 	}}), false, []string{}, []sql.Expression{}, false),
+	`INSERT INTO t1 (col1, col2) VALUES ('a', DEFAULT)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("a", sql.LongText),
+	}}), false, []string{"col1"}, []sql.Expression{}, false),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
 		plan.NewFilter(
 			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
