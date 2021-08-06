@@ -865,6 +865,27 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "explicit DEFAULT with multiple values",
+		SetUpScript: []string{
+			"CREATE TABLE mytable(id int PRIMARY KEY, v2 int NOT NULL DEFAULT '2')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO mytable (id, v2)values (1, DEFAULT), (2, DEFAULT)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 2},
+				},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
