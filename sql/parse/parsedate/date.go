@@ -157,7 +157,7 @@ var formatSpecifiers = map[byte]Parser{
 	// %c	Month, numeric (0..12)
 	'c': parseMonthNumeric,
 	// %D Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
-	'D': dayNumericWithEnglishSuffix,
+	'D': parseDayNumericWithEnglishSuffix,
 	// %d	Day of the month, numeric (00..31)
 	'd': parseDayOfMonthNumeric,
 	// %e	Day of the month, numeric (0..31)
@@ -208,9 +208,9 @@ var formatSpecifiers = map[byte]Parser{
 	'X': nil,
 	'x': nil,
 	// %Y	Year, numeric, four digits
-	'Y': year4DigitNumeric,
+	'Y': parseYear4DigitNumeric,
 	// %y	Year, numeric (two digits)
-	'y': year2DigitNumeric,
+	'y': parseYear2DigitNumeric,
 	'%': literalParser('%'),
 }
 

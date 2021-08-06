@@ -201,7 +201,7 @@ func parse24HourTimestamp(result *datetime, chars string) (rest string, err erro
 	return rest, err
 }
 
-func year2DigitNumeric(result *datetime, chars string) (rest string, err error) {
+func parseYear2DigitNumeric(result *datetime, chars string) (rest string, err error) {
 	if len(chars) < 2 {
 		return "", err
 	}
@@ -221,7 +221,7 @@ func year2DigitNumeric(result *datetime, chars string) (rest string, err error) 
 	return rest, nil
 }
 
-func year4DigitNumeric(result *datetime, chars string) (rest string, err error) {
+func parseYear4DigitNumeric(result *datetime, chars string) (rest string, err error) {
 	if len(chars) < 4 {
 		return "", err
 	}
@@ -233,7 +233,7 @@ func year4DigitNumeric(result *datetime, chars string) (rest string, err error) 
 	return rest, nil
 }
 
-func dayNumericWithEnglishSuffix(result *datetime, chars string) (rest string, err error) {
+func parseDayNumericWithEnglishSuffix(result *datetime, chars string) (rest string, err error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
