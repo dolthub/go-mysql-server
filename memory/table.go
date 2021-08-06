@@ -1291,15 +1291,46 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
 
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
-	if t.autoIncVal != nil {
+	// Must drop auto increment property before dropping primary key
+	if t.schema.HasAutoIncrement() {
 		return sql.ErrWrongAutoKey.New()
 	}
 
+	pks := make([]*sql.Column, 0)
 	for _, col := range t.schema {
-		col.PrimaryKey = false
+		if col.PrimaryKey {
+			pks = append(pks, col)
+		}
+	}
+
+	if len(pks) == 0 {
+		return sql.ErrCantDropFieldOrKey.New("PRIMARY")
+	}
+
+	// Check for foreign key relationships
+	for _, pk := range pks {
+		if columnInFkRelationship(pk.Name, t.foreignKeys) {
+			return sql.ErrCantDropIndex.New("PRIMARY")
+		}
+	}
+
+	for _, c := range pks {
+		c.PrimaryKey = false
 	}
 
 	return nil
+}
+
+func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) bool {
+	colsInFks := make(map[string]bool)
+	for _, fk := range fkc {
+		allCols := append(fk.Columns, fk.ReferencedColumns...)
+		for _, ac := range allCols {
+			colsInFks[ac] = true
+		}
+	}
+
+	return colsInFks[col]
 }
 
 type partitionIndexKeyValueIter struct {

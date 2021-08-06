@@ -2978,12 +2978,19 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		}, nil, nil)
 
 		// Assert that the table is insertable
-		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a4", "a5")`, []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
 			{"a1", "a2"},
 			{"a2", "a3"},
 			{"a3", "a4"},
-			{"a4", "a5"},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `DELETE FROM t1 WHERE pk = "a1" LIMIT 1`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
 		}, nil, nil)
 
 		// Add back a new primary key and assert the table is queryable
@@ -2992,7 +2999,6 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			{"a1", "a2"},
 			{"a2", "a3"},
 			{"a3", "a4"},
-			{"a4", "a5"},
 		}, nil, nil)
 
 		// Drop the original Pk, create an index, create a new primary key
