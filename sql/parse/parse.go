@@ -1471,10 +1471,14 @@ func convertInsert(ctx *sql.Context, i *sqlparser.Insert) (sql.Node, error) {
 	}
 
 	var columns []string
-	for i, c := range columnsToStrings(i.Columns) {
-		if _, found := columnWithDefaultValues[i]; !found {
-			columns = append(columns, c)
+	if len(columnWithDefaultValues) > 0 {
+		for i, c := range columnsToStrings(i.Columns) {
+			if _, found := columnWithDefaultValues[i]; !found {
+				columns = append(columns, c)
+			}
 		}
+	} else {
+		columns = columnsToStrings(i.Columns)
 	}
 
 	return plan.NewInsertInto(sql.UnresolvedDatabase(i.Table.Qualifier.String()), tableNameToUnresolvedTable(i.Table), src, isReplace, columns, onDupExprs, ignore), nil
