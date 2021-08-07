@@ -5,11 +5,34 @@ import (
 	"time"
 )
 
+func validate(dt datetime) error {
+	if dt.year == nil && dt.day == nil && dt.month == nil && dt.dayOfYear == nil {
+		return nil
+	}
+	if dt.day == nil {
+		if dt.month != nil {
+			// TODO: ensure this behaves as expected
+			return fmt.Errorf("day ambiguous")
+		}
+		return nil
+	}
+	if dt.dayOfYear != nil && dt.day != nil {
+		return fmt.Errorf("day ambiguous")
+	}
+	if (dt.dayOfYear != nil || dt.day != nil) && dt.year == nil {
+		return fmt.Errorf("year is ambiguous")
+	}
+
+	return nil
+}
+
 // TODO: make this return a sql type directly, (then choose between date/datetime/timestamp)
 func evaluate(dt datetime) (time.Time, error) {
-	if dt.year == nil || dt.month == nil || dt.day == nil {
-		return time.Time{}, fmt.Errorf("ambiguous datetime specification")
+	err := validate(dt)
+	if err != nil {
+		return time.Time{}, err
 	}
+
 	var hour, minute, second, miliseconds, microseconds, nanoseconds int
 	if dt.hours != nil {
 		if *dt.hours < 13 && dt.am != nil && !*dt.am {
@@ -35,5 +58,22 @@ func evaluate(dt datetime) (time.Time, error) {
 	// convert partial seconds to nanoseconds
 	nanosecondDuration := time.Microsecond*time.Duration(microseconds) + time.Millisecond*time.Duration(miliseconds) + time.Nanosecond*time.Duration(nanoseconds)
 
-	return time.Date(int(*dt.year), *dt.month, int(*dt.day), hour, minute, second, int(nanosecondDuration), time.Local), nil
+	var (
+		year, day int
+		month     time.Month
+	)
+	if dt.year != nil {
+		year = int(*dt.year)
+	}
+	if dt.dayOfYear != nil {
+		// offset from Jan 1st by the specified number of days
+		dayOffsetted := time.Date(int(*dt.year), time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
+		month = dayOffsetted.Month()
+		day = dayOffsetted.Day()
+	} else {
+		month = *dt.month
+		day = int(*dt.day)
+	}
+
+	return time.Date(year, month, day, hour, minute, second, int(nanosecondDuration), time.Local), nil
 }

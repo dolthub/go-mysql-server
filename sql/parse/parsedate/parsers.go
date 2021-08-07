@@ -47,7 +47,7 @@ func parseAmPm(result *datetime, chars string) (rest string, err error) {
 
 func parseWeedayAbbreviation(result *datetime, chars string) (rest string, err error) {
 	if len(chars) < 3 {
-		return "", err
+		return "", fmt.Errorf("expected at least 3 chars, got %d", len(chars))
 	}
 	weekday, ok := weekdayAbbrev(chars[:3])
 	if !ok {
@@ -59,7 +59,7 @@ func parseWeedayAbbreviation(result *datetime, chars string) (rest string, err e
 
 func parseMonthAbbreviation(result *datetime, chars string) (rest string, err error) {
 	if len(chars) < 3 {
-		return "", err
+		return "", fmt.Errorf("expected at least 3 chars, got %d", len(chars))
 	}
 	month, ok := monthAbbrev(chars[:3])
 	if !ok {
@@ -202,14 +202,8 @@ func parse24HourTimestamp(result *datetime, chars string) (rest string, err erro
 }
 
 func parseYear2DigitNumeric(result *datetime, chars string) (rest string, err error) {
-	if len(chars) < 2 {
-		return "", err
-	}
-	year, rest, err := takeNumber(chars)
+	year, rest, err := takeNumberAtMostNChars(2, chars)
 	if err != nil {
-		return "", err
-	}
-	if year >= 100 {
 		return "", err
 	}
 	if year >= 70 {
@@ -223,7 +217,7 @@ func parseYear2DigitNumeric(result *datetime, chars string) (rest string, err er
 
 func parseYear4DigitNumeric(result *datetime, chars string) (rest string, err error) {
 	if len(chars) < 4 {
-		return "", err
+		return "", fmt.Errorf("expected at least 4 chars, got %d", len(chars))
 	}
 	year, rest, err := takeNumber(chars)
 	if err != nil {
@@ -240,4 +234,13 @@ func parseDayNumericWithEnglishSuffix(result *datetime, chars string) (rest stri
 	}
 	result.day = &num
 	return trimPrefix(2, rest), nil
+}
+
+func parseDayOfYearNumeric(result *datetime, chars string) (rest string, err error) {
+	num, rest, err := takeNumber(chars)
+	if err != nil {
+		return "", err
+	}
+	result.dayOfYear = &num
+	return rest, nil
 }

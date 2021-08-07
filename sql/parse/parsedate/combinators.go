@@ -9,15 +9,32 @@ type predicate func(char rune) bool
 
 func isChar(a rune) predicate { return func(b rune) bool { return a == b } }
 
-func takeAll(str string, match predicate) (captured, rest string) {
+func takeAtMost(count int, str string, match predicate) (captured, rest string) {
 	var result strings.Builder
 	for i, ch := range str {
+		if i == count {
+			rest = trimPrefix(i, str)
+			break
+		}
 		if !match(ch) {
 			return result.String(), trimPrefix(i, str)
 		}
 		result.WriteRune(ch)
 	}
-	return result.String(), ""
+	return result.String(), rest
+}
+
+func takeAll(str string, match predicate) (captured, rest string) {
+	return takeAtMost(-1, str, match)
+}
+
+func takeNumberAtMostNChars(n int, chars string) (num uint, rest string, err error) {
+	numChars, rest := takeAtMost(n, chars, isNumeral)
+	parsedNum, err := strconv.ParseUint(numChars, 10, 32)
+	if err != nil {
+		return 0, "", err
+	}
+	return uint(parsedNum), rest, nil
 }
 
 func takeAllSpaces(str string) (rest string) {

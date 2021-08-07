@@ -17,7 +17,7 @@ import (
 //
 // Even more info: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_str-to-date
 func ParseDateWithFormat(date, format string) (time.Time, error) {
-	parsers, err := parseFormatter(format)
+	parsers, err := parsersFromFormatString(format)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -47,7 +47,7 @@ type failableParser struct {
 	wrapErr func(tokens string, err error) error
 }
 
-func parseFormatter(format string) ([]failableParser, error) {
+func parsersFromFormatString(format string) ([]failableParser, error) {
 	i := 0
 	parsers := make([]failableParser, 0, 0)
 	for {
@@ -76,6 +76,7 @@ func parseFormatter(format string) ([]failableParser, error) {
 					}
 				},
 			})
+			// both the '%' and the specifier are consumed
 			i += 2
 		} else {
 			parsers = append(parsers, failableParser{
@@ -88,6 +89,7 @@ func parseFormatter(format string) ([]failableParser, error) {
 					}
 				},
 			})
+			// just the literal was consumed,
 			i++
 		}
 	}
@@ -157,40 +159,33 @@ var formatSpecifiers = map[byte]Parser{
 	'b': parseMonthAbbreviation,
 	// %c	Month, numeric (0..12)
 	'c': parseMonthNumeric,
-	// %D Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
+	// %D	Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
 	'D': parseDayNumericWithEnglishSuffix,
 	// %d	Day of the month, numeric (00..31)
 	'd': parseDayOfMonthNumeric,
 	// %e	Day of the month, numeric (0..31)
 	'e': parseDayOfMonthNumeric,
-	// %f Microseconds (000000..999999)
+	// %f	Microseconds (000000..999999)
 	'f': parseMicrosecondsNumeric,
-	// %H			Hour (00..23)
+	// %H	Hour (00..23)
 	'H': parse24HourNumeric,
 	// %h	Hour (01..12)
 	'h': parse12HourNumeric,
-	// %I Hour (01..12)
+	// %I	Hour (01..12)
 	'I': parse12HourNumeric,
-	// %i			Minutes, numeric (00..59)
+	// %i	Minutes, numeric (00..59)
 	'i': parseMinuteNumeric,
 	// %j	Day of year (001..366)
-	'j': func(result *datetime, chars string) (rest string, err error) {
-		num, rest, err := takeNumber(chars)
-		if err != nil {
-			return "", err
-		}
-		result.dayOfYear = &num
-		return rest, nil
-	},
+	'j': parseDayOfYearNumeric,
 	// %k	Hour (0..23)
 	'k': parse24HourNumeric,
 	// %l	Hour (1..12)
 	'l': parse12HourNumeric,
-	// %M			Month name (January..December)
+	// %M	Month name (January..December)
 	'M': parseMonthName,
-	// %m Month, numeric (00..12)
+	// %m	Month, numeric (00..12)
 	'm': parseMonthNumeric,
-	// %p AM or PM
+	// %p	AM or PM
 	'p': parseAmPm,
 	// %r	Time, 12-hour (hh:mm:ss followed by AM or PM)
 	'r': parse12HourTimestamp,
