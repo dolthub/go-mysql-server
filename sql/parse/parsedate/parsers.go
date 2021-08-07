@@ -15,7 +15,7 @@ func trimPrefix(count int, str string) string {
 }
 
 func literalParser(literal byte) Parser {
-	return func(dt *datetime, chars string) (rest string, err error) {
+	return func(dt *datetime, chars string) (rest string, _ error) {
 		if len(chars) < 1 && literal != ' ' {
 			return "", fmt.Errorf("expected literal \"%c\", found empty string", literal)
 		}
@@ -30,7 +30,7 @@ func literalParser(literal byte) Parser {
 	}
 }
 
-func parseAmPm(result *datetime, chars string) (rest string, err error) {
+func parseAmPm(result *datetime, chars string) (rest string, _ error) {
 	if len(chars) < 2 {
 		return "", fmt.Errorf("expected > 2 chars, found %d", len(chars))
 	}
@@ -40,36 +40,36 @@ func parseAmPm(result *datetime, chars string) (rest string, err error) {
 	case "pm":
 		result.am = boolPtr(false)
 	default:
-		return "", err
+		return "", fmt.Errorf("expected AM or PM, got \"%s\"", chars[:2])
 	}
 	return trimPrefix(2, chars), nil
 }
 
-func parseWeedayAbbreviation(result *datetime, chars string) (rest string, err error) {
+func parseWeedayAbbreviation(result *datetime, chars string) (rest string, _ error) {
 	if len(chars) < 3 {
 		return "", fmt.Errorf("expected at least 3 chars, got %d", len(chars))
 	}
 	weekday, ok := weekdayAbbrev(chars[:3])
 	if !ok {
-		return "", err
+		return "", fmt.Errorf("invalid week abbreviation \"%s\"", chars[:3])
 	}
 	result.weekday = &weekday
 	return trimPrefix(3, chars), nil
 }
 
-func parseMonthAbbreviation(result *datetime, chars string) (rest string, err error) {
+func parseMonthAbbreviation(result *datetime, chars string) (rest string, _ error) {
 	if len(chars) < 3 {
 		return "", fmt.Errorf("expected at least 3 chars, got %d", len(chars))
 	}
 	month, ok := monthAbbrev(chars[:3])
 	if !ok {
-		return "", err
+		return "", fmt.Errorf("invalid month abbreviation \"%s\"", chars[:3])
 	}
 	result.month = &month
 	return trimPrefix(3, chars), nil
 }
 
-func parseMonthNumeric(result *datetime, chars string) (rest string, err error) {
+func parseMonthNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -79,7 +79,7 @@ func parseMonthNumeric(result *datetime, chars string) (rest string, err error) 
 	return rest, nil
 }
 
-func parseDayOfMonthNumeric(result *datetime, chars string) (rest string, err error) {
+func parseDayOfMonthNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -88,7 +88,7 @@ func parseDayOfMonthNumeric(result *datetime, chars string) (rest string, err er
 	return rest, nil
 }
 
-func parseMicrosecondsNumeric(result *datetime, chars string) (rest string, err error) {
+func parseMicrosecondsNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -97,7 +97,7 @@ func parseMicrosecondsNumeric(result *datetime, chars string) (rest string, err 
 	return rest, nil
 }
 
-func parse24HourNumeric(result *datetime, chars string) (rest string, err error) {
+func parse24HourNumeric(result *datetime, chars string) (rest string, _ error) {
 	hour, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -106,7 +106,7 @@ func parse24HourNumeric(result *datetime, chars string) (rest string, err error)
 	return rest, nil
 }
 
-func parse12HourNumeric(result *datetime, chars string) (rest string, err error) {
+func parse12HourNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -115,7 +115,7 @@ func parse12HourNumeric(result *datetime, chars string) (rest string, err error)
 	return rest, nil
 }
 
-func parseMinuteNumeric(result *datetime, chars string) (rest string, err error) {
+func parseMinuteNumeric(result *datetime, chars string) (rest string, _ error) {
 	min, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -124,16 +124,16 @@ func parseMinuteNumeric(result *datetime, chars string) (rest string, err error)
 	return rest, nil
 }
 
-func parseMonthName(result *datetime, chars string) (rest string, err error) {
+func parseMonthName(result *datetime, chars string) (rest string, _ error) {
 	month, charCount, ok := monthName(chars)
 	if !ok {
-		return "", err
+		return "", fmt.Errorf("unknown month name, got \"%s\"", chars)
 	}
 	result.month = &month
 	return trimPrefix(charCount, chars), nil
 }
 
-func parse12HourTimestamp(result *datetime, chars string) (rest string, err error) {
+func parse12HourTimestamp(result *datetime, chars string) (rest string, _ error) {
 	hour, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -165,7 +165,7 @@ func parse12HourTimestamp(result *datetime, chars string) (rest string, err erro
 	return rest, nil
 }
 
-func parseSecondsNumeric(result *datetime, chars string) (rest string, err error) {
+func parseSecondsNumeric(result *datetime, chars string) (rest string, _ error) {
 	sec, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -174,7 +174,7 @@ func parseSecondsNumeric(result *datetime, chars string) (rest string, err error
 	return rest, nil
 }
 
-func parse24HourTimestamp(result *datetime, chars string) (rest string, err error) {
+func parse24HourTimestamp(result *datetime, chars string) (rest string, _ error) {
 	hour, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -201,7 +201,7 @@ func parse24HourTimestamp(result *datetime, chars string) (rest string, err erro
 	return rest, err
 }
 
-func parseYear2DigitNumeric(result *datetime, chars string) (rest string, err error) {
+func parseYear2DigitNumeric(result *datetime, chars string) (rest string, _ error) {
 	year, rest, err := takeNumberAtMostNChars(2, chars)
 	if err != nil {
 		return "", err
@@ -215,7 +215,7 @@ func parseYear2DigitNumeric(result *datetime, chars string) (rest string, err er
 	return rest, nil
 }
 
-func parseYear4DigitNumeric(result *datetime, chars string) (rest string, err error) {
+func parseYear4DigitNumeric(result *datetime, chars string) (rest string, _ error) {
 	if len(chars) < 4 {
 		return "", fmt.Errorf("expected at least 4 chars, got %d", len(chars))
 	}
@@ -227,7 +227,7 @@ func parseYear4DigitNumeric(result *datetime, chars string) (rest string, err er
 	return rest, nil
 }
 
-func parseDayNumericWithEnglishSuffix(result *datetime, chars string) (rest string, err error) {
+func parseDayNumericWithEnglishSuffix(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err
@@ -236,7 +236,7 @@ func parseDayNumericWithEnglishSuffix(result *datetime, chars string) (rest stri
 	return trimPrefix(2, rest), nil
 }
 
-func parseDayOfYearNumeric(result *datetime, chars string) (rest string, err error) {
+func parseDayOfYearNumeric(result *datetime, chars string) (rest string, _ error) {
 	num, rest, err := takeNumber(chars)
 	if err != nil {
 		return "", err

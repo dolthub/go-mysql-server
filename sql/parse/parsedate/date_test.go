@@ -23,7 +23,6 @@ func TestParseDate(t *testing.T) {
 		{"reverse_with_spaces", " 2023 /Apr/ 01  ", "%Y/%b/%e", "2023-04-01 00:00:00 -0500 CDT"},
 		{"weekday", "Thu, Aug 5, 2021", "%a, %b %e, %Y", "2021-08-05 00:00:00 -0500 CDT"},
 
-		// with time
 		{"with_time", "Jan 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", "2000-01-03 22:23:00 -0600 CST"},
 		{"with_pm", "Jan 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
 		{"lowercase_pm", "Jan 3, 10:23:00 pm 2000", "%b %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
@@ -37,8 +36,8 @@ func TestParseDate(t *testing.T) {
 		{"month_number", "03: 3, 20", "%m: %e, %y", "2020-03-03 00:00:00 -0600 CST"},
 		{"month_name", "march: 3, 20", "%M: %e, %y", "2020-03-03 00:00:00 -0600 CST"},
 		{"two_digit_date", "january: 3, 20", "%M: %e, %y", "2020-01-03 00:00:00 -0600 CST"},
-		{"two_digit_date_2000", "january: 3, 70", "%M: %e, %y", "1970-01-03 00:00:00 -0600 CST"},
-		{"two_digit_date_1900", "january: 3, 69", "%M: %e, %y", "2069-01-03 00:00:00 -0600 CST"},
+		{"two_digit_date_2000", "september: 3, 70", "%M: %e, %y", "1970-09-03 00:00:00 -0500 CDT"},
+		{"two_digit_date_1900", "may: 3, 69", "%M: %e, %y", "2069-05-03 00:00:00 -0500 CDT"},
 
 		{"microseconds", "01/02/99 314", "%m/%e/%y %f", "1999-01-02 00:00:00.000314 -0600 CST"},
 		{"hour_number", "01/02/99 5:14", "%m/%e/%y %h:%i", "1999-01-02 05:14:00 -0600 CST"},
@@ -71,8 +70,6 @@ func setupTimezone(t *testing.T) {
 }
 
 func TestAmbiguous(t *testing.T) {
-	setupTimezone(t)
-
 	tests := [...]struct {
 		name          string
 		date          string
@@ -87,6 +84,28 @@ func TestAmbiguous(t *testing.T) {
 			_, err := ParseDateWithFormat(tt.date, tt.format)
 			require.Error(t, err)
 			require.Equal(t, tt.expectedError, err.Error())
+		})
+	}
+}
+
+func TestParseErr(t *testing.T) {
+	tests := [...]struct {
+		name          string
+		date          string
+		format        string
+		expectedError error
+	}{
+		{"simple", "a", "b", ParseLiteralErr{Literal: 'b', Tokens: "a"}},
+		{"bad_numeral", "abc", "%e", ParseSpecifierErr{Specifier: 'e', Tokens: "abc"}},
+		{"bad_month", "1 Jen, 2000", "%e %b, %Y", ParseSpecifierErr{Specifier: 'b', Tokens: "jen, 2000"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseDateWithFormat(tt.date, tt.format)
+			require.Error(t, err)
+			require.Equal(t, tt.expectedError.Error(), err.Error())
+			require.ErrorAs(t, err, &tt.expectedError)
 		})
 	}
 }

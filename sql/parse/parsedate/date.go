@@ -72,20 +72,21 @@ func parsersFromFormatString(format string) ([]failableParser, error) {
 					return ParseSpecifierErr{
 						Specifier: specifier,
 						Tokens:    tokens,
-						Err:       err,
+						err:       err,
 					}
 				},
 			})
 			// both the '%' and the specifier are consumed
 			i += 2
 		} else {
+			literal := format[i]
 			parsers = append(parsers, failableParser{
-				parser: literalParser(format[i]),
+				parser: literalParser(literal),
 				wrapErr: func(tokens string, err error) error {
 					return ParseLiteralErr{
-						Literal: format[i],
+						Literal: literal,
 						Tokens:  tokens,
-						Err:     err,
+						err:     err,
 					}
 				},
 			})
@@ -125,10 +126,10 @@ type datetime struct {
 type ParseSpecifierErr struct {
 	Specifier byte
 	Tokens    string
-	Err       error
+	err       error
 }
 
-func (p ParseSpecifierErr) Unwrap() error { return p.Err }
+func (p ParseSpecifierErr) Unwrap() error { return p.err }
 
 func (p ParseSpecifierErr) Error() string {
 	return fmt.Sprintf("specifier %%%c failed to parse \"%s\"", p.Specifier, p.Tokens)
@@ -140,10 +141,10 @@ func (p ParseSpecifierErr) Error() string {
 type ParseLiteralErr struct {
 	Literal byte
 	Tokens  string
-	Err     error
+	err     error
 }
 
-func (p ParseLiteralErr) Unwrap() error { return p.Err }
+func (p ParseLiteralErr) Unwrap() error { return p.err }
 
 func (p ParseLiteralErr) Error() string {
 	return fmt.Sprintf("literal %c not matched in \"%s\"", p.Literal, p.Tokens)
