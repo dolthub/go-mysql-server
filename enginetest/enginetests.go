@@ -3006,9 +3006,15 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, `ALTER TABLE t1 ADD INDEX myidx (v)`, []sql.Row{}, nil, nil)
 		TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`, []sql.Row{}, nil, nil)
 
+		// Assert the table is insertable
+		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a4", "a3")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
 		// Assert that an indexed based query still functions appropriately
 		TestQuery(t, harness, e, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
 			{"a2", "a3"},
+			{"a4", "a3"},
 		}, nil, nil)
 
 		// Assert that query plan this follows correctly uses an IndexedTableAccess
@@ -3033,6 +3039,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			{"a1", "a2"},
 			{"a2", "a3"},
 			{"a3", "a4"},
+			{"a4", "a3"},
 		}, nil, nil)
 
 		// Assert that a duplicate row causes an alter table error
