@@ -12,12 +12,12 @@ func validate(dt datetime) error {
 	if dt.day == nil {
 		if dt.month != nil {
 			// TODO: ensure this behaves as expected
-			return fmt.Errorf("day ambiguous")
+			return fmt.Errorf("day is ambiguous")
 		}
 		return nil
 	}
 	if dt.dayOfYear != nil && dt.day != nil {
-		return fmt.Errorf("day ambiguous")
+		return fmt.Errorf("day is ambiguous")
 	}
 	if (dt.dayOfYear != nil || dt.day != nil) && dt.year == nil {
 		return fmt.Errorf("year is ambiguous")
@@ -67,12 +67,20 @@ func evaluate(dt datetime) (time.Time, error) {
 	}
 	if dt.dayOfYear != nil {
 		// offset from Jan 1st by the specified number of days
-		dayOffsetted := time.Date(int(*dt.year), time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
+		dayOffsetted := time.Date(year, time.January, 0, 0, 0, 0, 0, time.Local).AddDate(0, 0, int(*dt.dayOfYear))
 		month = dayOffsetted.Month()
 		day = dayOffsetted.Day()
-	} else {
+	} else if dt.day != nil {
 		month = *dt.month
 		day = int(*dt.day)
+	}
+
+	// if timestamp only, add the duration to the 0 date
+	if year == 0 && day == 0 && month == 0 {
+		dur := time.Hour * time.Duration(hour)
+		dur += time.Minute * time.Duration(minute)
+		dur += time.Second*time.Duration(second) + nanosecondDuration
+		return time.Time{}.Add(dur), nil
 	}
 
 	return time.Date(year, month, day, hour, minute, second, int(nanosecondDuration), time.Local), nil

@@ -29,6 +29,7 @@ func TestParseDate(t *testing.T) {
 		{"weekday", "Tue, Aug 10, 2021", "%a, %b %e, %Y", "2021-08-10 00:00:00 -0500 CDT"},
 		{"weekday", "Wed, Aug 11, 2021", "%a, %b %e, %Y", "2021-08-11 00:00:00 -0500 CDT"},
 
+		{"time_only", "22:23:00", "%H:%i:%s", "0001-01-01 22:23:00 +0000 UTC"},
 		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", "2000-09-03 22:23:00 -0500 CDT"},
 		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", "2000-05-03 22:23:00 -0500 CDT"},
 		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %H:%i:%s %p %Y", "2000-07-03 22:23:00 -0500 CDT"},
@@ -83,7 +84,9 @@ func TestConversionFailure(t *testing.T) {
 		format        string
 		expectedError string
 	}{
-		{"simple", "Jan 3", "%b %e", "year is ambiguous"},
+		{"no_year", "Jan 3", "%b %e", "year is ambiguous"},
+		{"no_day", "Jan 2000", "%b %y", "day is ambiguous"},
+		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %y", "day is ambiguous"},
 		{"specifier_end_of_line", "Jan 3", "%b %e %", `"%" found at end of format string`},
 		{"unknown_format_specifier", "Jan 3", "%b %e %L", `unknown format specifier "L"`},
 	}
