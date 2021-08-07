@@ -49,7 +49,7 @@ type failableParser struct {
 
 func parsersFromFormatString(format string) ([]failableParser, error) {
 	i := 0
-	parsers := make([]failableParser, 0, 0)
+	parsers := make([]failableParser, 0)
 	for {
 		if len(format) <= i {
 			break

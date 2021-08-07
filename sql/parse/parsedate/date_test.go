@@ -17,20 +17,21 @@ func TestParseDate(t *testing.T) {
 		expected string
 	}{
 		{"simple", "Jan 3, 2000", "%b %e, %Y", "2000-01-03 00:00:00 -0600 CST"},
-		{"simple_with_spaces", "Jan  03 ,   2000", "%b %e, %Y", "2000-01-03 00:00:00 -0600 CST"},
-		{"simple_with_spaces_2", "Jan  15 ,   2000", "%b %e, %Y", "2000-01-15 00:00:00 -0600 CST"},
-		{"reverse", "2023/Apr/ 1", "%Y/%b/%e", "2023-04-01 00:00:00 -0500 CDT"},
+		{"simple_with_spaces", "Nov  03 ,   2000", "%b %e, %Y", "2000-11-03 00:00:00 -0600 CST"},
+		{"simple_with_spaces_2", "Dec  15 ,   2000", "%b %e, %Y", "2000-12-15 00:00:00 -0600 CST"},
+		{"reverse", "2023/Feb/ 1", "%Y/%b/%e", "2023-02-01 00:00:00 -0600 CST"},
 		{"reverse_with_spaces", " 2023 /Apr/ 01  ", "%Y/%b/%e", "2023-04-01 00:00:00 -0500 CDT"},
 		{"weekday", "Thu, Aug 5, 2021", "%a, %b %e, %Y", "2021-08-05 00:00:00 -0500 CDT"},
 
-		{"with_time", "Jan 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", "2000-01-03 22:23:00 -0600 CST"},
-		{"with_pm", "Jan 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
-		{"lowercase_pm", "Jan 3, 10:23:00 pm 2000", "%b %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
+		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", "2000-09-03 22:23:00 -0500 CDT"},
+		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", "2000-05-03 22:23:00 -0500 CDT"},
+		{"lowercase_pm", "Jul 3, 10:23:00 pm 2000", "%b %e, %H:%i:%s %p %Y", "2000-07-03 22:23:00 -0500 CDT"},
+		{"with_am", "Mar 3, 10:23:00 am 2000", "%b %e, %H:%i:%s %p %Y", "2000-03-03 10:23:00 -0600 CST"},
 
 		{"month_number", "1 3, 10:23:00 pm 2000", "%c %e, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
 
-		{"day_with_suffix", "Jan 3rd, 10:23:00 pm 2000", "%b %D, %H:%i:%s %p %Y", "2000-01-03 22:23:00 -0600 CST"},
-		{"day_with_suffix_2", "Jan 21st, 10:23:00 pm 2000", "%b %D, %H:%i:%s %p %Y", "2000-01-21 22:23:00 -0600 CST"},
+		{"day_with_suffix", "Jun 3rd, 10:23:00 pm 2000", "%b %D, %H:%i:%s %p %Y", "2000-06-03 22:23:00 -0500 CDT"},
+		{"day_with_suffix_2", "Oct 21st, 10:23:00 pm 2000", "%b %D, %H:%i:%s %p %Y", "2000-10-21 22:23:00 -0500 CDT"},
 		{"with_timestamp", "01/02/2003, 12:13:14", "%c/%d/%Y, %T", "2003-01-02 12:13:14 -0600 CST"},
 
 		{"month_number", "03: 3, 20", "%m: %e, %y", "2020-03-03 00:00:00 -0600 CST"},
@@ -93,7 +94,7 @@ func TestParseErr(t *testing.T) {
 		name          string
 		date          string
 		format        string
-		expectedError error
+		expectedError interface{}
 	}{
 		{"simple", "a", "b", ParseLiteralErr{Literal: 'b', Tokens: "a"}},
 		{"bad_numeral", "abc", "%e", ParseSpecifierErr{Specifier: 'e', Tokens: "abc"}},
@@ -104,7 +105,7 @@ func TestParseErr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ParseDateWithFormat(tt.date, tt.format)
 			require.Error(t, err)
-			require.Equal(t, tt.expectedError.Error(), err.Error())
+			require.Equal(t, tt.expectedError.(error).Error(), err.Error())
 			require.ErrorAs(t, err, &tt.expectedError)
 		})
 	}
