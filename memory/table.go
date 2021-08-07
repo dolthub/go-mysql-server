@@ -645,7 +645,7 @@ func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
 					for _, i := range pkColIdxes {
 						vals[i] = row[pkColIdxes[i]]
 					}
-					return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
+					return sql.ErrDuplicateEntry.New(fmt.Sprint(vals))
 				}
 			}
 		}
@@ -1272,9 +1272,11 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
 		}
 	}
 
+	potentialSchema := t.schema
+
 	for _, newCol := range columns {
 		found := false
-		for _, currCol := range t.schema {
+		for _, currCol := range potentialSchema {
 			if strings.ToLower(currCol.Name) == strings.ToLower(newCol) {
 				currCol.PrimaryKey = true
 				found = true
@@ -1286,8 +1288,42 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
 		}
 	}
 
+	newTable, err := insertIntoNewTable(t, potentialSchema)
+	if err != nil {
+		return err
+	}
+
+	t.schema = potentialSchema
+	t.partitions = newTable.partitions
+	t.keys = newTable.keys
+
 	return nil
 }
+
+func insertIntoNewTable(t *Table, newSch sql.Schema) (*Table, error) {
+	newTable := NewPartitionedTable(t.name, newSch, len(t.partitions))
+	var pkColIdxes []int
+	for _, column := range t.schema {
+		if column.PrimaryKey {
+			idx := t.schema.IndexOf(column.Name, t.name)
+			pkColIdxes = append(pkColIdxes, idx)
+		}
+	}
+
+	if len(pkColIdxes) > 0 {
+		for _, partition := range t.partitions {
+			for _, partitionRow := range partition {
+				err := newTable.Insert(sql.NewEmptyContext(), partitionRow)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	return newTable, nil
+}
+
 
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {

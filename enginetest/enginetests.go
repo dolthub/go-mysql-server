@@ -3019,6 +3019,25 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
 	})
+
+	wrapInTransaction(t, db, harness, func() {
+		TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
+
+		// Assert that the table is insertable
+		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+
+		// Assert that a duplicate row causes an alter table error
+		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrDuplicateEntry)
+	})
 }
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.
