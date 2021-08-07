@@ -1324,7 +1324,6 @@ func insertIntoNewTable(t *Table, newSch sql.Schema) (*Table, error) {
 	return newTable, nil
 }
 
-
 // DropPrimaryKey implements the PrimaryKeyAlterableTable
 func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 	// Must drop auto increment property before dropping primary key

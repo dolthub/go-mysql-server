@@ -6165,8 +6165,8 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErrStr: `unable to cast map[string]interface {}{"a":"abc"} of type map[string]interface {} to float64`,
 	},
 	{
-		Query:			`alter table mytable add primary key (s)`,
-		ExpectedErr:     sql.ErrMultiplePrimaryKeyDefined,
+		Query:       `alter table mytable add primary key (s)`,
+		ExpectedErr: sql.ErrMultiplePrimaryKeyDefined,
 	},
 }
 
