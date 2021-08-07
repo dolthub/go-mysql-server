@@ -22,6 +22,12 @@ func TestParseDate(t *testing.T) {
 		{"reverse", "2023/Feb/ 1", "%Y/%b/%e", "2023-02-01 00:00:00 -0600 CST"},
 		{"reverse_with_spaces", " 2023 /Apr/ 01  ", "%Y/%b/%e", "2023-04-01 00:00:00 -0500 CDT"},
 		{"weekday", "Thu, Aug 5, 2021", "%a, %b %e, %Y", "2021-08-05 00:00:00 -0500 CDT"},
+		{"weekday", "Fri, Aug 6, 2021", "%a, %b %e, %Y", "2021-08-06 00:00:00 -0500 CDT"},
+		{"weekday", "Sat, Aug 7, 2021", "%a, %b %e, %Y", "2021-08-07 00:00:00 -0500 CDT"},
+		{"weekday", "Sun, Aug 8, 2021", "%a, %b %e, %Y", "2021-08-08 00:00:00 -0500 CDT"},
+		{"weekday", "Mon, Aug 9, 2021", "%a, %b %e, %Y", "2021-08-09 00:00:00 -0500 CDT"},
+		{"weekday", "Tue, Aug 10, 2021", "%a, %b %e, %Y", "2021-08-10 00:00:00 -0500 CDT"},
+		{"weekday", "Wed, Aug 11, 2021", "%a, %b %e, %Y", "2021-08-11 00:00:00 -0500 CDT"},
 
 		{"with_time", "Sep 3, 22:23:00 2000", "%b %e, %H:%i:%s %Y", "2000-09-03 22:23:00 -0500 CDT"},
 		{"with_pm", "May 3, 10:23:00 PM 2000", "%b %e, %H:%i:%s %p %Y", "2000-05-03 22:23:00 -0500 CDT"},
@@ -70,7 +76,7 @@ func setupTimezone(t *testing.T) {
 	t.Cleanup(func() { time.Local = old })
 }
 
-func TestAmbiguous(t *testing.T) {
+func TestConversionFailure(t *testing.T) {
 	tests := [...]struct {
 		name          string
 		date          string
@@ -78,6 +84,8 @@ func TestAmbiguous(t *testing.T) {
 		expectedError string
 	}{
 		{"simple", "Jan 3", "%b %e", "year is ambiguous"},
+		{"specifier_end_of_line", "Jan 3", "%b %e %", `"%" found at end of format string`},
+		{"unknown_format_specifier", "Jan 3", "%b %e %L", `unknown format specifier "L"`},
 	}
 
 	for _, tt := range tests {
@@ -99,6 +107,7 @@ func TestParseErr(t *testing.T) {
 		{"simple", "a", "b", ParseLiteralErr{Literal: 'b', Tokens: "a"}},
 		{"bad_numeral", "abc", "%e", ParseSpecifierErr{Specifier: 'e', Tokens: "abc"}},
 		{"bad_month", "1 Jen, 2000", "%e %b, %Y", ParseSpecifierErr{Specifier: 'b', Tokens: "jen, 2000"}},
+		{"bad_weekday", "Ten 1 Jan, 2000", "%a %e %b, %Y", ParseSpecifierErr{Specifier: 'a', Tokens: "ten 1 jan, 2000"}},
 	}
 
 	for _, tt := range tests {
@@ -106,7 +115,7 @@ func TestParseErr(t *testing.T) {
 			_, err := ParseDateWithFormat(tt.date, tt.format)
 			require.Error(t, err)
 			require.Equal(t, tt.expectedError.(error).Error(), err.Error())
-			require.ErrorAs(t, err, &tt.expectedError)
+			require.IsType(t, err, tt.expectedError)
 		})
 	}
 }
