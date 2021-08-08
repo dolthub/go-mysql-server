@@ -378,7 +378,11 @@ func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
 		Existing: existing,
 	}
 
-	return ErrDuplicateEntry.Wrap(ue)
+	if isPK {
+		return ErrPrimaryKeyViolation.Wrap(ue)
+	} else {
+		return ErrUniqueKeyViolation.Wrap(ue)
+	}
 }
 
 func (ue UniqueKeyError) Error() string {

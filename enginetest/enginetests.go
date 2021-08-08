@@ -3043,7 +3043,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		}, nil, nil)
 
 		// Assert that a duplicate row causes an alter table error
-		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrDuplicateEntry)
+		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
 	})
 }
 
