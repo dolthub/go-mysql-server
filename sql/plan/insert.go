@@ -285,19 +285,22 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		//TODO: how does this interact with triggers?
 		for {
 			if err := i.replacer.Insert(i.ctx, row); err != nil {
-				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
+				if !sql.ErrDuplicateEntry.Is(err) && !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
 					_ = i.rowSource.Close(i.ctx)
 					return nil, err
 				}
 
-				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-				if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
-					_ = i.rowSource.Close(i.ctx)
-					return nil, err
-				}
-				// the row had to be deleted, write the values into the toReturn row
-				for i := 0; i < len(ue.Existing); i++ {
-					toReturn[i] = ue.Existing[i]
+				// TODO: Do better with this error handling
+				ue, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError)
+				if ok {
+					if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
+						_ = i.rowSource.Close(i.ctx)
+						return nil, err
+					}
+					// the row had to be deleted, write the values into the toReturn row
+					for i := 0; i < len(ue.Existing); i++ {
+						toReturn[i] = ue.Existing[i]
+					}
 				}
 			} else {
 				break
