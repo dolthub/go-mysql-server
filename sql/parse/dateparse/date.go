@@ -32,9 +32,9 @@ func ParseDateWithFormat(date, format string) (time.Time, error) {
 	target := date
 	for _, parser := range parsers {
 		target = takeAllSpaces(target)
-		rest, err := parser.parser(&result, target)
+		rest, err := parser(&result, target)
 		if err != nil {
-			return time.Time{}, parser.wrapErr(target, err)
+			return time.Time{}, err
 		}
 		target = rest
 	}
@@ -42,14 +42,9 @@ func ParseDateWithFormat(date, format string) (time.Time, error) {
 	return evaluate(result)
 }
 
-type failableParser struct {
-	parser  parser
-	wrapErr func(tokens string, err error) error
-}
-
-func parsersFromFormatString(format string) ([]failableParser, error) {
+func parsersFromFormatString(format string) ([]parser, error) {
 	i := 0
-	parsers := make([]failableParser, 0)
+	parsers := make([]parser, 0)
 	for {
 		if len(format) <= i {
 			break
@@ -61,34 +56,38 @@ func parsersFromFormatString(format string) ([]failableParser, error) {
 			specifier := format[i+1]
 			parser, ok := formatSpecifiers[format[i+1]]
 			if !ok {
-				return nil, fmt.Errorf("unknown format specifier \"%c\"", format[i+1])
+				return nil, fmt.Errorf("unknown format specifier \"%c\"", specifier)
 			}
 			if parser == nil {
-				return nil, fmt.Errorf("format specifier \"%c\" not yet supported", format[i+1])
+				return nil, fmt.Errorf("format specifier \"%c\" not yet supported", specifier)
 			}
-			parsers = append(parsers, failableParser{
-				parser: parser,
-				wrapErr: func(tokens string, err error) error {
-					return ParseSpecifierErr{
+			// wrap the parser in an error handler to provide rich error types
+			parsers = append(parsers, func(result *datetime, chars string) (string, error) {
+				rest, err := parser(result, chars)
+				if err != nil {
+					return "", ParseSpecifierErr{
 						Specifier: specifier,
-						Tokens:    tokens,
+						Tokens:    chars,
 						err:       err,
 					}
-				},
+				}
+				return rest, nil
 			})
 			// both the '%' and the specifier are consumed
 			i += 2
 		} else {
 			literal := format[i]
-			parsers = append(parsers, failableParser{
-				parser: literalParser(literal),
-				wrapErr: func(tokens string, err error) error {
-					return ParseLiteralErr{
+			// wrap the parser in an error handler to provide rich error types
+			parsers = append(parsers, func(result *datetime, chars string) (string, error) {
+				rest, err := literalParser(literal)(result, chars)
+				if err != nil {
+					return "", ParseLiteralErr{
 						Literal: literal,
-						Tokens:  tokens,
+						Tokens:  chars,
 						err:     err,
 					}
-				},
+				}
+				return rest, nil
 			})
 			// just the literal was consumed,
 			i++

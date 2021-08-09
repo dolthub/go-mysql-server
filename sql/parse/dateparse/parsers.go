@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+// parser defines a function that processes a string and returns the
+// remaining characters unconsumed by the given parser.
+//
+// The data parsed from the consumed characters should be
+// written to the `datetime` struct.
 type parser func(result *datetime, chars string) (rest string, err error)
 
 func trimPrefix(count int, str string) string {
