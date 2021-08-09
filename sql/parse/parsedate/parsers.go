@@ -134,7 +134,7 @@ func parseMonthName(result *datetime, chars string) (rest string, _ error) {
 }
 
 func parse12HourTimestamp(result *datetime, chars string) (rest string, _ error) {
-	hour, rest, err := takeNumber(chars)
+	hour, rest, err := takeNumberAtMostNChars(2, chars)
 	if err != nil {
 		return "", err
 	}
@@ -142,7 +142,7 @@ func parse12HourTimestamp(result *datetime, chars string) (rest string, _ error)
 	if err != nil {
 		return "", err
 	}
-	min, rest, err := takeNumber(rest)
+	min, rest, err := takeNumberAtMostNChars(2, rest)
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +150,7 @@ func parse12HourTimestamp(result *datetime, chars string) (rest string, _ error)
 	if err != nil {
 		return "", err
 	}
-	sec, rest, err := takeNumber(rest)
+	sec, rest, err := takeNumberAtMostNChars(2, rest)
 	if err != nil {
 		return "", err
 	}
@@ -175,7 +175,7 @@ func parseSecondsNumeric(result *datetime, chars string) (rest string, _ error) 
 }
 
 func parse24HourTimestamp(result *datetime, chars string) (rest string, _ error) {
-	hour, rest, err := takeNumber(chars)
+	hour, rest, err := takeNumberAtMostNChars(2, chars)
 	if err != nil {
 		return "", err
 	}
@@ -183,7 +183,7 @@ func parse24HourTimestamp(result *datetime, chars string) (rest string, _ error)
 	if err != nil {
 		return "", err
 	}
-	minute, rest, err := takeNumber(rest)
+	minute, rest, err := takeNumberAtMostNChars(2, rest)
 	if err != nil {
 		return "", err
 	}
@@ -191,7 +191,7 @@ func parse24HourTimestamp(result *datetime, chars string) (rest string, _ error)
 	if err != nil {
 		return "", err
 	}
-	seconds, rest, err := takeNumber(rest)
+	seconds, rest, err := takeNumberAtMostNChars(2, rest)
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,7 @@
 package parsedate
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -89,6 +90,8 @@ func TestConversionFailure(t *testing.T) {
 		{"day_of_month_and_day_of_year", "Jan 3, 100 2000", "%b %e, %j %y", "day is ambiguous"},
 		{"specifier_end_of_line", "Jan 3", "%b %e %", `"%" found at end of format string`},
 		{"unknown_format_specifier", "Jan 3", "%b %e %L", `unknown format specifier "L"`},
+		{"invalid_number_hour", "0021:12:14", "%T", `specifier %T failed to parse "0021:12:14": expected literal ":", got "2"`},
+		{"invalid_number_hour_2", "0012:12:14", "%r", `specifier %r failed to parse "0012:12:14": expected literal ":", got "1"`},
 	}
 
 	for _, tt := range tests {
@@ -107,10 +110,18 @@ func TestParseErr(t *testing.T) {
 		format        string
 		expectedError interface{}
 	}{
-		{"simple", "a", "b", ParseLiteralErr{Literal: 'b', Tokens: "a"}},
-		{"bad_numeral", "abc", "%e", ParseSpecifierErr{Specifier: 'e', Tokens: "abc"}},
-		{"bad_month", "1 Jen, 2000", "%e %b, %Y", ParseSpecifierErr{Specifier: 'b', Tokens: "jen, 2000"}},
-		{"bad_weekday", "Ten 1 Jan, 2000", "%a %e %b, %Y", ParseSpecifierErr{Specifier: 'a', Tokens: "ten 1 jan, 2000"}},
+		{"simple", "a", "b", ParseLiteralErr{
+			Literal: 'b', Tokens: "a", err: fmt.Errorf(`expected literal "b", got "a"`)},
+		},
+		{"bad_numeral", "abc", "%e", ParseSpecifierErr{
+			Specifier: 'e', Tokens: "abc", err: fmt.Errorf("strconv.ParseUint: parsing \"\": invalid syntax")},
+		},
+		{"bad_month", "1 Jen, 2000", "%e %b, %Y", ParseSpecifierErr{
+			Specifier: 'b', Tokens: "jen, 2000", err: fmt.Errorf(`invalid month abbreviation "jen"`)},
+		},
+		{"bad_weekday", "Ten 1 Jan, 2000", "%a %e %b, %Y", ParseSpecifierErr{
+			Specifier: 'a', Tokens: "ten 1 jan, 2000", err: fmt.Errorf(`invalid week abbreviation "ten"`)},
+		},
 	}
 
 	for _, tt := range tests {

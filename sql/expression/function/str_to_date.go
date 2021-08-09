@@ -39,12 +39,11 @@ func (s StringToDatetime) String() string {
 
 // Type returns the expression type.
 func (s StringToDatetime) Type() sql.Type {
-	return sql.Datetime // TODO: maybe sql.Date?
+	return sql.Datetime
 }
 
 // IsNullable returns whether the expression can be null.
 func (s StringToDatetime) IsNullable() bool {
-	// TODO: verify correctness
 	return true
 }
 
@@ -68,7 +67,11 @@ func (s StringToDatetime) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		// TODO: improve this error
 		return nil, sql.ErrInvalidType.New(fmt.Sprintf("%T", formatStr))
 	}
-	return parsedate.ParseDateWithFormat(dateStr, formatStr)
+	goTime, err := parsedate.ParseDateWithFormat(dateStr, formatStr)
+	if err != nil {
+		return sql.Null, nil
+	}
+	return goTime, nil
 }
 
 // Children returns the children expressions of this expression.

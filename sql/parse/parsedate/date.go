@@ -132,7 +132,7 @@ type ParseSpecifierErr struct {
 func (p ParseSpecifierErr) Unwrap() error { return p.err }
 
 func (p ParseSpecifierErr) Error() string {
-	return fmt.Sprintf("specifier %%%c failed to parse \"%s\"", p.Specifier, p.Tokens)
+	return fmt.Sprintf("specifier %%%c failed to parse \"%s\": %s", p.Specifier, p.Tokens, p.err.Error())
 }
 
 // ParseLiteralErr defines a error when attempting to parse
@@ -147,7 +147,7 @@ type ParseLiteralErr struct {
 func (p ParseLiteralErr) Unwrap() error { return p.err }
 
 func (p ParseLiteralErr) Error() string {
-	return fmt.Sprintf("literal %c not matched in \"%s\"", p.Literal, p.Tokens)
+	return fmt.Sprintf("literal %c not matched in \"%s\": %s", p.Literal, p.Tokens, p.err.Error())
 }
 
 // formatSpecifiers defines the formatting directives for parsing and formatting dates.
