@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse/parsedate"
+	"github.com/dolthub/go-mysql-server/sql/parse/dateparse"
 )
 
 // NewStrToDate constructs a new function expression from the given child expressions.
@@ -67,7 +67,7 @@ func (s StringToDatetime) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		// TODO: improve this error
 		return nil, sql.ErrInvalidType.New(fmt.Sprintf("%T", formatStr))
 	}
-	goTime, err := parsedate.ParseDateWithFormat(dateStr, formatStr)
+	goTime, err := dateparse.ParseDateWithFormat(dateStr, formatStr)
 	if err != nil {
 		return sql.Null, nil
 	}
