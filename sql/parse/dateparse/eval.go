@@ -1,4 +1,4 @@
-package parsedate
+package dateparse
 
 import (
 	"fmt"

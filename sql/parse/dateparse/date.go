@@ -1,4 +1,4 @@
-package parsedate
+package dateparse
 
 import (
 	"fmt"
@@ -43,7 +43,7 @@ func ParseDateWithFormat(date, format string) (time.Time, error) {
 }
 
 type failableParser struct {
-	parser  Parser
+	parser  parser
 	wrapErr func(tokens string, err error) error
 }
 
@@ -153,7 +153,7 @@ func (p ParseLiteralErr) Error() string {
 // formatSpecifiers defines the formatting directives for parsing and formatting dates.
 //
 // Reference: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format
-var formatSpecifiers = map[byte]Parser{
+var formatSpecifiers = map[byte]parser{
 	// %a	Abbreviated weekday name (Sun..Sat)
 	'a': parseWeedayAbbreviation,
 	// %b	Abbreviated month name (Jan..Dec)

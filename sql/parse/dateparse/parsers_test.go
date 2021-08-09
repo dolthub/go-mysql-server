@@ -1,4 +1,4 @@
-package parsedate
+package dateparse
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ func TestParsers(t *testing.T) {
 	tests := [...]struct {
 		name             string
 		chars            string
-		parser           Parser
+		parser           parser
 		expectedRest     string
 		expectedDatetime datetime
 	}{
@@ -33,7 +33,7 @@ func TestParserErr(t *testing.T) {
 	tests := [...]struct {
 		name        string
 		chars       string
-		parser      Parser
+		parser      parser
 		expectedErr string
 	}{
 		{"24_timestamp", "13:12", parse24HourTimestamp, `expected literal ":", found empty string`},

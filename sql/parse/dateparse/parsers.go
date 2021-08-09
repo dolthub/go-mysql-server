@@ -1,11 +1,11 @@
-package parsedate
+package dateparse
 
 import (
 	"fmt"
 	"time"
 )
 
-type Parser func(result *datetime, chars string) (rest string, err error)
+type parser func(result *datetime, chars string) (rest string, err error)
 
 func trimPrefix(count int, str string) string {
 	if len(str) > count {
@@ -14,7 +14,7 @@ func trimPrefix(count int, str string) string {
 	return ""
 }
 
-func literalParser(literal byte) Parser {
+func literalParser(literal byte) parser {
 	return func(dt *datetime, chars string) (rest string, _ error) {
 		if len(chars) < 1 && literal != ' ' {
 			return "", fmt.Errorf("expected literal \"%c\", found empty string", literal)
