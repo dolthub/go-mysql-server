@@ -4,9 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
 )
 
 func TestStrToDate(t *testing.T) {
@@ -42,9 +43,9 @@ func TestStrToDateFailure(t *testing.T) {
 	setupTimezone(t)
 
 	testCases := [...]struct {
-		name     string
-		dateStr  string
-		fmtStr   string
+		name    string
+		dateStr string
+		fmtStr  string
 	}{
 		{"standard", "BadMonth 26, 2000 2:13:15", "%b %e, %Y %T"},
 	}
