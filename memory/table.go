@@ -1264,7 +1264,7 @@ Top:
 }
 
 // CreatePrimaryKey implements the PrimaryKeyAlterableTable
-func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
+func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
 	// First check that a primary key already exists
 	for _, col := range t.schema {
 		if col.PrimaryKey {
@@ -1277,14 +1277,14 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
 	for _, newCol := range columns {
 		found := false
 		for _, currCol := range potentialSchema {
-			if strings.ToLower(currCol.Name) == strings.ToLower(newCol) {
+			if strings.ToLower(currCol.Name) == strings.ToLower(newCol.Name) {
 				currCol.PrimaryKey = true
 				found = true
 			}
 		}
 
 		if !found {
-			return sql.ErrKeyColumnDoesNotExist.New(newCol)
+			return sql.ErrKeyColumnDoesNotExist.New(newCol.Name)
 		}
 	}
 

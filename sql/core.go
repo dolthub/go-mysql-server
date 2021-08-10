@@ -351,7 +351,7 @@ type PrimaryKeyAlterableTable interface {
 	Table
 	// CreatePrimaryKey creates a primary key for this table, using the provided parameters.
 	// Returns an error if the new primary key set is not compatible with the current table data.
-	CreatePrimaryKey(ctx *Context, columns []string) error
+	CreatePrimaryKey(ctx *Context, columns []IndexColumn) error
 	// DropPrimaryKey drops a primary key on a table. Returns an error if that table does not have a key.
 	DropPrimaryKey(ctx *Context) error
 }
