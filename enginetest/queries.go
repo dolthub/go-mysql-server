@@ -6166,7 +6166,7 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,
-		ExpectedErr: sql.ErrMultiplePrimaryKeyDefined,
+		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
 	},
 }
 

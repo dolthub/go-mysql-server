@@ -2968,7 +2968,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	e.AddDatabase(db)
 
 	wrapInTransaction(t, db, harness, func() {
-		TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
 
 		// Assert the table is still queryable
 		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
@@ -2994,7 +2994,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		}, nil, nil)
 
 		// Add back a new primary key and assert the table is queryable
-		TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, []sql.Row{}, nil, nil)
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
 		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
 			{"a1", "a2"},
 			{"a2", "a3"},
@@ -3002,9 +3002,9 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		}, nil, nil)
 
 		// Drop the original Pk, create an index, create a new primary key
-		TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
-		TestQuery(t, harness, e, `ALTER TABLE t1 ADD INDEX myidx (v)`, []sql.Row{}, nil, nil)
-		TestQuery(t, harness, e, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`, []sql.Row{}, nil, nil)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD INDEX myidx (v)`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`)
 
 		// Assert the table is insertable
 		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a4", "a3")`, []sql.Row{
@@ -3027,7 +3027,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	})
 
 	wrapInTransaction(t, db, harness, func() {
-		TestQuery(t, harness, e, `ALTER TABLE t1 DROP PRIMARY KEY`, []sql.Row{}, nil, nil)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
 
 		// Assert that the table is insertable
 		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{

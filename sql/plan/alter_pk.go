@@ -106,6 +106,10 @@ func (a AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	switch a.Action {
 	case PrimaryKeyAction_Create:
+		if hasPrimaryKeys(pkAlterable) {
+			return sql.RowsToRowIter(), sql.ErrMultiplePrimaryKeysDefined.New()
+		}
+
 		cols := make([]string, len(a.Columns))
 		for i, col := range a.Columns {
 			cols[i] = col.Name
@@ -121,6 +125,16 @@ func (a AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	return sql.RowsToRowIter(), nil
+}
+
+func hasPrimaryKeys(table sql.Table) bool {
+	for _, c := range table.Schema() {
+		if c.PrimaryKey {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (a AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {

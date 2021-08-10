@@ -294,13 +294,13 @@ var (
 	// CopyTableData method without supporting the interface
 	ErrTableCopyingNotSupported = errors.NewKind("error: Table copying not supported")
 
-	// ErrMultiplePrimaryKeyDefined is returned when a table invokes CreatePrimaryKey with a primary key already
+	// ErrMultiplePrimaryKeysDefined is returned when a table invokes CreatePrimaryKey with a primary key already
 	// defined.
-	ErrMultiplePrimaryKeyDefined = errors.NewKind("error: Multiple primary key defined")
+	ErrMultiplePrimaryKeysDefined = errors.NewKind("error: Multiple primary keys defined")
 
 	// ErrWrongAutoKey is returned when a table invokes DropPrimaryKey without first removing the auto increment property
 	// (if it exists) on it.
-	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition; there can be only one auto column and it must be defined as a key")
+	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition: there can be only one auto column and it must be defined as a key")
 
 	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
 	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
@@ -348,7 +348,7 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERDupEntry
 	case ErrInvalidJSONText.Is(err):
 		code = 3141 // TODO: Needs to be added to vitess
-	case ErrMultiplePrimaryKeyDefined.Is(err):
+	case ErrMultiplePrimaryKeysDefined.Is(err):
 		code = mysql.ERMultiplePriKey
 	case ErrWrongAutoKey.Is(err):
 		code = mysql.ERWrongAutoKey

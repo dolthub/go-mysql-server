@@ -1268,7 +1268,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []string) error {
 	// First check that a primary key already exists
 	for _, col := range t.schema {
 		if col.PrimaryKey {
-			return sql.ErrMultiplePrimaryKeyDefined.New()
+			return sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 	}
 
