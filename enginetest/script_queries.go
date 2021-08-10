@@ -1114,6 +1114,62 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Issue #499",
+		SetUpScript: []string{
+			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
+			`INSERT INTO test VALUES 
+			("2021-07-04 10:00:00", 1.0),
+			("2021-07-03 10:00:00", 2.0),
+			("2021-07-02 10:00:00", 3.0),
+			("2021-07-01 10:00:00", 4.0);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT
+				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
+				avg(value) AS "value"
+				FROM test
+				GROUP BY 1
+				ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
+				Expected: []sql.Row{
+					{1625133600, 4.0},
+					{1625220000, 3.0},
+					{1625306400, 2.0},
+					{1625392800, 1.0},
+				},
+			},
+		},
+	},
+	{
+		Name: "WHERE clause considers ENUM/SET types for comparisons",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
+			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{

@@ -7,6 +7,7 @@ on:
 jobs:
   format:
     name: Format PR
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-18.04
     steps:
       - name: Setup Go 1.x
@@ -57,6 +58,28 @@ jobs:
         id: check_format
         run: |
           ./check_repo.sh
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          CHANGE_TARGET: ${{ github.base_ref }}
+  alt-verify:
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    name: Verify format
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Setup Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+      - uses: actions/checkout@v2
+      - name: Check all
+        id: check_format
+        run: |
+          ./check_repo.sh
+          code=$(echo $?)
+          if [ "$code" != 0 ]; then
+            echo "Please run ./format_repo.sh to fix this pull request's formatting"
+          fi
         env:
           BRANCH_NAME: ${{ github.head_ref }}
           CHANGE_TARGET: ${{ github.base_ref }}

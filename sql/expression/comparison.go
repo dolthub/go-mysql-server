@@ -62,10 +62,33 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(left, right)
 	}
 
+	// ENUM and SET must be considered when doing comparisons, as they can match arbitrary strings to numbers based on
+	// their elements. For other types it seems there are other considerations, therefore we only take the type for
+	// ENUM and SET, and default to direct literal comparisons for all other types. Eventually we will need to make our
+	// comparisons context-sensitive, as all comparisons should probably be based on the column/variable if present.
+	// Until then, this is a workaround specifically for ENUM and SET.
 	var compareType sql.Type
-	left, right, compareType, err = c.castLeftAndRight(left, right)
-	if err != nil {
-		return 0, err
+	switch c.Left().(type) {
+	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
+		compareType = c.Left().Type()
+	default:
+		switch c.Right().(type) {
+		case *GetField, *UserVar, *SystemVar, *ProcedureParam:
+			compareType = c.Right().Type()
+		}
+	}
+	if compareType != nil {
+		_, isEnum := compareType.(sql.EnumType)
+		_, isSet := compareType.(sql.SetType)
+		if !isEnum && !isSet {
+			compareType = nil
+		}
+	}
+	if compareType == nil {
+		left, right, compareType, err = c.castLeftAndRight(left, right)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return compareType.Compare(left, right)
