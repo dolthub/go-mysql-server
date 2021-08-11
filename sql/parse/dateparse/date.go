@@ -42,76 +42,88 @@ func ParseDateWithFormat(date, format string) (time.Time, error) {
 	return evaluate(result)
 }
 
+// Convert the user-defined format string into a slice of parser functions
+// which will later process the date string.
+//
+// Example format string: "%H:%i:%s".
 func parsersFromFormatString(format string) ([]parser, error) {
-	i := 0
-	parsers := make([]parser, 0)
-	for {
-		if len(format) <= i {
-			break
-		}
-		if format[i] == '%' {
+	parsers := make([]parser, 0, len(format))
+	for i := 0; i < len(format); i++ {
+		char := format[i]
+		if char == '%' {
 			if len(format) <= i+1 {
 				return nil, fmt.Errorf("\"%%\" found at end of format string")
 			}
 			specifier := format[i+1]
-			parser, ok := formatSpecifiers[format[i+1]]
+			parser, ok := formatSpecifiers[specifier]
 			if !ok {
 				return nil, fmt.Errorf("unknown format specifier \"%c\"", specifier)
 			}
 			if parser == nil {
 				return nil, fmt.Errorf("format specifier \"%c\" not yet supported", specifier)
 			}
-			// wrap the parser in an error handler to provide rich error types
-			parsers = append(parsers, func(result *datetime, chars string) (string, error) {
-				rest, err := parser(result, chars)
-				if err != nil {
-					return "", ParseSpecifierErr{
-						Specifier: specifier,
-						Tokens:    chars,
-						err:       err,
-					}
-				}
-				return rest, nil
-			})
+			parsers = append(parsers, wrapSpecifierParser(parser, specifier))
+
 			// both the '%' and the specifier are consumed
-			i += 2
-		} else {
-			literal := format[i]
-			// wrap the parser in an error handler to provide rich error types
-			parsers = append(parsers, func(result *datetime, chars string) (string, error) {
-				rest, err := literalParser(literal)(result, chars)
-				if err != nil {
-					return "", ParseLiteralErr{
-						Literal: literal,
-						Tokens:  chars,
-						err:     err,
-					}
-				}
-				return rest, nil
-			})
-			// just the literal was consumed,
 			i++
+		} else {
+			parsers = append(parsers, wrapLiteralParser(char))
 		}
 	}
 	return parsers, nil
 }
 
+// Wrap a literal char parser, returning the corresponding
+// typed error on failures.
+func wrapLiteralParser(literal byte) parser {
+	return func(result *datetime, chars string) (rest string, err error) {
+		rest, err = literalParser(literal)(result, chars)
+		if err != nil {
+			return "", ParseLiteralErr{
+				Literal: literal,
+				Tokens:  chars,
+				err:     err,
+			}
+		}
+		return rest, nil
+	}
+}
+
+// Wrap a format specifier parser, returning the corresponding
+// typed error on failures.
+func wrapSpecifierParser(p parser, specifier byte) parser {
+	return func(result *datetime, chars string) (rest string, err error) {
+		rest, err = p(result, chars)
+		if err != nil {
+			return "", ParseSpecifierErr{
+				Specifier: specifier,
+				Tokens:    chars,
+				err:       err,
+			}
+		}
+		return rest, nil
+	}
+}
+
+// datetime defines the fields parsed by format specifiers.
+// Some combinations of values are invalid and cannot be mapped
+// unambiguously to time.Time.
+//
+// Unspecified values are nil.
 type datetime struct {
-	// this is completely ignored, but we still parse it for correctness
-	weekday *time.Weekday
-
-	// day of the month
-	day *uint
-
+	day   *uint
 	month *time.Month
 	year  *uint
 
-	// true = AM, false = PM, nil = unspecified
+	dayOfYear  *uint
+	weekOfYear *uint
+
+	// this is completely ignored, but we still parse it for correctness
+	weekday *time.Weekday
+
+	// true => AM, false => PM, nil => unspecified
 	am *bool
 
-	dayOfYear *uint
-
-	week         *uint
 	hours        *uint
 	minutes      *uint
 	seconds      *uint
@@ -212,6 +224,7 @@ var formatSpecifiers = map[byte]parser{
 
 func boolPtr(a bool) *bool { return &a }
 
+// Convert a week abbreviation to a defined weekday.
 func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
 	switch abbrev {
 	case "sun":
@@ -232,6 +245,7 @@ func weekdayAbbrev(abbrev string) (time.Weekday, bool) {
 	return 0, false
 }
 
+// Convert a month abbreviation to a defined month.
 func monthAbbrev(abbrev string) (time.Month, bool) {
 	switch abbrev {
 	case "jan":
@@ -274,6 +288,7 @@ func monthName(name string) (month time.Month, charCount int, ok bool) {
 	return 0, 0, false
 }
 
+// MySQL specification, valid format specifiers.
 // Specifier	Description
 // %a			Abbreviated weekday name (Sun..Sat)
 // %b			Abbreviated month name (Jan..Dec)

@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// Validate that the combination of fields in datetime
+// can be evaluated unambiguously to a time.Time.
 func validate(dt datetime) error {
 	if dt.year == nil && dt.day == nil && dt.month == nil && dt.dayOfYear == nil {
 		return nil
@@ -26,7 +28,7 @@ func validate(dt datetime) error {
 	return nil
 }
 
-// TODO: make this return a sql type directly, (then choose between date/datetime/timestamp)
+// Evaluate the parsed datetime params to a time.Time.
 func evaluate(dt datetime) (time.Time, error) {
 	err := validate(dt)
 	if err != nil {
