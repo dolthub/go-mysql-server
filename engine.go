@@ -16,6 +16,7 @@ package sqle
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/sirupsen/logrus"
 
@@ -152,6 +153,11 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
+	transactionDatabase, err := e.beginTransaction(ctx, parsed)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if len(bindings) > 0 {
 		parsed, err = plan.ApplyBindings(ctx, parsed, bindings)
 		if err != nil {
@@ -160,11 +166,6 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	transactionDatabase, err := e.beginTransaction(ctx, parsed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -186,14 +187,27 @@ func (e *Engine) QueryNodeWithBindings(
 	return analyzed.Schema(), iter, nil
 }
 
+const (
+	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
+)
+var fakeReadCommitted bool
+
+func init() {
+	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
+	if ok {
+		fakeReadCommitted = true
+	}
+}
+
 func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
 	// Before we begin a transaction, we need to know if the database being operated on is not the one
 	// currently selected
 	transactionDatabase := determineTransactionDatabase(ctx, parsed)
 
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
-	beginNewTransaction := ctx.GetTransaction() == nil
+	beginNewTransaction := ctx.GetTransaction() == nil || readCommitted(ctx)
 	if beginNewTransaction {
+		logrus.Tracef("Connection %d: beginning new transaction", ctx.Session.ID())
 		if len(transactionDatabase) > 0 {
 			database, err := e.Catalog.Database(transactionDatabase)
 			if err != nil {
@@ -212,6 +226,27 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	}
 
 	return transactionDatabase, nil
+}
+
+// Returns whether this session has a transaction isolation level of READ COMMITTED.
+// If so, we always begin a new transaction for every statement, and commit after every statement as well.
+// This is not what the READ COMMITTED isolation level is supposed to do.
+func readCommitted(ctx *sql.Context) bool {
+	if !fakeReadCommitted {
+		return false
+	}
+
+	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
+	if err != nil {
+		return false
+	}
+
+	valStr, ok := val.(string)
+	if !ok {
+		return false
+	}
+
+	return valStr == "READ-COMMITTED"
 }
 
 // transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
@@ -247,6 +282,10 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 }
 
 func isSessionAutocommit(ctx *sql.Context) (bool, error) {
+	if readCommitted(ctx) {
+		return true, nil
+	}
+
 	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
 	if err != nil {
 		return false, err
