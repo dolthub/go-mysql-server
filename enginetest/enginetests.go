@@ -2950,6 +2950,8 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
+	e := sqle.NewDefault()
+	e.AddDatabase(db)
 
 	wrapInTransaction(t, db, harness, func() {
 		t1, err := harness.NewTable(db, "t1", sql.Schema{
@@ -2962,12 +2964,13 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			sql.NewRow("a1", "a2"),
 			sql.NewRow("a2", "a3"),
 			sql.NewRow("a3", "a4"))
-	})
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 
-	wrapInTransaction(t, db, harness, func() {
 		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
 
 		// Assert the table is still queryable
@@ -2991,6 +2994,12 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		TestQuery(t, harness, e, `DELETE FROM t1 WHERE pk = "a1" LIMIT 1`, []sql.Row{
 			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
 		}, nil, nil)
 
 		// Add back a new primary key and assert the table is queryable
@@ -3024,9 +3033,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			""
 
 		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
-	})
 
-	wrapInTransaction(t, db, harness, func() {
 		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
 
 		// Assert that the table is insertable
@@ -3044,6 +3051,15 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that a duplicate row causes an alter table error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
+
+		// Assert that the scehma of t1 is unchanged
+		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
+			{"pk", "text", "NO", "", "", ""},
+			{"v", "text", "NO", "MUL", "", ""},
+		}, nil, nil)
+
+		// Assert that adding a primary key with an unknown column causes an error
+		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
 	})
 }
 

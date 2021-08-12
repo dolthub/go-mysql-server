@@ -1272,7 +1272,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		}
 	}
 
-	potentialSchema := t.schema
+	potentialSchema := copyschema(t.schema)
 
 	for _, newCol := range columns {
 		found := false
@@ -1288,7 +1288,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		}
 	}
 
-	newTable, err := insertIntoNewTable(t, potentialSchema)
+	newTable, err := copyTable(t, potentialSchema)
 	if err != nil {
 		return err
 	}
@@ -1300,23 +1300,33 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 	return nil
 }
 
-func insertIntoNewTable(t *Table, newSch sql.Schema) (*Table, error) {
-	newTable := NewPartitionedTable(t.name, newSch, len(t.partitions))
-	var pkColIdxes []int
-	for _, column := range t.schema {
-		if column.PrimaryKey {
-			idx := t.schema.IndexOf(column.Name, t.name)
-			pkColIdxes = append(pkColIdxes, idx)
+func copyschema(sch sql.Schema) sql.Schema {
+	potentialSchema := make(sql.Schema, len(sch))
+
+	for i, c := range sch {
+		potentialSchema[i] = &sql.Column{
+			Name:          c.Name,
+			Type:          c.Type,
+			Default:       c.Default,
+			AutoIncrement: c.AutoIncrement,
+			Nullable:      c.Nullable,
+			Source:        c.Source,
+			PrimaryKey:    c.PrimaryKey,
+			Comment:       c.Comment,
+			Extra:         c.Extra,
 		}
 	}
 
-	if len(pkColIdxes) > 0 {
-		for _, partition := range t.partitions {
-			for _, partitionRow := range partition {
-				err := newTable.Insert(sql.NewEmptyContext(), partitionRow)
-				if err != nil {
-					return nil, err
-				}
+	return potentialSchema
+}
+
+func copyTable(t *Table, newSch sql.Schema) (*Table, error) {
+	newTable := NewPartitionedTable(t.name, newSch, len(t.partitions))
+	for _, partition := range t.partitions {
+		for _, partitionRow := range partition {
+			err := newTable.Insert(sql.NewEmptyContext(), partitionRow)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}

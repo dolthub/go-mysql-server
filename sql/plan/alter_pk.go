@@ -110,6 +110,12 @@ func (a AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return sql.RowsToRowIter(), sql.ErrMultiplePrimaryKeysDefined.New()
 		}
 
+		for _, c := range a.Columns {
+			if !pkAlterable.Schema().Contains(c.Name, pkAlterable.Name()) {
+				return sql.RowsToRowIter(), sql.ErrKeyColumnDoesNotExist.New(c.Name)
+			}
+		}
+
 		err = pkAlterable.CreatePrimaryKey(ctx, a.Columns)
 	case PrimaryKeyAction_Drop:
 		err = pkAlterable.DropPrimaryKey(ctx)
