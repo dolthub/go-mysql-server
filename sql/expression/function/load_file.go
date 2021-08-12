@@ -18,6 +18,7 @@ package function
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"os"
 )
 
 type LoadFile struct {
@@ -49,8 +50,60 @@ func (l LoadFile) IsNullable() bool {
 }
 
 func (l LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("implement me")
+	// TODO: Allow FILE privileges for GRANT
+	// First Check that secure file privilege is set. Return null if not
+
+	// Read the file: Ensure it fits the max byte size
+	fileName, err := l.fileName.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := os.Open(fileName.(string))
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	isTooBig, err := isFileTooBig(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Make sure this is actually supposed to return NULL not error
+	if isTooBig {
+		return nil, nil
+	}
+
+
+	return file., nil
 }
+
+func isFileTooBig(ctx *sql.Context, file *os.File) (bool, error) {
+	fi, err := file.Stat()
+	if err != nil {
+		return false, err
+	}
+
+	maxByteSize, err := getMaxByteSize(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return fi.Size() > maxByteSize, nil
+}
+
+func getMaxByteSize(ctx *sql.Context) (int64, error) {
+	val, err := ctx.Session.GetSessionVariable(ctx, "max_allowed_packet")
+
+	if err != nil {
+		return 0, err
+	}
+
+	return val.(int64), nil
+}
+
 
 func (l LoadFile) Children() []sql.Expression {
 	return []sql.Expression{l.fileName}
