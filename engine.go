@@ -190,6 +190,7 @@ func (e *Engine) QueryNodeWithBindings(
 const (
 	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
 )
+
 var fakeReadCommitted bool
 
 func init() {
