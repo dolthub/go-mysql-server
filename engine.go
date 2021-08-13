@@ -210,7 +210,10 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 		logrus.Tracef("Connection %d: beginning new transaction", ctx.Session.ID())
 		if len(transactionDatabase) > 0 {
 			database, err := e.Catalog.Database(transactionDatabase)
-			if err != nil {
+			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
+			if sql.ErrDatabaseNotFound.Is(err) {
+				return "", nil
+			} else if err != nil {
 				return "", err
 			}
 
