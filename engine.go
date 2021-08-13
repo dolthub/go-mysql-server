@@ -203,7 +203,7 @@ func init() {
 func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
 	// Before we begin a transaction, we need to know if the database being operated on is not the one
 	// currently selected
-	transactionDatabase := determineTransactionDatabase(ctx, parsed)
+	transactionDatabase := getTransactionDatabase(ctx, parsed)
 
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
 	beginNewTransaction := ctx.GetTransaction() == nil || readCommitted(ctx)
@@ -297,14 +297,17 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
-func determineTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
-	// For USE DATABASE statements, we need to process them here, before executing the query, so that we can set the
-	// database for transactions appropriately
+// getTransactionDatabase returns the name of the database that should be considered current for the transaction about
+// to begin. The database is not guaranteed to exist.
+func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
+	// For USE DATABASE statements, we consider the transaction database to be the one being USEd
+	var transactionDatabase string
 	switch n := parsed.(type) {
 	case *plan.Use:
-		ctx.SetCurrentDatabase(n.Database().Name())
+		transactionDatabase = n.Database().Name()
+	default:
+		transactionDatabase = ctx.GetCurrentDatabase()
 	}
-	transactionDatabase := ctx.GetCurrentDatabase()
 
 	switch n := parsed.(type) {
 	case *plan.CreateTable:
