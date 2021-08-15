@@ -24,10 +24,8 @@ func createTempDirAndFile(fileName string) (string, *os.File, error) {
 
 func TestLoadFileNoSecurePriv(t *testing.T) {
 	// Create a valid temp file and temp directory
-	dir, file, err := createTempDirAndFile("myfile.txt")
+	_, file, err := createTempDirAndFile("myfile.txt")
 	assert.NoError(t, err)
-
-	defer os.RemoveAll(dir)
 
 	fileName := expression.NewLiteral(file.Name(), sql.Text)
 	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
@@ -36,6 +34,12 @@ func TestLoadFileNoSecurePriv(t *testing.T) {
 	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
+
+	err = file.Close()
+	assert.NoError(t, err)
+
+	err = os.Remove(file.Name())
+	assert.NoError(t, err)
 }
 
 func TestLoadFile(t *testing.T) {
