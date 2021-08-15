@@ -42,31 +42,35 @@ func TestLoadFile(t *testing.T) {
 	testCases := []struct {
 		name      string
 		fileData  []byte
+		fileName  string
 		expectNil bool
 	}{
 		{
 			"simple example",
 			[]byte("important test case"),
+			"myfile.txt",
 			false,
 		},
 		{
 			"blob",
 			[]byte("\\xFF\\xD8\\xFF\\xE1\\x00"),
+			"myfile.jpg",
 			false,
 		},
 	}
 
+	// create the temp dir
+	dir := os.TempDir()
+	defer os.RemoveAll(dir)
+
+	// Set the secure_file_priv var
+	vars := make(map[string]interface{})
+	vars["secure_file_priv"] = dir
+	err := sql.SystemVariables.AssignValues(vars)
+	assert.NoError(t, err)
+
 	for _, tt := range testCases {
-		// Create a valid temp file and temp directory
-		dir, file, err := createTempDirAndFile("myfile.txt")
-		assert.NoError(t, err)
-
-		defer os.RemoveAll(dir)
-
-		// Set the secure_file_priv var
-		vars := make(map[string]interface{})
-		vars["secure_file_priv"] = dir
-		err = sql.SystemVariables.AssignValues(vars)
+		file, err := ioutil.TempFile(dir, tt.fileName)
 		assert.NoError(t, err)
 
 		// Write some data to the file
@@ -81,5 +85,8 @@ func TestLoadFile(t *testing.T) {
 		res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 		assert.NoError(t, err)
 		assert.Equal(t, tt.fileData, res)
+
+		err = file.Close()
+		assert.NoError(t, err)
 	}
 }
