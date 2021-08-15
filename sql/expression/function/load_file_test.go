@@ -61,7 +61,6 @@ func TestLoadFile(t *testing.T) {
 
 	// create the temp dir
 	dir := os.TempDir()
-	defer os.RemoveAll(dir)
 
 	// Set the secure_file_priv var
 	vars := make(map[string]interface{})
@@ -87,6 +86,9 @@ func TestLoadFile(t *testing.T) {
 		assert.Equal(t, tt.fileData, res)
 
 		err = file.Close()
+		assert.NoError(t, err)
+
+		err = os.Remove(file.Name())
 		assert.NoError(t, err)
 	}
 }
