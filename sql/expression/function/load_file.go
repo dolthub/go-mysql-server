@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"os"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type LoadFile struct {
@@ -42,56 +42,80 @@ func (l LoadFile) String() string {
 }
 
 func (l LoadFile) Type() sql.Type {
-	return sql.LongText
+	return sql.LongBlob // TODO: Get this right
 }
 
 func (l LoadFile) IsNullable() bool {
 	return false
 }
 
+// TODO: Allow FILE privileges for GRANT
 func (l LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// TODO: Allow FILE privileges for GRANT
-	// First Check that secure file privilege is set. Return null if not
+	// First Check that secure file privilege is set. Return null if its not set
+	dir, err := getSecureFilePriv(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if dir == "" {
+		return nil, nil
+	}
 
 	// Read the file: Ensure it fits the max byte size
+	// According to the mysql spec we must return NULL if the file is too big.
+	file, err := l.getFile(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	size, isTooBig, err := isFileTooBig(ctx, file)
+	if err != nil {
+		return nil, err
+	}
+	if isTooBig {
+		return nil, nil
+	}
+
+	// Finally, read the file
+	data := make([]byte, size)
+	_, err = file.Read(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row) (*os.File, error) {
 	fileName, err := l.fileName.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	file, err := os.Open(fileName.(string))
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	isTooBig, err := isFileTooBig(ctx, file)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Make sure this is actually supposed to return NULL not error
-	if isTooBig {
-		return nil, nil
-	}
-
-
-	return file., nil
+	return os.Open(fileName.(string))
 }
 
-func isFileTooBig(ctx *sql.Context, file *os.File) (bool, error) {
+func getSecureFilePriv(ctx *sql.Context) (string, error) {
+	val, err := ctx.Session.GetSessionVariable(ctx, "secure_file_priv")
+	if err != nil {
+		return "", err
+	}
+
+	return val.(string), nil
+}
+
+func isFileTooBig(ctx *sql.Context, file *os.File) (int64, bool, error) {
 	fi, err := file.Stat()
 	if err != nil {
-		return false, err
+		return -1, false, err
 	}
 
 	maxByteSize, err := getMaxByteSize(ctx)
 	if err != nil {
-		return false, err
+		return -1, false, err
 	}
 
-	return fi.Size() > maxByteSize, nil
+	return fi.Size(), fi.Size() > maxByteSize, nil
 }
 
 func getMaxByteSize(ctx *sql.Context) (int64, error) {
@@ -104,13 +128,12 @@ func getMaxByteSize(ctx *sql.Context) (int64, error) {
 	return val.(int64), nil
 }
 
-
 func (l LoadFile) Children() []sql.Expression {
 	return []sql.Expression{l.fileName}
 }
 
 func (l LoadFile) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	if len(children) > 1 {
+	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
 
