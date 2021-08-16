@@ -101,13 +101,18 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 
 	// Mysql requires a complete filepath for the file name so checking whether the secureFileDir matches the file dir
 	// is enough
-	matched, err := filepath.Match(filepath.Dir(secureFileDir), filepath.Dir(fileName.(string)))
+	sAbs, err := filepath.Abs(filepath.Dir(secureFileDir))
+	if err != nil {
+		return nil, err
+	}
+
+	fAbs, err := filepath.Abs(filepath.Dir(fileName.(string)))
 	if err != nil {
 		return nil, err
 	}
 
 	// If the file name is not in the secure_file_priv directory we just return nil
-	if !matched {
+	if sAbs != fAbs {
 		return nil, nil
 	}
 
