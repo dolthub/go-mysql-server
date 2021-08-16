@@ -43,7 +43,7 @@ func (l LoadFile) String() string {
 }
 
 func (l LoadFile) Type() sql.Type {
-	return sql.LongBlob // TODO: Get this right
+	return sql.LongBlob
 }
 
 func (l LoadFile) IsNullable() bool {
