@@ -60,6 +60,7 @@ func (l LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Read the file: Ensure it fits the max byte size
 	// According to the mysql spec we must return NULL if the file is too big.
 	file, err := l.getFile(ctx, row, dir)
+
 	if err != nil {
 		return nil, handleFileErrors(err)
 	}
@@ -99,20 +100,19 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 		return os.Open(fileName.(string))
 	}
 
-	// Mysql requires a complete filepath for the file name so checking whether the secureFileDir matches the file dir
-	// is enough
-	sAbs, err := filepath.Abs(filepath.Dir(secureFileDir))
+	// Open the two directories (secure_file_priv and the file dir) and validate they are the same.
+	sAbs, err := os.Open(filepath.Dir(secureFileDir))
 	if err != nil {
 		return nil, err
 	}
 
-	fAbs, err := filepath.Abs(filepath.Dir(fileName.(string)))
+	fAbs, err := os.Open(filepath.Dir(fileName.(string)))
 	if err != nil {
 		return nil, err
 	}
 
 	// If the file name is not in the secure_file_priv directory we just return nil
-	if sAbs != fAbs {
+	if sAbs.Name() != fAbs.Name() {
 		return nil, nil
 	}
 
