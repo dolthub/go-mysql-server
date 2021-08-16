@@ -101,18 +101,28 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 	}
 
 	// Open the two directories (secure_file_priv and the file dir) and validate they are the same.
-	sAbs, err := os.Open(filepath.Dir(secureFileDir))
+	sDir, err := os.Open(filepath.Dir(secureFileDir))
 	if err != nil {
 		return nil, err
 	}
 
-	fAbs, err := os.Open(filepath.Dir(fileName.(string)))
+	sStat, err := sDir.Stat()
 	if err != nil {
 		return nil, err
 	}
 
-	// If the file name is not in the secure_file_priv directory we just return nil
-	if sAbs.Name() != fAbs.Name() {
+	ffDir, err := os.Open(filepath.Dir(fileName.(string)))
+	if err != nil {
+		return nil, err
+	}
+
+	fStat, err := ffDir.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	// If the two directories are not equivalent we return nil
+	if !os.SameFile(sStat, fStat) {
 		return nil, nil
 	}
 
