@@ -77,6 +77,7 @@ var _ sql.CheckTable = (*Table)(nil)
 var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
+var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.Schema) *Table {
@@ -1260,6 +1261,121 @@ Top:
 		}
 		return name
 	}
+}
+
+// CreatePrimaryKey implements the PrimaryKeyAlterableTable
+func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) error {
+	// First check that a primary key already exists
+	for _, col := range t.schema {
+		if col.PrimaryKey {
+			return sql.ErrMultiplePrimaryKeysDefined.New()
+		}
+	}
+
+	potentialSchema := copyschema(t.schema)
+
+	for _, newCol := range columns {
+		found := false
+		for _, currCol := range potentialSchema {
+			if strings.ToLower(currCol.Name) == strings.ToLower(newCol.Name) {
+				currCol.PrimaryKey = true
+				found = true
+			}
+		}
+
+		if !found {
+			return sql.ErrKeyColumnDoesNotExist.New(newCol.Name)
+		}
+	}
+
+	newTable, err := copyTable(t, potentialSchema)
+	if err != nil {
+		return err
+	}
+
+	t.schema = potentialSchema
+	t.partitions = newTable.partitions
+	t.keys = newTable.keys
+
+	return nil
+}
+
+func copyschema(sch sql.Schema) sql.Schema {
+	potentialSchema := make(sql.Schema, len(sch))
+
+	for i, c := range sch {
+		potentialSchema[i] = &sql.Column{
+			Name:          c.Name,
+			Type:          c.Type,
+			Default:       c.Default,
+			AutoIncrement: c.AutoIncrement,
+			Nullable:      c.Nullable,
+			Source:        c.Source,
+			PrimaryKey:    c.PrimaryKey,
+			Comment:       c.Comment,
+			Extra:         c.Extra,
+		}
+	}
+
+	return potentialSchema
+}
+
+func copyTable(t *Table, newSch sql.Schema) (*Table, error) {
+	newTable := NewPartitionedTable(t.name, newSch, len(t.partitions))
+	for _, partition := range t.partitions {
+		for _, partitionRow := range partition {
+			err := newTable.Insert(sql.NewEmptyContext(), partitionRow)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return newTable, nil
+}
+
+// DropPrimaryKey implements the PrimaryKeyAlterableTable
+func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
+	// Must drop auto increment property before dropping primary key
+	if t.schema.HasAutoIncrement() {
+		return sql.ErrWrongAutoKey.New()
+	}
+
+	pks := make([]*sql.Column, 0)
+	for _, col := range t.schema {
+		if col.PrimaryKey {
+			pks = append(pks, col)
+		}
+	}
+
+	if len(pks) == 0 {
+		return sql.ErrCantDropFieldOrKey.New("PRIMARY")
+	}
+
+	// Check for foreign key relationships
+	for _, pk := range pks {
+		if columnInFkRelationship(pk.Name, t.foreignKeys) {
+			return sql.ErrCantDropIndex.New("PRIMARY")
+		}
+	}
+
+	for _, c := range pks {
+		c.PrimaryKey = false
+	}
+
+	return nil
+}
+
+func columnInFkRelationship(col string, fkc []sql.ForeignKeyConstraint) bool {
+	colsInFks := make(map[string]bool)
+	for _, fk := range fkc {
+		allCols := append(fk.Columns, fk.ReferencedColumns...)
+		for _, ac := range allCols {
+			colsInFks[ac] = true
+		}
+	}
+
+	return colsInFks[col]
 }
 
 type partitionIndexKeyValueIter struct {

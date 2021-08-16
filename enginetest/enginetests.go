@@ -2946,6 +2946,123 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 	}
 }
 
+func TestAddDropPks(t *testing.T, harness Harness) {
+	require := require.New(t)
+
+	db := harness.NewDatabase("mydb")
+	e := sqle.NewDefault()
+	e.AddDatabase(db)
+
+	wrapInTransaction(t, db, harness, func() {
+		t1, err := harness.NewTable(db, "t1", sql.Schema{
+			{Name: "pk", Type: sql.Text, Source: "t1", PrimaryKey: true},
+			{Name: "v", Type: sql.Text, Source: "t1", PrimaryKey: true},
+		})
+		require.NoError(err)
+
+		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
+			sql.NewRow("a1", "a2"),
+			sql.NewRow("a2", "a3"),
+			sql.NewRow("a3", "a4"))
+
+		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+
+		// Assert the table is still queryable
+		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+
+		// Assert that the table is insertable
+		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `DELETE FROM t1 WHERE pk = "a1" LIMIT 1`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+
+		// Add back a new primary key and assert the table is queryable
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
+		TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+
+		// Drop the original Pk, create an index, create a new primary key
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD INDEX myidx (v)`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk)`)
+
+		// Assert the table is insertable
+		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a4", "a3")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
+		// Assert that an indexed based query still functions appropriately
+		TestQuery(t, harness, e, `SELECT * FROM t1 WHERE v='a3'`, []sql.Row{
+			{"a2", "a3"},
+			{"a4", "a3"},
+		}, nil, nil)
+
+		// Assert that query plan this follows correctly uses an IndexedTableAccess
+		expectedPlan := "Filter(t1.v = \"a3\")\n" +
+			" └─ Projected table access on [pk v]\n" +
+			"     └─ IndexedTableAccess(t1 on [t1.v])\n" +
+			""
+
+		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
+
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+
+		// Assert that the table is insertable
+		TestQuery(t, harness, e, `INSERT INTO t1 VALUES ("a1", "a2")`, []sql.Row{
+			sql.Row{sql.OkResult{RowsAffected: 1}},
+		}, nil, nil)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+			{"a4", "a3"},
+		}, nil, nil)
+
+		// Assert that a duplicate row causes an alter table error
+		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
+
+		// Assert that the scehma of t1 is unchanged
+		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
+			{"pk", "text", "NO", "", "", ""},
+			{"v", "text", "NO", "MUL", "", ""},
+		}, nil, nil)
+
+		// Assert that adding a primary key with an unknown column causes an error
+		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
+	})
+}
+
 // RunQuery runs the query given and asserts that it doesn't result in an error.
 func RunQuery(t *testing.T, e *sqle.Engine, harness Harness, query string) {
 	ctx := NewContext(harness)

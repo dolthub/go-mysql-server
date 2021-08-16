@@ -6187,6 +6187,10 @@ var errorQueries = []QueryErrorTest{
 		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
 		ExpectedErrStr: `unable to cast map[string]interface {}{"a":"abc"} of type map[string]interface {} to float64`,
 	},
+	{
+		Query:       `alter table mytable add primary key (s)`,
+		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to

@@ -426,7 +426,7 @@ func IsDDLNode(node sql.Node) bool {
 		*CreateProcedure, *DropProcedure,
 		*CreateForeignKey, *DropForeignKey,
 		*CreateCheck, *DropCheck,
-		*CreateTrigger, *DropTrigger:
+		*CreateTrigger, *DropTrigger, *AlterPK:
 		return true
 	default:
 		return false
