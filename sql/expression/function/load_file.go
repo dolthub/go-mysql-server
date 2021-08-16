@@ -17,6 +17,7 @@ package function
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -51,21 +52,21 @@ func (l LoadFile) IsNullable() bool {
 
 // TODO: Allow FILE privileges for GRANT
 func (l LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// First Check that secure file privilege is set. Return null if its not set
 	dir, err := getSecureFilePriv(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if dir == "" {
-		return nil, nil
-	}
 
 	// Read the file: Ensure it fits the max byte size
 	// According to the mysql spec we must return NULL if the file is too big.
-	file, err := l.getFile(ctx, row)
+	file, err := l.getFile(ctx, row, dir)
 	if err != nil {
-		return nil, err
+		return nil, handleFileErrors(err)
 	}
+	if file == nil {
+		return nil, nil
+	}
+
 	defer file.Close()
 
 	size, isTooBig, err := isFileTooBig(ctx, file)
@@ -86,10 +87,28 @@ func (l LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return data, nil
 }
 
-func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row) (*os.File, error) {
+func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) (*os.File, error) {
 	fileName, err := l.fileName.Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+
+	// If the secure_file_priv directory is not set, just read the file from whatever directory it is in
+	// Otherwise determine whether the file is in the secure_file_priv directory.
+	if secureFileDir == "" {
+		return os.Open(fileName.(string))
+	}
+
+	// Mysql requires a complete filepath for the file name so checking whether the secureFileDir matches the file dir
+	// is enough
+	matched, err := filepath.Match(filepath.Dir(secureFileDir), filepath.Dir(fileName.(string)))
+	if err != nil {
+		return nil, err
+	}
+
+	// If the file name is not in the secure_file_priv directory we just return nil
+	if !matched {
+		return nil, nil
 	}
 
 	return os.Open(fileName.(string))
@@ -126,6 +145,15 @@ func getMaxByteSize(ctx *sql.Context) (int64, error) {
 	}
 
 	return val.(int64), nil
+}
+
+func handleFileErrors(err error) error {
+	// If the doesn't exist we swallow that error
+	if os.IsNotExist(err) {
+		return nil
+	}
+
+	return err
 }
 
 func (l LoadFile) Children() []sql.Expression {

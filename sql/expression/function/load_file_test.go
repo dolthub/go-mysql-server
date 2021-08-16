@@ -27,10 +27,42 @@ func TestLoadFileNoSecurePriv(t *testing.T) {
 	_, file, err := createTempDirAndFile("myfile.txt")
 	assert.NoError(t, err)
 
+	_, err = file.Write([]byte("my data"))
+	assert.NoError(t, err)
+
 	fileName := expression.NewLiteral(file.Name(), sql.Text)
 	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
 
-	// Assert that Load File returns nil since we never set secure file priv
+	// Assert that Load File returns the regardless since secure_file_priv is set to an empty directory
+	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("my data"), res)
+
+	err = file.Close()
+	assert.NoError(t, err)
+
+	err = os.Remove(file.Name())
+	assert.NoError(t, err)
+}
+
+func TestLoadFileBadDir(t *testing.T) {
+	// Create a valid temp file and temp directory
+	_, file, err := createTempDirAndFile("myfile.txt")
+	assert.NoError(t, err)
+
+	// Set the secure_file_priv var but make it different than the file directory
+	vars := make(map[string]interface{})
+	vars["secure_file_priv"] = "/not/a/real/directory"
+	err = sql.SystemVariables.AssignValues(vars)
+	assert.NoError(t, err)
+
+	_, err = file.Write([]byte("my data"))
+	assert.NoError(t, err)
+
+	fileName := expression.NewLiteral(file.Name(), sql.Text)
+	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
+
+	// Assert that Load File returns nil since the file is not in secure_file_priv directory
 	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
