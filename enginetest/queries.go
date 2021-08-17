@@ -5446,6 +5446,29 @@ var VersionedQueries = []QueryTest{
 	},
 }
 
+var DateParseQueries = []QueryTest{
+	{
+		Query:    "SELECT STR_TO_DATE('Jan 3, 2000', '%b %e, %Y')",
+		Expected: []sql.Row{{time.Date(2000, time.January, 3, 0, 0, 0, 0, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')",
+		Expected: []sql.Row{{time.Date(2000, time.May, 3, 22, 23, 0, 0, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01/02/99 314', '%m/%e/%y %f')",
+		Expected: []sql.Row{{time.Date(1999, time.January, 2, 0, 0, 0, 314000, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01/02/99 05:14:12 PM', '%m/%e/%y %r')",
+		Expected: []sql.Row{{time.Date(1999, time.January, 2, 17, 14, 12, 0, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
+		Expected: []sql.Row{{sql.Null}},
+	},
+}
+
 var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SHOW TABLES",
