@@ -3173,6 +3173,13 @@ func (c customFunc) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 	return &customFunc{expression.UnaryExpression{children[0]}}, nil
 }
 
+func TestDateParse(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	for _, tt := range DateParseQueries {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, nil)
+	}
+}
+
 func TestColumnDefaults(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
