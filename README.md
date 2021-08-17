@@ -159,6 +159,7 @@ examples on how to connect to go-mysql-server using them.
 |`SOUNDEX(str)`| returns the soundex of a string.|
 |`SPLIT(str,sep)`| returns the parts of the string `str` split by the separator `sep` as a JSON array of strings.|
 |`SQRT(X)`| returns the square root of a nonnegative number `X`.|
+| `STR_TO_DATE(date_str, format_str)`| parses the date/datetime/timestamp expression according to the format specifier. |
 |`SUBSTR(str, pos, [len])`| returns a substring from the string `str` starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
 |`SUBSTRING(str, pos, [len])`| returns a substring from the string `str` starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
 |`SUBSTRING_INDEX(str, delim, count)` | Returns a substring after `count` appearances of `delim`. If `count` is negative, counts from the right side of the string. |
