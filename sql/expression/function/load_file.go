@@ -35,7 +35,7 @@ func NewLoadFile(ctx *sql.Context, fileName sql.Expression) sql.Expression {
 	}
 }
 
-// Resolved implements sql.Expression
+// Resolved implements sql.Expression.
 func (l *LoadFile) Resolved() bool {
 	return l.fileName.Resolved()
 }
@@ -50,7 +50,7 @@ func (l *LoadFile) Type() sql.Type {
 	return sql.LongBlob
 }
 
-// IsNullable implements sql.Expression
+// IsNullable implements sql.Expression.
 func (l *LoadFile) IsNullable() bool {
 	return true
 }
@@ -141,7 +141,7 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 	return os.Open(fileName.(string))
 }
 
-// isFileTooBig return the current file size and whether or not it is larger than max_allowed_packet
+// isFileTooBig return the current file size and whether or not it is larger than max_allowed_packet.
 func isFileTooBig(ctx *sql.Context, file *os.File) (int64, bool, error) {
 	fi, err := file.Stat()
 	if err != nil {
@@ -170,7 +170,7 @@ func (l *LoadFile) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 	return NewLoadFile(ctx, children[0]), nil
 }
 
-// FunctionName implements sql.FunctionExpression
+// FunctionName implements sql.FunctionExpression.
 func (l *LoadFile) FunctionName() string {
 	return "load_file"
 }

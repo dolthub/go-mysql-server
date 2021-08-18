@@ -68,13 +68,15 @@ func TestLoadFileBadDir(t *testing.T) {
 	assert.Equal(t, nil, res)
 }
 
+type loadFileTestCase struct {
+	name      string
+	fileData  []byte
+	fileName  string
+	expectNil bool
+}
+
 func TestLoadFile(t *testing.T) {
-	testCases := []struct {
-		name      string
-		fileData  []byte
-		fileName  string
-		expectNil bool
-	}{
+	testCases := []loadFileTestCase{
 		{
 			"simple example",
 			[]byte("important test case"),
@@ -99,26 +101,29 @@ func TestLoadFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	for _, tt := range testCases {
-		file, err := ioutil.TempFile(dir, tt.fileName)
-		assert.NoError(t, err)
-
-		// Write some data to the file
-		_, err = file.Write(tt.fileData)
-		assert.NoError(t, err)
-
-		// Setup the file data
-		fileName := expression.NewLiteral(file.Name(), sql.Text)
-		fn := NewLoadFile(sql.NewEmptyContext(), fileName)
-
-		// Load the file in
-		res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
-		assert.NoError(t, err)
-		assert.Equal(t, tt.fileData, res)
-
-		err = file.Close()
-		assert.NoError(t, err)
-
-		err = os.Remove(file.Name())
-		assert.NoError(t, err)
+		runLoadFileTest(t, tt, dir)
 	}
+}
+
+// runLoadFileTest takes in a loadFileTestCase and its relevant directory and validates whether LOAD_FILE is reading
+// the file accordingly.
+func runLoadFileTest(t *testing.T, tt loadFileTestCase, dir string) {
+	file, err := ioutil.TempFile(dir, tt.fileName)
+	assert.NoError(t, err)
+
+	defer file.Close()
+	defer os.Remove(file.Name())
+
+	// Write some data to the file
+	_, err = file.Write(tt.fileData)
+	assert.NoError(t, err)
+
+	// Setup the file data
+	fileName := expression.NewLiteral(file.Name(), sql.Text)
+	fn := NewLoadFile(sql.NewEmptyContext(), fileName)
+
+	// Load the file in
+	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
+	assert.NoError(t, err)
+	assert.Equal(t, tt.fileData, res)
 }
