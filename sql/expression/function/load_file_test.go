@@ -70,9 +70,9 @@ func TestLoadFileBadDir(t *testing.T) {
 }
 
 type loadFileTestCase struct {
-	name      string
-	fileData  []byte
-	fileName  string
+	name     string
+	fileData []byte
+	fileName string
 }
 
 func TestLoadFile(t *testing.T) {
