@@ -73,7 +73,6 @@ type loadFileTestCase struct {
 	name      string
 	fileData  []byte
 	fileName  string
-	expectNil bool
 }
 
 func TestLoadFile(t *testing.T) {
@@ -82,13 +81,11 @@ func TestLoadFile(t *testing.T) {
 			"simple example",
 			[]byte("important test case"),
 			"myfile.txt",
-			false,
 		},
 		{
 			"blob",
 			[]byte("\\xFF\\xD8\\xFF\\xE1\\x00"),
 			"myfile.jpg",
-			false,
 		},
 	}
 
