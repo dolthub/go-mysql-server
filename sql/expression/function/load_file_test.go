@@ -11,6 +11,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+// createTempDirAndFile returns the temporary directory, as well creates a new file (var filename) that lives in it.
 func createTempDirAndFile(fileName string) (string, *os.File, error) {
 	dir := os.TempDir()
 
