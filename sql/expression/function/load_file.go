@@ -28,7 +28,7 @@ type LoadFile struct {
 
 var _ sql.FunctionExpression = (*LoadFile)(nil)
 
-// NewLoadFile returns a LoadFile object for LOAD_FILE() function.
+// NewLoadFile returns a LoadFile object for the LOAD_FILE() function.
 func NewLoadFile(ctx *sql.Context, fileName sql.Expression) sql.Expression {
 	return &LoadFile{
 		fileName: fileName,
