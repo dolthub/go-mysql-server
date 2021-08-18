@@ -28,41 +28,50 @@ type LoadFile struct {
 
 var _ sql.FunctionExpression = (*LoadFile)(nil)
 
+// NewLoadFile returns a LoadFile object for LOAD_FILE() function.
 func NewLoadFile(ctx *sql.Context, fileName sql.Expression) sql.Expression {
 	return &LoadFile{
 		fileName: fileName,
 	}
 }
 
-func (l LoadFile) Resolved() bool {
-	return true
+// Resolved implements sql.Expression
+func (l *LoadFile) Resolved() bool {
+	return l.fileName.Resolved()
 }
 
-func (l LoadFile) String() string {
+func (l *LoadFile) String() string {
 	return fmt.Sprintf("LOAD_FILE(%s)", l.fileName)
 }
 
-func (l LoadFile) Type() sql.Type {
+// Type implements sql.Expression.
+func (l *LoadFile) Type() sql.Type {
 	return sql.LongBlob
 }
 
-func (l LoadFile) IsNullable() bool {
-	return false
+// IsNullable implements sql.Expression
+func (l *LoadFile) IsNullable() bool {
+	return true
 }
 
 // TODO: Allow FILE privileges for GRANT
-func (l LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	dir, err := getSecureFilePriv(ctx)
+// Eval implements sql.Expression.
+func (l *LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	dir, err := ctx.Session.GetSessionVariable(ctx, "secure_file_priv")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Read the file: Ensure it fits the max byte size
 	// According to the mysql spec we must return NULL if the file is too big.
-	file, err := l.getFile(ctx, row, dir)
-
+	file, err := l.getFile(ctx, row, dir.(string))
 	if err != nil {
-		return nil, handleFileErrors(err)
+		// If the doesn't exist we swallow that error
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+
+		return nil, err
 	}
 	if file == nil {
 		return nil, nil
@@ -88,6 +97,8 @@ func (l LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return data, nil
 }
 
+// getFile returns the file handler for the passed in the filename. The file must be in the secure_file_priv
+// directory.
 func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) (*os.File, error) {
 	fileName, err := l.fileName.Eval(ctx, row)
 	if err != nil {
@@ -129,53 +140,28 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 	return os.Open(fileName.(string))
 }
 
-func getSecureFilePriv(ctx *sql.Context) (string, error) {
-	val, err := ctx.Session.GetSessionVariable(ctx, "secure_file_priv")
-	if err != nil {
-		return "", err
-	}
-
-	return val.(string), nil
-}
-
+// isFileTooBig return the current file size and whether or not it is larger than max_allowed_packer
 func isFileTooBig(ctx *sql.Context, file *os.File) (int64, bool, error) {
 	fi, err := file.Stat()
 	if err != nil {
 		return -1, false, err
 	}
 
-	maxByteSize, err := getMaxByteSize(ctx)
+	val, err := ctx.Session.GetSessionVariable(ctx, "max_allowed_packet")
 	if err != nil {
 		return -1, false, err
 	}
 
-	return fi.Size(), fi.Size() > maxByteSize, nil
+	return fi.Size(), fi.Size() > val.(int64), nil
 }
 
-func getMaxByteSize(ctx *sql.Context) (int64, error) {
-	val, err := ctx.Session.GetSessionVariable(ctx, "max_allowed_packet")
-
-	if err != nil {
-		return 0, err
-	}
-
-	return val.(int64), nil
-}
-
-func handleFileErrors(err error) error {
-	// If the doesn't exist we swallow that error
-	if os.IsNotExist(err) {
-		return nil
-	}
-
-	return err
-}
-
-func (l LoadFile) Children() []sql.Expression {
+// Children implements sql.Expression.
+func (l *LoadFile) Children() []sql.Expression {
 	return []sql.Expression{l.fileName}
 }
 
-func (l LoadFile) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+// WithChildren implements sql.Expression.
+func (l *LoadFile) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
@@ -183,6 +169,7 @@ func (l LoadFile) WithChildren(ctx *sql.Context, children ...sql.Expression) (sq
 	return NewLoadFile(ctx, children[0]), nil
 }
 
-func (l LoadFile) FunctionName() string {
+// FunctionName implements sql.FunctionExpression
+func (l *LoadFile) FunctionName() string {
 	return "load_file"
 }

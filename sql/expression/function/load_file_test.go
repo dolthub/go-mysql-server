@@ -27,6 +27,9 @@ func TestLoadFileNoSecurePriv(t *testing.T) {
 	_, file, err := createTempDirAndFile("myfile.txt")
 	assert.NoError(t, err)
 
+	defer file.Close()
+	defer os.Remove(file.Name())
+
 	_, err = file.Write([]byte("my data"))
 	assert.NoError(t, err)
 
@@ -37,18 +40,15 @@ func TestLoadFileNoSecurePriv(t *testing.T) {
 	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("my data"), res)
-
-	err = file.Close()
-	assert.NoError(t, err)
-
-	err = os.Remove(file.Name())
-	assert.NoError(t, err)
 }
 
 func TestLoadFileBadDir(t *testing.T) {
 	// Create a valid temp file and temp directory
 	_, file, err := createTempDirAndFile("myfile.txt")
 	assert.NoError(t, err)
+
+	defer file.Close()
+	defer os.Remove(file.Name())
 
 	// Set the secure_file_priv var but make it different than the file directory
 	vars := make(map[string]interface{})
@@ -66,12 +66,6 @@ func TestLoadFileBadDir(t *testing.T) {
 	res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 	assert.NoError(t, err)
 	assert.Equal(t, nil, res)
-
-	err = file.Close()
-	assert.NoError(t, err)
-
-	err = os.Remove(file.Name())
-	assert.NoError(t, err)
 }
 
 func TestLoadFile(t *testing.T) {
@@ -108,6 +102,9 @@ func TestLoadFile(t *testing.T) {
 		file, err := ioutil.TempFile(dir, tt.fileName)
 		assert.NoError(t, err)
 
+		defer file.Close()
+		defer os.Remove(file.Name())
+
 		// Write some data to the file
 		_, err = file.Write(tt.fileData)
 		assert.NoError(t, err)
@@ -120,11 +117,5 @@ func TestLoadFile(t *testing.T) {
 		res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 		assert.NoError(t, err)
 		assert.Equal(t, tt.fileData, res)
-
-		err = file.Close()
-		assert.NoError(t, err)
-
-		err = os.Remove(file.Name())
-		assert.NoError(t, err)
 	}
 }
