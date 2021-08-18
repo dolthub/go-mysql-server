@@ -102,9 +102,6 @@ func TestLoadFile(t *testing.T) {
 		file, err := ioutil.TempFile(dir, tt.fileName)
 		assert.NoError(t, err)
 
-		defer file.Close()
-		defer os.Remove(file.Name())
-
 		// Write some data to the file
 		_, err = file.Write(tt.fileData)
 		assert.NoError(t, err)
@@ -117,5 +114,11 @@ func TestLoadFile(t *testing.T) {
 		res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 		assert.NoError(t, err)
 		assert.Equal(t, tt.fileData, res)
+
+		err = file.Close()
+		assert.NoError(t, err)
+
+		err = os.Remove(file.Name())
+		assert.NoError(t, err)
 	}
 }

@@ -40,6 +40,7 @@ func (l *LoadFile) Resolved() bool {
 	return l.fileName.Resolved()
 }
 
+// String implements sql.Expression.
 func (l *LoadFile) String() string {
 	return fmt.Sprintf("LOAD_FILE(%s)", l.fileName)
 }
@@ -63,10 +64,9 @@ func (l *LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Read the file: Ensure it fits the max byte size
-	// According to the mysql spec we must return NULL if the file is too big.
 	file, err := l.getFile(ctx, row, dir.(string))
 	if err != nil {
-		// If the doesn't exist we swallow that error
+		// If the file doesn't exist we swallow that error
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
@@ -83,6 +83,7 @@ func (l *LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	// According to the mysql spec we must return NULL if the file is too big.
 	if isTooBig {
 		return nil, nil
 	}
@@ -97,7 +98,7 @@ func (l *LoadFile) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return data, nil
 }
 
-// getFile returns the file handler for the passed in the filename. The file must be in the secure_file_priv
+// getFile returns the file handler for the passed in filename. The file must be in the secure_file_priv
 // directory.
 func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) (*os.File, error) {
 	fileName, err := l.fileName.Eval(ctx, row)
@@ -140,7 +141,7 @@ func (l *LoadFile) getFile(ctx *sql.Context, row sql.Row, secureFileDir string) 
 	return os.Open(fileName.(string))
 }
 
-// isFileTooBig return the current file size and whether or not it is larger than max_allowed_packer
+// isFileTooBig return the current file size and whether or not it is larger than max_allowed_packet
 func isFileTooBig(ctx *sql.Context, file *os.File) (int64, bool, error) {
 	fi, err := file.Stat()
 	if err != nil {
