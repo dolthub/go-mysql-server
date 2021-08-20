@@ -40,11 +40,32 @@ func TestConvertTz(t *testing.T) {
 			expectedResult: "2004-01-01 13:00:00",
 		},
 		{
+			name:           "Locations going backwards",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "US/Eastern",
+			toTimeZone:     "US/Central",
+			expectedResult: "2004-01-01 11:00:00",
+		},
+		{
+			name:           "Locations going forward",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "US/Central",
+			toTimeZone:     "US/Eastern",
+			expectedResult: "2004-01-01 13:00:00",
+		},
+		{
 			name:           "Simple time shift",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "+01:00",
 			toTimeZone:     "+10:00",
 			expectedResult: "2004-01-01 21:00:00",
+		},
+		{
+			name:           "Bad timezone conversion",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "GMT",
+			toTimeZone:     "HLP",
+			expectedResult: nil,
 		},
 		{
 			name:           "Simple time shift with minutes",
