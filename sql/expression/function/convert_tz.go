@@ -15,8 +15,10 @@
 package function
 
 import (
+	"errors"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"regexp"
 	"time"
 )
 
@@ -25,6 +27,8 @@ type ConvertTz struct {
 	fromTz sql.Expression
 	toTz sql.Expression
 }
+
+var offsetRegex = regexp.MustCompile(`(?m)^\+(\d{2}):(\d{2})`)
 
 var _ sql.FunctionExpression = (*ConvertTz)(nil)
 
@@ -63,46 +67,101 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	current, err := c.dt.Eval(ctx, row)
+	timestamp, err := c.dt.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
+	timestampStr, ok := timestamp.(string)
+	if !ok {
+		return nil, nil
+	}
+
+	fromStr, ok := from.(string)
+	if !ok {
+		return nil, nil
+	}
+
+	toStr, ok := to.(string)
+	if !ok {
+		return nil, nil
+	}
+
+	// Parse the timestamp into a time object.
+	// Note: We could use sql.ConvertWithoutRangeCheck but we need the format of the outputted string.
 	var dt time.Time
 	var dFmt string
-	// Note: We could use sql.ConvertWithoutRangeCheck but we need the format of the outputted string
 	for _, testFmt := range sql.TimestampDatetimeLayouts {
-		if t, err := time.Parse(testFmt, current.(string)); err == nil {
+		if t, err := time.Parse(testFmt, timestampStr); err == nil {
 			dFmt = testFmt
 			dt = t
 			break
 		}
 	}
 
+	// We should return nil when we cannot parse the converted time
 	if dFmt == "" {
-		return nil, sql.ErrConvertingToTime.New(current)
+		return nil, nil
 	}
 
-	convertedFrom, err := loadLocationAndConvert(dt, from.(string))
-	if err != nil {
-		return nil, err
+	timeZoneRes := convertTimeZone(dt, fromStr, toStr)
+	if !timeZoneRes.IsZero() {
+		return timeZoneRes.Format(dFmt), nil
 	}
 
-	convertedTo, err := loadLocationAndConvert(convertedFrom, to.(string))
-	if err != nil {
-		return nil, err
+	// If we weren't successful converting by timezone try converting via durations
+	timeZoneRes = convertDurations(dt, fromStr, toStr)
+	if timeZoneRes.IsZero() {
+		return nil, nil
 	}
 
-	return convertedTo.Format(dFmt), nil
+	return timeZoneRes.Format(dFmt), nil
 }
 
-func loadLocationAndConvert(t time.Time, location string) (time.Time, error) {
-	loc, err := time.LoadLocation(location)
+func convertTimeZone(t time.Time, fromLocation string, toLocation string) time.Time {
+	fLoc, err := time.LoadLocation(fromLocation)
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}
 	}
 
-	return t.In(loc), nil
+	tLoc, err := time.LoadLocation(toLocation)
+	if err != nil {
+		return time.Time{}
+	}
+
+	fromTime := t.In(fLoc)
+
+	return fromTime.In(tLoc)
+}
+
+func convertDurations(t time.Time, startDuration string, endDuration string) time.Time {
+	fromDuration, err := getDeltaAsDuration(startDuration)
+	if err != nil {
+		return time.Time{}
+	}
+
+	toDuration, err := getDeltaAsDuration(endDuration)
+	if err != nil {
+		return time.Time{}
+	}
+
+	finalDuration := toDuration - fromDuration
+
+	return t.Add(finalDuration)
+}
+
+func getDeltaAsDuration(d string) (time.Duration, error) {
+	var hours string
+	var mins string
+	matches := offsetRegex.FindStringSubmatch(d)
+	if len(matches) == 3 {
+		hours = matches[1]
+		mins  = matches[2]
+	} else {
+		return -1, errors.New("Unable to process delta")
+	}
+
+	return time.ParseDuration(hours + "h" + mins + "m")
 }
 
 func (c *ConvertTz) Children() []sql.Expression {

@@ -37,6 +37,13 @@ func TestConvertTz(t *testing.T) {
 			toTimeZone: "MET",
 			expectedResult: "2004-01-01 13:00:00",
 		},
+		{
+			name: "Simple time shift",
+			datetime: "2004-01-01 12:00:00",
+			fromTimeZone: "+01:00",
+			toTimeZone: "+10:00",
+			expectedResult: "2004-01-01 21:00:00",
+		},
 	}
 
 	for _, test := range tests {
