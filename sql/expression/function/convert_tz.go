@@ -17,26 +17,27 @@ package function
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"regexp"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type ConvertTz struct {
-	dt sql.Expression
+	dt     sql.Expression
 	fromTz sql.Expression
-	toTz sql.Expression
+	toTz   sql.Expression
 }
 
-var offsetRegex = regexp.MustCompile(`(?m)^\+(\d{2}):(\d{2})`)
+var offsetRegex = regexp.MustCompile(`(?m)^\+(\d{2}):(\d{2})$`)
 
 var _ sql.FunctionExpression = (*ConvertTz)(nil)
 
 func NewConvertTz(ctx *sql.Context, dt, fromTz, toTz sql.Expression) sql.Expression {
 	return &ConvertTz{
-		dt: dt,
+		dt:     dt,
 		fromTz: fromTz,
-		toTz: toTz,
+		toTz:   toTz,
 	}
 }
 
@@ -156,7 +157,7 @@ func getDeltaAsDuration(d string) (time.Duration, error) {
 	matches := offsetRegex.FindStringSubmatch(d)
 	if len(matches) == 3 {
 		hours = matches[1]
-		mins  = matches[2]
+		mins = matches[2]
 	} else {
 		return -1, errors.New("Unable to process delta")
 	}
@@ -179,4 +180,3 @@ func (c *ConvertTz) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 func (c *ConvertTz) FunctionName() string {
 	return "convert_tz"
 }
-

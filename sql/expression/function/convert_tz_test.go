@@ -15,34 +15,71 @@
 package function
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 func TestConvertTz(t *testing.T) {
 	tests := []struct {
-		name string
-		datetime string
-		fromTimeZone string
-		toTimeZone string
-		expectedResult string
+		name           string
+		datetime       string
+		fromTimeZone   string
+		toTimeZone     string
+		expectedResult interface{}
 	}{
 		{
-			name: "Simple timezone conversion",
-			datetime: "2004-01-01 12:00:00",
-			fromTimeZone: "GMT",
-			toTimeZone: "MET",
+			name:           "Simple timezone conversion",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "GMT",
+			toTimeZone:     "MET",
 			expectedResult: "2004-01-01 13:00:00",
 		},
 		{
-			name: "Simple time shift",
-			datetime: "2004-01-01 12:00:00",
-			fromTimeZone: "+01:00",
-			toTimeZone: "+10:00",
+			name:           "Simple time shift",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "+01:00",
+			toTimeZone:     "+10:00",
 			expectedResult: "2004-01-01 21:00:00",
+		},
+		{
+			name:           "Simple time shift with minutes",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "+01:00",
+			toTimeZone:     "+10:11",
+			expectedResult: "2004-01-01 21:11:00",
+		},
+		{
+			name:           "Bad Time Returns nils",
+			datetime:       "2004-01-01 12:00:00dsa",
+			fromTimeZone:   "+01:00",
+			toTimeZone:     "+10:00",
+			expectedResult: nil,
+		},
+		{
+			name:           "Bad Duration Returns nil",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "+01:00",
+			toTimeZone:     "+10:00:11",
+			expectedResult: nil,
+		},
+		{
+			name:           "Negative Duration Returns nil",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "-01:00",
+			toTimeZone:     "+10:11",
+			expectedResult: nil,
+		},
+		{
+			name:           "Different Time Format",
+			datetime:       "20100603121212",
+			fromTimeZone:   "+01:00",
+			toTimeZone:     "+10:00",
+			expectedResult: "20100603211212",
 		},
 	}
 
