@@ -61,18 +61,25 @@ func TestConvertTz(t *testing.T) {
 			expectedResult: "2004-01-01 21:00:00",
 		},
 		{
-			name:           "Bad timezone conversion",
-			datetime:       "2004-01-01 12:00:00",
-			fromTimeZone:   "GMT",
-			toTimeZone:     "HLP",
-			expectedResult: nil,
-		},
-		{
 			name:           "Simple time shift with minutes",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "+01:00",
 			toTimeZone:     "+10:11",
 			expectedResult: "2004-01-01 21:11:00",
+		},
+		{
+			name:           "Different Time Format",
+			datetime:       "20100603121212",
+			fromTimeZone:   "+01:00",
+			toTimeZone:     "+10:00",
+			expectedResult: "20100603211212",
+		},
+		{
+			name:           "Bad timezone conversion",
+			datetime:       "2004-01-01 12:00:00",
+			fromTimeZone:   "GMT",
+			toTimeZone:     "HLP",
+			expectedResult: nil,
 		},
 		{
 			name:           "Bad Time Returns nils",
@@ -94,13 +101,6 @@ func TestConvertTz(t *testing.T) {
 			fromTimeZone:   "-01:00",
 			toTimeZone:     "+10:11",
 			expectedResult: nil,
-		},
-		{
-			name:           "Different Time Format",
-			datetime:       "20100603121212",
-			fromTimeZone:   "+01:00",
-			toTimeZone:     "+10:00",
-			expectedResult: "20100603211212",
 		},
 	}
 

@@ -33,6 +33,7 @@ var offsetRegex = regexp.MustCompile(`(?m)^\+(\d{2}):(\d{2})$`)
 
 var _ sql.FunctionExpression = (*ConvertTz)(nil)
 
+// NewConvertTz returns an implementation of the CONVERT_TZ() function.
 func NewConvertTz(ctx *sql.Context, dt, fromTz, toTz sql.Expression) sql.Expression {
 	return &ConvertTz{
 		dt:     dt,
@@ -41,22 +42,27 @@ func NewConvertTz(ctx *sql.Context, dt, fromTz, toTz sql.Expression) sql.Express
 	}
 }
 
+// Resolved implements the sql.Expression interface.
 func (c *ConvertTz) Resolved() bool {
 	return c.dt.Resolved() && c.fromTz.Resolved() && c.toTz.Resolved()
 }
 
+// String implements the sql.Expression interface.
 func (c *ConvertTz) String() string {
 	return fmt.Sprintf("CONVERT_TZ(%s, %s, %s)", c.dt, c.fromTz, c.toTz)
 }
 
+// Type implements the sql.Expression interface.
 func (c *ConvertTz) Type() sql.Type {
 	return sql.Datetime
 }
 
+// IsNullable implements the sql.Expression interface.
 func (c *ConvertTz) IsNullable() bool {
 	return true
 }
 
+// Eval implements the sql.Expression interface.
 func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	from, err := c.fromTz.Eval(ctx, row)
 	if err != nil {
@@ -100,26 +106,26 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// We should return nil when we cannot parse the converted time
+	// We should return nil when we cannot parse the converted time.
 	if dFmt == "" {
 		return nil, nil
 	}
 
-	timeZoneRes := convertTimeZone(timestampStr, dFmt, fromStr, toStr)
-	if !timeZoneRes.IsZero() {
-		return timeZoneRes.Format(dFmt), nil
+	converted := convertTimeZone(timestampStr, dFmt, fromStr, toStr)
+	if !converted.IsZero() {
+		return converted.Format(dFmt), nil
 	}
 
-	// If we weren't successful converting by timezone try converting via durations
-	timeZoneRes = convertDurations(dt, fromStr, toStr)
-	if timeZoneRes.IsZero() {
+	// If we weren't successful converting by timezone try converting via offsets.
+	converted = convertOffsets(dt, fromStr, toStr)
+	if converted.IsZero() {
 		return nil, nil
 	}
 
-	return timeZoneRes.Format(dFmt), nil
+	return converted.Format(dFmt), nil
 }
 
-// convertTimeZone returns the conversion of t from timezone fromLocation to toLocation
+// convertTimeZone returns the conversion of t from timezone fromLocation to toLocation.
 func convertTimeZone(timestamp, formation string, fromLocation string, toLocation string) time.Time {
 	fLoc, err := time.LoadLocation(fromLocation)
 	if err != nil {
@@ -139,8 +145,8 @@ func convertTimeZone(timestamp, formation string, fromLocation string, toLocatio
 	return fromTime.In(tLoc)
 }
 
-// convertDurations returns the conversion of t to t + (endDuration - startDuration)
-func convertDurations(t time.Time, startDuration string, endDuration string) time.Time {
+// convertOffsets returns the conversion of t to t + (endDuration - startDuration).
+func convertOffsets(t time.Time, startDuration string, endDuration string) time.Time {
 	fromDuration, err := getDeltaAsDuration(startDuration)
 	if err != nil {
 		return time.Time{}
@@ -156,7 +162,7 @@ func convertDurations(t time.Time, startDuration string, endDuration string) tim
 	return t.Add(finalDuration)
 }
 
-// getDeltaAsDuration takes in a MySQL offset in the format (ex +01:00) and returns it as a time Duration
+// getDeltaAsDuration takes in a MySQL offset in the format (ex +01:00) and returns it as a time Duration.
 func getDeltaAsDuration(d string) (time.Duration, error) {
 	var hours string
 	var mins string
@@ -165,16 +171,18 @@ func getDeltaAsDuration(d string) (time.Duration, error) {
 		hours = matches[1]
 		mins = matches[2]
 	} else {
-		return -1, errors.New("Unable to process delta")
+		return -1, errors.New("error: unable to process time")
 	}
 
 	return time.ParseDuration(hours + "h" + mins + "m")
 }
 
+// Children implements the sql.Expression interface.
 func (c *ConvertTz) Children() []sql.Expression {
 	return []sql.Expression{c.dt, c.fromTz, c.toTz}
 }
 
+// WithChildren implements the sql.Expression interface.
 func (c *ConvertTz) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 3)
@@ -183,6 +191,7 @@ func (c *ConvertTz) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 	return NewConvertTz(ctx, children[0], children[1], children[2]), nil
 }
 
+// FunctionName implement the sql.FunctionExpression interface.
 func (c *ConvertTz) FunctionName() string {
 	return "convert_tz"
 }
