@@ -23,13 +23,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+var offsetRegex = regexp.MustCompile(`(?m)^\+(\d{2}):(\d{2})$`)
+
 type ConvertTz struct {
 	dt     sql.Expression
 	fromTz sql.Expression
 	toTz   sql.Expression
 }
-
-var offsetRegex = regexp.MustCompile(`(?m)^\+(\d{2}):(\d{2})$`)
 
 var _ sql.FunctionExpression = (*ConvertTz)(nil)
 
@@ -74,12 +74,12 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	timestamp, err := c.dt.Eval(ctx, row)
+	datetime, err := c.dt.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	timestampStr, ok := timestamp.(string)
+	datetimeStr, ok := datetime.(string)
 	if !ok {
 		return nil, nil
 	}
@@ -94,24 +94,24 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Parse the timestamp into a time object.
+	// Parse the datetime into a time object.
 	// Note: We could use sql.ConvertWithoutRangeCheck but we need the format of the outputted string.
 	var dt time.Time
 	var dFmt string
 	for _, testFmt := range sql.TimestampDatetimeLayouts {
-		if t, err := time.Parse(testFmt, timestampStr); err == nil {
+		if t, err := time.Parse(testFmt, datetimeStr); err == nil {
 			dFmt = testFmt
 			dt = t
 			break
 		}
 	}
 
-	// We should return nil when we cannot parse the converted time.
+	// We should return nil when we cannot parse the given datetime.
 	if dFmt == "" {
 		return nil, nil
 	}
 
-	converted := convertTimeZone(timestampStr, dFmt, fromStr, toStr)
+	converted := convertTimeZone(datetimeStr, dFmt, fromStr, toStr)
 	if !converted.IsZero() {
 		return converted.Format(dFmt), nil
 	}
@@ -126,7 +126,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // convertTimeZone returns the conversion of t from timezone fromLocation to toLocation.
-func convertTimeZone(timestamp, formation string, fromLocation string, toLocation string) time.Time {
+func convertTimeZone(datetime, formation string, fromLocation string, toLocation string) time.Time {
 	fLoc, err := time.LoadLocation(fromLocation)
 	if err != nil {
 		return time.Time{}
@@ -137,7 +137,7 @@ func convertTimeZone(timestamp, formation string, fromLocation string, toLocatio
 		return time.Time{}
 	}
 
-	fromTime, err := time.ParseInLocation(formation, timestamp, fLoc)
+	fromTime, err := time.ParseInLocation(formation, datetime, fLoc)
 	if err != nil {
 		return time.Time{}
 	}
