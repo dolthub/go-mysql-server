@@ -16,6 +16,7 @@ package function
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,10 +25,26 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+var timezones = []string{"MET", "US/Central", "US/Eastern"}
+
+func getLocations(t *testing.T) map[string]*time.Location {
+	ret := make(map[string]*time.Location)
+
+	for _, tz := range timezones {
+		loc, err := time.LoadLocation(tz)
+		require.NoError(t, err)
+		ret[tz] = loc
+	}
+
+	return ret
+}
+
 func TestConvertTz(t *testing.T) {
+	locationMap := getLocations(t)
+
 	tests := []struct {
 		name           string
-		datetime       string
+		datetime       interface{}
 		fromTimeZone   string
 		toTimeZone     string
 		expectedResult interface{}
@@ -37,42 +54,42 @@ func TestConvertTz(t *testing.T) {
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "GMT",
 			toTimeZone:     "MET",
-			expectedResult: "2004-01-01 13:00:00",
+			expectedResult:  time.Date(2004, 1, 1, 13, 0, 0, 0, locationMap["MET"]),
 		},
 		{
 			name:           "Locations going backwards",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "US/Eastern",
 			toTimeZone:     "US/Central",
-			expectedResult: "2004-01-01 11:00:00",
+			expectedResult:  time.Date(2004, 1, 1, 11, 0, 0, 0, locationMap["US/Central"]),
 		},
 		{
 			name:           "Locations going forward",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "US/Central",
 			toTimeZone:     "US/Eastern",
-			expectedResult: "2004-01-01 13:00:00",
+			expectedResult:  time.Date(2004, 1, 1, 13, 0, 0, 0, locationMap["US/Eastern"]),
 		},
 		{
 			name:           "Simple time shift",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "+01:00",
 			toTimeZone:     "+10:00",
-			expectedResult: "2004-01-01 21:00:00",
+			expectedResult:  time.Date(2004, 1, 1, 21, 0, 0, 0, time.UTC),
 		},
 		{
 			name:           "Simple time shift with minutes",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "+01:00",
 			toTimeZone:     "+10:11",
-			expectedResult: "2004-01-01 21:11:00",
+			expectedResult:  time.Date(2004, 1, 1, 21, 11, 0, 0, time.UTC),
 		},
 		{
 			name:           "Different Time Format",
 			datetime:       "20100603121212",
 			fromTimeZone:   "+01:00",
 			toTimeZone:     "+10:00",
-			expectedResult: "20100603211212",
+			expectedResult:  time.Date(2010, 6, 3, 21, 12, 12, 0, time.UTC),
 		},
 		{
 			name:           "Bad timezone conversion",
@@ -101,6 +118,13 @@ func TestConvertTz(t *testing.T) {
 			fromTimeZone:   "-01:00",
 			toTimeZone:     "+10:11",
 			expectedResult: nil,
+		},
+		{
+			name:			"Test With Actual datetime type",
+			datetime: 		time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
+			fromTimeZone:   "+00:00",
+			toTimeZone:     "+10:00",
+			expectedResult: time.Date(2010, 6, 3, 22, 12, 12, 0, time.UTC),
 		},
 	}
 

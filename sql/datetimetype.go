@@ -205,7 +205,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
 	case time.Time:
-		res = value.UTC()
+		res = value
 	default:
 		return zeroTime, ErrConvertToSQL.New(t)
 	}

@@ -79,8 +79,8 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	datetimeStr, ok := datetime.(string)
-	if !ok {
+	datetimeStr, err := getDatetimeAsString(datetime)
+	if err != nil {
 		return nil, nil
 	}
 
@@ -113,7 +113,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	converted := convertTimeZone(datetimeStr, dFmt, fromStr, toStr)
 	if !converted.IsZero() {
-		return converted.Format(dFmt), nil
+		return sql.Datetime.ConvertWithoutRangeCheck(converted)
 	}
 
 	// If we weren't successful converting by timezone try converting via offsets.
@@ -122,7 +122,20 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return converted.Format(dFmt), nil
+	return sql.Datetime.ConvertWithoutRangeCheck(converted)
+}
+
+func getDatetimeAsString(datetime interface{}) (string, error) {
+	if ds, ok := datetime.(string); ok {
+		return ds, nil
+	}
+
+	t, err := sql.Datetime.ConvertWithoutRangeCheck(datetime)
+	if err != nil {
+		return "", err
+	}
+
+	return t.String(), nil
 }
 
 // convertTimeZone returns the conversion of t from timezone fromLocation to toLocation.
@@ -141,7 +154,6 @@ func convertTimeZone(datetime, formation string, fromLocation string, toLocation
 	if err != nil {
 		return time.Time{}
 	}
-
 	return fromTime.In(tLoc)
 }
 
