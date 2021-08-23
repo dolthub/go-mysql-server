@@ -5107,15 +5107,15 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT CONVERT_TZ("2004-01-01 4:00:00", "GMT", "MET")`,
+		Query: `SELECT CONVERT_TZ("2004-01-01 4:00:00", "+00:00", "+04:00")`,
 		Expected: []sql.Row{
-			{"2004-01-01 05:00:00"},
+			{time.Date(2004, 1, 1, 8, 0, 0, 0, time.UTC)},
 		},
 	},
 	{
-		Query: `SELECT CONVERT_TZ("2004-01-01 4:00:00", "America/New_York", "America/Los_Angeles")`,
+		Query: `SELECT CONVERT_TZ(datetime_col, "+00:00", "+04:00") FROM datetime_table WHERE i = 1`,
 		Expected: []sql.Row{
-			{"2004-01-01 01:00:00"},
+			{time.Date(2020, 1, 1, 16, 0, 0, 0, time.UTC)},
 		},
 	},
 }

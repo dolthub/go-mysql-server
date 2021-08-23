@@ -74,12 +74,12 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	datetime, err := c.dt.Eval(ctx, row)
+	dt, err := c.dt.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	datetimeStr, err := getDatetimeAsString(datetime)
+	datetime, err := sql.Datetime.ConvertWithoutRangeCheck(dt)
 	if err != nil {
 		return nil, nil
 	}
@@ -94,30 +94,13 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Parse the datetime into a time object.
-	// Note: We could use sql.ConvertWithoutRangeCheck but we need the format of the outputted string.
-	var dt time.Time
-	var dFmt string
-	for _, testFmt := range sql.TimestampDatetimeLayouts {
-		if t, err := time.Parse(testFmt, datetimeStr); err == nil {
-			dFmt = testFmt
-			dt = t
-			break
-		}
-	}
-
-	// We should return nil when we cannot parse the given datetime.
-	if dFmt == "" {
-		return nil, nil
-	}
-
-	converted := convertTimeZone(datetimeStr, dFmt, fromStr, toStr)
+	converted := convertTimeZone(datetime, fromStr, toStr)
 	if !converted.IsZero() {
 		return sql.Datetime.ConvertWithoutRangeCheck(converted)
 	}
 
 	// If we weren't successful converting by timezone try converting via offsets.
-	converted = convertOffsets(dt, fromStr, toStr)
+	converted = convertOffsets(datetime, fromStr, toStr)
 	if converted.IsZero() {
 		return nil, nil
 	}
@@ -125,21 +108,8 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return sql.Datetime.ConvertWithoutRangeCheck(converted)
 }
 
-func getDatetimeAsString(datetime interface{}) (string, error) {
-	if ds, ok := datetime.(string); ok {
-		return ds, nil
-	}
-
-	t, err := sql.Datetime.ConvertWithoutRangeCheck(datetime)
-	if err != nil {
-		return "", err
-	}
-
-	return t.String(), nil
-}
-
 // convertTimeZone returns the conversion of t from timezone fromLocation to toLocation.
-func convertTimeZone(datetime, formation string, fromLocation string, toLocation string) time.Time {
+func convertTimeZone(datetime time.Time, fromLocation string, toLocation string) time.Time {
 	fLoc, err := time.LoadLocation(fromLocation)
 	if err != nil {
 		return time.Time{}
@@ -150,10 +120,9 @@ func convertTimeZone(datetime, formation string, fromLocation string, toLocation
 		return time.Time{}
 	}
 
-	fromTime, err := time.ParseInLocation(formation, datetime, fLoc)
-	if err != nil {
-		return time.Time{}
-	}
+	// Recreate the datetime string but in terms of fLoc. Note that this is different than simply using .In.
+	fromTime := time.Date(datetime.Year(), datetime.Month(), datetime.Day(), datetime.Hour(), datetime.Minute(), datetime.Second(), datetime.Nanosecond(), fLoc)
+
 	return fromTime.In(tLoc)
 }
 
