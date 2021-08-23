@@ -5106,6 +5106,18 @@ var QueryTests = []QueryTest{
 			},
 		},
 	},
+	{
+		Query: `SELECT CONVERT_TZ("2004-01-01 4:00:00", "GMT", "MET")`,
+		Expected: []sql.Row{
+			{"2004-01-01 05:00:00"},
+		},
+	},
+	{
+		Query: `SELECT CONVERT_TZ("2004-01-01 4:00:00", "America/New_York", "America/Los_Angeles")`,
+		Expected: []sql.Row{
+			{"2004-01-01 01:00:00"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
