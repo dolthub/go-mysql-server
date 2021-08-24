@@ -133,6 +133,13 @@ func TestConvertTz(t *testing.T) {
 			toTimeZone:     "+10:00",
 			expectedResult: time.Date(2010, 6, 3, 23, 12, 12, 0, time.UTC),
 		},
+		{
+			name:           "No symbol on toTimeZone errors",
+			datetime:       time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
+			fromTimeZone:   "-01:00",
+			toTimeZone:     "10:00",
+			expectedResult: nil,
+		},
 	}
 
 	for _, test := range tests {

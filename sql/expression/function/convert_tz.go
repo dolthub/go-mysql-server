@@ -79,6 +79,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// If either the date, or the timezones/offsets are not correct types we return NULL.
 	datetime, err := sql.Datetime.ConvertWithoutRangeCheck(dt)
 	if err != nil {
 		return nil, nil
@@ -120,7 +121,7 @@ func convertTimeZone(datetime time.Time, fromLocation string, toLocation string)
 		return time.Time{}
 	}
 
-	// Recreate the datetime string but in terms of fLoc. Note that this is different than simply using .In.
+	// Recreate the datetime string but in terms of fLoc. Note that this is different than simply using time.In().
 	fromTime := time.Date(datetime.Year(), datetime.Month(), datetime.Day(), datetime.Hour(), datetime.Minute(), datetime.Second(), datetime.Nanosecond(), fLoc)
 
 	return fromTime.In(tLoc)
@@ -138,9 +139,7 @@ func convertOffsets(t time.Time, startDuration string, endDuration string) time.
 		return time.Time{}
 	}
 
-	finalDuration := toDuration - fromDuration
-
-	return t.Add(finalDuration)
+	return t.Add(toDuration - fromDuration)
 }
 
 // getDeltaAsDuration takes in a MySQL offset in the format (ex +01:00) and returns it as a time Duration.
