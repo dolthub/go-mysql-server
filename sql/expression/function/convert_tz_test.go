@@ -120,18 +120,18 @@ func TestConvertTz(t *testing.T) {
 			expectedResult: nil,
 		},
 		{
-			name:           "Negative Duration Returns nil",
-			datetime:       "2004-01-01 12:00:00",
+			name:           "Negative time shift works accordingly",
+			datetime:       "2004-01-02 12:00:00",
 			fromTimeZone:   "-01:00",
 			toTimeZone:     "+10:11",
-			expectedResult: nil,
+			expectedResult: time.Date(2004, 1, 2, 23, 11, 0, 0, time.UTC),
 		},
 		{
-			name:           "Test With Actual datetime type",
+			name:           "Test With negatives and datetime type",
 			datetime:       time.Date(2010, 6, 3, 12, 12, 12, 0, time.UTC),
-			fromTimeZone:   "+00:00",
+			fromTimeZone:   "-01:00",
 			toTimeZone:     "+10:00",
-			expectedResult: time.Date(2010, 6, 3, 22, 12, 12, 0, time.UTC),
+			expectedResult: time.Date(2010, 6, 3, 23, 12, 12, 0, time.UTC),
 		},
 	}
 

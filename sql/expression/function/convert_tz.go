@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var offsetRegex = regexp.MustCompile(`(?m)^\+(\d{2}):(\d{2})$`)
+var offsetRegex = regexp.MustCompile(`(?m)^(\+|\-)(\d{2}):(\d{2})$`) // (?m)^\+|\-(\d{2}):(\d{2})$
 
 type ConvertTz struct {
 	dt     sql.Expression
@@ -147,15 +147,17 @@ func convertOffsets(t time.Time, startDuration string, endDuration string) time.
 func getDeltaAsDuration(d string) (time.Duration, error) {
 	var hours string
 	var mins string
+	var symbol string
 	matches := offsetRegex.FindStringSubmatch(d)
-	if len(matches) == 3 {
-		hours = matches[1]
-		mins = matches[2]
+	if len(matches) == 4 {
+		symbol = matches[1]
+		hours = matches[2]
+		mins = matches[3]
 	} else {
 		return -1, errors.New("error: unable to process time")
 	}
 
-	return time.ParseDuration(hours + "h" + mins + "m")
+	return time.ParseDuration(symbol + hours + "h" + mins + "m")
 }
 
 // Children implements the sql.Expression interface.
