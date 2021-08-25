@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -208,7 +206,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
 	beginNewTransaction := ctx.GetTransaction() == nil || readCommitted(ctx)
 	if beginNewTransaction {
-		logrus.Tracef("Connection %d: beginning new transaction", ctx.Session.ID())
+		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
 			database, err := e.Catalog.Database(transactionDatabase)
 			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
@@ -273,7 +271,7 @@ func (t transactionCommittingIter) Close(ctx *sql.Context) error {
 	tx := ctx.GetTransaction()
 	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
 	if commitTransaction {
-		logrus.Tracef("committing transaction %s", tx)
+		ctx.GetLogger().Tracef("committing transaction %s", tx)
 		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
 			return err
 		}

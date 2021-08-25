@@ -17,9 +17,11 @@ package server
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -81,8 +83,7 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.pid
 }
 
-// NewSession creates a Session for the given connection and saves it to
-// session pool.
+// NewSession creates a Session for the given connection and saves it to the session pool.
 func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error {
 	var err error
 
@@ -90,12 +91,21 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	defer s.mu.Unlock()
 	s.sessions[conn.ConnectionID], s.idxRegs[conn.ConnectionID], s.viewRegs[conn.ConnectionID], err = s.builder(ctx, conn, s.addr)
 
+	logger := s.sessions[conn.ConnectionID].GetLogger()
+	if logger == nil {
+		logger = logrus.New()
+	}
+
+	s.sessions[conn.ConnectionID].SetLogger(
+		logger.WithField("connectionID", conn.ConnectionID).
+			WithField("connectTime", time.Now()),
+		)
+
 	return err
 }
 
 func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 	sess, _, _, err := s.getOrCreateSession(context.Background(), conn)
-
 	if err != nil {
 		return err
 	}
@@ -122,22 +132,18 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
 func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
-	ir := s.idxRegs[conn.ConnectionID]
-	vr := s.viewRegs[conn.ConnectionID]
-	if !ok {
-		var err error
-		sess, ir, vr, err = s.builder(ctx, conn, s.addr)
+	s.mu.Unlock()
 
+	if !ok {
+		err := s.NewSession(ctx, conn)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-
-		s.sessions[conn.ConnectionID] = sess
-		s.idxRegs[conn.ConnectionID] = ir
-		s.viewRegs[conn.ConnectionID] = vr
+		sess = s.sessions[conn.ConnectionID]
 	}
-	s.mu.Unlock()
 
+	ir := s.idxRegs[conn.ConnectionID]
+	vr := s.viewRegs[conn.ConnectionID]
 	return sess, ir, vr, nil
 }
 
