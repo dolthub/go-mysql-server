@@ -141,6 +141,27 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	return convert(ctx, stmt, s)
 }
 
+// ParseColumnTypeString will return a SQL type for the given string that represents a column type.
+// For example, giving the string `VARCHAR(255)` will return the string SQL type with the internal type set to Varchar
+// and the length set to 255 with the default collation.
+func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error) {
+	createStmt := fmt.Sprintf("CREATE TABLE a(b %s)", columnType)
+	parseResult, err := sqlparser.ParseStrictDDL(createStmt)
+	if err != nil {
+		return nil, err
+	}
+	node, err := convertDDL(ctx, createStmt, parseResult.(*sqlparser.DDL))
+	if err != nil {
+		return nil, err
+	}
+	ddl, ok := node.(*plan.CreateTable)
+	if !ok {
+		return nil, fmt.Errorf("expected translation from type string to sql type has returned an unexpected result")
+	}
+	// If we successfully created a CreateTable plan with an empty schema then something has gone horribly wrong, so we'll panic
+	return ddl.Schema()[0].Type, nil
+}
+
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
 	if ss, ok := stmt.(sqlparser.SelectStatement); ok {
 		return convertSelectStatement(ctx, ss)
