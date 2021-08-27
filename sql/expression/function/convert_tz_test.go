@@ -25,23 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-var timezones = []string{"MET", "GMT", "US/Central", "US/Eastern"}
-
-func getLocations(t *testing.T) map[string]*time.Location {
-	ret := make(map[string]*time.Location)
-
-	for _, tz := range timezones {
-		loc, err := time.LoadLocation(tz)
-		require.NoError(t, err)
-		ret[tz] = loc
-	}
-
-	return ret
-}
-
 func TestConvertTz(t *testing.T) {
-	locationMap := getLocations(t)
-
 	tests := []struct {
 		name           string
 		datetime       interface{}
@@ -54,28 +38,28 @@ func TestConvertTz(t *testing.T) {
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "GMT",
 			toTimeZone:     "MET",
-			expectedResult: time.Date(2004, 1, 1, 13, 0, 0, 0, locationMap["MET"]),
+			expectedResult: time.Date(2004, 1, 1, 13, 0, 0, 0, time.UTC),
 		},
 		{
 			name:           "Simple timezone conversion as datetime object",
 			datetime:       time.Date(2004, 1, 1, 12, 0, 0, 0, time.UTC),
 			fromTimeZone:   "GMT",
 			toTimeZone:     "MET",
-			expectedResult: time.Date(2004, 1, 1, 13, 0, 0, 0, locationMap["MET"]),
+			expectedResult: time.Date(2004, 1, 1, 13, 0, 0, 0, time.UTC),
 		},
 		{
 			name:           "Locations going backwards",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "US/Eastern",
 			toTimeZone:     "US/Central",
-			expectedResult: time.Date(2004, 1, 1, 11, 0, 0, 0, locationMap["US/Central"]),
+			expectedResult: time.Date(2004, 1, 1, 11, 0, 0, 0, time.UTC),
 		},
 		{
 			name:           "Locations going forward",
 			datetime:       "2004-01-01 12:00:00",
 			fromTimeZone:   "US/Central",
 			toTimeZone:     "US/Eastern",
-			expectedResult: time.Date(2004, 1, 1, 13, 0, 0, 0, locationMap["US/Eastern"]),
+			expectedResult: time.Date(2004, 1, 1, 13, 0, 0, 0, time.UTC),
 		},
 		{
 			name:           "Simple time shift",
@@ -152,5 +136,4 @@ func TestConvertTz(t *testing.T) {
 			assert.Equal(t, test.expectedResult, res)
 		})
 	}
-
 }

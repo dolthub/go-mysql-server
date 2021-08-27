@@ -85,6 +85,9 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// Get the time in UTC.
+	datetime = time.Date(datetime.Year(), datetime.Month(), datetime.Day(), datetime.Hour(), datetime.Minute(), datetime.Second(), datetime.Nanosecond(), time.UTC)
+
 	fromStr, ok := from.(string)
 	if !ok {
 		return nil, nil
@@ -121,10 +124,13 @@ func convertTimeZone(datetime time.Time, fromLocation string, toLocation string)
 		return time.Time{}
 	}
 
-	// Recreate the datetime string but in terms of fLoc. Note that this is different than simply using time.In().
-	fromTime := time.Date(datetime.Year(), datetime.Month(), datetime.Day(), datetime.Hour(), datetime.Minute(), datetime.Second(), datetime.Nanosecond(), fLoc)
+	getCopy := func(t time.Time, loc *time.Location) time.Time {
+		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), loc).UTC()
+	}
 
-	return fromTime.In(tLoc)
+	delta := getCopy(datetime, fLoc).Sub(getCopy(datetime, tLoc))
+
+	return datetime.Add(delta)
 }
 
 // convertOffsets returns the conversion of t to t + (endDuration - startDuration).
