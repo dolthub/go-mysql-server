@@ -85,9 +85,6 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Get the time in UTC.
-	datetime = time.Date(datetime.Year(), datetime.Month(), datetime.Day(), datetime.Hour(), datetime.Minute(), datetime.Second(), datetime.Nanosecond(), time.UTC)
-
 	fromStr, ok := from.(string)
 	if !ok {
 		return nil, nil
@@ -98,14 +95,14 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	converted := convertTimeZone(datetime, fromStr, toStr)
-	if !converted.IsZero() {
+	converted, success := convertTimeZone(datetime, fromStr, toStr)
+	if success {
 		return sql.Datetime.ConvertWithoutRangeCheck(converted)
 	}
 
 	// If we weren't successful converting by timezone try converting via offsets.
-	converted = convertOffsets(datetime, fromStr, toStr)
-	if converted.IsZero() {
+	converted, success = convertOffsets(datetime, fromStr, toStr)
+	if !success {
 		return nil, nil
 	}
 
@@ -113,39 +110,40 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // convertTimeZone returns the conversion of t from timezone fromLocation to toLocation.
-func convertTimeZone(datetime time.Time, fromLocation string, toLocation string) time.Time {
+func convertTimeZone(datetime time.Time, fromLocation string, toLocation string) (time.Time, bool) {
 	fLoc, err := time.LoadLocation(fromLocation)
 	if err != nil {
-		return time.Time{}
+		return time.Time{}, false
 	}
 
 	tLoc, err := time.LoadLocation(toLocation)
 	if err != nil {
-		return time.Time{}
-	}
-
-	getCopy := func(t time.Time, loc *time.Location) time.Time {
-		return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), loc).UTC()
+		return time.Time{}, false
 	}
 
 	delta := getCopy(datetime, fLoc).Sub(getCopy(datetime, tLoc))
 
-	return datetime.Add(delta)
+	return datetime.Add(delta), true
 }
 
-// convertOffsets returns the conversion of t to t + (endDuration - startDuration).
-func convertOffsets(t time.Time, startDuration string, endDuration string) time.Time {
+// getCopy recreates the time t in the wanted timezone.
+func getCopy(t time.Time, loc *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), loc).UTC()
+}
+
+// convertOffsets returns the conversion of t to t + (endDuration - startDuration) and a boolean indicating success.
+func convertOffsets(t time.Time, startDuration string, endDuration string) (time.Time, bool) {
 	fromDuration, err := getDeltaAsDuration(startDuration)
 	if err != nil {
-		return time.Time{}
+		return time.Time{}, false
 	}
 
 	toDuration, err := getDeltaAsDuration(endDuration)
 	if err != nil {
-		return time.Time{}
+		return time.Time{}, false
 	}
 
-	return t.Add(toDuration - fromDuration)
+	return t.Add(toDuration - fromDuration), true
 }
 
 // getDeltaAsDuration takes in a MySQL offset in the format (ex +01:00) and returns it as a time Duration.
