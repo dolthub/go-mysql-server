@@ -45,6 +45,7 @@ var Defaults = []sql.Function{
 	sql.NewFunction0("connection_id", NewConnectionID),
 	sql.Function1{Name: "cos", Fn: NewCos},
 	sql.Function1{Name: "cot", Fn: NewCot},
+	sql.Function3{Name: "convert_tz", Fn: NewConvertTz},
 	sql.Function1{Name: "count", Fn: func(ctx *sql.Context, e sql.Expression) sql.Expression { return aggregation.NewCount(ctx, e) }},
 	sql.Function1{Name: "crc32", Fn: NewCrc32},
 	sql.NewFunction0("curdate", NewCurrDate),
