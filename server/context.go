@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
@@ -93,12 +94,13 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 
 	logger := s.sessions[conn.ConnectionID].GetLogger()
 	if logger == nil {
-		logger = logrus.New()
+		log := logrus.StandardLogger()
+		logger = logrus.NewEntry(log)
 	}
 
 	s.sessions[conn.ConnectionID].SetLogger(
-		logger.WithField("connectionID", conn.ConnectionID).
-			WithField("connectTime", time.Now()),
+		logger.WithField(sqle.ConnectionIdLogField, conn.ConnectionID).
+			WithField(sqle.ConnectTimeLogKey, time.Now()),
 		)
 
 	return err

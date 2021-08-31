@@ -132,8 +132,8 @@ type BaseSession struct {
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
 	if s.logger == nil {
-		log := logrus.New()
-		return logrus.NewEntry(log)
+		log := logrus.StandardLogger()
+		s.logger = logrus.NewEntry(log)
 	}
 	return s.logger
 }

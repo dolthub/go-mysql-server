@@ -76,7 +76,7 @@ func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
-	logrus.Infof("NewConnection: client %v", c.ConnectionID)
+	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
@@ -114,7 +114,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
 
-	logrus.WithField("connectionId", c.ConnectionID).Infof("ConnectionClosed")
+	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
@@ -233,6 +233,8 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 	return res, nil
 }
 
+var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
+
 func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
@@ -253,8 +255,8 @@ func (h *Handler) doQuery(
 		return callback(&sqltypes.Result{})
 	}
 
-	ctx.GetLogger().Debugf("connection %d: received query %s", query)
-	ctx.SetLogger(ctx.GetLogger().WithField("query", query))
+	ctx.SetLogger(ctx.GetLogger().
+		WithField("query",  string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
 
 	finish := observeQuery(ctx, query)
 	defer finish(err)
@@ -422,9 +424,13 @@ rowLoop:
 
 	switch len(r.Rows) {
 	case 0:
-		ctx.GetLogger().Tracef("returning empty result")
+		if len(r.Info) > 0 {
+			ctx.GetLogger().Debugf("returning result %s", r.Info)
+		} else {
+			ctx.GetLogger().Debugf("returning empty result")
+		}
 	case 1:
-		ctx.GetLogger().Tracef("returning result %v", r)
+		ctx.GetLogger().Debugf("returning result %v", r)
 	}
 
 	// TODO(andy): logic doesn't match comment?
