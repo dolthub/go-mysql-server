@@ -19,11 +19,11 @@ import (
 	"sync"
 	"time"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 
+	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -101,7 +101,7 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	s.sessions[conn.ConnectionID].SetLogger(
 		logger.WithField(sqle.ConnectionIdLogField, conn.ConnectionID).
 			WithField(sqle.ConnectTimeLogKey, time.Now()),
-		)
+	)
 
 	return err
 }

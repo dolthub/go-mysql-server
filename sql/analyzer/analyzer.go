@@ -159,12 +159,14 @@ func (ab *Builder) RemoveAfterAllRule(name string) *Builder {
 }
 
 var log = logrus.New()
+
 func init() {
 	// TODO: give the option for debug analyzer logging format to match the global one
 	log.SetFormatter(simpleLogFormatter{})
 }
 
 type simpleLogFormatter struct{}
+
 func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	lvl := ""
 	switch entry.Level {

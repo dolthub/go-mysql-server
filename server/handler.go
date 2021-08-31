@@ -256,7 +256,7 @@ func (h *Handler) doQuery(
 	}
 
 	ctx.SetLogger(ctx.GetLogger().
-		WithField("query",  string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
+		WithField("query", string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
 
 	finish := observeQuery(ctx, query)
 	defer finish(err)
