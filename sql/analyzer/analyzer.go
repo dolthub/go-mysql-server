@@ -158,55 +158,83 @@ func (ab *Builder) RemoveAfterAllRule(name string) *Builder {
 	return ab
 }
 
+var log = logrus.New()
+
 func init() {
-	logrus.SetFormatter(simpleLogFormatter{})
+	// TODO: give the option for debug analyzer logging format to match the global one
+	log.SetFormatter(simpleLogFormatter{})
+}
+
+type simpleLogFormatter struct{}
+
+func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	lvl := ""
+	switch entry.Level {
+	case logrus.PanicLevel:
+		lvl = "PANIC"
+	case logrus.FatalLevel:
+		lvl = "FATAL"
+	case logrus.ErrorLevel:
+		lvl = "ERROR"
+	case logrus.WarnLevel:
+		lvl = "WARN"
+	case logrus.InfoLevel:
+		lvl = "INFO"
+	case logrus.DebugLevel:
+		lvl = "DEBUG"
+	case logrus.TraceLevel:
+		lvl = "TRACE"
+	}
+
+	msg := fmt.Sprintf("%s: %s\n", lvl, entry.Message)
+	return ([]byte)(msg), nil
 }
 
 // Build creates a new Analyzer using all previous data setted to the Builder
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
 	var batches = []*Batch{
-		&Batch{
+		{
 			Desc:       "pre-analyzer",
 			Iterations: maxAnalysisIterations,
 			Rules:      ab.preAnalyzeRules,
 		},
-		&Batch{
+		{
 			Desc:       "once-before",
 			Iterations: 1,
 			Rules:      ab.onceBeforeRules,
 		},
-		&Batch{
+		{
 			Desc:       "default-rules",
 			Iterations: maxAnalysisIterations,
 			Rules:      ab.defaultRules,
 		},
-		&Batch{
+		{
 			Desc:       "once-after",
 			Iterations: 1,
 			Rules:      ab.onceAfterRules,
 		},
-		&Batch{
+		{
 			Desc:       "post-analyzer",
 			Iterations: maxAnalysisIterations,
 			Rules:      ab.postAnalyzeRules,
 		},
-		&Batch{
+		{
 			Desc:       "pre-validation",
 			Iterations: 1,
 			Rules:      ab.preValidationRules,
 		},
-		&Batch{
+		{
 			Desc:       "validation",
 			Iterations: 1,
 			Rules:      ab.validationRules,
 		},
-		&Batch{
+		{
 			Desc:       "post-validation",
 			Iterations: 1,
 			Rules:      ab.postValidationRules,
 		},
-		&Batch{
+		{
 			Desc:       "after-all",
 			Iterations: 1,
 			Rules:      ab.afterAllRules,
@@ -247,40 +275,15 @@ func NewDefault(c *sql.Catalog) *Analyzer {
 	return NewBuilder(c).Build()
 }
 
-type simpleLogFormatter struct{}
-
-func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	lvl := ""
-	switch entry.Level {
-	case logrus.PanicLevel:
-		lvl = "PANIC"
-	case logrus.FatalLevel:
-		lvl = "FATAL"
-	case logrus.ErrorLevel:
-		lvl = "ERROR"
-	case logrus.WarnLevel:
-		lvl = "WARN"
-	case logrus.InfoLevel:
-		lvl = "INFO"
-	case logrus.DebugLevel:
-		lvl = "DEBUG"
-	case logrus.TraceLevel:
-		lvl = "TRACE"
-	}
-
-	msg := fmt.Sprintf("%s: %s\n", lvl, entry.Message)
-	return ([]byte)(msg), nil
-}
-
 // Log prints an INFO message to stdout with the given message and args
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
 	if a != nil && a.Debug {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			logrus.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
+			log.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
 		} else {
-			logrus.Infof(msg, args...)
+			log.Infof(msg, args...)
 		}
 	}
 }
@@ -290,9 +293,9 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			logrus.Infof("%s:\n%s", ctx, sql.DebugString(n))
+			log.Infof("%s:\n%s", ctx, sql.DebugString(n))
 		} else {
-			logrus.Infof("%s", sql.DebugString(n))
+			log.Infof("%s", sql.DebugString(n))
 		}
 	}
 }

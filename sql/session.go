@@ -26,6 +26,7 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
+	"github.com/sirupsen/logrus"
 )
 
 type key uint
@@ -101,6 +102,13 @@ type Session interface {
 	SetIgnoreAutoCommit(ignore bool)
 	// GetIgnoreAutoCommit returns whether this session should ignore the @@autocommit variable
 	GetIgnoreAutoCommit() bool
+	// GetLogger returns the logger for this session, useful if clients want to log messages with the same format / output
+	// as the running server. Clients should instantiate their own global logger with formatting options, and session
+	// implementations should return the logger to be used for the running server.
+	GetLogger() *logrus.Entry
+	// SetLogger sets the logger to use for this session, which will always be an extension of the one returned by
+	// GetLogger, extended with session information
+	SetLogger(*logrus.Entry)
 }
 
 // BaseSession is the basic session type.
@@ -109,7 +117,8 @@ type BaseSession struct {
 	addr             string
 	currentDB        string
 	client           Client
-	mu               *sync.RWMutex
+	logger           *logrus.Entry
+	mu               sync.RWMutex
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
 	warnings         []*Warning
@@ -119,6 +128,23 @@ type BaseSession struct {
 	lastQueryInfo    map[string]int64
 	tx               Transaction
 	ignoreAutocommit bool
+}
+
+func (s *BaseSession) GetLogger() *logrus.Entry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.logger == nil {
+		log := logrus.StandardLogger()
+		s.logger = logrus.NewEntry(log)
+	}
+	return s.logger
+}
+
+func (s *BaseSession) SetLogger(logger *logrus.Entry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logger = logger
 }
 
 func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
@@ -401,7 +427,7 @@ func NewSession(server string, client Client, id uint32) Session {
 		id:            id,
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
-		mu:            &sync.RWMutex{},
+		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
 	}
@@ -416,7 +442,7 @@ func NewBaseSession() Session {
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
-		mu:            &sync.RWMutex{},
+		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
 	}

@@ -76,7 +76,7 @@ func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
-	logrus.Infof("NewConnection: client %v", c.ConnectionID)
+	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
@@ -114,7 +114,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
 
-	logrus.Infof("ConnectionClosed: client %v", c.ConnectionID)
+	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
 
 // ComQuery executes a SQL query on the SQLe engine.
@@ -233,15 +233,20 @@ func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Ex
 	return res, nil
 }
 
+var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
+
 func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result) error,
 ) error {
-	logrus.Tracef("connection %d: received query %s", c.ConnectionID, query)
+	ctx, err := h.sm.NewContextWithQuery(c, query)
+	if err != nil {
+		return err
+	}
 
-	handled, err := h.handleKill(c, query)
+	handled, err := h.handleKill(ctx, c, query)
 	if err != nil {
 		return err
 	}
@@ -250,10 +255,9 @@ func (h *Handler) doQuery(
 		return callback(&sqltypes.Result{})
 	}
 
-	ctx, err := h.sm.NewContextWithQuery(c, query)
-	if err != nil {
-		return err
-	}
+	ctx.SetLogger(ctx.GetLogger().
+		WithField("query", string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
+	ctx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(ctx, query)
 	defer finish(err)
@@ -285,13 +289,13 @@ func (h *Handler) doQuery(
 		}
 	}
 
-	logrus.WithField("query", query).Tracef("connection %d: executing query", c.ConnectionID)
+	ctx.GetLogger().Tracef("beginning execution")
 
 	var sqlBindings map[string]sql.Expression
 	if len(bindings) > 0 {
 		sqlBindings, err = bindingsToExprs(bindings)
 		if err != nil {
-			logrus.Tracef("Error processing bindings for query %s: %s", query, err)
+			ctx.GetLogger().WithError(err).Errorf("Error processing bindings")
 			return err
 		}
 	}
@@ -306,7 +310,7 @@ func (h *Handler) doQuery(
 
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
-		logrus.Tracef("connection %d: error running query: %s", c.ConnectionID, err)
+		ctx.GetLogger().WithError(err).Warn("error running query")
 		return err
 	}
 
@@ -349,7 +353,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	go h.pollForClosedConnection(c, errChan, quit)
+	go h.pollForClosedConnection(ctx, c, errChan, quit)
 
 rowLoop:
 	for {
@@ -374,7 +378,7 @@ rowLoop:
 				break rowLoop
 			}
 
-			logrus.Tracef("connection %d: got error %s", c.ConnectionID, err.Error())
+			ctx.GetLogger().WithError(err).Warn("error running query")
 			close(quit)
 			return err
 		case row := <-rowChan:
@@ -392,13 +396,13 @@ rowLoop:
 				return err
 			}
 
-			logrus.Tracef("connection %d spooling result row %s", c.ConnectionID, outputRow)
+			ctx.GetLogger().Tracef("spooling result row %s", outputRow)
 			r.Rows = append(r.Rows, outputRow)
 			r.RowsAffected++
 		case <-timer.C:
 			if h.readTimeout != 0 {
 				// Cancel and return so Vitess can call the CloseConnection callback
-				logrus.Tracef("connection %d got timeout", c.ConnectionID)
+				ctx.GetLogger().Tracef("connection timeout")
 				close(quit)
 				return ErrRowTimeout.New()
 			}
@@ -421,10 +425,16 @@ rowLoop:
 
 	switch len(r.Rows) {
 	case 0:
-		logrus.Tracef("connection %d returning empty result", c.ConnectionID)
+		if len(r.Info) > 0 {
+			ctx.GetLogger().Debugf("returning result %s", r.Info)
+		} else {
+			ctx.GetLogger().Debugf("returning empty result")
+		}
 	case 1:
-		logrus.Tracef("connection %d returning result %v", c.ConnectionID, r)
+		ctx.GetLogger().Debugf("returning result %v", r)
 	}
+
+	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
 
 	// TODO(andy): logic doesn't match comment?
 	// Even if r.RowsAffected = 0, the callback must be
@@ -515,24 +525,24 @@ func (h *Handler) errorWrappedDoQuery(
 // Periodically polls the connection socket to determine if it is has been closed by the client, sending an error on
 // the supplied error channel if it has. Meant to be run in a separate goroutine from the query handler routine.
 // Returns immediately on platforms that can't support TCP socket checks.
-func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, quit chan struct{}) {
+func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn, errChan chan error, quit chan struct{}) {
 	tcpConn, ok := maybeGetTCPConn(c.Conn)
 	if !ok {
-		logrus.Debug("Connection checker exiting, connection isn't TCP")
+		ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
 		return
 	}
 
 	inode, err := sockstate.GetConnInode(tcpConn)
 	if err != nil || inode == 0 {
 		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
-			logrus.Trace("Connection checker exiting, connection isn't TCP")
+			ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
 		}
 		return
 	}
 
 	t, ok := tcpConn.LocalAddr().(*net.TCPAddr)
 	if !ok {
-		logrus.Debug("Connection checker exiting, could not get local port")
+		ctx.GetLogger().Trace("Connection checker exiting, could not get local port")
 		return
 	}
 
@@ -546,11 +556,11 @@ func (h *Handler) pollForClosedConnection(c *mysql.Conn, errChan chan error, qui
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
 		switch st {
 		case sockstate.Broken:
-			logrus.Trace("socket state is broken, returning error")
+			ctx.GetLogger().Warn("socket state is broken, returning error")
 			errChan <- ErrConnectionWasClosed.New()
 			return
 		case sockstate.Error:
-			logrus.Infof("Connection checker exiting, got err checking sockstate: %v", err)
+			ctx.GetLogger().WithError(err).Warn("Connection checker exiting, got err checking sockstate")
 			return
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
@@ -599,14 +609,15 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
-func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
+func (h *Handler) handleKill(ctx *sql.Context, conn *mysql.Conn, query string) (bool, error) {
 	q := strings.ToLower(query)
+	// TODO: move this to parser, normal execution path
 	s := regKillCmd.FindStringSubmatch(q)
 	if s == nil {
 		return false, nil
 	}
 
-	logrus.Tracef("killing query %s", query)
+	ctx.GetLogger().Info("killing query")
 
 	id, err := strconv.ParseUint(s[2], 10, 32)
 	if err != nil {
@@ -628,7 +639,7 @@ func (h *Handler) handleKill(conn *mysql.Conn, query string) (bool, error) {
 	connID := uint32(id)
 	h.e.Catalog.Kill(connID)
 	if s[1] != "query" {
-		logrus.Infof("kill connection: id %d", connID)
+		ctx.GetLogger().Info("kill connection")
 		h.sm.CloseConn(conn)
 		conn.Close()
 	}
