@@ -117,7 +117,7 @@ type BaseSession struct {
 	addr             string
 	currentDB        string
 	client           Client
-	logger 					 *logrus.Entry
+	logger           *logrus.Entry
 	mu               sync.RWMutex
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
