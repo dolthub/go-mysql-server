@@ -118,7 +118,7 @@ type BaseSession struct {
 	currentDB        string
 	client           Client
 	logger 					 *logrus.Entry
-	mu               *sync.RWMutex
+	mu               sync.RWMutex
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
 	warnings         []*Warning
@@ -131,6 +131,9 @@ type BaseSession struct {
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.logger == nil {
 		log := logrus.StandardLogger()
 		s.logger = logrus.NewEntry(log)
@@ -139,6 +142,8 @@ func (s *BaseSession) GetLogger() *logrus.Entry {
 }
 
 func (s *BaseSession) SetLogger(logger *logrus.Entry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.logger = logger
 }
 
@@ -422,7 +427,7 @@ func NewSession(server string, client Client, id uint32) Session {
 		id:            id,
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
-		mu:            &sync.RWMutex{},
+		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
 	}
@@ -437,7 +442,7 @@ func NewBaseSession() Session {
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
-		mu:            &sync.RWMutex{},
+		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
 	}

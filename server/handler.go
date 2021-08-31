@@ -257,6 +257,7 @@ func (h *Handler) doQuery(
 
 	ctx.SetLogger(ctx.GetLogger().
 		WithField("query",  string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
+	ctx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(ctx, query)
 	defer finish(err)
@@ -432,6 +433,8 @@ rowLoop:
 	case 1:
 		ctx.GetLogger().Debugf("returning result %v", r)
 	}
+
+	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
 
 	// TODO(andy): logic doesn't match comment?
 	// Even if r.RowsAffected = 0, the callback must be
