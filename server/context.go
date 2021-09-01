@@ -133,11 +133,13 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
 
 func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	sess, ok := s.sessions[conn.ConnectionID]
-	s.mu.Unlock()
 
 	if !ok {
+		s.mu.Unlock()
 		err := s.NewSession(ctx, conn)
+		s.mu.Lock()
 		if err != nil {
 			return nil, nil, nil, err
 		}

@@ -92,6 +92,9 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 	if err != nil {
 		return nil, err
 	}
+	if sql.IsOkResultSchema(schema) {
+		return nil, nil
+	}
 	return schemaToFields(schema), nil
 }
 
