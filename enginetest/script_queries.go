@@ -803,11 +803,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"1-2-3-4"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id`,
+				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id order by o_id asc`,
 				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
@@ -851,7 +851,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
@@ -965,11 +965,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(14)}, {float64(5)}, {float64(47)}},
 			},
 			{
-				Query:    "SELECT pk, SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk",
+				Query:    "SELECT pk, SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk ORDER BY pk",
 				Expected: []sql.Row{{int64(1), float64(3), int64(2)}, {int64(2), float64(2), int64(2)}},
 			},
 			{
-				Query:    "SELECT pk, MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk",
+				Query:    "SELECT pk, MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk ORDER BY pk",
 				Expected: []sql.Row{{int64(1), int64(1), int64(2)}, {int64(2), int64(2), int64(2)}},
 			},
 			{
