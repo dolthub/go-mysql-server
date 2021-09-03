@@ -40,6 +40,7 @@ type JSONArrayAgg struct {
 }
 
 var _ sql.FunctionExpression = &JSONArrayAgg{}
+var _ sql.Aggregation = &JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
 func NewJSONArrayAgg(ctx *sql.Context, arg sql.Expression) *JSONArrayAgg {
@@ -52,9 +53,9 @@ func (j *JSONArrayAgg) FunctionName() string {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (j *JSONArrayAgg) NewBuffer() sql.Row {
+func (j *JSONArrayAgg) NewBuffer(ctx *sql.Context) (sql.Row, error) {
 	var row []interface{}
-	return sql.NewRow(row)
+	return sql.NewRow(row), nil
 }
 
 // Type returns the type of the result.
@@ -129,6 +130,7 @@ type JSONObjectAgg struct {
 }
 
 var _ sql.FunctionExpression = JSONObjectAgg{}
+var _ sql.Aggregation = JSONObjectAgg{}
 
 // NewJSONObjectAgg creates a new JSONArrayAgg function.
 func NewJSONObjectAgg(ctx *sql.Context, key, value sql.Expression) sql.Expression {
@@ -169,9 +171,9 @@ func (j JSONObjectAgg) WithChildren(ctx *sql.Context, children ...sql.Expression
 }
 
 // NewBuffer implements the Aggregation interface.
-func (j JSONObjectAgg) NewBuffer() sql.Row {
+func (j JSONObjectAgg) NewBuffer(ctx *sql.Context) (sql.Row, error) {
 	row := make(map[string]interface{})
-	return sql.NewRow(row)
+	return sql.NewRow(row), nil
 }
 
 // Update implements the Aggregation interface.

@@ -28,6 +28,7 @@ type First struct {
 }
 
 var _ sql.FunctionExpression = (*First)(nil)
+var _ sql.Aggregation = (*First)(nil)
 
 // NewFirst returns a new First node.
 func NewFirst(ctx *sql.Context, e sql.Expression) *First {
@@ -57,17 +58,21 @@ func (f *First) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (f *First) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (f *First) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+	bufferChild, err := duplicateExpression(ctx, f.UnaryExpression.Child)
+        if err != nil {
+                return nil, err
+        }
+        return sql.NewRow(bufferChild, nil), nil
 }
 
 // Update implements the Aggregation interface.
 func (f *First) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	if buffer[0] != nil {
+	if buffer[1] != nil {
 		return nil
 	}
 
-	v, err := f.Child.Eval(ctx, row)
+	v, err := buffer[0].(sql.Expression).Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -76,12 +81,12 @@ func (f *First) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	buffer[0] = v
+	buffer[1] = v
 
 	return nil
 }
 
 // Eval implements the Aggregation interface.
 func (f *First) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	return buffer[0], nil
+	return buffer[1], nil
 }

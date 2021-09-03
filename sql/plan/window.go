@@ -157,8 +157,12 @@ func (i *windowIter) Next() (sql.Row, error) {
 func (i *windowIter) compute() error {
 	i.buffers = make([]sql.Row, len(i.selectExprs))
 
+	var err error
 	for j, expr := range i.selectExprs {
-		i.buffers[j] = newBuffer(expr)
+		i.buffers[j], err = newBuffer(i.ctx, expr)
+		if err != nil {
+			return err
+		}
 	}
 
 	for {
@@ -206,14 +210,14 @@ func (i *windowIter) compute() error {
 	return nil
 }
 
-func newBuffer(expr sql.Expression) sql.Row {
+func newBuffer(ctx *sql.Context, expr sql.Expression) (sql.Row, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
-		return n.NewBuffer()
+		return n.NewBuffer(ctx)
 	case sql.WindowAggregation:
-		return n.NewBuffer()
+		return n.NewBuffer(), nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 

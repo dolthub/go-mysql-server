@@ -35,7 +35,7 @@ func aggregate(t *testing.T, agg sql.Aggregation, rows ...sql.Row) interface{} {
 	t.Helper()
 
 	ctx := sql.NewEmptyContext()
-	buf := agg.NewBuffer()
+	buf, _ := agg.NewBuffer(ctx)
 	for _, row := range rows {
 		require.NoError(t, agg.Update(ctx, buf, row))
 	}

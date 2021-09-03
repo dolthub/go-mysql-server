@@ -28,6 +28,7 @@ type Sum struct {
 }
 
 var _ sql.FunctionExpression = (*Sum)(nil)
+var _ sql.Aggregation = (*Sum)(nil)
 
 // NewSum returns a new Sum node.
 func NewSum(ctx *sql.Context, e sql.Expression) *Sum {
@@ -57,13 +58,17 @@ func (m *Sum) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Sum) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (m *Sum) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+	bufferChild, err := duplicateExpression(ctx, m.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return sql.NewRow(bufferChild, nil), nil
 }
 
 // Update implements the Aggregation interface.
 func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := m.Child.Eval(ctx, row)
+	v, err := buffer[0].(sql.Expression).Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -77,18 +82,18 @@ func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		val = float64(0)
 	}
 
-	if buffer[0] == nil {
-		buffer[0] = float64(0)
+	if buffer[1] == nil {
+		buffer[1] = float64(0)
 	}
 
-	buffer[0] = buffer[0].(float64) + val.(float64)
+	buffer[1] = buffer[1].(float64) + val.(float64)
 
 	return nil
 }
 
 // Eval implements the Aggregation interface.
 func (m *Sum) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	sum := buffer[0]
+	sum := buffer[1]
 
 	return sum, nil
 }

@@ -35,7 +35,7 @@ func TestAvg_Float64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	avg := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Float64, "col1", true))
-	buffer := avg.NewBuffer()
+	buffer, _ := avg.NewBuffer(ctx)
 	avg.Update(ctx, buffer, sql.NewRow(float64(23.2220000)))
 
 	require.Equal(float64(23.222), eval(t, avg, buffer))
@@ -46,7 +46,7 @@ func TestAvg_Eval_INT32(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "col1", true))
-	buffer := avgNode.NewBuffer()
+	buffer, _ := avgNode.NewBuffer(ctx)
 	require.Equal(nil, eval(t, avgNode, buffer))
 
 	avgNode.Update(ctx, buffer, sql.NewRow(int32(1)))
@@ -61,7 +61,7 @@ func TestAvg_Eval_UINT64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Uint64, "col1", true))
-	buffer := avgNode.NewBuffer()
+	buffer, _ := avgNode.NewBuffer(ctx)
 	require.Equal(nil, eval(t, avgNode, buffer))
 
 	err := avgNode.Update(ctx, buffer, sql.NewRow(uint64(1)))
@@ -78,7 +78,7 @@ func TestAvg_Eval_String(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "col1", true))
-	buffer := avgNode.NewBuffer()
+	buffer, _ := avgNode.NewBuffer(ctx)
 	require.Equal(nil, eval(t, avgNode, buffer))
 
 	err := avgNode.Update(ctx, buffer, sql.NewRow("foo"))
@@ -95,7 +95,7 @@ func TestAvg_NULL(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Uint64, "col1", true))
-	buffer := avgNode.NewBuffer()
+	buffer, _ := avgNode.NewBuffer(ctx)
 	require.Zero(avgNode.Eval(ctx, buffer))
 
 	err := avgNode.Update(ctx, buffer, sql.NewRow(nil))
@@ -138,7 +138,7 @@ func TestAvg_NUMS_AND_NULLS(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := avgNode.NewBuffer()
+			buf, _ := avgNode.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(avgNode.Update(ctx, buf, row))
 			}
@@ -206,7 +206,7 @@ func TestAvg_Distinct(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ad.Dispose()
 
-			buf := avg.NewBuffer()
+			buf, _ := avg.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(avg.Update(ctx, buf, row))
 			}

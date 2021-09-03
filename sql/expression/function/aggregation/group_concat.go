@@ -46,11 +46,11 @@ func NewGroupConcat(ctx *sql.Context, distinct string, orderBy sql.SortFields, s
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (g *GroupConcat) NewBuffer() sql.Row {
+func (g *GroupConcat) NewBuffer(ctx *sql.Context) (sql.Row, error) {
 	var rows []sql.Row
 	var distinctSet = make(map[string]bool)
 
-	return sql.NewRow(rows, distinctSet)
+	return sql.NewRow(rows, distinctSet), nil
 }
 
 // Update implements the Aggregation interface.

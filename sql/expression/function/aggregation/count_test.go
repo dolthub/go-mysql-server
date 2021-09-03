@@ -28,7 +28,7 @@ func TestCountEval1(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCount(sql.NewEmptyContext(), expression.NewLiteral(1, sql.Int32))
-	b := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), eval(t, c, b))
 
 	require.NoError(c.Update(ctx, b, nil))
@@ -44,7 +44,7 @@ func TestCountEvalStar(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCount(sql.NewEmptyContext(), expression.NewStar())
-	b := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), eval(t, c, b))
 
 	require.NoError(c.Update(ctx, b, nil))
@@ -60,7 +60,7 @@ func TestCountEvalString(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCount(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "", true))
-	b := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), eval(t, c, b))
 
 	require.NoError(c.Update(ctx, b, sql.NewRow("foo")))
@@ -75,7 +75,7 @@ func TestCountDistinctEval1(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCountDistinct(expression.NewLiteral(1, sql.Int32))
-	b := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), eval(t, c, b))
 
 	require.NoError(c.Update(ctx, b, nil))
@@ -91,7 +91,7 @@ func TestCountDistinctEvalStar(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCountDistinct(expression.NewStar())
-	b := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), eval(t, c, b))
 
 	require.NoError(c.Update(ctx, b, nil))
@@ -107,7 +107,7 @@ func TestCountDistinctEvalString(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	c := NewCountDistinct(expression.NewGetField(0, sql.Text, "", true))
-	b := c.NewBuffer()
+	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), eval(t, c, b))
 
 	require.NoError(c.Update(ctx, b, sql.NewRow("foo")))

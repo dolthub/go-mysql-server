@@ -29,6 +29,7 @@ type Max struct {
 }
 
 var _ sql.FunctionExpression = (*Max)(nil)
+var _ sql.Aggregation = (*Max)(nil)
 
 // NewMax returns a new Max node.
 func NewMax(ctx *sql.Context, e sql.Expression) *Max {
@@ -67,13 +68,19 @@ func (m *Max) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Max) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (m *Max) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+        bufferChild, err := duplicateExpression(ctx, m.UnaryExpression.Child)
+        if err != nil {
+                return nil, err
+        }
+        return sql.NewRow(bufferChild, nil), nil
 }
 
 // Update implements the Aggregation interface.
 func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := m.Child.Eval(ctx, row)
+	child := buffer[0].(sql.Expression)
+
+	v, err := child.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -82,16 +89,16 @@ func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	if buffer[0] == nil {
-		buffer[0] = v
+	if buffer[1] == nil {
+		buffer[1] = v
 	}
 
-	cmp, err := m.Child.Type().Compare(v, buffer[0])
+	cmp, err := child.Type().Compare(v, buffer[1])
 	if err != nil {
 		return err
 	}
 	if cmp == 1 {
-		buffer[0] = v
+		buffer[1] = v
 	}
 
 	return nil
@@ -99,6 +106,6 @@ func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (m *Max) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	max := buffer[0]
+	max := buffer[1]
 	return max, nil
 }

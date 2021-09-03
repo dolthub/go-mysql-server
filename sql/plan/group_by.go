@@ -212,8 +212,12 @@ func (i *groupByIter) Next() (sql.Row, error) {
 
 	i.done = true
 
+	var err error
 	for j, a := range i.selectedExprs {
-		i.buf[j] = newAggregationBuffer(a)
+		i.buf[j], err = newAggregationBuffer(i.ctx, a)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for {
@@ -297,15 +301,13 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		if _, err := i.aggregations.Get(key); err != nil {
+		if b, err := i.aggregations.Get(key); b == nil && err != nil {
 			var buf = make([]sql.Row, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				// Each group by operation processes keys in order due to the implicit sort provided to it.
-				// So when a DISTINCT operation occurs with a group by, we can simply dispose and recreate a new cache
-				// within the wrapped DistinctExpression.
-				disposeOfAggregationCaches(a)
-
-				buf[j] = newAggregationBuffer(a)
+				buf[j], err = newAggregationBuffer(i.ctx, a)
+				if err != nil {
+					return err
+				}
 			}
 
 			if err := i.aggregations.Put(key, buf); err != nil {
@@ -313,6 +315,8 @@ func (i *groupByGroupingIter) compute() error {
 			}
 
 			i.keys = append(i.keys, key)
+		} else if err != nil {
+			return err
 		}
 
 		b, err := i.aggregations.Get(key)
@@ -330,6 +334,7 @@ func (i *groupByGroupingIter) compute() error {
 }
 
 func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
+	// TODO(aaron): Dispose aggregations in i.aggregations.
 	i.aggregations = nil
 	if i.dispose != nil {
 		i.dispose()
@@ -359,12 +364,12 @@ func groupingKey(
 	return hash.Sum64(), nil
 }
 
-func newAggregationBuffer(expr sql.Expression) sql.Row {
+func newAggregationBuffer(ctx *sql.Context, expr sql.Expression) (sql.Row, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
-		return n.NewBuffer()
+		return n.NewBuffer(ctx)
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
@@ -400,17 +405,6 @@ func updateBuffer(
 		}
 		buffers[idx] = sql.NewRow(val)
 		return nil
-	}
-}
-
-// disposeOfAggregationCaches looks for any children that wraps a DISTINCT expression and throws away its cache.
-// This is useful for aggregations that pair DISTINCT and groupby.
-func disposeOfAggregationCaches(e sql.Expression) {
-	for _, child := range e.Children() {
-		switch childExp := child.(type) {
-		case *expression.DistinctExpression:
-			childExp.Dispose()
-		}
 	}
 }
 

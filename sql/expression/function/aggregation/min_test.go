@@ -36,7 +36,7 @@ func TestMin_Eval_Int32(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := m.NewBuffer()
+	b, _ := m.NewBuffer(ctx)
 
 	m.Update(ctx, b, sql.NewRow(int32(7)))
 	m.Update(ctx, b, sql.NewRow(int32(2)))
@@ -52,7 +52,7 @@ func TestMin_Eval_Text(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "field", true))
-	b := m.NewBuffer()
+	b, _ := m.NewBuffer(ctx)
 
 	m.Update(ctx, b, sql.NewRow("a"))
 	m.Update(ctx, b, sql.NewRow("A"))
@@ -68,7 +68,7 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Timestamp, "field", true))
-	b := m.NewBuffer()
+	b, _ := m.NewBuffer(ctx)
 
 	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2006-01-02 15:04:05")
 	someTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2007-01-02 15:04:05")
@@ -88,7 +88,7 @@ func TestMin_Eval_NULL(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := m.NewBuffer()
+	b, _ := m.NewBuffer(ctx)
 
 	m.Update(ctx, b, sql.NewRow(nil))
 	m.Update(ctx, b, sql.NewRow(nil))
@@ -104,7 +104,7 @@ func TestMin_Eval_Empty(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := m.NewBuffer()
+	b, _ := m.NewBuffer(ctx)
 
 	v, err := m.Eval(ctx, b)
 	assert.NoError(err)
@@ -116,7 +116,7 @@ func TestMin_Distinct(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(sql.NewEmptyContext(), expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
-	b := m.NewBuffer()
+	b, _ := m.NewBuffer(ctx)
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 
@@ -131,7 +131,7 @@ func TestMin_Distinct(t *testing.T) {
 	assert.Equal(1, v)
 
 	m = NewMin(sql.NewEmptyContext(), expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
-	b = m.NewBuffer()
+	b, _ = m.NewBuffer(ctx)
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 

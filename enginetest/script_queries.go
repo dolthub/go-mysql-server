@@ -936,8 +936,8 @@ var ScriptTests = []ScriptTest{
 			"CREATE TABLE mytable (pk int, v1 int)",
 			"INSERT INTO mytable VALUES(1,1)",
 			"INSERT INTO mytable VALUES(1,1)",
-			"INSERT INTO mytable VALUES(1,2)",
 			"INSERT INTO mytable VALUES(2,2)",
+			"INSERT INTO mytable VALUES(1,2)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{

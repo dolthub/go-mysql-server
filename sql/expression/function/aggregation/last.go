@@ -28,6 +28,7 @@ type Last struct {
 }
 
 var _ sql.FunctionExpression = (*Last)(nil)
+var _ sql.Aggregation = (*Last)(nil)
 
 // NewLast returns a new Last node.
 func NewLast(ctx *sql.Context, e sql.Expression) *Last {
@@ -57,13 +58,18 @@ func (l *Last) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.E
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (l *Last) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (l *Last) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+        bufferChild, err := duplicateExpression(ctx, l.UnaryExpression.Child)
+        if err != nil {
+                return nil, err
+        }
+
+	return sql.NewRow(bufferChild, nil), nil
 }
 
 // Update implements the Aggregation interface.
 func (l *Last) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := l.Child.Eval(ctx, row)
+	v, err := buffer[0].(sql.Expression).Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -72,12 +78,12 @@ func (l *Last) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	buffer[0] = v
+	buffer[1] = v
 
 	return nil
 }
 
 // Eval implements the Aggregation interface.
 func (l *Last) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	return buffer[0], nil
+	return buffer[1], nil
 }

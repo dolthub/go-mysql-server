@@ -27,6 +27,7 @@ type Avg struct {
 }
 
 var _ sql.FunctionExpression = (*Avg)(nil)
+var _ sql.Aggregation = (*Avg)(nil)
 
 // NewAvg creates a new Avg node.
 func NewAvg(ctx *sql.Context, e sql.Expression) *Avg {
@@ -55,12 +56,12 @@ func (a *Avg) IsNullable() bool {
 // Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
 func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	// This case is triggered when no rows exist.
-	if buffer[0] == float64(0) && buffer[1] == int64(0) {
+	if buffer[1] == float64(0) && buffer[2] == int64(0) {
 		return nil, nil
 	}
 
-	sum := buffer[0].(float64)
-	rows := buffer[1].(int64)
+	sum := buffer[1].(float64)
+	rows := buffer[2].(int64)
 
 	if rows == 0 {
 		return float64(0), nil
@@ -78,18 +79,23 @@ func (a *Avg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 }
 
 // NewBuffer implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) NewBuffer() sql.Row {
+func (a *Avg) NewBuffer(ctx *sql.Context) (sql.Row, error) {
 	const (
 		sum  = float64(0)
 		rows = int64(0)
 	)
 
-	return sql.NewRow(sum, rows)
+        bufferChild, err := duplicateExpression(ctx, a.UnaryExpression.Child)
+        if err != nil {
+                return nil, err
+        }
+
+	return sql.NewRow(bufferChild, sum, rows), nil
 }
 
 // Update implements AggregationExpression interface. (AggregationExpression)
 func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := a.Child.Eval(ctx, row)
+	v, err := buffer[0].(sql.Expression).Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -103,8 +109,8 @@ func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		v = float64(0)
 	}
 
-	buffer[0] = buffer[0].(float64) + v.(float64)
-	buffer[1] = buffer[1].(int64) + 1
+	buffer[1] = buffer[1].(float64) + v.(float64)
+	buffer[2] = buffer[2].(int64) + 1
 
 	return nil
 }

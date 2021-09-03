@@ -29,6 +29,7 @@ type Count struct {
 }
 
 var _ sql.FunctionExpression = (*Count)(nil)
+var _ sql.Aggregation = (*Count)(nil)
 
 // NewCount creates a new Count node.
 func NewCount(ctx *sql.Context, e sql.Expression) *Count {
@@ -41,8 +42,13 @@ func (c *Count) FunctionName() string {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (c *Count) NewBuffer() sql.Row {
-	return sql.NewRow(int64(0))
+func (c *Count) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+        bufferChild, err := duplicateExpression(ctx, c.UnaryExpression.Child)
+        if err != nil {
+                return nil, err
+        }
+
+	return sql.NewRow(bufferChild, int64(0)), nil
 }
 
 // Type returns the type of the result.
@@ -79,10 +85,10 @@ func (c *Count) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.
 // Update implements the Aggregation interface.
 func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	var inc bool
-	if _, ok := c.Child.(*expression.Star); ok {
+	if _, ok := buffer[0].(*expression.Star); ok {
 		inc = true
 	} else {
-		v, err := c.Child.Eval(ctx, row)
+		v, err := buffer[0].(sql.Expression).Eval(ctx, row)
 		if v != nil {
 			inc = true
 		}
@@ -93,7 +99,7 @@ func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	}
 
 	if inc {
-		buffer[0] = buffer[0].(int64) + int64(1)
+		buffer[1] = buffer[1].(int64) + int64(1)
 	}
 
 	return nil
@@ -101,7 +107,7 @@ func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 // Eval implements the Aggregation interface.
 func (c *Count) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	count := buffer[0]
+	count := buffer[1]
 	return count, nil
 }
 
@@ -116,8 +122,8 @@ func NewCountDistinct(e sql.Expression) *CountDistinct {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (c *CountDistinct) NewBuffer() sql.Row {
-	return sql.NewRow(make(map[uint64]struct{}))
+func (c *CountDistinct) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+	return sql.NewRow(make(map[uint64]struct{})), nil
 }
 
 // Type returns the type of the result.
