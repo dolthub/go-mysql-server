@@ -109,16 +109,6 @@ func (j *JSONArrayAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	arr1 := buffer[0].([]interface{})
-	arr2 := partial[0].([]interface{})
-
-	buffer[0] = append(arr1, arr2...)
-
-	return nil
-}
-
 // Eval implements the Aggregation interface.
 func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	return sql.JSONDocument{Val: buffer[0]}, nil
@@ -220,11 +210,6 @@ func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	mp[keyAsString.(string)] = val
 
 	return nil
-}
-
-// Merge implements the Aggregation interface.
-func (j JSONObjectAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return j.Update(ctx, buffer, partial)
 }
 
 // Eval implements the Aggregation interface.

@@ -99,12 +99,6 @@ func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (c *Count) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	buffer[0] = buffer[0].(int64) + partial[0].(int64)
-	return nil
-}
-
 // Eval implements the Aggregation interface.
 func (c *Count) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	count := buffer[0]
@@ -183,15 +177,6 @@ func (c *CountDistinct) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 	seen[hash] = struct{}{}
 
-	return nil
-}
-
-// Merge implements the Aggregation interface.
-func (c *CountDistinct) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	seen := buffer[0].(map[uint64]struct{})
-	for k := range partial[0].(map[uint64]struct{}) {
-		seen[k] = struct{}{}
-	}
 	return nil
 }
 

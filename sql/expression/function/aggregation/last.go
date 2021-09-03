@@ -77,12 +77,6 @@ func (l *Last) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (l *Last) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	buffer[0] = partial[0]
-	return nil
-}
-
 // Eval implements the Aggregation interface.
 func (l *Last) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil

@@ -84,8 +84,7 @@ type NonDeterministicExpression interface {
 
 // Aggregation implements an aggregation expression, where an
 // aggregation buffer is created for each grouping (NewBuffer) and rows in the
-// grouping are fed to the buffer (Update). Multiple buffers can be merged
-// (Merge), making partial aggregations possible.
+// grouping are fed to the buffer (Update).
 // Note that Eval must be called with the final aggregation buffer in order to
 // get the final result.
 type Aggregation interface {
@@ -94,8 +93,6 @@ type Aggregation interface {
 	NewBuffer() Row
 	// Update updates the given buffer with the given row.
 	Update(ctx *Context, buffer, row Row) error
-	// Merge merges a partial buffer into a global one.
-	Merge(ctx *Context, buffer, partial Row) error
 }
 
 // WindowAggregation implements a window aggregation expression. A WindowAggregation is similar to an Aggregation,

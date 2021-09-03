@@ -93,11 +93,6 @@ func (m *Min) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (m *Min) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return m.Update(ctx, buffer, partial)
-}
-
 // Eval implements the Aggregation interface
 func (m *Min) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	min := buffer[0]

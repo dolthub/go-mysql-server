@@ -90,36 +90,6 @@ func TestAvg_Eval_String(t *testing.T) {
 	require.Equal(float64(1), eval(t, avgNode, buffer))
 }
 
-func TestAvg_Merge(t *testing.T) {
-	require := require.New(t)
-	ctx := sql.NewEmptyContext()
-
-	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Float32, "col1", true))
-	require.NotNil(avgNode)
-
-	buffer1 := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(ctx, buffer1))
-	err := avgNode.Update(ctx, buffer1, sql.NewRow(float32(1)))
-	require.NoError(err)
-	err = avgNode.Update(ctx, buffer1, sql.NewRow(float32(4)))
-	require.NoError(err)
-	require.Equal(float64(2.5), eval(t, avgNode, buffer1))
-
-	buffer2 := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(ctx, buffer2))
-	err = avgNode.Update(ctx, buffer2, sql.NewRow(float32(2)))
-	require.NoError(err)
-	err = avgNode.Update(ctx, buffer2, sql.NewRow(float32(7)))
-	require.NoError(err)
-	err = avgNode.Update(ctx, buffer2, sql.NewRow(float32(12)))
-	require.NoError(err)
-	require.Equal(float64(7), eval(t, avgNode, buffer2))
-
-	err = avgNode.Merge(ctx, buffer1, buffer2)
-	require.NoError(err)
-	require.Equal(float64(5.2), eval(t, avgNode, buffer1))
-}
-
 func TestAvg_NULL(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()

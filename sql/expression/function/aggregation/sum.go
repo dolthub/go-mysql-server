@@ -86,11 +86,6 @@ func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (m *Sum) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return m.Update(ctx, buffer, partial)
-}
-
 // Eval implements the Aggregation interface.
 func (m *Sum) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	sum := buffer[0]

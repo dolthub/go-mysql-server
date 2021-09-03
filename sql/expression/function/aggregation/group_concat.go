@@ -108,11 +108,6 @@ func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) erro
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return g.Update(ctx, buffer, partial)
-}
-
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	rows := row[0].([]sql.Row)

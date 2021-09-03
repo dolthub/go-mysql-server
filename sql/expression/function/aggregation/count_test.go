@@ -37,12 +37,6 @@ func TestCountEval1(t *testing.T) {
 	require.NoError(c.Update(ctx, b, sql.NewRow(nil)))
 	require.NoError(c.Update(ctx, b, sql.NewRow(1, 2, 3)))
 	require.Equal(int64(5), eval(t, c, b))
-
-	b2 := c.NewBuffer()
-	require.NoError(c.Update(ctx, b2, nil))
-	require.NoError(c.Update(ctx, b2, sql.NewRow("foo")))
-	require.NoError(c.Merge(ctx, b, b2))
-	require.Equal(int64(7), eval(t, c, b))
 }
 
 func TestCountEvalStar(t *testing.T) {
@@ -59,12 +53,6 @@ func TestCountEvalStar(t *testing.T) {
 	require.NoError(c.Update(ctx, b, sql.NewRow(nil)))
 	require.NoError(c.Update(ctx, b, sql.NewRow(1, 2, 3)))
 	require.Equal(int64(5), eval(t, c, b))
-
-	b2 := c.NewBuffer()
-	require.NoError(c.Update(ctx, b2, sql.NewRow()))
-	require.NoError(c.Update(ctx, b2, sql.NewRow("foo")))
-	require.NoError(c.Merge(ctx, b, b2))
-	require.Equal(int64(7), eval(t, c, b))
 }
 
 func TestCountEvalString(t *testing.T) {
@@ -112,14 +100,6 @@ func TestCountDistinctEvalStar(t *testing.T) {
 	require.NoError(c.Update(ctx, b, sql.NewRow(nil)))
 	require.NoError(c.Update(ctx, b, sql.NewRow(1, 2, 3)))
 	require.Equal(int64(5), eval(t, c, b))
-
-	b2 := c.NewBuffer()
-	require.NoError(c.Update(ctx, b2, sql.NewRow(1)))
-	require.NoError(c.Update(ctx, b2, sql.NewRow("foo")))
-	require.NoError(c.Update(ctx, b2, sql.NewRow(5)))
-	require.NoError(c.Merge(ctx, b, b2))
-
-	require.Equal(int64(6), eval(t, c, b))
 }
 
 func TestCountDistinctEvalString(t *testing.T) {

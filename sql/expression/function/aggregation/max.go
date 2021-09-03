@@ -97,11 +97,6 @@ func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (m *Max) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return m.Update(ctx, buffer, partial)
-}
-
 // Eval implements the Aggregation interface.
 func (m *Max) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	max := buffer[0]

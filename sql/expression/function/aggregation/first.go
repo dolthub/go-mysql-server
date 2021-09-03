@@ -81,11 +81,6 @@ func (f *First) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (f *First) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return nil
-}
-
 // Eval implements the Aggregation interface.
 func (f *First) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
 	return buffer[0], nil

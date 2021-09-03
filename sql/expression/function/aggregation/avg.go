@@ -108,17 +108,3 @@ func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 
 	return nil
 }
-
-// Merge implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	bsum := buffer[0].(float64)
-	brows := buffer[1].(int64)
-
-	psum := partial[0].(float64)
-	prows := partial[1].(int64)
-
-	buffer[0] = bsum + psum
-	buffer[1] = brows + prows
-
-	return nil
-}
