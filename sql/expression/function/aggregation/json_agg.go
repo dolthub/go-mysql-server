@@ -94,7 +94,6 @@ func (j *JSONArrayAgg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return nil, ErrEvalUnsupportedOnAggregation.New("JSONArrayAgg")
 }
 
-
 type jsonArrayBuffer struct {
 	vals []interface{}
 	jaa  *JSONArrayAgg

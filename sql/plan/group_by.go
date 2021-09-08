@@ -123,7 +123,6 @@ func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
 	}
 
-
 	agg := make([]sql.Expression, len(g.SelectedExprs))
 	copy(agg, exprs[:len(g.SelectedExprs)])
 

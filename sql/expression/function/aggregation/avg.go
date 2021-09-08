@@ -73,10 +73,10 @@ func (a *Avg) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 		rows = int64(0)
 	)
 
-        bufferChild, err := expression.Clone(ctx, a.UnaryExpression.Child)
-        if err != nil {
-                return nil, err
-        }
+	bufferChild, err := expression.Clone(ctx, a.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
 
 	return &avgBuffer{sum, rows, bufferChild}, nil
 }

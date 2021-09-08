@@ -65,10 +65,10 @@ func (m *Min) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 
 // NewBuffer creates a new buffer to compute the result.
 func (m *Min) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
-        bufferChild, err := expression.Clone(ctx, m.UnaryExpression.Child)
-        if err != nil {
-                return nil, err
-        }
+	bufferChild, err := expression.Clone(ctx, m.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
 	return &minBuffer{nil, bufferChild}, nil
 }
 
