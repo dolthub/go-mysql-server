@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -134,11 +135,11 @@ func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (partitionable) Children() []sql.Node { return nil }
 
 func (p partitionable) Partitions(*sql.Context) (sql.PartitionIter, error) {
-	return &exchangePartitionIter{p.partitions}, nil
+	return &exchangePartitionIter{int32(p.partitions)}, nil
 }
 
 func (p partitionable) PartitionRows(_ *sql.Context, part sql.Partition) (sql.RowIter, error) {
-	return &partitionRows{part, p.rowsPerPartition}, nil
+	return &partitionRows{part, int32(p.rowsPerPartition)}, nil
 }
 
 func (partitionable) Schema() sql.Schema {
@@ -157,39 +158,39 @@ func (p Partition) Key() []byte {
 }
 
 type exchangePartitionIter struct {
-	num int
+	num int32
 }
 
 func (i *exchangePartitionIter) Next() (sql.Partition, error) {
-	if i.num <= 0 {
+	new := atomic.AddInt32(&i.num, -1)
+	if new < 0 {
 		return nil, io.EOF
 	}
 
-	i.num--
-	return Partition(fmt.Sprint(i.num + 1)), nil
+	return Partition(fmt.Sprint(new + 1)), nil
 }
 
 func (i *exchangePartitionIter) Close(_ *sql.Context) error {
-	i.num = -1
+	atomic.StoreInt32(&i.num, -1)
 	return nil
 }
 
 type partitionRows struct {
 	sql.Partition
-	num int
+	num int32
 }
 
 func (r *partitionRows) Next() (sql.Row, error) {
-	if r.num <= 0 {
+	new := atomic.AddInt32(&r.num, -1)
+	if new < 0 {
 		return nil, io.EOF
 	}
 
-	r.num--
-	return sql.NewRow(string(r.Key()), int64(r.num+1)), nil
+	return sql.NewRow(string(r.Key()), int64(new+1)), nil
 }
 
 func (r *partitionRows) Close(*sql.Context) error {
-	r.num = -1
+	atomic.StoreInt32(&r.num, -1)
 	return nil
 }
 
