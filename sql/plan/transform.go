@@ -26,6 +26,10 @@ func TransformUp(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
 		return f(node)
 	}
 
+	if node == nil {
+		return nil, nil
+	}
+
 	children := node.Children()
 	if len(children) == 0 {
 		return f(node)

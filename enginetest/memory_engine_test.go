@@ -97,11 +97,14 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SELECT floor(i), avg(char_length(s)) FROM mytable mt group by 1 ORDER BY floor(i) DESC",
+		Query: "SHOW CHARSET",
 		Expected: []sql.Row{
-			{3, 9.0},
-			{2, 10.0},
-			{1, 9.0},
+			{
+				sql.CharacterSet_utf8mb4.String(),
+				sql.CharacterSet_utf8mb4.Description(),
+				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
+				sql.CharacterSet_utf8mb4.MaxLength(),
+			},
 		},
 	}
 
