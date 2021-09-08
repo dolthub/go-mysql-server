@@ -947,126 +947,106 @@ func emptyRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 }
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
-func NewInformationSchemaDatabase(cat *Catalog) Database {
+func NewInformationSchemaDatabase() Database {
 	return &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
 			FilesTableName: &informationSchemaTable{
-				name:    FilesTableName,
-				schema:  filesSchema,
-				catalog: cat,
+				name:   FilesTableName,
+				schema: filesSchema,
 			},
 			ColumnStatisticsTableName: &informationSchemaTable{
-				name:    ColumnStatisticsTableName,
-				schema:  columnStatisticsSchema,
-				catalog: cat,
+				name:   ColumnStatisticsTableName,
+				schema: columnStatisticsSchema,
 			},
 			TablesTableName: &informationSchemaTable{
 				name:    TablesTableName,
 				schema:  tablesSchema,
-				catalog: cat,
 				rowIter: tablesRowIter,
 			},
 			ColumnsTableName: &informationSchemaTable{
 				name:    ColumnsTableName,
 				schema:  columnsSchema,
-				catalog: cat,
 				rowIter: columnsRowIter,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:    SchemataTableName,
 				schema:  schemataSchema,
-				catalog: cat,
 				rowIter: schemataRowIter,
 			},
 			CollationsTableName: &informationSchemaTable{
 				name:    CollationsTableName,
 				schema:  collationsSchema,
-				catalog: cat,
 				rowIter: collationsRowIter,
 			},
 			CharacterSetsTableName: &informationSchemaTable{
 				name:    CharacterSetsTableName,
 				schema:  characterSetSchema,
-				catalog: cat,
 				rowIter: charsetRowIter,
 			},
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
 				schema:  statisticsSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:    TableConstraintsTableName,
 				schema:  tableConstraintsSchema,
-				catalog: cat,
 				rowIter: tableConstraintRowIter,
 			},
 			ReferentialConstraintsTableName: &informationSchemaTable{
 				name:    ReferentialConstraintsTableName,
 				schema:  referentialConstraintsSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			KeyColumnUsageTableName: &informationSchemaTable{
 				name:    KeyColumnUsageTableName,
 				schema:  keyColumnUsageSchema,
-				catalog: cat,
 				rowIter: keyColumnConstraintRowIter,
 			},
 			TriggersTableName: &informationSchemaTable{
 				name:    TriggersTableName,
 				schema:  triggersSchema,
-				catalog: cat,
 				rowIter: triggersRowIter,
 			},
 			EventsTableName: &informationSchemaTable{
 				name:    EventsTableName,
 				schema:  eventsSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			RoutinesTableName: &informationSchemaTable{
 				name:    RoutinesTableName,
 				schema:  routinesSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			ViewsTableName: &informationSchemaTable{
 				name:    ViewsTableName,
 				schema:  viewsSchema,
-				catalog: cat,
 				rowIter: viewRowIter,
 			},
 			UserPrivilegesTableName: &informationSchemaTable{
 				name:    UserPrivilegesTableName,
 				schema:  userPrivilegesSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			EnginesTableName: &informationSchemaTable{
 				name:    EnginesTableName,
 				schema:  enginesSchema,
-				catalog: cat,
 				rowIter: engineRowIter,
 			},
 			CheckConstraintsTableName: &informationSchemaTable{
 				name:    CheckConstraintsTableName,
 				schema:  checkConstraintsSchema,
-				catalog: cat,
 				rowIter: checkConstraintsRowIter,
 			},
 			PartitionsTableName: &informationSchemaTable{
 				name:    PartitionsTableName,
 				schema:  partitionSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			InnoDBTempTableName: &informationSchemaTable{
 				name:    InnoDBTempTableName,
 				schema:  innoDBTempTableSchema,
-				catalog: cat,
 				rowIter: innoDBTempTableIter,
 			},
 		},
@@ -1125,6 +1105,11 @@ func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
 }
 
+func (t *informationSchemaTable) AssignCatalog(cat *Catalog) Table {
+	t.catalog = cat
+	return t
+}
+
 // Partitions implements the sql.Table interface.
 func (t *informationSchemaTable) Partitions(ctx *Context) (PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(t.Name())}}, nil
@@ -1137,6 +1122,9 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 	}
 	if t.rowIter == nil {
 		return RowsToRowIter(), nil
+	}
+	if t.catalog == nil {
+		return nil, fmt.Errorf("nil catalog for info schema table %s", t.name)
 	}
 
 	return t.rowIter(ctx, t.catalog)

@@ -36,7 +36,7 @@ func (f *memTable) Resolve(name string, _ *driver.Options) (string, *sql.Catalog
 
 		f.catalog = sql.NewCatalog()
 		f.catalog.AddDatabase(database)
-		f.catalog.AddDatabase(information_schema.NewInformationSchemaDatabase(f.catalog))
+		f.catalog.AddDatabase(information_schema.NewInformationSchemaDatabase())
 	})
 
 	return name, f.catalog, nil

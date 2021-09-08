@@ -27,7 +27,7 @@ type factory struct{}
 func (factory) Resolve(name string) (string, *sql.Catalog, error) {
 	catalog := sql.NewCatalog()
 	catalog.AddDatabase(createTestDatabase())
-	catalog.AddDatabase(information_schema.NewInformationSchemaDatabase(catalog))
+	catalog.AddDatabase(information_schema.NewInformationSchemaDatabase())
 
 	return name, catalog, nil
 }

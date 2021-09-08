@@ -81,6 +81,13 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, nil
+		case *plan.ResolvedTable:
+			nc := *node
+			ct, ok := nc.Table.(sql.CatalogTable)
+			if ok {
+				nc.Table = ct.AssignCatalog(a.Catalog)
+			}
+			return &nc, nil
 		default:
 			return n, nil
 		}

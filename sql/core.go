@@ -222,6 +222,14 @@ type TableWrapper interface {
 	Underlying() Table
 }
 
+// CatalogTable is a Table that depends on a Catalog.
+type CatalogTable interface {
+	Table
+
+	// AssignCatalog assigns a Catalog to the table.
+	AssignCatalog(cat *Catalog) Table
+}
+
 // PartitionCounter can return the number of partitions.
 type PartitionCounter interface {
 	// PartitionCount returns the number of partitions.

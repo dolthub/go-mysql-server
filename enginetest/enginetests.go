@@ -3603,7 +3603,7 @@ func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, d
 	for _, database := range databases {
 		catalog.AddDatabase(database)
 	}
-	catalog.AddDatabase(information_schema.NewInformationSchemaDatabase(catalog))
+	catalog.AddDatabase(information_schema.NewInformationSchemaDatabase())
 
 	var a *analyzer.Analyzer
 	if harness.Parallelism() > 1 {
