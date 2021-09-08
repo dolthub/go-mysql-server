@@ -31,6 +31,9 @@ type Count struct {
 var _ sql.FunctionExpression = (*Count)(nil)
 var _ sql.Aggregation = (*Count)(nil)
 
+var _ sql.FunctionExpression = (*CountDistinct)(nil)
+var _ sql.Aggregation = (*CountDistinct)(nil)
+
 // NewCount creates a new Count node.
 func NewCount(ctx *sql.Context, e sql.Expression) *Count {
 	return &Count{expression.UnaryExpression{Child: e}}
@@ -42,13 +45,12 @@ func (c *Count) FunctionName() string {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (c *Count) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+func (c *Count) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
         bufferChild, err := expression.Clone(ctx, c.UnaryExpression.Child)
         if err != nil {
                 return nil, err
         }
-
-	return sql.NewRow(bufferChild, int64(0)), nil
+	return &countBuffer{0, bufferChild}, nil
 }
 
 // Type returns the type of the result.
@@ -82,33 +84,9 @@ func (c *Count) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.
 	return NewCount(ctx, children[0]), nil
 }
 
-// Update implements the Aggregation interface.
-func (c *Count) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	var inc bool
-	if _, ok := buffer[0].(*expression.Star); ok {
-		inc = true
-	} else {
-		v, err := buffer[0].(sql.Expression).Eval(ctx, row)
-		if v != nil {
-			inc = true
-		}
-
-		if err != nil {
-			return err
-		}
-	}
-
-	if inc {
-		buffer[1] = buffer[1].(int64) + int64(1)
-	}
-
-	return nil
-}
-
-// Eval implements the Aggregation interface.
-func (c *Count) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	count := buffer[1]
-	return count, nil
+// Eval implements the Expression interface.
+func (c *Count) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Count")
 }
 
 // CountDistinct node to count how many rows are in the result set.
@@ -121,9 +99,14 @@ func NewCountDistinct(e sql.Expression) *CountDistinct {
 	return &CountDistinct{expression.UnaryExpression{Child: e}}
 }
 
+type countDistinctBuffer struct {
+	seen map[uint64]struct{}
+	expr sql.Expression
+}
+
 // NewBuffer creates a new buffer for the aggregation.
-func (c *CountDistinct) NewBuffer(ctx *sql.Context) (sql.Row, error) {
-	return sql.NewRow(make(map[uint64]struct{})), nil
+func (c *CountDistinct) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+	return &countDistinctBuffer{make(map[uint64]struct{}), c.Child}, nil
 }
 
 // Type returns the type of the result.
@@ -157,14 +140,23 @@ func (c *CountDistinct) WithChildren(ctx *sql.Context, children ...sql.Expressio
 	return NewCountDistinct(children[0]), nil
 }
 
-// Update implements the Aggregation interface.
-func (c *CountDistinct) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	seen := buffer[0].(map[uint64]struct{})
+// Eval implements the Expression interface.
+func (c *CountDistinct) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("CountDistinct")
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *CountDistinct) FunctionName() string {
+	return "count distinct"
+}
+
+// Update implements the AggregationBuffer interface.
+func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	var value interface{}
-	if _, ok := c.Child.(*expression.Star); ok {
+	if _, ok := c.expr.(*expression.Star); ok {
 		value = row
 	} else {
-		v, err := c.Child.Eval(ctx, row)
+		v, err := c.expr.Eval(ctx, row)
 		if v == nil {
 			return nil
 		}
@@ -181,13 +173,45 @@ func (c *CountDistinct) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return fmt.Errorf("count distinct unable to hash value: %s", err)
 	}
 
-	seen[hash] = struct{}{}
+	c.seen[hash] = struct{}{}
 
 	return nil
 }
 
-// Eval implements the Aggregation interface.
-func (c *CountDistinct) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	seen := buffer[0].(map[uint64]struct{})
-	return int64(len(seen)), nil
+// Eval implements the AggregationBuffer interface.
+func (c *countDistinctBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return int64(len(c.seen)), nil
+}
+
+type countBuffer struct {
+	cnt  int64
+	expr sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (c *countBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	var inc bool
+	if _, ok := c.expr.(*expression.Star); ok {
+		inc = true
+	} else {
+		v, err := c.expr.Eval(ctx, row)
+		if v != nil {
+			inc = true
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	if inc {
+		c.cnt += 1
+	}
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (c *countBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return c.cnt, nil
 }

@@ -58,17 +58,28 @@ func (m *Sum) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Sum) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+func (m *Sum) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 	bufferChild, err := expression.Clone(ctx, m.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewRow(bufferChild, nil), nil
+	return &sumBuffer{true, 0, bufferChild}, nil
 }
 
-// Update implements the Aggregation interface.
-func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := buffer[0].(sql.Expression).Eval(ctx, row)
+// Eval implements the Expression interface.
+func (m *Sum) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Sum")
+}
+
+type sumBuffer struct {
+	isnil bool
+	sum   float64
+	expr  sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := m.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -82,18 +93,20 @@ func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		val = float64(0)
 	}
 
-	if buffer[1] == nil {
-		buffer[1] = float64(0)
+	if m.isnil {
+		m.sum = 0
+		m.isnil = false
 	}
 
-	buffer[1] = buffer[1].(float64) + val.(float64)
+	m.sum += val.(float64)
 
 	return nil
 }
 
-// Eval implements the Aggregation interface.
-func (m *Sum) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	sum := buffer[1]
-
-	return sum, nil
+// Eval implements the AggregationBuffer interface.
+func (m *sumBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if m.isnil {
+		return nil, nil
+	}
+	return m.sum, nil
 }

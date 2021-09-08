@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 // ErrGroupBy is returned when the aggregation is not supported.
@@ -192,7 +193,7 @@ type groupByIter struct {
 	selectedExprs []sql.Expression
 	child         sql.RowIter
 	ctx           *sql.Context
-	buf           []sql.Row
+	buf           []sql.AggregationBuffer
 	done          bool
 }
 
@@ -201,7 +202,7 @@ func newGroupByIter(ctx *sql.Context, selectedExprs []sql.Expression, child sql.
 		selectedExprs: selectedExprs,
 		child:         child,
 		ctx:           ctx,
-		buf:           make([]sql.Row, len(selectedExprs)),
+		buf:           make([]sql.AggregationBuffer, len(selectedExprs)),
 	}
 }
 
@@ -283,7 +284,7 @@ func (i *groupByGroupingIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 	i.pos++
-	return evalBuffers(i.ctx, buffers.([]sql.Row), i.selectedExprs)
+	return evalBuffers(i.ctx, buffers.([]sql.AggregationBuffer), i.selectedExprs)
 }
 
 func (i *groupByGroupingIter) compute() error {
@@ -302,7 +303,7 @@ func (i *groupByGroupingIter) compute() error {
 		}
 
 		if b, err := i.aggregations.Get(key); b == nil && err != nil {
-			var buf = make([]sql.Row, len(i.selectedExprs))
+			var buf = make([]sql.AggregationBuffer, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
 				buf[j], err = newAggregationBuffer(i.ctx, a)
 				if err != nil {
@@ -324,7 +325,7 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		err = updateBuffers(i.ctx, b.([]sql.Row), i.selectedExprs, row)
+		err = updateBuffers(i.ctx, b.([]sql.AggregationBuffer), i.selectedExprs, row)
 		if err != nil {
 			return err
 		}
@@ -364,23 +365,24 @@ func groupingKey(
 	return hash.Sum64(), nil
 }
 
-func newAggregationBuffer(ctx *sql.Context, expr sql.Expression) (sql.Row, error) {
+func newAggregationBuffer(ctx *sql.Context, expr sql.Expression) (sql.AggregationBuffer, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.NewBuffer(ctx)
 	default:
-		return nil, nil
+		// The semantics for a non-aggregation in a group by node is Last.
+		return aggregation.NewLast(ctx, expr).NewBuffer(ctx)
 	}
 }
 
 func updateBuffers(
 	ctx *sql.Context,
-	buffers []sql.Row,
+	buffers []sql.AggregationBuffer,
 	aggregates []sql.Expression,
 	row sql.Row,
 ) error {
-	for i, a := range aggregates {
-		if err := updateBuffer(ctx, buffers, i, a, row); err != nil {
+	for i, _ := range aggregates {
+		if err := updateBuffer(ctx, buffers, i, row); err != nil {
 			return err
 		}
 	}
@@ -390,33 +392,22 @@ func updateBuffers(
 
 func updateBuffer(
 	ctx *sql.Context,
-	buffers []sql.Row,
+	buffers []sql.AggregationBuffer,
 	idx int,
-	expr sql.Expression,
 	row sql.Row,
 ) error {
-	switch n := expr.(type) {
-	case sql.Aggregation:
-		return n.Update(ctx, buffers[idx], row)
-	default:
-		val, err := expr.Eval(ctx, row)
-		if err != nil {
-			return err
-		}
-		buffers[idx] = sql.NewRow(val)
-		return nil
-	}
+	return buffers[idx].Update(ctx, row)
 }
 
 func evalBuffers(
 	ctx *sql.Context,
-	buffers []sql.Row,
+	buffers []sql.AggregationBuffer,
 	aggregates []sql.Expression,
 ) (sql.Row, error) {
 	var row = make(sql.Row, len(aggregates))
 
-	for i, agg := range aggregates {
-		val, err := evalBuffer(ctx, agg, buffers[i])
+	for i, _ := range aggregates {
+		val, err := evalBuffer(ctx, buffers[i])
 		if err != nil {
 			return nil, err
 		}
@@ -428,16 +419,7 @@ func evalBuffers(
 
 func evalBuffer(
 	ctx *sql.Context,
-	aggregation sql.Expression,
-	buffer sql.Row,
+	buffer sql.AggregationBuffer,
 ) (interface{}, error) {
-	switch n := aggregation.(type) {
-	case sql.Aggregation:
-		return n.Eval(ctx, buffer)
-	default:
-		if len(buffer) > 0 {
-			return buffer[0], nil
-		}
-		return nil, nil
-	}
+	return buffer.Eval(ctx)
 }

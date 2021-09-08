@@ -43,31 +43,19 @@ func (a *Avg) String() string {
 	return fmt.Sprintf("AVG(%s)", a.Child)
 }
 
-// Type implements AggregationExpression interface. (AggregationExpression[Expression]])
+// Type implements Expression interface.
 func (a *Avg) Type() sql.Type {
 	return sql.Float64
 }
 
-// IsNullable implements AggregationExpression interface. (AggregationExpression[Expression]])
+// IsNullable implements Expression interface.
 func (a *Avg) IsNullable() bool {
 	return true
 }
 
-// Eval implements AggregationExpression interface. (AggregationExpression[Expression]])
-func (a *Avg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	// This case is triggered when no rows exist.
-	if buffer[1] == float64(0) && buffer[2] == int64(0) {
-		return nil, nil
-	}
-
-	sum := buffer[1].(float64)
-	rows := buffer[2].(int64)
-
-	if rows == 0 {
-		return float64(0), nil
-	}
-
-	return sum / float64(rows), nil
+// Eval implements Expression interface.
+func (a *Avg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Avg")
 }
 
 // WithChildren implements the Expression interface.
@@ -78,8 +66,8 @@ func (a *Avg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 	return NewAvg(ctx, children[0]), nil
 }
 
-// NewBuffer implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+// NewBuffer implements Aggregation interface.
+func (a *Avg) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 	const (
 		sum  = float64(0)
 		rows = int64(0)
@@ -90,12 +78,18 @@ func (a *Avg) NewBuffer(ctx *sql.Context) (sql.Row, error) {
                 return nil, err
         }
 
-	return sql.NewRow(bufferChild, sum, rows), nil
+	return &avgBuffer{sum, rows, bufferChild}, nil
 }
 
-// Update implements AggregationExpression interface. (AggregationExpression)
-func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := buffer[0].(sql.Expression).Eval(ctx, row)
+type avgBuffer struct {
+	sum  float64
+	rows int64
+	expr sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (a *avgBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -109,8 +103,22 @@ func (a *Avg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		v = float64(0)
 	}
 
-	buffer[1] = buffer[1].(float64) + v.(float64)
-	buffer[2] = buffer[2].(int64) + 1
+	a.sum += v.(float64)
+	a.rows += 1
 
 	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	// This case is triggered when no rows exist.
+	if a.sum == 0 && a.rows == 0 {
+		return nil, nil
+	}
+
+	if a.rows == 0 {
+		return float64(0), nil
+	}
+
+	return a.sum / float64(a.rows), nil
 }

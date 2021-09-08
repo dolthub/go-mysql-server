@@ -143,7 +143,7 @@ func (i *windowIter) Next() (sql.Row, error) {
 				return nil, err
 			}
 		case sql.Aggregation:
-			row[j], err = expr.Eval(i.ctx, i.buffers[j])
+			row[j], err = i.buffers[j][0].(sql.AggregationBuffer).Eval(i.ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -183,7 +183,7 @@ func (i *windowIter) compute() error {
 					return err
 				}
 			case sql.Aggregation:
-				err = expr.Update(i.ctx, i.buffers[j], row)
+				err = i.buffers[j][0].(sql.AggregationBuffer).Update(i.ctx, row)
 				if err != nil {
 					return err
 				}
@@ -213,7 +213,13 @@ func (i *windowIter) compute() error {
 func newBuffer(ctx *sql.Context, expr sql.Expression) (sql.Row, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
-		return n.NewBuffer(ctx)
+		// For now, we tuck the sql.AggregationBuffer into the first
+		// element of the returned row.
+		b, err := n.NewBuffer(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return sql.NewRow(b), nil
 	case sql.WindowAggregation:
 		return n.NewBuffer(), nil
 	default:

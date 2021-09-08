@@ -58,18 +58,27 @@ func (l *Last) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.E
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (l *Last) NewBuffer(ctx *sql.Context) (sql.Row, error) {
+func (l *Last) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
         bufferChild, err := expression.Clone(ctx, l.UnaryExpression.Child)
         if err != nil {
                 return nil, err
         }
-
-	return sql.NewRow(bufferChild, nil), nil
+	return &lastBuffer{nil, bufferChild}, nil
 }
 
-// Update implements the Aggregation interface.
-func (l *Last) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := buffer[0].(sql.Expression).Eval(ctx, row)
+// Eval implements the sql.Expression interface.
+func (l *Last) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Last")
+}
+
+type lastBuffer struct {
+	val  interface{}
+	expr sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (l *lastBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := l.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -78,12 +87,12 @@ func (l *Last) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	buffer[1] = v
+	l.val = v
 
 	return nil
 }
 
-// Eval implements the Aggregation interface.
-func (l *Last) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	return buffer[1], nil
+// Eval implements the AggregationBuffer interface.
+func (l *lastBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return l.val, nil
 }

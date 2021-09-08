@@ -66,10 +66,10 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 
 	buf, _ := gc.NewBuffer(ctx)
 	for _, row := range rows {
-		require.NoError(t, gc.Update(ctx, buf, row))
+		require.NoError(t, buf.Update(ctx, row))
 	}
 
-	result, err := gc.Eval(ctx, buf)
+	result, err := buf.Eval(ctx)
 	rs := result.(string)
 
 	require.NoError(t, err)
@@ -98,10 +98,10 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 
 		buf, _ := gc.NewBuffer(ctx)
 
-		err = gc.Update(ctx, buf, tt.row)
+		err = buf.Update(ctx, tt.row)
 		require.NoError(t, err)
 
-		_, err = gc.Eval(ctx, buf)
+		_, err = buf.Eval(ctx)
 		require.NoError(t, err)
 
 		require.Equal(t, tt.returnType, gc.Type())

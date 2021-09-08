@@ -83,16 +83,21 @@ type NonDeterministicExpression interface {
 }
 
 // Aggregation implements an aggregation expression, where an
-// aggregation buffer is created for each grouping (NewBuffer) and rows in the
-// grouping are fed to the buffer (Update).
-// Note that Eval must be called with the final aggregation buffer in order to
-// get the final result.
+// aggregation buffer is created for each grouping (NewBuffer). Rows for the
+// grouping should be fed to the buffer with |Update| and the buffer should be
+// eval'd with |Eval|. Calling |Eval| directly on an Aggregation expression is
+// typically an error.
 type Aggregation interface {
 	Expression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
-	NewBuffer(ctx *Context) (Row, error)
-	// Update updates the given buffer with the given row.
-	Update(ctx *Context, buffer, row Row) error
+	NewBuffer(ctx *Context) (AggregationBuffer, error)
+}
+
+type AggregationBuffer interface {
+	// Eval the given buffer.
+	Eval(*Context) (interface{}, error)
+	// Update the given buffer with the given row.
+	Update(ctx *Context, row Row) error
 }
 
 // WindowAggregation implements a window aggregation expression. A WindowAggregation is similar to an Aggregation,

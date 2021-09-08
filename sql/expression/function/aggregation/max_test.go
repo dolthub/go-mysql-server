@@ -37,11 +37,11 @@ func TestMax_Eval_Int32(t *testing.T) {
 	m := NewMax(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
 	b, _ := m.NewBuffer(ctx)
 
-	m.Update(ctx, b, sql.NewRow(int32(7)))
-	m.Update(ctx, b, sql.NewRow(nil))
-	m.Update(ctx, b, sql.NewRow(int32(6)))
+	b.Update(ctx, sql.NewRow(int32(7)))
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(int32(6)))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(int32(7), v)
 }
@@ -53,11 +53,11 @@ func TestMax_Eval_Text(t *testing.T) {
 	m := NewMax(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "field", true))
 	b, _ := m.NewBuffer(ctx)
 
-	m.Update(ctx, b, sql.NewRow("a"))
-	m.Update(ctx, b, sql.NewRow("A"))
-	m.Update(ctx, b, sql.NewRow("b"))
+	b.Update(ctx, sql.NewRow("a"))
+	b.Update(ctx, sql.NewRow("A"))
+	b.Update(ctx, sql.NewRow("b"))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal("b", v)
 }
@@ -73,11 +73,11 @@ func TestMax_Eval_Timestamp(t *testing.T) {
 	someTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2007-01-02 15:04:05")
 	otherTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2006-01-02 15:04:05")
 
-	m.Update(ctx, b, sql.NewRow(someTime))
-	m.Update(ctx, b, sql.NewRow(expected))
-	m.Update(ctx, b, sql.NewRow(otherTime))
+	b.Update(ctx, sql.NewRow(someTime))
+	b.Update(ctx, sql.NewRow(expected))
+	b.Update(ctx, sql.NewRow(otherTime))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(expected, v)
 }
@@ -88,11 +88,11 @@ func TestMax_Eval_NULL(t *testing.T) {
 	m := NewMax(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
 	b, _ := m.NewBuffer(ctx)
 
-	m.Update(ctx, b, sql.NewRow(nil))
-	m.Update(ctx, b, sql.NewRow(nil))
-	m.Update(ctx, b, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
@@ -104,7 +104,7 @@ func TestMax_Eval_Empty(t *testing.T) {
 	m := NewMax(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
 	b, _ := m.NewBuffer(ctx)
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
@@ -118,24 +118,24 @@ func TestMax_Distinct(t *testing.T) {
 
 	require.Equal(t, "MAX(DISTINCT field)", m.String())
 
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{2}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{2}))
+	require.NoError(t, b.Update(ctx, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.Row{3}))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(3, v)
 
 	m = NewMax(sql.NewEmptyContext(), expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
 	b, _ = m.NewBuffer(ctx)
 
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{nil}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{2}))
-	v, err = m.Eval(ctx, b)
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{nil}))
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{2}))
+	v, err = b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(2, v)
 }
