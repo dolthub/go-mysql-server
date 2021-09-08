@@ -75,7 +75,6 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-
 	err := c.Catalog.CreateDatabase(c.dbName)
 	if err != nil {
 		return nil, err
@@ -155,4 +154,3 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 func (d DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
-
