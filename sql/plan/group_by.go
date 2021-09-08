@@ -123,16 +123,12 @@ func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
 	}
 
-	var agg = make([]sql.Expression, len(g.SelectedExprs))
-	for i := 0; i < len(g.SelectedExprs); i++ {
-		agg[i] = exprs[i]
-	}
 
-	var grouping = make([]sql.Expression, len(g.GroupByExprs))
-	offset := len(g.SelectedExprs)
-	for i := 0; i < len(g.GroupByExprs); i++ {
-		grouping[i] = exprs[i+offset]
-	}
+	agg := make([]sql.Expression, len(g.SelectedExprs))
+	copy(agg, exprs[:len(g.SelectedExprs)])
+
+	grouping := make([]sql.Expression, len(g.GroupByExprs))
+	copy(grouping, exprs[len(g.SelectedExprs):])
 
 	return NewGroupBy(agg, grouping, g.Child), nil
 }
@@ -230,12 +226,12 @@ func (i *groupByIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		if err := updateBuffers(i.ctx, i.buf, i.selectedExprs, row); err != nil {
+		if err := updateBuffers(i.ctx, i.buf, row); err != nil {
 			return nil, err
 		}
 	}
 
-	return evalBuffers(i.ctx, i.buf, i.selectedExprs)
+	return evalBuffers(i.ctx, i.buf)
 }
 
 func (i *groupByIter) Close(ctx *sql.Context) error {
@@ -279,12 +275,12 @@ func (i *groupByGroupingIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	buffers, err := i.aggregations.Get(i.keys[i.pos])
+	buffers, err := i.get(i.keys[i.pos])
 	if err != nil {
 		return nil, err
 	}
 	i.pos++
-	return evalBuffers(i.ctx, buffers.([]sql.AggregationBuffer), i.selectedExprs)
+	return evalBuffers(i.ctx, buffers)
 }
 
 func (i *groupByGroupingIter) compute() error {
@@ -302,16 +298,17 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		if b, err := i.aggregations.Get(key); b == nil && err != nil {
-			var buf = make([]sql.AggregationBuffer, len(i.selectedExprs))
+		b, err := i.get(key)
+		if sql.ErrKeyNotFound.Is(err) {
+			b = make([]sql.AggregationBuffer, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				buf[j], err = newAggregationBuffer(i.ctx, a)
+				b[j], err = newAggregationBuffer(i.ctx, a)
 				if err != nil {
 					return err
 				}
 			}
 
-			if err := i.aggregations.Put(key, buf); err != nil {
+			if err := i.aggregations.Put(key, b); err != nil {
 				return err
 			}
 
@@ -320,18 +317,28 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		b, err := i.aggregations.Get(key)
-		if err != nil {
-			return err
-		}
-
-		err = updateBuffers(i.ctx, b.([]sql.AggregationBuffer), i.selectedExprs, row)
+		err = updateBuffers(i.ctx, b, row)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (i *groupByGroupingIter) get(key uint64) ([]sql.AggregationBuffer, error) {
+	v, err := i.aggregations.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, nil
+	}
+	return v.([]sql.AggregationBuffer), err
+}
+
+func (i *groupByGroupingIter) put(key uint64, val []sql.AggregationBuffer) error {
+	return i.aggregations.Put(key, val)
 }
 
 func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
@@ -378,11 +385,10 @@ func newAggregationBuffer(ctx *sql.Context, expr sql.Expression) (sql.Aggregatio
 func updateBuffers(
 	ctx *sql.Context,
 	buffers []sql.AggregationBuffer,
-	aggregates []sql.Expression,
 	row sql.Row,
 ) error {
-	for i, _ := range aggregates {
-		if err := updateBuffer(ctx, buffers, i, row); err != nil {
+	for _, b := range buffers {
+		if err := b.Update(ctx, row); err != nil {
 			return err
 		}
 	}
@@ -390,36 +396,19 @@ func updateBuffers(
 	return nil
 }
 
-func updateBuffer(
-	ctx *sql.Context,
-	buffers []sql.AggregationBuffer,
-	idx int,
-	row sql.Row,
-) error {
-	return buffers[idx].Update(ctx, row)
-}
-
 func evalBuffers(
 	ctx *sql.Context,
 	buffers []sql.AggregationBuffer,
-	aggregates []sql.Expression,
 ) (sql.Row, error) {
-	var row = make(sql.Row, len(aggregates))
+	var row = make(sql.Row, len(buffers))
 
-	for i, _ := range aggregates {
-		val, err := evalBuffer(ctx, buffers[i])
+	var err error
+	for i, b := range buffers {
+		row[i], err = b.Eval(ctx)
 		if err != nil {
 			return nil, err
 		}
-		row[i] = val
 	}
 
 	return row, nil
-}
-
-func evalBuffer(
-	ctx *sql.Context,
-	buffer sql.AggregationBuffer,
-) (interface{}, error) {
-	return buffer.Eval(ctx)
 }
