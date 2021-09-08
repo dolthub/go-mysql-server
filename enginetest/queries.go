@@ -21,6 +21,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
@@ -2475,22 +2476,6 @@ var QueryTests = []QueryTest{
 			{float64(2), int64(1)},
 			{float64(3), int64(2)},
 			{float64(4), int64(3)},
-		},
-	},
-	{
-		Query: "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		Expected: []sql.Row{
-			{float64(1), int64(1)},
-			{float64(2), int64(2)},
-			{float64(3), int64(3)},
-		},
-	},
-	{
-		Query: "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		Expected: []sql.Row{
-			{float64(1), int64(1)},
-			{float64(2), int64(2)},
-			{float64(3), int64(3)},
 		},
 	},
 	{
@@ -6225,6 +6210,15 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `alter table mytable add primary key (s)`,
 		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
+	},
+	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
+	{
+		Query: "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		ExpectedErr: analyzer.ErrAggregationUnsupported,
+	},
+	{
+		Query: "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		ExpectedErr: analyzer.ErrAggregationUnsupported,
 	},
 }
 
