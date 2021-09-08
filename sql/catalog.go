@@ -86,7 +86,7 @@ func (c *Catalog) AddDatabase(db Database) {
 	c.provider.AddDatabase(db)
 }
 
-// AddDatabase adds a new database to the catalog.
+// CreateDatabase creates a new database.
 func (c *Catalog) CreateDatabase(dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -279,10 +279,9 @@ func (d *sliceDBProvider) AddDatabase(db Database) {
 	*d = append(*d, db)
 }
 
-// AddDatabase adds a new database.
+// CreateDatabase creates a new database.
 func (d *sliceDBProvider) CreateDatabase(name string) error {
-	d.AddDatabase(memory.NewDatabase(name))
-	return nil
+	panic("unimplemented")
 }
 
 // DropDatabase removes a database.
