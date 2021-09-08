@@ -510,6 +510,9 @@ type MutableDatabaseProvider interface {
 	// AddDatabase adds a new Database to the provider's collection.
 	AddDatabase(db Database)
 
+	// CreateDatabase creates a new Database and adds it to the provider's collection.
+	CreateDatabase(name string) error
+
 	// DropDatabase removes a database from the providers's collection.
 	DropDatabase(name string)
 }

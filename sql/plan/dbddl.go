@@ -20,7 +20,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -29,6 +28,13 @@ type CreateDB struct {
 	Catalog     *sql.Catalog
 	dbName      string
 	IfNotExists bool
+}
+
+func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
+	return &CreateDB{
+		dbName:      dbName,
+		IfNotExists: ifNotExists,
+	}
 }
 
 func (c CreateDB) Resolved() bool {
@@ -69,8 +75,11 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	db := memory.NewDatabase(c.dbName)
-	c.Catalog.AddDatabase(db)
+
+	err := c.Catalog.CreateDatabase(c.dbName)
+	if err != nil {
+		return nil, err
+	}
 
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -79,10 +88,10 @@ func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
-func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
-	return &CreateDB{
-		dbName:      dbName,
-		IfNotExists: ifNotExists,
+func NewDropDatabase(dbName string, ifExists bool) *DropDB {
+	return &DropDB{
+		dbName:   dbName,
+		IfExists: ifExists,
 	}
 }
 
@@ -147,9 +156,3 @@ func (d DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 
-func NewDropDatabase(dbName string, ifExists bool) *DropDB {
-	return &DropDB{
-		dbName:   dbName,
-		IfExists: ifExists,
-	}
-}
