@@ -651,13 +651,14 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		}
 		return invalidExpr == nil
 	}
-	plan.Inspect(n, func(sql.Node) bool {
+	plan.Inspect(n, func(n sql.Node) bool {
 		if gb, ok := n.(*plan.GroupBy); ok {
 			return checkExpressions(gb.GroupByExprs)
+		} else if _, ok := n.(*plan.Window); ok {
 		} else if n, ok := n.(sql.Expressioner); ok {
 			return checkExpressions(n.Expressions())
 		}
-		return true
+		return invalidExpr == nil
 	})
 	if invalidExpr != nil {
 		return nil, ErrAggregationUnsupported.New(invalidExpr.String())
