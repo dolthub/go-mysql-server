@@ -100,3 +100,8 @@ func (f *firstBuffer) Update(ctx *sql.Context, row sql.Row) error {
 func (f *firstBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return f.val, nil
 }
+
+// Dispose implements the Disposable interface.
+func (f *firstBuffer) Dispose() {
+	expression.Dispose(f.expr)
+}

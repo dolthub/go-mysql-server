@@ -228,5 +228,16 @@ func newBuffer(ctx *sql.Context, expr sql.Expression) (sql.Row, error) {
 }
 
 func (i *windowIter) Close(ctx *sql.Context) error {
+	i.Dispose()
+	i.buffers = nil
 	return i.childIter.Close(ctx)
+}
+
+func (i *windowIter) Dispose() {
+	for j, expr := range i.selectExprs {
+		switch expr.(type) {
+		case sql.Aggregation:
+			i.buffers[j][0].(sql.AggregationBuffer).Dispose()
+		}
+	}
 }

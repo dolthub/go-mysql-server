@@ -113,3 +113,8 @@ func (m *minBuffer) Update(ctx *sql.Context, row sql.Row) error {
 func (m *minBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return m.val, nil
 }
+
+// Dispose implements the Disposable interface.
+func (m *minBuffer) Dispose() {
+	expression.Dispose(m.expr)
+}

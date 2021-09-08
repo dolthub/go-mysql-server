@@ -110,3 +110,8 @@ func (m *sumBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	}
 	return m.sum, nil
 }
+
+// Dispose implements the Disposable interface.
+func (m *sumBuffer) Dispose() {
+	expression.Dispose(m.expr)
+}

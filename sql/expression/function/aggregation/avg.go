@@ -122,3 +122,8 @@ func (a *avgBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 
 	return a.sum / float64(a.rows), nil
 }
+
+// Dispose implements the Disposable interface.
+func (a *avgBuffer) Dispose() {
+	expression.Dispose(a.expr)
+}

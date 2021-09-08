@@ -235,8 +235,15 @@ func (i *groupByIter) Next() (sql.Row, error) {
 }
 
 func (i *groupByIter) Close(ctx *sql.Context) error {
+	i.Dispose()
 	i.buf = nil
 	return i.child.Close(ctx)
+}
+
+func (i *groupByIter) Dispose() {
+	for _, b := range i.buf {
+		b.Dispose()
+	}
 }
 
 type groupByGroupingIter struct {
@@ -342,7 +349,7 @@ func (i *groupByGroupingIter) put(key uint64, val []sql.AggregationBuffer) error
 }
 
 func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
-	// TODO(aaron): Dispose aggregations in i.aggregations.
+	i.Dispose()
 	i.aggregations = nil
 	if i.dispose != nil {
 		i.dispose()
@@ -350,6 +357,17 @@ func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
 	}
 
 	return i.child.Close(ctx)
+}
+
+func (i *groupByGroupingIter) Dispose() {
+	for _, k := range i.keys {
+		bs, _ := i.get(k)
+		if bs != nil {
+			for _, b := range bs {
+				b.Dispose()
+			}
+		}
+	}
 }
 
 func groupingKey(

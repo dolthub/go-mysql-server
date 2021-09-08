@@ -99,11 +99,6 @@ func NewCountDistinct(e sql.Expression) *CountDistinct {
 	return &CountDistinct{expression.UnaryExpression{Child: e}}
 }
 
-type countDistinctBuffer struct {
-	seen map[uint64]struct{}
-	expr sql.Expression
-}
-
 // NewBuffer creates a new buffer for the aggregation.
 func (c *CountDistinct) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 	return &countDistinctBuffer{make(map[uint64]struct{}), c.Child}, nil
@@ -150,6 +145,11 @@ func (c *CountDistinct) FunctionName() string {
 	return "count distinct"
 }
 
+type countDistinctBuffer struct {
+	seen map[uint64]struct{}
+	expr sql.Expression
+}
+
 // Update implements the AggregationBuffer interface.
 func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	var value interface{}
@@ -183,6 +183,10 @@ func (c *countDistinctBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return int64(len(c.seen)), nil
 }
 
+func (c *countDistinctBuffer) Dispose() {
+	expression.Dispose(c.expr)
+}
+
 type countBuffer struct {
 	cnt  int64
 	expr sql.Expression
@@ -214,4 +218,9 @@ func (c *countBuffer) Update(ctx *sql.Context, row sql.Row) error {
 // Eval implements the AggregationBuffer interface.
 func (c *countBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return c.cnt, nil
+}
+
+// Dispose implements the Disposable interface.
+func (c *countBuffer) Dispose() {
+	expression.Dispose(c.expr)
 }

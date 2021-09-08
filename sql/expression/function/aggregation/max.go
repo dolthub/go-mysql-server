@@ -117,3 +117,8 @@ func (m *maxBuffer) Update(ctx *sql.Context, row sql.Row) error {
 func (m *maxBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return m.val, nil
 }
+
+// Dispose implements the Disposable interface.
+func (m *maxBuffer) Dispose() {
+	expression.Dispose(m.expr)
+}

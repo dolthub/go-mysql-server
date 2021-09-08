@@ -126,6 +126,10 @@ func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return sql.JSONDocument{Val: j.vals}, nil
 }
 
+// Dispose implements the Disposable interface.
+func (j *jsonArrayBuffer) Dispose() {
+}
+
 // JSON_OBJECTAGG(key, value) [over_clause]
 //
 // JSONObjectAgg Takes two column names or expressions as arguments, the first of these being used as a key and the
@@ -246,4 +250,8 @@ func (j *jsonObjectBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	}
 
 	return sql.JSONDocument{Val: j.vals}, nil
+}
+
+// Dispose implements the Disposable interface.
+func (j *jsonObjectBuffer) Dispose() {
 }

@@ -94,6 +94,8 @@ type Aggregation interface {
 }
 
 type AggregationBuffer interface {
+	Disposable
+
 	// Eval the given buffer.
 	Eval(*Context) (interface{}, error)
 	// Update the given buffer with the given row.

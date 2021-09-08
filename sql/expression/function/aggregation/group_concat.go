@@ -264,6 +264,10 @@ func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	return ret, nil
 }
 
+// Dispose implements the Disposable interface.
+func (g *groupConcatBuffer) Dispose() {
+}
+
 func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
 	result := make(sql.Row, len(exprs))
 	retType := sql.Blob
