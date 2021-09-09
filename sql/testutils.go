@@ -17,6 +17,7 @@ package sql
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 )
@@ -36,47 +37,61 @@ func MustJSON(s string) JSONDocument {
 	return JSONDocument{Val: doc}
 }
 
-// testProvider is a DatabaseProvider.
+// testProvider is a collection of Database.
 type testProvider struct {
-	dbs []Database
+	dbs map[string]Database
+	mu  *sync.RWMutex
 }
 
 var _ DatabaseProvider = testProvider{}
 
 func NewTestProvider(dbs ...Database) DatabaseProvider {
-	return testProvider{dbs: dbs}
+	dbMap := make(map[string]Database, len(dbs))
+	for _, db := range dbs {
+		dbMap[strings.ToLower(db.Name())] = db
+	}
+	return testProvider{
+		dbs: dbMap,
+		mu:  &sync.RWMutex{},
+	}
 }
 
 // Database returns the Database with the given name if it exists.
 func (d testProvider) Database(name string) (Database, error) {
-	if len(d.dbs) == 0 {
-		return nil, ErrDatabaseNotFound.New(name)
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	db, ok := d.dbs[strings.ToLower(name)]
+	if ok {
+		return db, nil
 	}
 
-	name = strings.ToLower(name)
-	var dbNames []string
-	for _, db := range d.dbs {
-		if strings.ToLower(db.Name()) == name {
-			return db, nil
-		}
-		dbNames = append(dbNames, db.Name())
+	names := make([]string, 0, len(d.dbs))
+	for n := range d.dbs {
+		names = append(names, n)
 	}
-	similar := similartext.Find(dbNames, name)
+
+	similar := similartext.Find(names, name)
 	return nil, ErrDatabaseNotFound.New(name + similar)
 }
 
 // HasDatabase returns the Database with the given name if it exists.
 func (d testProvider) HasDatabase(name string) bool {
-	name = strings.ToLower(name)
-	for _, db := range d.dbs {
-		if strings.ToLower(db.Name()) == name {
-			return true
-		}
-	}
-	return false
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	_, ok := d.dbs[strings.ToLower(name)]
+	return ok
 }
 
 // AllDatabases returns the Database with the given name if it exists.
 func (d testProvider) AllDatabases() []Database {
-	return d.dbs
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	all := make([]Database, 0, len(d.dbs))
+	for _, db := range d.dbs {
+		all = append(all, db)
+	}
+	return all
 }

@@ -43,11 +43,7 @@ func TestCatalogDatabase(t *testing.T) {
 	mydb := memory.NewDatabase("foo")
 	c := sql.NewCatalog(sql.NewTestProvider(mydb))
 
-	db, err := c.Database("foo")
-	require.EqualError(err, "database not found: foo")
-	require.Nil(db)
-
-	db, err = c.Database("flo")
+	db, err := c.Database("flo")
 	require.EqualError(err, "database not found: flo, maybe you mean foo?")
 	require.Nil(db)
 
@@ -64,10 +60,6 @@ func TestCatalogTable(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	table, _, err := c.Table(ctx, "foo", "bar")
-	require.EqualError(err, "database not found: foo")
-	require.Nil(table)
-
-	table, _, err = c.Table(ctx, "foo", "bar")
 	require.EqualError(err, "table not found: bar")
 	require.Nil(table)
 

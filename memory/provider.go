@@ -2,6 +2,7 @@ package memory
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -9,60 +10,76 @@ import (
 
 // memoryDBProvider is a collection of Database.
 type memoryDBProvider struct {
-	dbs []sql.Database
+	dbs map[string]sql.Database
+	mu  *sync.RWMutex
 }
 
 var _ sql.DatabaseProvider = memoryDBProvider{}
+var _ sql.MutableDatabaseProvider = memoryDBProvider{}
 
 func NewMemoryDBProvider(dbs ...sql.Database) sql.DatabaseProvider {
-	return memoryDBProvider{dbs: dbs}
+	dbMap := make(map[string]sql.Database, len(dbs))
+	for _, db := range dbs {
+		dbMap[strings.ToLower(db.Name())] = db
+	}
+	return memoryDBProvider{
+		dbs: dbMap,
+		mu:  &sync.RWMutex{},
+	}
 }
 
 // Database returns the Database with the given name if it exists.
 func (d memoryDBProvider) Database(name string) (sql.Database, error) {
-	if len(d.dbs) == 0 {
-		return nil, sql.ErrDatabaseNotFound.New(name)
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	db, ok := d.dbs[strings.ToLower(name)]
+	if ok {
+		return db, nil
 	}
 
-	name = strings.ToLower(name)
-	var dbNames []string
-	for _, db := range d.dbs {
-		if strings.ToLower(db.Name()) == name {
-			return db, nil
-		}
-		dbNames = append(dbNames, db.Name())
+	names := make([]string, 0, len(d.dbs))
+	for n := range d.dbs {
+		names = append(names, n)
 	}
-	similar := similartext.Find(dbNames, name)
+
+	similar := similartext.Find(names, name)
 	return nil, sql.ErrDatabaseNotFound.New(name + similar)
 }
 
 // HasDatabase returns the Database with the given name if it exists.
 func (d memoryDBProvider) HasDatabase(name string) bool {
-	name = strings.ToLower(name)
-	for _, db := range d.dbs {
-		if strings.ToLower(db.Name()) == name {
-			return true
-		}
-	}
-	return false
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	_, ok := d.dbs[strings.ToLower(name)]
+	return ok
 }
 
 // AllDatabases returns the Database with the given name if it exists.
 func (d memoryDBProvider) AllDatabases() []sql.Database {
-	return d.dbs
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	all := make([]sql.Database, 0, len(d.dbs))
+	for _, db := range d.dbs {
+		all = append(all, db)
+	}
+	return all
+}
+
+// AddDatabase adds a database.
+func (d memoryDBProvider) AddDatabase(db sql.Database) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.dbs[strings.ToLower(db.Name())] = db
 }
 
 // DropDatabase removes a database.
-func (d memoryDBProvider) DropDatabase(dbName string) {
-	idx := -1
-	for i, db := range d.dbs {
-		if db.Name() == dbName {
-			idx = i
-			break
-		}
-	}
+func (d memoryDBProvider) DropDatabase(name string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	if idx != -1 {
-		d.dbs = append(d.dbs[:idx], d.dbs[idx+1:]...)
-	}
+	delete(d.dbs, strings.ToLower(name))
 }
