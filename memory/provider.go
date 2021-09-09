@@ -74,16 +74,16 @@ func (d memoryDBProvider) AllDatabases() []sql.Database {
 	return all
 }
 
-// AddDatabase adds a database.
-// TODO: replace with CreateDatabase().
-func (d memoryDBProvider) AddDatabase(db sql.Database) {
+// CreateDatabase implements MutableDatabaseProvider.
+func (d memoryDBProvider) CreateDatabase(dbName string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	db := NewDatabase(dbName)
 	d.dbs[strings.ToLower(db.Name())] = db
 }
 
-// DropDatabase removes a database.
+// DropDatabase implements MutableDatabaseProvider.
 func (d memoryDBProvider) DropDatabase(name string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()

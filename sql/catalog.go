@@ -73,15 +73,14 @@ func (c *Catalog) AllDatabases() []Database {
 	return c.provider.AllDatabases()
 }
 
-// AddDatabase adds a new database to the catalog.
-// TODO: replace with CreateDatabase().
-func (c *Catalog) AddDatabase(db Database) error {
+// CreateDatabase creates a new Database and adds it to the catalog.
+func (c *Catalog) CreateDatabase(dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	mut, ok := c.provider.(MutableDatabaseProvider)
 	if ok {
-		mut.AddDatabase(db)
+		mut.CreateDatabase(dbName)
 	} else {
 		return ErrImmutableDatabaseProvider.New()
 	}
