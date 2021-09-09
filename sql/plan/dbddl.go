@@ -131,7 +131,10 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	d.Catalog.RemoveDatabase(d.dbName)
+	err := d.Catalog.RemoveDatabase(d.dbName)
+	if err != nil {
+		return nil, err
+	}
 
 	// Unsets the current database
 	if ctx.GetCurrentDatabase() == d.dbName {

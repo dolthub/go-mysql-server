@@ -44,7 +44,7 @@ type Catalog struct {
 	*MemoryManager
 
 	mu       sync.RWMutex
-	provider MutableDatabaseProvider
+	provider DatabaseProvider
 	locks    sessionLocks
 }
 
@@ -54,13 +54,9 @@ type dbLocks map[string]tableLocks
 
 type sessionLocks map[uint32]dbLocks
 
-// NewCatalog returns a new empty Catalog.
-func NewCatalog() *Catalog {
-	return NewCatalogWithDbProvider(&sliceDBProvider{})
-}
 
-// NewCatalogWithDbProvider returns a new empty Catalog.
-func NewCatalogWithDbProvider(provider MutableDatabaseProvider) *Catalog {
+// NewCatalogWithProvider returns a new empty Catalog.
+func NewCatalog(provider DatabaseProvider) *Catalog {
 	return &Catalog{
 		FunctionRegistry: NewFunctionRegistry(),
 		MemoryManager:    NewMemoryManager(ProcessMemory),
@@ -78,18 +74,19 @@ func (c *Catalog) AllDatabases() []Database {
 	return c.provider.AllDatabases()
 }
 
-// AddDatabase adds a new database to the catalog.
-func (c *Catalog) AddDatabase(db Database) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.provider.AddDatabase(db)
-}
-
 // RemoveDatabase removes a database from the catalog.
-func (c *Catalog) RemoveDatabase(dbName string) {
+func (c *Catalog) RemoveDatabase(dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.provider.DropDatabase(dbName)
+
+	mut, ok := c.provider.(MutableDatabaseProvider)
+	if ok {
+		mut.DropDatabase(dbName)
+	} else {
+		return ErrImmutableDatabaseProvider.New()
+	}
+
+	return nil
 }
 
 func (c *Catalog) HasDB(db string) bool {
@@ -225,63 +222,4 @@ func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName stri
 
 	similar := similartext.Find(tableNames, tableName)
 	return ErrTableNotFound.New(tableName + similar)
-}
-
-// sliceDBProvider is a collection of Database.
-type sliceDBProvider []Database
-
-var _ DatabaseProvider = &sliceDBProvider{}
-
-// Database returns the Database with the given name if it exists.
-func (d *sliceDBProvider) Database(name string) (Database, error) {
-	if len(*d) == 0 {
-		return nil, ErrDatabaseNotFound.New(name)
-	}
-
-	name = strings.ToLower(name)
-	var dbNames []string
-	for _, db := range *d {
-		if strings.ToLower(db.Name()) == name {
-			return db, nil
-		}
-		dbNames = append(dbNames, db.Name())
-	}
-	similar := similartext.Find(dbNames, name)
-	return nil, ErrDatabaseNotFound.New(name + similar)
-}
-
-// HasDatabase returns the Database with the given name if it exists.
-func (d *sliceDBProvider) HasDatabase(name string) bool {
-	name = strings.ToLower(name)
-	for _, db := range *d {
-		if strings.ToLower(db.Name()) == name {
-			return true
-		}
-	}
-	return false
-}
-
-// AllDatabases returns the Database with the given name if it exists.
-func (d *sliceDBProvider) AllDatabases() []Database {
-	return *d
-}
-
-// AddDatabase adds a new database.
-func (d *sliceDBProvider) AddDatabase(db Database) {
-	*d = append(*d, db)
-}
-
-// DropDatabase removes a database.
-func (d *sliceDBProvider) DropDatabase(dbName string) {
-	idx := -1
-	for i, db := range *d {
-		if db.Name() == dbName {
-			idx = i
-			break
-		}
-	}
-
-	if idx != -1 {
-		*d = append((*d)[:idx], (*d)[idx+1:]...)
-	}
 }
