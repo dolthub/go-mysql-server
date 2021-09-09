@@ -69,6 +69,7 @@ func (d memoryDBProvider) AllDatabases() []sql.Database {
 }
 
 // AddDatabase adds a database.
+// TODO: replace with CreateDatabase().
 func (d memoryDBProvider) AddDatabase(db sql.Database) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
