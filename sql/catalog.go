@@ -74,28 +74,29 @@ func (c *Catalog) AllDatabases() []Database {
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
-func (c *Catalog) CreateDatabase(dbName string) error {
+func (c *Catalog) CreateDatabase(ctx *Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	var err error
 	mut, ok := c.provider.(MutableDatabaseProvider)
 	if ok {
-		mut.CreateDatabase(dbName)
+		err = mut.CreateDatabase(ctx, dbName)
 	} else {
-		return ErrImmutableDatabaseProvider.New()
+		err = ErrImmutableDatabaseProvider.New()
 	}
 
-	return nil
+	return err
 }
 
 // RemoveDatabase removes a database from the catalog.
-func (c *Catalog) RemoveDatabase(dbName string) error {
+func (c *Catalog) RemoveDatabase(ctx *Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	mut, ok := c.provider.(MutableDatabaseProvider)
 	if ok {
-		mut.DropDatabase(dbName)
+		mut.DropDatabase(ctx, dbName)
 	} else {
 		return ErrImmutableDatabaseProvider.New()
 	}
