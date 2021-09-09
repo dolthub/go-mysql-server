@@ -93,7 +93,7 @@ func TestLocks(t *testing.T) {
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
-	pro := sql.NewTestProvider(db)
+	pro := sql.NewDatabaseProvider(db)
 	catalog := sql.NewCatalog(pro)
 
 	analyzer := analyzer.NewDefault(catalog)

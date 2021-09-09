@@ -26,7 +26,7 @@ import (
 func TestFunctionRegistry(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog(sql.NewTestProvider())
+	c := sql.NewCatalog(sql.NewDatabaseProvider())
 	name := "func"
 	var expected sql.Expression = expression.NewStar()
 	c.MustRegister(sql.Function1{
@@ -54,7 +54,7 @@ func TestFunctionRegistry(t *testing.T) {
 func TestFunctionRegistryMissingFunction(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog(sql.NewTestProvider())
+	c := sql.NewCatalog(sql.NewDatabaseProvider())
 	f, err := c.Function("func")
 	require.Error(err)
 	require.Nil(f)

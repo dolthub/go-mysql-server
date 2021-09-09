@@ -27,7 +27,7 @@ import (
 func Example() {
 	// Create a test memory database and register it to the default engine.
 	db := createTestDatabase()
-	e := sqle.NewDefault(sql.NewTestProvider(db))
+	e := sqle.NewDefault(sql.NewDatabaseProvider(db))
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("test")
 

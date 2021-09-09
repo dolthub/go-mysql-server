@@ -16,11 +16,6 @@ package sql
 
 import (
 	"encoding/json"
-	"sort"
-	"strings"
-	"sync"
-
-	"github.com/dolthub/go-mysql-server/internal/similartext"
 )
 
 func MustConvert(val interface{}, err error) interface{} {
@@ -36,68 +31,4 @@ func MustJSON(s string) JSONDocument {
 		panic(err)
 	}
 	return JSONDocument{Val: doc}
-}
-
-// testProvider is a collection of Database.
-type testProvider struct {
-	dbs map[string]Database
-	mu  *sync.RWMutex
-}
-
-var _ DatabaseProvider = testProvider{}
-
-func NewTestProvider(dbs ...Database) DatabaseProvider {
-	dbMap := make(map[string]Database, len(dbs))
-	for _, db := range dbs {
-		dbMap[strings.ToLower(db.Name())] = db
-	}
-	return testProvider{
-		dbs: dbMap,
-		mu:  &sync.RWMutex{},
-	}
-}
-
-// Database returns the Database with the given name if it exists.
-func (d testProvider) Database(name string) (Database, error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	db, ok := d.dbs[strings.ToLower(name)]
-	if ok {
-		return db, nil
-	}
-
-	names := make([]string, 0, len(d.dbs))
-	for n := range d.dbs {
-		names = append(names, n)
-	}
-
-	similar := similartext.Find(names, name)
-	return nil, ErrDatabaseNotFound.New(name + similar)
-}
-
-// HasDatabase returns the Database with the given name if it exists.
-func (d testProvider) HasDatabase(name string) bool {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	_, ok := d.dbs[strings.ToLower(name)]
-	return ok
-}
-
-// AllDatabases returns the Database with the given name if it exists.
-func (d testProvider) AllDatabases() []Database {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
-	all := make([]Database, 0, len(d.dbs))
-	for _, db := range d.dbs {
-		all = append(all, db)
-	}
-
-	sort.Slice(all, func(i, j int) bool {
-		return all[i].Name() < all[j].Name()
-	})
-
-	return all
 }

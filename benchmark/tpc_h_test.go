@@ -44,7 +44,7 @@ func BenchmarkTpch(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	e := sqle.NewDefault(sql.NewTestProvider(db))
+	e := sqle.NewDefault(sql.NewDatabaseProvider(db))
 	b.ResetTimer()
 
 	if err := executeQueries(b, e); err != nil {

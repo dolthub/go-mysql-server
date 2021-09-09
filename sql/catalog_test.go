@@ -33,7 +33,7 @@ func TestAllDatabases(t *testing.T) {
 		memory.NewDatabase("c"),
 	}
 
-	c := sql.NewCatalog(sql.NewTestProvider(dbs...))
+	c := sql.NewCatalog(sql.NewDatabaseProvider(dbs...))
 	require.Equal(dbs, c.AllDatabases())
 }
 
@@ -41,7 +41,7 @@ func TestCatalogDatabase(t *testing.T) {
 	require := require.New(t)
 
 	mydb := memory.NewDatabase("foo")
-	c := sql.NewCatalog(sql.NewTestProvider(mydb))
+	c := sql.NewCatalog(sql.NewDatabaseProvider(mydb))
 
 	db, err := c.Database("flo")
 	require.EqualError(err, "database not found: flo, maybe you mean foo?")
@@ -56,7 +56,7 @@ func TestCatalogTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("foo")
-	c := sql.NewCatalog(sql.NewTestProvider(db))
+	c := sql.NewCatalog(sql.NewDatabaseProvider(db))
 	ctx := sql.NewEmptyContext()
 
 	table, _, err := c.Table(ctx, "foo", "bar")
@@ -88,7 +88,7 @@ func TestCatalogUnlockTables(t *testing.T) {
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 
-	c := sql.NewCatalog(sql.NewTestProvider(db))
+	c := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	ctx := sql.NewContext(context.Background())
 	ctx.SetCurrentDatabase(db.Name())

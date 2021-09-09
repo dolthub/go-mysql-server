@@ -95,6 +95,10 @@ func NewDefault(pro sql.DatabaseProvider) *Engine {
 	return New(c, a, nil)
 }
 
+func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
+	return sql.NewDatabaseProvider(dbs...)
+}
+
 // AnalyzeQuery analyzes a query and returns its Schema.
 func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,

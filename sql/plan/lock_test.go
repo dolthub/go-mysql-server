@@ -33,7 +33,7 @@ func TestLockTables(t *testing.T) {
 		{NewResolvedTable(t1, nil, nil), true},
 		{NewResolvedTable(t2, nil, nil), false},
 	})
-	node.Catalog = sql.NewCatalog(sql.NewTestProvider())
+	node.Catalog = sql.NewCatalog(sql.NewDatabaseProvider())
 
 	_, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
@@ -55,7 +55,7 @@ func TestUnlockTables(t *testing.T) {
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)
 
-	catalog := sql.NewCatalog(sql.NewTestProvider(db))
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("db").WithCurrentDB("db")
 	catalog.LockTable(ctx, "foo")

@@ -30,7 +30,7 @@ func TestAssignCatalog(t *testing.T) {
 	f := getRule("assign_catalog")
 
 	db := memory.NewDatabase("foo")
-	c := sql.NewCatalog(sql.NewTestProvider(db))
+	c := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	a := NewDefault(c)
 	idxReg := sql.NewIndexRegistry()

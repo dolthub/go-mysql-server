@@ -34,7 +34,7 @@ func TestShowTableStatus(t *testing.T) {
 	db2.AddTable("t3", memory.NewTable("t3", nil))
 	db2.AddTable("t4", memory.NewTable("t4", nil))
 
-	catalog := sql.NewCatalog(sql.NewTestProvider(db1, db2))
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db1, db2))
 
 	node := NewShowTableStatus(db1)
 	node.Catalog = catalog

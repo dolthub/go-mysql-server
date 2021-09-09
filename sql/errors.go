@@ -311,8 +311,8 @@ var (
 	// ErrCantDropIndex is return when a table can't drop an index due to a foreign key relationship.
 	ErrCantDropIndex = errors.NewKind("error: can't drop index '%s': needed in a foreign key constraint")
 
-	// ErrImmutableDatabaseProvider is returned when attempting to edit an immutable database testProvider.
-	ErrImmutableDatabaseProvider = errors.NewKind("error: can't modify database testProvider")
+	// ErrImmutableDatabaseProvider is returned when attempting to edit an immutable database databaseProvider.
+	ErrImmutableDatabaseProvider = errors.NewKind("error: can't modify database databaseProvider")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

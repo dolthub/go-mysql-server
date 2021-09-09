@@ -44,7 +44,7 @@ func TestCreateIndexAsync(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog := sql.NewCatalog(sql.NewTestProvider(db))
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -98,7 +98,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog := sql.NewCatalog(sql.NewTestProvider(db))
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	ci := NewCreateIndex(
 		"idx",
@@ -148,7 +148,7 @@ func TestCreateIndexSync(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog := sql.NewCatalog(sql.NewTestProvider(db))
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -204,7 +204,7 @@ func TestCreateIndexChecksum(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog := sql.NewCatalog(sql.NewTestProvider(db))
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -246,7 +246,7 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 		}
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog(sql.NewTestProvider())
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider())
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 
@@ -298,7 +298,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", foo)
-	catalog := sql.NewCatalog(sql.NewTestProvider(db))
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	ci := NewCreateIndex("idx", NewResolvedTable(foo, nil, nil), exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog

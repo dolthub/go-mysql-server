@@ -29,7 +29,7 @@ import (
 func TestNegateIndex(t *testing.T) {
 	require := require.New(t)
 
-	catalog := sql.NewCatalog(sql.NewTestProvider())
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider())
 	idxReg := sql.NewIndexRegistry()
 	idx1 := &memory.MergeableIndex{
 		TableName: "t1",
@@ -76,7 +76,7 @@ func TestNegateIndex(t *testing.T) {
 func TestAssignIndexes(t *testing.T) {
 	require := require.New(t)
 
-	catalog := sql.NewCatalog(sql.NewTestProvider())
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider())
 	idxReg := sql.NewIndexRegistry()
 	idx1 := &memory.MergeableIndex{
 		TableName: "t2",
@@ -1104,7 +1104,7 @@ func TestGetIndexes(t *testing.T) {
 		},
 	}
 
-	catalog := sql.NewCatalog(sql.NewTestProvider())
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider())
 	idxReg := sql.NewIndexRegistry()
 	for _, idx := range indexes {
 		done, ready, err := idxReg.AddIndex(idx)
@@ -1140,7 +1140,7 @@ func TestGetIndexes(t *testing.T) {
 func TestGetMultiColumnIndexes(t *testing.T) {
 	require := require.New(t)
 
-	catalog := sql.NewCatalog(sql.NewTestProvider())
+	catalog := sql.NewCatalog(sql.NewDatabaseProvider())
 	idxReg := sql.NewIndexRegistry()
 	indexes := []*memory.MergeableIndex{
 		{
