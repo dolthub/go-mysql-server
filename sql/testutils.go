@@ -16,6 +16,7 @@ package sql
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 	"sync"
 
@@ -93,5 +94,10 @@ func (d testProvider) AllDatabases() []Database {
 	for _, db := range d.dbs {
 		all = append(all, db)
 	}
+
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].Name() < all[j].Name()
+	})
+
 	return all
 }
