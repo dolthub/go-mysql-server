@@ -33,8 +33,7 @@ func TestResolveTables(t *testing.T) {
 	db := memory.NewHistoryDatabase("mydb")
 	db.AddTableAsOf("mytable", table, "2019-01-01")
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")
@@ -86,8 +85,7 @@ func TestResolveTablesNoCurrentDB(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 	ctx := sql.NewEmptyContext()
@@ -117,12 +115,11 @@ func TestResolveTablesNested(t *testing.T) {
 	table2 := memory.NewTable("my_other_table", sql.Schema{{Name: "i", Type: sql.Int32}})
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
 
 	db2 := memory.NewDatabase("my_other_db")
 	db2.AddTable("my_other_table", table2)
-	catalog.AddDatabase(db2)
+
+	catalog := sql.NewCatalog(sql.NewTestProvider(db, db2))
 
 	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 	ctx := sql.NewEmptyContext().WithCurrentDB("mydb")

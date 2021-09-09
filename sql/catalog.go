@@ -54,7 +54,6 @@ type dbLocks map[string]tableLocks
 
 type sessionLocks map[uint32]dbLocks
 
-
 // NewCatalogWithProvider returns a new empty Catalog.
 func NewCatalog(provider DatabaseProvider) *Catalog {
 	return &Catalog{
@@ -72,6 +71,22 @@ func (c *Catalog) AllDatabases() []Database {
 	defer c.mu.RUnlock()
 
 	return c.provider.AllDatabases()
+}
+
+// AddDatabase adds a new database to the catalog.
+// TODO: replace with CreateDatabase().
+func (c *Catalog) AddDatabase(db Database) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	mut, ok := c.provider.(MutableDatabaseProvider)
+	if ok {
+		mut.AddDatabase(db)
+	} else {
+		return ErrImmutableDatabaseProvider.New()
+	}
+
+	return nil
 }
 
 // RemoveDatabase removes a database from the catalog.

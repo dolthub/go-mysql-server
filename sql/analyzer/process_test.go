@@ -30,7 +30,7 @@ import (
 func TestTrackProcess(t *testing.T) {
 	require := require.New(t)
 	rule := getRuleFrom(OnceAfterAll, "track_process")
-	catalog := sql.NewCatalog()
+	catalog := sql.NewCatalog(sql.NewTestProvider())
 	a := NewDefault(catalog)
 
 	node := plan.NewInnerJoin(
@@ -93,7 +93,7 @@ func TestTrackProcess(t *testing.T) {
 func TestTrackProcessSubquery(t *testing.T) {
 	require := require.New(t)
 	rule := getRuleFrom(OnceAfterAll, "track_process")
-	catalog := sql.NewCatalog()
+	catalog := sql.NewCatalog(sql.NewTestProvider())
 	a := NewDefault(catalog)
 
 	node := plan.NewProject(

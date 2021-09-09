@@ -41,8 +41,7 @@ func TestResolveViews(t *testing.T) {
 	view := sql.NewView("myview", viewDefinition, "select i from mytable")
 
 	db := memory.NewDatabase("mydb")
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 	viewReg := sql.NewViewRegistry()
 	err := viewReg.Register(db.Name(), view)
 	require.NoError(err)

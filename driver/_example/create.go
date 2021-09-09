@@ -25,9 +25,11 @@ import (
 type factory struct{}
 
 func (factory) Resolve(name string) (string, *sql.Catalog, error) {
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(createTestDatabase())
-	catalog.AddDatabase(information_schema.NewInformationSchemaDatabase())
+	pro := memory.NewMemoryDBProvider(
+		createTestDatabase(),
+		information_schema.NewInformationSchemaDatabase())
+
+	catalog := sql.NewCatalog(pro)
 
 	return name, catalog, nil
 }

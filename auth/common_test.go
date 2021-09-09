@@ -33,19 +33,19 @@ import (
 const port = 33336
 
 func authEngine(au auth.Auth) (*sqle.Engine, *sql.IndexRegistry, error) {
-	db := memory.NewDatabase("test")
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	idxReg := sql.NewIndexRegistry()
 
 	tblName := "test"
-
 	table := memory.NewTable(tblName, sql.Schema{
 		{Name: "id", Type: sql.Text, Nullable: false, Source: tblName},
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tblName},
 	})
 
+	db := memory.NewDatabase("test")
 	db.AddTable(tblName, table)
+
+	pro := memory.NewMemoryDBProvider(db)
+	catalog := sql.NewCatalog(pro)
+	idxReg := sql.NewIndexRegistry()
 
 	a := analyzer.NewBuilder(catalog).Build()
 	config := &sqle.Config{Auth: au}

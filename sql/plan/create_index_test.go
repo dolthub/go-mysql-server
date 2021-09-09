@@ -41,11 +41,10 @@ func TestCreateIndexAsync(t *testing.T) {
 
 	idxReg := sql.NewIndexRegistry()
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -95,12 +94,11 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	ci := NewCreateIndex(
 		"idx",
@@ -146,12 +144,11 @@ func TestCreateIndexSync(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -203,12 +200,11 @@ func TestCreateIndexChecksum(t *testing.T) {
 	}
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	exprs := []sql.Expression{
 		expression.NewGetFieldWithTable(2, sql.Int64, "foo", "c", true),
@@ -250,7 +246,7 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 		}
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
+	catalog := sql.NewCatalog(sql.NewTestProvider())
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 
@@ -298,12 +294,11 @@ func TestCreateIndexWithIter(t *testing.T) {
 	}
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", foo)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	ci := NewCreateIndex("idx", NewResolvedTable(foo, nil, nil), exprs, "mock", make(map[string]string))
 	ci.Catalog = catalog

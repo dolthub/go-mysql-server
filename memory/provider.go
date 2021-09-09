@@ -1,9 +1,10 @@
 package memory
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
-	"strings"
 )
 
 // memoryDBProvider is a collection of Database.

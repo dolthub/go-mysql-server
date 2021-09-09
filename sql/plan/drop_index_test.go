@@ -37,12 +37,11 @@ func TestDeleteIndex(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -82,12 +81,11 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -129,12 +127,11 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),

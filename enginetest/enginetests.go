@@ -30,6 +30,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/auth"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -231,8 +232,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		)
 	})
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	e := sqle.NewDefault(sql.NewTestProvider(db))
 
 	_, iter, err := e.Query(
 		NewContext(harness).WithCurrentDB("db"),
@@ -283,8 +283,8 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		require.NoError(err)
 	})
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	pro := sql.NewTestProvider(db)
+	catalog := sql.NewCatalog(pro)
 
 	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
 	cfg := &sqle.Config{Auth: au}
@@ -317,8 +317,7 @@ func TestExplode(t *testing.T, harness Harness) {
 
 	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
 
 	for _, q := range ExplodeQueries {
@@ -453,8 +452,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
 	})
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	e := sqle.NewDefault(sql.NewTestProvider(db))
 
 	expected := []sql.Row{
 		{int64(1), "pux", "foo"},
@@ -2502,8 +2500,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 			sql.NewRow("a_3", "b_3", "d_3"))
 	})
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	e := sqle.NewDefault(sql.NewTestProvider(db))
 
 	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
 		{"a_1", "b_1", "c_1", "d_1"},
@@ -2542,8 +2539,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 			sql.NewRow("a_3", "b_3", "c_3"))
 	})
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	e := sqle.NewDefault(sql.NewTestProvider(db))
 
 	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
 		{"a_1", "b_1", "c_1"},
@@ -2577,8 +2573,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 			sql.NewRow("b3"))
 	})
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	e := sqle.NewDefault(sql.NewTestProvider(db))
 
 	TestQuery(t, harness, e, `SELECT * FROM t1 NATURAL JOIN t2`, []sql.Row{
 		{"a1", "b1"},
@@ -2638,8 +2633,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 		)
 	})
 
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	e := sqle.NewDefault(sql.NewTestProvider(db))
 
 	TestQuery(t, harness, e, `SELECT * FROM table1 INNER JOIN table2 ON table1.i = table2.i2 NATURAL JOIN table3`, []sql.Row{
 		{int32(1), float64(2.2), float64(2.1), "table1", int32(1), "table2", "table3"},
@@ -2654,7 +2648,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		TestScript(t, harness, query)
 	}
 	// Test session pulling from global
-	engine := sqle.NewDefault()
+	engine := sqle.NewDefault(sql.NewTestProvider())
 	ctx1 := sql.NewEmptyContext()
 	for _, assertion := range []ScriptTestAssertion{
 		{
@@ -2950,8 +2944,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
-	e := sqle.NewDefault()
-	e.AddDatabase(db)
+	e := sqle.NewDefault(sql.NewTestProvider(db))
 
 	wrapInTransaction(t, db, harness, func() {
 		t1, err := harness.NewTable(db, "t1", sql.Schema{
@@ -3599,11 +3592,9 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
 func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
-	catalog := sql.NewCatalog()
-	for _, database := range databases {
-		catalog.AddDatabase(database)
-	}
-	catalog.AddDatabase(information_schema.NewInformationSchemaDatabase())
+	databases = append(databases, information_schema.NewInformationSchemaDatabase())
+	pro := memory.NewMemoryDBProvider(databases...)
+	catalog := sql.NewCatalog(pro)
 
 	var a *analyzer.Analyzer
 	if harness.Parallelism() > 1 {

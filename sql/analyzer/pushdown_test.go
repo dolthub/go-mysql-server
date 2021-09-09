@@ -43,8 +43,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider())
 	a := NewDefault(catalog)
 
 	// TODO: test interaction with filtered tables
@@ -114,8 +113,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 	a := NewDefault(catalog)
 
 	tests := []analyzerFnTestCase{
@@ -230,8 +228,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 	a := NewDefault(catalog)
 
 	tests := []analyzerFnTestCase{
@@ -578,8 +575,7 @@ func TestPushdownIndex(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	catalog := sql.NewCatalog(sql.NewTestProvider(db))
 	a := NewDefault(catalog)
 
 	tests := []analyzerFnTestCase{

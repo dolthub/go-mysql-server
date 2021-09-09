@@ -70,7 +70,10 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	}
 
 	db := memory.NewDatabase(c.dbName)
-	c.Catalog.AddDatabase(db)
+	err := c.Catalog.AddDatabase(db)
+	if err != nil {
+		return nil, err
+	}
 
 	return sql.RowsToRowIter(rows...), nil
 }

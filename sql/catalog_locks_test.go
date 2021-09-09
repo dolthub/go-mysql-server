@@ -23,7 +23,7 @@ import (
 
 func TestCatalogLockTable(t *testing.T) {
 	require := require.New(t)
-	c := NewCatalog()
+	c := NewCatalog(NewTestProvider())
 
 	ctx1 := NewContext(context.Background())
 	ctx1.SetCurrentDatabase("db1")

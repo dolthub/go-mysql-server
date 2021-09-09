@@ -32,9 +32,9 @@ import (
 )
 
 func setupMemDB(require *require.Assertions) *sqle.Engine {
-	e := sqle.NewDefault()
 	db := memory.NewDatabase("test")
-	e.AddDatabase(db)
+	pro := memory.NewMemoryDBProvider(db)
+	e := sqle.NewDefault(pro)
 
 	tableTest := memory.NewTable("test", sql.Schema{{Name: "c1", Type: sql.Int32, Source: "test"}})
 

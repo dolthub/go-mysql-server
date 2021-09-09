@@ -33,24 +33,19 @@ func TestAllDatabases(t *testing.T) {
 		memory.NewDatabase("c"),
 	}
 
-	c := sql.NewCatalog()
-	for _, db := range dbs {
-		c.AddDatabase(db)
-	}
-
+	c := sql.NewCatalog(sql.NewTestProvider(dbs...))
 	require.Equal(dbs, c.AllDatabases())
 }
 
 func TestCatalogDatabase(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog()
+	mydb := memory.NewDatabase("foo")
+	c := sql.NewCatalog(sql.NewTestProvider(mydb))
+
 	db, err := c.Database("foo")
 	require.EqualError(err, "database not found: foo")
 	require.Nil(db)
-
-	mydb := memory.NewDatabase("foo")
-	c.AddDatabase(mydb)
 
 	db, err = c.Database("flo")
 	require.EqualError(err, "database not found: flo, maybe you mean foo?")
@@ -64,15 +59,13 @@ func TestCatalogDatabase(t *testing.T) {
 func TestCatalogTable(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog()
+	db := memory.NewDatabase("foo")
+	c := sql.NewCatalog(sql.NewTestProvider(db))
 	ctx := sql.NewEmptyContext()
 
 	table, _, err := c.Table(ctx, "foo", "bar")
 	require.EqualError(err, "database not found: foo")
 	require.Nil(table)
-
-	db := memory.NewDatabase("foo")
-	c.AddDatabase(db)
 
 	table, _, err = c.Table(ctx, "foo", "bar")
 	require.EqualError(err, "table not found: bar")
@@ -103,8 +96,7 @@ func TestCatalogUnlockTables(t *testing.T) {
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 
-	c := sql.NewCatalog()
-	c.AddDatabase(db)
+	c := sql.NewCatalog(sql.NewTestProvider(db))
 
 	ctx := sql.NewContext(context.Background())
 	ctx.SetCurrentDatabase(db.Name())

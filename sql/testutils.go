@@ -14,7 +14,12 @@
 
 package sql
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/dolthub/go-mysql-server/internal/similartext"
+)
 
 func MustConvert(val interface{}, err error) interface{} {
 	if err != nil {
@@ -29,4 +34,49 @@ func MustJSON(s string) JSONDocument {
 		panic(err)
 	}
 	return JSONDocument{Val: doc}
+}
+
+// testProvider is a DatabaseProvider.
+type testProvider struct {
+	dbs []Database
+}
+
+var _ DatabaseProvider = testProvider{}
+
+func NewTestProvider(dbs ...Database) DatabaseProvider {
+	return testProvider{dbs: dbs}
+}
+
+// Database returns the Database with the given name if it exists.
+func (d testProvider) Database(name string) (Database, error) {
+	if len(d.dbs) == 0 {
+		return nil, ErrDatabaseNotFound.New(name)
+	}
+
+	name = strings.ToLower(name)
+	var dbNames []string
+	for _, db := range d.dbs {
+		if strings.ToLower(db.Name()) == name {
+			return db, nil
+		}
+		dbNames = append(dbNames, db.Name())
+	}
+	similar := similartext.Find(dbNames, name)
+	return nil, ErrDatabaseNotFound.New(name + similar)
+}
+
+// HasDatabase returns the Database with the given name if it exists.
+func (d testProvider) HasDatabase(name string) bool {
+	name = strings.ToLower(name)
+	for _, db := range d.dbs {
+		if strings.ToLower(db.Name()) == name {
+			return true
+		}
+	}
+	return false
+}
+
+// AllDatabases returns the Database with the given name if it exists.
+func (d testProvider) AllDatabases() []Database {
+	return d.dbs
 }
