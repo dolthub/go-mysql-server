@@ -405,8 +405,7 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
 	ctx := sql.NewEmptyContext()
 	db := plan.NewDummyResolvedDB("temporary")
-	cat := sql.NewCatalog(memory.NewMemoryDBProvider(db))
-	a := analyzer.NewDefault(cat)
+	e := NewDefault(memory.NewMemoryDBProvider(db))
 
 	unresolvedSchema := make(sql.Schema, len(schema))
 	defaultCount := 0
@@ -429,7 +428,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	// *plan.CreateTable properly handles resolving default values, so we hijack it
 	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: unresolvedSchema})
 
-	analyzed, err := a.Analyze(ctx, createTable, nil)
+	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
 	if err != nil {
 		return nil, err
 	}
