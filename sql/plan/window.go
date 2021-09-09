@@ -157,6 +157,12 @@ func (i *windowIter) Next() (sql.Row, error) {
 func (i *windowIter) compute() error {
 	i.buffers = make([]sql.Row, len(i.selectExprs))
 
+	// TOOD(aaron): i.buffers is a []sql.Row, and we tuck an
+	// AggregationBuffer into one when we have a sql.Aggregation. But
+	// i.buffers should get the same treatment it gets in groupByIter,
+	// where we can use a common interface that makes sense for our use
+	// case. This needs some work to look better.
+
 	var err error
 	for j, expr := range i.selectExprs {
 		i.buffers[j], err = newBuffer(i.ctx, expr)

@@ -632,12 +632,13 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	return n, nil
 }
 
-// validateAggregations returns an error if there are any Aggregation
-// expression nodes in any expressions for any nodes outside of a GroupBy node.
-// GroupBy is the only node that can support evaluating an Aggregation.
+// validateAggregations returns an error if an Aggregation
+// expression node appears outside of a GroupBy or Window node. Only GroupBy
+// and Window nodes know how to evaluate Aggregation expressions.
 //
 // See https://github.com/dolthub/go-mysql-server/issues/542 for some queries
-// that should be supported but that currently trigger this validation.
+// that should be supported but that currently trigger this validation because
+// aggregation expressions end up in the wrong place.
 func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	var invalidExpr sql.Expression
 	checkExpressions := func(exprs []sql.Expression) bool {
