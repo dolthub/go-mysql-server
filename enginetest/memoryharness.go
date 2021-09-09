@@ -139,6 +139,10 @@ func (m *MemoryHarness) IndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return nil
 }
 
+func (m *MemoryHarness) NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
+	return memory.NewMemoryDBProvider(dbs...)
+}
+
 func (m *MemoryHarness) NewDatabase(name string) sql.Database {
 	database := memory.NewHistoryDatabase(name)
 	if m.nativeIndexSupport {

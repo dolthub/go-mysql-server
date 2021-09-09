@@ -18,7 +18,7 @@ type memoryDBProvider struct {
 var _ sql.DatabaseProvider = memoryDBProvider{}
 var _ sql.MutableDatabaseProvider = memoryDBProvider{}
 
-func NewMemoryDBProvider(dbs ...sql.Database) sql.DatabaseProvider {
+func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db

@@ -26,6 +26,8 @@ type Harness interface {
 	NewDatabase(name string) sql.Database
 	// NewDatabases returns a set of new databases, for test setup that requires more than one database.
 	NewDatabases(names ...string) []sql.Database
+	// NewDatabaseProvider returns a sql.MutableDatabaseProvider to use for a test.
+	NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider
 	// NewTable takes a database previously created by NewDatabase and returns a table created with the given schema.
 	NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error)
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
