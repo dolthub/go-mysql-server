@@ -29,6 +29,7 @@ type Max struct {
 }
 
 var _ sql.FunctionExpression = (*Max)(nil)
+var _ sql.Aggregation = (*Max)(nil)
 
 // NewMax returns a new Max node.
 func NewMax(ctx *sql.Context, e sql.Expression) *Max {
@@ -67,13 +68,27 @@ func (m *Max) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Max) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (m *Max) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(ctx, m.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return &maxBuffer{nil, bufferChild}, nil
 }
 
-// Update implements the Aggregation interface.
-func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := m.Child.Eval(ctx, row)
+// Eval implements the Expression interface.
+func (m *Max) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Max")
+}
+
+type maxBuffer struct {
+	val  interface{}
+	expr sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (m *maxBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := m.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -82,28 +97,28 @@ func (m *Max) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	if buffer[0] == nil {
-		buffer[0] = v
+	if m.val == nil {
+		m.val = v
+		return nil
 	}
 
-	cmp, err := m.Child.Type().Compare(v, buffer[0])
+	cmp, err := m.expr.Type().Compare(v, m.val)
 	if err != nil {
 		return err
 	}
 	if cmp == 1 {
-		buffer[0] = v
+		m.val = v
 	}
 
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (m *Max) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return m.Update(ctx, buffer, partial)
+// Eval implements the AggregationBuffer interface.
+func (m *maxBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return m.val, nil
 }
 
-// Eval implements the Aggregation interface.
-func (m *Max) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	max := buffer[0]
-	return max, nil
+// Dispose implements the Disposable interface.
+func (m *maxBuffer) Dispose() {
+	expression.Dispose(m.expr)
 }

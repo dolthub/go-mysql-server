@@ -115,7 +115,9 @@ func TestGroupByEvalEmptyBuffer(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	r, err := evalBuffer(ctx, expression.NewGetField(0, sql.LongText, "col1", true), sql.Row{})
+	b, err := newAggregationBuffer(ctx, expression.NewGetField(0, sql.LongText, "col1", true))
+	require.NoError(err)
+	r, err := b.Eval(ctx)
 	require.NoError(err)
 	require.Nil(r)
 }
@@ -149,8 +151,8 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		[]sql.Expression{
-			aggregation.NewCount(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "col1", true)),
-			expression.NewGetField(1, sql.Int64, "col2", true),
+			expression.NewGetField(0, sql.LongText, "col1", true),
+			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		NewResolvedTable(child, nil, nil),
 	)

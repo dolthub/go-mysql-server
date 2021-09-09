@@ -143,7 +143,7 @@ func (i *windowIter) Next() (sql.Row, error) {
 				return nil, err
 			}
 		case sql.Aggregation:
-			row[j], err = expr.Eval(i.ctx, i.buffers[j])
+			row[j], err = i.buffers[j][0].(sql.AggregationBuffer).Eval(i.ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -157,8 +157,18 @@ func (i *windowIter) Next() (sql.Row, error) {
 func (i *windowIter) compute() error {
 	i.buffers = make([]sql.Row, len(i.selectExprs))
 
+	// TOOD(aaron): i.buffers is a []sql.Row, and we tuck an
+	// AggregationBuffer into one when we have a sql.Aggregation. But
+	// i.buffers should get the same treatment it gets in groupByIter,
+	// where we can use a common interface that makes sense for our use
+	// case. This needs some work to look better.
+
+	var err error
 	for j, expr := range i.selectExprs {
-		i.buffers[j] = newBuffer(expr)
+		i.buffers[j], err = newBuffer(i.ctx, expr)
+		if err != nil {
+			return err
+		}
 	}
 
 	for {
@@ -179,7 +189,7 @@ func (i *windowIter) compute() error {
 					return err
 				}
 			case sql.Aggregation:
-				err = expr.Update(i.ctx, i.buffers[j], row)
+				err = i.buffers[j][0].(sql.AggregationBuffer).Update(i.ctx, row)
 				if err != nil {
 					return err
 				}
@@ -206,17 +216,34 @@ func (i *windowIter) compute() error {
 	return nil
 }
 
-func newBuffer(expr sql.Expression) sql.Row {
+func newBuffer(ctx *sql.Context, expr sql.Expression) (sql.Row, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
-		return n.NewBuffer()
+		// For now, we tuck the sql.AggregationBuffer into the first
+		// element of the returned row.
+		b, err := n.NewBuffer(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return sql.NewRow(b), nil
 	case sql.WindowAggregation:
-		return n.NewBuffer()
+		return n.NewBuffer(), nil
 	default:
-		return nil
+		return nil, nil
 	}
 }
 
 func (i *windowIter) Close(ctx *sql.Context) error {
+	i.Dispose()
+	i.buffers = nil
 	return i.childIter.Close(ctx)
+}
+
+func (i *windowIter) Dispose() {
+	for j, expr := range i.selectExprs {
+		switch expr.(type) {
+		case sql.Aggregation:
+			i.buffers[j][0].(sql.AggregationBuffer).Dispose()
+		}
+	}
 }

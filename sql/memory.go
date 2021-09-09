@@ -32,6 +32,12 @@ type Disposable interface {
 	Dispose()
 }
 
+func Dispose(i interface{}) {
+	if d, ok := i.(Disposable); ok {
+		d.Dispose()
+	}
+}
+
 // Freeable objects can free their memory.
 type Freeable interface {
 	// Free the memory.

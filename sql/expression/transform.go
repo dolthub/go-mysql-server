@@ -27,6 +27,10 @@ type TransformExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, e
 func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
+		e, err := e.WithChildren(ctx)
+		if err != nil {
+			return nil, err
+		}
 		return f(e)
 	}
 
@@ -47,10 +51,24 @@ func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (s
 	return f(e)
 }
 
+// Clone duplicates an existing sql.Expression, returning new nodes with the
+// same structure and internal values. It can be useful when dealing with
+// stateful expression nodes where an evaluation needs to create multiple
+// independent histories of the internal state of the expression nodes.
+func Clone(ctx *sql.Context, expr sql.Expression) (sql.Expression, error) {
+	return TransformUp(ctx, expr, func(e sql.Expression) (sql.Expression, error) {
+		return e, nil
+	})
+}
+
 // TransformUpWithNode applies a transformation function to the given expression from the bottom up.
 func TransformUpWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
+		e, err := e.WithChildren(ctx)
+		if err != nil {
+			return nil, err
+		}
 		return f(n, e)
 	}
 

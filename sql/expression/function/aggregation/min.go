@@ -29,6 +29,7 @@ type Min struct {
 }
 
 var _ sql.FunctionExpression = (*Min)(nil)
+var _ sql.Aggregation = (*Min)(nil)
 
 // NewMin creates a new Min node.
 func NewMin(ctx *sql.Context, e sql.Expression) *Min {
@@ -63,13 +64,27 @@ func (m *Min) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Min) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (m *Min) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(ctx, m.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return &minBuffer{nil, bufferChild}, nil
 }
 
-// Update implements the Aggregation interface.
-func (m *Min) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := m.Child.Eval(ctx, row)
+// Eval implements the Expression interface.
+func (m *Min) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Min")
+}
+
+type minBuffer struct {
+	val  interface{}
+	expr sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (m *minBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := m.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -78,28 +93,28 @@ func (m *Min) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	if buffer[0] == nil {
-		buffer[0] = v
+	if m.val == nil {
+		m.val = v
+		return nil
 	}
 
-	cmp, err := m.Child.Type().Compare(v, buffer[0])
+	cmp, err := m.expr.Type().Compare(v, m.val)
 	if err != nil {
 		return err
 	}
 	if cmp == -1 {
-		buffer[0] = v
+		m.val = v
 	}
 
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (m *Min) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return m.Update(ctx, buffer, partial)
+// Eval implements the AggregationBuffer interface.
+func (m *minBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return m.val, nil
 }
 
-// Eval implements the Aggregation interface
-func (m *Min) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	min := buffer[0]
-	return min, nil
+// Dispose implements the Disposable interface.
+func (m *minBuffer) Dispose() {
+	expression.Dispose(m.expr)
 }

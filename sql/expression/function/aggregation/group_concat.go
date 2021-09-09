@@ -46,141 +46,18 @@ func NewGroupConcat(ctx *sql.Context, distinct string, orderBy sql.SortFields, s
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (g *GroupConcat) NewBuffer() sql.Row {
+func (g *GroupConcat) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 	var rows []sql.Row
-	var distinctSet = make(map[string]bool)
-
-	return sql.NewRow(rows, distinctSet)
+	distinctSet := make(map[string]bool)
+	return &groupConcatBuffer{g, rows, distinctSet}, nil
 }
 
-// Update implements the Aggregation interface.
-func (g *GroupConcat) Update(ctx *sql.Context, buffer, originalRow sql.Row) error {
-	evalRow, retType, err := evalExprs(ctx, g.selectExprs, originalRow)
-	if err != nil {
-		return err
-	}
-
-	g.returnType = retType
-
-	// Skip if this is a null row
-	if evalRow == nil {
-		return nil
-	}
-
-	var v interface{}
-	if retType == sql.Blob {
-		v, err = sql.Blob.Convert(evalRow[0])
-	} else {
-		v, err = sql.LongText.Convert(evalRow[0])
-	}
-
-	if err != nil {
-		return err
-	}
-
-	if v == nil {
-		return nil
-	}
-
-	vs := v.(string)
-
-	// Get the current array of rows and the map
-	rows := buffer[0].([]sql.Row)
-	distinctSet := buffer[1].(map[string]bool)
-
-	// Check if distinct is active if so look at and update our map
-	if g.distinct != "" {
-		// If this value exists go ahead and return nil
-		if _, ok := distinctSet[vs]; ok {
-			return nil
-		} else {
-			distinctSet[vs] = true
-		}
-	}
-
-	// Append the current value to the end of the row. We want to preserve the row's original structure for
-	// for sort ordering in the final step.
-	rows = append(rows, append(originalRow, nil, vs))
-
-	buffer[0] = rows
-	buffer[1] = distinctSet
-
-	return nil
-}
-
-// Merge implements the Aggregation interface.
-func (g *GroupConcat) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return g.Update(ctx, buffer, partial)
-}
-
-// cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat
+// Eval implements the Expression interface.
 func (g *GroupConcat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	rows := row[0].([]sql.Row)
-
-	if len(rows) == 0 {
-		return nil, nil
-	}
-
-	// Execute the order operation if it exists.
-	if g.sf != nil {
-		sorter := &expression.Sorter{
-			SortFields: g.sf,
-			Rows:       rows,
-			Ctx:        ctx,
-		}
-
-		sort.Stable(sorter)
-		if sorter.LastError != nil {
-			return nil, sorter.LastError
-		}
-	}
-
-	sb := strings.Builder{}
-	for i, row := range rows {
-		lastIdx := len(row) - 1
-		if i == 0 {
-			sb.WriteString(row[lastIdx].(string))
-		} else {
-			sb.WriteString(g.separator)
-			sb.WriteString(row[lastIdx].(string))
-		}
-
-		// Don't allow the string to cross maxlen
-		if sb.Len() >= g.maxLen {
-			break
-		}
-	}
-
-	ret := sb.String()
-
-	// There might be a couple of character differences even if we broke early in the loop
-	if len(ret) > g.maxLen {
-		ret = ret[:g.maxLen]
-	}
-
-	// Add this to handle any one off errors.
-	return ret, nil
+	return nil, ErrEvalUnsupportedOnAggregation.New("GroupConcat")
 }
 
-func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
-	result := make(sql.Row, len(exprs))
-	retType := sql.Blob
-	for i, expr := range exprs {
-		var err error
-		result[i], err = expr.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// If every expression returns Blob type return Blob otherwise return Text.
-		if expr.Type() != sql.Blob {
-			retType = sql.Text
-		}
-	}
-
-	return result, retType, nil
-}
-
+// Resolved implements the Expression interface.
 func (g *GroupConcat) Resolved() bool {
 	for _, se := range g.selectExprs {
 		if !se.Resolved() {
@@ -235,6 +112,7 @@ func (g *GroupConcat) String() string {
 	return sb.String()
 }
 
+// Type implements the Expression interface.
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat for explanations
 // on return type.
 func (g *GroupConcat) Type() sql.Type {
@@ -253,14 +131,17 @@ func (g *GroupConcat) Type() sql.Type {
 	}
 }
 
+// IsNullable implements the Expression interface.
 func (g *GroupConcat) IsNullable() bool {
 	return false
 }
 
+// Children implements the Expression interface.
 func (g *GroupConcat) Children() []sql.Expression {
 	return append(g.sf.ToExpressions(), g.selectExprs...)
 }
 
+// WithChildren implements the Expression interface.
 func (g *GroupConcat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(GroupConcat{}, len(children), 2)
@@ -273,6 +154,135 @@ func (g *GroupConcat) WithChildren(ctx *sql.Context, children ...sql.Expression)
 	return NewGroupConcat(ctx, g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[sortFieldMarker:], g.maxLen)
 }
 
+// FunctionName implements the FunctionExpression interface.
 func (g *GroupConcat) FunctionName() string {
 	return "group_concat"
+}
+
+type groupConcatBuffer struct {
+	gc          *GroupConcat
+	rows        []sql.Row
+	distinctSet map[string]bool
+}
+
+// Update implements the AggregationBuffer interface.
+func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error {
+	evalRow, retType, err := evalExprs(ctx, g.gc.selectExprs, originalRow)
+	if err != nil {
+		return err
+	}
+
+	g.gc.returnType = retType
+
+	// Skip if this is a null row
+	if evalRow == nil {
+		return nil
+	}
+
+	var v interface{}
+	if retType == sql.Blob {
+		v, err = sql.Blob.Convert(evalRow[0])
+	} else {
+		v, err = sql.LongText.Convert(evalRow[0])
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if v == nil {
+		return nil
+	}
+
+	vs := v.(string)
+
+	// Get the current array of rows and the map
+	// Check if distinct is active if so look at and update our map
+	if g.gc.distinct != "" {
+		// If this value exists go ahead and return nil
+		if _, ok := g.distinctSet[vs]; ok {
+			return nil
+		} else {
+			g.distinctSet[vs] = true
+		}
+	}
+
+	// Append the current value to the end of the row. We want to preserve the row's original structure for
+	// for sort ordering in the final step.
+	g.rows = append(g.rows, append(originalRow, nil, vs))
+
+	return nil
+}
+
+// Eval implements the AggregationBuffer interface.
+// cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat
+func (g *groupConcatBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	rows := g.rows
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	// Execute the order operation if it exists.
+	if g.gc.sf != nil {
+		sorter := &expression.Sorter{
+			SortFields: g.gc.sf,
+			Rows:       rows,
+			Ctx:        ctx,
+		}
+
+		sort.Stable(sorter)
+		if sorter.LastError != nil {
+			return nil, sorter.LastError
+		}
+	}
+
+	sb := strings.Builder{}
+	for i, row := range rows {
+		lastIdx := len(row) - 1
+		if i == 0 {
+			sb.WriteString(row[lastIdx].(string))
+		} else {
+			sb.WriteString(g.gc.separator)
+			sb.WriteString(row[lastIdx].(string))
+		}
+
+		// Don't allow the string to cross maxlen
+		if sb.Len() >= g.gc.maxLen {
+			break
+		}
+	}
+
+	ret := sb.String()
+
+	// There might be a couple of character differences even if we broke early in the loop
+	if len(ret) > g.gc.maxLen {
+		ret = ret[:g.gc.maxLen]
+	}
+
+	// Add this to handle any one off errors.
+	return ret, nil
+}
+
+// Dispose implements the Disposable interface.
+func (g *groupConcatBuffer) Dispose() {
+}
+
+func evalExprs(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (sql.Row, sql.Type, error) {
+	result := make(sql.Row, len(exprs))
+	retType := sql.Blob
+	for i, expr := range exprs {
+		var err error
+		result[i], err = expr.Eval(ctx, row)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// If every expression returns Blob type return Blob otherwise return Text.
+		if expr.Type() != sql.Blob {
+			retType = sql.Text
+		}
+	}
+
+	return result, retType, nil
 }

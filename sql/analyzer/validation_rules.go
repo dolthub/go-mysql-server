@@ -39,6 +39,7 @@ const (
 	validateExplodeUsageRule      = "validate_explode_usage"
 	validateSubqueryColumnsRule   = "validate_subquery_columns"
 	validateUnionSchemasMatchRule = "validate_union_schemas_match"
+	validateAggregationsRule      = "validate_aggregations"
 )
 
 var (
@@ -91,6 +92,12 @@ var (
 
 	// ErrReadOnlyDatabase is returned when a write is attempted to a ReadOnlyDatabse.
 	ErrReadOnlyDatabase = errors.NewKind("Database %s is read-only.")
+
+	// ErrAggregationUnsupported is returned when the analyzer has failed
+	// to push down an Aggregation in an expression to a GroupBy node.
+	ErrAggregationUnsupported = errors.NewKind(
+		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
+	)
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -106,6 +113,7 @@ var DefaultValidationRules = []Rule{
 	{validateExplodeUsageRule, validateExplodeUsage},
 	{validateSubqueryColumnsRule, validateSubqueryColumns},
 	{validateUnionSchemasMatchRule, validateUnionSchemasMatch},
+	{validateAggregationsRule, validateAggregations},
 }
 
 // validateLimitAndOffset ensures that only integer literals are used for limit and offset values
@@ -621,5 +629,40 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return nil, ErrReadOnlyDatabase.New(readOnlyDB.Name())
 	}
 
+	return n, nil
+}
+
+// validateAggregations returns an error if an Aggregation
+// expression node appears outside of a GroupBy or Window node. Only GroupBy
+// and Window nodes know how to evaluate Aggregation expressions.
+//
+// See https://github.com/dolthub/go-mysql-server/issues/542 for some queries
+// that should be supported but that currently trigger this validation because
+// aggregation expressions end up in the wrong place.
+func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	var invalidExpr sql.Expression
+	checkExpressions := func(exprs []sql.Expression) bool {
+		for _, e := range exprs {
+			sql.Inspect(e, func(ie sql.Expression) bool {
+				if _, ok := ie.(sql.Aggregation); ok {
+					invalidExpr = e
+				}
+				return invalidExpr == nil
+			})
+		}
+		return invalidExpr == nil
+	}
+	plan.Inspect(n, func(n sql.Node) bool {
+		if gb, ok := n.(*plan.GroupBy); ok {
+			return checkExpressions(gb.GroupByExprs)
+		} else if _, ok := n.(*plan.Window); ok {
+		} else if n, ok := n.(sql.Expressioner); ok {
+			return checkExpressions(n.Expressions())
+		}
+		return invalidExpr == nil
+	})
+	if invalidExpr != nil {
+		return nil, ErrAggregationUnsupported.New(invalidExpr.String())
+	}
 	return n, nil
 }
