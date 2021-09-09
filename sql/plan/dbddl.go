@@ -20,7 +20,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -69,8 +68,10 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	db := memory.NewDatabase(c.dbName)
-	c.Catalog.AddDatabase(db)
+	err := c.Catalog.CreateDatabase(c.dbName)
+	if err != nil {
+		return nil, err
+	}
 
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -131,7 +132,10 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	d.Catalog.RemoveDatabase(d.dbName)
+	err := d.Catalog.RemoveDatabase(d.dbName)
+	if err != nil {
+		return nil, err
+	}
 
 	// Unsets the current database
 	if ctx.GetCurrentDatabase() == d.dbName {

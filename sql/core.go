@@ -507,10 +507,10 @@ type DatabaseProvider interface {
 type MutableDatabaseProvider interface {
 	DatabaseProvider
 
-	// AddDatabase adds a new Database to the provider's collection.
-	AddDatabase(db Database)
+	// CreateDatabase creates a database and adds it to the provider's collection.
+	CreateDatabase(dbName string)
 
-	// DropDatabase removes a database from the providers's collection.
+	// DropDatabase removes a database from the provider's collection.
 	DropDatabase(name string)
 }
 

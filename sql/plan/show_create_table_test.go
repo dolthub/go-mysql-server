@@ -31,8 +31,6 @@ func TestShowCreateTable(t *testing.T) {
 	var require = require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	db := memory.NewDatabase("testdb")
-
 	table := memory.NewTable(
 		"test-table",
 		sql.Schema{
@@ -42,11 +40,6 @@ func TestShowCreateTable(t *testing.T) {
 			&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 		})
-
-	db.AddTable(table.Name(), table)
-
-	cat := sql.NewCatalog()
-	cat.AddDatabase(db)
 
 	showCreateTable := NewShowCreateTable(NewResolvedTable(table, nil, nil), false)
 
@@ -83,8 +76,6 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	var require = require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	db := memory.NewDatabase("testdb")
-
 	table := memory.NewTable(
 		"test-table",
 		sql.Schema{
@@ -98,11 +89,6 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	require.NoError(table.CreateForeignKey(ctx, "fk1", []string{"baz", "zab"}, "otherTable", []string{"a", "b"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_Cascade))
 	require.NoError(table.CreateForeignKey(ctx, "fk2", []string{"foo"}, "otherTable", []string{"b"}, sql.ForeignKeyReferenceOption_Restrict, sql.ForeignKeyReferenceOption_DefaultAction))
 	require.NoError(table.CreateForeignKey(ctx, "fk3", []string{"bza"}, "otherTable", []string{"c"}, sql.ForeignKeyReferenceOption_DefaultAction, sql.ForeignKeyReferenceOption_DefaultAction))
-
-	db.AddTable(table.Name(), table)
-
-	cat := sql.NewCatalog()
-	cat.AddDatabase(db)
 
 	showCreateTable := NewShowCreateTable(NewResolvedTable(table, nil, nil), false)
 	// This mimics what happens during analysis (indexes get filled in for the table)
@@ -166,8 +152,6 @@ func TestShowCreateView(t *testing.T) {
 	var require = require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	db := memory.NewDatabase("testdb")
-
 	table := memory.NewTable(
 		"test-table",
 		sql.Schema{
@@ -177,11 +161,6 @@ func TestShowCreateView(t *testing.T) {
 			&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
 			&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
 		})
-
-	db.AddTable(table.Name(), table)
-
-	cat := sql.NewCatalog()
-	cat.AddDatabase(db)
 
 	showCreateTable := NewShowCreateTable(
 		NewSubqueryAlias("myView", "select * from `test-table`", NewResolvedTable(table, nil, nil)),

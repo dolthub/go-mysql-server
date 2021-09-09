@@ -36,8 +36,9 @@ func (sc *ShowCharset) Resolved() bool {
 
 // WithChildren implements the Node interface.
 func (sc *ShowCharset) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(children), 0)
+	expected := len(sc.Children())
+	if len(children) != expected {
+		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(children), expected)
 	}
 
 	return sc, nil
@@ -57,7 +58,12 @@ func (sc *ShowCharset) Schema() sql.Schema {
 	}
 }
 
-func (sc *ShowCharset) Children() []sql.Node { return nil }
+func (sc *ShowCharset) Children() []sql.Node {
+	if sc.CharacterSetTable == nil {
+		return nil
+	}
+	return []sql.Node{sc.CharacterSetTable}
+}
 
 func (sc *ShowCharset) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	ri, err := sc.CharacterSetTable.RowIter(ctx, row)

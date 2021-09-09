@@ -34,9 +34,10 @@ func (f *memTable) Resolve(name string, _ *driver.Options) (string, *sql.Catalog
 		database := memory.NewDatabase(f.DatabaseName)
 		database.AddTable(f.TableName, table)
 
-		f.catalog = sql.NewCatalog()
-		f.catalog.AddDatabase(database)
-		f.catalog.AddDatabase(information_schema.NewInformationSchemaDatabase(f.catalog))
+		pro := memory.NewMemoryDBProvider(
+			database,
+			information_schema.NewInformationSchemaDatabase())
+		f.catalog = sql.NewCatalog(pro)
 	})
 
 	return name, f.catalog, nil

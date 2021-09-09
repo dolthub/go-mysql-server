@@ -19,6 +19,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// CatalogTable is a Table that depends on a Catalog.
+type CatalogTable interface {
+	sql.Table
+
+	// AssignCatalog assigns a Catalog to the table.
+	AssignCatalog(cat *sql.Catalog) sql.Table
+}
+
 // assignCatalog sets the catalog in the required nodes.
 func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("assign_catalog")
@@ -80,6 +88,13 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		case *plan.DropView:
 			nc := *node
 			nc.Catalog = a.Catalog
+			return &nc, nil
+		case *plan.ResolvedTable:
+			nc := *node
+			ct, ok := nc.Table.(CatalogTable)
+			if ok {
+				nc.Table = ct.AssignCatalog(a.Catalog)
+			}
 			return &nc, nil
 		default:
 			return n, nil

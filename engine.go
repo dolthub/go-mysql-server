@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dolthub/go-mysql-server/memory"
+
 	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -86,11 +88,15 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 }
 
 // NewDefault creates a new default Engine.
-func NewDefault() *Engine {
-	c := sql.NewCatalog()
+func NewDefault(pro sql.DatabaseProvider) *Engine {
+	c := sql.NewCatalog(pro)
 	a := analyzer.NewDefault(c)
 
 	return New(c, a, nil)
+}
+
+func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
+	return sql.NewDatabaseProvider(dbs...)
 }
 
 // AnalyzeQuery analyzes a query and returns its Schema.
@@ -343,46 +349,6 @@ func (e *Engine) authCheck(ctx *sql.Context, node sql.Node) error {
 	return e.Auth.Allowed(ctx, perm)
 }
 
-// ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
-// with the default values parsed and resolved.
-func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
-	ctx := sql.NewEmptyContext()
-	e := NewDefault()
-	db := plan.NewDummyResolvedDB("temporary")
-	unresolvedSchema := make(sql.Schema, len(schema))
-	defaultCount := 0
-	for i, col := range schema {
-		unresolvedSchema[i] = col.SqlColumn
-		if col.Default != "" {
-			var err error
-			unresolvedSchema[i].Default, err = parse.StringToColumnDefaultValue(ctx, col.Default)
-			if err != nil {
-				return nil, err
-			}
-			defaultCount++
-		}
-	}
-	// if all defaults are nil, we can skip the rest of this
-	if defaultCount == 0 {
-		return unresolvedSchema, nil
-	}
-	// *plan.CreateTable properly handles resolving default values, so we hijack it
-	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: unresolvedSchema})
-	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
-	if err != nil {
-		return nil, err
-	}
-	analyzedQueryProcess, ok := analyzed.(*plan.QueryProcess)
-	if !ok {
-		return nil, fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
-	}
-	analyzedCreateTable, ok := analyzedQueryProcess.Child.(*plan.CreateTable)
-	if !ok {
-		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
-	}
-	return analyzedCreateTable.Schema(), nil
-}
-
 // ApplyDefaults applies the default values of the given column indices to the given row, and returns a new row with the updated values.
 // This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
 // present and in the order as represented by the schema. If no columns are given, then the given row is returned. Column indices should
@@ -434,7 +400,49 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 	return newRow, nil
 }
 
-// AddDatabase adds the given database to the catalog.
-func (e *Engine) AddDatabase(db sql.Database) {
-	e.Catalog.AddDatabase(db)
+// ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
+// with the default values parsed and resolved.
+func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
+	ctx := sql.NewEmptyContext()
+	db := plan.NewDummyResolvedDB("temporary")
+	cat := sql.NewCatalog(memory.NewMemoryDBProvider(db))
+	a := analyzer.NewDefault(cat)
+
+	unresolvedSchema := make(sql.Schema, len(schema))
+	defaultCount := 0
+	for i, col := range schema {
+		unresolvedSchema[i] = col.SqlColumn
+		if col.Default != "" {
+			var err error
+			unresolvedSchema[i].Default, err = parse.StringToColumnDefaultValue(ctx, col.Default)
+			if err != nil {
+				return nil, err
+			}
+			defaultCount++
+		}
+	}
+	// if all defaults are nil, we can skip the rest of this
+	if defaultCount == 0 {
+		return unresolvedSchema, nil
+	}
+
+	// *plan.CreateTable properly handles resolving default values, so we hijack it
+	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: unresolvedSchema})
+
+	analyzed, err := a.Analyze(ctx, createTable, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	analyzedQueryProcess, ok := analyzed.(*plan.QueryProcess)
+	if !ok {
+		return nil, fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
+	}
+
+	analyzedCreateTable, ok := analyzedQueryProcess.Child.(*plan.CreateTable)
+	if !ok {
+		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
+	}
+
+	return analyzedCreateTable.Schema(), nil
 }
