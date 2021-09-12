@@ -92,6 +92,10 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	defer s.mu.Unlock()
 	s.sessions[conn.ConnectionID], s.idxRegs[conn.ConnectionID], s.viewRegs[conn.ConnectionID], err = s.builder(ctx, conn, s.addr)
 
+	if err != nil {
+		return err
+	}
+
 	logger := s.sessions[conn.ConnectionID].GetLogger()
 	if logger == nil {
 		log := logrus.StandardLogger()
