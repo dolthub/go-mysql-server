@@ -78,29 +78,25 @@ func (c *Catalog) CreateDatabase(ctx *Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	var err error
 	mut, ok := c.provider.(MutableDatabaseProvider)
 	if ok {
-		err = mut.CreateDatabase(ctx, dbName)
+		return mut.CreateDatabase(ctx, dbName)
 	} else {
-		err = ErrImmutableDatabaseProvider.New()
+		return ErrImmutableDatabaseProvider.New()
 	}
-
-	return err
 }
 
 // RemoveDatabase removes a database from the catalog.
-func (c *Catalog) RemoveDatabase(ctx *Context, dbName string) (err error) {
+func (c *Catalog) RemoveDatabase(ctx *Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	mut, ok := c.provider.(MutableDatabaseProvider)
 	if ok {
-		err = mut.DropDatabase(ctx, dbName)
+		return mut.DropDatabase(ctx, dbName)
 	} else {
-		err = ErrImmutableDatabaseProvider.New()
+		return ErrImmutableDatabaseProvider.New()
 	}
-	return err
 }
 
 func (c *Catalog) HasDB(db string) bool {
