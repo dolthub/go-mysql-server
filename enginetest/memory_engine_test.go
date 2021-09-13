@@ -283,7 +283,7 @@ func TestInfoSchema(t *testing.T) {
 	enginetest.TestInfoSchema(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
-func TestTestReadOnlyDatabases(t *testing.T) {
+func TestReadOnlyDatabases(t *testing.T) {
 	enginetest.TestReadOnlyDatabases(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 

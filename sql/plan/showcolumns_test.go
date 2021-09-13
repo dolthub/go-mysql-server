@@ -155,7 +155,7 @@ func TestShowColumnsFull(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"a", "text", "utf8mb4_0900_ai_ci", "NO", "PRI", "", "", "", ""},
+		{"a", "text", "utf8mb4_0900_bin", "NO", "PRI", "", "", "", ""},
 		{"b", "bigint", nil, "YES", "", "", "", "", ""},
 		{"c", "bigint", nil, "NO", "", "1", "", "", "a comment"},
 	}
