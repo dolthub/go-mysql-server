@@ -18,7 +18,7 @@ type memoryDBProvider struct {
 var _ sql.DatabaseProvider = memoryDBProvider{}
 var _ sql.MutableDatabaseProvider = memoryDBProvider{}
 
-func NewMemoryDBProvider(dbs ...sql.Database) sql.DatabaseProvider {
+func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db
@@ -75,18 +75,20 @@ func (d memoryDBProvider) AllDatabases() []sql.Database {
 }
 
 // CreateDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) CreateDatabase(dbName string) {
+func (d memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	db := NewDatabase(dbName)
+	db := NewDatabase(name)
 	d.dbs[strings.ToLower(db.Name())] = db
+	return
 }
 
 // DropDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) DropDatabase(name string) {
+func (d memoryDBProvider) DropDatabase(ctx *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	delete(d.dbs, strings.ToLower(name))
+	return
 }

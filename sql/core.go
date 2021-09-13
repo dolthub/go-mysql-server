@@ -512,10 +512,10 @@ type MutableDatabaseProvider interface {
 	DatabaseProvider
 
 	// CreateDatabase creates a database and adds it to the provider's collection.
-	CreateDatabase(dbName string)
+	CreateDatabase(ctx *Context, name string) error
 
 	// DropDatabase removes a database from the provider's collection.
-	DropDatabase(name string)
+	DropDatabase(ctx *Context, name string) error
 }
 
 // Database represents the database.

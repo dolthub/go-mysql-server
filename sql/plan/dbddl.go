@@ -68,7 +68,7 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	err := c.Catalog.CreateDatabase(c.dbName)
+	err := c.Catalog.CreateDatabase(ctx, c.dbName)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	err := d.Catalog.RemoveDatabase(d.dbName)
+	err := d.Catalog.RemoveDatabase(ctx, d.dbName)
 	if err != nil {
 		return nil, err
 	}
