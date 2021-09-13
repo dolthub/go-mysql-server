@@ -90,18 +90,17 @@ func (c *Catalog) CreateDatabase(ctx *Context, dbName string) error {
 }
 
 // RemoveDatabase removes a database from the catalog.
-func (c *Catalog) RemoveDatabase(ctx *Context, dbName string) error {
+func (c *Catalog) RemoveDatabase(ctx *Context, dbName string) (err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	mut, ok := c.provider.(MutableDatabaseProvider)
 	if ok {
-		mut.DropDatabase(ctx, dbName)
+		err = mut.DropDatabase(ctx, dbName)
 	} else {
-		return ErrImmutableDatabaseProvider.New()
+		err = ErrImmutableDatabaseProvider.New()
 	}
-
-	return nil
+	return err
 }
 
 func (c *Catalog) HasDB(db string) bool {
