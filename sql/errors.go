@@ -313,6 +313,12 @@ var (
 
 	// ErrImmutableDatabaseProvider is returned when attempting to edit an immutable database databaseProvider.
 	ErrImmutableDatabaseProvider = errors.NewKind("error: can't modify database databaseProvider")
+
+	// ErrInvalidValue is returned when a given value does not match what is expected.
+	ErrInvalidValue = errors.NewKind(`error: '%v' is not a valid value for '%v'`)
+
+	// ErrInvalidValueType is returned when a given value's type does not match what is expected.
+	ErrInvalidValueType = errors.NewKind(`error: '%T' is not a valid value type for '%v'`)
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -215,46 +214,14 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 	case ConvertToUnsigned:
 		num, err := sql.Uint64.Convert(val)
 		if err != nil {
-			num = handleUnsignedErrors(err, val)
+			num, err = sql.Int64.Convert(val)
+			if err != nil {
+				return sql.Uint64.Zero(), nil
+			}
+			return uint64(num.(int64)), nil
 		}
-
 		return num, nil
 	default:
 		return nil, nil
 	}
-}
-
-func handleUnsignedErrors(err error, val interface{}) uint64 {
-	if err.Error() == "unable to cast negative value" {
-		return castSignedToUnsigned(val)
-	}
-
-	if strings.Contains(err.Error(), "strconv.ParseUint") {
-		signedNum, err := strconv.ParseInt(val.(string), 0, 64)
-		if err != nil {
-			return uint64(0)
-		}
-
-		return castSignedToUnsigned(signedNum)
-	}
-
-	return uint64(0)
-}
-
-func castSignedToUnsigned(val interface{}) uint64 {
-	var unsigned uint64
-	switch num := val.(type) {
-	case int:
-		unsigned = uint64(num)
-	case int8:
-		unsigned = uint64(num)
-	case int16:
-		unsigned = uint64(num)
-	case int32:
-		unsigned = uint64(num)
-	case int64:
-		unsigned = uint64(num)
-	}
-
-	return unsigned
 }
