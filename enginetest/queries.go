@@ -6201,11 +6201,11 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: "unable to cast \"abc\" of type string to float64",
+		ExpectedErrStr: `error: 'abc' is not a valid value for 'DOUBLE'`,
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `unable to cast map[string]interface {}{"a":"abc"} of type map[string]interface {} to float64`,
+		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'DOUBLE'`,
 	},
 	{
 		Query:       `alter table mytable add primary key (s)`,

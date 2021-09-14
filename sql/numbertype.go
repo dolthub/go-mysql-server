@@ -25,7 +25,6 @@ import (
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/spf13/cast"
 )
 
 const (
@@ -143,13 +142,62 @@ func NumericUnaryValue(t Type) interface{} {
 
 // Compare implements Type interface.
 func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	switch t.baseType {
 	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-		return compareUnsignedInts(a, b)
+		ca, err := convertToUint64(t, a)
+		if err != nil {
+			return 0, err
+		}
+		cb, err := convertToUint64(t, b)
+		if err != nil {
+			return 0, err
+		}
+
+		if ca == cb {
+			return 0, nil
+		}
+		if ca < cb {
+			return -1, nil
+		}
+		return +1, nil
 	case sqltypes.Float32, sqltypes.Float64:
-		return compareFloats(a, b)
+		ca, err := convertToFloat64(t, a)
+		if err != nil {
+			return 0, err
+		}
+		cb, err := convertToFloat64(t, b)
+		if err != nil {
+			return 0, err
+		}
+
+		if ca == cb {
+			return 0, nil
+		}
+		if ca < cb {
+			return -1, nil
+		}
+		return +1, nil
 	default:
-		return compareSignedInts(a, b)
+		ca, err := convertToInt64(t, a)
+		if err != nil {
+			return 0, err
+		}
+		cb, err := convertToInt64(t, b)
+		if err != nil {
+			return 0, err
+		}
+
+		if ca == cb {
+			return 0, nil
+		}
+		if ca < cb {
+			return -1, nil
+		}
+		return +1, nil
 	}
 }
 
@@ -173,10 +221,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 
 	switch t.baseType {
 	case sqltypes.Int8:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToInt64E(v)
+		num, err := convertToInt64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -185,10 +230,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int8(num), nil
 	case sqltypes.Uint8:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToUint64E(v)
+		num, err := convertToUint64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -197,10 +239,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint8(num), nil
 	case sqltypes.Int16:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToInt64E(v)
+		num, err := convertToInt64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -209,10 +248,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int16(num), nil
 	case sqltypes.Uint16:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToUint64E(v)
+		num, err := convertToUint64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -221,10 +257,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint16(num), nil
 	case sqltypes.Int24:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToInt64E(v)
+		num, err := convertToInt64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -233,10 +266,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int32(num), nil
 	case sqltypes.Uint24:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToUint64E(v)
+		num, err := convertToUint64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -245,10 +275,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint32(num), nil
 	case sqltypes.Int32:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToInt64E(v)
+		num, err := convertToInt64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -257,10 +284,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return int32(num), nil
 	case sqltypes.Uint32:
-		if dec, ok := v.(decimal.Decimal); ok {
-			v = dec.IntPart()
-		}
-		num, err := cast.ToUint64E(v)
+		num, err := convertToUint64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -269,40 +293,11 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return uint32(num), nil
 	case sqltypes.Int64:
-		if u, ok := v.(uint64); ok {
-			if u > math.MaxInt64 {
-				return nil, ErrOutOfRange.New(u, t)
-			}
-		}
-		if dec, ok := v.(decimal.Decimal); ok {
-			if dec.GreaterThan(dec_int64_max) || dec.LessThan(dec_int64_min) {
-				return nil, ErrOutOfRange.New(dec.String(), t)
-			}
-			return dec.IntPart(), nil
-		}
-		num, err := cast.ToInt64E(v)
-		if err != nil {
-			return nil, err
-		}
-		return num, err
+		return convertToInt64(t, v)
 	case sqltypes.Uint64:
-		if dec, ok := v.(decimal.Decimal); ok {
-			if dec.GreaterThan(dec_uint64_max) || dec.LessThan(dec_zero) {
-				return nil, ErrOutOfRange.New(dec.String(), t)
-			}
-			v = dec.IntPart()
-		}
-		num, err := cast.ToUint64E(v)
-		if err != nil {
-			return nil, err
-		}
-		return num, nil
+		return convertToUint64(t, v)
 	case sqltypes.Float32:
-		if dec, ok := v.(decimal.Decimal); ok {
-			f, _ := dec.Float64()
-			return float32(f), nil
-		}
-		num, err := cast.ToFloat64E(v)
+		num, err := convertToFloat64(t, v)
 		if err != nil {
 			return nil, err
 		}
@@ -311,16 +306,7 @@ func (t numberTypeImpl) Convert(v interface{}) (interface{}, error) {
 		}
 		return float32(num), nil
 	case sqltypes.Float64:
-		if dec, ok := v.(decimal.Decimal); ok {
-			f, _ := dec.Float64()
-			return f, nil
-		}
-
-		num, err := cast.ToFloat64E(v)
-		if err != nil {
-			return nil, err
-		}
-		return num, nil
+		return convertToFloat64(t, v)
 	default:
 		return nil, ErrInvalidType.New(t.baseType.String())
 	}
@@ -354,32 +340,36 @@ func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.NULL, err
+	}
 
 	switch t.baseType {
 	case sqltypes.Int8:
-		return sqltypes.MakeTrusted(sqltypes.Int8, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Int8, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Uint8:
-		return sqltypes.MakeTrusted(sqltypes.Uint8, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Uint8, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Int16:
-		return sqltypes.MakeTrusted(sqltypes.Int16, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Int16, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Uint16:
-		return sqltypes.MakeTrusted(sqltypes.Uint16, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Uint16, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Int24:
-		return sqltypes.MakeTrusted(sqltypes.Int24, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Int24, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Uint24:
-		return sqltypes.MakeTrusted(sqltypes.Uint24, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Uint24, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Int32:
-		return sqltypes.MakeTrusted(sqltypes.Int32, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Int32, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Uint32:
-		return sqltypes.MakeTrusted(sqltypes.Uint32, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Uint32, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Int64:
-		return sqltypes.MakeTrusted(sqltypes.Int64, strconv.AppendInt(nil, cast.ToInt64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Int64, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Uint64:
-		return sqltypes.MakeTrusted(sqltypes.Uint64, strconv.AppendUint(nil, cast.ToUint64(v), 10)), nil
+		return sqltypes.MakeTrusted(sqltypes.Uint64, []byte(fmt.Sprintf("%d", v))), nil
 	case sqltypes.Float32:
-		return sqltypes.MakeTrusted(sqltypes.Float32, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
+		return sqltypes.MakeTrusted(sqltypes.Float32, []byte(strconv.FormatFloat(float64(v.(float32)), 'f', -1, 32))), nil
 	case sqltypes.Float64:
-		return sqltypes.MakeTrusted(sqltypes.Float64, strconv.AppendFloat(nil, cast.ToFloat64(v), 'f', -1, 64)), nil
+		return sqltypes.MakeTrusted(sqltypes.Float64, []byte(strconv.FormatFloat(v.(float64), 'f', -1, 64))), nil
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}
@@ -472,77 +462,197 @@ func (t numberTypeImpl) IsSigned() bool {
 	return false
 }
 
-func compareFloats(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	ca, err := cast.ToFloat64E(a)
-	if err != nil {
-		return 0, err
-	}
-	cb, err := cast.ToFloat64E(b)
-	if err != nil {
-		return 0, err
-	}
-
-	if ca == cb {
+func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
+	switch v := v.(type) {
+	case int:
+		return int64(v), nil
+	case int8:
+		return int64(v), nil
+	case int16:
+		return int64(v), nil
+	case int32:
+		return int64(v), nil
+	case int64:
+		return v, nil
+	case uint:
+		return int64(v), nil
+	case uint8:
+		return int64(v), nil
+	case uint16:
+		return int64(v), nil
+	case uint32:
+		return int64(v), nil
+	case uint64:
+		if v > math.MaxInt64 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
+		return int64(v), nil
+	case float32:
+		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
+			return int64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+	case float64:
+		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
+			return int64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+	case decimal.Decimal:
+		if v.GreaterThan(dec_int64_max) || v.LessThan(dec_int64_min) {
+			return 0, ErrOutOfRange.New(v.String(), t)
+		}
+		return v.IntPart(), nil
+	case []byte:
+		i, err := strconv.ParseInt(string(v), 10, 64)
+		if err != nil {
+			return 0, ErrInvalidValue.New(v, t.String())
+		}
+		return i, nil
+	case string:
+		i, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return 0, ErrInvalidValue.New(v, t.String())
+		}
+		return i, nil
+	case bool:
+		if v {
+			return 1, nil
+		}
 		return 0, nil
+	case nil:
+		return 0, nil
+	default:
+		return 0, ErrInvalidValueType.New(v, t.String())
 	}
-
-	if ca < cb {
-		return -1, nil
-	}
-
-	return +1, nil
 }
 
-func compareSignedInts(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	ca, err := cast.ToInt64E(a)
-	if err != nil {
-		return 0, err
-	}
-	cb, err := cast.ToInt64E(b)
-	if err != nil {
-		return 0, err
-	}
-
-	if ca == cb {
+func convertToUint64(t numberTypeImpl, v interface{}) (uint64, error) {
+	switch v := v.(type) {
+	case int:
+		if v < 0 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
+		return uint64(v), nil
+	case int8:
+		if v < 0 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
+		return uint64(v), nil
+	case int16:
+		if v < 0 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
+		return uint64(v), nil
+	case int32:
+		if v < 0 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
+		return uint64(v), nil
+	case int64:
+		if v < 0 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
+		return uint64(v), nil
+	case uint:
+		return uint64(v), nil
+	case uint8:
+		return uint64(v), nil
+	case uint16:
+		return uint64(v), nil
+	case uint32:
+		return uint64(v), nil
+	case uint64:
+		return v, nil
+	case float32:
+		if float32(math.MaxUint64) >= v && v >= 0 {
+			return uint64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+	case float64:
+		if float64(math.MaxUint64) >= v && v >= 0 {
+			return uint64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+	case decimal.Decimal:
+		if v.GreaterThan(dec_uint64_max) || v.LessThan(dec_zero) {
+			return 0, ErrOutOfRange.New(v.String(), t)
+		}
+		// TODO: If we ever internally switch to using Decimal for large numbers, this will need to be updated
+		f, _ := v.Float64()
+		return uint64(f), nil
+	case []byte:
+		i, err := strconv.ParseUint(string(v), 10, 64)
+		if err != nil {
+			return 0, ErrInvalidValue.New(v, t.String())
+		}
+		return i, nil
+	case string:
+		i, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return 0, ErrInvalidValue.New(v, t.String())
+		}
+		return i, nil
+	case bool:
+		if v {
+			return 1, nil
+		}
 		return 0, nil
+	case nil:
+		return 0, nil
+	default:
+		return 0, ErrInvalidValueType.New(v, t.String())
 	}
-
-	if ca < cb {
-		return -1, nil
-	}
-
-	return +1, nil
 }
 
-func compareUnsignedInts(a interface{}, b interface{}) (int, error) {
-	if hasNulls, res := compareNulls(a, b); hasNulls {
-		return res, nil
-	}
-
-	ca, err := cast.ToUint64E(a)
-	if err != nil {
-		return 0, err
-	}
-	cb, err := cast.ToUint64E(b)
-	if err != nil {
-		return 0, err
-	}
-
-	if ca == cb {
+func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
+	switch v := v.(type) {
+	case int:
+		return float64(v), nil
+	case int8:
+		return float64(v), nil
+	case int16:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case uint:
+		return float64(v), nil
+	case uint8:
+		return float64(v), nil
+	case uint16:
+		return float64(v), nil
+	case uint32:
+		return float64(v), nil
+	case uint64:
+		return float64(v), nil
+	case float32:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	case decimal.Decimal:
+		f, _ := v.Float64()
+		return f, nil
+	case []byte:
+		i, err := strconv.ParseFloat(string(v), 64)
+		if err != nil {
+			return 0, ErrInvalidValue.New(v, t.String())
+		}
+		return i, nil
+	case string:
+		i, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0, ErrInvalidValue.New(v, t.String())
+		}
+		return i, nil
+	case bool:
+		if v {
+			return 1, nil
+		}
 		return 0, nil
+	case nil:
+		return 0, nil
+	default:
+		return 0, ErrInvalidValueType.New(v, t.String())
 	}
-
-	if ca < cb {
-		return -1, nil
-	}
-
-	return +1, nil
 }
