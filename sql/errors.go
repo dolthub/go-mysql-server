@@ -221,9 +221,6 @@ var (
 	// ErrLoadDataCharacterLength is returned when a symbol is of the wrong character length for a LOAD DATA operation.
 	ErrLoadDataCharacterLength = errors.NewKind("%s must be 1 character long")
 
-	// ErrSecureFileDirNotSet is returned when LOAD DATA INFILE is called but the secure_file_priv system variable is not set.
-	ErrSecureFileDirNotSet = errors.NewKind("secure_file_priv needs to be set to a directory")
-
 	// ErrJSONObjectAggNullKey is returned when JSON_OBJECTAGG is run on a table with NULL keys
 	ErrJSONObjectAggNullKey = errors.NewKind("JSON documents may not contain NULL member names")
 

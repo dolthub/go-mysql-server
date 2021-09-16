@@ -37,6 +37,19 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Load data without secure_file_prive is fine",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key)",
+			"LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from loadtable",
+				Expected: []sql.Row{{int8(1)}, {int8(2)}, {int8(3)}, {int8(4)}},
+			},
+		},
+	},
+	{
 		Name: "Load data with csv",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key, c1 longtext)",
@@ -82,18 +95,6 @@ var LoadDataScripts = []ScriptTest{
 
 var LoadDataErrorScripts = []ScriptTest{
 	{
-		Name: "Load data without secure file throws error.",
-		SetUpScript: []string{
-			"create table loadtable(pk longtext primary key, c1 int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
-				ExpectedErr: sql.ErrSecureFileDirNotSet,
-			},
-		},
-	},
-	{
 		Name:        "Load data into table that doesn't exist throws error.",
 		Query:       "LOAD DATA INFILE 'test1.txt' INTO TABLE loadtable",
 		ExpectedErr: sql.ErrTableNotFound,
@@ -102,7 +103,6 @@ var LoadDataErrorScripts = []ScriptTest{
 		Name: "Load data with unknown files throws an error.",
 		SetUpScript: []string{
 			"create table loadtable(pk longtext primary key, c1 int)",
-			"SET secure_file_priv='./testdata'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -115,7 +115,6 @@ var LoadDataErrorScripts = []ScriptTest{
 		Name: "Load data with unknown columns throws an error",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",
-			"SET secure_file_priv='./testdata'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -128,7 +127,6 @@ var LoadDataErrorScripts = []ScriptTest{
 		Name: "Load data escaped by terms longer than 1 character throws an error",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",
-			"SET secure_file_priv='./testdata'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -141,12 +139,24 @@ var LoadDataErrorScripts = []ScriptTest{
 		Name: "Load data enclosed by term longer than 1 character throws an error",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",
-			"SET secure_file_priv='./testdata'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY 'xx' (pk)",
 				ExpectedErr: sql.ErrLoadDataCharacterLength,
+			},
+		},
+	},
+	{
+		Name: "Load data with file not in secure_file_priv directory fails",
+		SetUpScript: []string{
+			"create table loadtable(pk longtext primary key, c1 int)",
+			"SET secure_file_priv='./testdata'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "LOAD DATA INFILE 'load_queries.go' INTO TABLE loadtable",
+				ExpectedErr: sql.ErrLoadDataCannotOpen,
 			},
 		},
 	},
