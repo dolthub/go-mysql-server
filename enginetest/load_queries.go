@@ -37,7 +37,7 @@ var LoadDataScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "Load data without secure_file_prive is fine",
+		Name: "Load data without secure_file_priv is fine",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",
 			"LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
