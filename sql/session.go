@@ -113,12 +113,18 @@ type Session interface {
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	id               uint32
-	addr             string
-	currentDB        string
-	client           Client
+	id     uint32
+	addr   string
+	client Client
+
+	// TODO(andy): in principle, we shouldn't
+	//   have concurrent access to the session.
+	//   Needs investigation.
+	mu sync.RWMutex
+
+	// |mu| protects the following state
 	logger           *logrus.Entry
-	mu               sync.RWMutex
+	currentDB        string
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
 	warnings         []*Warning
@@ -148,10 +154,14 @@ func (s *BaseSession) SetLogger(logger *logrus.Entry) {
 }
 
 func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.ignoreAutocommit = ignore
 }
 
 func (s *BaseSession) GetIgnoreAutoCommit() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.ignoreAutocommit
 }
 
@@ -240,11 +250,15 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 
 // GetCurrentDatabase gets the current database for this session
 func (s *BaseSession) GetCurrentDatabase() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.currentDB
 }
 
 // SetCurrentDatabase sets the current database for this session
 func (s *BaseSession) SetCurrentDatabase(dbName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.currentDB = dbName
 }
 
@@ -332,11 +346,15 @@ func (s *BaseSession) IterLocks(cb func(name string) error) error {
 
 // GetQueriedDatabase implements the Session interface.
 func (s *BaseSession) GetQueriedDatabase() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.queriedDb
 }
 
 // SetQueriedDatabase implements the Session interface.
 func (s *BaseSession) SetQueriedDatabase(dbName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.queriedDb = dbName
 }
 
@@ -376,6 +394,8 @@ func (s *BaseSession) SetLastQueryInfo(key string, value int64) {
 }
 
 func (s *BaseSession) GetLastQueryInfo(key string) int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.lastQueryInfo[key]
 }
 
@@ -412,10 +432,14 @@ func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 }
 
 func (s *BaseSession) GetTransaction() Transaction {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.tx
 }
 
 func (s *BaseSession) SetTransaction(tx Transaction) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.tx = tx
 }
 
