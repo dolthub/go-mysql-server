@@ -117,24 +117,36 @@ func formatIndexDecoratorString(idx sql.Index) string {
 }
 
 func (i *IndexedTableAccess) DebugString() string {
+	if i.lookup != nil {
+		return fmt.Sprintf("IndexedTableAccess(%s on %s, using fields %s)", i.Name(), formatIndexDecoratorString(i.index), "STATIC LOOKUP(" + sql.DebugString(i.lookup) + ")")
+	}
 	keyExprs := make([]string, len(i.keyExprs))
 	for j := range i.keyExprs {
 		keyExprs[j] = sql.DebugString(i.keyExprs[j])
 	}
-	return fmt.Sprintf("IndexedTableAccess(%s, using fields %s)", i.Name(), strings.Join(keyExprs, ", "))
+	return fmt.Sprintf("IndexedTableAccess(%s on %s, using fields %s)", i.Name(), formatIndexDecoratorString(i.index), strings.Join(keyExprs, ", "))
 }
 
 // Expressions implements sql.Expressioner
 func (i *IndexedTableAccess) Expressions() []sql.Expression {
+	if i.lookup != nil {
+		return nil
+	}
 	return i.keyExprs
 }
 
 // WithExpressions implements sql.Expressioner
 func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if i.lookup != nil {
+		if len(exprs) != 0 {
+			return nil, sql.ErrInvalidChildrenNumber.New(i, 0, len(i.keyExprs))
+		}
+		n := *i
+		return &n, nil
+	}
 	if len(exprs) != len(i.keyExprs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(exprs), len(i.keyExprs))
 	}
-
 	return &IndexedTableAccess{
 		ResolvedTable: i.ResolvedTable,
 		index:         i.index,
