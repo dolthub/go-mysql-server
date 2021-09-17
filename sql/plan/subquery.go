@@ -30,6 +30,8 @@ type Subquery struct {
 	Query sql.Node
 	// The original verbatim select statement for this subquery
 	QueryString string
+	// lastErr is the last analysis error that the analyzer saw. By the time the query is fully analyzed, this should be nil.
+	lastErr error
 	// Whether it's safe to cache result values for this subquery
 	canCacheResults bool
 	// Whether results have been cached
@@ -366,6 +368,16 @@ func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	ns := *s
 	ns.Query = node
 	return &ns
+}
+
+func (s *Subquery) WithLastErr(err error) *Subquery {
+	ns := *s
+	ns.lastErr = err
+	return &ns
+}
+
+func (s *Subquery) LastErr() error {
+	return s.lastErr
 }
 
 func (s *Subquery) IsNonDeterministic() bool {

@@ -38,6 +38,7 @@ const (
 	validateIntervalUsageRule     = "validate_interval_usage"
 	validateExplodeUsageRule      = "validate_explode_usage"
 	validateSubqueryColumnsRule   = "validate_subquery_columns"
+	validateSubqueryLastErrRule   = "validate_subquery_last_error"
 	validateUnionSchemasMatchRule = "validate_union_schemas_match"
 	validateAggregationsRule      = "validate_aggregations"
 )
@@ -112,6 +113,7 @@ var DefaultValidationRules = []Rule{
 	{validateIntervalUsageRule, validateIntervalUsage},
 	{validateExplodeUsageRule, validateExplodeUsage},
 	{validateSubqueryColumnsRule, validateSubqueryColumns},
+	{validateSubqueryLastErrRule, validateSubqueryLastErr},
 	{validateUnionSchemasMatchRule, validateUnionSchemasMatch},
 	{validateAggregationsRule, validateAggregations},
 }
@@ -550,6 +552,24 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 		return nil, ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
 	}
 
+	return n, nil
+}
+
+func validateSubqueryLastErr(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	// Validate that every subquery expression has a nil lastErr.
+	var found error
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if s, ok := e.(*plan.Subquery); ok {
+			if s.LastErr() != nil {
+				found = s.LastErr()
+				return false
+			}
+		}
+		return true
+	})
+	if found != nil {
+		return nil, found
+	}
 	return n, nil
 }
 

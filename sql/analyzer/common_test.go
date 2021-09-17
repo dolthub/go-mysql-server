@@ -148,6 +148,7 @@ type analyzerFnTestCase struct {
 	scope    *Scope
 	expected sql.Node
 	err      *errors.Kind
+	postF    func(*testing.T, sql.Node) sql.Node
 }
 
 func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase, a *Analyzer, f Rule) {
@@ -168,6 +169,10 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 			expected := tt.expected
 			if expected == nil {
 				expected = tt.node
+			}
+
+			if tt.postF != nil {
+				result = tt.postF(t, result)
 			}
 
 			assertNodesEqualWithDiff(t, expected, result)

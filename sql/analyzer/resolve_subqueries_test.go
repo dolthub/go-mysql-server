@@ -16,13 +16,15 @@ package analyzer
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -322,6 +324,19 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 				},
 				plan.NewResolvedTable(table, db, nil),
 			),
+			postF: func(t *testing.T, result sql.Node) sql.Node {
+				p := result.(*plan.Project)
+				s := p.Expressions()[1].(*plan.Subquery)
+				err := s.LastErr()
+				require.Error(t, err)
+				require.True(t, sql.ErrTableColumnNotFound.Is(err), fmt.Sprintf("Expected error of type %T but got %T", sql.ErrTableColumnNotFound, err))
+				r, err := p.WithExpressions(
+					p.Expressions()[0],
+					s.WithLastErr(nil),
+				)
+				require.NoError(t, err)
+				return r
+			},
 		},
 		{
 			name: "deferred column gets resolved",
