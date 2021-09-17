@@ -118,7 +118,7 @@ func formatIndexDecoratorString(idx sql.Index) string {
 
 func (i *IndexedTableAccess) DebugString() string {
 	if i.lookup != nil {
-		return fmt.Sprintf("IndexedTableAccess(%s on %s, using fields %s)", i.Name(), formatIndexDecoratorString(i.index), "STATIC LOOKUP(" + sql.DebugString(i.lookup) + ")")
+		return fmt.Sprintf("IndexedTableAccess(%s on %s, using fields %s)", i.Name(), formatIndexDecoratorString(i.index), "STATIC LOOKUP("+sql.DebugString(i.lookup)+")")
 	}
 	keyExprs := make([]string, len(i.keyExprs))
 	for j := range i.keyExprs {
