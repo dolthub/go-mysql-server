@@ -106,7 +106,8 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		if filtersMoved == 0 {
-			return n, nil
+			topJoin = n
+			return topJoin, nil
 		}
 
 		if len(condFilters) > 0 {
