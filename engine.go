@@ -59,7 +59,7 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	c.MustRegister(
+	c.RegisterFunction(
 		sql.FunctionN{
 			Name: "version",
 			Fn:   function.NewVersion(versionPostfix),
@@ -73,8 +73,8 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 			Fn:   function.NewDatabase(c),
 		})
 
-	c.MustRegister(function.Defaults...)
-	c.MustRegister(function.GetLockingFuncs(ls)...)
+	c.RegisterFunction(function.Defaults...)
+	c.RegisterFunction(function.GetLockingFuncs(ls)...)
 
 	// use auth.None if auth is not specified
 	var au auth.Auth

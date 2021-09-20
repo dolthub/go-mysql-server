@@ -220,6 +220,8 @@ func (FunctionN) isFunction() {}
 // and User-Defined Functions.
 type FunctionRegistry map[string]Function
 
+var _ FunctionProvider = FunctionRegistry{}
+
 // NewFunctionRegistry creates a new FunctionRegistry.
 func NewFunctionRegistry() FunctionRegistry {
 	return make(FunctionRegistry)

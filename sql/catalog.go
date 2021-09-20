@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
+	"github.com/dolthub/go-mysql-server/sql"
 
 	"gopkg.in/src-d/go-errors.v1"
 )
@@ -39,12 +40,12 @@ var ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
 
 // Catalog holds databases, tables and functions.
 type Catalog struct {
-	FunctionRegistry
 	*ProcessList
 	*MemoryManager
 
-	mu       sync.RWMutex
 	provider DatabaseProvider
+	builtInFunctions FunctionRegistry
+	mu       sync.RWMutex
 	locks    sessionLocks
 }
 
@@ -54,16 +55,18 @@ type dbLocks map[string]tableLocks
 
 type sessionLocks map[uint32]dbLocks
 
-// NewCatalogWithProvider returns a new empty Catalog.
+// NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider DatabaseProvider) *Catalog {
 	return &Catalog{
-		FunctionRegistry: NewFunctionRegistry(),
 		MemoryManager:    NewMemoryManager(ProcessMemory),
 		ProcessList:      NewProcessList(),
 		provider:         provider,
+		builtInFunctions: NewFunctionRegistry(),
 		locks:            make(sessionLocks),
 	}
 }
+
+var _ FunctionProvider = (*Catalog)(nil)
 
 // AllDatabases returns all sliceDBProvider in the catalog.
 func (c *Catalog) AllDatabases() []Database {
@@ -212,6 +215,27 @@ func (c *Catalog) TableAsOf(ctx *Context, dbName, tableName string, asOf interfa
 	}
 
 	return tbl, versionedDb, nil
+}
+
+// RegisterFunction registers the functions given, adding them to the built-in functions.
+// Integrators with custom functions should typically use the FunctionProvider interface instead.
+func (c *Catalog) RegisterFunction(fns ...sql.Function) {
+	for _, fn := range fns {
+		c.builtInFunctions.MustRegister(fn)
+	}
+}
+
+// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
+func (c *Catalog) Function(name string) (Function, error) {
+	if fp, ok := c.provider.(FunctionProvider); ok {
+		f, err := fp.Function(name)
+		if err != nil && !ErrFunctionNotFound.Is(err) {
+			return nil, err
+		}
+		return f, nil
+	}
+
+	return c.builtInFunctions.Function(name)
 }
 
 func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
