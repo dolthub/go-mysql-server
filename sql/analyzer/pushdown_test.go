@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -43,7 +44,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider())
+	catalog := test.NewCatalog(sql.NewDatabaseProvider())
 	a := NewDefault(catalog)
 
 	// TODO: test interaction with filtered tables
@@ -113,7 +114,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 	a := NewDefault(catalog)
 
 	tests := []analyzerFnTestCase{
@@ -228,7 +229,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 	a := NewDefault(catalog)
 
 	tests := []analyzerFnTestCase{
@@ -575,7 +576,7 @@ func TestPushdownIndex(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 	a := NewDefault(catalog)
 
 	tests := []analyzerFnTestCase{

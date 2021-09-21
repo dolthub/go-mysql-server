@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -34,7 +34,7 @@ func TestLockTables(t *testing.T) {
 		{NewResolvedTable(t1, nil, nil), true},
 		{NewResolvedTable(t2, nil, nil), false},
 	})
-	node.Catalog = analyzer.NewCatalog(sql.NewDatabaseProvider())
+	node.Catalog = test.NewCatalog(sql.NewDatabaseProvider())
 
 	_, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
@@ -56,7 +56,7 @@ func TestUnlockTables(t *testing.T) {
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)
 
-	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("db").WithCurrentDB("db")
 	catalog.LockTable(ctx, "foo")

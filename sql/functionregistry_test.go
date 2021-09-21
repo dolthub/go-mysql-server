@@ -17,6 +17,7 @@ package sql_test
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,7 +27,7 @@ import (
 func TestFunctionRegistry(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog(sql.NewDatabaseProvider())
+	c := test.NewCatalog(sql.NewDatabaseProvider())
 	name := "func"
 	var expected sql.Expression = expression.NewStar()
 	c.RegisterFunction(sql.Function1{
@@ -54,7 +55,7 @@ func TestFunctionRegistry(t *testing.T) {
 func TestFunctionRegistryMissingFunction(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog(sql.NewDatabaseProvider())
+	c := test.NewCatalog(sql.NewDatabaseProvider())
 	f, err := c.Function("func")
 	require.Error(err)
 	require.Nil(f)

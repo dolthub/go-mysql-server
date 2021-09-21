@@ -283,7 +283,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	})
 
 	pro := harness.NewDatabaseProvider(db)
-	catalog := sql.NewCatalog(pro)
+	catalog := analyzer.NewCatalog(pro)
 
 	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
 	cfg := &sqle.Config{Auth: au}
@@ -316,7 +316,7 @@ func TestExplode(t *testing.T, harness Harness) {
 
 	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
 
-	catalog := sql.NewCatalog(harness.NewDatabaseProvider(db))
+	catalog := analyzer.NewCatalog(harness.NewDatabaseProvider(db))
 	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
 
 	for _, q := range ExplodeQueries {
