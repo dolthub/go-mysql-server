@@ -52,14 +52,14 @@ type Builder struct {
 	onceAfterRules      []Rule
 	validationRules     []Rule
 	afterAllRules       []Rule
-	catalog             *sql.Catalog
+	catalog             sql.Catalog
 	debug               bool
 	parallelism         int
 }
 
 // NewBuilder creates a new Builder from a specific catalog.
 // This builder allow us add custom Rules and modify some internal properties.
-func NewBuilder(c *sql.Catalog) *Builder {
+func NewBuilder(c sql.Catalog) *Builder {
 	return &Builder{
 		catalog:         c,
 		onceBeforeRules: OnceBeforeDefault,
@@ -264,14 +264,14 @@ type Analyzer struct {
 	// Batches of Rules to apply.
 	Batches []*Batch
 	// Catalog of databases and registered functions.
-	Catalog *sql.Catalog
+	Catalog sql.Catalog
 	// ProcedureCache is a cache of stored procedures.
 	ProcedureCache *ProcedureCache
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.
-func NewDefault(c *sql.Catalog) *Analyzer {
+func NewDefault(c sql.Catalog) *Analyzer {
 	return NewBuilder(c).Build()
 }
 

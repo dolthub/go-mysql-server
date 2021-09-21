@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package analyzer
 
 import (
 	"context"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,9 +26,9 @@ func TestCatalogLockTable(t *testing.T) {
 	require := require.New(t)
 	c := NewCatalog(NewDatabaseProvider())
 
-	ctx1 := NewContext(context.Background())
+	ctx1 := sql.NewContext(context.Background())
 	ctx1.SetCurrentDatabase("db1")
-	ctx2 := NewContext(context.Background())
+	ctx2 := sql.NewContext(context.Background())
 	ctx2.SetCurrentDatabase("db1")
 
 	c.LockTable(ctx1, "foo")
@@ -53,5 +54,5 @@ func TestCatalogLockTable(t *testing.T) {
 		},
 	}
 
-	require.Equal(expected, c.locks)
+	require.Equal(expected, c.(*CatalogImpl).locks)
 }

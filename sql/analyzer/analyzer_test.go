@@ -37,7 +37,7 @@ func TestMaxIterations(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	db.AddTable(tName, table)
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := NewCatalog(sql.NewDatabaseProvider(db))
 
 	count := 0
 	a := withoutProcessTracking(NewBuilder(catalog).AddPostAnalyzeRule("loop",
@@ -187,7 +187,7 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	db.AddTable("mytable2", table2)
 	db.AddTable("mytable3", table3)
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := NewCatalog(sql.NewDatabaseProvider(db))
 	a := withoutProcessTracking(NewDefault(catalog))
 
 	node := plan.NewProject(
@@ -316,7 +316,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := NewCatalog(sql.NewDatabaseProvider(db))
 	a := withoutProcessTracking(NewDefault(catalog))
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))

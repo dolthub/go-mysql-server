@@ -47,7 +47,7 @@ type CreateIndex struct {
 	Exprs           []sql.Expression
 	Driver          string
 	Config          map[string]string
-	Catalog         *sql.Catalog
+	Catalog         sql.Catalog
 	CurrentDatabase string
 }
 
@@ -184,7 +184,6 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	createIndex := func() {
 		c.createIndex(ctx, log, driver, index, iter, created, ready)
-		c.Catalog.ProcessList.Done(ctx.Pid())
 	}
 
 	log.Info("starting to save the index")

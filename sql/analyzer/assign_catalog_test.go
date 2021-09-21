@@ -30,7 +30,7 @@ func TestAssignCatalog(t *testing.T) {
 	f := getRule("assign_catalog")
 
 	db := memory.NewDatabase("foo")
-	c := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	c := NewCatalog(sql.NewDatabaseProvider(db))
 
 	a := NewDefault(c)
 	idxReg := sql.NewIndexRegistry()
@@ -62,7 +62,8 @@ func TestAssignCatalog(t *testing.T) {
 	pl, ok := node.(*plan.ShowProcessList)
 	require.True(ok)
 	require.Equal(db.Name(), pl.Database)
-	require.Equal(c.ProcessList, pl.ProcessList)
+	// TODO: get processlist from runtime
+	//	require.Equal(c.ProcessList, pl.ProcessList)
 
 	node, err = f.Apply(ctx, a, plan.NewShowDatabases(), nil)
 	require.NoError(err)
@@ -81,18 +82,4 @@ func TestAssignCatalog(t *testing.T) {
 	ut, ok := node.(*plan.UnlockTables)
 	require.True(ok)
 	require.Equal(c, ut.Catalog)
-
-	mockSubquery := plan.NewSubqueryAlias("mock", "", plan.NewResolvedTable(tbl, nil, nil))
-	mockView := plan.NewCreateView(db, "", nil, mockSubquery, false)
-	node, err = f.Apply(ctx, a, mockView, nil)
-	require.NoError(err)
-	cv, ok := node.(*plan.CreateView)
-	require.True(ok)
-	require.Equal(c, cv.Catalog)
-
-	node, err = f.Apply(ctx, a, plan.NewDropView(nil, false), nil)
-	require.NoError(err)
-	dv, ok := node.(*plan.DropView)
-	require.True(ok)
-	require.Equal(c, dv.Catalog)
 }

@@ -32,7 +32,7 @@ type Conn struct {
 }
 
 // Catalog returns the SQL catalog.
-func (c *Conn) Catalog() *sql.Catalog { return c.catalog.engine.Catalog }
+func (c *Conn) Catalog() sql.Catalog { return c.catalog.engine.Catalog }
 
 // Session returns the SQL session.
 func (c *Conn) Session() sql.Session { return c.session }
@@ -68,7 +68,8 @@ func (c *Conn) newContextWithQuery(ctx context.Context, query string) (*sql.Cont
 		sql.WithSession(c.session),
 		sql.WithQuery(query),
 		sql.WithPid(c.catalog.nextProcessID()),
-		sql.WithMemoryManager(c.catalog.engine.Catalog.MemoryManager),
+		// TODO: move this out of catalog
+		//sql.WithMemoryManager(c.catalog.engine.Catalog.MemoryManager),
 		sql.WithIndexRegistry(c.indexes),
 		sql.WithViewRegistry(c.views))
 }

@@ -24,7 +24,7 @@ type CatalogTable interface {
 	sql.Table
 
 	// AssignCatalog assigns a Catalog to the table.
-	AssignCatalog(cat *sql.Catalog) sql.Table
+	AssignCatalog(cat sql.Catalog) sql.Table
 }
 
 // assignCatalog sets the catalog in the required nodes.
@@ -55,7 +55,8 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		case *plan.ShowProcessList:
 			nc := *node
 			nc.Database = ctx.GetCurrentDatabase()
-			nc.ProcessList = a.Catalog.ProcessList
+			// TODO: process list in catalog
+			//nc.ProcessList = a.Catalog.ProcessList
 			return &nc, nil
 		case *plan.ShowTableStatus:
 			nc := *node
@@ -78,14 +79,6 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			nc.Catalog = a.Catalog
 			return &nc, nil
 		case *plan.UnlockTables:
-			nc := *node
-			nc.Catalog = a.Catalog
-			return &nc, nil
-		case *plan.CreateView:
-			nc := *node
-			nc.Catalog = a.Catalog
-			return &nc, nil
-		case *plan.DropView:
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, nil

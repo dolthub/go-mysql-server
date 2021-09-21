@@ -38,7 +38,7 @@ type Config struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Catalog  *sql.Catalog
+	Catalog  sql.Catalog
 	Analyzer *analyzer.Analyzer
 	Auth     auth.Auth
 	LS       *sql.LockSubsystem
@@ -51,7 +51,8 @@ type ColumnWithRawDefault struct {
 
 // New creates a new Engine with custom configuration. To create an Engine with
 // the default settings use `NewDefault`.
-func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
+// TODO: don't take a catalog here, create one from provider
+func New(c sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 	var versionPostfix string
 	if cfg != nil {
 		versionPostfix = cfg.VersionPostfix
@@ -79,14 +80,10 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
-	c := sql.NewCatalog(pro)
+	c := analyzer.NewCatalog(pro)
 	a := analyzer.NewDefault(c)
 
 	return New(c, a, nil)
-}
-
-func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
-	return sql.NewDatabaseProvider(dbs...)
 }
 
 // AnalyzeQuery analyzes a query and returns its Schema.

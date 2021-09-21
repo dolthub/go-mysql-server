@@ -59,7 +59,7 @@ type Options struct {
 
 // A Provider resolves SQL catalogs.
 type Provider interface {
-	Resolve(name string, options *Options) (string, *sql.Catalog, error)
+	Resolve(name string, options *Options) (string, sql.Catalog, error)
 }
 
 // A Driver exposes an engine as a stdlib SQL driver.
@@ -70,7 +70,7 @@ type Driver struct {
 	contexts ContextBuilder
 
 	mu       sync.Mutex
-	catalogs map[*sql.Catalog]*catalog
+	catalogs map[sql.Catalog]*catalog
 }
 
 // New returns a driver using the specified provider.
@@ -90,7 +90,7 @@ func New(provider Provider, options Options) *Driver {
 		options:  options,
 		sessions: sessions,
 		contexts: contexts,
-		catalogs: map[*sql.Catalog]*catalog{},
+		catalogs: map[sql.Catalog]*catalog{},
 	}
 }
 
@@ -191,7 +191,7 @@ func (c *Connector) Driver() driver.Driver { return c.driver }
 func (c *Connector) Server() string { return c.server }
 
 // Catalog returns the SQL catalog.
-func (c *Connector) Catalog() *sql.Catalog { return c.catalog.engine.Catalog }
+func (c *Connector) Catalog() sql.Catalog { return c.catalog.engine.Catalog }
 
 // Connect returns a connection to the database.
 func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {

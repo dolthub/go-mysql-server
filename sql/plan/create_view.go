@@ -29,7 +29,6 @@ type CreateView struct {
 	database   sql.Database
 	Name       string
 	Columns    []string
-	Catalog    *sql.Catalog
 	IsReplace  bool
 	Definition *SubqueryAlias
 }
@@ -44,13 +43,12 @@ func NewCreateView(
 	isReplace bool,
 ) *CreateView {
 	return &CreateView{
-		UnaryNode{Child: definition},
-		database,
-		name,
-		columns,
-		nil,
-		isReplace,
-		definition,
+		UnaryNode:  UnaryNode{Child: definition},
+		database:   database,
+		Name:       name,
+		Columns:    columns,
+		IsReplace:  isReplace,
+		Definition: definition,
 	}
 }
 

@@ -31,7 +31,7 @@ type TableLock struct {
 
 // LockTables will lock tables for the session in which it's executed.
 type LockTables struct {
-	Catalog *sql.Catalog
+	Catalog sql.Catalog
 	Locks   []*TableLock
 }
 
@@ -145,7 +145,7 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 
 // UnlockTables will release all locks for the current session.
 type UnlockTables struct {
-	Catalog *sql.Catalog
+	Catalog sql.Catalog
 }
 
 // NewUnlockTables returns a new UnlockTables node.

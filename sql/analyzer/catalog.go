@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package analyzer
 
 import (
 	"fmt"
@@ -20,18 +20,19 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
-// Catalog holds databases, tables and functions.
-type Catalog struct {
-	*ProcessList
-	*MemoryManager
+type CatalogImpl struct {
+	// TODO: move these out of the catalog
+	*sql.ProcessList
+	*sql.MemoryManager
 
-	provider         DatabaseProvider
+	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
 	mu               sync.RWMutex
-	locks    sessionLocks
+	locks            sessionLocks
 }
 
 type tableLocks map[string]struct{}
@@ -41,20 +42,24 @@ type dbLocks map[string]tableLocks
 type sessionLocks map[uint32]dbLocks
 
 // NewCatalog returns a new empty Catalog with the given provider
-func NewCatalog(provider DatabaseProvider) *Catalog {
-	return &Catalog{
-		MemoryManager:    NewMemoryManager(ProcessMemory),
-		ProcessList:      NewProcessList(),
+func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
+	return &CatalogImpl{
+		MemoryManager:    sql.NewMemoryManager(sql.ProcessMemory),
+		ProcessList:      sql.NewProcessList(),
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
 	}
 }
 
-var _ FunctionProvider = (*Catalog)(nil)
+func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
+	return sql.NewDatabaseProvider(dbs...)
+}
+
+var _ sql.FunctionProvider = (*CatalogImpl)(nil)
 
 // AllDatabases returns all sliceDBProvider in the catalog.
-func (c *Catalog) AllDatabases() []Database {
+func (c *CatalogImpl) AllDatabases() []sql.Database {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -62,39 +67,39 @@ func (c *Catalog) AllDatabases() []Database {
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
-func (c *Catalog) CreateDatabase(ctx *Context, dbName string) error {
+func (c *CatalogImpl) CreateDatabase(ctx *sql.Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mut, ok := c.provider.(MutableDatabaseProvider)
+	mut, ok := c.provider.(sql.MutableDatabaseProvider)
 	if ok {
 		return mut.CreateDatabase(ctx, dbName)
 	} else {
-		return ErrImmutableDatabaseProvider.New()
+		return sql.ErrImmutableDatabaseProvider.New()
 	}
 }
 
 // RemoveDatabase removes a database from the catalog.
-func (c *Catalog) RemoveDatabase(ctx *Context, dbName string) error {
+func (c *CatalogImpl) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mut, ok := c.provider.(MutableDatabaseProvider)
+	mut, ok := c.provider.(sql.MutableDatabaseProvider)
 	if ok {
 		return mut.DropDatabase(ctx, dbName)
 	} else {
-		return ErrImmutableDatabaseProvider.New()
+		return sql.ErrImmutableDatabaseProvider.New()
 	}
 }
 
-func (c *Catalog) HasDB(db string) bool {
+func (c *CatalogImpl) HasDB(db string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.provider.HasDatabase(db)
 }
 
 // Database returns the database with the given name.
-func (c *Catalog) Database(db string) (Database, error) {
+func (c *CatalogImpl) Database(db string) (sql.Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.provider.Database(db)
@@ -102,7 +107,7 @@ func (c *Catalog) Database(db string) (Database, error) {
 
 // LockTable adds a lock for the given table and session client. It is assumed
 // the database is the current database in use.
-func (c *Catalog) LockTable(ctx *Context, table string) {
+func (c *CatalogImpl) LockTable(ctx *sql.Context, table string) {
 	id := ctx.ID()
 	db := ctx.GetCurrentDatabase()
 
@@ -122,7 +127,7 @@ func (c *Catalog) LockTable(ctx *Context, table string) {
 
 // UnlockTables unlocks all tables for which the given session client has a
 // lock.
-func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
+func (c *CatalogImpl) UnlockTables(ctx *sql.Context, id uint32) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -136,7 +141,7 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 
 			table, _, err := database.GetTableInsensitive(ctx, t)
 			if err == nil {
-				if lockable, ok := table.(Lockable); ok {
+				if lockable, ok := table.(sql.Lockable); ok {
 					if e := lockable.Unlock(ctx, id); e != nil {
 						errors = append(errors, e.Error())
 					}
@@ -156,7 +161,7 @@ func (c *Catalog) UnlockTables(ctx *Context, id uint32) error {
 }
 
 // Table returns the table in the given database with the given name.
-func (c *Catalog) Table(ctx *Context, dbName, tableName string) (Table, Database, error) {
+func (c *CatalogImpl) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, sql.Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -177,7 +182,7 @@ func (c *Catalog) Table(ctx *Context, dbName, tableName string) (Table, Database
 
 // TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
 // named must support timed queries.
-func (c *Catalog) TableAsOf(ctx *Context, dbName, tableName string, asOf interface{}) (Table, Database, error) {
+func (c *CatalogImpl) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -186,9 +191,9 @@ func (c *Catalog) TableAsOf(ctx *Context, dbName, tableName string, asOf interfa
 		return nil, nil, err
 	}
 
-	versionedDb, ok := db.(VersionedDatabase)
+	versionedDb, ok := db.(sql.VersionedDatabase)
 	if !ok {
-		return nil, nil, ErrAsOfNotSupported.New(tableName)
+		return nil, nil, sql.ErrAsOfNotSupported.New(tableName)
 	}
 
 	tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, tableName, asOf)
@@ -204,7 +209,7 @@ func (c *Catalog) TableAsOf(ctx *Context, dbName, tableName string, asOf interfa
 
 // RegisterFunction registers the functions given, adding them to the built-in functions.
 // Integrators with custom functions should typically use the FunctionProvider interface instead.
-func (c *Catalog) RegisterFunction(fns ...Function) {
+func (c *CatalogImpl) RegisterFunction(fns ...sql.Function) {
 	for _, fn := range fns {
 		err := c.builtInFunctions.Register(fn)
 		if err != nil {
@@ -214,10 +219,10 @@ func (c *Catalog) RegisterFunction(fns ...Function) {
 }
 
 // Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
-func (c *Catalog) Function(name string) (Function, error) {
-	if fp, ok := c.provider.(FunctionProvider); ok {
+func (c *CatalogImpl) Function(name string) (sql.Function, error) {
+	if fp, ok := c.provider.(sql.FunctionProvider); ok {
 		f, err := fp.Function(name)
-		if err != nil && !ErrFunctionNotFound.Is(err) {
+		if err != nil && !sql.ErrFunctionNotFound.Is(err) {
 			return nil, err
 		}
 		return f, nil
@@ -226,22 +231,22 @@ func (c *Catalog) Function(name string) (Function, error) {
 	return c.builtInFunctions.Function(name)
 }
 
-func suggestSimilarTables(db Database, ctx *Context, tableName string) error {
+func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {
 	tableNames, err := db.GetTableNames(ctx)
 	if err != nil {
 		return err
 	}
 
 	similar := similartext.Find(tableNames, tableName)
-	return ErrTableNotFound.New(tableName + similar)
+	return sql.ErrTableNotFound.New(tableName + similar)
 }
 
-func suggestSimilarTablesAsOf(db VersionedDatabase, ctx *Context, tableName string, time interface{}) error {
+func suggestSimilarTablesAsOf(db sql.VersionedDatabase, ctx *sql.Context, tableName string, time interface{}) error {
 	tableNames, err := db.GetTableNamesAsOf(ctx, time)
 	if err != nil {
 		return err
 	}
 
 	similar := similartext.Find(tableNames, tableName)
-	return ErrTableNotFound.New(tableName + similar)
+	return sql.ErrTableNotFound.New(tableName + similar)
 }
