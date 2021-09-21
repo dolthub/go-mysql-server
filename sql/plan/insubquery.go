@@ -64,7 +64,12 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch right := in.Right.(type) {
 	case *Subquery:
+		if sql.NumColumns(typ) != sql.NumColumns(right.Type()) {
+			return nil, sql.ErrInvalidOperandColumns.New(sql.NumColumns(typ), sql.NumColumns(right.Type()))
+		}
+
 		typ := right.Type()
+
 		values, err := right.HashMultiple(ctx, row)
 		if err != nil {
 			return nil, err
