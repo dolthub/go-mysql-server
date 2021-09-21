@@ -31,7 +31,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	}
 
 	// TODO: get this from the runtime
-	processList := &sql.ProcessList{}
+	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
 	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {

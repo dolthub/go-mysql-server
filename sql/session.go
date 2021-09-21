@@ -479,6 +479,8 @@ type Context struct {
 	*IndexRegistry
 	*ViewRegistry
 	Memory    *MemoryManager
+	// TODO: fill in
+	ProcessList ProcessList
 	pid       uint64
 	query     string
 	queryTime time.Time
@@ -568,7 +570,12 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
+	c := &Context{
+		Context: ctx,
+		Session: NewBaseSession(),
+		queryTime: ctxNowFunc(),
+		tracer: opentracing.NoopTracer{},
+	}
 	for _, opt := range opts {
 		opt(c)
 	}

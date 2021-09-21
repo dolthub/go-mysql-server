@@ -339,6 +339,9 @@ var (
 	// ErrIncompatibleAsOf is thrown when an AS OF clause is used in an incompatible manner, such as when using an AS OF
 	// expression with a view when the view definition has its own AS OF expressions.
 	ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
+
+	// ErrPidAlreadyUsed is returned when the pid is already registered.
+	ErrPidAlreadyUsed = errors.NewKind("pid %d is already in use")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

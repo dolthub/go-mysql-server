@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package sqle
 
 import (
 	"context"
 	"sort"
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,8 +27,8 @@ func TestProcessList(t *testing.T) {
 	require := require.New(t)
 
 	p := NewProcessList()
-	sess := NewSession("0.0.0.0:3306", Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
-	ctx := NewContext(context.Background(), WithPid(1), WithSession(sess))
+	sess := sql.NewSession("0.0.0.0:3306", sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
 
@@ -69,7 +70,7 @@ func TestProcessList(t *testing.T) {
 	}
 	require.Equal(expectedProgress, p.procs[ctx.Pid()].Progress)
 
-	ctx = NewContext(context.Background(), WithPid(2), WithSession(sess))
+	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
 	ctx, err = p.AddProcess(ctx, "SELECT bar")
 	require.NoError(err)
 
@@ -119,8 +120,8 @@ func sortByPid(slice []Process) {
 func TestKillConnection(t *testing.T) {
 	pl := NewProcessList()
 
-	s1 := NewSession("", Client{}, 1)
-	s2 := NewSession("", Client{}, 2)
+	s1 := sql.NewSession("", sql.Client{}, 1)
+	s2 := sql.NewSession("", sql.Client{}, 2)
 
 	var killed = make(map[uint64]bool)
 	for i := uint64(1); i <= 3; i++ {
@@ -131,7 +132,7 @@ func TestKillConnection(t *testing.T) {
 		}
 
 		_, err := pl.AddProcess(
-			NewContext(context.Background(), WithPid(i), WithSession(s)),
+			sql.NewContext(context.Background(), sql.WithPid(i), sql.WithSession(s)),
 			"foo",
 		)
 		require.NoError(t, err)
