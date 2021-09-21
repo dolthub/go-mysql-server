@@ -430,6 +430,15 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query: "select * from one_pk where c1 in (select opk1.c1 from one_pk opk1 left join one_pk opk2 on opk1.c2 = opk2.c2)",
+		Expected: []sql.Row{
+			{0, 0, 1, 2, 3, 4},
+			{1, 10, 11, 12, 13, 14},
+			{2, 20, 21, 22, 23, 24},
+			{3, 30, 31, 32, 33, 34},
+		},
+	},
+	{
 		Query: `select mt.i, 
 			((
 				select count(*) from mytable
