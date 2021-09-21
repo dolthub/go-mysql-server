@@ -20,30 +20,17 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
-	"gopkg.in/src-d/go-errors.v1"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
-
-// ErrDatabaseNotFound is thrown when a database is not found
-var ErrDatabaseNotFound = errors.NewKind("database not found: %s")
-
-// ErrNoDatabaseSelected is thrown when a database is not selected and the query requires one
-var ErrNoDatabaseSelected = errors.NewKind("no database selected")
-
-// ErrAsOfNotSupported is thrown when an AS OF query is run on a database that can't support it
-var ErrAsOfNotSupported = errors.NewKind("AS OF not supported for database %s")
-
-// ErrIncompatibleAsOf is thrown when an AS OF clause is used in an incompatible manner, such as when using an AS OF
-// expression with a view when the view definition has its own AS OF expressions.
-var ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
 
 // Catalog holds databases, tables and functions.
 type Catalog struct {
 	*ProcessList
 	*MemoryManager
 
-	provider DatabaseProvider
-	builtInFunctions FunctionRegistry
-	mu       sync.RWMutex
+	provider         DatabaseProvider
+	builtInFunctions function.Registry
+	mu               sync.RWMutex
 	locks    sessionLocks
 }
 
@@ -59,7 +46,7 @@ func NewCatalog(provider DatabaseProvider) *Catalog {
 		MemoryManager:    NewMemoryManager(ProcessMemory),
 		ProcessList:      NewProcessList(),
 		provider:         provider,
-		builtInFunctions: NewFunctionRegistry(),
+		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
 	}
 }
@@ -219,7 +206,10 @@ func (c *Catalog) TableAsOf(ctx *Context, dbName, tableName string, asOf interfa
 // Integrators with custom functions should typically use the FunctionProvider interface instead.
 func (c *Catalog) RegisterFunction(fns ...Function) {
 	for _, fn := range fns {
-		c.builtInFunctions.MustRegister(fn)
+		err := c.builtInFunctions.Register(fn)
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

@@ -326,6 +326,19 @@ var (
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
 	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
+
+	// ErrDatabaseNotFound is thrown when a database is not found
+	ErrDatabaseNotFound = errors.NewKind("database not found: %s")
+
+	// ErrNoDatabaseSelected is thrown when a database is not selected and the query requires one
+	ErrNoDatabaseSelected = errors.NewKind("no database selected")
+
+	// ErrAsOfNotSupported is thrown when an AS OF query is run on a database that can't support it
+	ErrAsOfNotSupported = errors.NewKind("AS OF not supported for database %s")
+
+	// ErrIncompatibleAsOf is thrown when an AS OF clause is used in an incompatible manner, such as when using an AS OF
+	// expression with a view when the view definition has its own AS OF expressions.
+	ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

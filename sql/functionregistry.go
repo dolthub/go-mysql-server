@@ -14,16 +14,6 @@
 
 package sql
 
-import (
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/go-mysql-server/internal/similartext"
-)
-
-// ErrFunctionAlreadyRegistered is thrown when a function is already registered
-var ErrFunctionAlreadyRegistered = errors.NewKind("function '%s' is already registered")
-
 // Function is a function defined by the user that can be applied in a SQL query.
 type Function interface {
 	// NewInstance returns a new instance of the function to evaluate against rows
@@ -199,49 +189,3 @@ func (Function6) isFunction() {}
 func (Function7) isFunction() {}
 func (FunctionN) isFunction() {}
 
-// FunctionRegistry is used to register functions. It is used both for builtin
-// and User-Defined Functions.
-type FunctionRegistry map[string]Function
-
-var _ FunctionProvider = FunctionRegistry{}
-
-// NewFunctionRegistry creates a new FunctionRegistry.
-func NewFunctionRegistry() FunctionRegistry {
-	fr := make(FunctionRegistry)
-	fr.MustRegister(function.Defaults...)
-	return fr
-}
-
-// Register registers functions.
-// If function with that name is already registered,
-// the ErrFunctionAlreadyRegistered will be returned
-func (r FunctionRegistry) Register(fn ...Function) error {
-	for _, f := range fn {
-		if _, ok := r[f.FunctionName()]; ok {
-			return ErrFunctionAlreadyRegistered.New(f.FunctionName())
-		}
-		r[f.FunctionName()] = f
-	}
-	return nil
-}
-
-// MustRegister registers functions.
-// If function with that name is already registered, it will panic!
-func (r FunctionRegistry) MustRegister(fn ...Function) {
-	if err := r.Register(fn...); err != nil {
-		panic(err)
-	}
-}
-
-// Function returns a function with the given name.
-func (r FunctionRegistry) Function(name string) (Function, error) {
-	if len(r) == 0 {
-		return nil, ErrFunctionNotFound.New(name)
-	}
-
-	if fn, ok := r[name]; ok {
-		return fn, nil
-	}
-	similar := similartext.FindFromMap(r, name)
-	return nil, ErrFunctionNotFound.New(name + similar)
-}
