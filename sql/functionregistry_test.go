@@ -29,9 +29,9 @@ func TestFunctionRegistry(t *testing.T) {
 	c := sql.NewCatalog(sql.NewDatabaseProvider())
 	name := "func"
 	var expected sql.Expression = expression.NewStar()
-	c.MustRegister(sql.Function1{
+	c.RegisterFunction(sql.Function1{
 		Name: name,
-		Fn:   func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected },
+		Fn:    func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected },
 	})
 
 	f, err := c.Function(name)

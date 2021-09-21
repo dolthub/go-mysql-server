@@ -35,8 +35,8 @@ var ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v argumen
 type Function interface {
 	// NewInstance returns a new instance of the function to evaluate against rows
 	NewInstance(*Context, []Expression) (Expression, error)
-	// Function name
-	name() string
+	// Name returns the name of this function
+	FunctionName() string
 	// isFunction will restrict implementations of Function
 	isFunction()
 }
@@ -55,12 +55,12 @@ type (
 	// Function0 is a function with 0 arguments.
 	Function0 struct {
 		Name string
-		Fn   CreateFunc0Args
+		Fn    CreateFunc0Args
 	}
 	// Function1 is a function with 1 argument.
 	Function1 struct {
 		Name string
-		Fn   CreateFunc1Args
+		Fn    CreateFunc1Args
 	}
 	// Function2 is a function with 2 arguments.
 	Function2 struct {
@@ -116,7 +116,7 @@ var _ Function = FunctionN{}
 func NewFunction0(name string, fn func(ctx *Context) Expression) Function0 {
 	return Function0{
 		Name: name,
-		Fn:   fn,
+		Fn:    fn,
 	}
 }
 
@@ -197,15 +197,15 @@ func (fn FunctionN) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args...)
 }
 
-func (fn Function0) name() string { return fn.Name }
-func (fn Function1) name() string { return fn.Name }
-func (fn Function2) name() string { return fn.Name }
-func (fn Function3) name() string { return fn.Name }
-func (fn Function4) name() string { return fn.Name }
-func (fn Function5) name() string { return fn.Name }
-func (fn Function6) name() string { return fn.Name }
-func (fn Function7) name() string { return fn.Name }
-func (fn FunctionN) name() string { return fn.Name }
+func (fn Function0) FunctionName() string { return fn.Name }
+func (fn Function1) FunctionName() string { return fn.Name }
+func (fn Function2) FunctionName() string { return fn.Name }
+func (fn Function3) FunctionName() string { return fn.Name }
+func (fn Function4) FunctionName() string { return fn.Name }
+func (fn Function5) FunctionName() string { return fn.Name }
+func (fn Function6) FunctionName() string { return fn.Name }
+func (fn Function7) FunctionName() string { return fn.Name }
+func (fn FunctionN) FunctionName() string { return fn.Name }
 
 func (Function0) isFunction() {}
 func (Function1) isFunction() {}
@@ -235,10 +235,10 @@ func NewFunctionRegistry() FunctionRegistry {
 // the ErrFunctionAlreadyRegistered will be returned
 func (r FunctionRegistry) Register(fn ...Function) error {
 	for _, f := range fn {
-		if _, ok := r[f.name()]; ok {
-			return ErrFunctionAlreadyRegistered.New(f.name())
+		if _, ok := r[f.FunctionName()]; ok {
+			return ErrFunctionAlreadyRegistered.New(f.FunctionName())
 		}
-		r[f.name()] = f
+		r[f.FunctionName()] = f
 	}
 	return nil
 }

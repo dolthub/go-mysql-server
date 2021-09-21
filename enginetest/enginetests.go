@@ -3176,13 +3176,12 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
 
-	err := e.Catalog.Register(sql.Function1{
+	e.Catalog.RegisterFunction(sql.Function1{
 		Name: "customfunc",
 		Fn: func(ctx *sql.Context, e1 sql.Expression) sql.Expression {
 			return &customFunc{expression.UnaryExpression{e1}}
 		},
 	})
-	require.NoError(err)
 
 	t.Run("Standard default literal", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)", []sql.Row(nil), nil, nil)

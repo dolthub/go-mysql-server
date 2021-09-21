@@ -24,7 +24,7 @@ import (
 )
 
 func TestTrim(t *testing.T) {
-	f := NewTrimFunc(bTrimType)(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "", false))
+	f := NewTrim(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -57,7 +57,7 @@ func TestTrim(t *testing.T) {
 }
 
 func TestLTrim(t *testing.T) {
-	f := NewTrimFunc(lTrimType)(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "", false))
+	f := NewLeftTrim(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -90,7 +90,7 @@ func TestLTrim(t *testing.T) {
 }
 
 func TestRTrim(t *testing.T) {
-	f := NewTrimFunc(rTrimType)(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "", false))
+	f := NewRightTrim(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
