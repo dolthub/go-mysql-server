@@ -24,20 +24,13 @@ import (
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered
 var ErrFunctionAlreadyRegistered = errors.NewKind("function '%s' is already registered")
 
-// ErrFunctionNotFound is thrown when a function is not found
-var ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
-
-// ErrInvalidArgumentNumber is returned when the number of arguments to call a
-// function is different from the function arity.
-var ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
-
 // Function is a function defined by the user that can be applied in a SQL query.
 type Function interface {
 	// NewInstance returns a new instance of the function to evaluate against rows
 	NewInstance(*Context, []Expression) (Expression, error)
-	// Name returns the name of this function
+	// FunctionName returns the name of this function
 	FunctionName() string
-	// isFunction will restrict implementations of Function
+	// isFunction is a private method to restrict implementations of Function
 	isFunction()
 }
 
@@ -101,8 +94,6 @@ type (
 	}
 )
 
-type EvalLogic func(*Context, Row) (interface{}, error)
-
 var _ Function = Function0{}
 var _ Function = Function1{}
 var _ Function = Function2{}
@@ -120,7 +111,6 @@ func NewFunction0(name string, fn func(ctx *Context) Expression) Function0 {
 	}
 }
 
-// Call implements the Function interface.
 func (fn Function0) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 0 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 0, len(args))
@@ -129,7 +119,6 @@ func (fn Function0) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx), nil
 }
 
-// Call implements the Function interface.
 func (fn Function1) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 1 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 1, len(args))
@@ -138,7 +127,6 @@ func (fn Function1) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function2) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 2 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 2, len(args))
@@ -147,7 +135,6 @@ func (fn Function2) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function3) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 3 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 3, len(args))
@@ -156,7 +143,6 @@ func (fn Function3) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function4) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 4 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 4, len(args))
@@ -165,7 +151,6 @@ func (fn Function4) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function5) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 5 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 5, len(args))
@@ -174,7 +159,6 @@ func (fn Function5) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3], args[4]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function6) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 6 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 6, len(args))
@@ -183,7 +167,6 @@ func (fn Function6) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3], args[4], args[5]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function7) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 7 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 7, len(args))
@@ -192,7 +175,6 @@ func (fn Function7) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3], args[4], args[5], args[6]), nil
 }
 
-// Call implements the Function interface.
 func (fn FunctionN) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	return fn.Fn(ctx, args...)
 }

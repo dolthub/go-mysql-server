@@ -319,6 +319,13 @@ var (
 
 	// ErrInvalidValueType is returned when a given value's type does not match what is expected.
 	ErrInvalidValueType = errors.NewKind(`error: '%T' is not a valid value type for '%v'`)
+
+	// ErrFunctionNotFound is thrown when a function is not found
+	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
+
+	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
+	// function is different from the function arity.
+	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
