@@ -1124,6 +1124,120 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "SELECT 1 FROM DUAL WHERE 1 in (1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((3, 4), (5, 6), (1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	// TODO
+	//	{
+	//		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
+	//		Expected: []sql.Row{},
+	//	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) > (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) >= (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <= (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) < (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) != (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	// TODO
+	//	{
+	//		Query:    "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
+	//		Expected: []sql.Row{},
+	//	},
+	//	{
+	//		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
+	//		Expected: []sql.Row{},
+	//	},
+	//	{
+	//		Query:    "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
+	//		Expected: []sql.Row{{1}},
+	//	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <=> (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) <=> (1, null)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in ((1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual) in ((1, 2), (2, 3), (3, 4))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 5, 6 from dual) in ((1, 2), (2, 3), (3, 4))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual union select 1, 2 from dual)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT (((1,2),3)) = (((1,2),3)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) = (((1,2),3)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,2),4)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,3),2)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (1, 2) in (select 1, 2 from dual) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (1, 2) in (select 2, 3 from dual) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (select 1, 2 from dual) in ((1, 2)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (select 2, 3 from dual) in ((1, 2)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
 		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: sql.Schema{
@@ -6207,6 +6321,54 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
 		ExpectedErr: analyzer.ErrAggregationUnsupported,
+	},
+	{
+		Query:       "select ((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (select 1, 2 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select concat((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1, 2) = (1) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1) in (select 1, 2 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1, 2) in (select 1, 2, 3 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (select 1 from dual) in ((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1,2))) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1),2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1))) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1,2),3),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select ((4,5),((1,2),3)) = ((1,2),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},
 }
 

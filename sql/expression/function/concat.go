@@ -50,10 +50,6 @@ func NewConcat(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error)
 		if len(args) > 1 && sql.IsArray(arg.Type()) {
 			return nil, ErrConcatArrayWithOthers.New()
 		}
-
-		if sql.IsTuple(arg.Type()) {
-			return nil, sql.ErrInvalidType.New("tuple")
-		}
 	}
 
 	return &Concat{args}, nil

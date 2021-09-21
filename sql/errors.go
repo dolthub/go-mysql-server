@@ -243,11 +243,6 @@ var (
 	// more than 1 row without an attached IN clause.
 	ErrExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
 
-	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
-	// more than a single column.
-	ErrSubqueryMultipleColumns = errors.NewKind(
-		"operand contains more than one column",
-	)
 	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
 	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
 
@@ -319,6 +314,12 @@ var (
 
 	// ErrInvalidValueType is returned when a given value's type does not match what is expected.
 	ErrInvalidValueType = errors.NewKind(`error: '%T' is not a valid value type for '%v'`)
+
+	// ErrInvalidOperandColumns is returned when the columns in the left
+	// operand and the elements of the right operand don't match. Also
+	// returned for invalid number of columns in projections, filters,
+	// joins, etc.
+	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -339,7 +340,7 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERDbCreateExists
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
-	case ErrSubqueryMultipleColumns.Is(err):
+	case ErrInvalidOperandColumns.Is(err):
 		code = mysql.EROperandColumns
 	case ErrInsertIntoNonNullableProvidedNull.Is(err):
 		code = mysql.ERBadNullError

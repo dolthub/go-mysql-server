@@ -205,7 +205,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, error) {
 	return func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
-		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, sql.Table, *ValueDerivedTable:
+		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, sql.Table, *ValueDerivedTable, *Union:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
@@ -254,6 +254,8 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
+	returnsTuple := len(s.Query.Schema()) > 1
+
 	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
 	col := len(row)
 	var result []interface{}
@@ -267,7 +269,11 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 			return nil, err
 		}
 
-		result = append(result, row[col])
+		if returnsTuple {
+			result = append(result, append([]interface{}{}, row[col:]...))
+		} else {
+			result = append(result, row[col])
+		}
 	}
 
 	if err := iter.Close(ctx); err != nil {
@@ -344,8 +350,15 @@ func (s *Subquery) Resolved() bool {
 
 // Type implements the Expression interface.
 func (s *Subquery) Type() sql.Type {
-	// TODO: handle row results (more than one column)
-	return s.Query.Schema()[0].Type
+	qs := s.Query.Schema()
+	if len(qs) == 1 {
+		return s.Query.Schema()[0].Type
+	}
+	ts := make([]sql.Type, len(qs))
+	for i, c := range qs {
+		ts[i] = c.Type
+	}
+	return sql.CreateTuple(ts...)
 }
 
 // WithChildren implements the Expression interface.
