@@ -389,6 +389,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
+		Expected: []sql.Row{
+			{2, "second row", "second", 2, 2, "second row"},
+		},
+	},
+	{
 		Query: `SELECT a.column_0, b.column_1 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,

@@ -1327,9 +1327,10 @@ var PlanTests = []QueryPlanTest{
 		AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL`,
 		ExpectedPlan: "Project(mt.i)\n" +
 			" └─ Filter((NOT((Project(mytable.i)\n" +
-			"     └─ Filter((mytable.i = mt.i) AND (mytable.i > 2))\n" +
+			"     └─ Filter(mytable.i = mt.i)\n" +
 			"         └─ Projected table access on [i]\n" +
-			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"             └─ Filter(mytable.i > 2)\n" +
+			"                 └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"    ) IS NULL)) AND (NOT((Project(othertable.i2)\n" +
 			"     └─ Filter(othertable.i2 = mt.i)\n" +
 			"         └─ Projected table access on [i2]\n" +
@@ -1362,8 +1363,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
 			" └─ Project(t1.pk, t2.pk2, (Limit(1)\n" +
 			"     └─ Project(one_pk.pk)\n" +
-			"         └─ Filter(one_pk.pk = 1)\n" +
-			"             └─ Projected table access on [pk]\n" +
+			"         └─ Projected table access on [pk]\n" +
+			"             └─ Filter(one_pk.pk = 1)\n" +
 			"                 └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"    ) as (SELECT pk from one_pk where pk = 1 limit 1))\n" +
 			"     └─ CrossJoin\n" +
