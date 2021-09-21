@@ -20,8 +20,6 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
-	"github.com/dolthub/go-mysql-server/sql"
-
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -219,7 +217,7 @@ func (c *Catalog) TableAsOf(ctx *Context, dbName, tableName string, asOf interfa
 
 // RegisterFunction registers the functions given, adding them to the built-in functions.
 // Integrators with custom functions should typically use the FunctionProvider interface instead.
-func (c *Catalog) RegisterFunction(fns ...sql.Function) {
+func (c *Catalog) RegisterFunction(fns ...Function) {
 	for _, fn := range fns {
 		c.builtInFunctions.MustRegister(fn)
 	}

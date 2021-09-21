@@ -63,17 +63,7 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 		sql.FunctionN{
 			Name: "version",
 			Fn:   function.NewVersion(versionPostfix),
-		},
-		sql.Function0{
-			Name: "database",
-			Fn:   function.NewDatabase(c),
-		},
-		sql.Function0{
-			Name: "schema",
-			Fn:   function.NewDatabase(c),
 		})
-
-	c.RegisterFunction(function.Defaults...)
 	c.RegisterFunction(function.GetLockingFuncs(ls)...)
 
 	// use auth.None if auth is not specified

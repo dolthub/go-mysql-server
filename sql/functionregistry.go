@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/internal/similartext"
@@ -224,7 +225,9 @@ var _ FunctionProvider = FunctionRegistry{}
 
 // NewFunctionRegistry creates a new FunctionRegistry.
 func NewFunctionRegistry() FunctionRegistry {
-	return make(FunctionRegistry)
+	fr := make(FunctionRegistry)
+	fr.MustRegister(function.Defaults...)
+	return fr
 }
 
 // Register registers functions.
