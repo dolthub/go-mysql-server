@@ -332,7 +332,7 @@ func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
 
 // IsNullable implements the Expression interface.
 func (s *Subquery) IsNullable() bool {
-	return s.Query.Schema()[0].Nullable
+	return true
 }
 
 func (s *Subquery) String() string {
