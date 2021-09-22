@@ -52,16 +52,16 @@ type Builder struct {
 	onceAfterRules      []Rule
 	validationRules     []Rule
 	afterAllRules       []Rule
-	catalog             sql.Catalog
+	provider            sql.DatabaseProvider
 	debug               bool
 	parallelism         int
 }
 
 // NewBuilder creates a new Builder from a specific catalog.
 // This builder allow us add custom Rules and modify some internal properties.
-func NewBuilder(c sql.Catalog) *Builder {
+func NewBuilder(pro sql.DatabaseProvider) *Builder {
 	return &Builder{
-		catalog:         c,
+		provider: pro,
 		onceBeforeRules: OnceBeforeDefault,
 		defaultRules:    DefaultRules,
 		onceAfterRules:  OnceAfterDefault,
@@ -245,7 +245,7 @@ func (ab *Builder) Build() *Analyzer {
 		Debug:          debug || ab.debug,
 		contextStack:   make([]string, 0),
 		Batches:        batches,
-		Catalog:        ab.catalog,
+		Catalog:        NewCatalog(ab.provider),
 		Parallelism:    ab.parallelism,
 		ProcedureCache: NewProcedureCache(),
 	}
@@ -271,8 +271,8 @@ type Analyzer struct {
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.
 // To add custom rules, the easiest way is use the Builder.
-func NewDefault(c sql.Catalog) *Analyzer {
-	return NewBuilder(c).Build()
+func NewDefault(provider sql.DatabaseProvider) *Analyzer {
+	return NewBuilder(provider).Build()
 }
 
 // Log prints an INFO message to stdout with the given message and args

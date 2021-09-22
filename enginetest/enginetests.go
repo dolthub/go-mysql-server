@@ -283,12 +283,11 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	})
 
 	pro := harness.NewDatabaseProvider(db)
-	catalog := analyzer.NewCatalog(pro)
 
 	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
 	cfg := &sqle.Config{Auth: au}
-	a := analyzer.NewBuilder(catalog).Build()
-	e := sqle.New(catalog, a, cfg)
+	a := analyzer.NewBuilder(pro).Build()
+	e := sqle.New(a, cfg)
 
 	RunQuery(t, e, harness, `SELECT i FROM mytable`)
 
@@ -316,8 +315,7 @@ func TestExplode(t *testing.T, harness Harness) {
 
 	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
 
-	catalog := analyzer.NewCatalog(harness.NewDatabaseProvider(db))
-	e := sqle.New(catalog, analyzer.NewDefault(catalog), new(sqle.Config))
+	e := sqle.New(analyzer.NewDefault(harness.NewDatabaseProvider(db)), new(sqle.Config))
 
 	for _, q := range ExplodeQueries {
 		TestQuery(t, harness, e, q.Query, q.Expected, nil, q.Bindings)
@@ -1126,7 +1124,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			"d TIMESTAMP, e VARCHAR(20), f BLOB NOT NULL, "+
 			"b1 BOOL, b2 BOOLEAN NOT NULL, g DATETIME, h CHAR(40))", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		ctx := NewContext(harness)
@@ -1154,7 +1152,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "CREATE TABLE t2 (a INTEGER NOT NULL PRIMARY KEY, "+
 			"b VARCHAR(10) NOT NULL)", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		testTable, ok, err := db.GetTableInsensitive(ctx, "t2")
@@ -1174,7 +1172,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			"b TEXT NOT NULL,"+
 			"c bool, primary key (a,b))", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		testTable, ok, err := db.GetTableInsensitive(ctx, "t3")
@@ -1195,7 +1193,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			"b TEXT NOT NULL COMMENT 'comment',"+
 			"c bool, primary key (a))", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		testTable, ok, err := db.GetTableInsensitive(ctx, "t4")
@@ -1234,7 +1232,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 	t.Run("CREATE LIKE assortment of types without primary key", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t6 LIKE t1", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		testTable, ok, err := db.GetTableInsensitive(ctx, "t6")
@@ -1271,7 +1269,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		TestQuery(t, harness, e, "CREATE TABLE t7 LIKE t7pre", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 		testTable, ok, err := db.GetTableInsensitive(ctx, "t7")
 		require.NoError(t, err)
@@ -1312,7 +1310,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("mydb")
 		TestQuery(t, harness, e, "CREATE TABLE t8 LIKE foo.t8pre", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 		testTable, ok, err := db.GetTableInsensitive(ctx, "t8")
 		require.NoError(t, err)
@@ -1334,7 +1332,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "CREATE TABLE t9a (a INTEGER NOT NULL PRIMARY KEY, "+
 			"b VARCHAR(10) UNIQUE KEY)", []sql.Row(nil), nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		t9Table, ok, err := db.GetTableInsensitive(ctx, "t9")
@@ -1388,7 +1386,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		// Create the table with the data from t10
 		TestQuery(t, harness, e, "CREATE TABLE t10a SELECT * from t10", []sql.Row{sql.Row{sql.OkResult{RowsAffected: 0x2, InsertID: 0x0, Info: fmt.Stringer(nil)}}}, nil, nil)
 
-		db, err := e.Catalog.Database("mydb")
+		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		t10Table, ok, err := db.GetTableInsensitive(ctx, "t10")
@@ -1415,7 +1413,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	ctx := NewContext(harness)
@@ -1454,7 +1452,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	_, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
@@ -1512,7 +1510,7 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", []sql.Row(nil), nil, nil)
@@ -1538,7 +1536,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN i2 INT COMMENT 'hello' default 42", []sql.Row(nil), nil, nil)
@@ -1628,7 +1626,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row(nil), nil, nil)
@@ -1689,7 +1687,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable DROP COLUMN s", []sql.Row(nil), nil, nil)
@@ -1717,7 +1715,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE and create table", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		db, err := e.Catalog.Database("testdb")
+		db, err := e.Analyzer.Catalog.Database("testdb")
 		require.NoError(t, err)
 
 		TestQuery(t, harness, e, "USE testdb", []sql.Row(nil), nil, nil)
@@ -1727,7 +1725,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 		ctx = NewContext(harness)
 		TestQuery(t, harness, e, "CREATE TABLE test (pk int primary key)", []sql.Row(nil), nil, nil)
 
-		db, err = e.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("testdb")
 		require.NoError(t, err)
 
 		_, ok, err := db.GetTableInsensitive(ctx, "test")
@@ -1739,7 +1737,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE IF NOT EXISTS", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE DATABASE IF NOT EXISTS testdb2", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		db, err := e.Catalog.Database("testdb2")
+		db, err := e.Analyzer.Catalog.Database("testdb2")
 		require.NoError(t, err)
 
 		TestQuery(t, harness, e, "USE testdb2", []sql.Row(nil), nil, nil)
@@ -1749,7 +1747,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 		ctx = NewContext(harness)
 		TestQuery(t, harness, e, "CREATE TABLE test (pk int primary key)", []sql.Row(nil), nil, nil)
 
-		db, err = e.Catalog.Database("testdb2")
+		db, err = e.Analyzer.Catalog.Database("testdb2")
 		require.NoError(t, err)
 
 		_, ok, err := db.GetTableInsensitive(ctx, "test")
@@ -1761,7 +1759,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE SCHEMA", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE SCHEMA testdb3", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		db, err := e.Catalog.Database("testdb3")
+		db, err := e.Analyzer.Catalog.Database("testdb3")
 		require.NoError(t, err)
 
 		TestQuery(t, harness, e, "USE testdb3", []sql.Row(nil), nil, nil)
@@ -1771,7 +1769,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 		ctx = NewContext(harness)
 		TestQuery(t, harness, e, "CREATE TABLE test (pk int primary key)", []sql.Row(nil), nil, nil)
 
-		db, err = e.Catalog.Database("testdb3")
+		db, err = e.Analyzer.Catalog.Database("testdb3")
 		require.NoError(t, err)
 
 		_, ok, err := db.GetTableInsensitive(ctx, "test")
@@ -1792,7 +1790,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		_, err := e.Catalog.Database("mydb")
+		_, err := e.Analyzer.Catalog.Database("mydb")
 		require.Error(t, err)
 
 		// TODO: Deal with handling this error.
@@ -1803,7 +1801,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		_, err := e.Catalog.Database("testdb")
+		_, err := e.Analyzer.Catalog.Database("testdb")
 		require.NoError(t, err)
 
 		TestQuery(t, harness, e, "DROP DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
@@ -1814,7 +1812,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		e := NewEngine(t, harness)
 		TestQuery(t, harness, e, "CREATE SCHEMA testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		_, err := e.Catalog.Database("testdb")
+		_, err := e.Analyzer.Catalog.Database("testdb")
 		require.NoError(t, err)
 
 		TestQuery(t, harness, e, "DROP SCHEMA testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
@@ -1832,7 +1830,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
-		_, err := e.Catalog.Database("testdb")
+		_, err := e.Analyzer.Catalog.Database("testdb")
 		require.NoError(t, err)
 
 		TestQueryWithContext(t, ctx, e, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
@@ -1860,7 +1858,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 		")", []sql.Row(nil), nil, nil)
 	TestQuery(t, harness, e, "ALTER TABLE child ADD CONSTRAINT fk4 FOREIGN KEY (D) REFERENCES child(C)", []sql.Row(nil), nil, nil)
 
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	ctx := NewContext(harness)
@@ -1967,7 +1965,7 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 		"ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES child(d) ON UPDATE SET NULL", []sql.Row(nil), nil, nil)
 	TestQuery(t, harness, e, "ALTER TABLE child2 DROP CONSTRAINT fk2", []sql.Row(nil), nil, nil)
 
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	child, ok, err := db.GetTableInsensitive(NewContext(harness), "child2")
@@ -2023,7 +2021,7 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED")
 	RunQuery(t, e, harness, "ALTER TABLE T1 ADD CONSTRAINT chk3 CHECK (B > 1)")
 
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	ctx := NewContext(harness)
@@ -2235,7 +2233,7 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT chk2")
 	RunQuery(t, e, harness, "ALTER TABLE t1 DROP CHECK chk1")
 
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	ctx := NewContext(harness)
@@ -2276,7 +2274,7 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT fk1 FOREIGN KEY (a) REFERENCES t2(b)")
 
-	db, err := e.Catalog.Database("mydb")
+	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
 	ctx := NewContext(harness)
@@ -3176,7 +3174,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
 
-	e.Catalog.RegisterFunction(sql.Function1{
+	e.Analyzer.Catalog.RegisterFunction(sql.Function1{
 		Name: "customfunc",
 		Fn: func(ctx *sql.Context, e1 sql.Expression) sql.Expression {
 			return &customFunc{expression.UnaryExpression{e1}}
@@ -3368,7 +3366,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "SELECT * FROM t28", []sql.Row{{1, 1}, {2, 2}}, nil, nil)
 
 		ctx := NewContext(harness)
-		t28, _, err := e.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
+		t28, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
 		require.NoError(err)
 		sch := t28.Schema()
 		require.Len(sch, 2)
@@ -3565,10 +3563,10 @@ func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
 
 	// TODO: move index driver back out of context, into catalog, make this unnecessary
 	if idh, ok := harness.(IndexDriverHarness); ok {
-		driver := idh.IndexDriver(engine.Catalog.AllDatabases())
+		driver := idh.IndexDriver(engine.Analyzer.Catalog.AllDatabases())
 		if driver != nil {
 			ctx.IndexRegistry.RegisterIndexDriver(driver)
-			ctx.IndexRegistry.LoadIndexes(ctx, engine.Catalog.AllDatabases())
+			ctx.IndexRegistry.LoadIndexes(ctx, engine.Analyzer.Catalog.AllDatabases())
 		}
 	}
 
@@ -3591,13 +3589,13 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 // full harness but want to run your own tests on DBs you create.
 func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
 	databases = append(databases, information_schema.NewInformationSchemaDatabase())
-	catalog := analyzer.NewCatalog(harness.NewDatabaseProvider(databases...))
+	provider := harness.NewDatabaseProvider(databases...)
 
 	var a *analyzer.Analyzer
 	if harness.Parallelism() > 1 {
-		a = analyzer.NewBuilder(catalog).WithParallelism(harness.Parallelism()).Build()
+		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
 	} else {
-		a = analyzer.NewDefault(catalog)
+		a = analyzer.NewDefault(provider)
 	}
 
 	idxReg := sql.NewIndexRegistry()
@@ -3605,7 +3603,7 @@ func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, d
 		idxReg.RegisterIndexDriver(driver)
 	}
 
-	engine := sqle.New(catalog, a, new(sqle.Config))
+	engine := sqle.New(a, new(sqle.Config))
 	return engine
 }
 

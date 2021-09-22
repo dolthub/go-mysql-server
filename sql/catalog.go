@@ -27,6 +27,7 @@ type Catalog interface {
 
 	LockTable(ctx *Context, table string)
 
+	// TODO: move unlock out of here
 	UnlockTables(ctx *Context, id uint32) error
 
 	Table(ctx *Context, dbName, tableName string) (Table, Database, error)

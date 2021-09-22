@@ -41,12 +41,11 @@ func TestResolveViews(t *testing.T) {
 	view := sql.NewView("myview", viewDefinition, "select i from mytable")
 
 	db := memory.NewDatabase("mydb")
-	catalog := NewCatalog(sql.NewDatabaseProvider(db))
 	viewReg := sql.NewViewRegistry()
 	err := viewReg.Register(db.Name(), view)
 	require.NoError(err)
 
-	a := NewBuilder(catalog).AddPostAnalyzeRule(f.Name, f.Apply).Build()
+	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
 	// AS OF expressions on a view should be pushed down to unresolved tables

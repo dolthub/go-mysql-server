@@ -38,7 +38,6 @@ type Config struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Catalog     sql.Catalog
 	Analyzer    *analyzer.Analyzer
 	Auth        auth.Auth
 	LS          *sql.LockSubsystem
@@ -53,8 +52,7 @@ type ColumnWithRawDefault struct {
 
 // New creates a new Engine with custom configuration. To create an Engine with
 // the default settings use `NewDefault`.
-// TODO: don't take a catalog here, create one from provider
-func New(c sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
+func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	var versionPostfix string
 	if cfg != nil {
 		versionPostfix = cfg.VersionPostfix
@@ -62,12 +60,12 @@ func New(c sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	c.RegisterFunction(
+	a.Catalog.RegisterFunction(
 		sql.FunctionN{
 			Name: "version",
 			Fn:   function.NewVersion(versionPostfix),
 		})
-	c.RegisterFunction(function.GetLockingFuncs(ls)...)
+	a.Catalog.RegisterFunction(function.GetLockingFuncs(ls)...)
 
 	// use auth.None if auth is not specified
 	var au auth.Auth
@@ -78,7 +76,6 @@ func New(c sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 	}
 
 	return &Engine{
-		Catalog:       c,
 		Analyzer:      a,
 		MemoryManager: sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:   NewProcessList(),
@@ -89,10 +86,8 @@ func New(c sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
-	c := analyzer.NewCatalog(pro)
-	a := analyzer.NewDefault(c)
-
-	return New(c, a, nil)
+	a := analyzer.NewDefault(pro)
+	return New(a, nil)
 }
 
 // AnalyzeQuery analyzes a query and returns its Schema.
@@ -210,7 +205,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
-			database, err := e.Catalog.Database(transactionDatabase)
+			database, err := e.Analyzer.Catalog.Database(transactionDatabase)
 			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
 			if sql.ErrDatabaseNotFound.Is(err) {
 				return "", nil

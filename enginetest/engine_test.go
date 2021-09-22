@@ -95,10 +95,9 @@ func TestLocks(t *testing.T) {
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
 	pro := sql.NewDatabaseProvider(db)
-	catalog := analyzer.NewCatalog(pro)
 
-	analyzer := analyzer.NewDefault(catalog)
-	engine := sqle.New(catalog, analyzer, new(sqle.Config))
+	analyzer := analyzer.NewDefault(pro)
+	engine := sqle.New(analyzer, new(sqle.Config))
 
 	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
 	_, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
@@ -238,8 +237,8 @@ b (2/6 partitions)
 // TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
 func TestTrackProcess(t *testing.T) {
 	require := require.New(t)
-	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider())
-	a := analyzer.NewDefault(catalog)
+	provider := sql.NewDatabaseProvider()
+	a := analyzer.NewDefault(provider)
 
 	node := plan.NewInnerJoin(
 		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", nil, 2)}, nil, nil),
@@ -327,7 +326,7 @@ func TestAnalyzer(t *testing.T) {
 			name:  "show tables as of",
 			query: "SHOW TABLES AS OF 'abc123'",
 			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Catalog.Database("mydb")
+				db, err := engine.Analyzer.Catalog.Database("mydb")
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
 			},
@@ -336,7 +335,7 @@ func TestAnalyzer(t *testing.T) {
 			name:  "show tables as of, from",
 			query: "SHOW TABLES FROM foo AS OF 'abc123'",
 			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Catalog.Database("foo")
+				db, err := engine.Analyzer.Catalog.Database("foo")
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
 			},
@@ -345,7 +344,7 @@ func TestAnalyzer(t *testing.T) {
 			name:  "show tables as of, function call",
 			query: "SHOW TABLES FROM foo AS OF GREATEST('abc123', 'cde456')",
 			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Catalog.Database("foo")
+				db, err := engine.Analyzer.Catalog.Database("foo")
 				require.NoError(t, err)
 				greatest, err := function.NewGreatest(
 					sql.NewEmptyContext(),
@@ -360,7 +359,7 @@ func TestAnalyzer(t *testing.T) {
 			name:  "show tables as of, timestamp",
 			query: "SHOW TABLES FROM foo AS OF TIMESTAMP('20200101:120000Z')",
 			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Catalog.Database("foo")
+				db, err := engine.Analyzer.Catalog.Database("foo")
 				require.NoError(t, err)
 				timestamp, err := function.NewTimestamp(
 					sql.NewEmptyContext(),
