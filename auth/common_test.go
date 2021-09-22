@@ -44,7 +44,7 @@ func authEngine(au auth.Auth) (*sqle.Engine, *sql.IndexRegistry, error) {
 	db.AddTable(tblName, table)
 
 	pro := memory.NewMemoryDBProvider(db)
-	catalog := sql.NewCatalog(pro)
+	catalog := analyzer.NewCatalog(pro)
 	idxReg := sql.NewIndexRegistry()
 
 	a := analyzer.NewBuilder(catalog).Build()
