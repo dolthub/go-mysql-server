@@ -78,12 +78,12 @@ func New(c sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 	}
 
 	return &Engine{
-		Catalog: c,
-		Analyzer: a,
-		MemoryManager:    sql.NewMemoryManager(sql.ProcessMemory),
-		ProcessList:      NewProcessList(),
-		Auth: au,
-		LS: ls,
+		Catalog:       c,
+		Analyzer:      a,
+		MemoryManager: sql.NewMemoryManager(sql.ProcessMemory),
+		ProcessList:   NewProcessList(),
+		Auth:          au,
+		LS:            ls,
 	}
 }
 

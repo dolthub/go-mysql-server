@@ -38,12 +38,12 @@ func TestProcessList(t *testing.T) {
 	p.AddTableProgress(ctx.Pid(), "a", 5)
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
-	expectedProcess := &Process{
+	expectedProcess := &sql.Process{
 		Pid:        1,
 		Connection: 1,
-		Progress: map[string]TableProgress{
-			"a": {Progress{Name: "a", Done: 0, Total: 5}, map[string]PartitionProgress{}},
-			"b": {Progress{Name: "b", Done: 0, Total: 6}, map[string]PartitionProgress{}},
+		Progress: map[string]sql.TableProgress{
+			"a": {sql.Progress{Name: "a", Done: 0, Total: 5}, map[string]sql.PartitionProgress{}},
+			"b": {sql.Progress{Name: "b", Done: 0, Total: 6}, map[string]sql.PartitionProgress{}},
 		},
 		User:      "foo",
 		Query:     "SELECT foo",
@@ -61,11 +61,11 @@ func TestProcessList(t *testing.T) {
 
 	p.RemovePartitionProgress(ctx.Pid(), "b", "b-3")
 
-	expectedProgress := map[string]TableProgress{
-		"a": {Progress{Name: "a", Total: 5}, map[string]PartitionProgress{}},
-		"b": {Progress{Name: "b", Total: 6}, map[string]PartitionProgress{
-			"b-1": {Progress{Name: "b-1", Done: 0, Total: -1}},
-			"b-2": {Progress{Name: "b-2", Done: 1, Total: -1}},
+	expectedProgress := map[string]sql.TableProgress{
+		"a": {sql.Progress{Name: "a", Total: 5}, map[string]sql.PartitionProgress{}},
+		"b": {sql.Progress{Name: "b", Total: 6}, map[string]sql.PartitionProgress{
+			"b-1": {sql.Progress{Name: "b-1", Done: 0, Total: -1}},
+			"b-2": {sql.Progress{Name: "b-2", Done: 1, Total: -1}},
 		}},
 	}
 	require.Equal(expectedProgress, p.procs[ctx.Pid()].Progress)
@@ -88,7 +88,7 @@ func TestProcessList(t *testing.T) {
 	require.Equal(int64(2), p.procs[1].Progress["b"].Done)
 	require.Equal(int64(1), p.procs[2].Progress["foo"].Done)
 
-	var expected []Process
+	var expected []sql.Process
 	for _, p := range p.procs {
 		np := *p
 		np.Kill = nil
@@ -111,7 +111,7 @@ func TestProcessList(t *testing.T) {
 	require.True(ok)
 }
 
-func sortByPid(slice []Process) {
+func sortByPid(slice []sql.Process) {
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i].Pid < slice[j].Pid
 	})

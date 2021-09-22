@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -41,7 +42,7 @@ func TestDeleteIndex(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -85,7 +86,7 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -131,7 +132,7 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),

@@ -17,6 +17,7 @@ package plan
 import (
 	"testing"
 
+	"github.com/dolthub/go-mysql-server/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -34,7 +35,7 @@ func TestShowTableStatus(t *testing.T) {
 	db2.AddTable("t3", memory.NewTable("t3", nil))
 	db2.AddTable("t4", memory.NewTable("t4", nil))
 
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db1, db2))
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db1, db2))
 
 	node := NewShowTableStatus(db1)
 	node.Catalog = catalog

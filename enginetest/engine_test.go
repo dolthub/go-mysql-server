@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
@@ -179,6 +180,144 @@ type analyzerTestCase struct {
 	query         string
 	planGenerator func(*testing.T, *sqle.Engine) sql.Node
 	err           *errors.Kind
+}
+
+// TODO: this was a plan node test, but we don't have a mock process list for it to use, so it has to be here
+func TestShowProcessList(t *testing.T) {
+	require := require.New(t)
+
+	addr := "127.0.0.1:34567"
+
+	n := plan.NewShowProcessList()
+	p := sqle.NewProcessList()
+	sess := sql.NewSession("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
+
+	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	require.NoError(err)
+
+	p.AddTableProgress(ctx.Pid(), "a", 5)
+	p.AddTableProgress(ctx.Pid(), "b", 6)
+
+	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
+	ctx, err = p.AddProcess(ctx, "SELECT bar")
+	require.NoError(err)
+
+	p.AddTableProgress(ctx.Pid(), "foo", 2)
+
+	p.UpdateTableProgress(1, "a", 3)
+	p.UpdateTableProgress(1, "a", 1)
+	p.UpdatePartitionProgress(1, "a", "a-1", 7)
+	p.UpdatePartitionProgress(1, "a", "a-2", 9)
+	p.UpdateTableProgress(1, "b", 2)
+	p.UpdateTableProgress(2, "foo", 1)
+
+	n.ProcessList = p
+	n.Database = "foo"
+
+	iter, err := n.RowIter(ctx, nil)
+	require.NoError(err)
+	rows, err := sql.RowIterToRows(ctx, iter)
+	require.NoError(err)
+
+	expected := []sql.Row{
+		{int64(1), "foo", addr, "foo", "Query", int64(0),
+			`
+a (4/5 partitions)
+ ├─ a-1 (7/? rows)
+ └─ a-2 (9/? rows)
+
+b (2/6 partitions)
+`, "SELECT foo"},
+		{int64(1), "foo", addr, "foo", "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
+	}
+
+	require.ElementsMatch(expected, rows)
+}
+
+// TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
+func TestTrackProcess(t *testing.T) {
+	require := require.New(t)
+	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider())
+	a := analyzer.NewDefault(catalog)
+
+	node := plan.NewInnerJoin(
+		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", nil, 2)}, nil, nil),
+		plan.NewResolvedTable(memory.NewPartitionedTable("bar", nil, 4), nil, nil),
+		expression.NewLiteral(int64(1), sql.Int64),
+	)
+
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(sqle.NewProcessList()))
+	ctx, err := ctx.ProcessList.AddProcess(ctx, "SELECT foo")
+	require.NoError(err)
+
+	rule := getRuleFrom(analyzer.OnceAfterAll, "track_process")
+	result, err := rule.Apply(ctx, a, node, nil)
+	require.NoError(err)
+
+	processes := ctx.ProcessList.Processes()
+	require.Len(processes, 1)
+	require.Equal("SELECT foo", processes[0].Query)
+	require.Equal(
+		map[string]sql.TableProgress{
+			"foo": sql.TableProgress{
+				Progress:           sql.Progress{Name: "foo", Done: 0, Total: 2},
+				PartitionsProgress: map[string]sql.PartitionProgress{}},
+			"bar": sql.TableProgress{
+				Progress:           sql.Progress{Name: "bar", Done: 0, Total: 4},
+				PartitionsProgress: map[string]sql.PartitionProgress{}},
+		},
+		processes[0].Progress)
+
+	proc, ok := result.(*plan.QueryProcess)
+	require.True(ok)
+
+	join, ok := proc.Child.(*plan.InnerJoin)
+	require.True(ok)
+
+	lhs, ok := join.Left().(*plan.ResolvedTable)
+	require.True(ok)
+	_, ok = lhs.Table.(*plan.ProcessTable)
+	require.True(ok)
+
+	rhs, ok := join.Right().(*plan.ResolvedTable)
+	require.True(ok)
+	_, ok = rhs.Table.(*plan.ProcessIndexableTable)
+	require.True(ok)
+
+	iter, err := proc.RowIter(ctx, nil)
+	require.NoError(err)
+	_, err = sql.RowIterToRows(ctx, iter)
+	require.NoError(err)
+
+	require.Len(ctx.ProcessList.Processes(), 0)
+
+	select {
+	case <-ctx.Done():
+	case <-time.After(5 * time.Millisecond):
+		t.Errorf("expecting context to be cancelled")
+	}
+}
+
+func getRuleFrom(rules []analyzer.Rule, name string) *analyzer.Rule {
+	for _, rule := range rules {
+		if rule.Name == name {
+			return &rule
+		}
+	}
+
+	return nil
+}
+
+// wrapper around sql.Table to make it not indexable
+type nonIndexableTable struct {
+	sql.Table
+}
+
+var _ sql.PartitionCounter = (*nonIndexableTable)(nil)
+
+func (t *nonIndexableTable) PartitionCount(ctx *sql.Context) (int64, error) {
+	return t.Table.(sql.PartitionCounter).PartitionCount(ctx)
 }
 
 // Grab bag tests for testing analysis of various nodes that are difficult to verify through other means

@@ -22,10 +22,7 @@ import (
 
 type ProcessList interface {
 	Processes() []Process
-	AddProcess(
-			ctx *Context,
-			query string,
-	) (*Context, error)
+	AddProcess(ctx *Context, query string) (*Context, error)
 	Kill(connID uint32)
 	Done(pid uint64)
 	UpdateTableProgress(pid uint64, name string, delta int64)
