@@ -7,6 +7,7 @@ import (
 	"github.com/dolthub/go-mysql-server/driver"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
@@ -17,10 +18,10 @@ type memTable struct {
 	Records      Records
 
 	once    sync.Once
-	catalog *sql.Catalog
+	catalog sql.Catalog
 }
 
-func (f *memTable) Resolve(name string, _ *driver.Options) (string, *sql.Catalog, error) {
+func (f *memTable) Resolve(name string, _ *driver.Options) (string, sql.Catalog, error) {
 	f.once.Do(func() {
 		table := memory.NewTable(f.TableName, f.Schema)
 
@@ -37,7 +38,7 @@ func (f *memTable) Resolve(name string, _ *driver.Options) (string, *sql.Catalog
 		pro := memory.NewMemoryDBProvider(
 			database,
 			information_schema.NewInformationSchemaDatabase())
-		f.catalog = sql.NewCatalog(pro)
+		f.catalog = analyzer.NewCatalog(pro)
 	})
 
 	return name, f.catalog, nil
