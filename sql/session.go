@@ -591,6 +591,11 @@ func NewContext(
 	if c.Memory == nil {
 		c.Memory = NewMemoryManager(ProcessMemory)
 	}
+
+	if c.ProcessList == nil {
+		c.ProcessList = EmptyProcessList{}
+	}
+
 	return c
 }
 
@@ -629,36 +634,21 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	return span, &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
-	}
+	nc := *c
+	nc.Context = ctx
+
+	return span, &nc
 }
 
 // NewSubContext creates a new sub-context with the current context as parent. Returns the resulting context.CancelFunc
 // as well as the new *sql.Context, which be used to cancel the new context before the parent is finished.
 func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(c.Context)
-	return &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
-	}, cancelFunc
+
+	nc := *c
+	nc.Context = ctx
+
+	return &nc, cancelFunc
 }
 
 func (c *Context) WithCurrentDB(db string) *Context {
@@ -668,18 +658,9 @@ func (c *Context) WithCurrentDB(db string) *Context {
 
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
-	return &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
-	}
+	nc := *c
+	nc.Context = ctx
+	return &nc
 }
 
 // RootSpan returns the root span, if any.
