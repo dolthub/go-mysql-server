@@ -545,6 +545,12 @@ func WithRootSpan(s opentracing.Span) ContextOption {
 	}
 }
 
+func WithProcessList(p ProcessList) ContextOption {
+	return func(ctx *Context) {
+		ctx.ProcessList = p
+	}
+}
+
 var ctxNowFunc = time.Now
 var ctxNowFuncMutex = &sync.Mutex{}
 
