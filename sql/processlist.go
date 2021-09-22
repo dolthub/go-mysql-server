@@ -76,7 +76,7 @@ type TableProgress struct {
 	PartitionsProgress map[string]PartitionProgress
 }
 
-func newTableProgress(name string, total int64) TableProgress {
+func NewTableProgress(name string, total int64) TableProgress {
 	return TableProgress{
 		Progress: Progress{
 			Name:  name,

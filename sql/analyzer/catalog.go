@@ -25,10 +25,6 @@ import (
 )
 
 type CatalogImpl struct {
-	// TODO: move these out of the catalog
-	*sql.ProcessList
-	*sql.MemoryManager
-
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
 	mu               sync.RWMutex
@@ -44,8 +40,6 @@ type sessionLocks map[uint32]dbLocks
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
 	return &CatalogImpl{
-		MemoryManager:    sql.NewMemoryManager(sql.ProcessMemory),
-		ProcessList:      sql.NewProcessList(),
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),

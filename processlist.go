@@ -39,65 +39,17 @@ func (p Progress) totalString() string {
 	return total
 }
 
-// TableProgress keeps track of a table progress, and for each of its partitions
-type TableProgress struct {
-	Progress
-	PartitionsProgress map[string]PartitionProgress
-}
-
-func NewTableProgress(name string, total int64) TableProgress {
-	return TableProgress{
-		Progress: Progress{
-			Name:  name,
-			Total: total,
-		},
-		PartitionsProgress: make(map[string]PartitionProgress),
-	}
-}
-
-func (p TableProgress) String() string {
-	return fmt.Sprintf("%s (%d/%s partitions)", p.Name, p.Done, p.totalString())
-}
-
-// PartitionProgress keeps track of a partition progress
-type PartitionProgress struct {
-	Progress
-}
-
-func (p PartitionProgress) String() string {
-	return fmt.Sprintf("%s (%d/%s rows)", p.Name, p.Done, p.totalString())
-}
-
-// Process represents a process in the SQL server.
-type Process struct {
-	Pid        uint64
-	Connection uint32
-	User       string
-	Query      string
-	Progress   map[string]TableProgress
-	StartedAt  time.Time
-	Kill       context.CancelFunc
-}
-
-// Done needs to be called when this process has finished.
-func (p *Process) Done() { p.Kill() }
-
-// Seconds returns the number of seconds this process has been running.
-func (p *Process) Seconds() uint64 {
-	return uint64(time.Since(p.StartedAt) / time.Second)
-}
-
 // ProcessList is a structure that keeps track of all the processes and their
 // status.
 type ProcessList struct {
 	mu    sync.RWMutex
-	procs map[uint64]*Process
+	procs map[uint64]*sql.Process
 }
 
 // NewProcessList creates a new process list.
 func NewProcessList() *ProcessList {
 	return &ProcessList{
-		procs: make(map[uint64]*Process),
+		procs: make(map[uint64]*sql.Process),
 	}
 }
 
@@ -120,11 +72,11 @@ func (pl *ProcessList) AddProcess(
 	newCtx, cancel := context.WithCancel(ctx)
 	ctx = ctx.WithContext(newCtx)
 
-	pl.procs[ctx.Pid()] = &Process{
+	pl.procs[ctx.Pid()] = &sql.Process{
 		Pid:        ctx.Pid(),
 		Connection: ctx.ID(),
 		Query:      query,
-		Progress:   make(map[string]TableProgress),
+		Progress:   make(map[string]sql.TableProgress),
 		User:       ctx.Session.Client().User,
 		StartedAt:  time.Now(),
 		Kill:       cancel,
@@ -146,7 +98,7 @@ func (pl *ProcessList) UpdateTableProgress(pid uint64, name string, delta int64)
 
 	progress, ok := p.Progress[name]
 	if !ok {
-		progress = NewTableProgress(name, -1)
+		progress = sql.NewTableProgress(name, -1)
 	}
 
 	progress.Done += delta
@@ -171,7 +123,7 @@ func (pl *ProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionN
 
 	partitionPg, ok := tablePg.PartitionsProgress[partitionName]
 	if !ok {
-		partitionPg = PartitionProgress{Progress: Progress{Name: partitionName, Total: -1}}
+		partitionPg = sql.PartitionProgress{Progress: sql.Progress{Name: partitionName, Total: -1}}
 	}
 
 	partitionPg.Done += delta
@@ -193,7 +145,7 @@ func (pl *ProcessList) AddTableProgress(pid uint64, name string, total int64) {
 		pg.Total = total
 		p.Progress[name] = pg
 	} else {
-		p.Progress[name] = NewTableProgress(name, total)
+		p.Progress[name] = sql.NewTableProgress(name, total)
 	}
 }
 
@@ -218,7 +170,7 @@ func (pl *ProcessList) AddPartitionProgress(pid uint64, tableName, partitionName
 		tablePg.PartitionsProgress[partitionName] = pg
 	} else {
 		tablePg.PartitionsProgress[partitionName] =
-				PartitionProgress{Progress: Progress{Name: partitionName, Total: total}}
+				sql.PartitionProgress{Progress: sql.Progress{Name: partitionName, Total: total}}
 	}
 }
 
@@ -283,14 +235,14 @@ func (pl *ProcessList) Done(pid uint64) {
 }
 
 // Processes returns the list of current running processes.
-func (pl *ProcessList) Processes() []Process {
+func (pl *ProcessList) Processes() []sql.Process {
 	pl.mu.RLock()
 	defer pl.mu.RUnlock()
-	var result = make([]Process, 0, len(pl.procs))
+	var result = make([]sql.Process, 0, len(pl.procs))
 
 	for _, proc := range pl.procs {
 		p := *proc
-		var progress = make(map[string]TableProgress, len(p.Progress))
+		var progress = make(map[string]sql.TableProgress, len(p.Progress))
 		for n, p := range p.Progress {
 			progress[n] = p
 		}

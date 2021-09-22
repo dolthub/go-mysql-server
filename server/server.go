@@ -88,7 +88,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 			sb,
 			tracer,
 			e.Catalog.HasDB,
-			e.Catalog.MemoryManager,
+			e.MemoryManager,
 			cfg.Address),
 		cfg.ConnReadTimeout)
 	a := cfg.Auth.Mysql()

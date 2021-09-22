@@ -38,10 +38,12 @@ type Config struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Catalog  sql.Catalog
-	Analyzer *analyzer.Analyzer
-	Auth     auth.Auth
-	LS       *sql.LockSubsystem
+	Catalog     sql.Catalog
+	Analyzer    *analyzer.Analyzer
+	Auth        auth.Auth
+	LS          *sql.LockSubsystem
+	ProcessList sql.ProcessList
+	MemoryManager *sql.MemoryManager
 }
 
 type ColumnWithRawDefault struct {
@@ -75,7 +77,14 @@ func New(c sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 		au = cfg.Auth
 	}
 
-	return &Engine{c, a, au, ls}
+	return &Engine{
+		Catalog: c,
+		Analyzer: a,
+		MemoryManager:    sql.NewMemoryManager(sql.ProcessMemory),
+		ProcessList:      NewProcessList(),
+		Auth: au,
+		LS: ls,
+	}
 }
 
 // NewDefault creates a new default Engine.

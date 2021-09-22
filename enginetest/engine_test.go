@@ -94,7 +94,7 @@ func TestLocks(t *testing.T) {
 	db.AddTable("t2", t2)
 	db.AddTable("t3", t3)
 	pro := sql.NewDatabaseProvider(db)
-	catalog := sql.NewCatalog(pro)
+	catalog := analyzer.NewCatalog(pro)
 
 	analyzer := analyzer.NewDefault(catalog)
 	engine := sqle.New(catalog, analyzer, new(sqle.Config))

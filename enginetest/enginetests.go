@@ -3591,7 +3591,7 @@ func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 // full harness but want to run your own tests on DBs you create.
 func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
 	databases = append(databases, information_schema.NewInformationSchemaDatabase())
-	catalog := sql.NewCatalog(harness.NewDatabaseProvider(databases...))
+	catalog := analyzer.NewCatalog(harness.NewDatabaseProvider(databases...))
 
 	var a *analyzer.Analyzer
 	if harness.Parallelism() > 1 {

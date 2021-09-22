@@ -30,7 +30,6 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, nil
 	}
 
-	// TODO: get this from the runtime
 	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})

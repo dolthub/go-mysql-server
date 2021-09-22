@@ -112,7 +112,7 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	h.sm.CloseConn(c)
 
 	// If connection was closed, kill its associated queries.
-	h.e.Catalog.ProcessList.Kill(c.ConnectionID)
+	ctx.ProcessList.Kill(c.ConnectionID)
 	if err := h.e.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}

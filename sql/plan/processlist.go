@@ -59,7 +59,7 @@ var processListSchema = sql.Schema{
 // ShowProcessList shows a list of all current running processes.
 type ShowProcessList struct {
 	Database string
-	*sql.ProcessList
+	sql.ProcessList
 }
 
 // NewShowProcessList creates a new ProcessList node.
