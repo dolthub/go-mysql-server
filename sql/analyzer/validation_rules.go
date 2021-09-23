@@ -474,7 +474,7 @@ func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 
 func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	// Validate that the number of columns in an operand or a top level
-	// expression are as expected. The currently rules are:
+	// expression are as expected. The current rules are:
 	// * Every top level expression of a node must have 1 column.
 	// * The following expression nodes are allowed to have `n` columns as
 	// long as `n` matches:
@@ -484,6 +484,8 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	// columns of the expression on the left.
 	// * Every other expression with operands must have NumColumns == 1.
 
+	// We do not use plan.InspectExpressions here because we're treating
+	// top-level expressions of sql.Node differently from subexpressions.
 	var err error
 	plan.Inspect(n, func(n sql.Node) bool {
 		if n == nil {
