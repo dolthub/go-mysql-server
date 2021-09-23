@@ -18,8 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestCatalogLockTable(t *testing.T) {

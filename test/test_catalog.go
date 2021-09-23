@@ -19,7 +19,7 @@ import (
 )
 
 type Catalog struct {
-	provider         sql.DatabaseProvider
+	provider sql.DatabaseProvider
 }
 
 type tableLocks map[string]struct{}
@@ -29,7 +29,7 @@ type sessionLocks map[uint32]dbLocks
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
 	return &Catalog{
-		provider:         provider,
+		provider: provider,
 	}
 }
 

@@ -19,13 +19,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/test"
 )
 
 func TestDeleteIndex(t *testing.T) {

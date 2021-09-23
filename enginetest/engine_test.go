@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/test"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +35,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/test"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They

@@ -97,7 +97,7 @@ func (p PartitionProgress) String() string {
 }
 
 // EmptyProcessList is a no-op implementation of ProcessList suitable for use in tests that don't require a process list
-type EmptyProcessList struct {}
+type EmptyProcessList struct{}
 
 func (e EmptyProcessList) Processes() []Process {
 	return nil
@@ -107,11 +107,13 @@ func (e EmptyProcessList) AddProcess(ctx *Context, query string) (*Context, erro
 	return ctx, nil
 }
 
-func (e EmptyProcessList) Kill(connID uint32) {}
-func (e EmptyProcessList) Done(pid uint64) {}
+func (e EmptyProcessList) Kill(connID uint32)                                       {}
+func (e EmptyProcessList) Done(pid uint64)                                          {}
 func (e EmptyProcessList) UpdateTableProgress(pid uint64, name string, delta int64) {}
-func (e EmptyProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64) {}
+func (e EmptyProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64) {
+}
 func (e EmptyProcessList) AddTableProgress(pid uint64, name string, total int64) {}
-func (e EmptyProcessList) AddPartitionProgress(pid uint64, tableName, partitionName string, total int64) {}
-func (e EmptyProcessList) RemoveTableProgress(pid uint64, name string) {}
+func (e EmptyProcessList) AddPartitionProgress(pid uint64, tableName, partitionName string, total int64) {
+}
+func (e EmptyProcessList) RemoveTableProgress(pid uint64, name string)                         {}
 func (e EmptyProcessList) RemovePartitionProgress(pid uint64, tableName, partitionName string) {}

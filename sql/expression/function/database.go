@@ -19,7 +19,7 @@ import (
 )
 
 // Database implements the DATABASE() function
-type Database struct {}
+type Database struct{}
 
 var _ sql.FunctionExpression = (*Database)(nil)
 

@@ -16,7 +16,7 @@ type memTable struct {
 	Schema       sql.Schema
 	Records      Records
 
-	once    sync.Once
+	once       sync.Once
 	dbProvider sql.DatabaseProvider
 }
 

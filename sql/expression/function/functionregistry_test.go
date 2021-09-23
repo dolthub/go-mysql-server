@@ -17,11 +17,11 @@ package function_test
 import (
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 func TestFunctionRegistry(t *testing.T) {
@@ -32,7 +32,7 @@ func TestFunctionRegistry(t *testing.T) {
 	var expected sql.Expression = expression.NewStar()
 	reg.Register(sql.Function1{
 		Name: name,
-		Fn:    func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected },
+		Fn:   func(ctx *sql.Context, arg sql.Expression) sql.Expression { return expected },
 	})
 
 	f, err := reg.Function(name)

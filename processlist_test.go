@@ -19,8 +19,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestProcessList(t *testing.T) {

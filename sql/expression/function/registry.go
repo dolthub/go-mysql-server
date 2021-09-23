@@ -17,11 +17,12 @@ package function
 import (
 	"math"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered

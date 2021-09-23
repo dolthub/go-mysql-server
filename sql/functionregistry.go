@@ -38,12 +38,12 @@ type (
 	// Function0 is a function with 0 arguments.
 	Function0 struct {
 		Name string
-		Fn    CreateFunc0Args
+		Fn   CreateFunc0Args
 	}
 	// Function1 is a function with 1 argument.
 	Function1 struct {
 		Name string
-		Fn    CreateFunc1Args
+		Fn   CreateFunc1Args
 	}
 	// Function2 is a function with 2 arguments.
 	Function2 struct {
@@ -97,7 +97,7 @@ var _ Function = FunctionN{}
 func NewFunction0(name string, fn func(ctx *Context) Expression) Function0 {
 	return Function0{
 		Name: name,
-		Fn:    fn,
+		Fn:   fn,
 	}
 }
 
@@ -188,4 +188,3 @@ func (Function5) isFunction() {}
 func (Function6) isFunction() {}
 func (Function7) isFunction() {}
 func (FunctionN) isFunction() {}
-

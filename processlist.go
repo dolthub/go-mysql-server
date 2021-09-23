@@ -20,8 +20,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/sirupsen/logrus"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Progress between done items and total items.
@@ -59,8 +60,8 @@ func NewProcessList() *ProcessList {
 // It returns a new context that should be passed around from now on. That
 // context will be cancelled if the process is killed.
 func (pl *ProcessList) AddProcess(
-		ctx *sql.Context,
-		query string,
+	ctx *sql.Context,
+	query string,
 ) (*sql.Context, error) {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
@@ -170,7 +171,7 @@ func (pl *ProcessList) AddPartitionProgress(pid uint64, tableName, partitionName
 		tablePg.PartitionsProgress[partitionName] = pg
 	} else {
 		tablePg.PartitionsProgress[partitionName] =
-				sql.PartitionProgress{Progress: sql.Progress{Name: partitionName, Total: total}}
+			sql.PartitionProgress{Progress: sql.Progress{Name: partitionName, Total: total}}
 	}
 }
 

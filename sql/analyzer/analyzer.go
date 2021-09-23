@@ -61,7 +61,7 @@ type Builder struct {
 // This builder allow us add custom Rules and modify some internal properties.
 func NewBuilder(pro sql.DatabaseProvider) *Builder {
 	return &Builder{
-		provider: pro,
+		provider:        pro,
 		onceBeforeRules: OnceBeforeDefault,
 		defaultRules:    DefaultRules,
 		onceAfterRules:  OnceAfterDefault,

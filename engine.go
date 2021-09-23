@@ -38,10 +38,10 @@ type Config struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Analyzer    *analyzer.Analyzer
-	Auth        auth.Auth
-	LS          *sql.LockSubsystem
-	ProcessList sql.ProcessList
+	Analyzer      *analyzer.Analyzer
+	Auth          auth.Auth
+	LS            *sql.LockSubsystem
+	ProcessList   sql.ProcessList
 	MemoryManager *sql.MemoryManager
 }
 

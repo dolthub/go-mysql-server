@@ -44,17 +44,17 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
-	addr      string
-	tracer    opentracing.Tracer
-	hasDBFunc func(name string) bool
-	memory    *sql.MemoryManager
+	addr        string
+	tracer      opentracing.Tracer
+	hasDBFunc   func(name string) bool
+	memory      *sql.MemoryManager
 	processlist sql.ProcessList
-	mu        *sync.Mutex
-	builder   SessionBuilder
-	sessions  map[uint32]sql.Session
-	idxRegs   map[uint32]*sql.IndexRegistry
-	viewRegs  map[uint32]*sql.ViewRegistry
-	pid       uint64
+	mu          *sync.Mutex
+	builder     SessionBuilder
+	sessions    map[uint32]sql.Session
+	idxRegs     map[uint32]*sql.IndexRegistry
+	viewRegs    map[uint32]*sql.ViewRegistry
+	pid         uint64
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.

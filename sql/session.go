@@ -478,14 +478,14 @@ type Context struct {
 	Session
 	*IndexRegistry
 	*ViewRegistry
-	Memory    *MemoryManager
+	Memory *MemoryManager
 	// TODO: fill in
 	ProcessList ProcessList
-	pid       uint64
-	query     string
-	queryTime time.Time
-	tracer    opentracing.Tracer
-	rootSpan  opentracing.Span
+	pid         uint64
+	query       string
+	queryTime   time.Time
+	tracer      opentracing.Tracer
+	rootSpan    opentracing.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -577,10 +577,10 @@ func NewContext(
 	opts ...ContextOption,
 ) *Context {
 	c := &Context{
-		Context: ctx,
-		Session: NewBaseSession(),
+		Context:   ctx,
+		Session:   NewBaseSession(),
 		queryTime: ctxNowFunc(),
-		tracer: opentracing.NoopTracer{},
+		tracer:    opentracing.NoopTracer{},
 	}
 	for _, opt := range opts {
 		opt(c)
