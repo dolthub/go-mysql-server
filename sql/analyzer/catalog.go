@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
-type CatalogImpl struct {
+type Catalog struct {
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
 	mu               sync.RWMutex
@@ -39,7 +39,7 @@ type sessionLocks map[uint32]dbLocks
 
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
-	return &CatalogImpl{
+	return &Catalog{
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
@@ -50,9 +50,9 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
 }
 
-var _ sql.FunctionProvider = (*CatalogImpl)(nil)
+var _ sql.FunctionProvider = (*Catalog)(nil)
 
-func (c *CatalogImpl) AllDatabases() []sql.Database {
+func (c *Catalog) AllDatabases() []sql.Database {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -60,7 +60,7 @@ func (c *CatalogImpl) AllDatabases() []sql.Database {
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
-func (c *CatalogImpl) CreateDatabase(ctx *sql.Context, dbName string) error {
+func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -73,7 +73,7 @@ func (c *CatalogImpl) CreateDatabase(ctx *sql.Context, dbName string) error {
 }
 
 // RemoveDatabase removes a database from the catalog.
-func (c *CatalogImpl) RemoveDatabase(ctx *sql.Context, dbName string) error {
+func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -85,14 +85,14 @@ func (c *CatalogImpl) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	}
 }
 
-func (c *CatalogImpl) HasDB(db string) bool {
+func (c *Catalog) HasDB(db string) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.provider.HasDatabase(db)
 }
 
 // Database returns the database with the given name.
-func (c *CatalogImpl) Database(db string) (sql.Database, error) {
+func (c *Catalog) Database(db string) (sql.Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.provider.Database(db)
@@ -100,7 +100,7 @@ func (c *CatalogImpl) Database(db string) (sql.Database, error) {
 
 // LockTable adds a lock for the given table and session client. It is assumed
 // the database is the current database in use.
-func (c *CatalogImpl) LockTable(ctx *sql.Context, table string) {
+func (c *Catalog) LockTable(ctx *sql.Context, table string) {
 	id := ctx.ID()
 	db := ctx.GetCurrentDatabase()
 
@@ -120,7 +120,7 @@ func (c *CatalogImpl) LockTable(ctx *sql.Context, table string) {
 
 // UnlockTables unlocks all tables for which the given session client has a
 // lock.
-func (c *CatalogImpl) UnlockTables(ctx *sql.Context, id uint32) error {
+func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -154,7 +154,7 @@ func (c *CatalogImpl) UnlockTables(ctx *sql.Context, id uint32) error {
 }
 
 // Table returns the table in the given database with the given name.
-func (c *CatalogImpl) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, sql.Database, error) {
+func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, sql.Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -175,7 +175,7 @@ func (c *CatalogImpl) Table(ctx *sql.Context, dbName, tableName string) (sql.Tab
 
 // TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
 // named must support timed queries.
-func (c *CatalogImpl) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
+func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -202,7 +202,7 @@ func (c *CatalogImpl) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf
 
 // RegisterFunction registers the functions given, adding them to the built-in functions.
 // Integrators with custom functions should typically use the FunctionProvider interface instead.
-func (c *CatalogImpl) RegisterFunction(fns ...sql.Function) {
+func (c *Catalog) RegisterFunction(fns ...sql.Function) {
 	for _, fn := range fns {
 		err := c.builtInFunctions.Register(fn)
 		if err != nil {
@@ -212,7 +212,7 @@ func (c *CatalogImpl) RegisterFunction(fns ...sql.Function) {
 }
 
 // Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
-func (c *CatalogImpl) Function(name string) (sql.Function, error) {
+func (c *Catalog) Function(name string) (sql.Function, error) {
 	if fp, ok := c.provider.(sql.FunctionProvider); ok {
 		f, err := fp.Function(name)
 		if err != nil && !sql.ErrFunctionNotFound.Is(err) {

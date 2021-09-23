@@ -35,7 +35,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/test"
 )
 
 // This file is for tests of the engine that we are very sure do not rely on a particular database implementation. They
@@ -323,7 +322,7 @@ func TestLockTables(t *testing.T) {
 		{plan.NewResolvedTable(t1, nil, nil), true},
 		{plan.NewResolvedTable(t2, nil, nil), false},
 	})
-	node.Catalog = test.NewCatalog(sql.NewDatabaseProvider())
+	node.Catalog = analyzer.NewCatalog(sql.NewDatabaseProvider())
 
 	_, err := node.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
