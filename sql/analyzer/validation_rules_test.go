@@ -365,7 +365,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 	}
 }
 
-func TestValidateProjectTuples(t *testing.T) {
+func TestValidateOperands(t *testing.T) {
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -447,9 +447,22 @@ func TestValidateProjectTuples(t *testing.T) {
 			}, nil, nil),
 			false,
 		},
+		{
+			"validate subquery columns",
+			plan.NewProject([]sql.Expression{
+				plan.NewSubquery(plan.NewProject(
+					[]sql.Expression{
+						lit(1),
+						lit(2),
+					},
+					dummyNode{true},
+				), "select 1, 2"),
+			}, dummyNode{true}),
+			false,
+		},
 	}
 
-	rule := getValidationRule(validateProjectTuplesRule)
+	rule := getValidationRule(validateOperandsRule)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -458,7 +471,7 @@ func TestValidateProjectTuples(t *testing.T) {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrProjectTuple.Is(err))
+				require.True(sql.ErrInvalidOperandColumns.Is(err))
 			}
 		})
 	}
@@ -831,20 +844,6 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	node := plan.NewProject([]sql.Expression{
-		plan.NewSubquery(plan.NewProject(
-			[]sql.Expression{
-				lit(1),
-				lit(2),
-			},
-			dummyNode{true},
-		), "select 1, 2"),
-	}, dummyNode{true})
-
-	_, err := validateSubqueryColumns(ctx, nil, node, nil)
-	require.Error(err)
-	require.True(sql.ErrSubqueryMultipleColumns.Is(err))
-
 	table := memory.NewTable("test", sql.Schema{
 		{Name: "foo", Type: sql.Text},
 	})
@@ -852,6 +851,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		{Name: "bar", Type: sql.Text},
 	})
 
+	var node sql.Node
 	node = plan.NewProject([]sql.Expression{
 		plan.NewSubquery(plan.NewFilter(expression.NewGreaterThan(
 			expression.NewGetField(0, sql.Boolean, "foo", false),
@@ -864,7 +864,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		)), "select bar from subtest where foo > 1"),
 	}, plan.NewResolvedTable(table, nil, nil))
 
-	_, err = validateSubqueryColumns(ctx, nil, node, nil)
+	_, err := validateSubqueryColumns(ctx, nil, node, nil)
 	require.NoError(err)
 
 	node = plan.NewProject([]sql.Expression{
@@ -880,7 +880,8 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	}, plan.NewResolvedTable(table, nil, nil))
 
 	_, err = validateSubqueryColumns(ctx, nil, node, nil)
-	require.NoError(err)
+	require.Error(err)
+	require.True(ErrSubqueryFieldIndex.Is(err))
 
 	node = plan.NewProject([]sql.Expression{
 		plan.NewSubquery(plan.NewProject(

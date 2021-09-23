@@ -71,11 +71,8 @@ func TestNewConcat(t *testing.T) {
 	require.Error(err)
 	require.True(ErrConcatArrayWithOthers.Is(err))
 
-	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateTuple(sql.LongText, sql.LongText)))
-	require.Error(err)
-	require.True(sql.ErrInvalidType.Is(err))
-
-	_, err = NewConcat(expression.NewLiteral(nil, sql.LongText),
+	_, err = NewConcat(
+		expression.NewLiteral(nil, sql.LongText),
 		expression.NewLiteral(nil, sql.Boolean),
 		expression.NewLiteral(nil, sql.Int64),
 		expression.NewLiteral(nil, sql.LongText),

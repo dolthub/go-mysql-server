@@ -609,7 +609,4 @@ var (
 	// ErrUnsupportedInOperand is returned when there is an invalid righthand
 	// operand in an IN operator.
 	ErrUnsupportedInOperand = errors.NewKind("right operand in IN operation must be tuple, but is %T")
-	// ErrInvalidOperandColumns is returned when the columns in the left operand
-	// and the elements of the right operand don't match.
-	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
 )
