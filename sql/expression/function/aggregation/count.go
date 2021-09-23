@@ -45,7 +45,7 @@ func (c *Count) FunctionName() string {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (c *Count) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (c *Count) NewBuffer() (sql.AggregationBuffer, error) {
 	bufferChild, err := expression.Clone(c.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func NewCountDistinct(e sql.Expression) *CountDistinct {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (c *CountDistinct) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (c *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 	return &countDistinctBuffer{make(map[uint64]struct{}), c.Child}, nil
 }
 

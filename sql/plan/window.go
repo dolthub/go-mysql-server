@@ -165,7 +165,7 @@ func (i *windowIter) compute() error {
 
 	var err error
 	for j, expr := range i.selectExprs {
-		i.buffers[j], err = newBuffer(i.ctx, expr)
+		i.buffers[j], err = newBuffer(expr)
 		if err != nil {
 			return err
 		}
@@ -216,12 +216,12 @@ func (i *windowIter) compute() error {
 	return nil
 }
 
-func newBuffer(ctx *sql.Context, expr sql.Expression) (sql.Row, error) {
+func newBuffer(expr sql.Expression) (sql.Row, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		// For now, we tuck the sql.AggregationBuffer into the first
 		// element of the returned row.
-		b, err := n.NewBuffer(ctx)
+		b, err := n.NewBuffer()
 		if err != nil {
 			return nil, err
 		}

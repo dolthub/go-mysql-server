@@ -90,7 +90,7 @@ type NonDeterministicExpression interface {
 type Aggregation interface {
 	Expression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
-	NewBuffer(ctx *Context) (AggregationBuffer, error)
+	NewBuffer() (AggregationBuffer, error)
 }
 
 type AggregationBuffer interface {

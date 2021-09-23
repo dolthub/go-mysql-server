@@ -36,7 +36,7 @@ func TestMin_Eval_Int32(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
-	b, _ := m.NewBuffer(ctx)
+	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(int32(7)))
 	b.Update(ctx, sql.NewRow(int32(2)))
@@ -52,7 +52,7 @@ func TestMin_Eval_Text(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Text, "field", true))
-	b, _ := m.NewBuffer(ctx)
+	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("a"))
 	b.Update(ctx, sql.NewRow("A"))
@@ -68,7 +68,7 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Timestamp, "field", true))
-	b, _ := m.NewBuffer(ctx)
+	b, _ := m.NewBuffer()
 
 	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2006-01-02 15:04:05")
 	someTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2007-01-02 15:04:05")
@@ -88,7 +88,7 @@ func TestMin_Eval_NULL(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
-	b, _ := m.NewBuffer(ctx)
+	b, _ := m.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(nil))
 	b.Update(ctx, sql.NewRow(nil))
@@ -104,7 +104,7 @@ func TestMin_Eval_Empty(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
-	b, _ := m.NewBuffer(ctx)
+	b, _ := m.NewBuffer()
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
@@ -116,7 +116,7 @@ func TestMin_Distinct(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
-	b, _ := m.NewBuffer(ctx)
+	b, _ := m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 
@@ -131,7 +131,7 @@ func TestMin_Distinct(t *testing.T) {
 	assert.Equal(1, v)
 
 	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
-	b, _ = m.NewBuffer(ctx)
+	b, _ = m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 

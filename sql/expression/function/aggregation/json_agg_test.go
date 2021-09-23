@@ -35,7 +35,7 @@ func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	j := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
-	b, _ := j.NewBuffer(ctx)
+	b, _ := j.NewBuffer()
 
 	b.Update(ctx, sql.NewRow(float64(7)))
 	b.Update(ctx, sql.NewRow(float64(2)))
@@ -50,7 +50,7 @@ func TestJsonArrayAgg_Strings(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	j := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
-	b, _ := j.NewBuffer(ctx)
+	b, _ := j.NewBuffer()
 
 	b.Update(ctx, sql.NewRow("hi"))
 	b.Update(ctx, sql.NewRow("hello"))
@@ -65,7 +65,7 @@ func TestJsonArrayAgg_Empty(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	j := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
-	b, _ := j.NewBuffer(ctx)
+	b, _ := j.NewBuffer()
 
 	v, err := b.Eval(ctx)
 	assert.NoError(err)
@@ -77,7 +77,7 @@ func TestJsonArrayAgg_JSON(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	j := NewJSONArrayAgg(expression.NewGetField(0, sql.JSON, "field", true))
-	b, _ := j.NewBuffer(ctx)
+	b, _ := j.NewBuffer()
 	b.Update(ctx, sql.NewRow(sql.MustJSON(`{"key1": "value1", "key2": "value2"}`)))
 
 	v, err := b.Eval(ctx)

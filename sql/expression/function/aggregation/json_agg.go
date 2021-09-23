@@ -53,7 +53,7 @@ func (j *JSONArrayAgg) FunctionName() string {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (j *JSONArrayAgg) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (j *JSONArrayAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	var row []interface{}
 	return &jsonArrayBuffer{row, j}, nil
 }
@@ -190,7 +190,7 @@ func (j JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression,
 }
 
 // NewBuffer implements the Aggregation interface.
-func (j JSONObjectAgg) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (j JSONObjectAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	row := make(map[string]interface{})
 	return &jsonObjectBuffer{row, &j}, nil
 }

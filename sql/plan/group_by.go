@@ -210,7 +210,7 @@ func (i *groupByIter) Next() (sql.Row, error) {
 
 	var err error
 	for j, a := range i.selectedExprs {
-		i.buf[j], err = newAggregationBuffer(i.ctx, a)
+		i.buf[j], err = newAggregationBuffer(a)
 		if err != nil {
 			return nil, err
 		}
@@ -308,7 +308,7 @@ func (i *groupByGroupingIter) compute() error {
 		if sql.ErrKeyNotFound.Is(err) {
 			b = make([]sql.AggregationBuffer, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				b[j], err = newAggregationBuffer(i.ctx, a)
+				b[j], err = newAggregationBuffer(a)
 				if err != nil {
 					return err
 				}
@@ -389,13 +389,13 @@ func groupingKey(
 	return hash.Sum64(), nil
 }
 
-func newAggregationBuffer(ctx *sql.Context, expr sql.Expression) (sql.AggregationBuffer, error) {
+func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
-		return n.NewBuffer(ctx)
+		return n.NewBuffer()
 	default:
 		// The semantics for a non-aggregation in a group by node is Last.
-		return aggregation.NewLast(expr).NewBuffer(ctx)
+		return aggregation.NewLast(expr).NewBuffer()
 	}
 }
 

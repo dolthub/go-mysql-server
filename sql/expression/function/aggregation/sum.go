@@ -58,7 +58,7 @@ func (m *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Sum) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (m *Sum) NewBuffer() (sql.AggregationBuffer, error) {
 	bufferChild, err := expression.Clone(m.UnaryExpression.Child)
 	if err != nil {
 		return nil, err

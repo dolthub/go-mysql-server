@@ -115,7 +115,7 @@ func TestGroupByEvalEmptyBuffer(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	b, err := newAggregationBuffer(ctx, expression.NewGetField(0, sql.LongText, "col1", true))
+	b, err := newAggregationBuffer(expression.NewGetField(0, sql.LongText, "col1", true))
 	require.NoError(err)
 	r, err := b.Eval(ctx)
 	require.NoError(err)

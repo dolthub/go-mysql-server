@@ -67,7 +67,7 @@ func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 // NewBuffer implements Aggregation interface.
-func (a *Avg) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
 	const (
 		sum  = float64(0)
 		rows = int64(0)
