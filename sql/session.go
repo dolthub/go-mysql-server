@@ -478,7 +478,7 @@ type Context struct {
 	Session
 	*IndexRegistry
 	*ViewRegistry
-	Memory *MemoryManager
+	Memory      *MemoryManager
 	ProcessList ProcessList
 	pid         uint64
 	query       string

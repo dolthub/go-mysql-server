@@ -125,7 +125,7 @@ func (p PartitionProgress) String() string {
 // don't require a process list
 type EmptyProcessList struct{}
 
-var	_ ProcessList = EmptyProcessList{}
+var _ ProcessList = EmptyProcessList{}
 
 func (e EmptyProcessList) Processes() []Process {
 	return nil
@@ -138,8 +138,10 @@ func (e EmptyProcessList) AddProcess(ctx *Context, query string) (*Context, erro
 func (e EmptyProcessList) Kill(connID uint32)                                       {}
 func (e EmptyProcessList) Done(pid uint64)                                          {}
 func (e EmptyProcessList) UpdateTableProgress(pid uint64, name string, delta int64) {}
-func (e EmptyProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64) {}
+func (e EmptyProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64) {
+}
 func (e EmptyProcessList) AddTableProgress(pid uint64, name string, total int64) {}
-func (e EmptyProcessList) AddPartitionProgress(pid uint64, tableName, partitionName string, total int64) {}
+func (e EmptyProcessList) AddPartitionProgress(pid uint64, tableName, partitionName string, total int64) {
+}
 func (e EmptyProcessList) RemoveTableProgress(pid uint64, name string)                         {}
 func (e EmptyProcessList) RemovePartitionProgress(pid uint64, tableName, partitionName string) {}
