@@ -338,7 +338,7 @@ var (
 	// ErrPidAlreadyUsed is returned when the pid is already registered.
 	ErrPidAlreadyUsed = errors.NewKind("pid %d is already in use")
 
-  // ErrInvalidOperandColumns is returned when the columns in the left
+	// ErrInvalidOperandColumns is returned when the columns in the left
 	// operand and the elements of the right operand don't match. Also
 	// returned for invalid number of columns in projections, filters,
 	// joins, etc.
