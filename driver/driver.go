@@ -106,6 +106,9 @@ func (d *Driver) Open(name string) (driver.Conn, error) {
 // OpenConnector calls the driver factory and returns a new connector.
 func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	options := d.options // copy
+	if options == nil {
+		options = &Options{}
+	}
 
 	dsnURI, err := url.Parse(dsn)
 	if err == nil {

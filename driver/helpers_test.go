@@ -20,7 +20,7 @@ func sqlOpen(t *testing.T, provider driver.Provider, dsn string) *sql.DB {
 	driverMu.Lock()
 	drv, ok := drivers[provider]
 	if !ok {
-		drv = driver.New(provider, driver.Options{})
+		drv = driver.New(provider, nil)
 		drivers[provider] = drv
 	}
 	driverMu.Unlock()
