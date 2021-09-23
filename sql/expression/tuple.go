@@ -71,7 +71,7 @@ func (t Tuple) DebugString() string {
 	for i, e := range t {
 		exprs[i] = sql.DebugString(e)
 	}
-	return fmt.Sprintf("TUPLE(%s)[%s]", strings.Join(exprs, ", "), t.Type().String())
+	return fmt.Sprintf("TUPLE(%s)", strings.Join(exprs, ", "))
 }
 
 // Resolved implements the Expression interface.
