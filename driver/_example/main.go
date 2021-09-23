@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-	sql.Register("sqle", driver.New(factory{}))
+	sql.Register("sqle", driver.New(factory{}, nil))
 
 	db, err := sql.Open("sqle", "")
 	must(err)
