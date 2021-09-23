@@ -15,26 +15,37 @@
 package sql
 
 type Catalog interface {
+	// AllDatabases returns all databases known to this catalog
 	AllDatabases() []Database
 
-	CreateDatabase(ctx *Context, dbName string) error
-
-	RemoveDatabase(ctx *Context, dbName string) error
-
+	// HasDB returns whether a db with the name given exists, case-insensitive
 	HasDB(db string) bool
 
+	// Database returns the database with the name given, case-insensitive, or an error if it doesn't exist
 	Database(db string) (Database, error)
 
-	LockTable(ctx *Context, table string)
+	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
+	CreateDatabase(ctx *Context, dbName string) error
 
-	// TODO: move unlock out of here
-	UnlockTables(ctx *Context, id uint32) error
+	// RemoveDatabase removes the  database named, or returns an error if the operation isn't supported or fails.
+	RemoveDatabase(ctx *Context, dbName string) error
 
+	// Table returns the table with the name given in the db with the name given
 	Table(ctx *Context, dbName, tableName string) (Table, Database, error)
 
+	// TableAsOf returns the table with the name given in the db with the name given, as of the given marker
 	TableAsOf(ctx *Context, dbName, tableName string, asOf interface{}) (Table, Database, error)
 
+	// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
+	Function(name string) (Function, error)
+
+	// RegisterFunction registers the functions given, adding them to the built-in functions.
+	// Integrators with custom functions should typically use the FunctionProvider interface to register their functions.
 	RegisterFunction(fns ...Function)
 
-	Function(name string) (Function, error)
+	// LockTable locks the table named
+	LockTable(ctx *Context, table string)
+
+	// UnlockTables unlocks all tables locked by the session id given
+	UnlockTables(ctx *Context, id uint32) error
 }

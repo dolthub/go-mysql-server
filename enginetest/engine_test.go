@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/test"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/stretchr/testify/assert"
@@ -311,6 +312,54 @@ func getRuleFrom(rules []analyzer.Rule, name string) *analyzer.Rule {
 // wrapper around sql.Table to make it not indexable
 type nonIndexableTable struct {
 	sql.Table
+}
+
+func TestLockTables(t *testing.T) {
+	require := require.New(t)
+
+	t1 := newLockableTable(memory.NewTable("foo", nil))
+	t2 := newLockableTable(memory.NewTable("bar", nil))
+	node := plan.NewLockTables([]*plan.TableLock{
+		{plan.NewResolvedTable(t1, nil, nil), true},
+		{plan.NewResolvedTable(t2, nil, nil), false},
+	})
+	node.Catalog = test.NewCatalog(sql.NewDatabaseProvider())
+
+	_, err := node.RowIter(sql.NewEmptyContext(), nil)
+	require.NoError(err)
+
+	require.Equal(1, t1.writeLocks)
+	require.Equal(0, t1.readLocks)
+	require.Equal(1, t2.readLocks)
+	require.Equal(0, t2.writeLocks)
+}
+
+func TestUnlockTables(t *testing.T) {
+	require := require.New(t)
+
+	db := memory.NewDatabase("db")
+	t1 := newLockableTable(memory.NewTable("foo", nil))
+	t2 := newLockableTable(memory.NewTable("bar", nil))
+	t3 := newLockableTable(memory.NewTable("baz", nil))
+	db.AddTable("foo", t1)
+	db.AddTable("bar", t2)
+	db.AddTable("baz", t3)
+
+	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider(db))
+
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("db").WithCurrentDB("db")
+	catalog.LockTable(ctx, "foo")
+	catalog.LockTable(ctx, "bar")
+
+	node := plan.NewUnlockTables()
+	node.Catalog = catalog
+
+	_, err := node.RowIter(ctx, nil)
+	require.NoError(err)
+
+	require.Equal(1, t1.unlocks)
+	require.Equal(1, t2.unlocks)
+	require.Equal(0, t3.unlocks)
 }
 
 var _ sql.PartitionCounter = (*nonIndexableTable)(nil)

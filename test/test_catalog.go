@@ -15,19 +15,11 @@
 package test
 
 import (
-	"fmt"
-	"strings"
-	"sync"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 type Catalog struct {
 	provider         sql.DatabaseProvider
-	builtInFunctions function.Registry
-	mu               sync.RWMutex
-	locks            sessionLocks
 }
 
 type tableLocks map[string]struct{}
@@ -38,8 +30,6 @@ type sessionLocks map[uint32]dbLocks
 func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
 	return &Catalog{
 		provider:         provider,
-		builtInFunctions: function.NewRegistry(),
-		locks:            make(sessionLocks),
 	}
 }
 
@@ -51,17 +41,11 @@ var _ sql.FunctionProvider = (*Catalog)(nil)
 
 // AllDatabases returns all sliceDBProvider in the catalog.
 func (c *Catalog) AllDatabases() []sql.Database {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	return c.provider.AllDatabases()
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
 func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	mut, ok := c.provider.(sql.MutableDatabaseProvider)
 	if ok {
 		return mut.CreateDatabase(ctx, dbName)
@@ -72,9 +56,6 @@ func (c *Catalog) CreateDatabase(ctx *sql.Context, dbName string) error {
 
 // RemoveDatabase removes a database from the catalog.
 func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	mut, ok := c.provider.(sql.MutableDatabaseProvider)
 	if ok {
 		return mut.DropDatabase(ctx, dbName)
@@ -84,78 +65,16 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 }
 
 func (c *Catalog) HasDB(db string) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	return c.provider.HasDatabase(db)
 }
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(db string) (sql.Database, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	return c.provider.Database(db)
-}
-
-// LockTable adds a lock for the given table and session client. It is assumed
-// the database is the current database in use.
-func (c *Catalog) LockTable(ctx *sql.Context, table string) {
-	id := ctx.ID()
-	db := ctx.GetCurrentDatabase()
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, ok := c.locks[id]; !ok {
-		c.locks[id] = make(dbLocks)
-	}
-
-	if _, ok := c.locks[id][db]; !ok {
-		c.locks[id][db] = make(tableLocks)
-	}
-
-	c.locks[id][db][table] = struct{}{}
-}
-
-// UnlockTables unlocks all tables for which the given session client has a
-// lock.
-func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	var errors []string
-	for db, tables := range c.locks[id] {
-		for t := range tables {
-			database, err := c.provider.Database(db)
-			if err != nil {
-				return err
-			}
-
-			table, _, err := database.GetTableInsensitive(ctx, t)
-			if err == nil {
-				if lockable, ok := table.(sql.Lockable); ok {
-					if e := lockable.Unlock(ctx, id); e != nil {
-						errors = append(errors, e.Error())
-					}
-				}
-			} else {
-				errors = append(errors, err.Error())
-			}
-		}
-	}
-
-	delete(c.locks, id)
-	if len(errors) > 0 {
-		return fmt.Errorf("error unlocking tables for %d: %s", id, strings.Join(errors, ", "))
-	}
-
-	return nil
 }
 
 // Table returns the table in the given database with the given name.
 func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, sql.Database, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	db, err := c.Database(dbName)
 	if err != nil {
 		return nil, nil, err
@@ -171,12 +90,7 @@ func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, 
 	return tbl, db, nil
 }
 
-// TableAsOf returns the table in the given database with the given name, as it existed at the time given. The database
-// named must support timed queries.
 func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	db, err := c.Database(dbName)
 	if err != nil {
 		return nil, nil, err
@@ -198,26 +112,14 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 	return tbl, versionedDb, nil
 }
 
-// RegisterFunction registers the functions given, adding them to the built-in functions.
-// Integrators with custom functions should typically use the FunctionProvider interface instead.
-func (c *Catalog) RegisterFunction(fns ...sql.Function) {
-	for _, fn := range fns {
-		err := c.builtInFunctions.Register(fn)
-		if err != nil {
-			panic(err)
-		}
-	}
+func (c *Catalog) RegisterFunction(fns ...sql.Function) {}
+
+func (c *Catalog) Function(name string) (sql.Function, error) {
+	return nil, nil
 }
 
-// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
-func (c *Catalog) Function(name string) (sql.Function, error) {
-	if fp, ok := c.provider.(sql.FunctionProvider); ok {
-		f, err := fp.Function(name)
-		if err != nil && !sql.ErrFunctionNotFound.Is(err) {
-			return nil, err
-		}
-		return f, nil
-	}
+func (c *Catalog) LockTable(ctx *sql.Context, table string) {}
 
-	return c.builtInFunctions.Function(name)
+func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
+	return nil
 }

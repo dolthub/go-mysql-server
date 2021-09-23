@@ -52,7 +52,6 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 
 var _ sql.FunctionProvider = (*CatalogImpl)(nil)
 
-// AllDatabases returns all sliceDBProvider in the catalog.
 func (c *CatalogImpl) AllDatabases() []sql.Database {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
