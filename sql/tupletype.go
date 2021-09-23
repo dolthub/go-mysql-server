@@ -30,6 +30,10 @@ func CreateTuple(types ...Type) Type {
 }
 
 func (t tupleType) Compare(a, b interface{}) (int, error) {
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
 	a, err := t.Convert(a)
 	if err != nil {
 		return 0, err
@@ -57,6 +61,9 @@ func (t tupleType) Compare(a, b interface{}) (int, error) {
 }
 
 func (t tupleType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	if vals, ok := v.([]interface{}); ok {
 		if len(vals) != len(t) {
 			return nil, ErrInvalidColumnNumber.New(len(t), len(vals))

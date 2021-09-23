@@ -840,7 +840,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
-				ExpectedErr: sql.ErrSubqueryMultipleColumns,
+				ExpectedErr: sql.ErrInvalidOperandColumns,
 			},
 			{
 				Query:       `SELECT group_concat((SELECT * FROM x)) from t`,

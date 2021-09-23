@@ -389,6 +389,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
+		Expected: []sql.Row{
+			{2, "second row", "second", 2, 2, "second row"},
+		},
+	},
+	{
 		Query: `SELECT a.column_0, b.column_1 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,
@@ -428,6 +434,15 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
 		Expected: []sql.Row{},
+	},
+	{
+		Query: "select * from one_pk where c1 in (select opk1.c1 from one_pk opk1 left join one_pk opk2 on opk1.c2 = opk2.c2)",
+		Expected: []sql.Row{
+			{0, 0, 1, 2, 3, 4},
+			{1, 10, 11, 12, 13, 14},
+			{2, 20, 21, 22, 23, 24},
+			{3, 30, 31, 32, 33, 34},
+		},
 	},
 	{
 		Query: `select mt.i, 
@@ -1107,6 +1122,166 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT NULL NOT IN (2,3,4,null)",
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE 1 in (1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((3, 4), (5, 6), (1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((3, 4), (5, 6))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6), (1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) > (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) >= (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <= (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) < (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) != (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <=> (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) <=> (1, null)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in ((1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual) in ((1, 2), (2, 3), (3, 4))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) = (select 3, 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual where false) = ((1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual where false) in ((1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 3, 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE null = (select 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE null <=> (select 4 from dual where false)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) <=> (select 1, 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) <=> (select null, null from dual)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in (select 1, 2 from dual)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual where false) in (select 1, 2 from dual)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual where false) in (select 1, 2 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in (select 1, 2 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 5, 6 from dual) in ((1, 2), (2, 3), (3, 4))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual union select 1, 2 from dual)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT (((1,2),3)) = (((1,2),3)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) = (((1,2),3)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,2),4)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,3),2)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (1, 2) in (select 1, 2 from dual) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (1, 2) in (select 2, 3 from dual) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (select 1, 2 from dual) in ((1, 2)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (select 2, 3 from dual) in ((1, 2)) from dual",
+		Expected: []sql.Row{{false}},
 	},
 	{
 		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
@@ -5366,6 +5541,28 @@ var BrokenQueries = []QueryTest{
 			},
 		},
 	},
+	// Null-safe and type conversion tuple comparison is not correctly
+	// implemented yet.
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
+		Expected: []sql.Row{},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -6192,6 +6389,54 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
 		ExpectedErr: analyzer.ErrAggregationUnsupported,
+	},
+	{
+		Query:       "select ((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (select 1, 2 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select concat((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1, 2) = (1) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1) in (select 1, 2 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1, 2) in (select 1, 2, 3 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (select 1 from dual) in ((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1,2))) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1),2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1))) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1,2),3),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select ((4,5),((1,2),3)) = ((1,2),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},
 }
 
