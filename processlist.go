@@ -16,7 +16,6 @@ package sqle
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -24,21 +23,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
-
-// Progress between done items and total items.
-type Progress struct {
-	Name  string
-	Done  int64
-	Total int64
-}
-
-func (p Progress) totalString() string {
-	var total = "?"
-	if p.Total > 0 {
-		total = fmt.Sprint(p.Total)
-	}
-	return total
-}
 
 // ProcessList is a structure that keeps track of all the processes and their
 // status.
@@ -54,11 +38,25 @@ func NewProcessList() *ProcessList {
 	}
 }
 
-// AddProcess adds a new process to the list given a process type and a query.
-// Steps is a map between the name of the items that need to be completed and
-// the total amount in these items. -1 means unknown.
-// It returns a new context that should be passed around from now on. That
-// context will be cancelled if the process is killed.
+// Processes returns the list of current running processes.
+func (pl *ProcessList) Processes() []sql.Process {
+	pl.mu.RLock()
+	defer pl.mu.RUnlock()
+	var result = make([]sql.Process, 0, len(pl.procs))
+
+	for _, proc := range pl.procs {
+		p := *proc
+		var progress = make(map[string]sql.TableProgress, len(p.Progress))
+		for n, p := range p.Progress {
+			progress[n] = p
+		}
+		result = append(result, p)
+	}
+
+	return result
+}
+
+// AddProcess adds a new process to the list given a process type and a query
 func (pl *ProcessList) AddProcess(
 	ctx *sql.Context,
 	query string,
@@ -233,22 +231,4 @@ func (pl *ProcessList) Done(pid uint64) {
 	}
 
 	delete(pl.procs, pid)
-}
-
-// Processes returns the list of current running processes.
-func (pl *ProcessList) Processes() []sql.Process {
-	pl.mu.RLock()
-	defer pl.mu.RUnlock()
-	var result = make([]sql.Process, 0, len(pl.procs))
-
-	for _, proc := range pl.procs {
-		p := *proc
-		var progress = make(map[string]sql.TableProgress, len(p.Progress))
-		for n, p := range p.Progress {
-			progress[n] = p
-		}
-		result = append(result, p)
-	}
-
-	return result
 }

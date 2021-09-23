@@ -21,15 +21,40 @@ import (
 )
 
 type ProcessList interface {
+	// Processes returns the list of current running processes
 	Processes() []Process
+
+	// AddProcess adds a new process to the list and returns a new context that can be used to cancel it
 	AddProcess(ctx *Context, query string) (*Context, error)
+
+	// Kill terminates all queries for a given connection id
 	Kill(connID uint32)
+
+	// Done removes the finished process with the given pid from the process list
 	Done(pid uint64)
+
+	// UpdateTableProgress updates the progress of the table with the given name for the
+	// process with the given pid.
 	UpdateTableProgress(pid uint64, name string, delta int64)
+
+	// UpdatePartitionProgress updates the progress of the table partition with the
+	// given name for the process with the given pid.
 	UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64)
+
+	// AddTableProgress adds a new item to track progress from to the process with
+	// the given pid. If the pid does not exist, it will do nothing.
 	AddTableProgress(pid uint64, name string, total int64)
+
+	// AddPartitionProgress adds a new item to track progress from to the process with
+	// the given pid. If the pid or the table does not exist, it will do nothing.
 	AddPartitionProgress(pid uint64, tableName, partitionName string, total int64)
+
+	// RemoveTableProgress removes an existing item tracking progress from the
+	// process with the given pid, if it exists.
 	RemoveTableProgress(pid uint64, name string)
+
+	// RemovePartitionProgress removes an existing partition tracking progress from the
+	// process with the given pid, if it exists.
 	RemovePartitionProgress(pid uint64, tableName, partitionName string)
 }
 
@@ -96,8 +121,11 @@ func (p PartitionProgress) String() string {
 	return fmt.Sprintf("%s (%d/%s rows)", p.Name, p.Done, p.totalString())
 }
 
-// EmptyProcessList is a no-op implementation of ProcessList suitable for use in tests that don't require a process list
+// EmptyProcessList is a no-op implementation of ProcessList suitable for use in tests or other installations that
+// don't require a process list
 type EmptyProcessList struct{}
+
+var	_ ProcessList = EmptyProcessList{}
 
 func (e EmptyProcessList) Processes() []Process {
 	return nil
@@ -110,10 +138,8 @@ func (e EmptyProcessList) AddProcess(ctx *Context, query string) (*Context, erro
 func (e EmptyProcessList) Kill(connID uint32)                                       {}
 func (e EmptyProcessList) Done(pid uint64)                                          {}
 func (e EmptyProcessList) UpdateTableProgress(pid uint64, name string, delta int64) {}
-func (e EmptyProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64) {
-}
+func (e EmptyProcessList) UpdatePartitionProgress(pid uint64, tableName, partitionName string, delta int64) {}
 func (e EmptyProcessList) AddTableProgress(pid uint64, name string, total int64) {}
-func (e EmptyProcessList) AddPartitionProgress(pid uint64, tableName, partitionName string, total int64) {
-}
+func (e EmptyProcessList) AddPartitionProgress(pid uint64, tableName, partitionName string, total int64) {}
 func (e EmptyProcessList) RemoveTableProgress(pid uint64, name string)                         {}
 func (e EmptyProcessList) RemovePartitionProgress(pid uint64, tableName, partitionName string) {}

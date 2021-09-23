@@ -479,7 +479,6 @@ type Context struct {
 	*IndexRegistry
 	*ViewRegistry
 	Memory *MemoryManager
-	// TODO: fill in
 	ProcessList ProcessList
 	pid         uint64
 	query       string

@@ -181,13 +181,11 @@ type analyzerTestCase struct {
 	err           *errors.Kind
 }
 
-// TODO: this was a plan node test, but we don't have a mock process list for it to use, so it has to be here
 func TestShowProcessList(t *testing.T) {
 	require := require.New(t)
 
 	addr := "127.0.0.1:34567"
 
-	n := plan.NewShowProcessList()
 	p := sqle.NewProcessList()
 	sess := sql.NewSession("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
@@ -198,7 +196,7 @@ func TestShowProcessList(t *testing.T) {
 	p.AddTableProgress(ctx.Pid(), "a", 5)
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
-	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
+	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess), sql.WithProcessList(p))
 	ctx, err = p.AddProcess(ctx, "SELECT bar")
 	require.NoError(err)
 
@@ -211,7 +209,7 @@ func TestShowProcessList(t *testing.T) {
 	p.UpdateTableProgress(1, "b", 2)
 	p.UpdateTableProgress(2, "foo", 1)
 
-	n.ProcessList = p
+	n := plan.NewShowProcessList()
 	n.Database = "foo"
 
 	iter, err := n.RowIter(ctx, nil)
@@ -231,7 +229,7 @@ b (2/6 partitions)
 		{int64(1), "foo", addr, "foo", "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
 	}
 
-	require.ElementsMatch(expected, rows)
+	require.Equal(expected, rows)
 }
 
 // TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here

@@ -55,8 +55,6 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		case *plan.ShowProcessList:
 			nc := *node
 			nc.Database = ctx.GetCurrentDatabase()
-			// TODO: process list in catalog
-			//nc.ProcessList = a.Catalog.ProcessList
 			return &nc, nil
 		case *plan.ShowTableStatus:
 			nc := *node

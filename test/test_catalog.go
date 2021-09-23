@@ -22,10 +22,6 @@ type Catalog struct {
 	provider sql.DatabaseProvider
 }
 
-type tableLocks map[string]struct{}
-type dbLocks map[string]tableLocks
-type sessionLocks map[uint32]dbLocks
-
 // NewCatalog returns a new empty Catalog with the given provider
 func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
 	return &Catalog{
@@ -33,11 +29,8 @@ func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
 	}
 }
 
-func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
-	return sql.NewDatabaseProvider(dbs...)
-}
-
 var _ sql.FunctionProvider = (*Catalog)(nil)
+var _ sql.Catalog = (*Catalog)(nil)
 
 // AllDatabases returns all sliceDBProvider in the catalog.
 func (c *Catalog) AllDatabases() []sql.Database {
