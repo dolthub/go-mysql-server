@@ -8,7 +8,7 @@ import (
 )
 
 // NewStrToDate constructs a new function expression from the given child expressions.
-func NewStrToDate(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+func NewStrToDate(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("STR_TO_DATE", 2, len(args))
 	}
@@ -86,8 +86,8 @@ func (s StringToDatetime) Children() []sql.Expression {
 	return children
 }
 
-func (s StringToDatetime) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewStrToDate(ctx, children...)
+func (s StringToDatetime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewStrToDate(children...)
 }
 
 func (s StringToDatetime) FunctionName() string {

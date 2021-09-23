@@ -66,11 +66,11 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 		},
 		sql.Function0{
 			Name: "database",
-			Fn:   function.NewDatabase(c),
+			Fn:   func() sql.Expression { return function.NewDatabase(c) },
 		},
 		sql.Function0{
 			Name: "schema",
-			Fn:   function.NewDatabase(c),
+			Fn:   func() sql.Expression { return function.NewDatabase(c) },
 		})
 
 	c.MustRegister(function.Defaults...)

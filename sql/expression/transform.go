@@ -27,7 +27,7 @@ type TransformExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, e
 func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
-		e, err := e.WithChildren(ctx)
+		e, err := e.WithChildren()
 		if err != nil {
 			return nil, err
 		}
@@ -43,7 +43,7 @@ func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (s
 		newChildren[i] = c
 	}
 
-	e, err := e.WithChildren(ctx, newChildren...)
+	e, err := e.WithChildren(newChildren...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func Clone(ctx *sql.Context, expr sql.Expression) (sql.Expression, error) {
 func TransformUpWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
-		e, err := e.WithChildren(ctx)
+		e, err := e.WithChildren()
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +81,7 @@ func TransformUpWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f Trans
 		newChildren[i] = c
 	}
 
-	e, err := e.WithChildren(ctx, newChildren...)
+	e, err := e.WithChildren(newChildren...)
 	if err != nil {
 		return nil, err
 	}

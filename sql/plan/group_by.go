@@ -395,7 +395,7 @@ func newAggregationBuffer(ctx *sql.Context, expr sql.Expression) (sql.Aggregatio
 		return n.NewBuffer(ctx)
 	default:
 		// The semantics for a non-aggregation in a group by node is Last.
-		return aggregation.NewLast(ctx, expr).NewBuffer(ctx)
+		return aggregation.NewLast(expr).NewBuffer(ctx)
 	}
 }
 

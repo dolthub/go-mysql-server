@@ -54,7 +54,7 @@ type JSONContains struct {
 var _ sql.FunctionExpression = (*JSONContains)(nil)
 
 // NewJSONContains creates a new JSONContains function.
-func NewJSONContains(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_CONTAINS", "2 or 3", len(args))
 	}
@@ -169,10 +169,10 @@ func (j *JSONContains) Children() []sql.Expression {
 	return []sql.Expression{j.JSONTarget, j.JSONCandidate}
 }
 
-func (j *JSONContains) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONContains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_contains did not receive the correct amount of args")
 	}
 
-	return NewJSONContains(ctx, children...)
+	return NewJSONContains(children...)
 }

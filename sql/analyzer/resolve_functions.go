@@ -51,7 +51,7 @@ func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) sql.TransformExprFunc
 			return nil, err
 		}
 
-		rf, err := f.NewInstance(ctx, uf.Arguments)
+		rf, err := f.NewInstance(uf.Arguments)
 		if err != nil {
 			return nil, err
 		}

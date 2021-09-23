@@ -559,7 +559,7 @@ func TestCacheSubqueryResults(t *testing.T) {
 							},
 							plan.NewFilter(
 								gt(
-									mustExpr(function.NewRand(sql.NewEmptyContext())),
+									mustExpr(function.NewRand()),
 									gf(3, "mytable2", "x"),
 								),
 								plan.NewResolvedTable(table2, nil, nil),

@@ -24,9 +24,8 @@ import (
 )
 
 func TestBase64(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	fTo := NewToBase64(ctx, expression.NewGetField(0, sql.LongText, "", false))
-	fFrom := NewFromBase64(ctx, expression.NewGetField(0, sql.LongText, "", false))
+	fTo := NewToBase64(expression.NewGetField(0, sql.LongText, "", false))
+	fFrom := NewFromBase64(expression.NewGetField(0, sql.LongText, "", false))
 
 	testCases := []struct {
 		name     string

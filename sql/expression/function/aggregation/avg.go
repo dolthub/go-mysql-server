@@ -30,7 +30,7 @@ var _ sql.FunctionExpression = (*Avg)(nil)
 var _ sql.Aggregation = (*Avg)(nil)
 
 // NewAvg creates a new Avg node.
-func NewAvg(ctx *sql.Context, e sql.Expression) *Avg {
+func NewAvg(e sql.Expression) *Avg {
 	return &Avg{expression.UnaryExpression{Child: e}}
 }
 
@@ -59,11 +59,11 @@ func (a *Avg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (a *Avg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return NewAvg(ctx, children[0]), nil
+	return NewAvg(children[0]), nil
 }
 
 // NewBuffer implements Aggregation interface.

@@ -57,7 +57,7 @@ func (*deferredColumn) IsNullable() bool {
 func (*deferredColumn) Children() []sql.Expression { return nil }
 
 // WithChildren implements the Expression interface.
-func (dc *deferredColumn) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (dc *deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(dc, len(children), 0)
 	}

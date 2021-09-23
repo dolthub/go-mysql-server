@@ -27,7 +27,7 @@ func TestCountEval1(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCount(sql.NewEmptyContext(), expression.NewLiteral(1, sql.Int32))
+	c := NewCount(expression.NewLiteral(1, sql.Int32))
 	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
@@ -43,7 +43,7 @@ func TestCountEvalStar(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCount(sql.NewEmptyContext(), expression.NewStar())
+	c := NewCount(expression.NewStar())
 	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 
@@ -59,7 +59,7 @@ func TestCountEvalString(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	c := NewCount(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "", true))
+	c := NewCount(expression.NewGetField(0, sql.Text, "", true))
 	b, _ := c.NewBuffer(ctx)
 	require.Equal(int64(0), evalBuffer(t, b))
 

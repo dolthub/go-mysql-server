@@ -31,7 +31,7 @@ type PercentRank struct {
 var _ sql.FunctionExpression = (*PercentRank)(nil)
 var _ sql.WindowAggregation = (*PercentRank)(nil)
 
-func NewPercentRank(ctx *sql.Context) sql.Expression {
+func NewPercentRank() sql.Expression {
 	return &PercentRank{}
 }
 
@@ -95,7 +95,7 @@ func (p *PercentRank) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (p *PercentRank) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (p *PercentRank) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	window, err := p.window.FromExpressions(children)
 	if err != nil {
 		return nil, err

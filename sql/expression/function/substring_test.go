@@ -25,7 +25,6 @@ import (
 
 func TestSubstring(t *testing.T) {
 	f, err := NewSubstring(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "str", true),
 		expression.NewGetField(1, sql.Int32, "start", false),
 		expression.NewGetField(2, sql.Int64, "len", false),
@@ -70,7 +69,6 @@ func TestSubstring(t *testing.T) {
 
 func TestSubstringIndex(t *testing.T) {
 	f := NewSubstringIndex(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "str", true),
 		expression.NewGetField(1, sql.LongText, "delim", true),
 		expression.NewGetField(2, sql.Int64, "count", false),
@@ -113,7 +111,6 @@ func TestSubstringIndex(t *testing.T) {
 
 func TestInstr(t *testing.T) {
 	f := NewInstr(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "str", true),
 		expression.NewGetField(1, sql.LongText, "substr", false),
 	)
@@ -158,7 +155,6 @@ func TestInstr(t *testing.T) {
 
 func TestLeft(t *testing.T) {
 	f := NewLeft(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "str", true),
 		expression.NewGetField(1, sql.Int64, "len", false),
 	)

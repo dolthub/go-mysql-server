@@ -92,9 +92,9 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 		}
 		if _, ok := setExpr.(*expression.SystemVar); ok {
-			return sf.WithChildren(ctx, setExpr, setVal)
+			return sf.WithChildren(setExpr, setVal)
 		} else if _, ok := setExpr.(*expression.UserVar); ok {
-			return sf.WithChildren(ctx, setExpr, setVal)
+			return sf.WithChildren(setExpr, setVal)
 		}
 		return sf, nil
 	})
@@ -138,7 +138,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				}
 			}
 
-			return sf.WithChildren(ctx, expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
+			return sf.WithChildren(expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
 		}
 
 		return sf, nil

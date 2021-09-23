@@ -29,7 +29,7 @@ type LoadFile struct {
 var _ sql.FunctionExpression = (*LoadFile)(nil)
 
 // NewLoadFile returns a LoadFile object for the LOAD_FILE() function.
-func NewLoadFile(ctx *sql.Context, fileName sql.Expression) sql.Expression {
+func NewLoadFile(fileName sql.Expression) sql.Expression {
 	return &LoadFile{
 		fileName: fileName,
 	}
@@ -162,12 +162,12 @@ func (l *LoadFile) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression.
-func (l *LoadFile) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (l *LoadFile) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
 
-	return NewLoadFile(ctx, children[0]), nil
+	return NewLoadFile(children[0]), nil
 }
 
 // FunctionName implements sql.FunctionExpression.
