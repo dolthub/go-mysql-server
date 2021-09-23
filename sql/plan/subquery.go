@@ -205,7 +205,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, error) {
 	return func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
-		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, sql.Table, *ValueDerivedTable:
+		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, sql.Table, *ValueDerivedTable, *Union:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,

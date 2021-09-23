@@ -94,13 +94,13 @@ func (i *IndexedInSubqueryFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.Ro
 	if i.equals {
 		resi, err := i.subquery.Eval(ctx, padded)
 		if err != nil {
-			return nil, err
+			return &deferredErrIter{err}, nil
 		}
 		res = append(res, resi)
 	} else {
 		res, err = i.subquery.EvalMultiple(ctx, padded)
 		if err != nil {
-			return nil, err
+			return &deferredErrIter{err}, nil
 		}
 	}
 	tupLits := make([]sql.Expression, len(res))
@@ -109,6 +109,23 @@ func (i *IndexedInSubqueryFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.Ro
 	}
 	expr := expression.NewInTuple(i.getField, expression.NewTuple(tupLits...))
 	return NewFilterIter(ctx, expr, &indexedInSubqueryIter{ctx, res, i.child, nil, 0}), nil
+}
+
+type deferredErrIter struct {
+	err error
+}
+
+func (i *deferredErrIter) Next() (sql.Row, error) {
+	if i.err != nil {
+		err := i.err
+		i.err = nil
+		return nil, err
+	}
+	return nil, io.EOF
+}
+
+func (i *deferredErrIter) Close(ctx *sql.Context) error {
+	return nil
 }
 
 type indexedInSubqueryIter struct {
