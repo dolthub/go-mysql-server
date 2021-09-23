@@ -229,7 +229,7 @@ b (2/6 partitions)
 		{int64(1), "foo", addr, "foo", "Query", int64(0), "\nfoo (1/2 partitions)\n", "SELECT bar"},
 	}
 
-	require.Equal(expected, rows)
+	require.ElementsMatch(expected, rows)
 }
 
 // TODO: this was an analyzer test, but we don't have a mock process list for it to use, so it has to be here
