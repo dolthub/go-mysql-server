@@ -82,8 +82,7 @@ func TestConcatWithSeparator(t *testing.T) {
 
 	t.Run("concat_ws array", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcatWithSeparator(expression.NewLiteral([]interface{}{",", 5, "bar", true}, sql.CreateArray(sql.LongText)),
-		)
+		f, err := NewConcatWithSeparator(expression.NewLiteral([]interface{}{",", 5, "bar", true}, sql.CreateArray(sql.LongText)))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
