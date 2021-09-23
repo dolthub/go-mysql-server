@@ -77,7 +77,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case Tuple:
 		for _, el := range right {
 			if sql.NumColumns(el.Type()) != leftElems {
-				return nil, ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
+				return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
 			}
 		}
 

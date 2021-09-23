@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -32,7 +33,7 @@ const (
 	validateOrderByRule           = "validate_order_by"
 	validateGroupByRule           = "validate_group_by"
 	validateSchemaSourceRule      = "validate_schema_source"
-	validateProjectTuplesRule     = "validate_project_tuples"
+	validateOperandsRule          = "validate_operands_rule"
 	validateIndexCreationRule     = "validate_index_creation"
 	validateCaseResultTypesRule   = "validate_case_result_types"
 	validateIntervalUsageRule     = "validate_interval_usage"
@@ -54,9 +55,6 @@ var (
 	// ErrValidationSchemaSource is returned when there is any column source
 	// that does not match the table name.
 	ErrValidationSchemaSource = errors.NewKind("one or more schema sources are empty")
-	// ErrProjectTuple is returned when there is a tuple of more than 1 column
-	// inside a projection.
-	ErrProjectTuple = errors.NewKind("selected field %d should have 1 column, but has %d")
 	// ErrUnknownIndexColumns is returned when there are columns in the expr
 	// to index that are unknown in the table.
 	ErrUnknownIndexColumns = errors.NewKind("unknown columns to index for table %q: %s")
@@ -106,8 +104,8 @@ var DefaultValidationRules = []Rule{
 	{validateOrderByRule, validateOrderBy},
 	{validateGroupByRule, validateGroupBy},
 	{validateSchemaSourceRule, validateSchemaSource},
-	{validateProjectTuplesRule, validateProjectTuples},
 	{validateIndexCreationRule, validateIndexCreation},
+	{validateOperandsRule, validateOperands},
 	{validateCaseResultTypesRule, validateCaseResultTypes},
 	{validateIntervalUsageRule, validateIntervalUsage},
 	{validateExplodeUsageRule, validateExplodeUsage},
@@ -384,36 +382,6 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	return n, nil
 }
 
-func findProjectTuples(n sql.Node) (sql.Node, error) {
-	if n == nil {
-		return n, nil
-	}
-
-	switch n := n.(type) {
-	case *plan.Project, *plan.GroupBy, *plan.Window:
-		for i, e := range n.(sql.Expressioner).Expressions() {
-			if sql.IsTuple(e.Type()) {
-				return nil, ErrProjectTuple.New(i+1, sql.NumColumns(e.Type()))
-			}
-		}
-	default:
-		for _, ch := range n.Children() {
-			_, err := findProjectTuples(ch)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return n, nil
-}
-
-func validateProjectTuples(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	span, _ := ctx.Span("validate_project_tuples")
-	defer span.Finish()
-	return findProjectTuples(n)
-}
-
 func validateCaseResultTypes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("validate_case_result_types")
 	defer span.Finish()
@@ -504,25 +472,86 @@ func validateExplodeUsage(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	return n, nil
 }
 
-func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	// Validate that the number of columns in an operand or a top level
+	// expression are as expected. The current rules are:
+	// * Every top level expression of a node must have 1 column.
+	// * The following expression nodes are allowed to have `n` columns as
+	// long as `n` matches:
+	//   * *plan.InSubquery, *expression.{Equals,NullSafeEquals,GreaterThan,LessThan,GreaterThanOrEqual,LessThanOrEqual}
+	// * *expression.InTuple must have a tuple on the right side, the # of
+	// columns for each element of the tuple must match the number of
+	// columns of the expression on the left.
+	// * Every other expression with operands must have NumColumns == 1.
 
-	// First validate that every subquery expression returns a single column
-	valid := true
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
-		s, ok := e.(*plan.Subquery)
-		if ok && len(s.Query.Schema()) != 1 {
-			valid = false
+	// We do not use plan.InspectExpressions here because we're treating
+	// top-level expressions of sql.Node differently from subexpressions.
+	var err error
+	plan.Inspect(n, func(n sql.Node) bool {
+		if n == nil {
 			return false
 		}
-
-		return true
+		if er, ok := n.(sql.Expressioner); ok {
+			for _, e := range er.Expressions() {
+				nc := sql.NumColumns(e.Type())
+				if nc != 1 {
+					err = sql.ErrInvalidOperandColumns.New(1, nc)
+					return false
+				}
+				sql.Inspect(e, func(e sql.Expression) bool {
+					if e == nil {
+						return err == nil
+					}
+					if err != nil {
+						return false
+					}
+					switch e.(type) {
+					case *plan.InSubquery, *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
+						*expression.LessThan, *expression.GreaterThanOrEqual, *expression.LessThanOrEqual:
+						err = sql.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+					case *expression.InTuple:
+						t, ok := e.Children()[1].(expression.Tuple)
+						if ok && len(t.Children()) == 1 {
+							// A single element Tuple treats itself like the element it contains.
+							err = sql.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
+						} else {
+							err = sql.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
+						}
+					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JSONArrayAgg:
+						if _, s := e.Children()[0].(*expression.Star); s {
+							return false
+						}
+						for _, e := range e.Children() {
+							nc := sql.NumColumns(e.Type())
+							if nc != 1 {
+								err = sql.ErrInvalidOperandColumns.New(1, nc)
+							}
+						}
+					case expression.Tuple:
+						// Tuple expressions can contain tuples...
+					default:
+						for _, e := range e.Children() {
+							nc := sql.NumColumns(e.Type())
+							if nc != 1 {
+								err = sql.ErrInvalidOperandColumns.New(1, nc)
+							}
+						}
+					}
+					return err == nil
+				})
+			}
+		}
+		return err == nil
 	})
-
-	if !valid {
-		return nil, sql.ErrSubqueryMultipleColumns.New()
+	if err != nil {
+		return nil, err
 	}
+	return n, nil
+}
 
+func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	// Then validate that every subquery has field indexes within the correct range
+	// TODO: Why is this only for subqueries?
 	var outOfRangeIndexExpression sql.Expression
 	var outOfRangeColumns int
 	plan.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
@@ -531,22 +560,38 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 			return true
 		}
 
-		outerScopeRowLen := len(schemas(n.Children()))
-		plan.InspectExpressionsWithNode(s.Query, func(n sql.Node, e sql.Expression) bool {
-			if gf, ok := e.(*expression.GetField); ok {
-				if gf.Index() >= outerScopeRowLen+len(schemas(n.Children())) {
-					outOfRangeIndexExpression = gf
-					outOfRangeColumns = outerScopeRowLen + len(schemas(n.Children()))
-					return false
+		outerScopeRowLen := len(scope.Schema()) + len(schemas(n.Children()))
+		plan.Inspect(s.Query, func(n sql.Node) bool {
+			if n == nil {
+				return true
+			}
+			// TODO: the schema of the rows seen by children of
+			// these nodes are not reflected in the schema
+			// calculations here. This needs to be rationalized
+			// across the analyzer.
+			switch n.(type) {
+			case *plan.IndexedJoin, *plan.IndexedInSubqueryFilter:
+				return false
+			}
+			if es, ok := n.(sql.Expressioner); ok {
+				childSchemaLen := len(schemas(n.Children()))
+				for _, e := range es.Expressions() {
+					sql.Inspect(e, func(e sql.Expression) bool {
+						if gf, ok := e.(*expression.GetField); ok {
+							if gf.Index() >= outerScopeRowLen+childSchemaLen {
+								outOfRangeIndexExpression = gf
+								outOfRangeColumns = outerScopeRowLen + childSchemaLen
+							}
+						}
+						return outOfRangeIndexExpression == nil
+					})
 				}
 			}
-			return true
+			return outOfRangeIndexExpression == nil
 		})
-
 		return outOfRangeIndexExpression == nil
 	})
-
-	if !valid {
+	if outOfRangeIndexExpression != nil {
 		return nil, ErrSubqueryFieldIndex.New(outOfRangeIndexExpression, outOfRangeColumns)
 	}
 

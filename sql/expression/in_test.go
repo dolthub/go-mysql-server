@@ -56,7 +56,7 @@ func TestInTuple(t *testing.T) {
 			),
 			nil,
 			nil,
-			expression.ErrInvalidOperandColumns,
+			sql.ErrInvalidOperandColumns,
 		},
 		{
 			"right is an unsupported operand",
@@ -139,7 +139,7 @@ func TestNotInTuple(t *testing.T) {
 			),
 			nil,
 			nil,
-			expression.ErrInvalidOperandColumns,
+			sql.ErrInvalidOperandColumns,
 		},
 		{
 			"right is an unsupported operand",
