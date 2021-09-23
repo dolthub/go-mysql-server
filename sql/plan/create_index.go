@@ -302,7 +302,7 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, err := expression.TransformUp(ctx, e, func(e sql.Expression) (sql.Expression, error) {
+		ex, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
 				return e, nil

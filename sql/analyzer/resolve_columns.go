@@ -188,8 +188,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 
 		symbols := getNodeAvailableNames(n, scope)
 
-		return plan.TransformExpressions(ctx, n, func(e sql.Expression) (sql.Expression, error) {
-			return qualifyExpression(ctx, e, symbols)
+		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+			return qualifyExpression(e, symbols)
 		})
 	})
 }
@@ -233,7 +233,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 	return names
 }
 
-func qualifyExpression(ctx *sql.Context, e sql.Expression, symbols availableNames) (sql.Expression, error) {
+func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression, error) {
 	switch col := e.(type) {
 	case column:
 		if col.Resolved() {
@@ -326,7 +326,7 @@ func qualifyExpression(ctx *sql.Context, e sql.Expression, symbols availableName
 	default:
 		// If any other kind of expression has a star, just replace it
 		// with an unqualified star because it cannot be expanded.
-		return expression.TransformUp(ctx, e, func(e sql.Expression) (sql.Expression, error) {
+		return expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 			if _, ok := e.(*expression.Star); ok {
 				return expression.NewStar(), nil
 			}
@@ -404,7 +404,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return nil, err
 		}
 
-		return plan.TransformExpressionsWithNode(ctx, n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		return plan.TransformExpressionsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, nil
@@ -418,7 +418,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 				return expr, nil
 			}
 
-			return resolveColumnExpression(ctx, a, n, uc, columns)
+			return resolveColumnExpression(a, n, uc, columns)
 		})
 	})
 }
@@ -603,7 +603,7 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 	}
 }
 
-func resolveColumnExpression(ctx *sql.Context, a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
+func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]
@@ -780,7 +780,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if len(renames) > 0 {
 			for i, expr := range newSelectedExprs {
 				var err error
-				newSelectedExprs[i], err = expression.TransformUp(ctx, expr, func(e sql.Expression) (sql.Expression, error) {
+				newSelectedExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the

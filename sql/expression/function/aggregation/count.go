@@ -46,7 +46,7 @@ func (c *Count) FunctionName() string {
 
 // NewBuffer creates a new buffer for the aggregation.
 func (c *Count) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
-	bufferChild, err := expression.Clone(ctx, c.UnaryExpression.Child)
+	bufferChild, err := expression.Clone(c.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}

@@ -24,7 +24,7 @@ type TransformExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, e
 
 // TransformUp applies a transformation function to the given expression from the
 // bottom up.
-func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (sql.Expression, error) {
+func TransformUp(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		e, err := e.WithChildren()
@@ -36,7 +36,7 @@ func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (s
 
 	newChildren := make([]sql.Expression, len(children))
 	for i, c := range children {
-		c, err := TransformUp(ctx, c, f)
+		c, err := TransformUp(c, f)
 		if err != nil {
 			return nil, err
 		}
@@ -55,14 +55,14 @@ func TransformUp(ctx *sql.Context, e sql.Expression, f sql.TransformExprFunc) (s
 // same structure and internal values. It can be useful when dealing with
 // stateful expression nodes where an evaluation needs to create multiple
 // independent histories of the internal state of the expression nodes.
-func Clone(ctx *sql.Context, expr sql.Expression) (sql.Expression, error) {
-	return TransformUp(ctx, expr, func(e sql.Expression) (sql.Expression, error) {
+func Clone(expr sql.Expression) (sql.Expression, error) {
+	return TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 		return e, nil
 	})
 }
 
 // TransformUpWithNode applies a transformation function to the given expression from the bottom up.
-func TransformUpWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, error) {
+func TransformUpWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		e, err := e.WithChildren()
@@ -74,7 +74,7 @@ func TransformUpWithNode(ctx *sql.Context, n sql.Node, e sql.Expression, f Trans
 
 	newChildren := make([]sql.Expression, len(children))
 	for i, c := range children {
-		c, err := TransformUpWithNode(ctx, n, c, f)
+		c, err := TransformUpWithNode(n, c, f)
 		if err != nil {
 			return nil, err
 		}

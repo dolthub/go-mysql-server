@@ -35,7 +35,7 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		sf, ok := e.(*expression.SetField)
 		if !ok {
 			return e, nil
@@ -109,7 +109,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		sf, ok := e.(*expression.SetField)
 		if !ok {
 			return e, nil

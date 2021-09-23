@@ -59,7 +59,7 @@ func (f *First) WithChildren(children ...sql.Expression) (sql.Expression, error)
 
 // NewBuffer creates a new buffer to compute the result.
 func (f *First) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
-	bufferChild, err := expression.Clone(ctx, f.UnaryExpression.Child)
+	bufferChild, err := expression.Clone(f.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
