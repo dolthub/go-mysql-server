@@ -19,16 +19,36 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+// TransformContext is the parameter to the Transform{,Selector}.
 type TransformContext struct {
-	Node         sql.Node
-	Parent       sql.Node
-	ChildNum     int
+	// Node is the currently visited node which will be transformed.
+	Node sql.Node
+	// Parent is the current parent of the transforming node.
+	Parent sql.Node
+	// ChildNum is the index of Node in Parent.Children().
+	ChildNum int
+	// SchemaPrefix is the concatenation of the Parent's SchemaPrefix with
+	// child.Schema() for all child with an index < ChildNum in
+	// Parent.Children(). For many Nodes, this represents the schema of the
+	// |row| parameter that is going to be passed to this node by its
+	// parent in a RowIter() call. This field is only non-nil if the entire
+	// in-order traversal of the tree up to this point is Resolved().
 	SchemaPrefix sql.Schema
 }
 
+// Transformer is a function which will return new sql.Node values for a given
+// TransformContext.
 type Transformer func(TransformContext) (sql.Node, error)
+
+// TransformSelector is a function which will allow TransformUpCtx to not
+// traverse past a certain TransformContext. If this function returns |false|
+// for a given TransformContext, the subtree is not transformed and the child
+// is kept in its existing place in the parent as-is.
 type TransformSelector func(TransformContext) bool
 
+// TransformUpCtx transforms |n| from the bottom up, left to right, by passing
+// each node to |f|. If |s| is non-nil, does not descend into children where
+// |s| returns false.
 func TransformUpCtx(n sql.Node, s TransformSelector, f Transformer) (sql.Node, error) {
 	return transformUpCtx(TransformContext{n, nil, -1, sql.Schema{}}, s, f)
 }
