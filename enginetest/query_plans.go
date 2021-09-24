@@ -319,6 +319,45 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (NOT((othertable.s2 <=> mytable.s))))\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (NOT((othertable.s2 = mytable.s))))\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (NOT(concat(mytable.s, othertable.s2) IS NULL)))\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND s > s2`,
+		ExpectedPlan: "InnerJoin((mytable.i = othertable.i2) AND (mytable.s > othertable.s2))\n" +
+			" ├─ Projected table access on [i s]\n" +
+			" │   └─ Table(mytable)\n" +
+			" └─ Projected table access on [s2 i2]\n" +
+			"     └─ Table(othertable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT(s > s2)`,
+		ExpectedPlan: "InnerJoin((mytable.i = othertable.i2) AND (NOT((mytable.s > othertable.s2))))\n" +
+			" ├─ Projected table access on [i s]\n" +
+			" │   └─ Table(mytable)\n" +
+			" └─ Projected table access on [s2 i2]\n" +
+			"     └─ Table(othertable)\n" +
+			"",
+	},
+	{
 		Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
 			" └─ InnerJoin(othertable.i2 = mytable.i)\n" +
