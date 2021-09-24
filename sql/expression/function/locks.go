@@ -28,17 +28,10 @@ import (
 // ErrIllegalLockNameArgType is a kind of error that is thrown when the parameter passed as a lock name is not a string.
 var ErrIllegalLockNameArgType = errors.NewKind("Illegal parameter data type %s for operation '%s'")
 
-// ReleaseAllLocksForLS returns the logic to execute when the sql function release_all_locks is executed
-func ReleaseAllLocksForLS(ls *sql.LockSubsystem) sql.EvalLogic {
-	return func(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-		return ls.ReleaseAll(ctx)
-	}
-}
+// lockFuncLogic is the logic executed when one of the single argument named lock functions is executed
+type lockFuncLogic func(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (interface{}, error)
 
-// LockFuncLogic is the logic executed when one of the single argument named lock functions is executeed
-type LockFuncLogic func(ctx *sql.Context, ls *sql.LockSubsystem, lockName string) (interface{}, error)
-
-func (nl *NamedLockFunction) evalLockLogic(ctx *sql.Context, fn LockFuncLogic, row sql.Row) (interface{}, error) {
+func (nl *NamedLockFunction) evalLockLogic(ctx *sql.Context, fn lockFuncLogic, row sql.Row) (interface{}, error) {
 	lock, err := nl.GetLockName(ctx, row)
 	if err != nil {
 		return nil, err

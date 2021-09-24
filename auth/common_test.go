@@ -44,13 +44,12 @@ func authEngine(au auth.Auth) (*sqle.Engine, *sql.IndexRegistry, error) {
 	db.AddTable(tblName, table)
 
 	pro := memory.NewMemoryDBProvider(db)
-	catalog := sql.NewCatalog(pro)
 	idxReg := sql.NewIndexRegistry()
 
-	a := analyzer.NewBuilder(catalog).Build()
+	a := analyzer.NewBuilder(pro).Build()
 	config := &sqle.Config{Auth: au}
 
-	return sqle.New(catalog, a, config), idxReg, nil
+	return sqle.New(a, config), idxReg, nil
 }
 
 func authServer(a auth.Auth) (*server.Server, *sql.IndexRegistry, error) {

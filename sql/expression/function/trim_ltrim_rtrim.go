@@ -32,15 +32,20 @@ const (
 	bTrimType trimType = 'b'
 )
 
-// NewTrimFunc returns a Trim creator function with a specific trimType.
-func NewTrimFunc(tType trimType) func(e sql.Expression) sql.Expression {
-	return func(e sql.Expression) sql.Expression {
-		return NewTrim(tType, e)
-	}
+func NewLeftTrim(e sql.Expression) sql.Expression {
+	return newTrim(lTrimType, e)
 }
 
-// NewTrim creates a new Trim expression.
-func NewTrim(tType trimType, str sql.Expression) sql.Expression {
+func NewRightTrim(e sql.Expression) sql.Expression {
+	return newTrim(rTrimType, e)
+}
+
+func NewTrim(e sql.Expression) sql.Expression {
+	return newTrim(bTrimType, e)
+}
+
+// newTrim creates a new Trim expression.
+func newTrim(tType trimType, str sql.Expression) sql.Expression {
 	return &Trim{expression.UnaryExpression{Child: str}, tType}
 }
 
@@ -90,7 +95,7 @@ func (t *Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewTrim(t.trimType, children[0]), nil
+	return newTrim(t.trimType, children[0]), nil
 }
 
 // Eval implements the Expression interface.

@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql_test
+package analyzer
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func TestAllDatabases(t *testing.T) {
 		memory.NewDatabase("c"),
 	}
 
-	c := sql.NewCatalog(sql.NewDatabaseProvider(dbs...))
+	c := NewCatalog(sql.NewDatabaseProvider(dbs...))
 	require.Equal(dbs, c.AllDatabases())
 }
 
@@ -41,7 +41,7 @@ func TestCatalogDatabase(t *testing.T) {
 	require := require.New(t)
 
 	mydb := memory.NewDatabase("foo")
-	c := sql.NewCatalog(sql.NewDatabaseProvider(mydb))
+	c := NewCatalog(sql.NewDatabaseProvider(mydb))
 
 	db, err := c.Database("flo")
 	require.EqualError(err, "database not found: flo, maybe you mean foo?")
@@ -56,7 +56,7 @@ func TestCatalogTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("foo")
-	c := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	c := NewCatalog(sql.NewDatabaseProvider(db))
 	ctx := sql.NewEmptyContext()
 
 	table, _, err := c.Table(ctx, "foo", "bar")
@@ -88,7 +88,7 @@ func TestCatalogUnlockTables(t *testing.T) {
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 
-	c := sql.NewCatalog(sql.NewDatabaseProvider(db))
+	c := NewCatalog(sql.NewDatabaseProvider(db))
 
 	ctx := sql.NewContext(context.Background())
 	ctx.SetCurrentDatabase(db.Name())

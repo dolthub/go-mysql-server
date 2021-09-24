@@ -37,7 +37,7 @@ var (
 type DropIndex struct {
 	Name            string
 	Table           sql.Node
-	Catalog         *sql.Catalog
+	Catalog         sql.Catalog
 	CurrentDatabase string
 }
 

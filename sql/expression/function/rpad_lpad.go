@@ -33,11 +33,12 @@ const (
 	rPadType padType = 'r'
 )
 
-// NewPadFunc returns a Pad creator function with a specific padType.
-func NewPadFunc(pType padType) func(e ...sql.Expression) (sql.Expression, error) {
-	return func(e ...sql.Expression) (sql.Expression, error) {
-		return NewPad(pType, e...)
-	}
+func NewLeftPad(e ...sql.Expression) (sql.Expression, error) {
+	return NewPad(lPadType, e...)
+}
+
+func NewRightPad(e ...sql.Expression) (sql.Expression, error) {
+	return NewPad(rPadType, e...)
 }
 
 // NewPad creates a new Pad expression.

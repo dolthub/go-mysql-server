@@ -112,8 +112,8 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	h.sm.CloseConn(c)
 
 	// If connection was closed, kill its associated queries.
-	h.e.Catalog.ProcessList.Kill(c.ConnectionID)
-	if err := h.e.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
+	ctx.ProcessList.Kill(c.ConnectionID)
+	if err := h.e.Analyzer.Catalog.UnlockTables(ctx, c.ConnectionID); err != nil {
 		logrus.Errorf("unable to unlock tables on session close: %s", err)
 	}
 
@@ -267,10 +267,10 @@ func (h *Handler) doQuery(
 
 	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
 	//  marked done until we're done spooling rows over the wire
-	ctx, err = h.e.Catalog.AddProcess(ctx, query)
+	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
 	defer func() {
 		if err != nil && ctx != nil {
-			h.e.Catalog.Done(ctx.Pid())
+			ctx.ProcessList.Done(ctx.Pid())
 		}
 	}()
 
@@ -640,7 +640,7 @@ func (h *Handler) handleKill(ctx *sql.Context, conn *mysql.Conn, query string) (
 	// It terminates the connection associated with the given processlist_id,
 	// after terminating any statement the connection is executing.
 	connID := uint32(id)
-	h.e.Catalog.Kill(connID)
+	ctx.ProcessList.Kill(connID)
 	if s[1] != "query" {
 		ctx.GetLogger().Info("kill connection")
 		h.sm.CloseConn(conn)

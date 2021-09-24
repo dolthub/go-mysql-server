@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql_test
+package function_test
 
 import (
 	"testing"
@@ -21,20 +21,21 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 func TestFunctionRegistry(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog(sql.NewDatabaseProvider())
+	reg := function.NewRegistry()
 	name := "func"
 	var expected sql.Expression = expression.NewStar()
-	c.MustRegister(sql.Function1{
+	reg.Register(sql.Function1{
 		Name: name,
 		Fn:   func(arg sql.Expression) sql.Expression { return expected },
 	})
 
-	f, err := c.Function(name)
+	f, err := reg.Function(name)
 	require.NoError(err)
 
 	e, err := f.NewInstance(nil)
@@ -53,8 +54,8 @@ func TestFunctionRegistry(t *testing.T) {
 func TestFunctionRegistryMissingFunction(t *testing.T) {
 	require := require.New(t)
 
-	c := sql.NewCatalog(sql.NewDatabaseProvider())
-	f, err := c.Function("func")
+	reg := function.NewRegistry()
+	f, err := reg.Function("func")
 	require.Error(err)
 	require.Nil(f)
 }

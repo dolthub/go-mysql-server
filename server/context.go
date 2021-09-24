@@ -44,16 +44,17 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
-	addr      string
-	tracer    opentracing.Tracer
-	hasDBFunc func(name string) bool
-	memory    *sql.MemoryManager
-	mu        *sync.Mutex
-	builder   SessionBuilder
-	sessions  map[uint32]sql.Session
-	idxRegs   map[uint32]*sql.IndexRegistry
-	viewRegs  map[uint32]*sql.ViewRegistry
-	pid       uint64
+	addr        string
+	tracer      opentracing.Tracer
+	hasDBFunc   func(name string) bool
+	memory      *sql.MemoryManager
+	processlist sql.ProcessList
+	mu          *sync.Mutex
+	builder     SessionBuilder
+	sessions    map[uint32]sql.Session
+	idxRegs     map[uint32]*sql.IndexRegistry
+	viewRegs    map[uint32]*sql.ViewRegistry
+	pid         uint64
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.
@@ -62,18 +63,20 @@ func NewSessionManager(
 	tracer opentracing.Tracer,
 	hasDBFunc func(name string) bool,
 	memory *sql.MemoryManager,
+	processlist sql.ProcessList,
 	addr string,
 ) *SessionManager {
 	return &SessionManager{
-		addr:      addr,
-		tracer:    tracer,
-		hasDBFunc: hasDBFunc,
-		memory:    memory,
-		mu:        new(sync.Mutex),
-		builder:   builder,
-		sessions:  make(map[uint32]sql.Session),
-		idxRegs:   make(map[uint32]*sql.IndexRegistry),
-		viewRegs:  make(map[uint32]*sql.ViewRegistry),
+		addr:        addr,
+		tracer:      tracer,
+		hasDBFunc:   hasDBFunc,
+		memory:      memory,
+		processlist: processlist,
+		mu:          new(sync.Mutex),
+		builder:     builder,
+		sessions:    make(map[uint32]sql.Session),
+		idxRegs:     make(map[uint32]*sql.IndexRegistry),
+		viewRegs:    make(map[uint32]*sql.ViewRegistry),
 	}
 }
 
@@ -171,6 +174,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		sql.WithPid(s.nextPid()),
 		sql.WithQuery(query),
 		sql.WithMemoryManager(s.memory),
+		sql.WithProcessList(s.processlist),
 		sql.WithRootSpan(s.tracer.StartSpan("query")),
 		sql.WithIndexRegistry(ir),
 		sql.WithViewRegistry(vr),

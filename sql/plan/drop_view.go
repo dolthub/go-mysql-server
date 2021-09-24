@@ -92,14 +92,13 @@ func (dv *SingleDropView) WithDatabase(database sql.Database) (sql.Node, error) 
 // node to fail if any of the views in children does not exist.
 type DropView struct {
 	children []sql.Node
-	Catalog  *sql.Catalog
 	ifExists bool
 }
 
 // NewDropView creates a DropView node with the specified parameters,
 // setting its catalog to nil.
 func NewDropView(children []sql.Node, ifExists bool) *DropView {
-	return &DropView{children, nil, ifExists}
+	return &DropView{children: children, ifExists: ifExists}
 }
 
 // Children implements the Node interface. It returns the children of the

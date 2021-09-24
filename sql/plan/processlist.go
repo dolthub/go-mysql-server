@@ -59,7 +59,6 @@ var processListSchema = sql.Schema{
 // ShowProcessList shows a list of all current running processes.
 type ShowProcessList struct {
 	Database string
-	*sql.ProcessList
 }
 
 // NewShowProcessList creates a new ProcessList node.
@@ -85,7 +84,7 @@ func (p *ShowProcessList) Schema() sql.Schema { return processListSchema }
 
 // RowIter implements the Node interface.
 func (p *ShowProcessList) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	processes := p.Processes()
+	processes := ctx.ProcessList.Processes()
 	var rows = make([]sql.Row, len(processes))
 
 	for i, proc := range processes {

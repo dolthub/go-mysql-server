@@ -25,7 +25,7 @@ import (
 
 // CreateDB creates an in memory database that lasts the length of the process only.
 type CreateDB struct {
-	Catalog     *sql.Catalog
+	Catalog     sql.Catalog
 	dbName      string
 	IfNotExists bool
 }
@@ -89,7 +89,7 @@ func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
 
 // DropDB removes a databases from the Catalog and updates the active database if it gets removed itself.
 type DropDB struct {
-	Catalog  *sql.Catalog
+	Catalog  sql.Catalog
 	dbName   string
 	IfExists bool
 }

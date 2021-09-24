@@ -85,8 +85,8 @@ type informationSchemaDatabase struct {
 type informationSchemaTable struct {
 	name    string
 	schema  Schema
-	catalog *Catalog
-	rowIter func(*Context, *Catalog) (RowIter, error)
+	catalog Catalog
+	rowIter func(*Context, Catalog) (RowIter, error)
 }
 
 type informationSchemaPartition struct {
@@ -443,7 +443,7 @@ var innoDBTempTableSchema = Schema{
 	{Name: "space", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
 }
 
-func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
+func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		tableType := "BASE TABLE"
@@ -520,7 +520,7 @@ func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func columnsRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
+func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
@@ -573,7 +573,7 @@ func columnsRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func schemataRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases()
 
 	var rows []Row
@@ -590,7 +590,7 @@ func schemataRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for cName := range CollationToMySQLVals {
 		c := Collations[cName]
@@ -607,7 +607,7 @@ func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func charsetRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedCharsets {
 		rows = append(rows, Row{
@@ -620,7 +620,7 @@ func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func engineRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
 		rows = append(rows, Row{
@@ -635,7 +635,7 @@ func engineRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		triggerDb, ok := db.(TriggerDatabase)
@@ -735,7 +735,7 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func checkConstraintsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tableNames, err := db.GetTableNames(ctx)
@@ -766,7 +766,7 @@ func checkConstraintsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func tableConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tableNames, err := db.GetTableNames(ctx)
@@ -852,7 +852,7 @@ func getColumnNamesFromIndex(idx Index, table Table) []string {
 	return indexCols
 }
 
-func keyColumnConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tableNames, err := db.GetTableNames(ctx)
@@ -921,7 +921,7 @@ func keyColumnConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 
 // innoDBTempTableIter returns info on the temporary tables stored in the session.
 // TODO: Since Table ids and Space are not yet supported this table is not completely accurate yet.
-func innoDBTempTableIter(ctx *Context, c *Catalog) (RowIter, error) {
+func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tb, ok := db.(TemporaryTableDatabase)
@@ -942,7 +942,7 @@ func innoDBTempTableIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func emptyRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
@@ -1053,7 +1053,7 @@ func NewInformationSchemaDatabase() Database {
 	}
 }
 
-func viewRowIter(context *Context, catalog *Catalog) (RowIter, error) {
+func viewRowIter(context *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range catalog.AllDatabases() {
 		database := db.Name()
@@ -1105,7 +1105,7 @@ func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
 }
 
-func (t *informationSchemaTable) AssignCatalog(cat *Catalog) Table {
+func (t *informationSchemaTable) AssignCatalog(cat Catalog) Table {
 	t.catalog = cat
 	return t
 }

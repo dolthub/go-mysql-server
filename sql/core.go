@@ -518,6 +518,12 @@ type MutableDatabaseProvider interface {
 	DropDatabase(ctx *Context, name string) error
 }
 
+// FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
+type FunctionProvider interface {
+	// Function returns the function with the name provided, case-insensitive
+	Function(name string) (Function, error)
+}
+
 // Database represents the database.
 type Database interface {
 	Nameable
