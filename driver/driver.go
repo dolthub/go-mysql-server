@@ -70,7 +70,7 @@ type Driver struct {
 	contexts ContextBuilder
 
 	mu  sync.Mutex
-	dbs map[string]*catalog
+	dbs map[string]*dbConn
 }
 
 // New returns a driver using the specified provider.
@@ -90,7 +90,7 @@ func New(provider Provider, options *Options) *Driver {
 		options:  options,
 		sessions: sessions,
 		contexts: contexts,
-		dbs:      map[string]*catalog{},
+		dbs:      map[string]*dbConn{},
 	}
 }
 
@@ -138,12 +138,12 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	}
 
 	d.mu.Lock()
-	cat, ok := d.dbs[server]
+	db, ok := d.dbs[server]
 	if !ok {
 		anlz := analyzer.NewDefault(pro)
 		engine := sqle.New(anlz, nil)
-		cat = &catalog{engine: engine}
-		d.dbs[server] = cat
+		db = &dbConn{engine: engine}
+		d.dbs[server] = db
 	}
 	d.mu.Unlock()
 
@@ -151,11 +151,11 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 		driver:  d,
 		options: options,
 		server:  server,
-		catalog: cat,
+		dbConn:  db,
 	}, nil
 }
 
-type catalog struct {
+type dbConn struct {
 	engine *sqle.Engine
 
 	mu     sync.Mutex
@@ -163,14 +163,14 @@ type catalog struct {
 	procID uint64
 }
 
-func (c *catalog) nextConnectionID() uint32 {
+func (c *dbConn) nextConnectionID() uint32 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.connID++
 	return c.connID
 }
 
-func (c *catalog) nextProcessID() uint64 {
+func (c *dbConn) nextProcessID() uint64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.procID++
@@ -183,8 +183,8 @@ func (c *catalog) nextProcessID() uint64 {
 type Connector struct {
 	driver  *Driver
 	options *Options
-	server  string
-	catalog *catalog
+	server string
+	dbConn *dbConn
 }
 
 // Driver returns the driver.
@@ -195,7 +195,7 @@ func (c *Connector) Server() string { return c.server }
 
 // Connect returns a connection to the database.
 func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
-	id := c.catalog.nextConnectionID()
+	id := c.dbConn.nextConnectionID()
 
 	session, err := c.driver.sessions.NewSession(ctx, id, c)
 	if err != nil {
@@ -206,7 +206,7 @@ func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
 	views := sql.NewViewRegistry()
 	return &Conn{
 		options:  c.options,
-		catalog:  c.catalog,
+		dbConn:   c.dbConn,
 		session:  session,
 		contexts: c.driver.contexts,
 		indexes:  indexes,

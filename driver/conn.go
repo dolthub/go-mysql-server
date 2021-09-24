@@ -23,9 +23,9 @@ import (
 
 // Conn is a connection to a database.
 type Conn struct {
-	options  *Options
-	catalog  *catalog
-	session  sql.Session
+	options *Options
+	dbConn  *dbConn
+	session sql.Session
 	contexts ContextBuilder
 	indexes  *sql.IndexRegistry
 	views    *sql.ViewRegistry
@@ -42,7 +42,7 @@ func (c *Conn) Prepare(query string) (driver.Stmt, error) {
 	}
 
 	// validate the query
-	_, err = c.catalog.engine.AnalyzeQuery(ctx, query)
+	_, err = c.dbConn.engine.AnalyzeQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -64,9 +64,9 @@ func (c *Conn) newContextWithQuery(ctx context.Context, query string) (*sql.Cont
 	return c.contexts.NewContext(ctx, c,
 		sql.WithSession(c.session),
 		sql.WithQuery(query),
-		sql.WithPid(c.catalog.nextProcessID()),
-		sql.WithMemoryManager(c.catalog.engine.MemoryManager),
-		sql.WithProcessList(c.catalog.engine.ProcessList),
+		sql.WithPid(c.dbConn.nextProcessID()),
+		sql.WithMemoryManager(c.dbConn.engine.MemoryManager),
+		sql.WithProcessList(c.dbConn.engine.ProcessList),
 		sql.WithIndexRegistry(c.indexes),
 		sql.WithViewRegistry(c.views))
 }
