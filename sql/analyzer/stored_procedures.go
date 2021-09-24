@@ -368,10 +368,10 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		return nil, err
 	}
 
-	transformedProcedure, err = plan.TransformUpWithParent(transformedProcedure, func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error) {
-		rt, ok := n.(*plan.ResolvedTable)
+	transformedProcedure, err = plan.TransformUpCtx(transformedProcedure, nil, func(c plan.TransformContext) (sql.Node, error) {
+		rt, ok := c.Node.(*plan.ResolvedTable)
 		if !ok {
-			return n, nil
+			return c.Node, nil
 		}
 		return plan.NewProcedureResolvedTable(rt), nil
 	})

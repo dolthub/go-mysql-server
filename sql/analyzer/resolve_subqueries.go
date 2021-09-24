@@ -224,16 +224,16 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
 // node on top of those nodes when it is safe to do so.
 func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	n, err := plan.TransformUpWithParent(n, func(child, parent sql.Node, childNum int) (sql.Node, error) {
-		_, isJoin := parent.(plan.JoinNode)
-		_, isIndexedJoin := parent.(*plan.IndexedJoin)
+	n, err := plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+		_, isJoin := c.Parent.(plan.JoinNode)
+		_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
 		if isJoin || isIndexedJoin {
-			sa, isSubqueryAlias := child.(*plan.SubqueryAlias)
+			sa, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
 			if isSubqueryAlias && isDeterminstic(sa.Child) {
-				return plan.NewCachedResults(child), nil
+				return plan.NewCachedResults(c.Node), nil
 			}
 		}
-		return child, nil
+		return c.Node, nil
 	})
 	if err != nil {
 		return n, err

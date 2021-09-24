@@ -102,20 +102,8 @@ type ExprTransformer func(ExpressionTransformContext) (sql.Expression, error)
 // TransformUp applies a transformation function to the given tree from the
 // bottom up.
 func TransformUp(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
-	return TransformUpWithParent(node, func(n sql.Node, parent sql.Node, num int) (sql.Node, error) {
-		return f(n)
-	})
-}
-
-// TransformNodeWithParentFunc is an analog to sql.TransformNodeFunc that also includes the parent of the node being
-// transformed. The parent is for inspection only, and cannot be altered.
-type TransformNodeWithParentFunc func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error)
-
-// TransformUpWithParent applies a transformation function to the given tree from the bottom up, with the additional
-// context of the parent node of the node under inspection.
-func TransformUpWithParent(node sql.Node, f TransformNodeWithParentFunc) (sql.Node, error) {
 	return TransformUpCtx(node, nil, func(c TransformContext) (sql.Node, error) {
-		return f(c.Node, c.Parent, c.ChildNum)
+		return f(c.Node)
 	})
 }
 
