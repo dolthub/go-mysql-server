@@ -162,7 +162,7 @@ func isInterval(expr sql.Expression) bool {
 }
 
 // WithChildren implements the Expression interface.
-func (a *Arithmetic) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (a *Arithmetic) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 2)
 	}
@@ -594,7 +594,7 @@ func (e *UnaryMinus) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *UnaryMinus) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (e *UnaryMinus) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}

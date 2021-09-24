@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*Last)(nil)
 var _ sql.Aggregation = (*Last)(nil)
 
 // NewLast returns a new Last node.
-func NewLast(ctx *sql.Context, e sql.Expression) *Last {
+func NewLast(e sql.Expression) *Last {
 	return &Last{expression.UnaryExpression{Child: e}}
 }
 
@@ -50,16 +50,16 @@ func (l *Last) String() string {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (l *Last) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (l *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLast(ctx, children[0]), nil
+	return NewLast(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (l *Last) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
-	bufferChild, err := expression.Clone(ctx, l.UnaryExpression.Child)
+func (l *Last) NewBuffer() (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(l.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}

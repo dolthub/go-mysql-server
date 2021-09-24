@@ -28,13 +28,13 @@ func TestNewVersion(t *testing.T) {
 	require := require.New(t)
 
 	ctx := sql.NewEmptyContext()
-	f, _ := NewVersion(versionPostfix)(ctx)
+	f, _ := NewVersion(versionPostfix)()
 
 	val, err := f.Eval(ctx, nil)
 	require.NoError(err)
 	require.Equal("8.0.11-"+versionPostfix, val)
 
-	f, err = NewVersion("")(ctx)
+	f, err = NewVersion("")()
 	require.NoError(err)
 
 	val, err = f.Eval(ctx, nil)

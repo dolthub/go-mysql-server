@@ -27,14 +27,12 @@ import (
 
 func TestJSONExtract(t *testing.T) {
 	f2, err := NewJSONExtract(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "arg1", false),
 		expression.NewGetField(1, sql.LongText, "arg2", false),
 	)
 	require.NoError(t, err)
 
 	f3, err := NewJSONExtract(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "arg1", false),
 		expression.NewGetField(1, sql.LongText, "arg2", false),
 		expression.NewGetField(2, sql.LongText, "arg3", false),
@@ -42,7 +40,6 @@ func TestJSONExtract(t *testing.T) {
 	require.NoError(t, err)
 
 	f4, err := NewJSONExtract(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "arg1", false),
 		expression.NewGetField(1, sql.LongText, "arg2", false),
 		expression.NewGetField(2, sql.LongText, "arg3", false),

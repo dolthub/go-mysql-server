@@ -23,7 +23,7 @@ func TestStrToDate(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f, err := NewStrToDate(sql.NewEmptyContext(),
+		f, err := NewStrToDate(
 			expression.NewGetField(0, sql.Text, "", true),
 			expression.NewGetField(1, sql.Text, "", true),
 		)
@@ -51,7 +51,7 @@ func TestStrToDateFailure(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		f, err := NewStrToDate(sql.NewEmptyContext(),
+		f, err := NewStrToDate(
 			expression.NewGetField(0, sql.Text, "", true),
 			expression.NewGetField(1, sql.Text, "", true),
 		)

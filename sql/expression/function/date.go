@@ -31,7 +31,7 @@ type DateAdd struct {
 var _ sql.FunctionExpression = (*DateAdd)(nil)
 
 // NewDateAdd creates a new date add function.
-func NewDateAdd(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+func NewDateAdd(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATE_ADD", 2, len(args))
 	}
@@ -68,8 +68,8 @@ func (d *DateAdd) IsNullable() bool {
 func (d *DateAdd) Type() sql.Type { return sql.Date }
 
 // WithChildren implements the Expression interface.
-func (d *DateAdd) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewDateAdd(ctx, children...)
+func (d *DateAdd) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewDateAdd(children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -113,7 +113,7 @@ type DateSub struct {
 var _ sql.FunctionExpression = (*DateSub)(nil)
 
 // NewDateSub creates a new date add function.
-func NewDateSub(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+func NewDateSub(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATE_SUB", 2, len(args))
 	}
@@ -150,8 +150,8 @@ func (d *DateSub) IsNullable() bool {
 func (d *DateSub) Type() sql.Type { return sql.Date }
 
 // WithChildren implements the Expression interface.
-func (d *DateSub) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewDateSub(ctx, children...)
+func (d *DateSub) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewDateSub(children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -229,11 +229,11 @@ func (t *TimestampConversion) Children() []sql.Expression {
 	return []sql.Expression{t.Date}
 }
 
-func (t *TimestampConversion) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewTimestamp(ctx, children...)
+func (t *TimestampConversion) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewTimestamp(children...)
 }
 
-func NewTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+func NewTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMP", 1, len(args))
 	}
@@ -283,13 +283,13 @@ func (t *DatetimeConversion) Children() []sql.Expression {
 	return []sql.Expression{t.Date}
 }
 
-func (t *DatetimeConversion) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewDatetime(ctx, children...)
+func (t *DatetimeConversion) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewDatetime(children...)
 }
 
 // NewDatetime returns a DatetimeConversion instance to handle the sql function "datetime". This is
 // not a standard mysql function, but provides a shorthand for datetime conversions.
-func NewDatetime(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATETIME", 1, len(args))
 	}
@@ -305,7 +305,7 @@ type UnixTimestamp struct {
 
 var _ sql.FunctionExpression = (*UnixTimestamp)(nil)
 
-func NewUnixTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
+func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}
@@ -342,8 +342,8 @@ func (ut *UnixTimestamp) Type() sql.Type {
 	return sql.Float64
 }
 
-func (ut *UnixTimestamp) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewUnixTimestamp(ctx, children...)
+func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewUnixTimestamp(children...)
 }
 
 func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -387,7 +387,7 @@ type FromUnixtime struct {
 
 var _ sql.FunctionExpression = (*FromUnixtime)(nil)
 
-func NewFromUnixtime(ctx *sql.Context, arg sql.Expression) sql.Expression {
+func NewFromUnixtime(arg sql.Expression) sql.Expression {
 	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", sql.Datetime)}
 }
 
@@ -409,11 +409,11 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return time.Unix(n.(int64), 0), nil
 }
 
-func (r *FromUnixtime) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (r *FromUnixtime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
-	return NewFromUnixtime(ctx, children[0]), nil
+	return NewFromUnixtime(children[0]), nil
 }
 
 type CurrDate struct {
@@ -422,13 +422,13 @@ type CurrDate struct {
 
 var _ sql.FunctionExpression = CurrDate{}
 
-func NewCurrDate(ctx *sql.Context) sql.Expression {
+func NewCurrDate() sql.Expression {
 	return CurrDate{
 		NoArgFunc: NoArgFunc{"curdate", sql.LongText},
 	}
 }
 
-func NewCurrentDate(ctx *sql.Context) sql.Expression {
+func NewCurrentDate() sql.Expression {
 	return CurrDate{
 		NoArgFunc: NoArgFunc{"current_date", sql.LongText},
 	}
@@ -445,6 +445,6 @@ func (c CurrDate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c CurrDate) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(ctx, c, children)
+func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, children)
 }

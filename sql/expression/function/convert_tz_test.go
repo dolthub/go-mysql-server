@@ -128,7 +128,7 @@ func TestConvertTz(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fn := NewConvertTz(sql.NewEmptyContext(), expression.NewLiteral(test.datetime, sql.Text), expression.NewLiteral(test.fromTimeZone, sql.Text), expression.NewLiteral(test.toTimeZone, sql.Text))
+			fn := NewConvertTz(expression.NewLiteral(test.datetime, sql.Text), expression.NewLiteral(test.fromTimeZone, sql.Text), expression.NewLiteral(test.toTimeZone, sql.Text))
 
 			res, err := fn.Eval(sql.NewEmptyContext(), sql.Row{})
 			require.NoError(t, err)

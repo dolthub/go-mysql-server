@@ -119,7 +119,7 @@ func TestGreatest(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewEmptyContext()
-			f, err := NewGreatest(ctx, tt.args...)
+			f, err := NewGreatest(tt.args...)
 			require.NoError(err)
 
 			output, err := f.Eval(ctx, nil)
@@ -139,14 +139,12 @@ func TestGreatestUnsignedOverflow(t *testing.T) {
 
 	switch unsafe.Sizeof(x) {
 	case 4:
-		gr, err = NewGreatest(ctx,
-			expression.NewLiteral(int32(1), sql.Int32),
+		gr, err = NewGreatest(expression.NewLiteral(int32(1), sql.Int32),
 			expression.NewLiteral(uint32(4294967295), sql.Uint32),
 		)
 		require.NoError(err)
 	case 8:
-		gr, err = NewGreatest(ctx,
-			expression.NewLiteral(int64(1), sql.Int64),
+		gr, err = NewGreatest(expression.NewLiteral(int64(1), sql.Int64),
 			expression.NewLiteral(uint64(18446744073709551615), sql.Uint64),
 		)
 		require.NoError(err)
@@ -237,7 +235,7 @@ func TestLeast(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			require := require.New(t)
 
-			f, err := NewLeast(ctx, tt.args...)
+			f, err := NewLeast(tt.args...)
 			require.NoError(err)
 
 			output, err := f.Eval(ctx, nil)

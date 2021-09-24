@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*Sum)(nil)
 var _ sql.Aggregation = (*Sum)(nil)
 
 // NewSum returns a new Sum node.
-func NewSum(ctx *sql.Context, e sql.Expression) *Sum {
+func NewSum(e sql.Expression) *Sum {
 	return &Sum{expression.UnaryExpression{Child: e}}
 }
 
@@ -50,16 +50,16 @@ func (m *Sum) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (m *Sum) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (m *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewSum(ctx, children[0]), nil
+	return NewSum(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Sum) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
-	bufferChild, err := expression.Clone(ctx, m.UnaryExpression.Child)
+func (m *Sum) NewBuffer() (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(m.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}

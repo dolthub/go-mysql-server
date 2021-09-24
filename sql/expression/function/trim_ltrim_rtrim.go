@@ -32,20 +32,20 @@ const (
 	bTrimType trimType = 'b'
 )
 
-func NewLeftTrim(ctx *sql.Context, e sql.Expression) sql.Expression {
-	return newTrim(ctx, lTrimType, e)
+func NewLeftTrim(e sql.Expression) sql.Expression {
+	return newTrim(lTrimType, e)
 }
 
-func NewRightTrim(ctx *sql.Context, e sql.Expression) sql.Expression {
-	return newTrim(ctx, rTrimType, e)
+func NewRightTrim(e sql.Expression) sql.Expression {
+	return newTrim(rTrimType, e)
 }
 
-func NewTrim(ctx *sql.Context, e sql.Expression) sql.Expression {
-	return newTrim(ctx, bTrimType, e)
+func NewTrim(e sql.Expression) sql.Expression {
+	return newTrim(bTrimType, e)
 }
 
 // newTrim creates a new Trim expression.
-func newTrim(ctx *sql.Context, tType trimType, str sql.Expression) sql.Expression {
+func newTrim(tType trimType, str sql.Expression) sql.Expression {
 	return &Trim{expression.UnaryExpression{Child: str}, tType}
 }
 
@@ -91,11 +91,11 @@ func (t *Trim) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (t *Trim) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (t *Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return newTrim(ctx, t.trimType, children[0]), nil
+	return newTrim(t.trimType, children[0]), nil
 }
 
 // Eval implements the Expression interface.

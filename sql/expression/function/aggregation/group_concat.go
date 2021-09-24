@@ -37,16 +37,16 @@ type GroupConcat struct {
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
 
-func NewEmptyGroupConcat(ctx *sql.Context) sql.Expression {
+func NewEmptyGroupConcat() sql.Expression {
 	return &GroupConcat{}
 }
 
-func NewGroupConcat(ctx *sql.Context, distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
+func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
 	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}, nil
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (g *GroupConcat) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (g *GroupConcat) NewBuffer() (sql.AggregationBuffer, error) {
 	var rows []sql.Row
 	distinctSet := make(map[string]bool)
 	return &groupConcatBuffer{g, rows, distinctSet}, nil
@@ -142,7 +142,7 @@ func (g *GroupConcat) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GroupConcat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(GroupConcat{}, len(children), 2)
 	}
@@ -151,7 +151,7 @@ func (g *GroupConcat) WithChildren(ctx *sql.Context, children ...sql.Expression)
 	sortFieldMarker := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(ctx, g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[sortFieldMarker:], g.maxLen)
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[sortFieldMarker:], g.maxLen)
 }
 
 // FunctionName implements the FunctionExpression interface.

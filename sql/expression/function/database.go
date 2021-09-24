@@ -24,7 +24,7 @@ type Database struct{}
 var _ sql.FunctionExpression = (*Database)(nil)
 
 // NewDatabase returns a new Database function
-func NewDatabase(_ *sql.Context) sql.Expression {
+func NewDatabase() sql.Expression {
 	return &Database{}
 }
 
@@ -47,11 +47,11 @@ func (*Database) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (d *Database) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (d *Database) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 0)
 	}
-	return NewDatabase(ctx), nil
+	return NewDatabase(), nil
 }
 
 // Resolved implements the sql.Expression interface.

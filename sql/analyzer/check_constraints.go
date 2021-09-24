@@ -178,7 +178,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			transformedChecks := make(sql.CheckConstraints, len(checks))
 
 			for i, check := range checks {
-				newExpr, err := expression.TransformUp(ctx, check.Expr, func(e sql.Expression) (sql.Expression, error) {
+				newExpr, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
 					if t, ok := e.(*expression.UnresolvedColumn); ok {
 						name := t.Name()
 						strings.Replace(name, "`", "", -1) // remove any preexisting backticks

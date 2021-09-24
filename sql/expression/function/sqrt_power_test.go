@@ -26,7 +26,6 @@ import (
 
 func TestSqrt(t *testing.T) {
 	f := NewSqrt(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.Float64, "n", false),
 	)
 	testCases := []struct {
@@ -59,7 +58,6 @@ func TestSqrt(t *testing.T) {
 
 	// Test negative number
 	f = NewSqrt(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.Float64, "n", false),
 	)
 	require := require.New(t)
@@ -91,7 +89,6 @@ func TestPower(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		f := NewPower(
-			sql.NewEmptyContext(),
 			expression.NewGetField(0, tt.rowType, "", false),
 			expression.NewGetField(1, tt.rowType, "", false),
 		)
@@ -112,7 +109,6 @@ func TestPower(t *testing.T) {
 
 	// Test inf numbers
 	f := NewPower(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.Float64, "", false),
 		expression.NewGetField(1, sql.Float64, "", false),
 	)
