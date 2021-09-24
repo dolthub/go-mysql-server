@@ -217,8 +217,9 @@ func (c *Catalog) Function(name string) (sql.Function, error) {
 		f, err := fp.Function(name)
 		if err != nil && !sql.ErrFunctionNotFound.Is(err) {
 			return nil, err
+		} else if f != nil {
+			return f, nil
 		}
-		return f, nil
 	}
 
 	return c.builtInFunctions.Function(name)

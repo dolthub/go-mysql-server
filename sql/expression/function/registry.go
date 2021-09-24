@@ -231,10 +231,6 @@ func (r Registry) Register(fn ...sql.Function) error {
 
 // Function implements sql.FunctionProvider
 func (r Registry) Function(name string) (sql.Function, error) {
-	if len(r) == 0 {
-		return nil, sql.ErrFunctionNotFound.New(name)
-	}
-
 	if fn, ok := r[name]; ok {
 		return fn, nil
 	}
