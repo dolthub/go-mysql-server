@@ -91,14 +91,6 @@ func transformUpCtx(c TransformContext, s TransformSelector, f Transformer) (sql
 	return f(TransformContext{node, c.Parent, c.ChildNum, c.SchemaPrefix})
 }
 
-type ExpressionTransformContext struct {
-	TransformContext
-	Expr       sql.Expression
-	ParentExpr sql.Expression
-}
-
-type ExprTransformer func(ExpressionTransformContext) (sql.Expression, error)
-
 // TransformUp applies a transformation function to the given tree from the
 // bottom up.
 func TransformUp(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
@@ -118,8 +110,8 @@ func TransformExpressionsUpWithNode(node sql.Node, f expression.TransformExprWit
 // TransformExpressionsUp applies a transformation function to all expressions
 // on the given tree from the bottom up.
 func TransformExpressionsUp(node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
-	return TransformUp(node, func(n sql.Node) (sql.Node, error) {
-		return TransformExpressions(n, f)
+	return TransformExpressionsUpWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		return f(e)
 	})
 }
 
