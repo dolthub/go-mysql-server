@@ -183,8 +183,8 @@ func (c *dbConn) nextProcessID() uint64 {
 type Connector struct {
 	driver  *Driver
 	options *Options
-	server string
-	dbConn *dbConn
+	server  string
+	dbConn  *dbConn
 }
 
 // Driver returns the driver.

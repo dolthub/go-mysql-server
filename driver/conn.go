@@ -23,9 +23,9 @@ import (
 
 // Conn is a connection to a database.
 type Conn struct {
-	options *Options
-	dbConn  *dbConn
-	session sql.Session
+	options  *Options
+	dbConn   *dbConn
+	session  sql.Session
 	contexts ContextBuilder
 	indexes  *sql.IndexRegistry
 	views    *sql.ViewRegistry
