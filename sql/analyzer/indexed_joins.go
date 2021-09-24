@@ -42,9 +42,9 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
+	selector := func(c plan.TransformContext) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
-		switch parent.(type) {
+		switch c.Parent.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
 			return false
 		default:
@@ -54,8 +54,8 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 	var tableAliases TableAliases
 	var joinIndexes joinIndexesByTable
-	newJoin, err := plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
-		switch n := n.(type) {
+	newJoin, err := plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, error) {
+		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
 			return n, nil
 		case plan.JoinNode:

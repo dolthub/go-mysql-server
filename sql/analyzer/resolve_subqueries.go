@@ -243,24 +243,24 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	// We only want to do this if we're at the top of the tree.
 	// TODO: Not a perfect indicator of whether we're at the top of the tree...
 	if scope == nil {
-		selector := func(parent sql.Node, child sql.Node, childNum int) bool {
-			if _, isIndexedJoin := parent.(*plan.IndexedJoin); isIndexedJoin {
-				return childNum == 0
-			} else if j, isJoin := parent.(plan.JoinNode); isJoin {
+		selector := func(c plan.TransformContext) bool {
+			if _, isIndexedJoin := c.Parent.(*plan.IndexedJoin); isIndexedJoin {
+				return c.ChildNum == 0
+			} else if j, isJoin := c.Parent.(plan.JoinNode); isJoin {
 				if j.JoinType() == plan.JoinTypeRight {
-					return childNum == 1
+					return c.ChildNum == 1
 				} else {
-					return childNum == 0
+					return c.ChildNum == 0
 				}
 			}
 			return true
 		}
-		n, err = plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
-			cr, isCR := n.(*plan.CachedResults)
+		n, err = plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, error) {
+			cr, isCR := c.Node.(*plan.CachedResults)
 			if isCR {
 				return cr.UnaryNode.Child, nil
 			}
-			return n, nil
+			return c.Node, nil
 		})
 	}
 	return n, err
