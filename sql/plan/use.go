@@ -23,7 +23,7 @@ import (
 // Use changes the current database.
 type Use struct {
 	db      sql.Database
-	Catalog *sql.Catalog
+	Catalog sql.Catalog
 }
 
 // NewUse creates a new Use node.

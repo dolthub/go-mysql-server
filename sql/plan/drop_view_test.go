@@ -28,7 +28,7 @@ import (
 // Generates a database with a single table called mytable and a catalog with
 // the view that is also returned. The context returned is the one used to
 // create the view.
-func mockData(require *require.Assertions) (sql.Database, *sql.Catalog, *sql.Context, sql.View) {
+func mockData(require *require.Assertions) (sql.Database, *sql.Context, sql.View) {
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int32},
 		{Name: "s", Source: "mytable", Type: sql.Text},
@@ -36,8 +36,6 @@ func mockData(require *require.Assertions) (sql.Database, *sql.Catalog, *sql.Con
 
 	db := memory.NewDatabase("db")
 	db.AddTable("db", table)
-
-	catalog := sql.NewCatalog(sql.NewDatabaseProvider(db))
 
 	subqueryAlias := NewSubqueryAlias("myview", "select i",
 		NewProject(
@@ -49,14 +47,13 @@ func mockData(require *require.Assertions) (sql.Database, *sql.Catalog, *sql.Con
 	)
 
 	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false)
-	createView.Catalog = catalog
 
 	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
 
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(err)
 
-	return db, catalog, ctx, createView.View()
+	return db, ctx, createView.View()
 }
 
 // Tests that DropView works as expected and that the view is dropped in
@@ -65,11 +62,10 @@ func TestDropExistingView(t *testing.T) {
 	require := require.New(t)
 
 	test := func(ifExists bool) {
-		db, catalog, ctx, view := mockData(require)
+		db, ctx, view := mockData(require)
 
 		singleDropView := NewSingleDropView(db, view.Name())
 		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
-		dropView.Catalog = catalog
 
 		_, err := dropView.RowIter(ctx, nil)
 		require.NoError(err)
@@ -87,11 +83,10 @@ func TestDropNonExistingView(t *testing.T) {
 	require := require.New(t)
 
 	test := func(ifExists bool) error {
-		db, catalog, ctx, view := mockData(require)
+		db, ctx, view := mockData(require)
 
 		singleDropView := NewSingleDropView(db, "non-existing-view")
 		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
-		dropView.Catalog = catalog
 
 		_, err := dropView.RowIter(ctx, nil)
 

@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package sqle
 
 import (
 	"context"
@@ -20,14 +20,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
 
 	p := NewProcessList()
-	sess := NewSession("0.0.0.0:3306", Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
-	ctx := NewContext(context.Background(), WithPid(1), WithSession(sess))
+	sess := sql.NewSession("0.0.0.0:3306", sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
 
@@ -37,12 +39,12 @@ func TestProcessList(t *testing.T) {
 	p.AddTableProgress(ctx.Pid(), "a", 5)
 	p.AddTableProgress(ctx.Pid(), "b", 6)
 
-	expectedProcess := &Process{
+	expectedProcess := &sql.Process{
 		Pid:        1,
 		Connection: 1,
-		Progress: map[string]TableProgress{
-			"a": {Progress{Name: "a", Done: 0, Total: 5}, map[string]PartitionProgress{}},
-			"b": {Progress{Name: "b", Done: 0, Total: 6}, map[string]PartitionProgress{}},
+		Progress: map[string]sql.TableProgress{
+			"a": {sql.Progress{Name: "a", Done: 0, Total: 5}, map[string]sql.PartitionProgress{}},
+			"b": {sql.Progress{Name: "b", Done: 0, Total: 6}, map[string]sql.PartitionProgress{}},
 		},
 		User:      "foo",
 		Query:     "SELECT foo",
@@ -60,16 +62,16 @@ func TestProcessList(t *testing.T) {
 
 	p.RemovePartitionProgress(ctx.Pid(), "b", "b-3")
 
-	expectedProgress := map[string]TableProgress{
-		"a": {Progress{Name: "a", Total: 5}, map[string]PartitionProgress{}},
-		"b": {Progress{Name: "b", Total: 6}, map[string]PartitionProgress{
-			"b-1": {Progress{Name: "b-1", Done: 0, Total: -1}},
-			"b-2": {Progress{Name: "b-2", Done: 1, Total: -1}},
+	expectedProgress := map[string]sql.TableProgress{
+		"a": {sql.Progress{Name: "a", Total: 5}, map[string]sql.PartitionProgress{}},
+		"b": {sql.Progress{Name: "b", Total: 6}, map[string]sql.PartitionProgress{
+			"b-1": {sql.Progress{Name: "b-1", Done: 0, Total: -1}},
+			"b-2": {sql.Progress{Name: "b-2", Done: 1, Total: -1}},
 		}},
 	}
 	require.Equal(expectedProgress, p.procs[ctx.Pid()].Progress)
 
-	ctx = NewContext(context.Background(), WithPid(2), WithSession(sess))
+	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
 	ctx, err = p.AddProcess(ctx, "SELECT bar")
 	require.NoError(err)
 
@@ -87,7 +89,7 @@ func TestProcessList(t *testing.T) {
 	require.Equal(int64(2), p.procs[1].Progress["b"].Done)
 	require.Equal(int64(1), p.procs[2].Progress["foo"].Done)
 
-	var expected []Process
+	var expected []sql.Process
 	for _, p := range p.procs {
 		np := *p
 		np.Kill = nil
@@ -110,7 +112,7 @@ func TestProcessList(t *testing.T) {
 	require.True(ok)
 }
 
-func sortByPid(slice []Process) {
+func sortByPid(slice []sql.Process) {
 	sort.Slice(slice, func(i, j int) bool {
 		return slice[i].Pid < slice[j].Pid
 	})
@@ -119,8 +121,8 @@ func sortByPid(slice []Process) {
 func TestKillConnection(t *testing.T) {
 	pl := NewProcessList()
 
-	s1 := NewSession("", Client{}, 1)
-	s2 := NewSession("", Client{}, 2)
+	s1 := sql.NewSession("", sql.Client{}, 1)
+	s2 := sql.NewSession("", sql.Client{}, 2)
 
 	var killed = make(map[uint64]bool)
 	for i := uint64(1); i <= 3; i++ {
@@ -131,7 +133,7 @@ func TestKillConnection(t *testing.T) {
 		}
 
 		_, err := pl.AddProcess(
-			NewContext(context.Background(), WithPid(i), WithSession(s)),
+			sql.NewContext(context.Background(), sql.WithPid(i), sql.WithSession(s)),
 			"foo",
 		)
 		require.NoError(t, err)

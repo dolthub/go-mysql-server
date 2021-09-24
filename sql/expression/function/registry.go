@@ -17,13 +17,19 @@ package function
 import (
 	"math"
 
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 )
 
-// Defaults is the function map with all the default functions.
-var Defaults = []sql.Function{
+// ErrFunctionAlreadyRegistered is thrown when a function is already registered
+var ErrFunctionAlreadyRegistered = errors.NewKind("function '%s' is already registered")
+
+// BuiltIns is the set of built-in functions any integrator can use
+var BuiltIns = []sql.Function{
 	// elt, find_in_set, insert, load_file, locate
 	sql.Function1{Name: "abs", Fn: NewAbsVal},
 	sql.Function1{Name: "acos", Fn: NewAcos},
@@ -54,6 +60,7 @@ var Defaults = []sql.Function{
 	sql.NewFunction0("current_timestamp", NewCurrTimestamp),
 	sql.NewFunction0("current_user", NewCurrentUser),
 	sql.NewFunction0("curtime", NewCurrTime),
+	sql.Function0{Name: "database", Fn: NewDatabase},
 	sql.Function1{Name: "date", Fn: NewDate},
 	sql.FunctionN{Name: "date_add", Fn: NewDateAdd},
 	sql.Function2{Name: "date_format", Fn: NewDateFormat},
@@ -124,8 +131,8 @@ var Defaults = []sql.Function{
 	sql.Function1{Name: "log10", Fn: NewLogBaseFunc(float64(10))},
 	sql.Function1{Name: "log2", Fn: NewLogBaseFunc(float64(2))},
 	sql.Function1{Name: "lower", Fn: NewLower},
-	sql.FunctionN{Name: "lpad", Fn: NewPadFunc(lPadType)},
-	sql.Function1{Name: "ltrim", Fn: NewTrimFunc(lTrimType)},
+	sql.FunctionN{Name: "lpad", Fn: NewLeftPad},
+	sql.Function1{Name: "ltrim", Fn: NewLeftTrim},
 	sql.Function1{Name: "max", Fn: func(ctx *sql.Context, e sql.Expression) sql.Expression { return aggregation.NewMax(ctx, e) }},
 	sql.Function1{Name: "md5", Fn: NewMD5},
 	sql.Function1{Name: "microsecond", Fn: NewMicrosecond},
@@ -149,8 +156,9 @@ var Defaults = []sql.Function{
 	sql.Function0{Name: "row_number", Fn: window.NewRowNumber},
 	sql.Function0{Name: "percent_rank", Fn: window.NewPercentRank},
 	sql.Function1{Name: "first_value", Fn: window.NewFirstValue},
-	sql.FunctionN{Name: "rpad", Fn: NewPadFunc(rPadType)},
-	sql.Function1{Name: "rtrim", Fn: NewTrimFunc(rTrimType)},
+	sql.FunctionN{Name: "rpad", Fn: NewRightPad},
+	sql.Function1{Name: "rtrim", Fn: NewRightTrim},
+	sql.Function0{Name: "schema", Fn: NewDatabase},
 	sql.Function1{Name: "second", Fn: NewSecond},
 	sql.Function1{Name: "sha", Fn: NewSHA1},
 	sql.Function1{Name: "sha1", Fn: NewSHA1},
@@ -170,7 +178,7 @@ var Defaults = []sql.Function{
 	sql.Function2{Name: "timediff", Fn: NewTimeDiff},
 	sql.FunctionN{Name: "timestamp", Fn: NewTimestamp},
 	sql.Function1{Name: "to_base64", Fn: NewToBase64},
-	sql.Function1{Name: "trim", Fn: NewTrimFunc(bTrimType)},
+	sql.Function1{Name: "trim", Fn: NewTrim},
 	sql.Function1{Name: "ucase", Fn: NewUpper},
 	sql.Function1{Name: "unhex", Fn: NewUnhex},
 	sql.FunctionN{Name: "unix_timestamp", Fn: NewUnixTimestamp},
@@ -195,5 +203,43 @@ func GetLockingFuncs(ls *sql.LockSubsystem) []sql.Function {
 		sql.Function1{Name: "is_used_lock", Fn: NewIsUsedLock(ls)},
 		sql.NewFunction0("release_all_locks", NewReleaseAllLocks(ls)),
 		sql.Function1{Name: "release_lock", Fn: NewReleaseLock(ls)},
+	}
+}
+
+// Registry is used to register functions
+type Registry map[string]sql.Function
+
+var _ sql.FunctionProvider = Registry{}
+
+// NewRegistry creates a new Registry.
+func NewRegistry() Registry {
+	fr := make(Registry)
+	fr.mustRegister(BuiltIns...)
+	return fr
+}
+
+// Register registers functions, returning an error if it's already registered
+func (r Registry) Register(fn ...sql.Function) error {
+	for _, f := range fn {
+		if _, ok := r[f.FunctionName()]; ok {
+			return ErrFunctionAlreadyRegistered.New(f.FunctionName())
+		}
+		r[f.FunctionName()] = f
+	}
+	return nil
+}
+
+// Function implements sql.FunctionProvider
+func (r Registry) Function(name string) (sql.Function, error) {
+	if fn, ok := r[name]; ok {
+		return fn, nil
+	}
+	similar := similartext.FindFromMap(r, name)
+	return nil, sql.ErrFunctionNotFound.New(name + similar)
+}
+
+func (r Registry) mustRegister(fn ...sql.Function) {
+	if err := r.Register(fn...); err != nil {
+		panic(err)
 	}
 }

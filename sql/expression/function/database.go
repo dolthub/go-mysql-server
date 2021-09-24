@@ -18,18 +18,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Database stands for DATABASE() function
-type Database struct {
-	catalog *sql.Catalog
-}
+// Database implements the DATABASE() function
+type Database struct{}
 
 var _ sql.FunctionExpression = (*Database)(nil)
 
 // NewDatabase returns a new Database function
-func NewDatabase(c *sql.Catalog) func(*sql.Context) sql.Expression {
-	return func(*sql.Context) sql.Expression {
-		return &Database{c}
-	}
+func NewDatabase(_ *sql.Context) sql.Expression {
+	return &Database{}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -55,7 +51,7 @@ func (d *Database) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 0)
 	}
-	return NewDatabase(d.catalog)(ctx), nil
+	return NewDatabase(ctx), nil
 }
 
 // Resolved implements the sql.Expression interface.

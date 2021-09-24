@@ -14,29 +14,13 @@
 
 package sql
 
-import (
-	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/go-mysql-server/internal/similartext"
-)
-
-// ErrFunctionAlreadyRegistered is thrown when a function is already registered
-var ErrFunctionAlreadyRegistered = errors.NewKind("function '%s' is already registered")
-
-// ErrFunctionNotFound is thrown when a function is not found
-var ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
-
-// ErrInvalidArgumentNumber is returned when the number of arguments to call a
-// function is different from the function arity.
-var ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
-
 // Function is a function defined by the user that can be applied in a SQL query.
 type Function interface {
 	// NewInstance returns a new instance of the function to evaluate against rows
 	NewInstance(*Context, []Expression) (Expression, error)
-	// Function name
-	name() string
-	// isFunction will restrict implementations of Function
+	// FunctionName returns the name of this function
+	FunctionName() string
+	// isFunction is a private method to restrict implementations of Function
 	isFunction()
 }
 
@@ -100,8 +84,6 @@ type (
 	}
 )
 
-type EvalLogic func(*Context, Row) (interface{}, error)
-
 var _ Function = Function0{}
 var _ Function = Function1{}
 var _ Function = Function2{}
@@ -119,7 +101,6 @@ func NewFunction0(name string, fn func(ctx *Context) Expression) Function0 {
 	}
 }
 
-// Call implements the Function interface.
 func (fn Function0) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 0 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 0, len(args))
@@ -128,7 +109,6 @@ func (fn Function0) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx), nil
 }
 
-// Call implements the Function interface.
 func (fn Function1) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 1 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 1, len(args))
@@ -137,7 +117,6 @@ func (fn Function1) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function2) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 2 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 2, len(args))
@@ -146,7 +125,6 @@ func (fn Function2) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function3) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 3 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 3, len(args))
@@ -155,7 +133,6 @@ func (fn Function3) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function4) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 4 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 4, len(args))
@@ -164,7 +141,6 @@ func (fn Function4) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function5) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 5 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 5, len(args))
@@ -173,7 +149,6 @@ func (fn Function5) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3], args[4]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function6) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 6 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 6, len(args))
@@ -182,7 +157,6 @@ func (fn Function6) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3], args[4], args[5]), nil
 }
 
-// Call implements the Function interface.
 func (fn Function7) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	if len(args) != 7 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 7, len(args))
@@ -191,20 +165,19 @@ func (fn Function7) NewInstance(ctx *Context, args []Expression) (Expression, er
 	return fn.Fn(ctx, args[0], args[1], args[2], args[3], args[4], args[5], args[6]), nil
 }
 
-// Call implements the Function interface.
 func (fn FunctionN) NewInstance(ctx *Context, args []Expression) (Expression, error) {
 	return fn.Fn(ctx, args...)
 }
 
-func (fn Function0) name() string { return fn.Name }
-func (fn Function1) name() string { return fn.Name }
-func (fn Function2) name() string { return fn.Name }
-func (fn Function3) name() string { return fn.Name }
-func (fn Function4) name() string { return fn.Name }
-func (fn Function5) name() string { return fn.Name }
-func (fn Function6) name() string { return fn.Name }
-func (fn Function7) name() string { return fn.Name }
-func (fn FunctionN) name() string { return fn.Name }
+func (fn Function0) FunctionName() string { return fn.Name }
+func (fn Function1) FunctionName() string { return fn.Name }
+func (fn Function2) FunctionName() string { return fn.Name }
+func (fn Function3) FunctionName() string { return fn.Name }
+func (fn Function4) FunctionName() string { return fn.Name }
+func (fn Function5) FunctionName() string { return fn.Name }
+func (fn Function6) FunctionName() string { return fn.Name }
+func (fn Function7) FunctionName() string { return fn.Name }
+func (fn FunctionN) FunctionName() string { return fn.Name }
 
 func (Function0) isFunction() {}
 func (Function1) isFunction() {}
@@ -215,46 +188,3 @@ func (Function5) isFunction() {}
 func (Function6) isFunction() {}
 func (Function7) isFunction() {}
 func (FunctionN) isFunction() {}
-
-// FunctionRegistry is used to register functions. It is used both for builtin
-// and User-Defined Functions.
-type FunctionRegistry map[string]Function
-
-// NewFunctionRegistry creates a new FunctionRegistry.
-func NewFunctionRegistry() FunctionRegistry {
-	return make(FunctionRegistry)
-}
-
-// Register registers functions.
-// If function with that name is already registered,
-// the ErrFunctionAlreadyRegistered will be returned
-func (r FunctionRegistry) Register(fn ...Function) error {
-	for _, f := range fn {
-		if _, ok := r[f.name()]; ok {
-			return ErrFunctionAlreadyRegistered.New(f.name())
-		}
-		r[f.name()] = f
-	}
-	return nil
-}
-
-// MustRegister registers functions.
-// If function with that name is already registered, it will panic!
-func (r FunctionRegistry) MustRegister(fn ...Function) {
-	if err := r.Register(fn...); err != nil {
-		panic(err)
-	}
-}
-
-// Function returns a function with the given name.
-func (r FunctionRegistry) Function(name string) (Function, error) {
-	if len(r) == 0 {
-		return nil, ErrFunctionNotFound.New(name)
-	}
-
-	if fn, ok := r[name]; ok {
-		return fn, nil
-	}
-	similar := similartext.FindFromMap(r, name)
-	return nil, ErrFunctionNotFound.New(name + similar)
-}

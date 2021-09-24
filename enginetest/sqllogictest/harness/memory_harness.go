@@ -79,7 +79,7 @@ func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results [
 	defer func() {
 		if r := recover(); r != nil {
 			// Panics leave the engine in a bad state that we have to clean up
-			h.engine.Catalog.ProcessList.Kill(pid)
+			h.engine.ProcessList.Kill(pid)
 			panic(r)
 		}
 	}()
