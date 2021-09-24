@@ -43,14 +43,17 @@ type Subquery struct {
 	disposeFunc sql.DisposeFunc
 	// Mutex to guard the caches
 	cacheMu sync.Mutex
+
+	returnSentinel interface{}
 }
 
 // NewSubquery returns a new subquery expression.
 func NewSubquery(node sql.Node, queryString string) *Subquery {
-	return &Subquery{Query: node, QueryString: queryString}
+	return &Subquery{Query: node, QueryString: queryString, returnSentinel: nil}
 }
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
+var _ sql.SubQueryExpression = (*Subquery)(nil)
 
 type StripRowNode struct {
 	UnaryNode
@@ -171,6 +174,10 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if cached {
 		if len(s.cache) == 0 {
+			if s.returnSentinel != nil {
+				return s.returnSentinel, nil
+			}
+
 			return nil, nil
 		}
 		return s.cache[0], nil
@@ -194,7 +201,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if len(rows) == 0 {
-		return nil, nil
+		return s.returnSentinel, nil
 	}
 	return rows[0], nil
 }
@@ -399,3 +406,36 @@ func (s *Subquery) Dispose() {
 		s.disposeFunc = nil
 	}
 }
+
+func (s *Subquery) WithSentinel(sentinel []interface{}) *Subquery {
+	ns := *s
+	ns.returnSentinel = sentinel
+	return &ns
+}
+
+func (s *Subquery) HasResults(ctx *sql.Context, row sql.Row) bool {
+	s.cacheMu.Lock()
+	cached := s.resultsCached && s.hashCache != nil
+	s.cacheMu.Unlock()
+
+	if cached {
+		if len(s.cache) == 0 {
+			return false
+		}
+		return true
+	}
+
+	rows, err := s.evalMultiple(ctx, row)
+	if err != nil { // TODO: Return error
+		return false
+	}
+
+	// TODO: error handling for >  1
+
+	if len(rows) == 1 {
+		return true
+	}
+
+	return false
+}
+

@@ -2436,6 +2436,13 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 		return expression.NewUnresolvedFunction("values", false, nil, col), nil
+	case *sqlparser.ExistsExpr:
+		subqueryExp, err := ExprToExpression(ctx, v.Subquery)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewExistsOperator(subqueryExp), nil
 	}
 }
 
