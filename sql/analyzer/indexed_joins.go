@@ -636,7 +636,9 @@ func getJoinIndexes(
 			switch e := expr.(type) {
 			case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
 			case *expression.Not:
-				if _, ok := e.Child.(*expression.IsNull); !ok {
+				switch e.Child.(type) {
+				case *expression.Equals, *expression.NullSafeEquals, *expression.IsNull:
+				default:
 					return nil
 				}
 			default:

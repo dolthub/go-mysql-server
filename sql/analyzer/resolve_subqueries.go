@@ -171,10 +171,12 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 					return false
 				}
 			}
-		} else if sa, ok := node.(*plan.SubqueryAlias); ok {
-			if !nodeIsCacheable(sa.Child, 0) {
-				cacheable = false
-			}
+		} else if _, ok := node.(*plan.SubqueryAlias); ok {
+			// SubqueryAliases are always cacheable.  In fact, we
+			// do not go far enough here yet. CTEs must be cached /
+			// materialized and the same result set used throughout
+			// the query when they are non-determinstic in order to
+			// give correct results.
 			return false
 		}
 		return true
@@ -222,14 +224,19 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 
 // cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
-// node on top of those nodes when it is safe to do so.
+// node on top of those nodes.
 func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	n, err := plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
 		_, isJoin := c.Parent.(plan.JoinNode)
 		_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
 		if isJoin || isIndexedJoin {
-			sa, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
-			if isSubqueryAlias && isDeterminstic(sa.Child) {
+			_, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
+			if isSubqueryAlias {
+				// SubqueryAliases are always cacheable. They
+				// cannot reference their outside scope and
+				// even when they have non-determinstic
+				// expressions they should return the same
+				// results across multiple iterations.
 				return plan.NewCachedResults(c.Node), nil
 			}
 		}
