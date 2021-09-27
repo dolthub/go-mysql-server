@@ -234,6 +234,22 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select /*+ JOIN_ORDER( i, k, j ) */  * from one_pk i join one_pk k on i.pk = k.pk join (select pk, rand() r from one_pk) j on i.pk = j.pk`,
+		ExpectedPlan: "IndexedJoin(i.pk = j.pk)\n" +
+			" ├─ IndexedJoin(i.pk = k.pk)\n" +
+			" │   ├─ TableAlias(i)\n" +
+			" │   │   └─ Table(one_pk)\n" +
+			" │   └─ TableAlias(k)\n" +
+			" │       └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			" └─ HashLookup(child: (j.pk), lookup: (i.pk))\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias(j)\n" +
+			"             └─ Project(one_pk.pk, RAND() as r)\n" +
+			"                 └─ Projected table access on [pk]\n" +
+			"                     └─ Table(one_pk)\n" +
+			"",
+	},
+	{
 		Query: `INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2`,
 		ExpectedPlan: "Insert()\n" +
 			" ├─ Table(mytable)\n" +
