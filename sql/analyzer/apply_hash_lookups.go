@@ -23,6 +23,10 @@ import (
 func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
 		if c.SchemaPrefix == nil {
+			// If c.SchemaPrefix is nil, it's possible our prefix
+			// isn't Resolved yet. Whatever the case, we cannot
+			// safely apply a hash lookup here without knowing what
+			// our schema actually is.
 			return c.Node, nil
 		}
 
