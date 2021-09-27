@@ -4954,6 +4954,15 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(8)}},
 	},
 	{
+		Query: `SELECT /*+ JOIN_ORDER(a, c, b, d) */ a.c1, b.c2, c.c3, d.c4 FROM one_pk a JOIN one_pk b ON a.pk = b.pk JOIN one_pk c ON c.pk = b.pk JOIN (select * from one_pk) d ON d.pk = c.pk`,
+		Expected: []sql.Row{
+			{0, 1, 2, 3},
+			{10, 11, 12, 13},
+			{20, 21, 22, 23},
+			{30, 31, 32, 33},
+		},
+	},
+	{
 		Query: "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
 		Expected: []sql.Row{
 			sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),

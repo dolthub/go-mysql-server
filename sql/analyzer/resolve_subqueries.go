@@ -226,21 +226,21 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
 // node on top of those nodes.
 func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	n, err := plan.TransformUpWithParent(n, func(child, parent sql.Node, childNum int) (sql.Node, error) {
-		_, isJoin := parent.(plan.JoinNode)
-		_, isIndexedJoin := parent.(*plan.IndexedJoin)
+	n, err := plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+		_, isJoin := c.Parent.(plan.JoinNode)
+		_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
 		if isJoin || isIndexedJoin {
-			_, isSubqueryAlias := child.(*plan.SubqueryAlias)
+			_, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
 			if isSubqueryAlias {
 				// SubqueryAliases are always cacheable. They
 				// cannot reference their outside scope and
 				// even when they have non-determinstic
 				// expressions they should return the same
 				// results across multiple iterations.
-				return plan.NewCachedResults(child), nil
+				return plan.NewCachedResults(c.Node), nil
 			}
 		}
-		return child, nil
+		return c.Node, nil
 	})
 	if err != nil {
 		return n, err
@@ -250,24 +250,24 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	// We only want to do this if we're at the top of the tree.
 	// TODO: Not a perfect indicator of whether we're at the top of the tree...
 	if scope == nil {
-		selector := func(parent sql.Node, child sql.Node, childNum int) bool {
-			if _, isIndexedJoin := parent.(*plan.IndexedJoin); isIndexedJoin {
-				return childNum == 0
-			} else if j, isJoin := parent.(plan.JoinNode); isJoin {
+		selector := func(c plan.TransformContext) bool {
+			if _, isIndexedJoin := c.Parent.(*plan.IndexedJoin); isIndexedJoin {
+				return c.ChildNum == 0
+			} else if j, isJoin := c.Parent.(plan.JoinNode); isJoin {
 				if j.JoinType() == plan.JoinTypeRight {
-					return childNum == 1
+					return c.ChildNum == 1
 				} else {
-					return childNum == 0
+					return c.ChildNum == 0
 				}
 			}
 			return true
 		}
-		n, err = plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
-			cr, isCR := n.(*plan.CachedResults)
+		n, err = plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, error) {
+			cr, isCR := c.Node.(*plan.CachedResults)
 			if isCR {
 				return cr.UnaryNode.Child, nil
 			}
-			return n, nil
+			return c.Node, nil
 		})
 	}
 	return n, err
