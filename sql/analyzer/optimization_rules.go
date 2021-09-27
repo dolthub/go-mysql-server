@@ -285,7 +285,7 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql
 				return e, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval:
 				return e, nil
-			case *expression.ExistsOperator:
+			case *plan.ExistsSubquery:
 				children := e.Children()
 				for i, c := range children {
 					if sq, ok := c.(*plan.Subquery); ok {

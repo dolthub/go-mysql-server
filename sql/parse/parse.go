@@ -2442,7 +2442,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 
-		return expression.NewExistsOperator(subqueryExp), nil
+		return plan.NewExistsSubquery(subqueryExp), nil
 	}
 }
 
@@ -2618,6 +2618,13 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 			return expression.NewInTuple(left, right), nil
 		case *plan.Subquery:
 			return plan.NewInSubquery(left, right), nil
+		default:
+			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
+		}
+	case "equals":
+		switch right.(type) {
+		case *plan.Subquery:
+			return nil, fmt.Errorf("we up")
 		default:
 			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
 		}
