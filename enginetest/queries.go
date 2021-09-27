@@ -389,6 +389,30 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
 		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
 		Expected: []sql.Row{
 			{2, "second row", "second", 2, 2, "second row"},
