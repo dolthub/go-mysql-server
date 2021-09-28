@@ -5264,20 +5264,20 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT * FROM two_pk WHERE EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Query:    `SELECT * FROM two_pk WHERE EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query: `SELECT 2 + 2 WHERE NOT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
 		Expected: []sql.Row{{4}},
 	},
 	{
-		Query: `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
+		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
 		Expected: []sql.Row{{0}, {1}},
 	},
 	// Add invalid operand test
 	{
-		Query: `select pk from one_pk where exists (SELECT pk1 FROM two_pk);`,
+		Query:    `select pk from one_pk where exists (SELECT pk1 FROM two_pk);`,
 		Expected: []sql.Row{{0}, {1}, {2}, {3}},
 	},
 }
@@ -6467,7 +6467,6 @@ var errorQueries = []QueryErrorTest{
 		Query:       "select ((4,5),((1,2),3)) = ((1,2),(4,5)) from dual",
 		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},
-
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to

@@ -15,12 +15,14 @@
 package plan_test
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestExistsSubquery(t *testing.T) {
@@ -44,10 +46,10 @@ func TestExistsSubquery(t *testing.T) {
 	}
 
 	testCases := []struct {
-		name   string
-		subquery  sql.Node
-		row    sql.Row
-		result interface{}
+		name     string
+		subquery sql.Node
+		row      sql.Row
+		result   interface{}
 	}{
 		{
 			"Null returns as true",

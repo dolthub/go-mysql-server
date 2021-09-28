@@ -43,13 +43,11 @@ type Subquery struct {
 	disposeFunc sql.DisposeFunc
 	// Mutex to guard the caches
 	cacheMu sync.Mutex
-
-	returnSentinel interface{}
 }
 
 // NewSubquery returns a new subquery expression.
 func NewSubquery(node sql.Node, queryString string) *Subquery {
-	return &Subquery{Query: node, QueryString: queryString, returnSentinel: nil}
+	return &Subquery{Query: node, QueryString: queryString}
 }
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
@@ -174,10 +172,6 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if cached {
 		if len(s.cache) == 0 {
-			if s.returnSentinel != nil {
-				return s.returnSentinel, nil
-			}
-
 			return nil, nil
 		}
 		return s.cache[0], nil
@@ -201,7 +195,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if len(rows) == 0 {
-		return s.returnSentinel, nil
+		return nil, nil
 	}
 	return rows[0], nil
 }
@@ -407,12 +401,6 @@ func (s *Subquery) Dispose() {
 	}
 }
 
-func (s *Subquery) WithSentinel(sentinel []interface{}) *Subquery {
-	ns := *s
-	ns.returnSentinel = sentinel
-	return &ns
-}
-
 func (s *Subquery) HasResults(ctx *sql.Context, row sql.Row) bool {
 	s.cacheMu.Lock()
 	cached := s.resultsCached && s.hashCache != nil
@@ -438,4 +426,3 @@ func (s *Subquery) HasResults(ctx *sql.Context, row sql.Row) bool {
 
 	return false
 }
-

@@ -148,7 +148,7 @@ func TestSingleScript(t *testing.T) {
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: `SELECT * FROM test2 WHERE EXISTS (SELECT pk FROM t2)`,
+					Query:    `SELECT * FROM test2 WHERE EXISTS (SELECT pk FROM t2)`,
 					Expected: []sql.Row{},
 				},
 			},

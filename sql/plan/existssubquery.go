@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -29,19 +30,12 @@ type ExistsSubquery struct {
 
 var _ sql.Expression = &ExistsSubquery{}
 
-// TODO: Fill in method stub
+//NewExistsSubquery created an ExistsSubquery expression.
 func NewExistsSubquery(query sql.Expression) *ExistsSubquery {
 	return &ExistsSubquery{expression.UnaryExpression{Child: query}}
 }
 
-func (e *ExistsSubquery) String() string {
-	return fmt.Sprintf("EXISTS %s", e.subquery)
-}
-
-func (e *ExistsSubquery) Type() sql.Type {
-	return sql.Boolean
-}
-
+// Eval implements the Expression interface.
 func (e *ExistsSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	subquery, ok := e.subquery.Child.(*Subquery)
 	if !ok {
@@ -60,6 +54,7 @@ func (e *ExistsSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	return true, nil
 }
 
+// WithChildren implements the Expression interface.
 func (e *ExistsSubquery) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
@@ -68,19 +63,27 @@ func (e *ExistsSubquery) WithChildren(ctx *sql.Context, children ...sql.Expressi
 	return NewExistsSubquery(children[0]), nil
 }
 
+// Resolved implements the Expression interface.
 func (e *ExistsSubquery) Resolved() bool {
 	return e.subquery.Resolved()
 }
 
+// IsNullable implements the Expression interface.
 func (e *ExistsSubquery) IsNullable() bool {
 	return false
 }
 
+// Children implements the Expression interface.
 func (e *ExistsSubquery) Children() []sql.Expression {
 	return []sql.Expression{e.subquery.Child}
 }
 
+// String implements the Expression interface.
+func (e *ExistsSubquery) String() string {
+	return fmt.Sprintf("EXISTS %s", e.subquery)
+}
 
-
-
-
+// Type implements the Expression interface.
+func (e *ExistsSubquery) Type() sql.Type {
+	return sql.Boolean
+}
