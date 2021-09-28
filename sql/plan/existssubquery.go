@@ -55,7 +55,7 @@ func (e *ExistsSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 // WithChildren implements the Expression interface.
-func (e *ExistsSubquery) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (e *ExistsSubquery) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
