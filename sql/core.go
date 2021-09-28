@@ -82,12 +82,6 @@ type NonDeterministicExpression interface {
 	IsNonDeterministic() bool
 }
 
-type SubQueryExpression interface {
-	Expression
-
-	HasResults(ctx *Context, row Row) bool
-}
-
 // Aggregation implements an aggregation expression, where an
 // aggregation buffer is created for each grouping (NewBuffer). Rows for the
 // grouping should be fed to the buffer with |Update| and the buffer should be

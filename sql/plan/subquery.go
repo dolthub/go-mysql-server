@@ -51,7 +51,6 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 }
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
-var _ sql.SubQueryExpression = (*Subquery)(nil)
 
 type StripRowNode struct {
 	UnaryNode
@@ -399,30 +398,4 @@ func (s *Subquery) Dispose() {
 		s.disposeFunc()
 		s.disposeFunc = nil
 	}
-}
-
-func (s *Subquery) HasResults(ctx *sql.Context, row sql.Row) bool {
-	s.cacheMu.Lock()
-	cached := s.resultsCached && s.hashCache != nil
-	s.cacheMu.Unlock()
-
-	if cached {
-		if len(s.cache) == 0 {
-			return false
-		}
-		return true
-	}
-
-	rows, err := s.evalMultiple(ctx, row)
-	if err != nil { // TODO: Return error
-		return false
-	}
-
-	// TODO: error handling for >  1
-
-	if len(rows) == 1 {
-		return true
-	}
-
-	return false
 }

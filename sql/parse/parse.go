@@ -2621,13 +2621,6 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 		default:
 			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
 		}
-	case "equals":
-		switch right.(type) {
-		case *plan.Subquery:
-			return nil, fmt.Errorf("we up")
-		default:
-			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("IN %T", right))
-		}
 	case sqlparser.NotInStr:
 		switch right.(type) {
 		case expression.Tuple:
