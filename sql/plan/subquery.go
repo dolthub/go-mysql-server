@@ -316,6 +316,33 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 	return cache, putAllRows(cache, result)
 }
 
+// HasResultRow returns whether the subquery has a result set > 0.
+func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
+	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// result rows are prepended with the scope row.
+	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	if err != nil {
+		return false, err
+	}
+
+	iter, err := q.RowIter(ctx, row)
+	if err != nil {
+		return false, err
+	}
+
+	// Call the iterator once and see if it has a row. If io.EOF is received return false.
+	_, err = iter.Next()
+	if err == io.EOF {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
 	for _, val := range vals {
 		rowKey, err := sql.HashOf(sql.NewRow(val))

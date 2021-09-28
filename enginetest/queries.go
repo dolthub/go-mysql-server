@@ -5312,6 +5312,22 @@ var QueryTests = []QueryTest{
 		Query:    `select pk from one_pk where exists (SELECT pk1 FROM two_pk);`,
 		Expected: []sql.Row{{0}, {1}, {2}, {3}},
 	},
+	{
+		Query:    `SELECT EXISTS (SELECT NULL from dual);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT NOT EXISTS (SELECT NULL FROM dual)`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select exists (SELECT pk1 FROM two_pk);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{false}},
+	},
 }
 
 var KeylessQueries = []QueryTest{

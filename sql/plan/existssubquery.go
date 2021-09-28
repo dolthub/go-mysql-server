@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// ExistsSubquery is an expression that checks that a subquery returns a non emptyset result. It's in the plan package,
+// ExistsSubquery is an expression that checks that a subquery returns a non-empty result set. It's in the plan package,
 // instead of the expression package, because Subquery is itself in the plan package (because it functions more like a
 // plan node than an expression in its evaluation).
 type ExistsSubquery struct {
@@ -42,16 +42,12 @@ func (e *ExistsSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, fmt.Errorf("error: exists operator should only work with a subquery")
 	}
 
-	results, err := subquery.HashMultiple(ctx, row)
+	hasResultRow, err := subquery.HasResultRow(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if results.Size() == 0 {
-		return false, nil
-	}
-
-	return true, nil
+	return hasResultRow, nil
 }
 
 // WithChildren implements the Expression interface.
