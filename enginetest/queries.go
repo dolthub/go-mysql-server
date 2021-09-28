@@ -5308,7 +5308,6 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
 		Expected: []sql.Row{{0}, {1}},
 	},
-	// Add invalid operand test
 	{
 		Query:    `select pk from one_pk where exists (SELECT pk1 FROM two_pk);`,
 		Expected: []sql.Row{{0}, {1}, {2}, {3}},
@@ -6498,6 +6497,10 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select ((4,5),((1,2),3)) = ((1,2),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "SELECT (2, 2)=1 FROM dual where exists (SELECT 1 FROM dual)",
 		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},
 }

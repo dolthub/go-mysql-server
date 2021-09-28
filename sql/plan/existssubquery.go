@@ -39,7 +39,7 @@ func NewExistsSubquery(query sql.Expression) *ExistsSubquery {
 func (e *ExistsSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	subquery, ok := e.subquery.Child.(*Subquery)
 	if !ok {
-		return nil, fmt.Errorf("error: exists operator should only work with a subqyer")
+		return nil, fmt.Errorf("error: exists operator should only work with a subquery")
 	}
 
 	results, err := subquery.HashMultiple(ctx, row)
