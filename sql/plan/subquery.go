@@ -318,6 +318,15 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 
 // HasResultRow returns whether the subquery has a result set > 0.
 func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
+	// First check if the query was cached.
+	s.cacheMu.Lock()
+	cached := s.resultsCached
+	s.cacheMu.Unlock()
+
+	if cached {
+		return len(s.cache) > 0, nil
+	}
+
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
 	q, err := TransformUp(s.Query, prependRowInPlan(row))
