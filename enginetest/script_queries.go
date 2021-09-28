@@ -1170,6 +1170,21 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Slightly more complex example for the Exists Clause",
+		SetUpScript: []string{
+			"create table store(store_id int, item_id int, primary key (store_id, item_id))",
+			"create table items(item_id int primary key, price int)",
+			"insert into store values (0, 1), (0,2),(0,3),(1,2),(1,4),(2,1)",
+			"insert into items values (1, 10), (2, 20), (3, 30),(4,40)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from store WHERE EXISTS (SELECT price from items where price > 10 and store.item_id = items.item_id)",
+				Expected: []sql.Row{{0, 2}, {0, 3}, {1, 2}, {1, 4}},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{

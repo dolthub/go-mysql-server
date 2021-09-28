@@ -5284,6 +5284,50 @@ var QueryTests = []QueryTest{
 			{time.Date(2020, 1, 1, 16, 0, 0, 0, time.UTC)},
 		},
 	},
+	{
+		Query: `SELECT 1 from dual WHERE EXISTS (SELECT 1 from dual);`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: `SELECT 1 from dual WHERE EXISTS (SELECT NULL from dual);`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    `SELECT * FROM two_pk WHERE EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
+		Expected: []sql.Row{{0}, {1}},
+	},
+	{
+		Query:    `select pk from one_pk where exists (SELECT pk1 FROM two_pk);`,
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
+		Query:    `SELECT EXISTS (SELECT NULL from dual);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT NOT EXISTS (SELECT NULL FROM dual)`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select exists (SELECT pk1 FROM two_pk);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{false}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -6469,6 +6513,10 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query:       "select ((4,5),((1,2),3)) = ((1,2),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "SELECT (2, 2)=1 FROM dual where exists (SELECT 1 FROM dual)",
 		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},
 }

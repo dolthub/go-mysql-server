@@ -124,27 +124,32 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "Issue #499",
 			SetUpScript: []string{
-				"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
-				`INSERT INTO test VALUES 
-			("2021-07-04 10:00:00", 1.0),
-			("2021-07-03 10:00:00", 2.0),
-			("2021-07-02 10:00:00", 3.0),
-			("2021-07-01 10:00:00", 4.0);`,
+				"CREATE TABLE test (pk int primary key);",
+				`INSERT INTO test values (1),(2);`,
+				`CREATE TABLE t2 (pk int)`,
+				`INSERT INTO t2 VALUES (NULL)`,
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: `SELECT
-				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
-				avg(value) AS "value"
-    			FROM test
-    			GROUP BY 1
-    			ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
+					Query: `SELECT * FROM test WHERE EXISTS (SELECT pk FROM t2)`,
 					Expected: []sql.Row{
-						{1625133600, 4.0},
-						{1625220000, 3.0},
-						{1625306400, 2.0},
-						{1625392800, 1.0},
+						{1},
+						{2},
 					},
+				},
+			},
+		},
+		{
+			Name: "Issue #499",
+			SetUpScript: []string{
+				"CREATE TABLE test2 (pk int primary key);",
+				`INSERT INTO test2 values (1),(2);`,
+				`CREATE TABLE t2 (pk int)`,
+			},
+			Assertions: []enginetest.ScriptTestAssertion{
+				{
+					Query:    `SELECT * FROM test2 WHERE EXISTS (SELECT pk FROM t2)`,
+					Expected: []sql.Row{},
 				},
 			},
 		},
