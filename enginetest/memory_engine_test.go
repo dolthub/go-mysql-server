@@ -96,14 +96,9 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SHOW CHARSET",
+		Query: "SET CHARACTER SET utf8;",
 		Expected: []sql.Row{
-			{
-				sql.CharacterSet_utf8mb4.String(),
-				sql.CharacterSet_utf8mb4.Description(),
-				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				sql.CharacterSet_utf8mb4.MaxLength(),
-			},
+			{},
 		},
 	}
 

@@ -346,6 +346,35 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		})
 	}
 
+	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables. Although we do not support very
+	// many character sets, changing these variables should not have any affect currently as our character set support is
+	// mostly hardcoded to utf8mb4.
+	// See https://dev.mysql.com/doc/refman/8.0/en/set-names.html
+	if isCharset(n.Exprs) {
+		cdb, err := ctx.GetSessionVariable(ctx, "character_set_database")
+		if err != nil {
+			return nil, err
+		}
+		expr := &sqlparser.SQLVal{Type: sqlparser.StrVal, Val: []byte(cdb.(string))}
+
+		return convertSet(ctx, &sqlparser.Set{
+			Exprs: sqlparser.SetVarExprs{
+				&sqlparser.SetVarExpr{
+					Name: sqlparser.NewColName("character_set_client"),
+					Expr: n.Exprs[0].Expr,
+				},
+				&sqlparser.SetVarExpr{
+					Name: sqlparser.NewColName("character_set_results"),
+					Expr: n.Exprs[0].Expr,
+				},
+				&sqlparser.SetVarExpr{
+					Name: sqlparser.NewColName("character_set_connection"),
+					Expr: expr,
+				},
+			},
+		})
+	}
+
 	exprs, err := setExprsToExpressions(ctx, n.Exprs)
 	if err != nil {
 		return nil, err
@@ -360,6 +389,14 @@ func isSetNames(exprs sqlparser.SetVarExprs) bool {
 	}
 
 	return strings.ToLower(exprs[0].Name.String()) == "names"
+}
+
+func isCharset(exprs sqlparser.SetVarExprs) bool {
+	if len(exprs) != 1 {
+		return false
+	}
+
+	return strings.ToLower(exprs[0].Name.String()) == "charset"
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {

@@ -126,6 +126,36 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set character set",
+		SetUpScript: []string{
+			`set character set utf8`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8", "utf8mb4", "utf8"},
+		},
+	},
+	{
+		Name: "set charset",
+		SetUpScript: []string{
+			`set charset utf8`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8", "utf8mb4", "utf8"},
+		},
+	},
+	{
+		Name: "set charset quoted",
+		SetUpScript: []string{
+			`set charset 'utf8'`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8", "utf8mb4", "utf8"},
+		},
+	},
+	{
 		Name: "set system variable to bareword",
 		SetUpScript: []string{
 			`set @@sql_mode = ALLOW_INVALID_DATES`,
