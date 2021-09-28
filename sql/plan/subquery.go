@@ -349,6 +349,11 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 		return false, err
 	}
 
+	err = iter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
 
