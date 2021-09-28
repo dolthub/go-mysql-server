@@ -33,7 +33,7 @@ type JSONUnquote struct {
 var _ sql.FunctionExpression = (*JSONUnquote)(nil)
 
 // NewJSONUnquote creates a new JSONUnquote UDF.
-func NewJSONUnquote(ctx *sql.Context, json sql.Expression) sql.Expression {
+func NewJSONUnquote(json sql.Expression) sql.Expression {
 	return &JSONUnquote{expression.UnaryExpression{Child: json}}
 }
 
@@ -52,11 +52,11 @@ func (*JSONUnquote) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (js *JSONUnquote) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (js *JSONUnquote) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(js, len(children), 1)
 	}
-	return NewJSONUnquote(ctx, children[0]), nil
+	return NewJSONUnquote(children[0]), nil
 }
 
 // Eval implements the Expression interface.

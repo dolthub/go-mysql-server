@@ -132,7 +132,7 @@ func (e *ColumnDefaultValue) Type() Type {
 }
 
 // WithChildren implements sql.Expression
-func (e *ColumnDefaultValue) WithChildren(ctx *Context, children ...Expression) (Expression, error) {
+func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, error) {
 	if e == nil && len(children) == 0 {
 		return e, nil
 	}

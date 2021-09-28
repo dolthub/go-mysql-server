@@ -17,6 +17,7 @@ package main
 import (
 	"time"
 
+	"github.com/dolthub/go-mysql-server/driver"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
@@ -24,14 +25,11 @@ import (
 
 type factory struct{}
 
-func (factory) Resolve(name string) (string, *sql.Catalog, error) {
+func (factory) Resolve(name string, _ *driver.Options) (string, sql.DatabaseProvider, error) {
 	pro := memory.NewMemoryDBProvider(
 		createTestDatabase(),
 		information_schema.NewInformationSchemaDatabase())
-
-	catalog := sql.NewCatalog(pro)
-
-	return name, catalog, nil
+	return name, pro, nil
 }
 
 func createTestDatabase() *memory.Database {

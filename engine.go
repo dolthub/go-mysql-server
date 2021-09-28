@@ -38,10 +38,11 @@ type Config struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Catalog  *sql.Catalog
-	Analyzer *analyzer.Analyzer
-	Auth     auth.Auth
-	LS       *sql.LockSubsystem
+	Analyzer      *analyzer.Analyzer
+	Auth          auth.Auth
+	LS            *sql.LockSubsystem
+	ProcessList   sql.ProcessList
+	MemoryManager *sql.MemoryManager
 }
 
 type ColumnWithRawDefault struct {
@@ -51,7 +52,7 @@ type ColumnWithRawDefault struct {
 
 // New creates a new Engine with custom configuration. To create an Engine with
 // the default settings use `NewDefault`.
-func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
+func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	var versionPostfix string
 	if cfg != nil {
 		versionPostfix = cfg.VersionPostfix
@@ -59,22 +60,12 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	c.MustRegister(
+	a.Catalog.RegisterFunction(
 		sql.FunctionN{
 			Name: "version",
 			Fn:   function.NewVersion(versionPostfix),
-		},
-		sql.Function0{
-			Name: "database",
-			Fn:   function.NewDatabase(c),
-		},
-		sql.Function0{
-			Name: "schema",
-			Fn:   function.NewDatabase(c),
 		})
-
-	c.MustRegister(function.Defaults...)
-	c.MustRegister(function.GetLockingFuncs(ls)...)
+	a.Catalog.RegisterFunction(function.GetLockingFuncs(ls)...)
 
 	// use auth.None if auth is not specified
 	var au auth.Auth
@@ -84,19 +75,19 @@ func New(c *sql.Catalog, a *analyzer.Analyzer, cfg *Config) *Engine {
 		au = cfg.Auth
 	}
 
-	return &Engine{c, a, au, ls}
+	return &Engine{
+		Analyzer:      a,
+		MemoryManager: sql.NewMemoryManager(sql.ProcessMemory),
+		ProcessList:   NewProcessList(),
+		Auth:          au,
+		LS:            ls,
+	}
 }
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
-	c := sql.NewCatalog(pro)
-	a := analyzer.NewDefault(c)
-
-	return New(c, a, nil)
-}
-
-func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
-	return sql.NewDatabaseProvider(dbs...)
+	a := analyzer.NewDefault(pro)
+	return New(a, nil)
 }
 
 // AnalyzeQuery analyzes a query and returns its Schema.
@@ -214,7 +205,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
-			database, err := e.Catalog.Database(transactionDatabase)
+			database, err := e.Analyzer.Catalog.Database(transactionDatabase)
 			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
 			if sql.ErrDatabaseNotFound.Is(err) {
 				return "", nil

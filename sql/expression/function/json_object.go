@@ -34,7 +34,7 @@ type JSONObject struct {
 var _ sql.FunctionExpression = JSONObject{}
 
 // NewJSONObject creates a new JSONObject function.
-func NewJSONObject(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, error) {
+func NewJSONObject(exprs ...sql.Expression) (sql.Expression, error) {
 	if len(exprs)%2 != 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_OBJECT", "an even number of", len(exprs))
 	}
@@ -102,10 +102,10 @@ func (j JSONObject) Children() []sql.Expression {
 	return j.keyValPairs
 }
 
-func (j JSONObject) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (j JSONObject) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_object did not receive the correct amount of args")
 	}
 
-	return NewJSONObject(ctx, children...)
+	return NewJSONObject(children...)
 }

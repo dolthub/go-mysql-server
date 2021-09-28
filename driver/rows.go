@@ -25,7 +25,7 @@ import (
 
 // Rows is an iterator over an executed query's results.
 type Rows struct {
-	options Options
+	options *Options
 	ctx     *sql.Context
 	cols    sql.Schema
 	rows    sql.RowIter
@@ -98,15 +98,17 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 
 	case query.Type_JSON:
 		var asObj, asStr bool
-		switch r.options.JSON {
-		case ScanAsObject:
-			asObj = true
-		case ScanAsString:
-			asStr = true
-		case ScanAsBytes:
-			// nothing to do
-		default: // unknown or ScanAsStored
-			return v
+		if r.options != nil {
+			switch r.options.JSON {
+			case ScanAsObject:
+				asObj = true
+			case ScanAsString:
+				asStr = true
+			case ScanAsBytes:
+				// nothing to do
+			default: // unknown or ScanAsStored
+				return v
+			}
 		}
 
 		sqlValue, err := r.cols[col].Type.Convert(v)

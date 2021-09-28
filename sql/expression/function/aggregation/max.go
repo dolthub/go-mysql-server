@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Max)(nil)
 var _ sql.Aggregation = (*Max)(nil)
 
 // NewMax returns a new Max node.
-func NewMax(ctx *sql.Context, e sql.Expression) *Max {
+func NewMax(e sql.Expression) *Max {
 	return &Max{expression.UnaryExpression{Child: e}}
 }
 
@@ -60,16 +60,16 @@ func (m *Max) IsNullable() bool {
 }
 
 // WithChildren implements the Expression interface.
-func (m *Max) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (m *Max) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewMax(ctx, children[0]), nil
+	return NewMax(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Max) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
-	bufferChild, err := expression.Clone(ctx, m.UnaryExpression.Child)
+func (m *Max) NewBuffer() (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(m.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}

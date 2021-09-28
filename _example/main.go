@@ -40,7 +40,7 @@ import (
 // ```
 func main() {
 	engine := sqle.NewDefault(
-		sqle.NewDatabaseProvider(
+		sql.NewDatabaseProvider(
 			createTestDatabase(),
 			information_schema.NewInformationSchemaDatabase(),
 		))

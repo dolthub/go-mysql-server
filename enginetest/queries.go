@@ -389,6 +389,30 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
 		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
 		Expected: []sql.Row{
 			{2, "second row", "second", 2, 2, "second row"},
@@ -4928,6 +4952,15 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT POW(2,3) FROM dual",
 		Expected: []sql.Row{{float64(8)}},
+	},
+	{
+		Query: `SELECT /*+ JOIN_ORDER(a, c, b, d) */ a.c1, b.c2, c.c3, d.c4 FROM one_pk a JOIN one_pk b ON a.pk = b.pk JOIN one_pk c ON c.pk = b.pk JOIN (select * from one_pk) d ON d.pk = c.pk`,
+		Expected: []sql.Row{
+			{0, 1, 2, 3},
+			{10, 11, 12, 13},
+			{20, 21, 22, 23},
+			{30, 31, 32, 33},
+		},
 	},
 	{
 		Query: "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",

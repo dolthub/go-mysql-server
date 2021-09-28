@@ -106,7 +106,7 @@ func (i *AutoIncrement) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (i *AutoIncrement) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (i *AutoIncrement) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}

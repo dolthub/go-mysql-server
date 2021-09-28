@@ -38,7 +38,7 @@ func TestResolveGenerators(t *testing.T) {
 			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetField(0, sql.Int64, "a", false),
-					function.NewExplode(sql.NewEmptyContext(), expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false)),
+					function.NewExplode(expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false)),
 					expression.NewGetField(2, sql.Int64, "c", false),
 				},
 				plan.NewUnresolvedTable("foo", ""),
@@ -47,7 +47,7 @@ func TestResolveGenerators(t *testing.T) {
 				plan.NewProject(
 					[]sql.Expression{
 						expression.NewGetField(0, sql.Int64, "a", false),
-						function.NewGenerate(sql.NewEmptyContext(), expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false)),
+						function.NewGenerate(expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false)),
 						expression.NewGetField(2, sql.Int64, "c", false),
 					},
 					plan.NewUnresolvedTable("foo", ""),
@@ -62,7 +62,6 @@ func TestResolveGenerators(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetField(0, sql.Int64, "a", false),
 					expression.NewAlias("x", function.NewExplode(
-						sql.NewEmptyContext(),
 						expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false),
 					)),
 					expression.NewGetField(2, sql.Int64, "c", false),
@@ -74,7 +73,6 @@ func TestResolveGenerators(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetField(0, sql.Int64, "a", false),
 						expression.NewAlias("x", function.NewGenerate(
-							sql.NewEmptyContext(),
 							expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false),
 						)),
 						expression.NewGetField(2, sql.Int64, "c", false),
@@ -90,7 +88,7 @@ func TestResolveGenerators(t *testing.T) {
 			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetField(0, sql.Int64, "a", false),
-					function.NewExplode(sql.NewEmptyContext(), expression.NewGetField(1, sql.Int64, "b", false)),
+					function.NewExplode(expression.NewGetField(1, sql.Int64, "b", false)),
 				},
 				plan.NewUnresolvedTable("foo", ""),
 			),
@@ -102,8 +100,8 @@ func TestResolveGenerators(t *testing.T) {
 			node: plan.NewProject(
 				[]sql.Expression{
 					expression.NewGetField(0, sql.Int64, "a", false),
-					function.NewExplode(sql.NewEmptyContext(), expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false)),
-					function.NewExplode(sql.NewEmptyContext(), expression.NewGetField(2, sql.CreateArray(sql.Int64), "c", false)),
+					function.NewExplode(expression.NewGetField(1, sql.CreateArray(sql.Int64), "b", false)),
+					function.NewExplode(expression.NewGetField(2, sql.CreateArray(sql.Int64), "c", false)),
 				},
 				plan.NewUnresolvedTable("foo", ""),
 			),

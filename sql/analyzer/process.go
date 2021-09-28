@@ -30,7 +30,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, nil
 	}
 
-	processList := a.Catalog.ProcessList
+	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
 	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {

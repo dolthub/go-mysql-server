@@ -64,7 +64,7 @@ type Expression interface {
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
-	WithChildren(ctx *Context, children ...Expression) (Expression, error)
+	WithChildren(children ...Expression) (Expression, error)
 }
 
 // FunctionExpression is an Expression that represents a function.
@@ -90,7 +90,7 @@ type NonDeterministicExpression interface {
 type Aggregation interface {
 	Expression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
-	NewBuffer(ctx *Context) (AggregationBuffer, error)
+	NewBuffer() (AggregationBuffer, error)
 }
 
 type AggregationBuffer interface {
@@ -516,6 +516,12 @@ type MutableDatabaseProvider interface {
 
 	// DropDatabase removes a database from the provider's collection.
 	DropDatabase(ctx *Context, name string) error
+}
+
+// FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
+type FunctionProvider interface {
+	// Function returns the function with the name provided, case-insensitive
+	Function(name string) (Function, error)
 }
 
 // Database represents the database.

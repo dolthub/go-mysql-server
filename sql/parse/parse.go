@@ -526,7 +526,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				return nil, err
 			}
 			// TODO: once collations are properly implemented, we should better be able to handle utf8 -> utf8mb3 comparisons as they're aliases
-			filterExpr, err = expression.TransformUp(ctx, filterExpr, func(expr sql.Expression) (sql.Expression, error) {
+			filterExpr, err = expression.TransformUp(filterExpr, func(expr sql.Expression) (sql.Expression, error) {
 				if exprLiteral, ok := expr.(*expression.Literal); ok {
 					const utf8Prefix = "utf8_"
 					if strLiteral, ok := exprLiteral.Value().(string); ok && strings.HasPrefix(strLiteral, utf8Prefix) {
@@ -2259,13 +2259,13 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		if v.To == nil {
-			return function.NewSubstring(ctx, name, from)
+			return function.NewSubstring(name, from)
 		}
 		to, err := ExprToExpression(ctx, v.To)
 		if err != nil {
 			return nil, err
 		}
-		return function.NewSubstring(ctx, name, from, to)
+		return function.NewSubstring(name, from, to)
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(ctx, v)
 	case *sqlparser.IsExpr:
@@ -2341,7 +2341,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 		groupConcatMaxLen := gcml.(uint64)
 
-		return aggregation.NewGroupConcat(ctx, v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
+		return aggregation.NewGroupConcat(v.Distinct, sortFields, separatorS, exprs, int(groupConcatMaxLen))
 	case *sqlparser.ParenExpr:
 		return ExprToExpression(ctx, v.Expr)
 	case *sqlparser.AndExpr:

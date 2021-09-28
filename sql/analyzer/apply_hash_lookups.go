@@ -21,8 +21,16 @@ import (
 )
 
 func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUpWithParent(n, func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error) {
-		if j, ok := n.(plan.JoinNode); ok {
+	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+		if c.SchemaPrefix == nil {
+			// If c.SchemaPrefix is nil, it's possible our prefix
+			// isn't Resolved yet. Whatever the case, we cannot
+			// safely apply a hash lookup here without knowing what
+			// our schema actually is.
+			return c.Node, nil
+		}
+
+		if j, ok := c.Node.(plan.JoinNode); ok {
 			// JoinNodes implement a number of join modes, some of which put all results from the
 			// primary or secondary table in memory. This hash lookup implementation is expecting
 			// multipass mode, so we apply that here if we have a JoinNode whose secondary child
@@ -36,39 +44,36 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 					return j.WithMultipassMode(), nil
 				}
 			}
-			return n, nil
+			return c.Node, nil
 		}
 
-		cr, isCachedResults := n.(*plan.CachedResults)
-		pj, _ := parent.(plan.JoinNode)
-		pij, _ := parent.(*plan.IndexedJoin)
+		cr, isCachedResults := c.Node.(*plan.CachedResults)
+		pj, _ := c.Parent.(plan.JoinNode)
+		pij, _ := c.Parent.(*plan.IndexedJoin)
 		var cond sql.Expression
 		var primaryGetter, secondaryGetter func(sql.Expression) sql.Expression
 		if isCachedResults {
 			switch {
-			case pij != nil && childNum == 1:
-				primary := pij.Left()
+			case pij != nil && c.ChildNum == 1:
 				cond = pij.Cond
-				primaryIndex := len(primary.Schema()) + len(scope.Schema())
+				primaryIndex := len(c.SchemaPrefix) + len(scope.Schema())
 				primaryGetter = getFieldIndexRange(0, primaryIndex, 0)
 				secondaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
-			case pj != nil && pj.JoinType() != plan.JoinTypeRight && childNum == 1:
-				primary := pj.Left()
+			case pj != nil && pj.JoinType() != plan.JoinTypeRight && c.ChildNum == 1:
 				cond = pj.JoinCond()
-				primaryIndex := len(primary.Schema()) + len(scope.Schema())
+				primaryIndex := len(c.SchemaPrefix) + len(scope.Schema())
 				primaryGetter = getFieldIndexRange(0, primaryIndex, 0)
 				secondaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
-			case pj != nil && pj.JoinType() == plan.JoinTypeRight && childNum == 0:
+			case pj != nil && pj.JoinType() == plan.JoinTypeRight && c.ChildNum == 0:
 				// The columns from the primary row are on the right.
-				secondary := pj.Left()
 				cond = pj.JoinCond()
-				primaryIndex := len(secondary.Schema()) + len(scope.Schema())
+				primaryIndex := len(c.SchemaPrefix) + len(c.Node.Schema()) + len(scope.Schema())
 				primaryGetter = getFieldIndexRange(primaryIndex, -1, primaryIndex)
 				secondaryGetter = getFieldIndexRange(0, primaryIndex, 0)
 			}
 		}
 		if cond == nil {
-			return n, nil
+			return c.Node, nil
 		}
 		// Support expressions of the form (GetField = GetField AND GetField = GetField AND ...)
 		// where every equal comparison has one operand coming from primary and one operand
@@ -114,7 +119,7 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			secondaryTuple := expression.NewTuple(secondaryGetFields...)
 			return plan.NewHashLookup(cr, secondaryTuple, primaryTuple), nil
 		}
-		return n, nil
+		return c.Node, nil
 	})
 }
 

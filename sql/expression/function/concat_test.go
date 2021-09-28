@@ -26,8 +26,7 @@ import (
 func TestConcat(t *testing.T) {
 	t.Run("concat multiple arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(sql.NewEmptyContext(),
-			expression.NewLiteral("foo", sql.LongText),
+		f, err := NewConcat(expression.NewLiteral("foo", sql.LongText),
 			expression.NewLiteral(5, sql.LongText),
 			expression.NewLiteral(true, sql.Boolean),
 		)
@@ -40,8 +39,7 @@ func TestConcat(t *testing.T) {
 
 	t.Run("some argument is nil", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(sql.NewEmptyContext(),
-			expression.NewLiteral("foo", sql.LongText),
+		f, err := NewConcat(expression.NewLiteral("foo", sql.LongText),
 			expression.NewLiteral(nil, sql.LongText),
 			expression.NewLiteral(true, sql.Boolean),
 		)
@@ -54,9 +52,7 @@ func TestConcat(t *testing.T) {
 
 	t.Run("concat array", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcat(sql.NewEmptyContext(),
-			expression.NewLiteral([]interface{}{5, "bar", true}, sql.CreateArray(sql.LongText)),
-		)
+		f, err := NewConcat(expression.NewLiteral([]interface{}{5, "bar", true}, sql.CreateArray(sql.LongText)))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -68,14 +64,14 @@ func TestConcat(t *testing.T) {
 func TestNewConcat(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcat(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.CreateArray(sql.LongText)))
+	_, err := NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)))
 	require.NoError(err)
 
-	_, err = NewConcat(sql.NewEmptyContext(), expression.NewLiteral(nil, sql.CreateArray(sql.LongText)), expression.NewLiteral(nil, sql.Int64))
+	_, err = NewConcat(expression.NewLiteral(nil, sql.CreateArray(sql.LongText)), expression.NewLiteral(nil, sql.Int64))
 	require.Error(err)
 	require.True(ErrConcatArrayWithOthers.Is(err))
 
-	_, err = NewConcat(sql.NewEmptyContext(),
+	_, err = NewConcat(
 		expression.NewLiteral(nil, sql.LongText),
 		expression.NewLiteral(nil, sql.Boolean),
 		expression.NewLiteral(nil, sql.Int64),

@@ -81,11 +81,11 @@ func findGenerator(ctx *sql.Context, exprs []sql.Expression) (*generator, error)
 		switch e := e.(type) {
 		case *function.Explode:
 			found = true
-			g.expr = function.NewGenerate(ctx, e.Child)
+			g.expr = function.NewGenerate(e.Child)
 		case *expression.Alias:
 			if exp, ok := e.Child.(*function.Explode); ok {
 				found = true
-				g.expr = expression.NewAlias(e.Name(), function.NewGenerate(ctx, exp.Child))
+				g.expr = expression.NewAlias(e.Name(), function.NewGenerate(exp.Child))
 			}
 		}
 

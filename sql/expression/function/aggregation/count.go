@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*CountDistinct)(nil)
 var _ sql.Aggregation = (*CountDistinct)(nil)
 
 // NewCount creates a new Count node.
-func NewCount(ctx *sql.Context, e sql.Expression) *Count {
+func NewCount(e sql.Expression) *Count {
 	return &Count{expression.UnaryExpression{Child: e}}
 }
 
@@ -45,8 +45,8 @@ func (c *Count) FunctionName() string {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (c *Count) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
-	bufferChild, err := expression.Clone(ctx, c.UnaryExpression.Child)
+func (c *Count) NewBuffer() (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(c.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -77,11 +77,11 @@ func (c *Count) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Count) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (c *Count) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCount(ctx, children[0]), nil
+	return NewCount(children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -100,7 +100,7 @@ func NewCountDistinct(e sql.Expression) *CountDistinct {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (c *CountDistinct) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
+func (c *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 	return &countDistinctBuffer{make(map[uint64]struct{}), c.Child}, nil
 }
 
@@ -128,7 +128,7 @@ func (c *CountDistinct) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *CountDistinct) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (c *CountDistinct) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}

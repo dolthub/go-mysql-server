@@ -34,7 +34,7 @@ type ConvertTz struct {
 var _ sql.FunctionExpression = (*ConvertTz)(nil)
 
 // NewConvertTz returns an implementation of the CONVERT_TZ() function.
-func NewConvertTz(ctx *sql.Context, dt, fromTz, toTz sql.Expression) sql.Expression {
+func NewConvertTz(dt, fromTz, toTz sql.Expression) sql.Expression {
 	return &ConvertTz{
 		dt:     dt,
 		fromTz: fromTz,
@@ -169,12 +169,12 @@ func (c *ConvertTz) Children() []sql.Expression {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (c *ConvertTz) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (c *ConvertTz) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 3)
 	}
 
-	return NewConvertTz(ctx, children[0], children[1], children[2]), nil
+	return NewConvertTz(children[0], children[1], children[2]), nil
 }
 
 // FunctionName implement the sql.FunctionExpression interface.

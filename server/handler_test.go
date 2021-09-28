@@ -43,6 +43,7 @@ func TestHandlerOutput(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo",
 		),
 		0,
@@ -151,6 +152,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo",
 		),
 		0,
@@ -208,7 +210,8 @@ func TestHandlerKill(t *testing.T) {
 			},
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
-			sql.NewMemoryManager(nil),
+			e.MemoryManager,
+			e.ProcessList,
 			"foo",
 		),
 		0,
@@ -236,7 +239,7 @@ func TestHandlerKill(t *testing.T) {
 	require.NoError(err)
 	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
 	require.NoError(err)
-	ctx1, err = handler.e.Catalog.AddProcess(ctx1, "SELECT 1")
+	ctx1, err = handler.e.ProcessList.AddProcess(ctx1, "SELECT 1")
 	require.NoError(err)
 
 	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result) error {
@@ -251,7 +254,7 @@ func TestHandlerKill(t *testing.T) {
 func assertNoConnProcesses(t *testing.T, e *sqle.Engine, conn uint32) {
 	t.Helper()
 
-	for _, p := range e.Catalog.Processes() {
+	for _, p := range e.ProcessList.Processes() {
 		if p.Connection == conn {
 			t.Errorf("expecting no processes with connection id %d", conn)
 		}
@@ -288,6 +291,7 @@ func TestHandlerTimeout(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo"),
 		1*time.Second)
 
@@ -296,6 +300,7 @@ func TestHandlerTimeout(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo"),
 		0)
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
@@ -347,6 +352,7 @@ func TestOkClosedConnection(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo",
 		),
 		0,
@@ -498,6 +504,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo",
 		),
 		0,

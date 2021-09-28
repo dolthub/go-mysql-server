@@ -78,7 +78,7 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 
 	for i, p := range projection {
 		var transformed bool
-		e, err := expression.TransformUp(ctx, p, func(e sql.Expression) (sql.Expression, error) {
+		e, err := expression.TransformUp(p, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
 				// continue on

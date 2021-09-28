@@ -164,19 +164,19 @@ func canDoPushdown(n sql.Node) bool {
 // Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
 // the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
 // sometimes null in these types of joins). It must be evaluated only after the join result is computed.
-func filterPushdownChildSelector(parent sql.Node, child sql.Node, childNum int) bool {
-	switch n := parent.(type) {
+func filterPushdownChildSelector(c plan.TransformContext) bool {
+	switch n := c.Parent.(type) {
 	case *plan.TableAlias:
 		return false
 	case *plan.IndexedJoin:
 		if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
-			return childNum == 0
+			return c.ChildNum == 0
 		}
 		return true
 	case *plan.LeftJoin:
-		return childNum == 0
+		return c.ChildNum == 0
 	case *plan.RightJoin:
-		return childNum == 1
+		return c.ChildNum == 1
 	}
 	return true
 }
@@ -185,14 +185,14 @@ func filterPushdownChildSelector(parent sql.Node, child sql.Node, childNum int) 
 // (for tables that can't treat the filter as an index lookup or accept it directly). In this case, we want to avoid
 // introducing additional Filter nodes unnecessarily. This means only introducing new filter nodes when they are being
 // pushed below a join or other structure.
-func filterPushdownAboveTablesChildSelector(parent sql.Node, child sql.Node, childNum int) bool {
+func filterPushdownAboveTablesChildSelector(c plan.TransformContext) bool {
 	// All the same restrictions that apply to pushing filters down in general apply here as well
-	if !filterPushdownChildSelector(parent, child, childNum) {
+	if !filterPushdownChildSelector(c) {
 		return false
 	}
-	switch parent.(type) {
+	switch c.Parent.(type) {
 	case *plan.Filter:
-		switch child.(type) {
+		switch c.Node.(type) {
 		// Don't bother pushing filters down above tables if the direct child node is a table. At best this
 		// just splits the predicates into multiple filter nodes, and at worst it breaks other parts of the
 		// analyzer that don't expect this structure in the tree.
@@ -206,8 +206,8 @@ func filterPushdownAboveTablesChildSelector(parent sql.Node, child sql.Node, chi
 
 func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
 	applyFilteredTables := func(n *plan.Filter, filters *filterSet) (sql.Node, error) {
-		return plan.TransformUpWithSelector(n, filterPushdownChildSelector, func(node sql.Node) (sql.Node, error) {
-			switch node := node.(type) {
+		return plan.TransformUpCtx(n, filterPushdownChildSelector, func(c plan.TransformContext) (sql.Node, error) {
+			switch node := c.Node.(type) {
 			case *plan.Filter:
 				n, err := removePushedDownPredicates(ctx, a, node, filters)
 				if err != nil {
@@ -227,8 +227,8 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	}
 
 	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, error) {
-		return plan.TransformUpWithSelector(n, filterPushdownAboveTablesChildSelector, func(node sql.Node) (sql.Node, error) {
-			switch node := node.(type) {
+		return plan.TransformUpCtx(n, filterPushdownAboveTablesChildSelector, func(c plan.TransformContext) (sql.Node, error) {
+			switch node := c.Node.(type) {
 			case *plan.Filter:
 				n, err := removePushedDownPredicates(ctx, a, node, filters)
 				if err != nil {
@@ -274,8 +274,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	var filters *filterSet
 
 	transformFilterNode := func(n *plan.Filter) (sql.Node, error) {
-		return plan.TransformUpWithSelector(n, filterPushdownChildSelector, func(node sql.Node) (sql.Node, error) {
-			switch node := node.(type) {
+		return plan.TransformUpCtx(n, filterPushdownChildSelector, func(c plan.TransformContext) (sql.Node, error) {
+			switch node := c.Node.(type) {
 			case *plan.Filter:
 				return removePushedDownPredicates(ctx, a, node, filters)
 			case *plan.SubqueryAlias:
@@ -308,14 +308,14 @@ func convertFiltersToIndexedAccess(
 	scope *Scope,
 	indexes indexLookupsByTable,
 ) (sql.Node, error) {
-	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch child.(type) {
+	childSelector := func(c plan.TransformContext) bool {
+		switch c.Node.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
 			return false
 		}
 
-		switch parent.(type) {
+		switch c.Parent.(type) {
 		// For IndexedJoins, if we are already using indexed access during query execution for the secondary table,
 		// replacing the secondary table with an indexed lookup will have no effect on the result of the join, but
 		// *will* inappropriately remove the filter from the predicate.
@@ -323,11 +323,11 @@ func convertFiltersToIndexedAccess(
 		case *plan.IndexedJoin:
 			// Left and right joins can push down indexes for the primary table, but not the secondary. See comment
 			// on transformPushdownFilters
-			return childNum == 0
+			return c.ChildNum == 0
 		case *plan.LeftJoin:
-			return childNum == 0
+			return c.ChildNum == 0
 		case *plan.RightJoin:
-			return childNum == 1
+			return c.ChildNum == 1
 		case *plan.TableAlias:
 			// For a TableAlias, we apply this pushdown to the
 			// TableAlias, but not to the resolved table directly
@@ -337,8 +337,8 @@ func convertFiltersToIndexedAccess(
 		return true
 	}
 
-	node, err := plan.TransformUpWithSelector(n, childSelector, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
+	node, err := plan.TransformUpCtx(n, childSelector, func(c plan.TransformContext) (sql.Node, error) {
+		switch node := c.Node.(type) {
 		// TODO: some indexes, once pushed down, can be safely removed from the filter. But not all of them, as currently
 		//  implemented -- some indexes return more values than strictly match.
 		case *plan.TableAlias:
@@ -503,7 +503,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	childSchema := sa.Child.Schema()
 	expressionsForChild := make([]sql.Expression, len(handled))
 	for i, h := range handled {
-		expressionsForChild[i], err = expression.TransformUp(ctx, h, func(e sql.Expression) (sql.Expression, error) {
+		expressionsForChild[i], err = expression.TransformUp(h, func(e sql.Expression) (sql.Expression, error) {
 			if gt, ok := e.(*expression.GetField); ok {
 				col := childSchema[gt.Index()]
 				return gt.WithTable(col.Source).WithName(col.Name), nil
@@ -601,8 +601,8 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 	usedFieldsByTable := make(fieldsByTable)
 	fieldsByTable := getFieldsByTable(ctx, n)
 
-	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch parent.(type) {
+	selector := func(c plan.TransformContext) bool {
+		switch c.Parent.(type) {
 		case *plan.TableAlias:
 			// When we hit a table alias, we don't want to descend farther into the tree for expression matches, which
 			// would give us the original (unaliased) names of columns
@@ -612,12 +612,12 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		}
 	}
 
-	node, err := plan.TransformUpWithSelector(n, selector, func(node sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, error) {
 		var nameable NameableNode
 
-		switch node.(type) {
+		switch c.Node.(type) {
 		case *plan.TableAlias, *plan.ResolvedTable, *plan.IndexedTableAccess:
-			nameable = node.(NameableNode)
+			nameable = c.Node.(NameableNode)
 		}
 
 		if nameable != nil {
@@ -627,7 +627,7 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 			}
 			return FixFieldIndexesForExpressions(ctx, a, table, scope)
 		} else {
-			return FixFieldIndexesForExpressions(ctx, a, node, scope)
+			return FixFieldIndexesForExpressions(ctx, a, c.Node, scope)
 		}
 	})
 
