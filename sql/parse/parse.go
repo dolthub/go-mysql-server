@@ -609,6 +609,12 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return infoSchemaSelect, nil
+	case sqlparser.KeywordString(sqlparser.STATUS):
+		if s.Scope == sqlparser.GlobalStr {
+			return plan.NewShowStatus(plan.ShowStatusModifier_Global), nil
+		}
+
+		return plan.NewShowStatus(plan.ShowStatusModifier_Session), nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
