@@ -307,6 +307,8 @@ func convertExplain(ctx *sql.Context, n *sqlparser.Explain) (sql.Node, error) {
 	switch strings.ToLower(n.ExplainFormat) {
 	case "", sqlparser.TreeStr:
 	// tree format, do nothing
+	case "debug":
+		explainFmt = "debug"
 	default:
 		return nil, errInvalidDescribeFormat.New(
 			n.ExplainFormat,

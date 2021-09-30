@@ -66,6 +66,8 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 					analysisErr = err
 					return false
 				}
+
+				return false
 			case *plan.ResolvedTable:
 				err := indexesForTable(n.Name(), n)
 				if err != nil {
