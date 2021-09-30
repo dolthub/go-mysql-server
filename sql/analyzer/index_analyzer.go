@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -124,7 +126,7 @@ func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, table str
 		}
 	}
 
-	for _, idx := range r.indexesByTable[table] {
+	for _, idx := range r.indexesByTable[strings.ToLower(table)] {
 		if exprListsEqual(idx.Expressions(), exprStrs) {
 			return idx
 		}
