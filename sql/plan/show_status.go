@@ -20,6 +20,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// ShowStatus implements the SHOW STATUS MySQL command.
+// TODO: This is just a stub implementation that returns an empty set. The actual functionality needs to be implemented
+// in the future.
 type ShowStatus struct {
 	modifier ShowStatusModifier
 }

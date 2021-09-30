@@ -347,7 +347,7 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 	}
 
 	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables. Although we do not support very
-	// many character sets, changing these variables should not have any affect currently as our character set support is
+	// many character sets, changing these variables should not have any effect currently as our character set support is
 	// mostly hardcoded to utf8mb4.
 	// See https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html.
 	if isCharset(n.Exprs) {
