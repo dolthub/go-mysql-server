@@ -545,7 +545,7 @@ func getNegatedIndexes(
 		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
 			gf := extractGetField(e.Left())
 			if gf == nil {
-				return nil ,nil
+				return nil, nil
 			}
 
 			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizeExpressions(ctx, tableAliases, e.Left())...)
@@ -739,13 +739,13 @@ func getMultiColumnIndexes(
 }
 
 func getMultiColumnIndexForExpressions(
-		ctx *sql.Context,
-		a *Analyzer,
-		ia *indexAnalyzer,
-		table string,
-		selected []sql.Expression,
-		exprs []joinColExpr,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	a *Analyzer,
+	ia *indexAnalyzer,
+	table string,
+	selected []sql.Expression,
+	exprs []joinColExpr,
+	tableAliases TableAliases,
 ) (*indexLookup, error) {
 
 	index := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, selected...)...)
