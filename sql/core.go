@@ -573,7 +573,7 @@ type TransactionDatabase interface {
 	Database
 
 	// StartTransaction starts a new transaction and returns it
-	StartTransaction(ctx *Context) (Transaction, error)
+	StartTransaction(ctx *Context, readOnly bool) (Transaction, error)
 
 	// CommitTransaction commits the transaction given
 	CommitTransaction(ctx *Context, tx Transaction) error

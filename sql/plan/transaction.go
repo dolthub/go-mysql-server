@@ -20,20 +20,29 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+type TransactionCharacteristic int
+
+const (
+	ReadWrite TransactionCharacteristic = iota
+	ReadOnly
+)
+
 // StartTransaction explicitly starts a transaction. Transactions also start before any statement execution that doesn't have a
 // transaction.
 type StartTransaction struct {
 	UnaryNode // null in the case that this is an explicit StartTransaction statement, set to the wrapped statement node otherwise
 	db        sql.Database
+	transChar TransactionCharacteristic // TODO: Implement the functionality of these characteristics
 }
 
 var _ sql.Databaser = (*StartTransaction)(nil)
 var _ sql.Node = (*StartTransaction)(nil)
 
 // NewStartTransaction creates a new StartTransaction node.
-func NewStartTransaction(db sql.UnresolvedDatabase) *StartTransaction {
+func NewStartTransaction(db sql.UnresolvedDatabase, transactionChar TransactionCharacteristic) *StartTransaction {
 	return &StartTransaction{
 		db: db,
+		transChar: transactionChar,
 	}
 }
 
@@ -67,7 +76,7 @@ func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 
-	transaction, err := tdb.StartTransaction(ctx)
+	transaction, err := tdb.StartTransaction(ctx, s.transChar == ReadOnly)
 	if err != nil {
 		return nil, err
 	}

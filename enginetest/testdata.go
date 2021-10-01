@@ -44,7 +44,7 @@ func includeTable(includedTables []string, tableName string) bool {
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
 	ctx := NewContext(harness).WithCurrentDB(db.Name())
 	if tdb, ok := db.(sql.TransactionDatabase); ok {
-		tx, err := tdb.StartTransaction(ctx)
+		tx, err := tdb.StartTransaction(ctx, false)
 		require.NoError(t, err)
 		ctx.SetTransaction(tx)
 	}

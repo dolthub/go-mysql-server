@@ -859,4 +859,17 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		Name: "READ ONLY Transactions",
+		SetUpScript: []string{
+			"START TRANSACTION READ ONLY",
+			"create table t2 (pk int primary key, val int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "/* client a */ insert into t2 values (1, 1)",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
 }

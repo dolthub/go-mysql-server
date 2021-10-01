@@ -215,7 +215,7 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 
 			tdb, ok := database.(sql.TransactionDatabase)
 			if ok {
-				tx, err := tdb.StartTransaction(ctx)
+				tx, err := tdb.StartTransaction(ctx, false)
 				if err != nil {
 					return "", err
 				}
