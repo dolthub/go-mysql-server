@@ -376,7 +376,7 @@ const (
 )
 
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
-// the expression's child node. Also handles replacing session variables (treated as columns) with their values.
+// the expression's child node.
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
@@ -408,14 +408,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, nil
-			}
-
-			expr, ok, err := resolveSystemOrUserVariable(ctx, a, uc)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				return expr, nil
 			}
 
 			return resolveColumnExpression(a, n, uc, columns)

@@ -26,6 +26,41 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// resolveVariables replaces UnresolvedColumn which are variables with their literal values
+func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_variables")
+	defer span.Finish()
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if n.Resolved() {
+			return n, nil
+		}
+
+		// Set nodes are handled by resolveSetVariables
+		if _, ok := n.(*plan.Set); ok {
+			return n, nil
+		}
+
+		return plan.TransformExpressionsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+			uc, ok := e.(column)
+			if !ok || e.Resolved() {
+				return e, nil
+			}
+
+			expr, ok, err := resolveSystemOrUserVariable(ctx, a, uc)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				return expr, nil
+			}
+
+			return e, nil
+		})
+	})
+}
+
+
 // resolveSetVariables replaces SET @@var and SET @var expressions with appropriately resolved expressions for the
 // left-hand side, and evaluate the right-hand side where possible, including filling in defaults. Also validates that
 // system variables are known to the system.

@@ -42,6 +42,8 @@ func NewUnresolvedTableAsOf(name, db string, asOf sql.Expression) *UnresolvedTab
 	return &UnresolvedTable{name, db, asOf}
 }
 
+var _ sql.Expressioner = (*UnresolvedTable)(nil)
+
 // Name implements the Nameable interface.
 func (t *UnresolvedTable) Name() string {
 	return t.name
@@ -87,6 +89,29 @@ func (t *UnresolvedTable) WithDatabase(database string) (*UnresolvedTable, error
 	t2.Database = database
 	return &t2, nil
 }
+
+func (t *UnresolvedTable) Expressions() []sql.Expression {
+	if t.AsOf != nil {
+		return []sql.Expression{t.AsOf}
+	}
+	return nil
+}
+
+func (t *UnresolvedTable) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+	if t.AsOf == nil {
+		if len(expressions) != 0 {
+			return nil, sql.ErrInvalidChildrenNumber.New(t, len(expressions), 0)
+		}
+		return t, nil
+	}
+
+	if len(expressions) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(expressions), 1)
+	}
+
+	return t.WithAsOf(expressions[0])
+}
+
 
 func (t UnresolvedTable) String() string {
 	return fmt.Sprintf("UnresolvedTable(%s)", t.name)
