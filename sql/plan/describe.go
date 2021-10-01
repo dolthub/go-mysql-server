@@ -128,7 +128,6 @@ func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		formatString = d.child.String()
 	}
 
-
 	for _, l := range strings.Split(formatString, "\n") {
 		if strings.TrimSpace(l) != "" {
 			rows = append(rows, sql.NewRow(l))
