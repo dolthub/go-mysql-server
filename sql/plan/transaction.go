@@ -41,7 +41,7 @@ var _ sql.Node = (*StartTransaction)(nil)
 // NewStartTransaction creates a new StartTransaction node.
 func NewStartTransaction(db sql.UnresolvedDatabase, transactionChar TransactionCharacteristic) *StartTransaction {
 	return &StartTransaction{
-		db: db,
+		db:        db,
 		transChar: transactionChar,
 	}
 }

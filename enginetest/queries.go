@@ -5329,11 +5329,11 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: 	  `START TRANSACTION READ ONLY`,
+		Query:    `START TRANSACTION READ ONLY`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query: 	  `START TRANSACTION READ WRITE`,
+		Query:    `START TRANSACTION READ WRITE`,
 		Expected: []sql.Row{},
 	},
 }

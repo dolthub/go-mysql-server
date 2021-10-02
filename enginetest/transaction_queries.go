@@ -863,11 +863,11 @@ var TransactionTests = []TransactionTest{
 		},
 	},
 	{
-		Name: "READ ONLY Transactionsz",
+		Name: "READ ONLY Transactions",
 		SetUpScript: []string{
 			"create table t2 (pk int primary key, val int)",
 			"insert into t2 values (0,0)",
-
+			"commit",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -875,37 +875,49 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{}},
 			},
 			{
-				Query:   "/* client a */  START TRANSACTION READ ONLY",
+				Query:    "/* client a */  START TRANSACTION READ ONLY",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ insert into t2 values (1, 1)",
+				Query:       "/* client a */ insert into t2 values (1, 1)",
 				ExpectedErr: analyzer.ErrReadOnlyTransaction,
 			},
 			{
-				Query: "/* client a */ insert into t2 values (2, 2)",
+				Query:       "/* client a */ insert into t2 values (2, 2)",
 				ExpectedErr: analyzer.ErrReadOnlyTransaction,
 			},
 			{
-				Query: "/* client a */ delete from t2 where pk = 0",
+				Query:       "/* client a */ delete from t2 where pk = 0",
 				ExpectedErr: analyzer.ErrReadOnlyTransaction,
 			},
 			{
 
-				Query: "/* client a */ alter table t2 add val2 int",
+				Query:    "/* client a */ alter table t2 add val2 int",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ select * from t2",
+				Query:    "/* client a */ select * from t2",
 				Expected: []sql.Row{{0, 0, nil}},
 			},
 			{
-				Query: "/* client a */ create temporary table tmp(pk int primary key)",
+				Query:    "/* client a */ create temporary table tmp(pk int primary key)",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "/* client a */ INSERT INTO tmp VALUES (1)",
+				Query:    "/* client a */ INSERT INTO tmp VALUES (1)",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "/* client a */ COMMIT",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ START TRANSACTION READ ONLY",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ SELECT * FROM t2",
+				Expected: []sql.Row{{0, 0, nil}},
 			},
 		},
 	},
