@@ -96,6 +96,8 @@ var (
 	ErrAggregationUnsupported = errors.NewKind(
 		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
 	)
+
+	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -672,6 +674,76 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	})
 	if !valid {
 		return nil, ErrReadOnlyDatabase.New(readOnlyDB.Name())
+	}
+
+	return n, nil
+}
+
+// validate ReadOnlyTransactions
+func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	t := ctx.GetTransaction()
+
+	// If this is a normal read write transaction let the node continue. Otherwise we must prevent an invalid query
+	if !t.IsReadOnly() {
+		return n, nil
+	}
+
+	valid := true
+
+	isTempTable := func(table sql.Table) bool {
+		tt, isTempTable := table.(sql.TemporaryTable)
+		if !isTempTable {
+			valid = false
+		}
+
+		return tt.IsTemporary()
+	}
+
+	// if a ReadOnlyDatabase is found, invalidate the query
+	temporaryTableSearch := func(node sql.Node) bool {
+		if rt, ok := node.(*plan.ResolvedTable); ok {
+			valid = isTempTable(rt.Table)
+		}
+		return valid
+	}
+
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.DeleteFrom, *plan.Update, *plan.UnlockTables:
+			plan.Inspect(node, temporaryTableSearch)
+			return false
+		case *plan.InsertInto:
+			plan.Inspect(n.Destination, temporaryTableSearch)
+			return false
+		case *plan.LockTables:
+			for _, table := range n.Locks {
+				tbl, _, err := n.Catalog.Table(ctx, ctx.GetCurrentDatabase(), table.Table.String())
+				if err != nil {
+					// TODO: Ok to hide error like this
+					valid = false
+					return false
+				}
+
+				valid = isTempTable(tbl)
+				if !valid {
+					break
+				}
+			}
+			return false
+		default:
+			// Conclusion: let all ddl statements pass through this rule. DDL on normal tables causes an instant commit
+			// before the read only transaction actually occurs so it is fine.
+			if plan.IsDDLNode(n) {
+				valid = true
+				return false
+			}
+
+			return valid
+		}
+	})
+
+	if !valid {
+		return nil, ErrReadOnlyTransaction.New()
 	}
 
 	return n, nil

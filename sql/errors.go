@@ -340,6 +340,8 @@ var (
 	// returned for invalid number of columns in projections, filters,
 	// joins, etc.
 	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
+
+	// ErrWriteOnReadOnlyTransaction = errors.NewKind("")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {

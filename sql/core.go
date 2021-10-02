@@ -565,6 +565,7 @@ type VersionedDatabase interface {
 // transaction. Active transactions will be recorded in the session.
 type Transaction interface {
 	fmt.Stringer
+	IsReadOnly() bool
 }
 
 // TransactionDatabase is a Database that can BEGIN, ROLLBACK and COMMIT transactions, as well as create SAVEPOINTS and

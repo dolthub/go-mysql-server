@@ -42,6 +42,7 @@ var OnceBeforeDefault = []Rule{
 	{"validate_create_procedure", validateCreateProcedure},
 	{"assign_info_schema", assignInfoSchema},
 	{"validate_read_only_database", validateReadOnlyDatabase},
+	{"validate_read_only_transaction", validateReadOnlyTransaction},
 }
 
 // DefaultRules to apply when analyzing nodes.

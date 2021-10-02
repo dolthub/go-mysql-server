@@ -233,6 +233,9 @@ func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 func (d *DropColumn) String() string {
 	return fmt.Sprintf("drop column %s", d.column)
 }
+func (d *DropColumn) TableName() string {
+	return d.tableName
+}
 
 func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	alterable, err := getAlterableTable(d.db, ctx, d.tableName)
