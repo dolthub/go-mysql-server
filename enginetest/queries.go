@@ -5660,10 +5660,10 @@ var BrokenQueries = []QueryTest{
 	// reference the outer table and an alias gets pushed to a projection
 	// below a group by node.
 	{
-		Query:    "SELECT c AS i_do_not_conflict, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY i_do_not_conflict;",
+		Query: "SELECT c AS i_do_not_conflict, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY i_do_not_conflict;",
 	},
 	{
-		Query:    "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
+		Query: "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
 	},
 }
 
