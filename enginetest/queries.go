@@ -5328,6 +5328,22 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
 		Expected: []sql.Row{{false}},
 	},
+	{
+		Query:    `SHOW STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW GLOBAL STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW SESSION STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW STATUS LIKE 'Bytes_received'`,
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{

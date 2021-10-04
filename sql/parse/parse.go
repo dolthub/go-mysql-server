@@ -346,6 +346,34 @@ func convertSet(ctx *sql.Context, n *sqlparser.Set) (sql.Node, error) {
 		})
 	}
 
+	// Special case: SET CHARACTER SET (CHARSET) expands to 3 different system variables. Although we do not support very
+	// many character sets, changing these variables should not have any effect currently as our character set support is
+	// mostly hardcoded to utf8mb4.
+	// See https://dev.mysql.com/doc/refman/5.7/en/set-character-set.html.
+	if isCharset(n.Exprs) {
+		csd, err := ctx.GetSessionVariable(ctx, "character_set_database")
+		if err != nil {
+			return nil, err
+		}
+
+		return convertSet(ctx, &sqlparser.Set{
+			Exprs: sqlparser.SetVarExprs{
+				&sqlparser.SetVarExpr{
+					Name: sqlparser.NewColName("character_set_client"),
+					Expr: n.Exprs[0].Expr,
+				},
+				&sqlparser.SetVarExpr{
+					Name: sqlparser.NewColName("character_set_results"),
+					Expr: n.Exprs[0].Expr,
+				},
+				&sqlparser.SetVarExpr{
+					Name: sqlparser.NewColName("character_set_connection"),
+					Expr: &sqlparser.SQLVal{Type: sqlparser.StrVal, Val: []byte(csd.(string))},
+				},
+			},
+		})
+	}
+
 	exprs, err := setExprsToExpressions(ctx, n.Exprs)
 	if err != nil {
 		return nil, err
@@ -360,6 +388,14 @@ func isSetNames(exprs sqlparser.SetVarExprs) bool {
 	}
 
 	return strings.ToLower(exprs[0].Name.String()) == "names"
+}
+
+func isCharset(exprs sqlparser.SetVarExprs) bool {
+	if len(exprs) != 1 {
+		return false
+	}
+
+	return strings.ToLower(exprs[0].Name.String()) == "charset"
 }
 
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
@@ -572,6 +608,12 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return infoSchemaSelect, nil
+	case sqlparser.KeywordString(sqlparser.STATUS):
+		if s.Scope == sqlparser.GlobalStr {
+			return plan.NewShowStatus(plan.ShowStatusModifier_Global), nil
+		}
+
+		return plan.NewShowStatus(plan.ShowStatusModifier_Session), nil
 	default:
 		unsupportedShow := fmt.Sprintf("SHOW %s", s.Type)
 		return nil, ErrUnsupportedFeature.New(unsupportedShow)
