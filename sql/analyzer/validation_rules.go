@@ -552,6 +552,12 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	// Then validate that every subquery has field indexes within the correct range
 	// TODO: Why is this only for subqueries?
+
+	// TODO: Currently disabled.
+	if true {
+		return n, nil
+	}
+
 	var outOfRangeIndexExpression sql.Expression
 	var outOfRangeColumns int
 	plan.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
