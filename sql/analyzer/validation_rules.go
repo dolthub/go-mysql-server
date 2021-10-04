@@ -96,8 +96,6 @@ var (
 	ErrAggregationUnsupported = errors.NewKind(
 		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
 	)
-
-	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
 )
 
 // DefaultValidationRules to apply while analyzing nodes.
@@ -722,7 +720,6 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			for _, table := range n.Locks {
 				tbl, _, err := n.Catalog.Table(ctx, ctx.GetCurrentDatabase(), table.Table.String())
 				if err != nil {
-					// TODO: Ok to hide error like this
 					valid = false
 					return false
 				}
@@ -752,7 +749,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 	})
 
 	if !valid {
-		return nil, ErrReadOnlyTransaction.New()
+		return nil, sql.ErrReadOnlyTransaction.New()
 	}
 
 	return n, nil

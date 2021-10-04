@@ -341,7 +341,8 @@ var (
 	// joins, etc.
 	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
 
-	// ErrWriteOnReadOnlyTransaction = errors.NewKind("")
+	// ErrReadOnlyTransaction is returned when a write query is executed in a READ ONLY transaction.
+	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -388,6 +389,8 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERKeyColumnDoesNotExist
 	case ErrCantDropFieldOrKey.Is(err):
 		code = mysql.ERCantDropFieldOrKey
+	case ErrReadOnlyTransaction.Is(err):
+		code = 1792 // TODO: Needs to be added to vitess
 	case ErrCantDropIndex.Is(err):
 		code = 1553 // TODO: Needs to be added to vitess
 	default:

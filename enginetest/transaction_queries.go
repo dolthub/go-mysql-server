@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
 // TransactionTest is a script to test transaction correctness. It's similar to ScriptTest, but its assertions name
@@ -888,15 +887,15 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:       "/* client a */ insert into t2 values (1, 1)",
-				ExpectedErr: analyzer.ErrReadOnlyTransaction,
+				ExpectedErr: sql.ErrReadOnlyTransaction,
 			},
 			{
 				Query:       "/* client a */ insert into t2 values (2, 2)",
-				ExpectedErr: analyzer.ErrReadOnlyTransaction,
+				ExpectedErr: sql.ErrReadOnlyTransaction,
 			},
 			{
 				Query:       "/* client a */ delete from t2 where pk = 0",
-				ExpectedErr: analyzer.ErrReadOnlyTransaction,
+				ExpectedErr: sql.ErrReadOnlyTransaction,
 			},
 			{
 
@@ -909,7 +908,7 @@ var TransactionTests = []TransactionTest{
 			},
 			{
 				Query:       "/* client a */ create temporary table tmp2(pk int primary key)",
-				ExpectedErr: analyzer.ErrReadOnlyTransaction,
+				ExpectedErr: sql.ErrReadOnlyTransaction,
 			},
 			{
 				Query:    "/* client a */ COMMIT",
