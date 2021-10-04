@@ -733,10 +733,15 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				}
 			}
 			return false
-		// todo: create temp table
+		case *plan.CreateTable:
+			// MySQL explicitly blocks the creation on temporary table
+			if n.Temporary() == plan.IsTempTable {
+				valid = false
+			}
+
+			return false
 		default:
-			// Conclusion: let all ddl statements pass through this rule. DDL on normal tables causes an instant commit
-			// before the read only transaction actually occurs so it is fine.
+			// DDL statements have an implicit commits which makes them valid to be executed in READ ONLY transactions.
 			if plan.IsDDLNode(n) {
 				valid = true
 				return false

@@ -875,8 +875,16 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{}},
 			},
 			{
+				Query:    "/* client a */ create temporary table tmp(pk int primary key)",
+				Expected: []sql.Row{},
+			},
+			{
 				Query:    "/* client a */  START TRANSACTION READ ONLY",
 				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ INSERT INTO tmp VALUES (1)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
 				Query:       "/* client a */ insert into t2 values (1, 1)",
@@ -900,12 +908,8 @@ var TransactionTests = []TransactionTest{
 				Expected: []sql.Row{{0, 0, nil}},
 			},
 			{
-				Query:    "/* client a */ create temporary table tmp(pk int primary key)",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "/* client a */ INSERT INTO tmp VALUES (1)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Query:       "/* client a */ create temporary table tmp2(pk int primary key)",
+				ExpectedErr: analyzer.ErrReadOnlyTransaction,
 			},
 			{
 				Query:    "/* client a */ COMMIT",
