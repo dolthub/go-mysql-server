@@ -1073,7 +1073,7 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select id from rn",
+				Query:    "select id from rn",
 				Expected: []sql.Row{},
 			},
 		},
