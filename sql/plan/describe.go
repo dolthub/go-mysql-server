@@ -121,7 +121,14 @@ func (d *DescribeQuery) Schema() sql.Schema {
 // RowIter implements the Node interface.
 func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var rows []sql.Row
-	for _, l := range strings.Split(d.child.String(), "\n") {
+	var formatString string
+	if d.Format == "debug" {
+		formatString = sql.DebugString(d.child)
+	} else {
+		formatString = d.child.String()
+	}
+
+	for _, l := range strings.Split(formatString, "\n") {
 		if strings.TrimSpace(l) != "" {
 			rows = append(rows, sql.NewRow(l))
 		}
@@ -132,7 +139,11 @@ func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 func (d *DescribeQuery) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	_ = pr.WriteChildren(d.child.String())
+	if d.Format == "debug" {
+		_ = pr.WriteChildren(sql.DebugString(d.child))
+	} else {
+		_ = pr.WriteChildren(d.child.String())
+	}
 	return pr.String()
 }
 

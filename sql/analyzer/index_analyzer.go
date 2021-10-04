@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -66,6 +68,8 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 					analysisErr = err
 					return false
 				}
+
+				return false
 			case *plan.ResolvedTable:
 				err := indexesForTable(n.Name(), n)
 				if err != nil {
@@ -110,7 +114,7 @@ func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql
 
 // IndexByExpression returns an index by the given expression. It will return nil if no index is found. If more than
 // one expression is given, all of them must match for the index to be matched.
-func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, expr ...sql.Expression) sql.Index {
+func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, table string, expr ...sql.Expression) sql.Index {
 	// Multiple expressions may be the same so we filter out duplicates
 	distinctExprs := make(map[string]struct{})
 	var exprStrs []string
@@ -122,11 +126,9 @@ func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, expr ...s
 		}
 	}
 
-	for _, idxes := range r.indexesByTable {
-		for _, idx := range idxes {
-			if exprListsEqual(idx.Expressions(), exprStrs) {
-				return idx
-			}
+	for _, idx := range r.indexesByTable[strings.ToLower(table)] {
+		if exprListsEqual(idx.Expressions(), exprStrs) {
+			return idx
 		}
 	}
 
