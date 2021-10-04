@@ -32,7 +32,7 @@ const (
 type StartTransaction struct {
 	UnaryNode // null in the case that this is an explicit StartTransaction statement, set to the wrapped statement node otherwise
 	db        sql.Database
-	transChar TransactionCharacteristic // TODO: Implement the functionality of these characteristics
+	transChar TransactionCharacteristic
 }
 
 var _ sql.Databaser = (*StartTransaction)(nil)

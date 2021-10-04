@@ -683,6 +683,10 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	t := ctx.GetTransaction()
 
+	if t == nil {
+		return n, nil
+	}
+
 	// If this is a normal read write transaction let the node continue. Otherwise we must prevent an invalid query
 	if !t.IsReadOnly() {
 		return n, nil
@@ -699,7 +703,6 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return tt.IsTemporary()
 	}
 
-	// if a ReadOnlyDatabase is found, invalidate the query
 	temporaryTableSearch := func(node sql.Node) bool {
 		if rt, ok := node.(*plan.ResolvedTable); ok {
 			valid = isTempTable(rt.Table)
@@ -730,6 +733,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				}
 			}
 			return false
+		// todo: create temp table
 		default:
 			// Conclusion: let all ddl statements pass through this rule. DDL on normal tables causes an instant commit
 			// before the read only transaction actually occurs so it is fine.
