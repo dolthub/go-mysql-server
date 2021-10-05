@@ -677,7 +677,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	return n, nil
 }
 
-// validate ReadOnlyTransactions
+// validateReadOnlyTransaction invalidates read only transactions that try to perform improper write operations.
 func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	t := ctx.GetTransaction()
 
@@ -685,7 +685,7 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return n, nil
 	}
 
-	// If this is a normal read write transaction let the node continue. Otherwise we must prevent an invalid query
+	// If this is a normal read write transaction don't enforce read-only. Otherwise we must prevent an invalid query.
 	if !t.IsReadOnly() {
 		return n, nil
 	}
@@ -717,18 +717,9 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 			plan.Inspect(n.Destination, temporaryTableSearch)
 			return false
 		case *plan.LockTables:
-			for _, table := range n.Locks {
-				tbl, _, err := n.Catalog.Table(ctx, ctx.GetCurrentDatabase(), table.Table.String())
-				if err != nil {
-					valid = false
-					return false
-				}
-
-				valid = isTempTable(tbl)
-				if !valid {
-					break
-				}
-			}
+			// TODO: Technically we should allow for the locking of temporary tables but the LockTables implementation
+			// needs substantial refactoring.
+			valid = false
 			return false
 		case *plan.CreateTable:
 			// MySQL explicitly blocks the creation of temporary tables in a read only transaction.
