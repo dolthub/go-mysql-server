@@ -3979,12 +3979,11 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"first row"}},
 	},
 	{
-		Query: `SELECT pk, (SELECT pk FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
+		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY 2`,
 		Expected: []sql.Row{
-			{0, nil},
-			{1, 0},
-			{2, 1},
-			{3, 2},
+			{1, "00"},
+			{2, "11"},
+			{3, "22"},
 		},
 	},
 	{
@@ -6543,6 +6542,10 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT (2, 2)=1 FROM dual where exists (SELECT 1 FROM dual)",
 		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk where strpk > "0" ORDER BY 2`,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }
 

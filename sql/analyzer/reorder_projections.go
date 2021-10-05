@@ -70,12 +70,23 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 
 		if !neededReorder {
-			return project, nil
+			return node, nil
 		}
 
+		// To do the reordering, we need to reason about column types, which means the child needs to be resolved.
+		// If it can't be resolved, we can't continue.
 		child, err = resolveColumns(ctx, a, child, scope)
 		if err != nil {
 			return nil, err
+		}
+
+		child, err = resolveSubqueryExpressions(ctx, a, child, scope)
+		if err != nil {
+			return nil, err
+		}
+
+		if !child.Resolved() {
+			return node, nil
 		}
 
 		childSchema := child.Schema()
