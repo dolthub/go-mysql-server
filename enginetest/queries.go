@@ -6535,7 +6535,7 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},
 	{
-		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk where strpk > "0" ORDER BY 2`,
+		Query:       `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk where strpk > "0" ORDER BY 2`,
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }
