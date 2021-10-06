@@ -69,7 +69,7 @@ func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 
-	transaction, err := tdb.StartTransaction(ctx, sql.ReadOnly)
+	transaction, err := tdb.StartTransaction(ctx, s.transChar)
 	if err != nil {
 		return nil, err
 	}
