@@ -723,8 +723,8 @@ func getEqualityIndexes(
 	}
 
 	leftIdx, rightIdx :=
-		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, cond.Left())...),
-		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, cond.Right())...)
+		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), leftCol.col.Table(), normalizeExpressions(ctx, tableAliases, cond.Left())...),
+		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), rightCol.col.Table(), normalizeExpressions(ctx, tableAliases, cond.Right())...)
 
 	// Figure out which table is on the left and right in the join
 	leftJoinPosition := plan.JoinTypeLeft
@@ -775,13 +775,13 @@ func getJoinIndex(
 	indexesByTable := make(joinIndexesByTable)
 	for table, cols := range exprsByTable {
 		exprs := extractExpressions(cols)
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, exprs...)...)
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, exprs...)...)
 		// If we do not find a perfect index, we take the first single column partial index if there is one.
 		// This currently only finds single column indexes. A better search would look for the most complete
 		// index available, covering the columns with the most specificity / highest cardinality.
 		if idx == nil && len(exprs) > 1 {
 			for _, e := range exprs {
-				idx = ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, e)...)
+				idx = ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, e)...)
 				if idx != nil {
 					break
 				}

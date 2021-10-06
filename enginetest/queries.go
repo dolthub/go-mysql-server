@@ -3979,12 +3979,11 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"first row"}},
 	},
 	{
-		Query: `SELECT pk, (SELECT pk FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
+		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY 2`,
 		Expected: []sql.Row{
-			{0, nil},
-			{1, 0},
-			{2, 1},
-			{3, 2},
+			{1, "00"},
+			{2, "11"},
+			{3, "22"},
 		},
 	},
 	{
@@ -5336,6 +5335,22 @@ var QueryTests = []QueryTest{
 		Query:    `START TRANSACTION READ WRITE`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query:    `SHOW STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW GLOBAL STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW SESSION STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW STATUS LIKE 'Bytes_received'`,
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -5647,6 +5662,15 @@ var BrokenQueries = []QueryTest{
 	{
 		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
 		Expected: []sql.Row{},
+	},
+	// pushdownGroupByAliases breaks queries where subquery expressions
+	// reference the outer table and an alias gets pushed to a projection
+	// below a group by node.
+	{
+		Query: "SELECT c AS i_do_not_conflict, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY i_do_not_conflict;",
+	},
+	{
+		Query: "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
 	},
 }
 
@@ -6526,6 +6550,10 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "SELECT (2, 2)=1 FROM dual where exists (SELECT 1 FROM dual)",
 		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk where strpk > "0" ORDER BY 2`,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }
 

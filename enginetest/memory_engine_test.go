@@ -93,17 +93,15 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: "SHOW CHARSET",
+		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY strpk`,
 		Expected: []sql.Row{
-			{
-				sql.CharacterSet_utf8mb4.String(),
-				sql.CharacterSet_utf8mb4.Description(),
-				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				sql.CharacterSet_utf8mb4.MaxLength(),
-			},
+			{1, "00"},
+			{2, "11"},
+			{3, "22"},
 		},
 	}
 

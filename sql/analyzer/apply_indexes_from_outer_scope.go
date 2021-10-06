@@ -230,13 +230,14 @@ func getSubqueryIndexes(
 	result := make(map[string]sql.Index)
 	// For every predicate involving a table in the outer scope, see if there's an index lookup possible on its comparands
 	// (the tables in this scope)
-	for _, table := range tablesInScope {
-		indexCols := exprsByTable[table]
+	for _, scopeTable := range tablesInScope {
+		indexCols := exprsByTable[scopeTable]
 		if indexCols != nil {
-			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(),
+			table := indexCols[0].comparandCol.Table()
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table,
 				normalizeExpressions(ctx, tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
-				result[indexCols[0].comparandCol.Table()] = idx
+				result[table] = idx
 			}
 		}
 	}
