@@ -561,6 +561,13 @@ type VersionedDatabase interface {
 	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
 }
 
+type TransactionCharacteristic int
+
+const (
+	ReadWrite TransactionCharacteristic = iota
+	ReadOnly
+)
+
 // Transaction is an opaque type implemented by an integrator to record necessary information at the start of a
 // transaction. Active transactions will be recorded in the session.
 type Transaction interface {
@@ -574,7 +581,7 @@ type TransactionDatabase interface {
 	Database
 
 	// StartTransaction starts a new transaction and returns it
-	StartTransaction(ctx *Context, readOnly bool) (Transaction, error)
+	StartTransaction(ctx *Context, tCharacteristic TransactionCharacteristic) (Transaction, error)
 
 	// CommitTransaction commits the transaction given
 	CommitTransaction(ctx *Context, tx Transaction) error

@@ -208,9 +208,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.Use:
 		return convertUse(n)
 	case *sqlparser.Begin:
-		transChar := plan.ReadWrite
+		transChar := sql.ReadWrite
 		if n.TransactionCharacteristic == sqlparser.TxReadOnly {
-			transChar = plan.ReadOnly
+			transChar = sql.ReadOnly
 		}
 
 		return plan.NewStartTransaction("", transChar), nil
