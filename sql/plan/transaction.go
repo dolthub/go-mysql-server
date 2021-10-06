@@ -25,15 +25,17 @@ import (
 type StartTransaction struct {
 	UnaryNode // null in the case that this is an explicit StartTransaction statement, set to the wrapped statement node otherwise
 	db        sql.Database
+	transChar sql.TransactionCharacteristic
 }
 
 var _ sql.Databaser = (*StartTransaction)(nil)
 var _ sql.Node = (*StartTransaction)(nil)
 
 // NewStartTransaction creates a new StartTransaction node.
-func NewStartTransaction(db sql.UnresolvedDatabase) *StartTransaction {
+func NewStartTransaction(db sql.UnresolvedDatabase, transactionChar sql.TransactionCharacteristic) *StartTransaction {
 	return &StartTransaction{
-		db: db,
+		db:        db,
+		transChar: transactionChar,
 	}
 }
 
@@ -67,7 +69,7 @@ func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 
-	transaction, err := tdb.StartTransaction(ctx)
+	transaction, err := tdb.StartTransaction(ctx, s.transChar)
 	if err != nil {
 		return nil, err
 	}

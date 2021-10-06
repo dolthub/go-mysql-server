@@ -683,6 +683,75 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	return n, nil
 }
 
+// validateReadOnlyTransaction invalidates read only transactions that try to perform improper write operations.
+func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	t := ctx.GetTransaction()
+
+	if t == nil {
+		return n, nil
+	}
+
+	// If this is a normal read write transaction don't enforce read-only. Otherwise we must prevent an invalid query.
+	if !t.IsReadOnly() {
+		return n, nil
+	}
+
+	valid := true
+
+	isTempTable := func(table sql.Table) bool {
+		tt, isTempTable := table.(sql.TemporaryTable)
+		if !isTempTable {
+			valid = false
+		}
+
+		return tt.IsTemporary()
+	}
+
+	temporaryTableSearch := func(node sql.Node) bool {
+		if rt, ok := node.(*plan.ResolvedTable); ok {
+			valid = isTempTable(rt.Table)
+		}
+		return valid
+	}
+
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.DeleteFrom, *plan.Update, *plan.UnlockTables:
+			plan.Inspect(node, temporaryTableSearch)
+			return false
+		case *plan.InsertInto:
+			plan.Inspect(n.Destination, temporaryTableSearch)
+			return false
+		case *plan.LockTables:
+			// TODO: Technically we should allow for the locking of temporary tables but the LockTables implementation
+			// needs substantial refactoring.
+			valid = false
+			return false
+		case *plan.CreateTable:
+			// MySQL explicitly blocks the creation of temporary tables in a read only transaction.
+			if n.Temporary() == plan.IsTempTable {
+				valid = false
+			}
+
+			return false
+		default:
+			// DDL statements have an implicit commits which makes them valid to be executed in READ ONLY transactions.
+			if plan.IsDDLNode(n) {
+				valid = true
+				return false
+			}
+
+			return valid
+		}
+	})
+
+	if !valid {
+		return nil, sql.ErrReadOnlyTransaction.New()
+	}
+
+	return n, nil
+}
+
 // validateAggregations returns an error if an Aggregation
 // expression node appears outside of a GroupBy or Window node. Only GroupBy
 // and Window nodes know how to evaluate Aggregation expressions.
