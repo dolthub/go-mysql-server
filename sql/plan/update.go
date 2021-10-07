@@ -134,7 +134,7 @@ func (ui UpdateInfo) String() string {
 	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
 }
 
-type updateIter struct {
+type UpdateIter struct {
 	childIter sql.RowIter
 	schema    sql.Schema
 	updater   sql.RowUpdater
@@ -143,7 +143,7 @@ type updateIter struct {
 	closed    bool
 }
 
-func (u *updateIter) Next() (sql.Row, error) {
+func (u *UpdateIter) Next() (sql.Row, error) {
 	oldAndNewRow, err := u.childIter.Next()
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 	return prev, nil
 }
 
-func (u *updateIter) Close(ctx *sql.Context) error {
+func (u *UpdateIter) Close(ctx *sql.Context) error {
 	if !u.closed {
 		u.closed = true
 		if err := u.updater.Close(ctx); err != nil {
@@ -215,14 +215,14 @@ func (u *updateIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func newUpdateIter(
+func NewUpdateIter(
 	ctx *sql.Context,
 	childIter sql.RowIter,
 	schema sql.Schema,
 	updater sql.RowUpdater,
 	checks sql.CheckConstraints,
 ) sql.RowIter {
-	return NewTableEditorIter(ctx, updater, &updateIter{
+	return NewTableEditorIter(ctx, updater, &UpdateIter{
 		childIter: childIter,
 		updater:   updater,
 		schema:    schema,
@@ -244,7 +244,7 @@ func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return newUpdateIter(ctx, iter, updatable.Schema(), updater, u.Checks), nil
+	return NewUpdateIter(ctx, iter, updatable.Schema(), updater, u.Checks), nil
 }
 
 // WithChildren implements the Node interface.

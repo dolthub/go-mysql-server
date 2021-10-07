@@ -3,12 +3,14 @@ package plan
 import "github.com/dolthub/go-mysql-server/sql"
 
 type UpdateJoin struct {
-	editors map[string]sql.TableEditor
+	editors map[string]*TableEditorIter
+	UnaryNode
 }
 
-func NewUpdateJoin(editorMap map[string]sql.TableEditor) *UpdateJoin {
+func NewUpdateJoin(editorMap map[string]*TableEditorIter, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
-		editors: make(map[string]sql.TableEditor),
+		editors: editorMap,
+		UnaryNode: UnaryNode{Child: child},
 	}
 }
 
