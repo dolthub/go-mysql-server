@@ -18,11 +18,11 @@ func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJ
 
 var _ sql.Node = (*UpdateJoin)(nil)
 
-func (u UpdateJoin) Resolved() bool {
+func (u *UpdateJoin) Resolved() bool {
 	return true
 }
 
-func (u UpdateJoin) String() string {
+func (u *UpdateJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update Join")
 	_ = pr.WriteChildren(u.Child.String())
@@ -30,26 +30,26 @@ func (u UpdateJoin) String() string {
 
 }
 
-func (u UpdateJoin) Schema() sql.Schema {
+func (u *UpdateJoin) Schema() sql.Schema {
 	return u.Child.Schema()
 }
 
-func (u UpdateJoin) Children() []sql.Node {
+func (u *UpdateJoin) Children() []sql.Node {
 	return []sql.Node{u.Child}
 }
 
-func (u UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return u.Child.RowIter(ctx, row)
 }
 
-func (u UpdateJoin) GetUpdatable() sql.UpdatableTable {
+func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	return &updatableJoinTable{
 		editors:  u.editors,
 		joinNode: u.Child.(*UpdateSource).Child,
 	}
 }
 
-func (u UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}

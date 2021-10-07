@@ -58,6 +58,22 @@ func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
 	case *plan.DeleteFrom:
 		return plan.UpdateTypeDelete, nil
 	case *plan.Update:
+		// search for a join
+		hasJoin := false
+		plan.Inspect(n, func(node sql.Node) bool {
+			switch node.(type) {
+			case *plan.InnerJoin:
+				hasJoin = true
+				return false
+			}
+
+			return true
+		})
+
+		if hasJoin {
+			return plan.UpdateTypeJoinUpdate, nil
+		}
+
 		return plan.UpdateTypeUpdate, nil
 	}
 

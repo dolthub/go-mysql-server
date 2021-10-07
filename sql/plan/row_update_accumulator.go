@@ -32,6 +32,7 @@ const (
 	UpdateTypeDuplicateKeyUpdate
 	UpdateTypeUpdate
 	UpdateTypeDelete
+	UpdateTypeJoinUpdate
 )
 
 // RowUpdateAccumulator wraps other nodes that update tables, and returns their results as OKResults with the appropriate
@@ -184,6 +185,63 @@ func (u *updateRowHandler) okResult() sql.OkResult {
 	}
 }
 
+type updateJoinRowHandler struct {
+	rowsMatched int
+	rowsAffected int
+	joinSchema sql.Schema
+	tableMap map[string]sql.Schema
+}
+
+func recreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
+	ret := make(map[string]sql.Schema, 0)
+
+	for _, c := range joinSchema {
+		potential, exists := ret[c.Source]
+		if exists {
+			ret[c.Source] = append(potential, c)
+		} else {
+			ret[c.Source] = sql.Schema{c}
+		}
+	}
+
+	return ret
+}
+
+func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
+	// split the row
+	oldJoinRow := row[:len(row)/2]
+	newJoinRow := row[len(row)/2:]
+
+	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
+	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
+
+	for tableName, tableOldRow := range tableToOldRow {
+		u.rowsMatched++
+		tableNewRow := tableToNewRow[tableName]
+		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
+			if !equals {
+				u.rowsAffected++
+			}
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (u *updateJoinRowHandler) okResult() sql.OkResult {
+	return sql.OkResult{
+		RowsAffected: uint64(u.rowsAffected),
+		Info: UpdateInfo{
+			Matched:  u.rowsMatched,
+			Updated:  u.rowsAffected,
+			Warnings: 0,
+		},
+	}
+}
+
+
 type deleteRowHandler struct {
 	rowsAffected int
 }
@@ -270,6 +328,23 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2]}
 	case UpdateTypeDelete:
 		rowHandler = &deleteRowHandler{}
+	case UpdateTypeJoinUpdate:
+		var schema sql.Schema
+		Inspect(r.Child, func(node sql.Node) bool {
+			switch node.(type) {
+			case *InnerJoin:
+				schema = node.Schema()
+				return false
+			}
+
+			return true
+		})
+
+		if schema == nil {
+			return nil, fmt.Errorf("UpdateJoin accumulator was requested about no join node found")
+		}
+
+		rowHandler= &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema)}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", r.RowUpdateType))
 	}

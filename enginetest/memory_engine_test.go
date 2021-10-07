@@ -134,8 +134,8 @@ func TestSingleScript(t *testing.T) {
 					Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
 					//Query: `update test, test2 set test.pk = test.pk + 1,test2.pk = test2.pk + 3 where test.pk < 100 and test.pk < 100;`,
 					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
-						Matched:  4,
-						Updated:  3,
+						Matched:  8,
+						Updated:  6,
 						Warnings: 0,
 					}}}},
 				},
