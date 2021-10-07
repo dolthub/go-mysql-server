@@ -22,9 +22,9 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 			}
 
 			// do something with update source so it better applies the update expressions
-			tableEditorMap := getTableEditorMap(ctx, ij, getUpdatableTables(ctx, us, ij)) // TODO: Do we want to manage RowIters?
+			tableEditorMap := getUpdatableTables(ctx, us, ij) // TODO: Do we want to manage RowIters?
 
-			uj := plan.NewUpdateJoin(tableEditorMap, us.Child)
+			uj := plan.NewUpdateJoin(tableEditorMap, us)
 			ret, _ = ret.WithChildren(uj)
 			return false
 		default:
@@ -34,27 +34,27 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 
 	return ret, nil
 }
+//
+//func getTableEditorMap(ctx *sql.Context, ij *plan.InnerJoin, utMap map[string]sql.UpdatableTable) map[string]*plan.TableEditorIter {
+//	ret := make(map[string]*plan.TableEditorIter)
+//	for tableName, updatable := range utMap {
+//		iter, _ := ij.RowIter(ctx, sql.Row{})
+//		ret[tableName] = plan.NewUpdateIter(ctx, iter, sql.Schema{}, updatable.Updater(ctx), sql.CheckConstraints{}).(*plan.TableEditorIter)
+//	}
+//
+//	return ret
+//}
+//
 
-func getTableEditorMap(ctx *sql.Context, ij *plan.InnerJoin, utMap map[string]sql.UpdatableTable) map[string]*plan.TableEditorIter {
-	ret := make(map[string]*plan.TableEditorIter)
-	for tableName, updatable := range utMap {
-		iter, _ := ij.RowIter(ctx, sql.Row{})
-		ret[tableName] = plan.NewUpdateIter(ctx, iter, sql.Schema{}, updatable.Updater(ctx), sql.CheckConstraints{}).(*plan.TableEditorIter)
-	}
-
-	return ret
-}
-
-
-func getUpdatableTables(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map[string]sql.UpdatableTable {
+func getUpdatableTables(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map[string]sql.RowUpdater {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(ctx, node)
 	resolvedTables := getResolvedTableFromJoinStruct(ij)
 
-	ret := make(map[string]sql.UpdatableTable)
+	ret := make(map[string]sql.RowUpdater)
 
 	for k, v := range resolvedTables {
 		if _, exists := namesOfTableToBeUpdated[k]; exists {
-			ret[k] = v.Table.(sql.UpdatableTable)
+			ret[k] = v.Table.(sql.UpdatableTable).Updater(ctx)
 		}
 	}
 

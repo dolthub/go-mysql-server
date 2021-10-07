@@ -6,13 +6,11 @@ import (
 )
 
 type UpdateJoin struct {
-	editors map[string]*TableEditorIter
-	schemas map[string]sql.Schema // TODO: get this passed in
-	resolvedTable map[string]*ResolvedTable
+	editors map[string]sql.RowUpdater
 	UnaryNode
 }
 
-func NewUpdateJoin(editorMap map[string]*TableEditorIter, child sql.Node) *UpdateJoin {
+func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
 		editors: editorMap,
 		UnaryNode: UnaryNode{Child: child},
@@ -48,7 +46,7 @@ func (u UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 func (u UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	return &updatableJoinTable{
 		editors: u.editors,
-		joinNode: u.Child,
+		joinNode: u.Child.(*UpdateSource).Child,
 	}
 }
 
@@ -62,7 +60,7 @@ func (u UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Manges the editing of a table
 type updatableJoinTable struct {
-	editors map[string]*TableEditorIter
+	editors map[string]sql.RowUpdater
 	joinNode sql.Node
 }
 
@@ -97,8 +95,8 @@ func (u updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 }
 
 type updatableJoinUpdater struct {
-	initialEditorMap map[string]*TableEditorIter
-	updatedEditorMap map[string]*TableEditorIter
+	initialEditorMap map[string]sql.RowUpdater
+	updatedEditorMap map[string]sql.RowUpdater
 	joinSchema sql.Schema
 }
 
@@ -118,10 +116,54 @@ func (u updatableJoinUpdater) StatementComplete(ctx *sql.Context) error {
 
 func (u updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
 	// split the rows baybeee
+	tableToOldRowMap := splitRowIntoTableRowMap(ctx, old, u.joinSchema)
+	tableToNewRowMap := splitRowIntoTableRowMap(ctx, new, u.joinSchema)
 
-	panic("implement update plz")
+	for tableName, newRow := range tableToNewRowMap {
+		oldRow := tableToOldRowMap[tableName]
+
+		err := u.updatedEditorMap[tableName].Update(ctx, oldRow, newRow)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (u updatableJoinUpdater) Close(context *sql.Context) error {
-	panic("implement close plz")
+func (u updatableJoinUpdater) Close(ctx *sql.Context) error {
+	for _, updater := range u.updatedEditorMap {
+		err := updater.Close(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func splitRowIntoTableRowMap(ctx *sql.Context, row sql.Row, joinSchema sql.Schema) map[string]sql.Row {
+	ret := make(map[string]sql.Row)
+
+	if len(joinSchema) == 0 {
+		return ret
+	}
+
+	currentTable := joinSchema[0].Source
+	currentRow := sql.Row{row[0]}
+
+	for i := 1; i < len(joinSchema); i++ {
+		c := joinSchema[i]
+
+		if c.Source != currentTable {
+			ret[currentTable] = currentRow
+			currentTable = c.Source
+			currentRow = sql.Row{row[i]}
+		} else {
+			currentTable = c.Source
+			currentRow = append(currentRow, row[i])
+		}
+	}
+
+	return ret
 }

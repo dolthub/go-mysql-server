@@ -133,7 +133,11 @@ func TestSingleScript(t *testing.T) {
 					//Query: `select * FROM test inner join test2 on test.pk = test2.pk where test.pk < 10;`,
 					Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10 where test.pk < 10;`,
 					//Query: `update test, test2 set test.pk = test.pk + 1,test2.pk = test2.pk + 3 where test.pk < 100 and test.pk < 100;`,
-					Expected: []sql.Row{{sql.NewOkResult(4)}},
+					Expected: []sql.Row{{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
+						Matched:  4,
+						Updated:  3,
+						Warnings: 0,
+					}}}},
 				},
 				{
 					Query: "SELECT * FROM test",
