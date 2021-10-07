@@ -1,7 +1,6 @@
 package plan
 
 import (
-	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -12,7 +11,7 @@ type UpdateJoin struct {
 
 func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
-		editors: editorMap,
+		editors:   editorMap,
 		UnaryNode: UnaryNode{Child: child},
 	}
 }
@@ -40,19 +39,19 @@ func (u UpdateJoin) Children() []sql.Node {
 }
 
 func (u UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return u.Child.RowIter(ctx, row) // just retrurn the join iters
+	return u.Child.RowIter(ctx, row)
 }
 
 func (u UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	return &updatableJoinTable{
-		editors: u.editors,
+		editors:  u.editors,
 		joinNode: u.Child.(*UpdateSource).Child,
 	}
 }
 
 func (u UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
-		return nil, fmt.Errorf("insert the correct error here ") // TODO: fix this error messafe
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
 	return NewUpdateJoin(u.editors, children[0]), nil
@@ -60,7 +59,7 @@ func (u UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // Manges the editing of a table
 type updatableJoinTable struct {
-	editors map[string]sql.RowUpdater
+	editors  map[string]sql.RowUpdater
 	joinNode sql.Node
 }
 
@@ -90,14 +89,14 @@ func (u updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
 		initialEditorMap: u.editors,
 		updatedEditorMap: u.editors,
-		joinSchema: u.joinNode.Schema(),
+		joinSchema:       u.joinNode.Schema(),
 	}
 }
 
 type updatableJoinUpdater struct {
 	initialEditorMap map[string]sql.RowUpdater
 	updatedEditorMap map[string]sql.RowUpdater
-	joinSchema sql.Schema
+	joinSchema       sql.Schema
 }
 
 var _ sql.RowUpdater = (*updatableJoinUpdater)(nil)
@@ -115,9 +114,8 @@ func (u updatableJoinUpdater) StatementComplete(ctx *sql.Context) error {
 }
 
 func (u updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
-	// split the rows baybeee
-	tableToOldRowMap := splitRowIntoTableRowMap(ctx, old, u.joinSchema)
-	tableToNewRowMap := splitRowIntoTableRowMap(ctx, new, u.joinSchema)
+	tableToOldRowMap := splitRowIntoTableRowMap(old, u.joinSchema)
+	tableToNewRowMap := splitRowIntoTableRowMap(new, u.joinSchema)
 
 	for tableName, newRow := range tableToNewRowMap {
 		oldRow := tableToOldRowMap[tableName]
@@ -142,7 +140,8 @@ func (u updatableJoinUpdater) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func splitRowIntoTableRowMap(ctx *sql.Context, row sql.Row, joinSchema sql.Schema) map[string]sql.Row {
+// splitRowIntoTableRowMap takes a join table row and breaks into a map of tables and their respective row.
+func splitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.Row {
 	ret := make(map[string]sql.Row)
 
 	if len(joinSchema) == 0 {

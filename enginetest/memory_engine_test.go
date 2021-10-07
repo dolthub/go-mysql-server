@@ -157,7 +157,6 @@ func TestSingleScript(t *testing.T) {
 						{12, 3},
 					},
 				},
-
 			},
 		},
 	}
@@ -171,7 +170,6 @@ func TestSingleScript(t *testing.T) {
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
-
 
 func TestBrokenQueries(t *testing.T) {
 	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)

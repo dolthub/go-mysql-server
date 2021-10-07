@@ -6,49 +6,38 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// modifyUpdateExpressionsForJoin searches for a JOIN for UPDATE query and updates the child of the original update
+// node to use a plan.UpdateJoin node as a child.
 func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	ret := n
-	plan.Inspect(n, func(n sql.Node) bool {
-		switch n := n.(type) {
-		case *plan.Update:
-			us, ok := n.Child.(*plan.UpdateSource)
-			if !ok {
-				return false
-			}
-
-			ij, ok := us.Child.(*plan.InnerJoin) // just have this return all of the updatable tables
-			if !ok {
-				return false
-			}
-
-			// do something with update source so it better applies the update expressions
-			tableEditorMap := getUpdatableTables(ctx, us, ij) // TODO: Do we want to manage RowIters?
-
-			uj := plan.NewUpdateJoin(tableEditorMap, us)
-			ret, _ = ret.WithChildren(uj)
-			return false
-		default:
-			return false
+	switch n := n.(type) {
+	case *plan.Update:
+		us, ok := n.Child.(*plan.UpdateSource)
+		if !ok {
+			return n, nil
 		}
-	})
 
-	return ret, nil
+		ij, ok := us.Child.(*plan.InnerJoin)
+		if !ok {
+			return n, nil
+		}
+
+		uj := plan.NewUpdateJoin(getRowUpdaterMap(ctx, us, ij), us)
+		ret, err := n.WithChildren(uj)
+
+		if err != nil {
+			return nil, err
+		}
+
+		return ret, nil
+	}
+
+	return n, nil
 }
-//
-//func getTableEditorMap(ctx *sql.Context, ij *plan.InnerJoin, utMap map[string]sql.UpdatableTable) map[string]*plan.TableEditorIter {
-//	ret := make(map[string]*plan.TableEditorIter)
-//	for tableName, updatable := range utMap {
-//		iter, _ := ij.RowIter(ctx, sql.Row{})
-//		ret[tableName] = plan.NewUpdateIter(ctx, iter, sql.Schema{}, updatable.Updater(ctx), sql.CheckConstraints{}).(*plan.TableEditorIter)
-//	}
-//
-//	return ret
-//}
-//
 
-func getUpdatableTables(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map[string]sql.RowUpdater {
-	namesOfTableToBeUpdated := getTablesToBeUpdated(ctx, node)
-	resolvedTables := getResolvedTableFromJoinStruct(ij)
+// getRowUpdaterMap returns a maps set of tables to their RowUpdater objects.
+func getRowUpdaterMap(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map[string]sql.RowUpdater {
+	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
+	resolvedTables := getResolvedTableFromJoin(ij)
 
 	ret := make(map[string]sql.RowUpdater)
 
@@ -61,7 +50,8 @@ func getUpdatableTables(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map
 	return ret
 }
 
-func getResolvedTableFromJoinStruct(node *plan.InnerJoin) map[string]*plan.ResolvedTable {
+// getResolvedTableFromJoin returns all resolved tables present in a join node
+func getResolvedTableFromJoin(node *plan.InnerJoin) map[string]*plan.ResolvedTable {
 	toProcess := make([]sql.Node, 0)
 	toProcess = append(toProcess, node)
 	ret := make(map[string]*plan.ResolvedTable)
@@ -86,19 +76,20 @@ func getResolvedTableFromJoinStruct(node *plan.InnerJoin) map[string]*plan.Resol
 	return ret
 }
 
-func getTablesToBeUpdated(ctx *sql.Context, node sql.Node) map[string]interface{} {
+// getTablesTobeUpdated takes a node and looks for the tables to modified by a SetField.
+func getTablesToBeUpdated(node sql.Node) map[string]interface{} {
 	ret := make(map[string]interface{})
 
 	plan.InspectExpressions(node, func(e sql.Expression) bool {
 		switch e := e.(type) {
-		case *expression.GetField: // TODO: This should change to SetField to be more accurate but its fine for now
-			ret[e.Table()] = true
+		case *expression.SetField:
+			gf := e.Left.(*expression.GetField)
+			ret[gf.Table()] = true
 			return false
 		}
 
 		return true
 	})
-
 
 	return ret
 }
