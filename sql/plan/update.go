@@ -149,8 +149,13 @@ func (u *updateIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 
+	schema := u.schema
+	if uj, ok := u.updater.(*UpdateJoin); ok {
+		schema = uj.Schema() // dynamically allocate the schema in the case of an UpdateJoin
+	}
+
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
-	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
+	if equals, err := oldRow.Equals(newRow, schema); err == nil {
 		// TODO: we aren't enforcing other kinds of constraints here, like nullability
 		if !equals {
 			// apply check constraints
