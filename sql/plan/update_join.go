@@ -165,5 +165,7 @@ func splitRowIntoTableRowMap(ctx *sql.Context, row sql.Row, joinSchema sql.Schem
 		}
 	}
 
+	ret[currentTable] = currentRow
+
 	return ret
 }
