@@ -22,7 +22,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 			}
 
 			// do something with update source so it better applies the update expressions
-			tableEditorMap := getTableEditorMap(ctx, ij, getUpdatableTables(ctx, us)) // TODO: Do we want to manage RowIters?
+			tableEditorMap := getTableEditorMap(ctx, ij, getUpdatableTables(ctx, us, ij)) // TODO: Do we want to manage RowIters?
 
 			uj := plan.NewUpdateJoin(tableEditorMap, us.Child)
 			ret, _ = ret.WithChildren(uj)
@@ -46,9 +46,9 @@ func getTableEditorMap(ctx *sql.Context, ij *plan.InnerJoin, utMap map[string]sq
 }
 
 
-func getUpdatableTables(ctx *sql.Context, node sql.Node) map[string]sql.UpdatableTable {
+func getUpdatableTables(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map[string]sql.UpdatableTable {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(ctx, node)
-	resolvedTables := getResolvedTables(node)
+	resolvedTables := getResolvedTableFromJoinStruct(ij)
 
 	ret := make(map[string]sql.UpdatableTable)
 
@@ -61,12 +61,37 @@ func getUpdatableTables(ctx *sql.Context, node sql.Node) map[string]sql.Updatabl
 	return ret
 }
 
+func getResolvedTableFromJoinStruct(node *plan.InnerJoin) map[string]*plan.ResolvedTable {
+	toProcess := make([]sql.Node, 0)
+	toProcess = append(toProcess, node)
+	ret := make(map[string]*plan.ResolvedTable)
+	for len(toProcess) > 0 {
+		head := toProcess[0]
+		children := head.Children()
+		toProcess = toProcess[1:]
+
+		if len(children) == 0 {
+			continue
+		}
+
+		for _, child := range children {
+			toAdd := getResolvedTable(child)
+			if toAdd != nil {
+				ret[toAdd.Name()] = toAdd
+			}
+			toProcess = append(toProcess, child)
+		}
+	}
+
+	return ret
+}
+
 func getTablesToBeUpdated(ctx *sql.Context, node sql.Node) map[string]interface{} {
 	ret := make(map[string]interface{})
 
 	plan.InspectExpressions(node, func(e sql.Expression) bool {
 		switch e := e.(type) {
-		case *expression.GetField:
+		case *expression.GetField: // TODO: This should change to SetField to be more accurate but its fine for now
 			ret[e.Table()] = true
 			return false
 		}

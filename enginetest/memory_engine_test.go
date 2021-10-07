@@ -116,38 +116,33 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
 			Name: "Issue #499",
 			SetUpScript: []string{
 				"CREATE TABLE test (pk int primary key);",
-				`INSERT INTO test values (1),(2);`,
-				`CREATE TABLE t2 (pk int)`,
-				`INSERT INTO t2 VALUES (NULL)`,
+				`CREATE TABLE test2 (pk int primary key, val int);`,
+				`INSERT into test values (0),(1),(2),(3)`,
+				`INSERT into test2 values (0, 0),(1, 1),(2, 2),(3, 3)`,
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query: `SELECT * FROM test WHERE EXISTS (SELECT pk FROM t2)`,
-					Expected: []sql.Row{
-						{1},
-						{2},
-					},
+					// Query: `UPDATE test set test.pk = test.pk * 10 where test.pk < 10`,
+					//Query: `select * FROM test inner join test2 on test.pk = test2.pk where test.pk < 10;`,
+					Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10 where test.pk < 10;`,
+					//Query: `update test, test2 set test.pk = test.pk + 1,test2.pk = test2.pk + 3 where test.pk < 100 and test.pk < 100;`,
+					Expected: []sql.Row{{sql.NewOkResult(4)}},
 				},
-			},
-		},
-		{
-			Name: "Issue #499",
-			SetUpScript: []string{
-				"CREATE TABLE test2 (pk int primary key);",
-				`INSERT INTO test2 values (1),(2);`,
-				`CREATE TABLE t2 (pk int)`,
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    `SELECT * FROM test2 WHERE EXISTS (SELECT pk FROM t2)`,
-					Expected: []sql.Row{},
+					Query: "SELECT * FROM test",
+					Expected: []sql.Row{
+						{0},
+						{10},
+						{20},
+						{30},
+					},
 				},
 			},
 		},
@@ -162,6 +157,7 @@ func TestSingleScript(t *testing.T) {
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
 }
+
 
 func TestBrokenQueries(t *testing.T) {
 	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)

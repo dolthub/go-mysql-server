@@ -78,7 +78,6 @@ type InnerJoin struct {
 
 var _ JoinNode = (*InnerJoin)(nil)
 var _ sql.CommentedNode = (*InnerJoin)(nil)
-var _ sql.UpdatableTable = (*InnerJoin)(nil)
 
 func (j *InnerJoin) JoinType() JoinType {
 	return JoinTypeInner
@@ -164,22 +163,6 @@ func (j *InnerJoin) DebugString() string {
 	_ = pr.WriteNode("InnerJoin%s, comment=%s", sql.DebugString(j.Cond), j.Comment())
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
-}
-
-func (j *InnerJoin) Name() string {
-	panic("This should not need to be called")
-}
-
-func (j *InnerJoin) Partitions(context *sql.Context) (sql.PartitionIter, error) {
-	panic("this shoildnot be called")
-}
-
-func (j *InnerJoin) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	panic("this should not be called")
-}
-
-func (j *InnerJoin) Updater(ctx *sql.Context) sql.RowUpdater {
-	panic("this should not be called")
 }
 
 // LeftJoin is a left join between two tables.

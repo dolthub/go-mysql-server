@@ -55,6 +55,8 @@ func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return getUpdatable(node.Left())
 	case sql.TableWrapper:
 		return getUpdatableTable(node.Underlying())
+	case *UpdateJoin:
+		return node.GetUpdatable(), nil
 	}
 	if len(node.Children()) > 1 {
 		return nil, ErrUpdateNotSupported.New()
@@ -150,9 +152,9 @@ func (u *UpdateIter) Next() (sql.Row, error) {
 	}
 
 	schema := u.schema
-	if uj, ok := u.updater.(*UpdateJoin); ok {
-		schema = uj.Schema() // dynamically allocate the schema in the case of an UpdateJoin
-	}
+	//if uj, ok := u.updater.(*updatableJoinUpdater); ok {
+	//	schema = uj.Schema() // dynamically allocate the schema in the case of an UpdateJoin
+	//}
 
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
 	if equals, err := oldRow.Equals(newRow, schema); err == nil {
