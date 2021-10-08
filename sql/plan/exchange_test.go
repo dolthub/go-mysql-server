@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -107,6 +108,42 @@ func TestExchangeCancelled(t *testing.T) {
 	require.Equal(context.Canceled, err)
 }
 
+func TestExchangeIterPartitionsPanic(t *testing.T) {
+	ctx := sql.NewContext(context.Background())
+	piter, err := (&partitionable{nil, 3, 2048}).Partitions(ctx)
+	assert.NoError(t, err)
+	closedCh := make(chan sql.Partition)
+	close(closedCh)
+	err = iterPartitions(ctx, piter, closedCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+
+	openCh := make(chan sql.Partition)
+	err = iterPartitions(ctx, &partitionPanic{}, openCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+}
+
+func TestExchangeIterPartitionRowsPanic(t *testing.T) {
+	ctx := sql.NewContext(context.Background())
+	partitions := make(chan sql.Partition, 1)
+	partitions <- Partition("test")
+	err := iterPartitionRows(ctx, func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+		return &rowIterPanic{}, nil
+	}, partitions, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+
+	closedCh := make(chan sql.Row)
+	close(closedCh)
+	partitions <- Partition("test")
+	err = iterPartitionRows(ctx, func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+		return &partitionRows{Partition("test"), 10}, nil
+	}, partitions, closedCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+}
+
 type partitionable struct {
 	sql.Node
 	partitions       int
@@ -181,6 +218,17 @@ func (r *partitionRows) Next() (sql.Row, error) {
 
 func (r *partitionRows) Close(*sql.Context) error {
 	atomic.StoreInt32(&r.num, -1)
+	return nil
+}
+
+type rowIterPanic struct {
+}
+
+func (*rowIterPanic) Next() (sql.Row, error) {
+	panic("i panic")
+}
+
+func (*rowIterPanic) Close(*sql.Context) error {
 	return nil
 }
 
