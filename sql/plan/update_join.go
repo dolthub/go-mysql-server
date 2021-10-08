@@ -9,6 +9,7 @@ type UpdateJoin struct {
 	UnaryNode
 }
 
+// NewUpdateJoin R
 func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
 		editors:   editorMap,

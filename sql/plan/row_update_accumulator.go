@@ -202,7 +202,7 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
 	for tableName, tableOldRow := range tableToOldRow {
-		u.rowsMatched++
+		u.rowsMatched++ // needs to be based on the joic condition TODO: This isn't quite right
 		tableNewRow := tableToNewRow[tableName]
 		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
 			if !equals {
