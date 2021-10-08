@@ -167,7 +167,7 @@ func (j *InnerJoin) DebugString() string {
 }
 
 func (j *InnerJoin) Name() string {
-	panic("implement me")
+	return "join_table"
 }
 
 func (j *InnerJoin) Partitions(context *sql.Context) (sql.PartitionIter, error) {

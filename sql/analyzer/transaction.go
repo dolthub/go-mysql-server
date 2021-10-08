@@ -36,7 +36,7 @@ func beginTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	case *plan.StartTransaction:
 		return n, nil
 	default:
-		start, err := plan.NewStartTransaction("").WithChildren(n)
+		start, err := plan.NewStartTransaction("", sql.ReadWrite).WithChildren(n)
 		if err != nil {
 			return nil, err
 		}

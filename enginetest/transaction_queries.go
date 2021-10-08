@@ -14,7 +14,9 @@
 
 package enginetest
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 // TransactionTest is a script to test transaction correctness. It's similar to ScriptTest, but its assertions name
 // clients that participate
@@ -856,6 +858,69 @@ var TransactionTests = []TransactionTest{
 			{
 				Query:    "/* client a */ select * from t2 order by x",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {3, 3}},
+			},
+		},
+	},
+	{
+		Name: "READ ONLY Transactions",
+		SetUpScript: []string{
+			"create table t2 (pk int primary key, val int)",
+			"insert into t2 values (0,0)",
+			"commit",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ set autocommit = off",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "/* client a */ create temporary table tmp(pk int primary key)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */  START TRANSACTION READ ONLY",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ INSERT INTO tmp VALUES (1)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:       "/* client a */ insert into t2 values (1, 1)",
+				ExpectedErr: sql.ErrReadOnlyTransaction,
+			},
+			{
+				Query:       "/* client a */ insert into t2 values (2, 2)",
+				ExpectedErr: sql.ErrReadOnlyTransaction,
+			},
+			{
+				Query:       "/* client a */ delete from t2 where pk = 0",
+				ExpectedErr: sql.ErrReadOnlyTransaction,
+			},
+			{
+
+				Query:    "/* client a */ alter table t2 add val2 int",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ select * from t2",
+				Expected: []sql.Row{{0, 0, nil}},
+			},
+			{
+				Query:       "/* client a */ create temporary table tmp2(pk int primary key)",
+				ExpectedErr: sql.ErrReadOnlyTransaction,
+			},
+			{
+				Query:    "/* client a */ COMMIT",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ START TRANSACTION READ ONLY",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ SELECT * FROM t2",
+				Expected: []sql.Row{{0, 0, nil}},
 			},
 		},
 	},
