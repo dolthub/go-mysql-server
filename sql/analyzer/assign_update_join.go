@@ -4,7 +4,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 )
+
+var ErrNonUpdateInnerJoinNotSupports = errors.NewKind("error: Only INNER JOINs are support for Update currently")
 
 // modifyUpdateExpressionsForJoin searches for a JOIN for UPDATE query and updates the child of the original update
 // node to use a plan.UpdateJoin node as a child.
@@ -16,12 +19,16 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 			return n, nil
 		}
 
-		ij, ok := us.Child.(*plan.InnerJoin)
+		jn, ok := us.Child.(plan.JoinNode) // Join type?
 		if !ok {
 			return n, nil
 		}
 
-		uj := plan.NewUpdateJoin(getRowUpdaterMap(ctx, us, ij), us)
+		if _, ok = jn.(*plan.InnerJoin); !ok {
+			return n, ErrNonUpdateInnerJoinNotSupports.New()
+		}
+
+		uj := plan.NewUpdateJoin(getRowUpdaterMap(ctx, us, jn), us)
 		ret, err := n.WithChildren(uj)
 
 		if err != nil {
@@ -35,7 +42,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 }
 
 // getRowUpdaterMap returns a maps set of tables to their RowUpdater objects.
-func getRowUpdaterMap(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map[string]sql.RowUpdater {
+func getRowUpdaterMap(ctx *sql.Context, node sql.Node, ij plan.JoinNode) map[string]sql.RowUpdater {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
 	resolvedTables := getResolvedTableFromJoin(ij)
 
@@ -51,7 +58,7 @@ func getRowUpdaterMap(ctx *sql.Context, node sql.Node, ij *plan.InnerJoin) map[s
 }
 
 // getResolvedTableFromJoin returns all resolved tables present in a join node
-func getResolvedTableFromJoin(node *plan.InnerJoin) map[string]*plan.ResolvedTable {
+func getResolvedTableFromJoin(node plan.JoinNode) map[string]*plan.ResolvedTable {
 	toProcess := make([]sql.Node, 0)
 	toProcess = append(toProcess, node)
 	ret := make(map[string]*plan.ResolvedTable)

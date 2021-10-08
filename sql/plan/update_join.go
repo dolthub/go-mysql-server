@@ -117,10 +117,12 @@ func (u updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row)
 	tableToOldRowMap := splitRowIntoTableRowMap(old, u.joinSchema)
 	tableToNewRowMap := splitRowIntoTableRowMap(new, u.joinSchema)
 
-	for tableName, newRow := range tableToNewRowMap {
+	for tableName, updater := range u.updatedEditorMap {
 		oldRow := tableToOldRowMap[tableName]
+		newRow := tableToNewRowMap[tableName]
 
-		err := u.updatedEditorMap[tableName].Update(ctx, oldRow, newRow)
+
+		err := updater.Update(ctx, oldRow, newRow)
 		if err != nil {
 			return err
 		}

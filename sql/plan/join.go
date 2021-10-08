@@ -76,22 +76,6 @@ type InnerJoin struct {
 	joinStruct
 }
 
-func (j *InnerJoin) Name() string {
-	panic("implement me")
-}
-
-func (j *InnerJoin) Partitions(context *sql.Context) (sql.PartitionIter, error) {
-	panic("implement me")
-}
-
-func (j *InnerJoin) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	panic("implement me")
-}
-
-func (j *InnerJoin) Updater(ctx *sql.Context) sql.RowUpdater {
-	panic("implement me")
-}
-
 var _ JoinNode = (*InnerJoin)(nil)
 var _ sql.CommentedNode = (*InnerJoin)(nil)
 var _ sql.UpdatableTable = (*InnerJoin)(nil)
@@ -181,6 +165,23 @@ func (j *InnerJoin) DebugString() string {
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
 }
+
+func (j *InnerJoin) Name() string {
+	panic("implement me")
+}
+
+func (j *InnerJoin) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+	panic("implement me")
+}
+
+func (j *InnerJoin) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+	panic("implement me")
+}
+
+func (j *InnerJoin) Updater(ctx *sql.Context) sql.RowUpdater {
+	panic("implement me")
+}
+
 
 // LeftJoin is a left join between two tables.
 type LeftJoin struct {

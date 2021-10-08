@@ -177,6 +177,38 @@ var UpdateTests = []WriteQueryTest{
 			nil,
 			nil}},
 	},
+	{
+		WriteQuery: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 4)}},
+		SelectQuery: "SELECT * FROM two_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 11, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 21, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 31, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery: "UPDATE mytable INNER JOIN one_pk ON mytable.i = one_pk.c5 SET mytable.i = mytable.i * 10",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+		SelectQuery: "SELECT * FROM mytable",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(int64(1), "first row"),
+			sql.NewRow(int64(2), "second row"),
+			sql.NewRow(int64(3), "third row"),
+		},
+	},
+	{
+		WriteQuery: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1 WHERE one_pk.c5 < 10`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(4, 2)}},
+		SelectQuery: "SELECT * FROM two_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 11, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 20, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 30, 31, 32, 33, 34),
+		},
+	},
 }
 
 func newUpdateResult(matched, updated int) sql.OkResult {
@@ -246,5 +278,13 @@ var UpdateErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "targets subquery alias",
 		Query: "UPDATE (SELECT * FROM mytable) mytable SET s = NULL;",
+	},
+	{
+		Name: "targets cross joins which is not supported yet",
+		Query: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`,
+	},
+	{
+		Name: "gets converted to a cross join so it fails",
+		Query: `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.s=3 SET othertable.s2 = 'fourth'`,
 	},
 }
