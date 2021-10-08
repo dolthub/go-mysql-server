@@ -167,7 +167,7 @@ func (j *InnerJoin) DebugString() string {
 }
 
 func (j *InnerJoin) Name() string {
-	return "join_table"
+	return "inner_join" // TODO: Is there a better way?
 }
 
 func (j *InnerJoin) Partitions(context *sql.Context) (sql.PartitionIter, error) {
@@ -181,7 +181,6 @@ func (j *InnerJoin) PartitionRows(context *sql.Context, partition sql.Partition)
 func (j *InnerJoin) Updater(ctx *sql.Context) sql.RowUpdater {
 	panic("implement me")
 }
-
 
 // LeftJoin is a left join between two tables.
 type LeftJoin struct {

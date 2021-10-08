@@ -136,7 +136,7 @@ func (ui UpdateInfo) String() string {
 	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
 }
 
-type UpdateIter struct {
+type updateIter struct {
 	childIter sql.RowIter
 	schema    sql.Schema
 	updater   sql.RowUpdater
@@ -145,19 +145,14 @@ type UpdateIter struct {
 	closed    bool
 }
 
-func (u *UpdateIter) Next() (sql.Row, error) {
+func (u *updateIter) Next() (sql.Row, error) {
 	oldAndNewRow, err := u.childIter.Next()
 	if err != nil {
 		return nil, err
 	}
 
-	schema := u.schema
-	//if uj, ok := u.updater.(*updatableJoinUpdater); ok {
-	//	schema = uj.Schema() // dynamically allocate the schema in the case of an UpdateJoin
-	//}
-
 	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
-	if equals, err := oldRow.Equals(newRow, schema); err == nil {
+	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
 		// TODO: we aren't enforcing other kinds of constraints here, like nullability
 		if !equals {
 			// apply check constraints
@@ -206,7 +201,7 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 	return prev, nil
 }
 
-func (u *UpdateIter) Close(ctx *sql.Context) error {
+func (u *updateIter) Close(ctx *sql.Context) error {
 	if !u.closed {
 		u.closed = true
 		if err := u.updater.Close(ctx); err != nil {
@@ -217,14 +212,14 @@ func (u *UpdateIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func NewUpdateIter(
+func newUpdateIter(
 	ctx *sql.Context,
 	childIter sql.RowIter,
 	schema sql.Schema,
 	updater sql.RowUpdater,
 	checks sql.CheckConstraints,
 ) sql.RowIter {
-	return NewTableEditorIter(ctx, updater, &UpdateIter{
+	return NewTableEditorIter(ctx, updater, &updateIter{
 		childIter: childIter,
 		updater:   updater,
 		schema:    schema,
@@ -246,7 +241,7 @@ func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return NewUpdateIter(ctx, iter, updatable.Schema(), updater, u.Checks), nil
+	return newUpdateIter(ctx, iter, updatable.Schema(), updater, u.Checks), nil
 }
 
 // WithChildren implements the Node interface.

@@ -75,20 +75,6 @@ func getTables(node sql.Node) []NameableNode {
 	return tables
 }
 
-func getResolvedTables(node sql.Node) map[string]*plan.ResolvedTable {
-	mp := make(map[string]*plan.ResolvedTable, 0)
-	plan.Inspect(node, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.ResolvedTable:
-			mp[node.Table.Name()] = node
-			return false
-		}
-		return true
-	})
-
-	return mp
-}
-
 // byLowerCaseName returns all the nodes given mapped by their lowercase name.
 func byLowerCaseName(nodes []NameableNode) map[string]NameableNode {
 	byName := make(map[string]NameableNode)

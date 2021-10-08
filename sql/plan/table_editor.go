@@ -21,8 +21,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// TableEditorIter wraps the given iterator and calls the Begin and Complete functions on the given table.
-type TableEditorIter struct {
+// tableEditorIter wraps the given iterator and calls the Begin and Complete functions on the given table.
+type tableEditorIter struct {
 	once             *sync.Once
 	onceCtx          *sql.Context
 	editor           sql.TableEditor
@@ -30,12 +30,12 @@ type TableEditorIter struct {
 	errorEncountered error
 }
 
-var _ sql.RowIter = (*TableEditorIter)(nil)
+var _ sql.RowIter = (*tableEditorIter)(nil)
 
-// NewTableEditorIter returns a new *TableEditorIter by wrapping the given iterator. If the
+// NewTableEditorIter returns a new *tableEditorIter by wrapping the given iterator. If the
 // "statement_boundaries" session variable is set to false, then the original iterator is returned.
 func NewTableEditorIter(ctx *sql.Context, table sql.TableEditor, wrappedIter sql.RowIter) sql.RowIter {
-	return &TableEditorIter{
+	return &tableEditorIter{
 		once:             &sync.Once{},
 		onceCtx:          ctx,
 		editor:           table,
@@ -45,7 +45,7 @@ func NewTableEditorIter(ctx *sql.Context, table sql.TableEditor, wrappedIter sql
 }
 
 // Next implements the interface sql.RowIter.
-func (s *TableEditorIter) Next() (sql.Row, error) {
+func (s *tableEditorIter) Next() (sql.Row, error) {
 	s.once.Do(func() {
 		s.editor.StatementBegin(s.onceCtx)
 	})
@@ -57,7 +57,7 @@ func (s *TableEditorIter) Next() (sql.Row, error) {
 }
 
 // Close implements the interface sql.RowIter.
-func (s *TableEditorIter) Close(ctx *sql.Context) error {
+func (s *tableEditorIter) Close(ctx *sql.Context) error {
 	var err error
 	if s.errorEncountered != nil {
 		err = s.editor.DiscardChanges(ctx, s.errorEncountered)

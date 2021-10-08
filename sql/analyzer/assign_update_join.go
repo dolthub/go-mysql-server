@@ -1,10 +1,11 @@
 package analyzer
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 var ErrNonUpdateInnerJoinNotSupports = errors.NewKind("error: Only INNER JOINs are support for Update currently")
@@ -19,7 +20,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 			return n, nil
 		}
 
-		jn, ok := us.Child.(plan.JoinNode) // Join type?
+		jn, ok := us.Child.(plan.JoinNode)
 		if !ok {
 			return n, nil
 		}
@@ -41,7 +42,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 	return n, nil
 }
 
-// getRowUpdaterMap returns a maps set of tables to their RowUpdater objects.
+// getRowUpdaterMap maps a set of tables to their RowUpdater objects.
 func getRowUpdaterMap(ctx *sql.Context, node sql.Node, ij plan.JoinNode) map[string]sql.RowUpdater {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
 	resolvedTables := getResolvedTableFromJoin(ij)
@@ -50,7 +51,10 @@ func getRowUpdaterMap(ctx *sql.Context, node sql.Node, ij plan.JoinNode) map[str
 
 	for k, v := range resolvedTables {
 		if _, exists := namesOfTableToBeUpdated[k]; exists {
-			ret[k] = v.Table.(sql.UpdatableTable).Updater(ctx)
+			updatable, ok := v.Table.(sql.UpdatableTable)
+			if ok {
+				ret[k] = updatable.Updater(ctx)
+			}
 		}
 	}
 
@@ -59,14 +63,13 @@ func getRowUpdaterMap(ctx *sql.Context, node sql.Node, ij plan.JoinNode) map[str
 
 // getResolvedTableFromJoin returns all resolved tables present in a join node
 func getResolvedTableFromJoin(node plan.JoinNode) map[string]*plan.ResolvedTable {
-	toProcess := make([]sql.Node, 0)
-	toProcess = append(toProcess, node)
+	toProcess := []sql.Node{node}
 	ret := make(map[string]*plan.ResolvedTable)
 	for len(toProcess) > 0 {
 		head := toProcess[0]
-		children := head.Children()
 		toProcess = toProcess[1:]
 
+		children := head.Children()
 		if len(children) == 0 {
 			continue
 		}
@@ -75,15 +78,16 @@ func getResolvedTableFromJoin(node plan.JoinNode) map[string]*plan.ResolvedTable
 			toAdd := getResolvedTable(child)
 			if toAdd != nil {
 				ret[toAdd.Name()] = toAdd
+			} else {
+				toProcess = append(toProcess, child)
 			}
-			toProcess = append(toProcess, child)
 		}
 	}
 
 	return ret
 }
 
-// getTablesTobeUpdated takes a node and looks for the tables to modified by a SetField.
+// getTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
 func getTablesToBeUpdated(node sql.Node) map[string]interface{} {
 	ret := make(map[string]interface{})
 

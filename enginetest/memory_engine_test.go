@@ -116,11 +116,11 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "Issue #499",
+			Name: "Update Join Fun",
 			SetUpScript: []string{
 				"CREATE TABLE test (pk int primary key);",
 				`CREATE TABLE test2 (pk int primary key, val int);`,

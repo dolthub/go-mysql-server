@@ -121,7 +121,6 @@ func (u updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row)
 		oldRow := tableToOldRowMap[tableName]
 		newRow := tableToNewRowMap[tableName]
 
-
 		err := updater.Update(ctx, oldRow, newRow)
 		if err != nil {
 			return err

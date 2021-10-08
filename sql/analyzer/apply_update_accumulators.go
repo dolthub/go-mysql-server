@@ -62,7 +62,7 @@ func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
 		hasJoin := false
 		plan.Inspect(n, func(node sql.Node) bool {
 			switch node.(type) {
-			case *plan.InnerJoin:
+			case plan.JoinNode:
 				hasJoin = true
 				return false
 			}

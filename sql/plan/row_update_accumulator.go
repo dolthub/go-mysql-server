@@ -185,26 +185,12 @@ func (u *updateRowHandler) okResult() sql.OkResult {
 	}
 }
 
+// updateJoinRowHandler handles row update count for all UPDATEs that use a JOIN.
 type updateJoinRowHandler struct {
-	rowsMatched int
+	rowsMatched  int
 	rowsAffected int
-	joinSchema sql.Schema
-	tableMap map[string]sql.Schema
-}
-
-func recreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
-	ret := make(map[string]sql.Schema, 0)
-
-	for _, c := range joinSchema {
-		potential, exists := ret[c.Source]
-		if exists {
-			ret[c.Source] = append(potential, c)
-		} else {
-			ret[c.Source] = sql.Schema{c}
-		}
-	}
-
-	return ret
+	joinSchema   sql.Schema
+	tableMap     map[string]sql.Schema
 }
 
 func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
@@ -241,6 +227,21 @@ func (u *updateJoinRowHandler) okResult() sql.OkResult {
 	}
 }
 
+// recreateTableSchemaFromJoinSchema takes a join schema and recreates each individual tables schema.
+func recreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
+	ret := make(map[string]sql.Schema, 0)
+
+	for _, c := range joinSchema {
+		potential, exists := ret[c.Source]
+		if exists {
+			ret[c.Source] = append(potential, c)
+		} else {
+			ret[c.Source] = sql.Schema{c}
+		}
+	}
+
+	return ret
+}
 
 type deleteRowHandler struct {
 	rowsAffected int
@@ -332,7 +333,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		var schema sql.Schema
 		Inspect(r.Child, func(node sql.Node) bool {
 			switch node.(type) {
-			case *InnerJoin:
+			case JoinNode:
 				schema = node.Schema()
 				return false
 			}
@@ -344,7 +345,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 			return nil, fmt.Errorf("UpdateJoin accumulator was requested about no join node found")
 		}
 
-		rowHandler= &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema)}
+		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema)}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", r.RowUpdateType))
 	}
