@@ -89,7 +89,7 @@ func TestExchangeCancelled(t *testing.T) {
 				expression.NewGetField(1, sql.Int64, "val", false),
 				expression.NewLiteral(int64(4), sql.Int64),
 			),
-			&partitionable{nil, 3, 6},
+			&partitionable{nil, 3, 2048},
 		),
 	)
 
@@ -105,16 +105,6 @@ func TestExchangeCancelled(t *testing.T) {
 
 	_, err = iter.Next()
 	require.Equal(context.Canceled, err)
-}
-
-func TestExchangePanicRecover(t *testing.T) {
-	ctx := sql.NewContext(context.Background())
-	it := &partitionPanic{}
-	ex := newExchangeRowIter(ctx, 1, it, nil, nil)
-	ex.start()
-	it.Close(ctx)
-
-	require.True(t, it.closed)
 }
 
 type partitionable struct {

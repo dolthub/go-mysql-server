@@ -27,6 +27,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 type key uint
@@ -689,6 +690,13 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 		Code:    code,
 		Message: fmt.Sprintf(msg, args...),
 	})
+}
+
+func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
+	eg, egCtx := errgroup.WithContext(c.Context)
+	nc := *c
+	nc.Context = egCtx
+	return eg, &nc
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
