@@ -201,8 +201,9 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
+	u.rowsMatched++ //TODO: This isn't quite right. Each row in the updating table should only be matched and updated one
+
 	for tableName, tableOldRow := range tableToOldRow {
-		u.rowsMatched++ // needs to be based on the joic condition TODO: This isn't quite right
 		tableNewRow := tableToNewRow[tableName]
 		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
 			if !equals {

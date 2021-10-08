@@ -78,7 +78,7 @@ type InnerJoin struct {
 
 var _ JoinNode = (*InnerJoin)(nil)
 var _ sql.CommentedNode = (*InnerJoin)(nil)
-var _ sql.UpdatableTable = (*InnerJoin)(nil)
+var _ sql.UpdatableTable = (*InnerJoin)(nil) // TODO: Have JoinNode implement the Updatable/Deletable/Insertable interface.
 
 func (j *InnerJoin) JoinType() JoinType {
 	return JoinTypeInner
