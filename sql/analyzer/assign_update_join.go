@@ -1,10 +1,11 @@
 package analyzer
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 var ErrNonUpdateInnerJoinNotSupports = errors.NewKind("error: Only INNER JOINs are support for Update currently")

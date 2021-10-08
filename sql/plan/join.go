@@ -182,7 +182,6 @@ func (j *InnerJoin) Updater(ctx *sql.Context) sql.RowUpdater {
 	panic("implement me")
 }
 
-
 // LeftJoin is a left join between two tables.
 type LeftJoin struct {
 	joinStruct

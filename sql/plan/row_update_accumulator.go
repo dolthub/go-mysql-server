@@ -186,10 +186,10 @@ func (u *updateRowHandler) okResult() sql.OkResult {
 }
 
 type updateJoinRowHandler struct {
-	rowsMatched int
+	rowsMatched  int
 	rowsAffected int
-	joinSchema sql.Schema
-	tableMap map[string]sql.Schema
+	joinSchema   sql.Schema
+	tableMap     map[string]sql.Schema
 }
 
 func recreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
@@ -240,7 +240,6 @@ func (u *updateJoinRowHandler) okResult() sql.OkResult {
 		},
 	}
 }
-
 
 type deleteRowHandler struct {
 	rowsAffected int
@@ -344,7 +343,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 			return nil, fmt.Errorf("UpdateJoin accumulator was requested about no join node found")
 		}
 
-		rowHandler= &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema)}
+		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema)}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", r.RowUpdateType))
 	}
