@@ -397,6 +397,7 @@ func TestAnalyzer(t *testing.T) {
 					expression.NewLiteral("cde456", sql.LongText),
 				)
 				require.NoError(t, err)
+				greatest.Resolved()
 				return plan.NewShowTables(db, false, greatest)
 			},
 		},

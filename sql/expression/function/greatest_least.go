@@ -247,6 +247,12 @@ func (f *Greatest) Resolved() bool {
 			return false
 		}
 	}
+	if f.returnType == nil {
+		retType, err := compRetType(f.Args...)
+		if err == nil {
+			f.returnType = retType
+		}
+	}
 	return true
 }
 
@@ -354,6 +360,12 @@ func (f *Least) Resolved() bool {
 	for _, arg := range f.Args {
 		if !arg.Resolved() {
 			return false
+		}
+	}
+	if f.returnType == nil {
+		retType, err := compRetType(f.Args...)
+		if err == nil {
+			f.returnType = retType
 		}
 	}
 	return true
