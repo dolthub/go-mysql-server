@@ -190,7 +190,8 @@ type updateJoinRowHandler struct {
 	rowsMatched  int
 	rowsAffected int
 	joinSchema   sql.Schema
-	tableMap     map[string]sql.Schema
+	tableMap     map[string]sql.Schema // Needs to only be the tables that can be updated.
+	updaterMap   map[string]sql.RowUpdater
 }
 
 func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
@@ -201,9 +202,15 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
-	u.rowsMatched++ //TODO: This isn't quite right. Each row in the updating table should only be matched and updated one
 
 	for tableName, tableOldRow := range tableToOldRow {
+		// Only work with tables that are supposed to be updated
+		if _, updatable := u.updaterMap[tableName]; !updatable {
+			continue
+		}
+
+		u.rowsMatched++
+
 		tableNewRow := tableToNewRow[tableName]
 		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
 			if !equals {
@@ -332,11 +339,15 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		rowHandler = &deleteRowHandler{}
 	case UpdateTypeJoinUpdate:
 		var schema sql.Schema
+		var updaterMap map[string]sql.RowUpdater
 		Inspect(r.Child, func(node sql.Node) bool {
 			switch node.(type) {
 			case JoinNode:
 				schema = node.Schema()
 				return false
+			case *UpdateJoin:
+				updaterMap = node.(*UpdateJoin).updaters
+				return true
 			}
 
 			return true
@@ -346,7 +357,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 			return nil, fmt.Errorf("UpdateJoin accumulator was requested about no join node found")
 		}
 
-		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema)}
+		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", r.RowUpdateType))
 	}

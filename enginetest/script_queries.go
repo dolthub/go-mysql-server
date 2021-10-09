@@ -1185,6 +1185,43 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Simple Update Join test that manipulates two tables",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key);",
+			`CREATE TABLE test2 (pk int primary key, val int);`,
+			`INSERT into test values (0),(1),(2),(3)`,
+			`INSERT into test2 values (0, 0),(1, 1),(2, 2),(3, 3)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
+					Matched:  8, // TODO: Need to match per table?
+					Updated:  6,
+					Warnings: 0,
+				}}}},
+			},
+			{
+				Query: "SELECT * FROM test",
+				Expected: []sql.Row{
+					{0},
+					{10},
+					{20},
+					{30},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2",
+				Expected: []sql.Row{
+					{0, 0},
+					{4, 1},
+					{8, 2},
+					{12, 3},
+				},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
@@ -1360,43 +1397,6 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 					{"def", "mydb", "mycheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
-				},
-			},
-		},
-	},
-	{
-		Name: "Simple Update Join test that manipulates two tables",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk int primary key);",
-			`CREATE TABLE test2 (pk int primary key, val int);`,
-			`INSERT into test values (0),(1),(2),(3)`,
-			`INSERT into test2 values (0, 0),(1, 1),(2, 2),(3, 3)`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
-					Matched:  8,
-					Updated:  6,
-					Warnings: 0,
-				}}}},
-			},
-			{
-				Query: "SELECT * FROM test",
-				Expected: []sql.Row{
-					{0},
-					{10},
-					{20},
-					{30},
-				},
-			},
-			{
-				Query: "SELECT * FROM test2",
-				Expected: []sql.Row{
-					{0, 0},
-					{4, 1},
-					{8, 2},
-					{12, 3},
 				},
 			},
 		},
