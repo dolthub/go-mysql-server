@@ -88,36 +88,38 @@ type updatableJoinTable struct {
 var _ sql.UpdatableTable = (*updatableJoinTable)(nil)
 
 // Partitions implements the sql.UpdatableTable interface.
-func (u updatableJoinTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+func (u *updatableJoinTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	panic("this method should not be called")
 }
 
 // PartitionsRows implements the sql.UpdatableTable interface.
-func (u updatableJoinTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+func (u *updatableJoinTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	panic("this method should not be called")
 }
 
 // Name implements the sql.UpdatableTable interface.
-func (u updatableJoinTable) Name() string {
+func (u *updatableJoinTable) Name() string {
 	panic("this method should not be called")
 }
 
 // String implements the sql.UpdatableTable interface.
-func (u updatableJoinTable) String() string {
+func (u *updatableJoinTable) String() string {
 	panic("this method should not be called")
 }
 
 // Schema implements the sql.UpdatableTable interface.
-func (u updatableJoinTable) Schema() sql.Schema {
+func (u *updatableJoinTable) Schema() sql.Schema {
 	return u.joinNode.Schema()
 }
 
 // Updater implements the sql.UpdatableTable interface.
-func (u updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
+func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
 		initialUpdaterMap: u.updaters,
 		updatedUpdaterMap: u.updaters,
 		joinSchema:        u.joinNode.Schema(),
+		caches: make(map[string]sql.KeyValueCache),
+		disposals: make(map[string]sql.DisposeFunc),
 	}
 }
 
@@ -126,28 +128,43 @@ func (u updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 type updatableJoinUpdater struct {
 	initialUpdaterMap map[string]sql.RowUpdater
 	updatedUpdaterMap map[string]sql.RowUpdater
+	caches map[string]sql.KeyValueCache
+	disposals map[string]sql.DisposeFunc
 	joinSchema        sql.Schema
 }
 
 var _ sql.RowUpdater = (*updatableJoinUpdater)(nil)
 
 // StatementBegin implements the sql.TableEditor interface.
-func (u updatableJoinUpdater) StatementBegin(ctx *sql.Context) {}
+func (u *updatableJoinUpdater) StatementBegin(ctx *sql.Context) {}
 
 // DiscardChanges implements the sql.TableEditor interface.
-func (u updatableJoinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
+func (u *updatableJoinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
 	u.updatedUpdaterMap = u.initialUpdaterMap
 	return nil
 }
 
 // StatementComplete implements the sql.TableEditor interface.
-func (u updatableJoinUpdater) StatementComplete(ctx *sql.Context) error {
+func (u *updatableJoinUpdater) StatementComplete(ctx *sql.Context) error {
 	u.initialUpdaterMap = u.updatedUpdaterMap
 	return nil
 }
 
+func (u *updatableJoinUpdater) getOrCreateCache(ctx *sql.Context, tableName string) sql.KeyValueCache {
+	potential, exists := u.caches[tableName]
+	if exists {
+		return potential
+	}
+
+	cache, disposal := ctx.Memory.NewHistoryCache()
+	u.caches[tableName] = cache
+	u.disposals[tableName] = disposal
+
+	return cache
+}
+
 // Update implements the sql.RowUpdater interface.
-func (u updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
+func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
 	tableToOldRowMap := splitRowIntoTableRowMap(old, u.joinSchema)
 	tableToNewRowMap := splitRowIntoTableRowMap(new, u.joinSchema)
 
@@ -155,22 +172,40 @@ func (u updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row)
 		oldRow := tableToOldRowMap[tableName]
 		newRow := tableToNewRowMap[tableName]
 
-		err := updater.Update(ctx, oldRow, newRow)
+		// Check if the row has already been updates
+		cache := u.getOrCreateCache(ctx, tableName)
+		hash, err := sql.HashOf(oldRow)
 		if err != nil {
 			return err
 		}
+		val, err := cache.Get(hash)
+
+		if val != nil &&  val.(bool) == true {
+			continue
+		}
+
+		err = updater.Update(ctx, oldRow, newRow)
+		if err != nil {
+			return err
+		}
+
+		cache.Put(hash, true)
 	}
 
 	return nil
 }
 
 // Close implements the sql.RowUpdater interface.
-func (u updatableJoinUpdater) Close(ctx *sql.Context) error {
+func (u *updatableJoinUpdater) Close(ctx *sql.Context) error {
 	for _, updater := range u.updatedUpdaterMap {
 		err := updater.Close(ctx)
 		if err != nil {
 			return err
 		}
+	}
+
+	for _, disposeF := range u.disposals {
+		disposeF()
 	}
 
 	return nil
