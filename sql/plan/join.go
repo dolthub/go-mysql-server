@@ -78,7 +78,6 @@ type InnerJoin struct {
 
 var _ JoinNode = (*InnerJoin)(nil)
 var _ sql.CommentedNode = (*InnerJoin)(nil)
-var _ sql.UpdatableTable = (*InnerJoin)(nil) // TODO: Have JoinNode implement the Updatable/Deletable/Insertable interface.
 
 func (j *InnerJoin) JoinType() JoinType {
 	return JoinTypeInner
@@ -164,22 +163,6 @@ func (j *InnerJoin) DebugString() string {
 	_ = pr.WriteNode("InnerJoin%s, comment=%s", sql.DebugString(j.Cond), j.Comment())
 	_ = pr.WriteChildren(sql.DebugString(j.left), sql.DebugString(j.right))
 	return pr.String()
-}
-
-func (j *InnerJoin) Name() string {
-	return "inner_join" // TODO: Is there a better way?
-}
-
-func (j *InnerJoin) Partitions(context *sql.Context) (sql.PartitionIter, error) {
-	panic("implement me")
-}
-
-func (j *InnerJoin) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	panic("implement me")
-}
-
-func (j *InnerJoin) Updater(ctx *sql.Context) sql.RowUpdater {
-	panic("implement me")
 }
 
 // LeftJoin is a left join between two tables.

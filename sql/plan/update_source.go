@@ -122,10 +122,9 @@ func (u *updateSourceIter) Close(ctx *sql.Context) error {
 	return u.childIter.Close(ctx)
 }
 
-func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rowIter, err := u.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
+func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
+	if j, ok := u.Child.(JoinNode); ok {
+		return j.Schema(), nil
 	}
 
 	table, err := getUpdatable(u.Child)
@@ -133,10 +132,24 @@ func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, err
 	}
 
+	return table.Schema(), nil
+}
+
+func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	rowIter, err := u.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	schema, err := u.getChildSchema()
+	if err != nil {
+		return nil, err
+	}
+
 	return &updateSourceIter{
 		childIter:   rowIter,
 		updateExprs: u.UpdateExprs,
-		tableSchema: table.Schema(),
+		tableSchema: schema,
 		ctx:         ctx,
 	}, nil
 }
