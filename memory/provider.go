@@ -15,22 +15,22 @@ type memoryDBProvider struct {
 	mu  *sync.RWMutex
 }
 
-var _ sql.DatabaseProvider = memoryDBProvider{}
-var _ sql.MutableDatabaseProvider = memoryDBProvider{}
+var _ sql.DatabaseProvider = &memoryDBProvider{}
+var _ sql.MutableDatabaseProvider = &memoryDBProvider{}
 
 func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db
 	}
-	return memoryDBProvider{
+	return &memoryDBProvider{
 		dbs: dbMap,
 		mu:  &sync.RWMutex{},
 	}
 }
 
 // Database returns the Database with the given name if it exists.
-func (d memoryDBProvider) Database(name string) (sql.Database, error) {
+func (d *memoryDBProvider) Database(name string) (sql.Database, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -49,7 +49,7 @@ func (d memoryDBProvider) Database(name string) (sql.Database, error) {
 }
 
 // HasDatabase returns the Database with the given name if it exists.
-func (d memoryDBProvider) HasDatabase(name string) bool {
+func (d *memoryDBProvider) HasDatabase(name string) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -58,7 +58,7 @@ func (d memoryDBProvider) HasDatabase(name string) bool {
 }
 
 // AllDatabases returns the Database with the given name if it exists.
-func (d memoryDBProvider) AllDatabases() []sql.Database {
+func (d *memoryDBProvider) AllDatabases() []sql.Database {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -75,7 +75,7 @@ func (d memoryDBProvider) AllDatabases() []sql.Database {
 }
 
 // CreateDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err error) {
+func (d *memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -85,7 +85,7 @@ func (d memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err err
 }
 
 // DropDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) DropDatabase(ctx *sql.Context, name string) (err error) {
+func (d *memoryDBProvider) DropDatabase(ctx *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
