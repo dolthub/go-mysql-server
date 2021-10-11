@@ -118,8 +118,8 @@ func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 		initialUpdaterMap: u.updaters,
 		updatedUpdaterMap: u.updaters,
 		joinSchema:        u.joinNode.Schema(),
-		caches: make(map[string]sql.KeyValueCache),
-		disposals: make(map[string]sql.DisposeFunc),
+		caches:            make(map[string]sql.KeyValueCache),
+		disposals:         make(map[string]sql.DisposeFunc),
 	}
 }
 
@@ -128,8 +128,8 @@ func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 type updatableJoinUpdater struct {
 	initialUpdaterMap map[string]sql.RowUpdater
 	updatedUpdaterMap map[string]sql.RowUpdater
-	caches map[string]sql.KeyValueCache
-	disposals map[string]sql.DisposeFunc
+	caches            map[string]sql.KeyValueCache
+	disposals         map[string]sql.DisposeFunc
 	joinSchema        sql.Schema
 }
 
@@ -180,7 +180,7 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 		}
 		val, err := cache.Get(hash)
 
-		if val != nil &&  val.(bool) == true {
+		if val != nil && val.(bool) == true {
 			continue
 		}
 
