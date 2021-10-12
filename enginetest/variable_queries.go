@@ -32,6 +32,23 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set system variables and user variables",
+		SetUpScript: []string{
+			"SET @myvar = @@autocommit",
+			"SET autocommit = @myvar",
+			"SET @myvar2 = @myvar - 1, @myvar3 = @@autocommit - 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @myvar, @@autocommit, @myvar2, @myvar3",
+				// TODO: unclear why the last var is getting a float type, should be an int
+				Expected: []sql.Row{
+					{1, 1, 0, 0.0},
+				},
+			},
+		},
+	},
+	{
 		Name: "set system variables mixed case",
 		SetUpScript: []string{
 			"set @@auto_increment_INCREMENT = 100, sql_select_LIMIT = 1",
