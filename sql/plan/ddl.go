@@ -296,17 +296,38 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 		return ErrNoForeignKeySupport.New(c.name)
 	}
 
-	for _, fkDef := range c.fkDefs {
-		refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
-		if err != nil {
-			return err
+	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
+	if err != nil {
+		return err
+	}
+	if fkChecks.(int8) == 1 {
+		for _, fkDef := range c.fkDefs {
+			refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return sql.ErrTableNotFound.New(fkDef.ReferencedTable)
+			}
+			err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
+			if err != nil {
+				return err
+			}
 		}
-		if !ok {
-			return sql.ErrTableNotFound.New(fkDef.ReferencedTable)
-		}
-		err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
-		if err != nil {
-			return err
+	} else {
+		for _, fkDef := range c.fkDefs {
+			err = fkAlterable.CreateForeignKey(
+				ctx,
+				fkDef.Name,
+				fkDef.Columns,
+				fkDef.ReferencedTable,
+				fkDef.ReferencedColumns,
+				fkDef.OnUpdate,
+				fkDef.OnDelete,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

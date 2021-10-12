@@ -1947,6 +1947,24 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE child3 (pk BIGINT PRIMARY KEY);")
 		TestQuery(t, harness, e, "ALTER TABLE child3 ADD COLUMN v1 BIGINT NULL, ADD CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3(v1);", []sql.Row(nil), nil, nil)
 	})
+
+	TestScript(t, harness, ScriptTest{
+		Name: "Do not validate foreign keys if FOREIGN_KEY_CHECKS is set to zero",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET FOREIGN_KEY_CHECKS=0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_child4 FOREIGN KEY (pk) REFERENCES delayed_parent4 (pk))",
+				Expected: nil,
+			},
+			{
+				Query:    "CREATE TABLE delayed_parent4 (pk BIGINT PRIMARY KEY)",
+				Expected: nil,
+			},
+		},
+	})
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
