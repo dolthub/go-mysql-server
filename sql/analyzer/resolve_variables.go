@@ -74,7 +74,6 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	})
 }
 
-
 // resolveSetVariables replaces SET @@var and SET @var expressions with appropriately resolved expressions for the
 // left-hand side, and evaluate the right-hand side where possible, including filling in defaults. Also validates that
 // system variables are known to the system.

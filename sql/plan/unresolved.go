@@ -112,7 +112,6 @@ func (t *UnresolvedTable) WithExpressions(expressions ...sql.Expression) (sql.No
 	return t.WithAsOf(expressions[0])
 }
 
-
 func (t UnresolvedTable) String() string {
 	return fmt.Sprintf("UnresolvedTable(%s)", t.name)
 }

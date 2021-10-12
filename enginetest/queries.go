@@ -5692,7 +5692,7 @@ var VersionedQueries = []QueryTest{
 
 var VersionedScripts = []ScriptTest{
 	{
-		Name:        "user var for AS OF expression",
+		Name: "user var for AS OF expression",
 		SetUpScript: []string{
 			"SET @rev1 = '2019-01-01', @rev2 = '2019-01-02'",
 		},
