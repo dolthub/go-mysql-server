@@ -15,8 +15,11 @@
 package analyzer
 
 import (
+	"context"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -137,4 +140,39 @@ func TestResolveBarewordSetVariables(t *testing.T) {
 	}
 
 	runTestCases(t, nil, testCases, nil, *rule)
+}
+
+func TestResolveColumnsSession(t *testing.T) {
+	require := require.New(t)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
+	err := ctx.SetUserVariable(ctx, "foo_bar", int64(42))
+	require.NoError(err)
+	err = ctx.SetSessionVariable(ctx, "autocommit", true)
+	require.NoError(err)
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			uc("@foo_bar"),
+			uc("@bar_baz"),
+			uc("@@autocommit"),
+			uc("@myvar"),
+		},
+		plan.NewResolvedTable(dualTable, nil, nil),
+	)
+
+	result, err := resolveVariables(ctx, NewDefault(nil), node, nil)
+	require.NoError(err)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUserVar("foo_bar"),
+			expression.NewUserVar("bar_baz"),
+			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
+			expression.NewUserVar("myvar"),
+		},
+		plan.NewResolvedTable(dualTable, nil, nil),
+	)
+
+	require.Equal(expected, result)
 }

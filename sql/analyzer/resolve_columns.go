@@ -376,7 +376,7 @@ const (
 )
 
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
-// the expression's child node. Also handles replacing session variables (treated as columns) with their values.
+// the expression's child node.
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
@@ -408,14 +408,6 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, nil
-			}
-
-			expr, ok, err := resolveSystemOrUserVariable(ctx, a, uc)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				return expr, nil
 			}
 
 			return resolveColumnExpression(a, n, uc, columns)
@@ -557,50 +549,6 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	}
 
 	return columns, nil
-}
-
-func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, bool, error) {
-	var varName string
-	var scope sqlparser.SetScope
-	var err error
-	if col.Table() != "" {
-		varName, scope, err = sqlparser.VarScope(col.Table(), col.Name())
-		if err != nil {
-			return nil, false, err
-		}
-	} else {
-		varName, scope, err = sqlparser.VarScope(col.Name())
-		if err != nil {
-			return nil, false, err
-		}
-	}
-	switch scope {
-	case sqlparser.SetScope_None:
-		return nil, false, nil
-	case sqlparser.SetScope_Global:
-		_, _, ok := sql.SystemVariables.GetGlobal(varName)
-		if !ok {
-			return nil, false, sql.ErrUnknownSystemVariable.New(varName)
-		}
-		a.Log("resolved column %s to global system variable", col)
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global), true, nil
-	case sqlparser.SetScope_Persist:
-		return nil, false, sql.ErrUnsupportedFeature.New("PERSIST")
-	case sqlparser.SetScope_PersistOnly:
-		return nil, false, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
-	case sqlparser.SetScope_Session:
-		_, err = ctx.GetSessionVariable(ctx, varName)
-		if err != nil {
-			return nil, false, err
-		}
-		a.Log("resolved column %s to session system variable", col)
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), true, nil
-	case sqlparser.SetScope_User:
-		a.Log("resolved column %s to user variable", col)
-		return expression.NewUserVar(varName), true, nil
-	default: // shouldn't happen
-		return nil, false, fmt.Errorf("unknown set scope %v", scope)
-	}
 }
 
 func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {

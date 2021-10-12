@@ -23,6 +23,8 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"validate_offset_and_limit", validateLimitAndOffset},
 	{"load_stored_procedures", loadStoredProcedures},
+	{"resolve_variables", resolveVariables},
+	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_views", resolveViews},
 	{"lift_common_table_expressions", liftCommonTableExpressions},
 	{"resolve_common_table_expressions", resolveCommonTableExpressions},
@@ -30,7 +32,6 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_drop_constraint", resolveDropConstraint},
 	{"validate_drop_constraint", validateDropConstraint},
 	{"load_check_constraints", loadChecks},
-	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_create_like", resolveCreateLike},
 	{"resolve_create_select", resolveCreateSelect},
 	{"resolve_subqueries", resolveSubqueries},
