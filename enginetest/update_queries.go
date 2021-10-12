@@ -221,7 +221,6 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
-		// Fails due to lack of support for max one update per row.
 		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = t2.c1 + 1 where one_pk.pk < 1`,
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}}, // 1,1
 		SelectQuery:         "SELECT * FROM one_pk where pk < 1",
@@ -230,7 +229,6 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
-		// Fails due to lack of support for max one update per row.
 		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(4, 4)}}, // 2,2
 		SelectQuery:         "SELECT * FROM one_pk;",
@@ -249,30 +247,6 @@ func newUpdateResult(matched, updated int) sql.OkResult {
 		RowsAffected: uint64(updated),
 		Info:         plan.UpdateInfo{matched, updated, 0},
 	}
-}
-
-var UpdateIncorrectResultTests = []WriteQueryTest{
-	{
-		// Fails due to lack of support for max one update per row.
-		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = t2.c1 + 1 where one_pk.pk < 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
-		SelectQuery:         "SELECT * FROM one_pk where pk < 1",
-		ExpectedSelect: []sql.Row{
-			sql.NewRow(0, 1, 1, 2, 3, 4),
-		},
-	},
-	{
-		// Fails due to lack of support for max one update per row.
-		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
-		SelectQuery:         "SELECT * FROM one_pk;",
-		ExpectedSelect: []sql.Row{
-			sql.NewRow(0, 1, 1, 2, 3, 4),
-			sql.NewRow(1, 11, 11, 12, 13, 14),
-			sql.NewRow(2, 20, 21, 22, 23, 24),
-			sql.NewRow(3, 30, 31, 32, 33, 34),
-		},
-	},
 }
 
 var UpdateErrorTests = []GenericErrorQueryTest{

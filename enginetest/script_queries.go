@@ -1192,12 +1192,28 @@ var ScriptTests = []ScriptTest{
 			`CREATE TABLE test2 (pk int primary key, val int);`,
 			`INSERT into test values (0),(1),(2),(3)`,
 			`INSERT into test2 values (0, 0),(1, 1),(2, 2),(3, 3)`,
+			`CREATE TABLE test3(k int, val int, primary key (k, val))`,
+			`INSERT into test3 values (1,2),(1,3),(1,4)`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query: `update test2 inner join test3 on test2.pk = test3.k SET test2.val=test3.val`,
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
+					Matched:  3, // TODO: Should be 1
+					Updated:  3, // TODO: Should be 1
+					Warnings: 0,
+				}}}},
+			},
+			{
+				Query: "SELECT val FROM test2 where pk = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
 				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
 				Expected: []sql.Row{{sql.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
-					Matched:  8, // TODO: Need to match per table?
+					Matched:  8,
 					Updated:  6,
 					Warnings: 0,
 				}}}},
@@ -1215,7 +1231,7 @@ var ScriptTests = []ScriptTest{
 				Query: "SELECT * FROM test2",
 				Expected: []sql.Row{
 					{0, 0},
-					{4, 1},
+					{4, 2},
 					{8, 2},
 					{12, 3},
 				},

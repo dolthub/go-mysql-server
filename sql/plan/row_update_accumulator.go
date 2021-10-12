@@ -202,7 +202,6 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
-
 	for tableName, tableOldRow := range tableToOldRow {
 		// Only work with tables that are supposed to be updated
 		if _, updatable := u.updaterMap[tableName]; !updatable {
