@@ -70,9 +70,6 @@ func getResolvedTableFromJoin(node plan.JoinNode) map[string]*plan.ResolvedTable
 		toProcess = toProcess[1:]
 
 		children := head.Children()
-		if len(children) == 0 {
-			continue
-		}
 
 		for _, child := range children {
 			toAdd := getResolvedTable(child)

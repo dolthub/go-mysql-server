@@ -172,7 +172,7 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 		oldRow := tableToOldRowMap[tableName]
 		newRow := tableToNewRowMap[tableName]
 
-		// Check if the row has already been updates
+		// Check if the row has already been updated
 		cache := u.getOrCreateCache(ctx, tableName)
 		hash, err := sql.HashOf(oldRow)
 		if err != nil {
