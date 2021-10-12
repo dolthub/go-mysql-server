@@ -178,6 +178,10 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 	for _, tt := range VersionedQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, tt.Bindings)
 	}
+
+	for _, tt := range VersionedScripts {
+		TestScriptWithEngine(t, engine, harness, tt)
+	}
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.

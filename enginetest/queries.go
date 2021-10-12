@@ -5690,6 +5690,39 @@ var VersionedQueries = []QueryTest{
 	},
 }
 
+var VersionedScripts = []ScriptTest{
+	{
+		Name:        "user var for AS OF expression",
+		SetUpScript: []string{
+			"SET @rev1 = '2019-01-01', @rev2 = '2019-01-02'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT *  FROM myhistorytable AS OF @rev1 AS foo ORDER BY i",
+				Expected: []sql.Row{
+					{int64(1), "first row, 1"},
+					{int64(2), "second row, 1"},
+					{int64(3), "third row, 1"},
+				},
+			},
+			{
+				Query: "SELECT *  FROM myhistorytable AS OF @rev2 AS foo ORDER BY i",
+				Expected: []sql.Row{
+					{int64(1), "first row, 2"},
+					{int64(2), "second row, 2"},
+					{int64(3), "third row, 2"},
+				},
+			},
+			{
+				Query: "SHOW TABLES AS OF @rev1 LIKE 'myhistorytable'",
+				Expected: []sql.Row{
+					{"myhistorytable"},
+				},
+			},
+		},
+	},
+}
+
 var DateParseQueries = []QueryTest{
 	{
 		Query:    "SELECT STR_TO_DATE('Jan 3, 2000', '%b %e, %Y')",
