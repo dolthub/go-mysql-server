@@ -390,6 +390,23 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Setting system variables and user variables",
+		SetUpScript: []string{
+			"SET @myvar = @@autocommit",
+			"SET autocommit = @myvar",
+			"SET @myvar2 = @myvar - 1, @myvar3 = @@autocommit - 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @myvar, @@autocommit, @myvar2, @myvar3",
+				// TODO: unclear why the last var is getting a float type, should be an int
+				Expected: []sql.Row{
+					{1, 1, 0, 0.0},
+				},
+			},
+		},
+	},
+	{
 		Name: "UUIDs used in the wild.",
 		SetUpScript: []string{
 			"SET @uuid = '6ccd780c-baba-1026-9564-5b8c656024db'",
