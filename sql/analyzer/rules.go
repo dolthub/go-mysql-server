@@ -53,8 +53,6 @@ var DefaultRules = []Rule{
 	{"pushdown_sort", pushdownSort},
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
 	{"pushdown_subquery_alias_filters", pushdownSubqueryAliasFilters},
-	{"resolve_variables", resolveVariables},
-	{"resolve_set_variables", resolveSetVariables},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"validate_check_constraint", validateCreateCheck},
