@@ -68,19 +68,19 @@ func NewViewKey(databaseName, viewName string) ViewKey {
 // RWMutex.
 type ViewRegistry struct {
 	mutex sync.RWMutex
-	views map[ViewKey]View
+	views map[ViewKey]*View
 }
 
 // NewViewRegistry creates an empty ViewRegistry.
 func NewViewRegistry() *ViewRegistry {
 	return &ViewRegistry{
-		views: make(map[ViewKey]View),
+		views: make(map[ViewKey]*View),
 	}
 }
 
 // Register adds the view specified by the pair {database, view.Name()},
 // returning an error if there is already an element with that key.
-func (r *ViewRegistry) Register(database string, view View) error {
+func (r *ViewRegistry) Register(database string, view *View) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -142,14 +142,14 @@ func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
 	key := NewViewKey(databaseName, viewName)
 
 	if view, ok := r.views[key]; ok {
-		return &view, nil
+		return view, nil
 	}
 
 	return nil, ErrViewDoesNotExist.New(databaseName, viewName)
 }
 
 // AllViews returns the map of all views in the registry.
-func (r *ViewRegistry) AllViews() map[ViewKey]View {
+func (r *ViewRegistry) AllViews() map[ViewKey]*View {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 
@@ -158,7 +158,7 @@ func (r *ViewRegistry) AllViews() map[ViewKey]View {
 
 // ViewsInDatabase returns an array of all the views registered under the
 // specified database.
-func (r *ViewRegistry) ViewsInDatabase(databaseName string) (views []View) {
+func (r *ViewRegistry) ViewsInDatabase(databaseName string) (views []*View) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
 

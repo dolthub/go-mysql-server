@@ -53,7 +53,7 @@ func NewCreateView(
 }
 
 // View returns the view that will be created by this node.
-func (cv *CreateView) View() sql.View {
+func (cv *CreateView) View() *sql.View {
 	return cv.Definition.AsView()
 }
 

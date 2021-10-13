@@ -38,30 +38,33 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 			dbName = ctx.GetCurrentDatabase()
 		}
 
-		db, err := a.Catalog.Database(dbName)
-		if err != nil {
-			return nil, err
-		}
-
 		var view *sql.View
 
-		if vdb, ok := db.(sql.ViewProvider); ok {
-			viewDef, ok, err := vdb.GetView(viewName)
+		if dbName != "" {
+			db, err := a.Catalog.Database(dbName)
 			if err != nil {
 				return nil, err
 			}
 
-			if ok {
-				query, err := parse.Parse(ctx, viewDef)
+			if vdb, ok := db.(sql.ViewProvider); ok {
+				viewDef, ok, err := vdb.GetView(viewName)
 				if err != nil {
 					return nil, err
 				}
 
-				view = plan.NewSubqueryAlias(viewName, viewDef, query).AsView()
+				if ok {
+					query, err := parse.Parse(ctx, viewDef)
+					if err != nil {
+						return nil, err
+					}
+
+					view = plan.NewSubqueryAlias(viewName, viewDef, query).AsView()
+				}
 			}
 		}
 
 		// If we didn't find the view from the database directly, use the in-session registry
+		var err error
 		if view == nil {
 			view, err = ctx.View(dbName, viewName)
 			if sql.ErrViewDoesNotExist.Is(err) {
