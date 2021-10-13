@@ -79,12 +79,13 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	registry := ctx.ViewRegistry
 
 	if cv.IsReplace {
-		err := registry.Delete(cv.database.Name(), view.Name())
-		if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
-			return sql.RowsToRowIter(), err
-		}
 		if dropper, ok := cv.database.(sql.ViewDropper); ok {
 			err := dropper.DropView(ctx, cv.Name)
+			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
+				return sql.RowsToRowIter(), err
+			}
+		} else {
+			err := registry.Delete(cv.database.Name(), view.Name())
 			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
 				return sql.RowsToRowIter(), err
 			}
@@ -93,13 +94,10 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	creator, ok := cv.database.(sql.ViewCreator)
 	if ok {
-		err := creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition)
-		if err != nil {
-			return sql.RowsToRowIter(), err
-		}
+		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition)
+	} else {
+		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), view)
 	}
-
-	return sql.RowsToRowIter(), registry.Register(cv.database.Name(), view)
 }
 
 // Schema implements the Node interface. It always returns nil.
@@ -135,7 +133,7 @@ func (cv *CreateView) Database() sql.Database {
 	return cv.database
 }
 
-// Database implements the Databaser interface, and it returns a copy of this
+// WithDatabase implements the Databaser interface, and it returns a copy of this
 // node with the specified database.
 func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
 	newCreate := *cv

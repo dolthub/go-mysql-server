@@ -727,11 +727,9 @@ type TemporaryTableCreator interface {
 	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
 }
 
-// ViewCreator should be implemented by databases that want to know when a view
-// has been created.
+// ViewCreator should be implemented by databases that can persist views being created.
 type ViewCreator interface {
-	// Notifies the database that a view with the given name and the given
-	// select statement as been created.
+	// CreateView persists the definition a view with the name and select statement given
 	CreateView(ctx *Context, name string, selectStatement string) error
 }
 

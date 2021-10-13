@@ -74,12 +74,12 @@ func (dv *SingleDropView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return dv, nil
 }
 
-// Database implements the Databaser interfacee. It returns the node's database.
+// Database implements the sql.Databaser interface. It returns the node's database.
 func (dv *SingleDropView) Database() sql.Database {
 	return dv.database
 }
 
-// Database implements the Databaser interface, and it returns a copy of this
+// WithDatabase implements the sql.Databaser interface, and it returns a copy of this
 // node with the specified database.
 func (dv *SingleDropView) WithDatabase(database sql.Database) (sql.Node, error) {
 	newDrop := *dv
@@ -122,8 +122,7 @@ func (dvs *DropView) Resolved() bool {
 // all the views defined by the node's children. It errors if the flag ifExists
 // is set to false and there is some view that does not exist.
 func (dvs *DropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	viewList := make([]sql.ViewKey, len(dvs.children))
-	for i, child := range dvs.children {
+	for _, child := range dvs.children {
 		drop, ok := child.(*SingleDropView)
 		if !ok {
 			return sql.RowsToRowIter(), errDropViewChild.New()
@@ -137,12 +136,16 @@ func (dvs *DropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 					return sql.RowsToRowIter(), err
 				}
 			}
+		} else {
+			err := ctx.ViewRegistry.Delete(drop.database.Name(), drop.viewName)
+			allowedError := dvs.ifExists && sql.ErrViewDoesNotExist.Is(err)
+			if !allowedError {
+				return sql.RowsToRowIter(), err
+			}
 		}
-
-		viewList[i] = sql.NewViewKey(drop.database.Name(), drop.viewName)
 	}
 
-	return sql.RowsToRowIter(), ctx.ViewRegistry.DeleteList(viewList, !dvs.ifExists)
+	return sql.RowsToRowIter(), nil
 }
 
 // Schema implements the Node interface. It always returns nil.
