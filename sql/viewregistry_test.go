@@ -53,7 +53,7 @@ func TestRegisterNonExistingView(t *testing.T) {
 
 	actualView, err := registry.View(dbName, viewName)
 	require.NoError(err)
-	require.Equal(mockView, *actualView)
+	require.Equal(mockView, actualView)
 }
 
 // Tests that registering an existing view fails.
@@ -98,7 +98,7 @@ func TestGetExistingView(t *testing.T) {
 
 	actualView, err := registry.View(dbName, viewName)
 	require.NoError(err)
-	require.Equal(mockView, *actualView)
+	require.Equal(mockView, actualView)
 }
 
 // Tests that retrieving a non-existing view fails.

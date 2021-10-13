@@ -28,7 +28,7 @@ import (
 // Generates a database with a single table called mytable and a catalog with
 // the view that is also returned. The context returned is the one used to
 // create the view.
-func mockData(require *require.Assertions) (sql.Database, *sql.Context, sql.View) {
+func mockData(require *require.Assertions) (sql.Database, *sql.Context, *sql.View) {
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int32},
 		{Name: "s", Source: "mytable", Type: sql.Text},

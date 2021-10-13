@@ -87,8 +87,8 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		}
 
 		// If the view name was qualified with a database name, apply that same qualifier to any tables in it
-		if dbName != "" {
-			query, err = applyDatabaseQualifierToView(query, a, dbName)
+		if urt.Database != "" {
+			query, err = applyDatabaseQualifierToView(query, a, urt.Database)
 			if err != nil {
 				return nil, err
 			}

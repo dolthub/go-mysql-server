@@ -63,7 +63,7 @@ func TestCreateView(t *testing.T) {
 	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
 	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
 	require.NoError(err)
-	require.Equal(expectedView, *actualView)
+	require.Equal(expectedView, actualView)
 }
 
 // Tests that CreateView RowIter returns an error when the view exists
@@ -104,5 +104,5 @@ func TestReplaceExistingView(t *testing.T) {
 	expectedView := createView.View()
 	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
 	require.NoError(err)
-	require.Equal(expectedView, *actualView)
+	require.Equal(expectedView, actualView)
 }
