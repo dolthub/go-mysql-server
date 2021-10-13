@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	ErrExistingView    = errors.NewKind("the view %s.%s already exists in the registry")
-	ErrNonExistingView = errors.NewKind("the view %s.%s does not exist in the registry")
+	ErrExistingView     = errors.NewKind("the view %s.%s already exists in the registry")
+	ErrViewDoesNotExist = errors.NewKind("the view %s.%s does not exist in the registry")
 )
 
 // View is defined by a Node and has a name.
@@ -34,8 +34,8 @@ type View struct {
 }
 
 // NewView creates a View with the specified name and definition.
-func NewView(name string, definition Node, textDefinition string) View {
-	return View{name, definition, textDefinition}
+func NewView(name string, definition Node, textDefinition string) *View {
+	return &View{name, definition, textDefinition}
 }
 
 // Name returns the name of the view.
@@ -103,7 +103,7 @@ func (r *ViewRegistry) Delete(databaseName, viewName string) error {
 	key := NewViewKey(databaseName, viewName)
 
 	if _, ok := r.views[key]; !ok {
-		return ErrNonExistingView.New(databaseName, viewName)
+		return ErrViewDoesNotExist.New(databaseName, viewName)
 	}
 
 	delete(r.views, key)
@@ -121,7 +121,7 @@ func (r *ViewRegistry) DeleteList(keys []ViewKey, errIfNotExists bool) error {
 	if errIfNotExists {
 		for _, key := range keys {
 			if !r.exists(key.dbName, key.viewName) {
-				return ErrNonExistingView.New(key.dbName, key.viewName)
+				return ErrViewDoesNotExist.New(key.dbName, key.viewName)
 			}
 		}
 	}
@@ -145,7 +145,7 @@ func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
 		return &view, nil
 	}
 
-	return nil, ErrNonExistingView.New(databaseName, viewName)
+	return nil, ErrViewDoesNotExist.New(databaseName, viewName)
 }
 
 // AllViews returns the map of all views in the registry.

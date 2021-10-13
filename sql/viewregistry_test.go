@@ -86,7 +86,7 @@ func TestDeleteNonExistingView(t *testing.T) {
 
 	err := registry.Delete("random", "randomer")
 	require.Error(err)
-	require.True(ErrNonExistingView.Is(err))
+	require.True(ErrViewDoesNotExist.Is(err))
 }
 
 // Tests that retrieving an existing view succeeds and that the view returned
@@ -110,7 +110,7 @@ func TestGetNonExistingView(t *testing.T) {
 	actualView, err := registry.View(dbName, viewName)
 	require.Error(err)
 	require.Nil(actualView)
-	require.True(ErrNonExistingView.Is(err))
+	require.True(ErrViewDoesNotExist.Is(err))
 }
 
 // Tests that retrieving the views registered under a database succeeds,

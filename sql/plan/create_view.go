@@ -80,12 +80,12 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	if cv.IsReplace {
 		err := registry.Delete(cv.database.Name(), view.Name())
-		if err != nil && !sql.ErrNonExistingView.Is(err) {
+		if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
 			return sql.RowsToRowIter(), err
 		}
 		if dropper, ok := cv.database.(sql.ViewDropper); ok {
 			err := dropper.DropView(ctx, cv.Name)
-			if err != nil && !sql.ErrNonExistingView.Is(err) {
+			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
 				return sql.RowsToRowIter(), err
 			}
 		}

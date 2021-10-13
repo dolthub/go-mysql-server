@@ -735,6 +735,12 @@ type ViewCreator interface {
 	CreateView(ctx *Context, name string, selectStatement string) error
 }
 
+// ViewProvider is implemented by databases that persist view definitions
+type ViewProvider interface {
+	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
+	GetView(viewName string) (string, bool, error)
+}
+
 // TableDropper should be implemented by databases that can drop tables.
 type TableDropper interface {
 	DropTable(ctx *Context, name string) error
