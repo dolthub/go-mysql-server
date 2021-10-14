@@ -28,13 +28,12 @@ import (
 // Generates a database with a single table called mytable and a catalog with
 // the view that is also returned. The context returned is the one used to
 // create the view.
-func mockData(t *testing.T) (sql.Database, *sql.Context, *sql.View) {
+func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View) {
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int32},
 		{Name: "s", Source: "mytable", Type: sql.Text},
 	})
 
-	db := memory.NewViewlessDatabase("db")
 	db.AddTable("db", table)
 
 	subqueryAlias := NewSubqueryAlias("myview", "select i",
@@ -48,19 +47,20 @@ func mockData(t *testing.T) (sql.Database, *sql.Context, *sql.View) {
 
 	createView := NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, false)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background())
 
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	return db, ctx, createView.View()
+	return ctx, createView.View()
 }
 
 // Tests that DropView works as expected and that the view is dropped in
 // the catalog when RowIter is called, regardless of the value of ifExists
 func TestDropExistingViewFromRegistry(t *testing.T) {
 	test := func(ifExists bool) {
-		db, ctx, view := mockData(t)
+		db := memory.NewViewlessDatabase("mydb")
+		ctx, view := setupView(t, db)
 
 		singleDropView := NewSingleDropView(db, view.Name())
 		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
@@ -79,7 +79,8 @@ func TestDropExistingViewFromRegistry(t *testing.T) {
 // only if the flag ifExists is set to false
 func TestDropNonExistingViewFromRegistry(t *testing.T) {
 	test := func(ifExists bool) error {
-		db, ctx, view := mockData(t)
+		db := memory.NewViewlessDatabase("mydb")
+		ctx, view := setupView(t, db)
 
 		singleDropView := NewSingleDropView(db, "non-existing-view")
 		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
@@ -97,3 +98,53 @@ func TestDropNonExistingViewFromRegistry(t *testing.T) {
 	err = test(false)
 	require.Error(t, err)
 }
+
+// Tests that DropView works as expected and that the view is dropped in
+// the catalog when RowIter is called, regardless of the value of ifExists
+func TestDropExistingViewNative(t *testing.T) {
+	test := func(ifExists bool) {
+		db := memory.NewDatabase("mydb")
+		ctx, view := setupView(t, db)
+
+		singleDropView := NewSingleDropView(db, view.Name())
+		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
+
+		_, err := dropView.RowIter(ctx, nil)
+		require.NoError(t, err)
+
+		_, ok, err := db.GetView(view.Name())
+		require.NoError(t, err)
+		require.False(t, ok)
+	}
+
+	test(false)
+	test(true)
+}
+
+// Tests that DropView errors when trying to delete a non-existing view if and
+// only if the flag ifExists is set to false
+func TestDropNonExistingViewNative(t *testing.T) {
+	test := func(ifExists bool) error {
+		db := memory.NewDatabase("mydb")
+		ctx, view := setupView(t, db)
+
+		singleDropView := NewSingleDropView(db, "non-existing-view")
+		dropView := NewDropView([]sql.Node{singleDropView}, ifExists)
+
+		_, dropErr := dropView.RowIter(ctx, nil)
+
+		_, ok, err := db.GetView(view.Name())
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		return dropErr
+	}
+
+	err := test(true)
+	require.NoError(t, err)
+
+	err = test(false)
+	require.Error(t, err)
+	require.True(t, sql.ErrViewDoesNotExist.Is(err))
+}
+
