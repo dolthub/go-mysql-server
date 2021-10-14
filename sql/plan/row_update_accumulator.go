@@ -17,7 +17,6 @@ package plan
 import (
 	"fmt"
 	"io"
-	"math"
 	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -203,10 +202,10 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
-	if u.rowsMatched == 0 {
+	if u.rowsMatched == 0 || len(u.updaterMap) == 1 {
 		u.rowsMatched += len(u.updaterMap)
 	} else {
-		u.rowsMatched *= int(math.Pow(2, float64(len(u.updaterMap)-1)))
+		u.rowsMatched *= len(u.updaterMap)
 	}
 
 	for tableName, tableOldRow := range tableToOldRow {
