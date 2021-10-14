@@ -22,11 +22,8 @@ import (
 
 // Database is an in-memory database.
 type Database struct {
-	name              string
-	tables            map[string]sql.Table
-	triggers          []sql.TriggerDefinition
-	storedProcedures  []sql.StoredProcedureDetails
-	primaryKeyIndexes bool
+	*ViewlessDatabase
+	views map[string]string
 }
 
 var _ sql.Database = (*Database)(nil)
@@ -35,12 +32,27 @@ var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
 var _ sql.StoredProcedureDatabase = (*Database)(nil)
+var _ sql.ViewProvider = (*Database)(nil)
+var _ sql.ViewDropper = (*Database)(nil)
+var _ sql.ViewCreator = (*Database)(nil)
+
+// ViewlessDatabase is an in-memory database that can't store views, only for testing the engine
+type ViewlessDatabase struct {
+	name              string
+	tables            map[string]sql.Table
+	triggers          []sql.TriggerDefinition
+	storedProcedures  []sql.StoredProcedureDetails
+	primaryKeyIndexes bool
+}
 
 // NewDatabase creates a new database with the given name.
 func NewDatabase(name string) *Database {
 	return &Database{
-		name:   name,
-		tables: map[string]sql.Table{},
+		ViewlessDatabase: &ViewlessDatabase{
+			name:   name,
+			tables: map[string]sql.Table{},
+		},
+		views: make(map[string]string),
 	}
 }
 
@@ -238,6 +250,31 @@ func (d *Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 		return sql.ErrStoredProcedureDoesNotExist.New(name)
 	}
 	return nil
+}
+
+func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement string) error {
+	_, ok := d.views[name]
+	if ok {
+		return sql.ErrExistingView.New(name)
+	}
+
+	d.views[name] = selectStatement
+	return nil
+}
+
+func (d *Database) DropView(ctx *sql.Context, name string) error {
+	_, ok := d.views[name]
+	if !ok {
+		return sql.ErrViewDoesNotExist.New(name)
+	}
+
+	delete(d.views, name)
+	return nil
+}
+
+func (d *Database) GetView(viewName string) (string, bool, error) {
+	viewDef, ok := d.views[viewName]
+	return viewDef, ok, nil
 }
 
 type ReadOnlyDatabase struct {

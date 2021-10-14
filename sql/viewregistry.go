@@ -17,13 +17,6 @@ package sql
 import (
 	"strings"
 	"sync"
-
-	"gopkg.in/src-d/go-errors.v1"
-)
-
-var (
-	ErrExistingView     = errors.NewKind("the view %s.%s already exists in the registry")
-	ErrViewDoesNotExist = errors.NewKind("the view %s.%s does not exist in the registry")
 )
 
 // View is defined by a Node and has a name.
@@ -110,29 +103,6 @@ func (r *ViewRegistry) Delete(databaseName, viewName string) error {
 	return nil
 }
 
-// DeleteList tries to delete a list of view keys.
-// If the list contains views that do exist and views that do not, the existing
-// views are deleted if and only if the errIfNotExists flag is set to false; if
-// it is set to true, no views are deleted and an error is returned.
-func (r *ViewRegistry) DeleteList(keys []ViewKey, errIfNotExists bool) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if errIfNotExists {
-		for _, key := range keys {
-			if !r.exists(key.dbName, key.viewName) {
-				return ErrViewDoesNotExist.New(key.dbName, key.viewName)
-			}
-		}
-	}
-
-	for _, key := range keys {
-		delete(r.views, key)
-	}
-
-	return nil
-}
-
 // View returns a pointer to the view specified by the pair {databaseName,
 // viewName}, returning an error if it does not exist.
 func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
@@ -146,14 +116,6 @@ func (r *ViewRegistry) View(databaseName, viewName string) (*View, error) {
 	}
 
 	return nil, ErrViewDoesNotExist.New(databaseName, viewName)
-}
-
-// AllViews returns the map of all views in the registry.
-func (r *ViewRegistry) AllViews() map[ViewKey]*View {
-	r.mutex.RLock()
-	defer r.mutex.RUnlock()
-
-	return r.views
 }
 
 // ViewsInDatabase returns an array of all the views registered under the

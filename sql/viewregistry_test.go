@@ -32,7 +32,7 @@ func newMockRegistry(require *require.Assertions) *ViewRegistry {
 
 	err := registry.Register(dbName, mockView)
 	require.NoError(err)
-	require.Equal(1, len(registry.AllViews()))
+	require.Equal(1, len(registry.views))
 
 	return registry
 }
@@ -42,7 +42,7 @@ func TestNewViewRegistry(t *testing.T) {
 	require := require.New(t)
 
 	registry := NewViewRegistry()
-	require.Equal(0, len(registry.AllViews()))
+	require.Equal(0, len(registry.views))
 }
 
 // Tests that registering a non-existing view succeeds.
@@ -75,7 +75,7 @@ func TestDeleteExistingView(t *testing.T) {
 
 	err := registry.Delete(dbName, viewName)
 	require.NoError(err)
-	require.Equal(0, len(registry.AllViews()))
+	require.Equal(0, len(registry.views))
 }
 
 // Tests that deleting a non-existing view fails.
@@ -161,65 +161,7 @@ func registerKeys(registry *ViewRegistry, require *require.Assertions) {
 		err := registry.Register(key.dbName, NewView(key.viewName, nil, ""))
 		require.NoError(err)
 	}
-	require.Equal(len(viewKeys), len(registry.AllViews()))
-}
-
-func TestDeleteExistingList(t *testing.T) {
-	require := require.New(t)
-
-	test := func(errIfNotExists bool) {
-		registry := NewViewRegistry()
-
-		registerKeys(registry, require)
-		err := registry.DeleteList(viewKeys, errIfNotExists)
-		require.NoError(err)
-		require.Equal(0, len(registry.AllViews()))
-	}
-
-	test(true)
-	test(false)
-}
-
-func TestDeleteNonExistingList(t *testing.T) {
-	require := require.New(t)
-
-	test := func(errIfNotExists bool) {
-		registry := NewViewRegistry()
-
-		registerKeys(registry, require)
-		err := registry.DeleteList([]ViewKey{{"random", "random"}}, errIfNotExists)
-		if errIfNotExists {
-			require.Error(err)
-		} else {
-			require.NoError(err)
-		}
-		require.Equal(len(viewKeys), len(registry.AllViews()))
-	}
-
-	test(false)
-	test(true)
-}
-
-func TestDeletePartiallyExistingList(t *testing.T) {
-	require := require.New(t)
-
-	test := func(errIfNotExists bool) {
-		registry := NewViewRegistry()
-
-		registerKeys(registry, require)
-		toDelete := append(viewKeys, ViewKey{"random", "random"})
-		err := registry.DeleteList(toDelete, errIfNotExists)
-		if errIfNotExists {
-			require.Error(err)
-			require.Equal(len(viewKeys), len(registry.AllViews()))
-		} else {
-			require.NoError(err)
-			require.Equal(0, len(registry.AllViews()))
-		}
-	}
-
-	test(false)
-	test(true)
+	require.Equal(len(viewKeys), len(registry.views))
 }
 
 func TestExistsOnExistingView(t *testing.T) {
