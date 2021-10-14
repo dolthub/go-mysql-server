@@ -1198,9 +1198,9 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `update test2 inner join test3 on test2.pk = test3.k SET test2.val=test3.val`,
-				Expected: []sql.Row{{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{
-					Matched:  3, // TODO: Should be 1
-					Updated:  3, // TODO: Should be 1
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{
+					Matched:  1,
+					Updated:  1,
 					Warnings: 0,
 				}}}},
 			},

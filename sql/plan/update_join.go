@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 type UpdateJoin struct {
@@ -33,11 +34,6 @@ func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJ
 
 var _ sql.Node = (*UpdateJoin)(nil)
 
-// Resolved implements the sql.Node interface.
-func (u *UpdateJoin) Resolved() bool {
-	return true
-}
-
 // String implements the sql.Node interface.
 func (u *UpdateJoin) String() string {
 	pr := sql.NewTreePrinter()
@@ -47,19 +43,21 @@ func (u *UpdateJoin) String() string {
 
 }
 
-// Schema implements the sql.Node interface.
-func (u *UpdateJoin) Schema() sql.Schema {
-	return u.Child.Schema()
-}
-
-// Children implements the sql.Node interface.
-func (u *UpdateJoin) Children() []sql.Node {
-	return []sql.Node{u.Child}
-}
-
 // RowIter implements the sql.Node interface.
 func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return u.Child.RowIter(ctx, row)
+	ji, err := u.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updateJoinIter{
+		ctx: ctx,
+		joinIter: ji,
+		joinSchema: u.Child.(*UpdateSource).Child.Schema(),
+		updaters: u.updaters,
+		caches: make(map[string]sql.KeyValueCache),
+		disposals: make(map[string]sql.DisposeFunc),
+	}, nil
 }
 
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
@@ -77,6 +75,89 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewUpdateJoin(u.updaters, children[0]), nil
+}
+
+type updateJoinIter struct {
+	ctx *sql.Context
+	joinIter sql.RowIter
+	joinSchema sql.Schema
+	updaters map[string]sql.RowUpdater
+	caches map[string]sql.KeyValueCache
+	disposals map[string]sql.DisposeFunc
+}
+
+var _ sql.RowIter = (*updateJoinIter)(nil)
+
+func (u *updateJoinIter) Next() (sql.Row, error) {
+	for {
+		oldAndNewRow, err := u.joinIter.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		oldJoinRow, newJoinRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
+
+		tableToOldRowMap := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
+		tableToNewRowMap := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
+
+		for tableName, _ := range u.updaters {
+			oldTableRow := tableToOldRowMap[tableName]
+			// newTableRow := tableToNewRowMap[tableName]
+
+			cache := u.getOrCreateCache(u.ctx, tableName)
+			hash, err := sql.HashOf(oldTableRow)
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = cache.Get(hash)
+			if errors.Is(err, sql.ErrKeyNotFound) {
+				cache.Put(hash, struct{}{})
+				continue
+			}
+
+
+			// If this row for the table has already been updated we rewrite the newJoinRow counterpart to ensure that this
+			// returned row is not incorrectly counted by the update accumulator.
+			tableToNewRowMap[tableName] = oldTableRow
+			//if val != nil && val.(bool) == true {
+			//	tableToNewRowMap[tableName] = oldTableRow
+			//}
+		}
+		newJoinRow = recreateRowFromMap(tableToNewRowMap, u.joinSchema)
+		equals, err := oldJoinRow.Equals(newJoinRow, u.joinSchema)
+		if err != nil {
+			return nil, err
+		}
+		if !equals {
+			joined := append(oldJoinRow, newJoinRow...)
+			return joined, nil
+		}
+
+
+
+	}
+}
+
+func (u *updateJoinIter) Close(context *sql.Context) error {
+	for _, disposeF := range u.disposals {
+		disposeF()
+	}
+
+	return u.joinIter.Close(context)
+}
+
+func (u *updateJoinIter) getOrCreateCache(ctx *sql.Context, tableName string) sql.KeyValueCache {
+	potential, exists := u.caches[tableName]
+	if exists {
+		return potential
+	}
+
+	cache, disposal := ctx.Memory.NewHistoryCache()
+	u.caches[tableName] = cache
+	u.disposals[tableName] = disposal
+
+	return cache
 }
 
 // updatableJoinTable manages the update of multiple tables.
@@ -118,8 +199,6 @@ func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 		initialUpdaterMap: u.updaters,
 		updatedUpdaterMap: u.updaters,
 		joinSchema:        u.joinNode.Schema(),
-		caches:            make(map[string]sql.KeyValueCache),
-		disposals:         make(map[string]sql.DisposeFunc),
 	}
 }
 
@@ -128,39 +207,42 @@ func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 type updatableJoinUpdater struct {
 	initialUpdaterMap map[string]sql.RowUpdater
 	updatedUpdaterMap map[string]sql.RowUpdater
-	caches            map[string]sql.KeyValueCache
-	disposals         map[string]sql.DisposeFunc
 	joinSchema        sql.Schema
+	errorEncountered  error
 }
 
 var _ sql.RowUpdater = (*updatableJoinUpdater)(nil)
 
 // StatementBegin implements the sql.TableEditor interface.
-func (u *updatableJoinUpdater) StatementBegin(ctx *sql.Context) {}
+func (u *updatableJoinUpdater) StatementBegin(ctx *sql.Context) {
+	for _, v := range u.updatedUpdaterMap {
+		v.StatementBegin(ctx)
+	}
+}
 
 // DiscardChanges implements the sql.TableEditor interface.
 func (u *updatableJoinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	u.updatedUpdaterMap = u.initialUpdaterMap
+	for _, v := range u.updatedUpdaterMap {
+		err := v.DiscardChanges(ctx, u.errorEncountered)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // StatementComplete implements the sql.TableEditor interface.
 func (u *updatableJoinUpdater) StatementComplete(ctx *sql.Context) error {
-	u.initialUpdaterMap = u.updatedUpdaterMap
-	return nil
-}
+	for _, v := range u.updatedUpdaterMap {
+		err := v.StatementComplete(ctx)
 
-func (u *updatableJoinUpdater) getOrCreateCache(ctx *sql.Context, tableName string) sql.KeyValueCache {
-	potential, exists := u.caches[tableName]
-	if exists {
-		return potential
+		if err != nil {
+			return err
+		}
 	}
 
-	cache, disposal := ctx.Memory.NewHistoryCache()
-	u.caches[tableName] = cache
-	u.disposals[tableName] = disposal
-
-	return cache
+	return nil
 }
 
 // Update implements the sql.RowUpdater interface.
@@ -172,24 +254,11 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 		oldRow := tableToOldRowMap[tableName]
 		newRow := tableToNewRowMap[tableName]
 
-		// Check if the row has already been updated
-		cache := u.getOrCreateCache(ctx, tableName)
-		hash, err := sql.HashOf(oldRow)
+		err := updater.Update(ctx, oldRow, newRow)
 		if err != nil {
+			u.errorEncountered = err
 			return err
 		}
-		val, err := cache.Get(hash)
-
-		if val != nil && val.(bool) == true {
-			continue
-		}
-
-		err = updater.Update(ctx, oldRow, newRow)
-		if err != nil {
-			return err
-		}
-
-		cache.Put(hash, true)
 	}
 
 	return nil
@@ -202,10 +271,6 @@ func (u *updatableJoinUpdater) Close(ctx *sql.Context) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	for _, disposeF := range u.disposals {
-		disposeF()
 	}
 
 	return nil
@@ -236,6 +301,28 @@ func splitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.
 	}
 
 	ret[currentTable] = currentRow
+
+	return ret
+}
+
+func recreateRowFromMap(rowMap map[string]sql.Row, joinSchema sql.Schema) sql.Row {
+	var ret sql.Row
+
+	if len(joinSchema) == 0 {
+		return ret
+	}
+
+	currentTable := joinSchema[0].Source
+	ret = append(ret, rowMap[currentTable]...)
+
+	for i := 1; i < len(joinSchema); i++ {
+		c := joinSchema[i]
+
+		if c.Source != currentTable {
+			ret = append(ret, rowMap[c.Source]...)
+			currentTable = c.Source
+		}
+	}
 
 	return ret
 }
