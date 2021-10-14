@@ -26,6 +26,11 @@ type Database struct {
 	views map[string]string
 }
 
+type MemoryDatabase interface {
+	sql.Database
+	AddTable(name string, t sql.Table)
+}
+
 var _ sql.Database = (*Database)(nil)
 var _ sql.TableCreator = (*Database)(nil)
 var _ sql.TableDropper = (*Database)(nil)
@@ -44,6 +49,9 @@ type BaseDatabase struct {
 	storedProcedures  []sql.StoredProcedureDetails
 	primaryKeyIndexes bool
 }
+
+var _ MemoryDatabase = (*Database)(nil)
+var _ MemoryDatabase = (*BaseDatabase)(nil)
 
 // NewDatabase creates a new database with the given name.
 func NewDatabase(name string) *Database {
