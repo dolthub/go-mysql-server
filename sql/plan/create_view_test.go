@@ -31,7 +31,7 @@ func mockCreateView(isReplace bool) *CreateView {
 		{Name: "s", Source: "mytable", Type: sql.Text},
 	})
 
-	db := memory.NewDatabase("db")
+	db := memory.NewViewlessDatabase("db")
 	db.AddTable("db", table)
 
 	subqueryAlias := NewSubqueryAlias("myview", "select i",
@@ -50,7 +50,7 @@ func mockCreateView(isReplace bool) *CreateView {
 
 // Tests that CreateView works as expected and that the view is registered in
 // the catalog when RowIter is called
-func TestCreateView(t *testing.T) {
+func TestCreateViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
 	createView := mockCreateView(false)
@@ -67,7 +67,7 @@ func TestCreateView(t *testing.T) {
 }
 
 // Tests that CreateView RowIter returns an error when the view exists
-func TestCreateExistingView(t *testing.T) {
+func TestCreateExistingViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
 	createView := mockCreateView(false)
@@ -85,7 +85,7 @@ func TestCreateExistingView(t *testing.T) {
 
 // Tests that CreateView RowIter succeeds when the view exists and the
 // IsReplace flag is set to true
-func TestReplaceExistingView(t *testing.T) {
+func TestReplaceExistingViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
 	createView := mockCreateView(true)
