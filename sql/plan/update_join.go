@@ -15,8 +15,9 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type UpdateJoin struct {
@@ -51,12 +52,12 @@ func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	return &updateJoinIter{
-		ctx: ctx,
-		joinIter: ji,
+		ctx:        ctx,
+		joinIter:   ji,
 		joinSchema: u.Child.(*UpdateSource).Child.Schema(),
-		updaters: u.updaters,
-		caches: make(map[string]sql.KeyValueCache),
-		disposals: make(map[string]sql.DisposeFunc),
+		updaters:   u.updaters,
+		caches:     make(map[string]sql.KeyValueCache),
+		disposals:  make(map[string]sql.DisposeFunc),
 	}, nil
 }
 
@@ -78,12 +79,12 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 type updateJoinIter struct {
-	ctx *sql.Context
-	joinIter sql.RowIter
+	ctx        *sql.Context
+	joinIter   sql.RowIter
 	joinSchema sql.Schema
-	updaters map[string]sql.RowUpdater
-	caches map[string]sql.KeyValueCache
-	disposals map[string]sql.DisposeFunc
+	updaters   map[string]sql.RowUpdater
+	caches     map[string]sql.KeyValueCache
+	disposals  map[string]sql.DisposeFunc
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
@@ -116,7 +117,6 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 				continue
 			}
 
-
 			// If this row for the table has already been updated we rewrite the newJoinRow counterpart to ensure that this
 			// returned row is not incorrectly counted by the update accumulator.
 			tableToNewRowMap[tableName] = oldTableRow
@@ -133,8 +133,6 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 			joined := append(oldJoinRow, newJoinRow...)
 			return joined, nil
 		}
-
-
 
 	}
 }
