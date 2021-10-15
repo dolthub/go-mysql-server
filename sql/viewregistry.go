@@ -19,7 +19,8 @@ import (
 	"sync"
 )
 
-// View is defined by a Node and has a name.
+// View is the parsed version of ViewDefinition
+// Not meant to be used externally
 type View struct {
 	name           string
 	definition     Node

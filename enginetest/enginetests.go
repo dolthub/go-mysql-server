@@ -1060,10 +1060,6 @@ func getClient(query string) string {
 	return strings.TrimSpace(strings.TrimPrefix(query, "client"))
 }
 
-// This method is the only place we can reliably test newly created views, because view definitions live in the
-// context, as opposed to being defined by integrators with a ViewDatabase interface, and we lose that context with
-// our standard method of using a new context object per query.
-// TODO: fix this by introducing sql.ViewDatabase
 func TestViews(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)

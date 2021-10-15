@@ -103,7 +103,7 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 // tables via the AddTableAsOf method. Consecutive calls to AddTableAsOf with the same table must install new versions
 // of the named table each time, with ascending version identifiers, for this to work.
 type HistoryDatabase struct {
-	Database
+	*Database
 	Revisions    map[string]map[interface{}]sql.Table
 	currRevision interface{}
 }
@@ -133,7 +133,7 @@ func (db *HistoryDatabase) GetTableNamesAsOf(ctx *sql.Context, time interface{})
 
 func NewHistoryDatabase(name string) *HistoryDatabase {
 	return &HistoryDatabase{
-		Database:  *NewDatabase(name),
+		Database:  NewDatabase(name),
 		Revisions: make(map[string]map[interface{}]sql.Table),
 	}
 }
@@ -283,6 +283,17 @@ func (d *Database) DropView(ctx *sql.Context, name string) error {
 
 	delete(d.views, name)
 	return nil
+}
+
+func (d *Database) AllViews() ([]sql.ViewDefinition, error) {
+	var views []sql.ViewDefinition
+	for name, def := range d.views {
+		views = append(views, sql.ViewDefinition{
+			Name:           name,
+			TextDefinition: def,
+		})
+	}
+	return views, nil
 }
 
 func (d *Database) GetView(viewName string) (string, bool, error) {
