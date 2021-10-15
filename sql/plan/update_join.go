@@ -52,12 +52,12 @@ func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	return &updateJoinIter{
-		ctx:        ctx,
-		joinIter:   ji,
-		joinSchema: u.Child.(*UpdateSource).Child.Schema(),
-		updaters:   u.updaters,
-		caches:     make(map[string]sql.KeyValueCache),
-		disposals:  make(map[string]sql.DisposeFunc),
+		ctx:              ctx,
+		updateSourceIter: ji,
+		joinSchema:       u.Child.(*UpdateSource).Child.Schema(),
+		updaters:         u.updaters,
+		caches:           make(map[string]sql.KeyValueCache),
+		disposals:        make(map[string]sql.DisposeFunc),
 	}, nil
 }
 
@@ -78,20 +78,22 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewUpdateJoin(u.updaters, children[0]), nil
 }
 
+// updateJoinIter wraps the child UpdateSource iter and returns join row in such a way that updates per table row are
+// done once.
 type updateJoinIter struct {
-	ctx        *sql.Context
-	joinIter   sql.RowIter
-	joinSchema sql.Schema
-	updaters   map[string]sql.RowUpdater
-	caches     map[string]sql.KeyValueCache
-	disposals  map[string]sql.DisposeFunc
+	ctx              *sql.Context
+	updateSourceIter sql.RowIter
+	joinSchema       sql.Schema
+	updaters         map[string]sql.RowUpdater
+	caches           map[string]sql.KeyValueCache
+	disposals        map[string]sql.DisposeFunc
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
 
 func (u *updateJoinIter) Next() (sql.Row, error) {
 	for {
-		oldAndNewRow, err := u.joinIter.Next()
+		oldAndNewRow, err := u.updateSourceIter.Next()
 		if err != nil {
 			return nil, err
 		}
@@ -139,7 +141,7 @@ func (u *updateJoinIter) Close(context *sql.Context) error {
 		disposeF()
 	}
 
-	return u.joinIter.Close(context)
+	return u.updateSourceIter.Close(context)
 }
 
 func (u *updateJoinIter) getOrCreateCache(ctx *sql.Context, tableName string) sql.KeyValueCache {
@@ -192,6 +194,7 @@ func (u *updatableJoinTable) Schema() sql.Schema {
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
 		updaterMap: u.updaters,
+		schemaMap:  recreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
 		joinSchema: u.joinNode.Schema(),
 	}
 }
@@ -200,6 +203,7 @@ func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 // table.
 type updatableJoinUpdater struct {
 	updaterMap map[string]sql.RowUpdater
+	schemaMap  map[string]sql.Schema
 	joinSchema sql.Schema
 }
 
@@ -245,8 +249,17 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 	for tableName, updater := range u.updaterMap {
 		oldRow := tableToOldRowMap[tableName]
 		newRow := tableToNewRowMap[tableName]
+		schema := u.schemaMap[tableName]
 
-		err := updater.Update(ctx, oldRow, newRow)
+		eq, err := oldRow.Equals(newRow, schema)
+		if err != nil {
+			return err
+		}
+
+		if !eq {
+			err = updater.Update(ctx, oldRow, newRow)
+		}
+
 		if err != nil {
 			return err
 		}
