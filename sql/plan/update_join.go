@@ -103,7 +103,6 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 
 		for tableName, _ := range u.updaters {
 			oldTableRow := tableToOldRowMap[tableName]
-			// newTableRow := tableToNewRowMap[tableName]
 
 			cache := u.getOrCreateCache(u.ctx, tableName)
 			hash, err := sql.HashOf(oldTableRow)
@@ -115,15 +114,15 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 			if errors.Is(err, sql.ErrKeyNotFound) {
 				cache.Put(hash, struct{}{})
 				continue
+			} else if err != nil {
+				return nil, err
 			}
 
 			// If this row for the table has already been updated we rewrite the newJoinRow counterpart to ensure that this
 			// returned row is not incorrectly counted by the update accumulator.
 			tableToNewRowMap[tableName] = oldTableRow
-			//if val != nil && val.(bool) == true {
-			//	tableToNewRowMap[tableName] = oldTableRow
-			//}
 		}
+
 		newJoinRow = recreateRowFromMap(tableToNewRowMap, u.joinSchema)
 		equals, err := oldJoinRow.Equals(newJoinRow, u.joinSchema)
 		if err != nil {
@@ -133,7 +132,6 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 			joined := append(oldJoinRow, newJoinRow...)
 			return joined, nil
 		}
-
 	}
 }
 
@@ -194,8 +192,7 @@ func (u *updatableJoinTable) Schema() sql.Schema {
 // Updater implements the sql.UpdatableTable interface.
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
-		initialUpdaterMap: u.updaters,
-		updatedUpdaterMap: u.updaters,
+		updaterMap:        u.updaters,
 		joinSchema:        u.joinNode.Schema(),
 	}
 }
@@ -203,25 +200,23 @@ func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 // updatableJoinUpdater manages the process of taking a join row and allocating the respective updates to each updatable
 // table.
 type updatableJoinUpdater struct {
-	initialUpdaterMap map[string]sql.RowUpdater
-	updatedUpdaterMap map[string]sql.RowUpdater
+	updaterMap        map[string]sql.RowUpdater
 	joinSchema        sql.Schema
-	errorEncountered  error
 }
 
 var _ sql.RowUpdater = (*updatableJoinUpdater)(nil)
 
 // StatementBegin implements the sql.TableEditor interface.
 func (u *updatableJoinUpdater) StatementBegin(ctx *sql.Context) {
-	for _, v := range u.updatedUpdaterMap {
+	for _, v := range u.updaterMap {
 		v.StatementBegin(ctx)
 	}
 }
 
 // DiscardChanges implements the sql.TableEditor interface.
 func (u *updatableJoinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	for _, v := range u.updatedUpdaterMap {
-		err := v.DiscardChanges(ctx, u.errorEncountered)
+	for _, v := range u.updaterMap {
+		err := v.DiscardChanges(ctx, errorEncountered)
 		if err != nil {
 			return err
 		}
@@ -232,7 +227,7 @@ func (u *updatableJoinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered
 
 // StatementComplete implements the sql.TableEditor interface.
 func (u *updatableJoinUpdater) StatementComplete(ctx *sql.Context) error {
-	for _, v := range u.updatedUpdaterMap {
+	for _, v := range u.updaterMap {
 		err := v.StatementComplete(ctx)
 
 		if err != nil {
@@ -248,13 +243,12 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 	tableToOldRowMap := splitRowIntoTableRowMap(old, u.joinSchema)
 	tableToNewRowMap := splitRowIntoTableRowMap(new, u.joinSchema)
 
-	for tableName, updater := range u.updatedUpdaterMap {
+	for tableName, updater := range u.updaterMap {
 		oldRow := tableToOldRowMap[tableName]
 		newRow := tableToNewRowMap[tableName]
 
 		err := updater.Update(ctx, oldRow, newRow)
 		if err != nil {
-			u.errorEncountered = err
 			return err
 		}
 	}
@@ -264,7 +258,7 @@ func (u *updatableJoinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row
 
 // Close implements the sql.RowUpdater interface.
 func (u *updatableJoinUpdater) Close(ctx *sql.Context) error {
-	for _, updater := range u.updatedUpdaterMap {
+	for _, updater := range u.updaterMap {
 		err := updater.Close(ctx)
 		if err != nil {
 			return err
@@ -303,6 +297,7 @@ func splitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.
 	return ret
 }
 
+// recreateRowFromMap takes a join schema and row map and recreates the original join row.
 func recreateRowFromMap(rowMap map[string]sql.Row, joinSchema sql.Schema) sql.Row {
 	var ret sql.Row
 

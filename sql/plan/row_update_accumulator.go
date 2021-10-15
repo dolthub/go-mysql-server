@@ -195,24 +195,15 @@ type updateJoinRowHandler struct {
 }
 
 func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
-	// split the row
 	oldJoinRow := row[:len(row)/2]
 	newJoinRow := row[len(row)/2:]
 
 	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
 	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
-	if u.rowsMatched == 0 || len(u.updaterMap) == 1 {
-		u.rowsMatched += len(u.updaterMap)
-	} else {
-		u.rowsMatched *= len(u.updaterMap)
-	}
-
-	for tableName, tableOldRow := range tableToOldRow {
-		// Only work with tables that are supposed to be updated
-		if _, updatable := u.updaterMap[tableName]; !updatable {
-			continue
-		}
+	for tableName, _ := range u.updaterMap {
+		u.rowsMatched++ // TODO: This currently returns the incorrect answer
+		tableOldRow := tableToOldRow[tableName]
 		tableNewRow := tableToNewRow[tableName]
 		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
 			if !equals {
@@ -222,7 +213,6 @@ func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
