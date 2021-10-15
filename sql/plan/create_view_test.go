@@ -53,14 +53,13 @@ func TestCreateViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
 	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false)
-	viewReg := sql.NewViewRegistry()
 
-	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
+	ctx := sql.NewContext(context.Background())
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(err)
 
 	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
-	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
+	actualView, err := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
 	require.NoError(err)
 	require.Equal(expectedView, actualView)
 }
@@ -147,7 +146,9 @@ func TestCreateExistingViewWithRegistry(t *testing.T) {
 	err := viewReg.Register(createView.database.Name(), view)
 	require.NoError(err)
 
-	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
+	sess := sql.NewBaseSession()
+	sess.SetViewRegistry(viewReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	_, err = createView.RowIter(ctx, nil)
 	require.Error(err)
 	require.True(sql.ErrExistingView.Is(err))
@@ -167,12 +168,14 @@ func TestReplaceExistingViewWithRegistry(t *testing.T) {
 
 	createView.IsReplace = true
 
-	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
+	sess := sql.NewBaseSession()
+	sess.SetViewRegistry(viewReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	_, err = createView.RowIter(ctx, nil)
 	require.NoError(err)
 
 	expectedView := createView.View()
-	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
+	actualView, err := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
 	require.NoError(err)
 	require.Equal(expectedView, actualView)
 }

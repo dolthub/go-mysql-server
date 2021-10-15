@@ -68,7 +68,7 @@ func TestDropExistingViewFromRegistry(t *testing.T) {
 		_, err := dropView.RowIter(ctx, nil)
 		require.NoError(t, err)
 
-		require.False(t, ctx.Exists(db.Name(), view.Name()))
+		require.False(t, ctx.GetViewRegistry().Exists(db.Name(), view.Name()))
 	}
 
 	test(false)
@@ -87,7 +87,7 @@ func TestDropNonExistingViewFromRegistry(t *testing.T) {
 
 		_, err := dropView.RowIter(ctx, nil)
 
-		require.True(t, ctx.Exists(db.Name(), view.Name()))
+		require.True(t, ctx.GetViewRegistry().Exists(db.Name(), view.Name()))
 
 		return err
 	}

@@ -58,7 +58,7 @@ func TestCreateIndexAsync(t *testing.T) {
 	ci.CurrentDatabase = "foo"
 
 	tracer := new(test.MemTracer)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer))
 	_, err := ci.RowIter(ctx, nil)
 	require.NoError(err)
 
@@ -112,7 +112,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background())
 	_, err := ci.RowIter(ctx, nil)
 	require.Error(err)
 	require.True(ErrExprTypeNotIndexable.Is(err))
@@ -163,7 +163,10 @@ func TestCreateIndexSync(t *testing.T) {
 	ci.CurrentDatabase = "foo"
 
 	tracer := new(test.MemTracer)
-	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithIndexRegistry(idxReg))
+
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer), sql.WithSession(sess))
 	_, err := ci.RowIter(ctx, nil)
 	require.NoError(err)
 
@@ -218,7 +221,9 @@ func TestCreateIndexChecksum(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	_, err := ci.RowIter(ctx, nil)
 	require.NoError(err)
 
@@ -262,7 +267,9 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	_, err := ci.RowIter(ctx, nil)
 	require.NoError(err)
 
@@ -304,7 +311,9 @@ func TestCreateIndexWithIter(t *testing.T) {
 	ci.Catalog = catalog
 	ci.CurrentDatabase = "foo"
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	columns, exprs, err := GetColumnsAndPrepareExpressions(ctx, ci.Exprs)
 	require.NoError(err)
 
