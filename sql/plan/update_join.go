@@ -191,16 +191,16 @@ func (u *updatableJoinTable) Schema() sql.Schema {
 // Updater implements the sql.UpdatableTable interface.
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
-		updaterMap:        u.updaters,
-		joinSchema:        u.joinNode.Schema(),
+		updaterMap: u.updaters,
+		joinSchema: u.joinNode.Schema(),
 	}
 }
 
 // updatableJoinUpdater manages the process of taking a join row and allocating the respective updates to each updatable
 // table.
 type updatableJoinUpdater struct {
-	updaterMap        map[string]sql.RowUpdater
-	joinSchema        sql.Schema
+	updaterMap map[string]sql.RowUpdater
+	joinSchema sql.Schema
 }
 
 var _ sql.RowUpdater = (*updatableJoinUpdater)(nil)
