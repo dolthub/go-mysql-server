@@ -64,9 +64,9 @@ func NewDatabase(name string) *Database {
 // NewViewlessDatabase creates a new database that doesn't persist views. Used only for testing. Use NewDatabase.
 func NewViewlessDatabase(name string) *BaseDatabase {
 	return &BaseDatabase{
-			name:   name,
-			tables: map[string]sql.Table{},
-		}
+		name:   name,
+		tables: map[string]sql.Table{},
+	}
 }
 
 // EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary keys

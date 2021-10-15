@@ -147,4 +147,3 @@ func TestDropNonExistingViewNative(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, sql.ErrViewDoesNotExist.Is(err))
 }
-
