@@ -1104,7 +1104,7 @@ func viewsInDatabase(context *Context, db Database) ([]ViewDefinition, error) {
 		}
 	}
 
-	for _, view := range context.ViewRegistry.ViewsInDatabase(dbName) {
+	for _, view := range context.GetViewRegistry().ViewsInDatabase(dbName) {
 		views = append(views, ViewDefinition{
 			Name:           view.Name(),
 			TextDefinition: view.TextDefinition(),

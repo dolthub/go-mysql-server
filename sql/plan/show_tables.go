@@ -134,7 +134,7 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 	}
 
-	for _, view := range ctx.ViewsInDatabase(p.db.Name()) {
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(p.db.Name()) {
 		row := sql.Row{view.Name()}
 		if p.Full {
 			row = append(row, "VIEW")

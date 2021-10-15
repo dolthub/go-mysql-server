@@ -517,8 +517,6 @@ func NewBaseSession() Session {
 type Context struct {
 	context.Context
 	Session
-	*IndexRegistry
-	*ViewRegistry
 	Memory      *MemoryManager
 	ProcessList ProcessList
 	pid         uint64
@@ -535,18 +533,6 @@ type ContextOption func(*Context)
 func WithSession(s Session) ContextOption {
 	return func(ctx *Context) {
 		ctx.Session = s
-	}
-}
-
-func WithIndexRegistry(ir *IndexRegistry) ContextOption {
-	return func(ctx *Context) {
-		ctx.IndexRegistry = ir
-	}
-}
-
-func WithViewRegistry(vr *ViewRegistry) ContextOption {
-	return func(ctx *Context) {
-		ctx.ViewRegistry = vr
 	}
 }
 
@@ -624,14 +610,6 @@ func NewContext(
 	}
 	for _, opt := range opts {
 		opt(c)
-	}
-
-	if c.IndexRegistry == nil {
-		c.IndexRegistry = NewIndexRegistry()
-	}
-
-	if c.ViewRegistry == nil {
-		c.ViewRegistry = NewViewRegistry()
 	}
 
 	if c.Memory == nil {

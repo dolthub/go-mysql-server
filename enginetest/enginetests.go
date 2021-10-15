@@ -3532,7 +3532,7 @@ func NewContext(harness Harness) *sql.Context {
 		ctx.WithCurrentDB(currentDB)
 	}
 
-	_ = ctx.ViewRegistry.Register(currentDB,
+	_ = ctx.GetViewRegistry().Register(currentDB,
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
@@ -3557,7 +3557,7 @@ func NewSession(harness Harness) *sql.Context {
 		ctx.WithCurrentDB(currentDB)
 	}
 
-	_ = ctx.ViewRegistry.Register(currentDB,
+	_ = ctx.GetViewRegistry().Register(currentDB,
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
@@ -3582,8 +3582,8 @@ func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
 	if idh, ok := harness.(IndexDriverHarness); ok {
 		driver := idh.IndexDriver(engine.Analyzer.Catalog.AllDatabases())
 		if driver != nil {
-			ctx.IndexRegistry.RegisterIndexDriver(driver)
-			ctx.IndexRegistry.LoadIndexes(ctx, engine.Analyzer.Catalog.AllDatabases())
+			ctx.GetIndexRegistry().RegisterIndexDriver(driver)
+			ctx.GetIndexRegistry().LoadIndexes(ctx, engine.Analyzer.Catalog.AllDatabases())
 		}
 	}
 

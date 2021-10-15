@@ -76,7 +76,7 @@ func (cv *CreateView) Resolved() bool {
 // empty.
 func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	view := cv.View()
-	registry := ctx.ViewRegistry
+	registry := ctx.GetViewRegistry()
 
 	if cv.IsReplace {
 		if dropper, ok := cv.database.(sql.ViewDropper); ok {

@@ -137,7 +137,7 @@ func (dvs *DropView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 				}
 			}
 		} else {
-			err := ctx.ViewRegistry.Delete(drop.database.Name(), drop.viewName)
+			err := ctx.GetViewRegistry().Delete(drop.database.Name(), drop.viewName)
 			allowedError := dvs.ifExists && sql.ErrViewDoesNotExist.Is(err)
 			if !allowedError {
 				return sql.RowsToRowIter(), err
