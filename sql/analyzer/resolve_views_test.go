@@ -47,7 +47,9 @@ func TestResolveViews(t *testing.T) {
 
 	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Name, f.Apply).Build()
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(viewReg)).WithCurrentDB("mydb")
+	sess := sql.NewBaseSession()
+	sess.SetViewRegistry(viewReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess)).WithCurrentDB("mydb")
 	// AS OF expressions on a view should be pushed down to unresolved tables
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
 	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)

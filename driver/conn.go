@@ -66,9 +66,7 @@ func (c *Conn) newContextWithQuery(ctx context.Context, query string) (*sql.Cont
 		sql.WithQuery(query),
 		sql.WithPid(c.dbConn.nextProcessID()),
 		sql.WithMemoryManager(c.dbConn.engine.MemoryManager),
-		sql.WithProcessList(c.dbConn.engine.ProcessList),
-		sql.WithIndexRegistry(c.indexes),
-		sql.WithViewRegistry(c.views))
+		sql.WithProcessList(c.dbConn.engine.ProcessList))
 }
 
 type fakeTransaction struct{}
