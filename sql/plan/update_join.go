@@ -129,8 +129,7 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 		if !equals {
-			joined := append(oldJoinRow, newJoinRow...)
-			return joined, nil
+			return append(oldJoinRow, newJoinRow...), nil
 		}
 	}
 }

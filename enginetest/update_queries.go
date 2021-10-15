@@ -332,12 +332,4 @@ var UpdateErrorTests = []GenericErrorQueryTest{
 		Name:  "targets subquery alias",
 		Query: "UPDATE (SELECT * FROM mytable) mytable SET s = NULL;",
 	},
-	{
-		Name:  "targets cross joins which is not supported yet",
-		Query: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`,
-	},
-	{
-		Name:  "gets converted to a cross join so it fails",
-		Query: `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.s=3 SET othertable.s2 = 'fourth'`,
-	},
 }
