@@ -110,6 +110,16 @@ type Session interface {
 	// SetLogger sets the logger to use for this session, which will always be an extension of the one returned by
 	// GetLogger, extended with session information
 	SetLogger(*logrus.Entry)
+	// GetIndexRegistry returns the index registry for this session
+	GetIndexRegistry() *IndexRegistry
+	// GetViewRegistry returns the view registry for this session
+	GetViewRegistry() *ViewRegistry
+	// SetIndexRegistry sets the index registry for this session. Integrators should set an index registry in the event
+	// they are using an index driver.
+	SetIndexRegistry(*IndexRegistry)
+	// SetViewRegistry sets the view registry for this session. Integrators should set a view registry if their database
+	// doesn't implement ViewProvider and they want views created to persist across sessions.
+	SetViewRegistry(*ViewRegistry)
 }
 
 // BaseSession is the basic session type.
@@ -128,6 +138,8 @@ type BaseSession struct {
 	currentDB        string
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
+	idxReg           *IndexRegistry
+	viewReg          *ViewRegistry
 	warnings         []*Warning
 	warncnt          uint16
 	locks            map[string]bool
@@ -359,6 +371,30 @@ func (s *BaseSession) SetQueriedDatabase(dbName string) {
 	s.queriedDb = dbName
 }
 
+func (s *BaseSession) GetIndexRegistry() *IndexRegistry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.idxReg
+}
+
+func (s *BaseSession) GetViewRegistry() *ViewRegistry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.viewReg
+}
+
+func (s *BaseSession) SetIndexRegistry(reg *IndexRegistry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.idxReg = reg
+}
+
+func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.viewReg = reg
+}
+
 type (
 	// TypedValue is a value along with its type.
 	TypedValue struct {
@@ -452,6 +488,8 @@ func NewSession(server string, client Client, id uint32) Session {
 		id:            id,
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
+		idxReg:        NewIndexRegistry(),
+		viewReg:       NewViewRegistry(),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
@@ -467,6 +505,8 @@ func NewBaseSession() Session {
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
+		idxReg:        NewIndexRegistry(),
+		viewReg:       NewViewRegistry(),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
