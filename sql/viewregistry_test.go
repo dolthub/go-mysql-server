@@ -24,13 +24,13 @@ import (
 var (
 	dbName   = "db"
 	viewName = "myview"
-	mockView = NewView(viewName, nil, "")
+	testView = NewView(viewName, nil, "")
 )
 
-func newMockRegistry(require *require.Assertions) *ViewRegistry {
+func newRegistry(require *require.Assertions) *ViewRegistry {
 	registry := NewViewRegistry()
 
-	err := registry.Register(dbName, mockView)
+	err := registry.Register(dbName, testView)
 	require.NoError(err)
 	require.Equal(1, len(registry.views))
 
@@ -49,20 +49,20 @@ func TestNewViewRegistry(t *testing.T) {
 func TestRegisterNonExistingView(t *testing.T) {
 	require := require.New(t)
 
-	registry := newMockRegistry(require)
+	registry := newRegistry(require)
 
 	actualView, err := registry.View(dbName, viewName)
 	require.NoError(err)
-	require.Equal(mockView, actualView)
+	require.Equal(testView, actualView)
 }
 
 // Tests that registering an existing view fails.
 func TestRegisterExistingVIew(t *testing.T) {
 	require := require.New(t)
 
-	registry := newMockRegistry(require)
+	registry := newRegistry(require)
 
-	err := registry.Register(dbName, mockView)
+	err := registry.Register(dbName, testView)
 	require.Error(err)
 	require.True(ErrExistingView.Is(err))
 }
@@ -71,7 +71,7 @@ func TestRegisterExistingVIew(t *testing.T) {
 func TestDeleteExistingView(t *testing.T) {
 	require := require.New(t)
 
-	registry := newMockRegistry(require)
+	registry := newRegistry(require)
 
 	err := registry.Delete(dbName, viewName)
 	require.NoError(err)
@@ -94,11 +94,11 @@ func TestDeleteNonExistingView(t *testing.T) {
 func TestGetExistingView(t *testing.T) {
 	require := require.New(t)
 
-	registry := newMockRegistry(require)
+	registry := newRegistry(require)
 
 	actualView, err := registry.View(dbName, viewName)
 	require.NoError(err)
-	require.Equal(mockView, actualView)
+	require.Equal(testView, actualView)
 }
 
 // Tests that retrieving a non-existing view fails.
@@ -167,7 +167,7 @@ func registerKeys(registry *ViewRegistry, require *require.Assertions) {
 func TestExistsOnExistingView(t *testing.T) {
 	require := require.New(t)
 
-	registry := newMockRegistry(require)
+	registry := newRegistry(require)
 
 	require.True(registry.Exists(dbName, viewName))
 }
@@ -175,7 +175,7 @@ func TestExistsOnExistingView(t *testing.T) {
 func TestExistsOnNonExistingView(t *testing.T) {
 	require := require.New(t)
 
-	registry := newMockRegistry(require)
+	registry := newRegistry(require)
 
 	require.False(registry.Exists("non", "existing"))
 }

@@ -47,8 +47,7 @@ func (v *View) TextDefinition() string {
 	return v.textDefinition
 }
 
-// Views are scoped by the databases in which they were defined, so a key in
-// the view registry is a pair of names: database and view.
+// ViewKey is the key used to store view definitions
 type ViewKey struct {
 	dbName, viewName string
 }
@@ -58,8 +57,9 @@ func NewViewKey(databaseName, viewName string) ViewKey {
 	return ViewKey{strings.ToLower(databaseName), strings.ToLower(viewName)}
 }
 
-// ViewRegistry is a map of ViewKey to View whose access is protected by a
-// RWMutex.
+// ViewRegistry stores session-local views for databases that don't implement view storage. Each session gets a new
+// view registry by default. Integrators that want views to persist across sessions should either implement
+// sql.ViewProvider, or construct their sessions to reuse the same ViewRegistry for each session.
 type ViewRegistry struct {
 	mutex sync.RWMutex
 	views map[ViewKey]*View

@@ -2905,8 +2905,7 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	tracer := new(test.MemTracer)
 
-	ctx := sql.NewContext(context.Background(),
-		sql.WithTracer(tracer), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer)).WithCurrentDB("mydb")
 
 	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
 		FROM mytable
