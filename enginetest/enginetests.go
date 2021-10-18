@@ -89,7 +89,7 @@ var infoSchemaTables = []string{
 // TestInfoSchema runs tests of the information_schema database
 func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
-	engine := NewEngineWithDbs(t, harness, dbs, nil)
+	engine := NewEngineWithDbs(t, harness, dbs)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
@@ -122,7 +122,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	}
 	dbs := createReadOnlyDatabases(ro)
 	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
-	engine := NewEngineWithDbs(t, harness, dbs, nil)
+	engine := NewEngineWithDbs(t, harness, dbs)
 
 	for _, querySet := range [][]QueryTest{
 		QueryTests,
@@ -950,13 +950,7 @@ func TestScript(t *testing.T, harness Harness, script ScriptTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		myDb := harness.NewDatabase("mydb")
 		databases := []sql.Database{myDb}
-
-		var idxDriver sql.IndexDriver
-		if ih, ok := harness.(IndexDriverHarness); ok {
-			idxDriver = ih.IndexDriver(databases)
-		}
-		e := NewEngineWithDbs(t, harness, databases, idxDriver)
-
+		e := NewEngineWithDbs(t, harness, databases)
 		TestScriptWithEngine(t, e, harness, script)
 	})
 }
@@ -1011,14 +1005,7 @@ func TestTransactionScripts(t *testing.T, harness Harness) {
 func TestTransactionScript(t *testing.T, harness Harness, script TransactionTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
 		myDb := harness.NewDatabase("mydb")
-		databases := []sql.Database{myDb}
-
-		var idxDriver sql.IndexDriver
-		if ih, ok := harness.(IndexDriverHarness); ok {
-			idxDriver = ih.IndexDriver(databases)
-		}
-		e := NewEngineWithDbs(t, harness, databases, idxDriver)
-
+		e := NewEngineWithDbs(t, harness, []sql.Database{myDb})
 		TestTransactionScriptWithEngine(t, e, harness, script)
 	})
 }
@@ -1071,10 +1058,6 @@ func getClient(query string) string {
 	return strings.TrimSpace(strings.TrimPrefix(query, "client"))
 }
 
-// This method is the only place we can reliably test newly created views, because view definitions live in the
-// context, as opposed to being defined by integrators with a ViewDatabase interface, and we lose that context with
-// our standard method of using a new context object per query.
-// TODO: fix this by introducing sql.ViewDatabase
 func TestViews(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
@@ -2920,8 +2903,7 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	tracer := new(test.MemTracer)
 
-	ctx := sql.NewContext(context.Background(),
-		sql.WithTracer(tracer), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background(), sql.WithTracer(tracer)).WithCurrentDB("mydb")
 
 	_, iter, err := e.Query(ctx, `SELECT DISTINCT i
 		FROM mytable
@@ -2961,7 +2943,7 @@ func TestTracing(t *testing.T, harness Harness) {
 // Runs tests on SHOW TABLE STATUS queries.
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
-	engine := NewEngineWithDbs(t, harness, dbs, nil)
+	engine := NewEngineWithDbs(t, harness, dbs)
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
@@ -3542,13 +3524,14 @@ var pid uint64
 
 func NewContext(harness Harness) *sql.Context {
 	ctx := harness.NewContext()
-	currentDB := ctx.GetCurrentDatabase()
-	if currentDB == "" {
-		currentDB = "mydb"
-		ctx.WithCurrentDB(currentDB)
+
+	// Select a current database if there isn't one yet
+	if ctx.GetCurrentDatabase() == "" {
+		ctx.SetCurrentDatabase("mydb")
 	}
 
-	_ = ctx.ViewRegistry.Register(currentDB,
+	// Add our in-session view to the context
+	_ = ctx.GetViewRegistry().Register("mydb",
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
@@ -3573,7 +3556,7 @@ func NewSession(harness Harness) *sql.Context {
 		ctx.WithCurrentDB(currentDB)
 	}
 
-	_ = ctx.ViewRegistry.Register(currentDB,
+	_ = ctx.GetViewRegistry().Register(currentDB,
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
@@ -3585,42 +3568,26 @@ func NewSession(harness Harness) *sql.Context {
 	return ctx
 }
 
-// Returns a new BaseSession compatible with these tests. Most tests will work with any session implementation, but for
-// full compatibility use a session based on this one.
+// NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
+// implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() sql.Session {
 	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1)
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
-	ctx := NewContext(harness)
-
-	// TODO: move index driver back out of context, into catalog, make this unnecessary
-	if idh, ok := harness.(IndexDriverHarness); ok {
-		driver := idh.IndexDriver(engine.Analyzer.Catalog.AllDatabases())
-		if driver != nil {
-			ctx.IndexRegistry.RegisterIndexDriver(driver)
-			ctx.IndexRegistry.LoadIndexes(ctx, engine.Analyzer.Catalog.AllDatabases())
-		}
-	}
-
-	return ctx
+	return NewContext(harness)
 }
 
 // NewEngine creates test data and returns an engine using the harness provided.
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateTestData(t, harness)
-	var idxDriver sql.IndexDriver
-	if ih, ok := harness.(IndexDriverHarness); ok {
-		idxDriver = ih.IndexDriver(dbs)
-	}
-	engine := NewEngineWithDbs(t, harness, dbs, idxDriver)
-
+	engine := NewEngineWithDbs(t, harness, dbs)
 	return engine
 }
 
 // NewEngineWithDbs returns a new engine with the databases provided. This is useful if you don't want to implement a
 // full harness but want to run your own tests on DBs you create.
-func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, driver sql.IndexDriver) *sqle.Engine {
+func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database) *sqle.Engine {
 	databases = append(databases, information_schema.NewInformationSchemaDatabase())
 	provider := harness.NewDatabaseProvider(databases...)
 
@@ -3631,12 +3598,12 @@ func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database, d
 		a = analyzer.NewDefault(provider)
 	}
 
-	idxReg := sql.NewIndexRegistry()
-	if driver != nil {
-		idxReg.RegisterIndexDriver(driver)
+	engine := sqle.New(a, new(sqle.Config))
+
+	if idh, ok := harness.(IndexDriverHarness); ok {
+		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases())
 	}
 
-	engine := sqle.New(a, new(sqle.Config))
 	return engine
 }
 

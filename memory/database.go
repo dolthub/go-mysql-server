@@ -22,11 +22,13 @@ import (
 
 // Database is an in-memory database.
 type Database struct {
-	name              string
-	tables            map[string]sql.Table
-	triggers          []sql.TriggerDefinition
-	storedProcedures  []sql.StoredProcedureDetails
-	primaryKeyIndexes bool
+	*BaseDatabase
+	views map[string]string
+}
+
+type MemoryDatabase interface {
+	sql.Database
+	AddTable(name string, t sql.Table)
 }
 
 var _ sql.Database = (*Database)(nil)
@@ -35,36 +37,57 @@ var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
 var _ sql.StoredProcedureDatabase = (*Database)(nil)
+var _ sql.ViewDatabase = (*Database)(nil)
+
+// BaseDatabase is an in-memory database that can't store views, only for testing the engine
+type BaseDatabase struct {
+	name              string
+	tables            map[string]sql.Table
+	triggers          []sql.TriggerDefinition
+	storedProcedures  []sql.StoredProcedureDetails
+	primaryKeyIndexes bool
+}
+
+var _ MemoryDatabase = (*Database)(nil)
+var _ MemoryDatabase = (*BaseDatabase)(nil)
 
 // NewDatabase creates a new database with the given name.
 func NewDatabase(name string) *Database {
 	return &Database{
+		BaseDatabase: NewViewlessDatabase(name),
+		views:        make(map[string]string),
+	}
+}
+
+// NewViewlessDatabase creates a new database that doesn't persist views. Used only for testing. Use NewDatabase.
+func NewViewlessDatabase(name string) *BaseDatabase {
+	return &BaseDatabase{
 		name:   name,
 		tables: map[string]sql.Table{},
 	}
 }
 
 // EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary keys
-func (d *Database) EnablePrimaryKeyIndexes() {
+func (d *BaseDatabase) EnablePrimaryKeyIndexes() {
 	d.primaryKeyIndexes = true
 }
 
 // Name returns the database name.
-func (d *Database) Name() string {
+func (d *BaseDatabase) Name() string {
 	return d.name
 }
 
 // Tables returns all tables in the database.
-func (d *Database) Tables() map[string]sql.Table {
+func (d *BaseDatabase) Tables() map[string]sql.Table {
 	return d.tables
 }
 
-func (d *Database) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
+func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
 	return tbl, ok, nil
 }
 
-func (d *Database) GetTableNames(ctx *sql.Context) ([]string, error) {
+func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	tblNames := make([]string, 0, len(d.tables))
 	for k := range d.tables {
 		tblNames = append(tblNames, k)
@@ -78,7 +101,7 @@ func (d *Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 // tables via the AddTableAsOf method. Consecutive calls to AddTableAsOf with the same table must install new versions
 // of the named table each time, with ascending version identifiers, for this to work.
 type HistoryDatabase struct {
-	Database
+	*Database
 	Revisions    map[string]map[interface{}]sql.Table
 	currRevision interface{}
 }
@@ -108,7 +131,7 @@ func (db *HistoryDatabase) GetTableNamesAsOf(ctx *sql.Context, time interface{})
 
 func NewHistoryDatabase(name string) *HistoryDatabase {
 	return &HistoryDatabase{
-		Database:  *NewDatabase(name),
+		Database:  NewDatabase(name),
 		Revisions: make(map[string]map[interface{}]sql.Table),
 	}
 }
@@ -125,12 +148,12 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 }
 
 // AddTable adds a new table to the database.
-func (d *Database) AddTable(name string, t sql.Table) {
+func (d *BaseDatabase) AddTable(name string, t sql.Table) {
 	d.tables[name] = t
 }
 
 // CreateTable creates a table with the given name and schema
-func (d *Database) CreateTable(ctx *sql.Context, name string, schema sql.Schema) error {
+func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Schema) error {
 	_, ok := d.tables[name]
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
@@ -145,7 +168,7 @@ func (d *Database) CreateTable(ctx *sql.Context, name string, schema sql.Schema)
 }
 
 // DropTable drops the table with the given name
-func (d *Database) DropTable(ctx *sql.Context, name string) error {
+func (d *BaseDatabase) DropTable(ctx *sql.Context, name string) error {
 	_, ok := d.tables[name]
 	if !ok {
 		return sql.ErrTableNotFound.New(name)
@@ -155,7 +178,7 @@ func (d *Database) DropTable(ctx *sql.Context, name string) error {
 	return nil
 }
 
-func (d *Database) RenameTable(ctx *sql.Context, oldName, newName string) error {
+func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) error {
 	tbl, ok := d.tables[oldName]
 	if !ok {
 		// Should be impossible (engine already checks this condition)
@@ -174,7 +197,7 @@ func (d *Database) RenameTable(ctx *sql.Context, oldName, newName string) error 
 	return nil
 }
 
-func (d *Database) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
+func (d *BaseDatabase) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
 	var triggers []sql.TriggerDefinition
 	for _, def := range d.triggers {
 		triggers = append(triggers, def)
@@ -182,12 +205,12 @@ func (d *Database) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error
 	return triggers, nil
 }
 
-func (d *Database) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinition) error {
+func (d *BaseDatabase) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinition) error {
 	d.triggers = append(d.triggers, definition)
 	return nil
 }
 
-func (d *Database) DropTrigger(ctx *sql.Context, name string) error {
+func (d *BaseDatabase) DropTrigger(ctx *sql.Context, name string) error {
 	found := false
 	for i, trigger := range d.triggers {
 		if trigger.Name == name {
@@ -203,7 +226,7 @@ func (d *Database) DropTrigger(ctx *sql.Context, name string) error {
 }
 
 // GetStoredProcedures implements sql.StoredProcedureDatabase
-func (d *Database) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
+func (d *BaseDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
 	var spds []sql.StoredProcedureDetails
 	for _, spd := range d.storedProcedures {
 		spds = append(spds, spd)
@@ -212,7 +235,7 @@ func (d *Database) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureD
 }
 
 // SaveStoredProcedure implements sql.StoredProcedureDatabase
-func (d *Database) SaveStoredProcedure(ctx *sql.Context, spd sql.StoredProcedureDetails) error {
+func (d *BaseDatabase) SaveStoredProcedure(ctx *sql.Context, spd sql.StoredProcedureDetails) error {
 	loweredName := strings.ToLower(spd.Name)
 	for _, existingSpd := range d.storedProcedures {
 		if strings.ToLower(existingSpd.Name) == loweredName {
@@ -224,7 +247,7 @@ func (d *Database) SaveStoredProcedure(ctx *sql.Context, spd sql.StoredProcedure
 }
 
 // DropStoredProcedure implements sql.StoredProcedureDatabase
-func (d *Database) DropStoredProcedure(ctx *sql.Context, name string) error {
+func (d *BaseDatabase) DropStoredProcedure(ctx *sql.Context, name string) error {
 	loweredName := strings.ToLower(name)
 	found := false
 	for i, spd := range d.storedProcedures {
@@ -238,6 +261,42 @@ func (d *Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 		return sql.ErrStoredProcedureDoesNotExist.New(name)
 	}
 	return nil
+}
+
+func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement string) error {
+	_, ok := d.views[name]
+	if ok {
+		return sql.ErrExistingView.New(name)
+	}
+
+	d.views[name] = selectStatement
+	return nil
+}
+
+func (d *Database) DropView(ctx *sql.Context, name string) error {
+	_, ok := d.views[name]
+	if !ok {
+		return sql.ErrViewDoesNotExist.New(name)
+	}
+
+	delete(d.views, name)
+	return nil
+}
+
+func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
+	var views []sql.ViewDefinition
+	for name, def := range d.views {
+		views = append(views, sql.ViewDefinition{
+			Name:           name,
+			TextDefinition: def,
+		})
+	}
+	return views, nil
+}
+
+func (d *Database) GetView(ctx *sql.Context, viewName string) (string, bool, error) {
+	viewDef, ok := d.views[viewName]
+	return viewDef, ok, nil
 }
 
 type ReadOnlyDatabase struct {

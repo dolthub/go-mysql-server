@@ -61,7 +61,9 @@ func TestNegateIndex(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	result, err := getIndexesByTable(ctx, a, node, nil)
 	require.NoError(err)
 
@@ -150,7 +152,9 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	result, err := getIndexesByTable(ctx, a, node, nil)
 	require.NoError(err)
 
@@ -1120,7 +1124,9 @@ func TestGetIndexes(t *testing.T) {
 		t.Run(tt.expr.String(), func(t *testing.T) {
 			require := require.New(t)
 
-			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+			sess := sql.NewBaseSession()
+			sess.SetIndexRegistry(idxReg)
+			ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 			ia, err := getIndexesForNode(ctx, a, nil)
 			require.NoError(err)
 			testExpr := convertIsNullForIndexes(ctx, tt.expr)
@@ -1224,7 +1230,9 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 		),
 	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	ia, err := getIndexesForNode(ctx, a, nil)
 	require.NoError(err)
 

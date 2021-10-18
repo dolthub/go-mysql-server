@@ -25,13 +25,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mockCreateView(isReplace bool) *CreateView {
+func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
 	table := memory.NewTable("mytable", sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int32},
 		{Name: "s", Source: "mytable", Type: sql.Text},
 	})
 
-	db := memory.NewDatabase("db")
 	db.AddTable("db", table)
 
 	subqueryAlias := NewSubqueryAlias("myview", "select i",
@@ -50,34 +49,106 @@ func mockCreateView(isReplace bool) *CreateView {
 
 // Tests that CreateView works as expected and that the view is registered in
 // the catalog when RowIter is called
-func TestCreateView(t *testing.T) {
+func TestCreateViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
-	createView := mockCreateView(false)
-	viewReg := sql.NewViewRegistry()
+	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false)
 
-	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
+	ctx := sql.NewContext(context.Background())
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(err)
 
 	expectedView := sql.NewView(createView.Name, createView.Child, createView.Definition.TextDefinition)
-	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
+	actualView, err := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
 	require.NoError(err)
-	require.Equal(expectedView, *actualView)
+	require.Equal(expectedView, actualView)
 }
 
 // Tests that CreateView RowIter returns an error when the view exists
-func TestCreateExistingView(t *testing.T) {
+func TestCreateExistingViewNative(t *testing.T) {
+	createView := newCreateView(memory.NewDatabase("mydb"), false)
+
+	ctx := sql.NewContext(context.Background())
+	_, err := createView.RowIter(ctx, nil)
+	require.NoError(t, err)
+
+	ctx = sql.NewContext(context.Background())
+	_, err = createView.RowIter(ctx, nil)
+	require.Error(t, err)
+	require.True(t, sql.ErrExistingView.Is(err))
+}
+
+// Tests that CreateView RowIter succeeds when the view exists and the
+// IsReplace flag is set to true
+func TestReplaceExistingViewNative(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	createView := newCreateView(db, false)
+
+	ctx := sql.NewContext(context.Background())
+	_, err := createView.RowIter(ctx, nil)
+	require.NoError(t, err)
+
+	expectedView := createView.Definition.TextDefinition
+	view, ok, err := db.GetView(ctx, createView.Name)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, expectedView, view)
+
+	// This is kind of nonsensical, but we just want to see if it gets stored correctly
+	subqueryAlias := NewSubqueryAlias("myview", "select i + 1",
+		NewProject(
+			[]sql.Expression{
+				expression.NewArithmetic(
+					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "i", true),
+					expression.NewLiteral(1, sql.Int8),
+					"+",
+				),
+			},
+			NewUnresolvedTable("dual", ""),
+		),
+	)
+
+	createView = NewCreateView(db, subqueryAlias.Name(), nil, subqueryAlias, true)
+	_, err = createView.RowIter(ctx, nil)
+	require.NoError(t, err)
+
+	view, ok, err = db.GetView(ctx, createView.Name)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, subqueryAlias.TextDefinition, view)
+}
+
+// Tests that CreateView works as expected and that the view is registered in
+// the catalog when RowIter is called
+func TestCreateViewNative(t *testing.T) {
+	db := memory.NewDatabase("mydb")
+	createView := newCreateView(db, false)
+
+	ctx := sql.NewContext(context.Background())
+	_, err := createView.RowIter(ctx, nil)
+	require.NoError(t, err)
+
+	actualView, ok, err := db.GetView(ctx, createView.Name)
+
+	require.True(t, ok)
+	require.NoError(t, err)
+	require.Equal(t, createView.Definition.TextDefinition, actualView)
+}
+
+// Tests that CreateView RowIter returns an error when the view exists
+func TestCreateExistingViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
-	createView := mockCreateView(false)
+	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false)
 
 	view := createView.View()
 	viewReg := sql.NewViewRegistry()
 	err := viewReg.Register(createView.database.Name(), view)
 	require.NoError(err)
 
-	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
+	sess := sql.NewBaseSession()
+	sess.SetViewRegistry(viewReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	_, err = createView.RowIter(ctx, nil)
 	require.Error(err)
 	require.True(sql.ErrExistingView.Is(err))
@@ -85,10 +156,10 @@ func TestCreateExistingView(t *testing.T) {
 
 // Tests that CreateView RowIter succeeds when the view exists and the
 // IsReplace flag is set to true
-func TestReplaceExistingView(t *testing.T) {
+func TestReplaceExistingViewWithRegistry(t *testing.T) {
 	require := require.New(t)
 
-	createView := mockCreateView(true)
+	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false)
 
 	view := sql.NewView(createView.Name, nil, "")
 	viewReg := sql.NewViewRegistry()
@@ -97,12 +168,14 @@ func TestReplaceExistingView(t *testing.T) {
 
 	createView.IsReplace = true
 
-	ctx := sql.NewContext(context.Background(), sql.WithViewRegistry(viewReg))
+	sess := sql.NewBaseSession()
+	sess.SetViewRegistry(viewReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	_, err = createView.RowIter(ctx, nil)
 	require.NoError(err)
 
 	expectedView := createView.View()
-	actualView, err := viewReg.View(createView.database.Name(), createView.Name)
+	actualView, err := ctx.GetViewRegistry().View(createView.database.Name(), createView.Name)
 	require.NoError(err)
-	require.Equal(expectedView, *actualView)
+	require.Equal(expectedView, actualView)
 }

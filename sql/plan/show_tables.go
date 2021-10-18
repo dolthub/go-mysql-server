@@ -119,9 +119,22 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		rows = append(rows, row)
 	}
 
-	// TODO: currently there is no way to see views AS OF a particular time, because they are always defined in the
-	//  context's view registry, rather than through a true integration point.
-	for _, view := range ctx.ViewsInDatabase(p.db.Name()) {
+	// TODO: currently there is no way to see views AS OF a particular time
+	if vdb, ok := p.db.(sql.ViewDatabase); ok {
+		views, err := vdb.AllViews(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, view := range views {
+			row := sql.Row{view.Name}
+			if p.Full {
+				row = append(row, "VIEW")
+			}
+			rows = append(rows, row)
+		}
+	}
+
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(p.db.Name()) {
 		row := sql.Row{view.Name()}
 		if p.Full {
 			row = append(row, "VIEW")

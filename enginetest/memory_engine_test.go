@@ -577,6 +577,9 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 
 func newUnmergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
 	db, table := findTable(dbs, tableName)
+	if db == nil {
+		return nil
+	}
 	return &memory.UnmergeableIndex{
 		memory.MergeableIndex{
 			DB:         db.Name(),
