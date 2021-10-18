@@ -47,7 +47,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 			}
 
 			if vdb, ok := db.(sql.ViewDatabase); ok {
-				viewDef, ok, err := vdb.GetView(viewName)
+				viewDef, ok, err := vdb.GetView(ctx, viewName)
 				if err != nil {
 					return nil, err
 				}

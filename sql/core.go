@@ -744,10 +744,10 @@ type ViewDatabase interface {
 	DropView(ctx *Context, name string) error
 
 	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
-	GetView(viewName string) (string, bool, error)
+	GetView(ctx *Context, viewName string) (string, bool, error)
 
 	// AllViews returns the definitions of all views in the database
-	AllViews() ([]ViewDefinition, error)
+	AllViews(ctx *Context) ([]ViewDefinition, error)
 }
 
 // TableDropper should be implemented by databases that can drop tables.

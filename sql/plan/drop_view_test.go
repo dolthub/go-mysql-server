@@ -112,7 +112,7 @@ func TestDropExistingViewNative(t *testing.T) {
 		_, err := dropView.RowIter(ctx, nil)
 		require.NoError(t, err)
 
-		_, ok, err := db.GetView(view.Name())
+		_, ok, err := db.GetView(ctx, view.Name())
 		require.NoError(t, err)
 		require.False(t, ok)
 	}
@@ -133,7 +133,7 @@ func TestDropNonExistingViewNative(t *testing.T) {
 
 		_, dropErr := dropView.RowIter(ctx, nil)
 
-		_, ok, err := db.GetView(view.Name())
+		_, ok, err := db.GetView(ctx, view.Name())
 		require.NoError(t, err)
 		require.True(t, ok)
 

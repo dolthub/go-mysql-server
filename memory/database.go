@@ -283,7 +283,7 @@ func (d *Database) DropView(ctx *sql.Context, name string) error {
 	return nil
 }
 
-func (d *Database) AllViews() ([]sql.ViewDefinition, error) {
+func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 	var views []sql.ViewDefinition
 	for name, def := range d.views {
 		views = append(views, sql.ViewDefinition{
@@ -294,7 +294,7 @@ func (d *Database) AllViews() ([]sql.ViewDefinition, error) {
 	return views, nil
 }
 
-func (d *Database) GetView(viewName string) (string, bool, error) {
+func (d *Database) GetView(ctx *sql.Context, viewName string) (string, bool, error) {
 	viewDef, ok := d.views[viewName]
 	return viewDef, ok, nil
 }

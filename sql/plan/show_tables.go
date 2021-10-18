@@ -121,7 +121,7 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 	// TODO: currently there is no way to see views AS OF a particular time
 	if vdb, ok := p.db.(sql.ViewDatabase); ok {
-		views, err := vdb.AllViews()
+		views, err := vdb.AllViews(ctx)
 		if err != nil {
 			return nil, err
 		}

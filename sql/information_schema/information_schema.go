@@ -1089,12 +1089,12 @@ func viewRowIter(context *Context, catalog Catalog) (RowIter, error) {
 // viewsInDatabase returns all views defined on the database given, consulting both the database itself as well as any
 // views defined in session memory. Typically there will not be both types of views on a single database, but the
 // interfaces do make it possible.
-func viewsInDatabase(context *Context, db Database) ([]ViewDefinition, error) {
+func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	var views []ViewDefinition
 	dbName := db.Name()
 
 	if vdb, ok := db.(ViewDatabase); ok {
-		dbViews, err := vdb.AllViews()
+		dbViews, err := vdb.AllViews(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -1104,7 +1104,7 @@ func viewsInDatabase(context *Context, db Database) ([]ViewDefinition, error) {
 		}
 	}
 
-	for _, view := range context.GetViewRegistry().ViewsInDatabase(dbName) {
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
 		views = append(views, ViewDefinition{
 			Name:           view.Name(),
 			TextDefinition: view.TextDefinition(),

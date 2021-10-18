@@ -89,7 +89,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedView := createView.Definition.TextDefinition
-	view, ok, err := db.GetView(createView.Name)
+	view, ok, err := db.GetView(ctx, createView.Name)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, expectedView, view)
@@ -112,7 +112,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	_, err = createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	view, ok, err = db.GetView(createView.Name)
+	view, ok, err = db.GetView(ctx, createView.Name)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, subqueryAlias.TextDefinition, view)
@@ -128,7 +128,7 @@ func TestCreateViewNative(t *testing.T) {
 	_, err := createView.RowIter(ctx, nil)
 	require.NoError(t, err)
 
-	actualView, ok, err := db.GetView(createView.Name)
+	actualView, ok, err := db.GetView(ctx, createView.Name)
 
 	require.True(t, ok)
 	require.NoError(t, err)
