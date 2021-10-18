@@ -135,4 +135,3 @@ func applyDatabaseQualifierToView(n sql.Node, a *Analyzer, dbName string) (sql.N
 		return n, nil
 	})
 }
-

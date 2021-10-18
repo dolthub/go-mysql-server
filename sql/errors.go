@@ -348,7 +348,7 @@ var (
 	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
 
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
-	ErrExistingView     = errors.NewKind("the view %s.%s already exists")
+	ErrExistingView = errors.NewKind("the view %s.%s already exists")
 
 	// ErrViewDoesNotExist is returned when a DROP VIEW statement drops a view that does not exist
 	ErrViewDoesNotExist = errors.NewKind("the view %s.%s does not exist")
