@@ -21,7 +21,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 		var jn sql.Node
 		plan.Inspect(us, func(node sql.Node) bool {
 			switch node.(type) {
-			case *plan.CrossJoin, plan.JoinNode, *plan.IndexedJoin:
+			case *plan.CrossJoin, plan.JoinNode, *plan.IndexedJoin, *plan.IndexedJoinSorter:
 				jn = node
 				return false
 			default:

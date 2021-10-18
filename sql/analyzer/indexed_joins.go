@@ -54,11 +54,14 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 	var tableAliases TableAliases
 	var joinIndexes joinIndexesByTable
+	var oldJoin sql.Node
 	newJoin, err := plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, error) {
 		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
 			return n, nil
 		case plan.JoinNode:
+			oldJoin = n
+
 			var err error
 			tableAliases, err = getTableAliases(n, scope)
 			if err != nil {
@@ -98,7 +101,40 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		return n, nil
 	}
 
-	return withIndexedTableAccess, nil
+	return wrapIndexedJoinForUpdateCases(withIndexedTableAccess, oldJoin)
+}
+
+func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, error) {
+	if _, ok := node.(*plan.Update); !ok {
+		return node, nil
+	}
+
+	var ij sql.Node
+	plan.Inspect(node, func(node sql.Node) (bool) {
+		switch n := node.(type) {
+		case *plan.IndexedJoin:
+			ij = n
+			return false
+		default:
+			return true
+		}
+	})
+
+	ijs := plan.NewIndexedJoinSorter(ij, oldJoin.Schema())
+
+	us := node.(*plan.Update).Child
+	us, err := us.WithChildren(ijs)
+
+	if err != nil {
+		return nil, err
+	}
+
+	wc, err := node.WithChildren(us)
+	if err != nil {
+		return nil, err
+	}
+
+	return wc, nil
 }
 
 // replaceTableAccessWithIndexedAccess replaces table access with indexed access where possible. This can't be a
