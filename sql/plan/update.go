@@ -55,6 +55,8 @@ func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return getUpdatable(node.Left())
 	case sql.TableWrapper:
 		return getUpdatableTable(node.Underlying())
+	case *UpdateJoin:
+		return node.GetUpdatable(), nil
 	}
 	if len(node.Children()) > 1 {
 		return nil, ErrUpdateNotSupported.New()

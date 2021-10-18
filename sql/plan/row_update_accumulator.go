@@ -32,6 +32,7 @@ const (
 	UpdateTypeDuplicateKeyUpdate
 	UpdateTypeUpdate
 	UpdateTypeDelete
+	UpdateTypeJoinUpdate
 )
 
 // RowUpdateAccumulator wraps other nodes that update tables, and returns their results as OKResults with the appropriate
@@ -184,6 +185,64 @@ func (u *updateRowHandler) okResult() sql.OkResult {
 	}
 }
 
+// updateJoinRowHandler handles row update count for all UPDATEs that use a JOIN.
+type updateJoinRowHandler struct {
+	rowsMatched  int
+	rowsAffected int
+	joinSchema   sql.Schema
+	tableMap     map[string]sql.Schema // Needs to only be the tables that can be updated.
+	updaterMap   map[string]sql.RowUpdater
+}
+
+func (u *updateJoinRowHandler) handleRowUpdate(row sql.Row) error {
+	oldJoinRow := row[:len(row)/2]
+	newJoinRow := row[len(row)/2:]
+
+	tableToOldRow := splitRowIntoTableRowMap(oldJoinRow, u.joinSchema)
+	tableToNewRow := splitRowIntoTableRowMap(newJoinRow, u.joinSchema)
+
+	for tableName, _ := range u.updaterMap {
+		u.rowsMatched++ // TODO: This currently returns the incorrect answer
+		tableOldRow := tableToOldRow[tableName]
+		tableNewRow := tableToNewRow[tableName]
+		if equals, err := tableOldRow.Equals(tableNewRow, u.tableMap[tableName]); err == nil {
+			if !equals {
+				u.rowsAffected++
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+func (u *updateJoinRowHandler) okResult() sql.OkResult {
+	return sql.OkResult{
+		RowsAffected: uint64(u.rowsAffected),
+		Info: UpdateInfo{
+			Matched:  u.rowsMatched,
+			Updated:  u.rowsAffected,
+			Warnings: 0,
+		},
+	}
+}
+
+// recreateTableSchemaFromJoinSchema takes a join schema and recreates each individual tables schema.
+func recreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
+	ret := make(map[string]sql.Schema, 0)
+
+	for _, c := range joinSchema {
+		potential, exists := ret[c.Source]
+		if exists {
+			ret[c.Source] = append(potential, c)
+		} else {
+			ret[c.Source] = sql.Schema{c}
+		}
+	}
+
+	return ret
+}
+
 type deleteRowHandler struct {
 	rowsAffected int
 }
@@ -270,6 +329,27 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2]}
 	case UpdateTypeDelete:
 		rowHandler = &deleteRowHandler{}
+	case UpdateTypeJoinUpdate:
+		var schema sql.Schema
+		var updaterMap map[string]sql.RowUpdater
+		Inspect(r.Child, func(node sql.Node) bool {
+			switch node.(type) {
+			case JoinNode:
+				schema = node.Schema()
+				return false
+			case *UpdateJoin:
+				updaterMap = node.(*UpdateJoin).updaters
+				return true
+			}
+
+			return true
+		})
+
+		if schema == nil {
+			return nil, fmt.Errorf("error: No JoinNode found in query plan to go along with an UpdateTypeJoinUpdate")
+		}
+
+		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}
 	default:
 		panic(fmt.Sprintf("Unrecognized RowUpdateType %d", r.RowUpdateType))
 	}

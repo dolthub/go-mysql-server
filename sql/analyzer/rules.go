@@ -99,6 +99,7 @@ var OnceAfterDefault = []Rule{
 	{"resolve_insert_rows", resolveInsertRows},
 	{"apply_triggers", applyTriggers},
 	{"apply_procedures", applyProcedures},
+	{"modify_update_expressions_for_join", modifyUpdateExpressionsForJoin},
 	{"apply_row_update_accumulators", applyUpdateAccumulators},
 }
 
