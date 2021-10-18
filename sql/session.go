@@ -133,7 +133,7 @@ type BaseSession struct {
 	logger           *logrus.Entry
 	currentDB        string
 	persistConf      config.WritableConfig
-	sessionVars      map[string]interface{}
+	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
 	warnings         []*Warning
 	warncnt          uint16
@@ -193,7 +193,7 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for k, v := range s.sessionVars {
+	for k, v := range s.systemVars {
 		m[k] = v
 	}
 	return m
@@ -255,7 +255,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.sessionVars[sysVar.Name] = convertedVal
+	s.systemVars[sysVar.Name] = convertedVal
 	return nil
 }
 
@@ -275,9 +275,9 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	val, ok := s.sessionVars[strings.ToLower(sysVarName)]
+	val, ok := s.systemVars[strings.ToLower(sysVarName)]
 	if !ok {
-		s.sessionVars[strings.ToLower(sysVarName)] = sysVar.Default
+		s.systemVars[strings.ToLower(sysVarName)] = sysVar.Default
 		val = sysVar.Default
 	}
 	return val, nil
@@ -495,7 +495,7 @@ func NewSession(server string, client Client, id uint32, conf config.WritableCon
 		addr:          server,
 		client:        client,
 		id:            id,
-		sessionVars:   SystemVariables.NewSessionMap(),
+		systemVars:   SystemVariables.NewSessionMap(),
 		persistConf:   conf,
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
@@ -511,7 +511,7 @@ var autoSessionIDs uint32 = 1
 func NewBaseSession() Session {
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
-		sessionVars:   SystemVariables.NewSessionMap(),
+		systemVars:   SystemVariables.NewSessionMap(),
 		persistConf:   config.NewMapConfig(map[string]string{}),
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
