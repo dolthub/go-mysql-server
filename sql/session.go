@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/config"
+
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
@@ -57,6 +59,10 @@ type Session interface {
 	Address() string
 	// Client returns the user of the session.
 	Client() Client
+	// SetPersistedVariable sets the given system variable to the value given for this session.
+	PersistVariable(ctx *Context, sysVarName string, value interface{}) error
+	// SetPersistedVariable sets the given system variable to the value given for this session.
+	UnPersistVariable(ctx *Context, sysVarName string) error
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
@@ -125,7 +131,8 @@ type BaseSession struct {
 	// |mu| protects the following state
 	logger           *logrus.Entry
 	currentDB        string
-	systemVars       map[string]interface{}
+	persistConf      config.WritableConfig
+	sessionVars      map[string]interface{}
 	userVars         map[string]interface{}
 	warnings         []*Warning
 	warncnt          uint16
@@ -185,10 +192,48 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for k, v := range s.systemVars {
+	for k, v := range s.sessionVars {
 		m[k] = v
 	}
 	return m
+}
+
+// PersistVariable implements the Session interface.
+func (s *BaseSession) PersistVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	if !ok {
+		return ErrUnknownSystemVariable.New(sysVarName)
+	}
+	if !sysVar.Dynamic {
+		return ErrSystemVariableReadOnly.New(sysVarName)
+	}
+	if !IsTextOnly(sysVar.Type) {
+		panic("max fix")
+	}
+	//convertedVal, err := sysVar.Type.Convert(value)
+	//if err != nil {
+	//	return err
+	//}
+	convertedVal, _ := value.(string)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.persistConf.SetStrings(map[string]string{sysVar.Name: convertedVal})
+	return nil
+}
+
+// UnPersistVariable implements the Session interface.
+func (s *BaseSession) UnPersistVariable(ctx *Context, sysVarName string) error {
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	if !ok {
+		return ErrUnknownSystemVariable.New(sysVarName)
+	}
+	if !sysVar.Dynamic {
+		return ErrSystemVariableReadOnly.New(sysVarName)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.persistConf.Unset([]string{sysVar.Name})
+	return nil
 }
 
 // SetSessionVariable implements the Session interface.
@@ -209,7 +254,7 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.systemVars[sysVar.Name] = convertedVal
+	s.sessionVars[sysVar.Name] = convertedVal
 	return nil
 }
 
@@ -229,9 +274,9 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	val, ok := s.systemVars[strings.ToLower(sysVarName)]
+	val, ok := s.sessionVars[strings.ToLower(sysVarName)]
 	if !ok {
-		s.systemVars[strings.ToLower(sysVarName)] = sysVar.Default
+		s.sessionVars[strings.ToLower(sysVarName)] = sysVar.Default
 		val = sysVar.Default
 	}
 	return val, nil
@@ -444,12 +489,13 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 }
 
 // NewSession creates a new session with data.
-func NewSession(server string, client Client, id uint32) Session {
+func NewSession(server string, client Client, id uint32, conf config.WritableConfig) Session {
 	return &BaseSession{
 		addr:          server,
 		client:        client,
 		id:            id,
-		systemVars:    SystemVariables.NewSessionMap(),
+		sessionVars:   make(map[string]interface{}),
+		persistConf:   conf,
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
@@ -464,7 +510,8 @@ var autoSessionIDs uint32 = 1
 func NewBaseSession() Session {
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:    SystemVariables.NewSessionMap(),
+		sessionVars:   SystemVariables.NewSessionMap(),
+		persistConf:   nil,
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),

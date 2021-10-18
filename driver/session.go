@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/config"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -17,5 +18,5 @@ type DefaultSessionBuilder struct{}
 
 // NewSession calls sql.NewSession.
 func (DefaultSessionBuilder) NewSession(ctx context.Context, id uint32, conn *Connector) (sql.Session, error) {
-	return sql.NewSession(conn.Server(), sql.Client{Address: fmt.Sprintf("#%d", id)}, id), nil
+	return sql.NewSession(conn.Server(), sql.Client{Address: fmt.Sprintf("#%d", id)}, id, config.NewMapConfig(map[string]string{})), nil
 }

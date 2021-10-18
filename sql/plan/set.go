@@ -148,6 +148,25 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
+	case sql.SystemVariableScope_Persist:
+		err = ctx.PersistVariable(ctx, sysVar.Name, val)
+		if err != nil {
+			return err
+		}
+		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
+		if err != nil {
+			return err
+		}
+	case sql.SystemVariableScope_PersistOnly:
+		err = ctx.PersistVariable(ctx, sysVar.Name, val)
+		if err != nil {
+			return err
+		}
+	case sql.SystemVariableScope_Unpersist:
+		err = ctx.UnPersistVariable(ctx, sysVar.Name)
+		if err != nil {
+			return err
+		}
 	default: // should never be hit
 		return fmt.Errorf("unable to set `%s` due to unknown scope `%v`", sysVar.Name, sysVar.Scope)
 	}
