@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/config"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -177,6 +178,10 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	for _, tt := range VersionedQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, tt.Bindings)
+	}
+
+	for _, tt := range VersionedScripts {
+		TestScriptWithEngine(t, engine, harness, tt)
 	}
 }
 
@@ -1947,6 +1952,24 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE child3 (pk BIGINT PRIMARY KEY);")
 		TestQuery(t, harness, e, "ALTER TABLE child3 ADD COLUMN v1 BIGINT NULL, ADD CONSTRAINT fk_child3 FOREIGN KEY (v1) REFERENCES parent3(v1);", []sql.Row(nil), nil, nil)
 	})
+
+	TestScript(t, harness, ScriptTest{
+		Name: "Do not validate foreign keys if FOREIGN_KEY_CHECKS is set to zero",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SET FOREIGN_KEY_CHECKS=0;",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_child4 FOREIGN KEY (pk) REFERENCES delayed_parent4 (pk))",
+				Expected: nil,
+			},
+			{
+				Query:    "CREATE TABLE delayed_parent4 (pk BIGINT PRIMARY KEY)",
+				Expected: nil,
+			},
+		},
+	})
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
@@ -3555,7 +3578,7 @@ func NewSession(harness Harness) *sql.Context {
 // Returns a new BaseSession compatible with these tests. Most tests will work with any session implementation, but for
 // full compatibility use a session based on this one.
 func NewBaseSession() sql.Session {
-	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1)
+	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1, config.NewMapConfig(map[string]string{}))
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {

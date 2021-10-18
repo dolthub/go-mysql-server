@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -89,7 +90,7 @@ func TestExchangeCancelled(t *testing.T) {
 				expression.NewGetField(1, sql.Int64, "val", false),
 				expression.NewLiteral(int64(4), sql.Int64),
 			),
-			&partitionable{nil, 3, 6},
+			&partitionable{nil, 3, 2048},
 		),
 	)
 
@@ -107,14 +108,40 @@ func TestExchangeCancelled(t *testing.T) {
 	require.Equal(context.Canceled, err)
 }
 
-func TestExchangePanicRecover(t *testing.T) {
+func TestExchangeIterPartitionsPanic(t *testing.T) {
 	ctx := sql.NewContext(context.Background())
-	it := &partitionPanic{}
-	ex := newExchangeRowIter(ctx, 1, it, nil, nil)
-	ex.start()
-	it.Close(ctx)
+	piter, err := (&partitionable{nil, 3, 2048}).Partitions(ctx)
+	assert.NoError(t, err)
+	closedCh := make(chan sql.Partition)
+	close(closedCh)
+	err = iterPartitions(ctx, piter, closedCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
 
-	require.True(t, it.closed)
+	openCh := make(chan sql.Partition)
+	err = iterPartitions(ctx, &partitionPanic{}, openCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+}
+
+func TestExchangeIterPartitionRowsPanic(t *testing.T) {
+	ctx := sql.NewContext(context.Background())
+	partitions := make(chan sql.Partition, 1)
+	partitions <- Partition("test")
+	err := iterPartitionRows(ctx, func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+		return &rowIterPanic{}, nil
+	}, partitions, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+
+	closedCh := make(chan sql.Row)
+	close(closedCh)
+	partitions <- Partition("test")
+	err = iterPartitionRows(ctx, func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+		return &partitionRows{Partition("test"), 10}, nil
+	}, partitions, closedCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
 }
 
 type partitionable struct {
@@ -191,6 +218,17 @@ func (r *partitionRows) Next() (sql.Row, error) {
 
 func (r *partitionRows) Close(*sql.Context) error {
 	atomic.StoreInt32(&r.num, -1)
+	return nil
+}
+
+type rowIterPanic struct {
+}
+
+func (*rowIterPanic) Next() (sql.Row, error) {
+	panic("i panic")
+}
+
+func (*rowIterPanic) Close(*sql.Context) error {
 	return nil
 }
 

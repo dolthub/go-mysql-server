@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql/config"
 	"io/ioutil"
 	"net"
 	"reflect"
@@ -99,7 +100,7 @@ func brokenTestServer(t *testing.T, ready chan struct{}, port string) {
 // This session builder is used as dummy mysql Conn is not complete and
 // causes panic when accessing remote address.
 func testSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
-	return sql.NewSession(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
+	return sql.NewSession(addr, sql.Client{Address: "127.0.0.1:34567", User: c.User, Capabilities: c.Capabilities}, c.ConnectionID, config.NewMapConfig(nil)), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 }
 
 type mockConn struct {

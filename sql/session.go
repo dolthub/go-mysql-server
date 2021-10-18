@@ -29,6 +29,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 type key uint
@@ -686,10 +687,7 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	nc := *c
-	nc.Context = ctx
-
-	return span, &nc
+	return span, c.WithContext(ctx)
 }
 
 // NewSubContext creates a new sub-context with the current context as parent. Returns the resulting context.CancelFunc
@@ -697,10 +695,7 @@ func (c *Context) Span(
 func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(c.Context)
 
-	nc := *c
-	nc.Context = ctx
-
-	return &nc, cancelFunc
+	return c.WithContext(ctx), cancelFunc
 }
 
 func (c *Context) WithCurrentDB(db string) *Context {
@@ -736,6 +731,11 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 		Code:    code,
 		Message: fmt.Sprintf(msg, args...),
 	})
+}
+
+func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
+	eg, egCtx := errgroup.WithContext(c.Context)
+	return eg, c.WithContext(egCtx)
 }
 
 // NewSpanIter creates a RowIter executed in the given span.

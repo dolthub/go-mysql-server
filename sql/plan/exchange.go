@@ -20,6 +20,7 @@ import (
 	"io"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -66,7 +67,49 @@ func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return newExchangeRowIter(ctx, e.Parallelism, partitions, row, e.Child), nil
+	// How this is structured is a little subtle. A top-level
+	// errgroup run |iterPartitions| and listens on the shutdown
+	// hook.  A different, dependent, errgroup runs
+	// |e.Parallelism| instances of |iterPartitionRows|. A
+	// goroutine within the top-level errgroup |Wait|s on the
+	// dependent errgroup and closes |rowsCh| once all its
+	// goroutines are completed.
+
+	partitionsCh := make(chan sql.Partition)
+	rowsCh := make(chan sql.Row, e.Parallelism*16)
+
+	eg, egCtx := ctx.NewErrgroup()
+	eg.Go(func() error {
+		defer close(partitionsCh)
+		return iterPartitions(egCtx, partitions, partitionsCh)
+	})
+
+	// Spawn |iterPartitionRows| goroutines in the dependent
+	// errgroup.
+	getRowIter := e.getRowIterFunc(row)
+	seg, segCtx := egCtx.NewErrgroup()
+	for i := 0; i < e.Parallelism; i++ {
+		seg.Go(func() error {
+			return iterPartitionRows(segCtx, getRowIter, partitionsCh, rowsCh)
+		})
+	}
+
+	eg.Go(func() error {
+		defer close(rowsCh)
+		err := seg.Wait()
+		if err != nil {
+			return err
+		}
+		// If everything in |seg| returned |nil|,
+		// |iterPartitions| is done, |partitionsCh| is closed,
+		// and every partition RowIter returned |EOF|. That
+		// means we're EOF here.
+		return io.EOF
+	})
+
+	waiter := func() error { return eg.Wait() }
+	shutdownHook := newShutdownHook(eg, egCtx)
+	return &exchangeRowIter{shutdownHook, waiter, rowsCh}, nil
 }
 
 func (e *Exchange) String() string {
@@ -92,272 +135,48 @@ func (e *Exchange) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewExchange(e.Parallelism, children[0]), nil
 }
 
+func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+	return func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+		node, err := TransformUp(e.Child, func(n sql.Node) (sql.Node, error) {
+			if t, ok := n.(sql.Table); ok {
+				return &exchangePartition{partition, t}, nil
+			}
+			return n, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return node.RowIter(ctx, row)
+	}
+}
+
+// exchangeRowIter implements sql.RowIter for an exchange
+// node. Calling |Next| reads off of |rows|, while calling |Close|
+// calls |shutdownHook| and waits for exchange node workers to
+// shutdown. If |rows| is closed, |Next| returns the error returned by
+// |waiter|. |Close| returns the error returned by |waiter|, except it
+// returns |nil| if |waiter| returns |io.EOF| or |shutdownHookErr|.
 type exchangeRowIter struct {
-	ctx         *sql.Context
-	parallelism int
-	partitions  sql.PartitionIter
-	row         sql.Row
-	tree        sql.Node
-	mut         sync.RWMutex
-	tokensChan  chan struct{}
-	started     bool
-	rows        chan sql.Row
-	err         chan error
-
-	quitMut  sync.RWMutex
-	quitChan chan struct{}
+	shutdownHook func()
+	waiter       func() error
+	rows         <-chan sql.Row
 }
 
-func newExchangeRowIter(
-	ctx *sql.Context,
-	parallelism int,
-	iter sql.PartitionIter,
-	row sql.Row,
-	tree sql.Node,
-) *exchangeRowIter {
-	return &exchangeRowIter{
-		ctx:         ctx,
-		parallelism: parallelism,
-		rows:        make(chan sql.Row, parallelism*16),
-		err:         make(chan error, 1),
-		started:     false,
-		tree:        tree,
-		partitions:  iter,
-		row:         row,
-		quitChan:    make(chan struct{}),
+func (i *exchangeRowIter) Next() (sql.Row, error) {
+	r, ok := <-i.rows
+	if !ok {
+		return nil, i.waiter()
 	}
+	return r, nil
 }
 
-func (it *exchangeRowIter) releaseToken() {
-	it.mut.Lock()
-	defer it.mut.Unlock()
-
-	if it.tokensChan != nil {
-		it.tokensChan <- struct{}{}
+func (i *exchangeRowIter) Close(ctx *sql.Context) error {
+	i.shutdownHook()
+	err := i.waiter()
+	if err == shutdownHookErr || err == io.EOF {
+		return nil
 	}
-}
-
-func (it *exchangeRowIter) closeTokens() {
-	it.mut.Lock()
-	defer it.mut.Unlock()
-
-	close(it.tokensChan)
-	it.tokensChan = nil
-}
-
-func (it *exchangeRowIter) tokens() chan struct{} {
-	it.mut.RLock()
-	defer it.mut.RUnlock()
-	return it.tokensChan
-}
-
-func (it *exchangeRowIter) fillTokens() {
-	it.mut.Lock()
-	defer it.mut.Unlock()
-
-	it.tokensChan = make(chan struct{}, it.parallelism)
-	for i := 0; i < it.parallelism; i++ {
-		it.tokensChan <- struct{}{}
-	}
-}
-
-func (it *exchangeRowIter) start() {
-	it.fillTokens()
-
-	var partitions = make(chan sql.Partition)
-	go it.iterPartitions(partitions)
-
-	var wg sync.WaitGroup
-
-	for {
-		select {
-		case <-it.ctx.Done():
-			it.tryWriteErr(context.Canceled)
-			it.closeTokens()
-			return
-		case <-it.quit():
-			it.closeTokens()
-			return
-		case p, ok := <-partitions:
-			if !ok {
-				it.closeTokens()
-
-				wg.Wait()
-				close(it.rows)
-				return
-			}
-
-			wg.Add(1)
-			go func(p sql.Partition) {
-				it.iterPartition(p)
-				wg.Done()
-
-				it.releaseToken()
-			}(p)
-		}
-	}
-}
-
-func (it *exchangeRowIter) iterPartitions(ch chan<- sql.Partition) {
-	defer func() {
-		if x := recover(); x != nil {
-			it.tryWriteErr(fmt.Errorf("mysql_server caught panic:\n%v", x))
-		}
-
-		close(ch)
-	}()
-
-	for {
-		select {
-		case <-it.ctx.Done():
-			it.tryWriteErr(context.Canceled)
-			return
-		case <-it.quit():
-			return
-		case <-it.tokens():
-		}
-
-		p, err := it.partitions.Next()
-		if err != nil {
-			if err != io.EOF {
-				it.tryWriteErr(err)
-			}
-			return
-		}
-
-		select {
-		case ch <- p:
-		case <-it.ctx.Done():
-			it.tryWriteErr(context.Canceled)
-			return
-		case <-it.quit():
-			return
-		}
-	}
-}
-
-func (it *exchangeRowIter) tryWriteErr(err error) {
-	select {
-	case it.err <- err:
-	default:
-	}
-}
-
-func (it *exchangeRowIter) iterPartition(p sql.Partition) {
-	span, ctx := it.ctx.Span("exchange.IterPartition")
-	rowCount := 0
-	defer func() {
-		span.LogKV("num_rows", rowCount)
-		span.Finish()
-	}()
-
-	node, err := TransformUp(it.tree, func(n sql.Node) (sql.Node, error) {
-		if t, ok := n.(sql.Table); ok {
-			return &exchangePartition{p, t}, nil
-		}
-
-		return n, nil
-	})
-	if err != nil {
-		it.tryWriteErr(err)
-		return
-	}
-
-	rows, err := node.RowIter(ctx, it.row)
-	if err != nil {
-		it.tryWriteErr(err)
-		return
-	}
-
-	defer func() {
-		if err := rows.Close(ctx); err != nil {
-			it.tryWriteErr(err)
-		}
-	}()
-
-	quitChan := it.quit()
-	for {
-		select {
-		case <-it.ctx.Done():
-			it.tryWriteErr(context.Canceled)
-			return
-
-		case <-quitChan:
-			return
-
-		default:
-		}
-
-		var row sql.Row
-		var err error
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					err = fmt.Errorf("panic in iterPartition: %v", r)
-				}
-			}()
-			row, err = rows.Next()
-		}()
-
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-
-			it.tryWriteErr(err)
-			return
-		}
-
-		rowCount++
-
-		select {
-		case it.rows <- row:
-		case <-quitChan:
-			return
-		case <-it.ctx.Done():
-			it.tryWriteErr(context.Canceled)
-			return
-		}
-	}
-}
-
-func (it *exchangeRowIter) Next() (sql.Row, error) {
-	if !it.started {
-		it.started = true
-		go it.start()
-	}
-
-	select {
-	case err := <-it.err:
-		_ = it.Close(it.ctx)
-		return nil, err
-	case row, ok := <-it.rows:
-		if !ok {
-			return nil, io.EOF
-		}
-		return row, nil
-	}
-}
-
-func (it *exchangeRowIter) quit() chan struct{} {
-	it.quitMut.RLock()
-	defer it.quitMut.RUnlock()
-	return it.quitChan
-}
-
-func (it *exchangeRowIter) Close(ctx *sql.Context) error {
-	it.quitMut.Lock()
-	if it.quitChan != nil {
-		close(it.quitChan)
-		it.quitChan = nil
-	}
-	it.quitMut.Unlock()
-
-	if it.partitions != nil {
-		return it.partitions.Close(ctx)
-	}
-
-	return nil
+	return err
 }
 
 type exchangePartition struct {
@@ -390,4 +209,125 @@ func (p *exchangePartition) WithChildren(children ...sql.Node) (sql.Node, error)
 	}
 
 	return p, nil
+}
+
+type rowIterPartitionFunc func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error)
+
+func sendAllRows(ctx *sql.Context, iter sql.RowIter, rows chan<- sql.Row) (rowCount int, rerr error) {
+	defer func() {
+		cerr := iter.Close(ctx)
+		if rerr == nil {
+			rerr = cerr
+		}
+	}()
+	for {
+		r, err := iter.Next()
+		if err == io.EOF {
+			return rowCount, nil
+		}
+		if err != nil {
+			return rowCount, err
+		}
+		rowCount++
+		select {
+		case rows <- r:
+		case <-ctx.Done():
+			return rowCount, ctx.Err()
+		}
+	}
+}
+
+// iterPartitionRows is the parallel worker for an Exchange node. It
+// is meant to be run as a goroutine in an errgroup.Group. It will
+// values read off of |partitions|. For each value it reads, it will
+// call |getRowIter| to get a row iter, and will then call |Next| on
+// that row iter, passing every row it gets into |rows|. If it
+// receives an error at any point, it returns it. |iterPartitionRows|
+// stops iterating and returns |nil| when |partitions| is closed.
+func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partitions <-chan sql.Partition, rows chan<- sql.Row) (rerr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			rerr = fmt.Errorf("panic in ExchangeIterPartitionRows: %v", r)
+		}
+	}()
+	for {
+		select {
+		case p, ok := <-partitions:
+			if !ok {
+				return nil
+			}
+			span, ctx := ctx.Span("exchange.IterPartition")
+			iter, err := getRowIter(ctx, p)
+			if err != nil {
+				return err
+			}
+			count, err := sendAllRows(ctx, iter, rows)
+			span.LogKV("num_rows", count)
+			span.Finish()
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+// iterPartitions will call Next() on |iter| and send every result it
+// finds to |partitions|.  Meant to be run as a goroutine in an
+// errgroup, it returns a non-nil error if it gets an error and it
+// return |ctx.Err()| if the context becomes Done().
+func iterPartitions(ctx *sql.Context, iter sql.PartitionIter, partitions chan<- sql.Partition) (rerr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			rerr = fmt.Errorf("panic in iterPartitions: %v", r)
+		}
+	}()
+	defer func() {
+		cerr := iter.Close(ctx)
+		if rerr == nil {
+			rerr = cerr
+		}
+	}()
+	for {
+		p, err := iter.Next()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		select {
+		case partitions <- p:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+var shutdownHookErr = fmt.Errorf("shutdown hook")
+
+// newShutdownHook returns a |func()| that can be called to cancel the
+// |ctx| associated with the supplied |eg|. It is safe to call the
+// hook more than once.
+//
+// If an errgroup is shutdown with a shutdown hook, eg.Wait() will
+// return |shutdownHookErr|. This can be used to consider requested
+// shutdowns successful in some contexts, for example.
+func newShutdownHook(eg *errgroup.Group, ctx context.Context) func() {
+	stop := make(chan struct{})
+	eg.Go(func() error {
+		select {
+		case <-stop:
+			return shutdownHookErr
+		case <-ctx.Done():
+			return nil
+		}
+	})
+	shutdownOnce := &sync.Once{}
+	return func() {
+		shutdownOnce.Do(func() {
+			close(stop)
+		})
+	}
 }
