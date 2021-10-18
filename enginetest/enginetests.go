@@ -586,7 +586,7 @@ func TestUpdate(t *testing.T, harness Harness) {
 }
 
 func TestUpdateErrors(t *testing.T, harness Harness) {
-	for _, expectedFailure := range UpdateErrorTests {
+	for _, expectedFailure := range GenericUpdateErrorTests {
 		t.Run(expectedFailure.Name, func(t *testing.T) {
 			if sh, ok := harness.(SkippingHarness); ok {
 				if sh.SkipQueryTest(expectedFailure.Query) {
@@ -594,6 +594,17 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 				}
 			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
+		})
+	}
+
+	for _, expectedFailure := range UpdateErrorTests {
+		t.Run(expectedFailure.Query, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(expectedFailure.Query) {
+					t.Skipf("skipping query %s", expectedFailure.Query)
+				}
+			}
+			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, expectedFailure.ExpectedErr)
 		})
 	}
 }

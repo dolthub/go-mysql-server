@@ -18,8 +18,18 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 			return n, nil
 		}
 
-		jn, ok := us.Child.(plan.JoinNode)
-		if !ok {
+		var jn sql.Node
+		plan.Inspect(us, func(node sql.Node) bool {
+			switch node.(type) {
+			case *plan.CrossJoin, plan.JoinNode:
+				jn = node
+				return false
+			default:
+				return true
+			}
+		})
+
+		if jn == nil {
 			return n, nil
 		}
 
@@ -46,9 +56,9 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 }
 
 // rowUpdatersByTable maps a set of tables to their RowUpdater objects.
-func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij plan.JoinNode) (map[string]sql.RowUpdater, error) {
+func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[string]sql.RowUpdater, error) {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
-	resolvedTables := getTablesByNames(ij)
+	resolvedTables := getTablesByName(ij)
 
 	ret := make(map[string]sql.RowUpdater)
 

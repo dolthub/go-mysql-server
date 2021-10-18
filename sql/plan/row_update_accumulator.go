@@ -346,7 +346,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		})
 
 		if schema == nil {
-			return nil, fmt.Errorf("UpdateJoin accumulator was requested about no join node found")
+			return nil, fmt.Errorf("error: No JoinNode found in query plan to go along with an UpdateTypeJoinUpdate")
 		}
 
 		rowHandler = &updateJoinRowHandler{joinSchema: schema, tableMap: recreateTableSchemaFromJoinSchema(schema), updaterMap: updaterMap}

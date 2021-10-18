@@ -145,8 +145,8 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	return table
 }
 
-// getTablesByNames takes a node and returns all found resolved tables in a map.
-func getTablesByNames(node sql.Node) map[string]*plan.ResolvedTable {
+// getTablesByName takes a node and returns all found resolved tables in a map.
+func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
 
 	plan.Inspect(node, func(node sql.Node) bool {

@@ -41,7 +41,6 @@ func (u *UpdateJoin) String() string {
 	_ = pr.WriteNode("Update Join")
 	_ = pr.WriteChildren(u.Child.String())
 	return pr.String()
-
 }
 
 // RowIter implements the sql.Node interface.

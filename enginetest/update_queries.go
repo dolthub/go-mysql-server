@@ -306,7 +306,7 @@ func newUpdateResult(matched, updated int) sql.OkResult {
 	}
 }
 
-var UpdateErrorTests = []GenericErrorQueryTest{
+var GenericUpdateErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "invalid table",
 		Query: "UPDATE doesnotexist SET i = 0;",
@@ -366,5 +366,16 @@ var UpdateErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "targets subquery alias",
 		Query: "UPDATE (SELECT * FROM mytable) mytable SET s = NULL;",
+	},
+}
+
+var UpdateErrorTests = []QueryErrorTest{
+	{
+		Query:       `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+	{
+		Query:       `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.s=3 SET othertable.s2 = 'fourth'`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
 }
