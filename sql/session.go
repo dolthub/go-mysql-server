@@ -495,7 +495,7 @@ func NewSession(server string, client Client, id uint32, conf config.WritableCon
 		addr:          server,
 		client:        client,
 		id:            id,
-		sessionVars:   make(map[string]interface{}),
+		sessionVars:   SystemVariables.NewSessionMap(),
 		persistConf:   conf,
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
@@ -512,7 +512,7 @@ func NewBaseSession() Session {
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		sessionVars:   SystemVariables.NewSessionMap(),
-		persistConf:   nil,
+		persistConf:   config.NewMapConfig(map[string]string{}),
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
