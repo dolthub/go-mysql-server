@@ -3513,13 +3513,9 @@ var pid uint64
 
 func NewContext(harness Harness) *sql.Context {
 	ctx := harness.NewContext()
-	currentDB := ctx.GetCurrentDatabase()
-	if currentDB == "" {
-		currentDB = "mydb"
-		ctx.WithCurrentDB(currentDB)
-	}
 
-	_ = ctx.GetViewRegistry().Register(currentDB,
+	// Add our in-session view to the context
+	_ = ctx.GetViewRegistry().Register("mydb",
 		plan.NewSubqueryAlias(
 			"myview",
 			"SELECT * FROM mytable",
