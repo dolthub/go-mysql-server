@@ -727,20 +727,22 @@ type TemporaryTableCreator interface {
 	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
 }
 
-// ViewCreator should be implemented by databases that can persist views being created.
-type ViewCreator interface {
-	// CreateView persists the definition a view with the name and select statement given
-	CreateView(ctx *Context, name string, selectStatement string) error
-}
-
 // ViewDefinition is the named textual definition of a view
 type ViewDefinition struct {
 	Name           string
 	TextDefinition string
 }
 
-// ViewProvider is implemented by databases that persist view definitions
-type ViewProvider interface {
+// ViewDatabase is implemented by databases that persist view definitions
+type ViewDatabase interface {
+	// CreateView persists the definition a view with the name and select statement given. If a view with that name
+	// already exists, should return ErrExistingView
+	CreateView(ctx *Context, name string, selectStatement string) error
+
+	// DropView deletes the view named from persistent storage. If the view doesn't exist, should return
+	// ErrViewDoesNotExist
+	DropView(ctx *Context, name string) error
+
 	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
 	GetView(viewName string) (string, bool, error)
 
@@ -751,12 +753,6 @@ type ViewProvider interface {
 // TableDropper should be implemented by databases that can drop tables.
 type TableDropper interface {
 	DropTable(ctx *Context, name string) error
-}
-
-// ViewDropper should be implemented by databases that want to know when a view
-// is dropped.
-type ViewDropper interface {
-	DropView(ctx *Context, name string) error
 }
 
 // TableRenamer should be implemented by databases that can rename tables.

@@ -37,9 +37,7 @@ var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
 var _ sql.StoredProcedureDatabase = (*Database)(nil)
-var _ sql.ViewProvider = (*Database)(nil)
-var _ sql.ViewDropper = (*Database)(nil)
-var _ sql.ViewCreator = (*Database)(nil)
+var _ sql.ViewDatabase = (*Database)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {

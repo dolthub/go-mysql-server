@@ -1093,7 +1093,7 @@ func viewsInDatabase(context *Context, db Database) ([]ViewDefinition, error) {
 	var views []ViewDefinition
 	dbName := db.Name()
 
-	if vdb, ok := db.(ViewProvider); ok {
+	if vdb, ok := db.(ViewDatabase); ok {
 		dbViews, err := vdb.AllViews()
 		if err != nil {
 			return nil, err

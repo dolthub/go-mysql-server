@@ -79,7 +79,7 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	registry := ctx.GetViewRegistry()
 
 	if cv.IsReplace {
-		if dropper, ok := cv.database.(sql.ViewDropper); ok {
+		if dropper, ok := cv.database.(sql.ViewDatabase); ok {
 			err := dropper.DropView(ctx, cv.Name)
 			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
 				return sql.RowsToRowIter(), err
@@ -92,7 +92,7 @@ func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		}
 	}
 
-	creator, ok := cv.database.(sql.ViewCreator)
+	creator, ok := cv.database.(sql.ViewDatabase)
 	if ok {
 		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition)
 	} else {

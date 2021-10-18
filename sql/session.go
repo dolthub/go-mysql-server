@@ -118,7 +118,7 @@ type Session interface {
 	// they are using an index driver.
 	SetIndexRegistry(*IndexRegistry)
 	// SetViewRegistry sets the view registry for this session. Integrators should set a view registry if their database
-	// doesn't implement ViewProvider and they want views created to persist across sessions.
+	// doesn't implement ViewDatabase and they want views created to persist across sessions.
 	SetViewRegistry(*ViewRegistry)
 }
 
