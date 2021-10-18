@@ -221,7 +221,7 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = t2.c1 + 1 where one_pk.pk < 1`,
+		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk order by pk1) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = t2.c1 + 1 where one_pk.pk < 1`,
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM one_pk where pk < 1",
 		ExpectedSelect: []sql.Row{
@@ -252,7 +252,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 6)}}, // TODO: Should be matched = 6
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(6, 6)}}, // TODO: Should be matched = 6
 		SelectQuery:         "SELECT * FROM two_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 0, 2, 1, 2, 3, 4),

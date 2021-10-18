@@ -21,7 +21,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 		var jn sql.Node
 		plan.Inspect(us, func(node sql.Node) bool {
 			switch node.(type) {
-			case *plan.CrossJoin, plan.JoinNode:
+			case *plan.CrossJoin, plan.JoinNode, *plan.IndexedJoin:
 				jn = node
 				return false
 			default:
@@ -31,10 +31,6 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 
 		if jn == nil {
 			return n, nil
-		}
-
-		if _, ok = jn.(*plan.InnerJoin); !ok {
-			return n, sql.ErrUnsupportedFeature.New()
 		}
 
 		updaters, err := rowUpdatersByTable(ctx, us, jn)

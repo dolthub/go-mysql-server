@@ -1461,6 +1461,29 @@ var PlanTests = []QueryPlanTest{
 			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
+	{
+		Query: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
+		ExpectedPlan: "Update\n" +
+			" └─ Update Join\n" +
+			"     └─ UpdateSource(SET two_pk.c1 = (two_pk.c1 + 1))\n" +
+			"         └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+			"             ├─ Table(two_pk)\n" +
+			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
+		Query: `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1, one_pk.c2 = one_pk.c2 + 1`,
+		ExpectedPlan: "Update\n" +
+			" └─ Update Join\n" +
+			"     └─ UpdateSource(SET one_pk.c1 = (one_pk.c1 + 1),SET one_pk.c2 = (one_pk.c2 + 1))\n " +
+			"       └─ IndexedJoin(one_pk.pk = t2.pk1)\n" +
+			"             ├─ SubqueryAlias(t2)\n" +
+			"             │   └─ Projected table access on [pk1 pk2 c1 c2 c3 c4 c5]\n " +
+			"             │       └─ Table(two_pk)\n" +
+			"			  └─ IndexedTableAccess(one_pk on [one_pk.pk])\n " +
+			"",
+	},
+
 }
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.
