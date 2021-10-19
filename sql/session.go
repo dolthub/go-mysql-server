@@ -16,17 +16,13 @@ package sql
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/dolthub/go-mysql-server/sql/config"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
@@ -62,10 +58,6 @@ type Session interface {
 	Address() string
 	// Client returns the user of the session.
 	Client() Client
-	// SetPersistedVariable sets the given system variable to the value given for this session.
-	PersistVariable(ctx *Context, sysVarName string, value interface{}) error
-	// SetPersistedVariable sets the given system variable to the value given for this session.
-	ResetPersistVariable(ctx *Context, sysVarName string) error
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
@@ -134,7 +126,6 @@ type BaseSession struct {
 	// |mu| protects the following state
 	logger           *logrus.Entry
 	currentDB        string
-	persistConf      config.WritableConfig
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
 	warnings         []*Warning
@@ -199,62 +190,6 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 		m[k] = v
 	}
 	return m
-}
-
-// PersistVariable implements the Session interface.
-func (s *BaseSession) PersistVariable(ctx *Context, sysVarName string, value interface{}) error {
-	//sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
-	//if !ok {
-	//	return ErrUnknownSystemVariable.New(sysVarName)
-	//}
-	//if !sysVar.Dynamic {
-	//	return ErrSystemVariableReadOnly.New(sysVarName)
-	//}
-	//if !IsTextOnly(sysVar.Type) {
-	//	panic("max fix")
-	//}
-	//convertedVal, err := sysVar.Type.Convert(value)
-	//if err != nil {
-	//	return err
-	//}
-	//convertedVal, ok := value.(string)
-	var convertedVal string
-	switch v := value.(type) {
-	case string:
-		convertedVal = v
-	case int16:
-		//i, ok := v.(int64)
-		//if !ok {
-		//	panic("max fix")
-		//}
-		convertedVal = strconv.FormatInt(int64(v), 10)
-	case bool:
-		convertedVal = strconv.FormatBool(v)
-	default:
-		return errors.New(fmt.Sprintf("invalid variable value: %s: %s", value, v))
-
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.persistConf.SetStrings(map[string]string{sysVarName: convertedVal})
-	return nil
-}
-
-// UnPersistVariable implements the Session interface.
-func (s *BaseSession) ResetPersistVariable(ctx *Context, sysVarName string) error {
-	// if sysVarName = "" remove all
-	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
-	if !ok {
-		return ErrUnknownSystemVariable.New(sysVarName)
-	}
-	if !sysVar.Dynamic {
-		return ErrSystemVariableReadOnly.New(sysVarName)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.persistConf.Unset([]string{sysVar.Name})
-	return nil
 }
 
 // SetSessionVariable implements the Session interface.
@@ -510,13 +445,12 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 }
 
 // NewSession creates a new session with data.
-func NewSession(server string, client Client, id uint32, conf config.WritableConfig) Session {
+func NewSession(server string, client Client, id uint32) Session {
 	return &BaseSession{
 		addr:          server,
 		client:        client,
 		id:            id,
 		systemVars:    SystemVariables.NewSessionMap(),
-		persistConf:   conf,
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
@@ -532,7 +466,6 @@ func NewBaseSession() Session {
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:   SystemVariables.NewSessionMap(),
-		persistConf:   config.NewMapConfig(map[string]string{}),
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),

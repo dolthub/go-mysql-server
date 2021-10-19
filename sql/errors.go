@@ -31,6 +31,9 @@ var (
 	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
 	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
 
+	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a type that is not valid.
+	ErrInvalidSystemVariableType = errors.NewKind("Variable '%s' can't be of type '%T'")
+
 	// ErrSystemVariableCodeFail is returned when failing to encode/decode a system variable.
 	ErrSystemVariableCodeFail = errors.NewKind("unable to encode/decode value '%v' for '%s'")
 

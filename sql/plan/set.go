@@ -149,7 +149,11 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 			return err
 		}
 	case sql.SystemVariableScope_Persist:
-		err = ctx.PersistVariable(ctx, sysVar.Name, val)
+		persistSess, ok := ctx.Session.(sql.PersistableSession)
+		if !ok {
+			// todo find old error
+		}
+		err = persistSess.PersistVariable(ctx, sysVar.Name, val)
 		if err != nil {
 			return err
 		}
@@ -158,12 +162,23 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 			return err
 		}
 	case sql.SystemVariableScope_PersistOnly:
-		err = ctx.PersistVariable(ctx, sysVar.Name, val)
+		persistSess, ok := ctx.Session.(sql.PersistableSession)
+		if !ok {
+			return sql.ErrUnsupportedFeature.New("PERSIST")
+		}
+		err = persistSess.PersistVariable(ctx, sysVar.Name, val)
 		if err != nil {
 			return err
 		}
 	case sql.SystemVariableScope_ResetPersist:
-		err = ctx.ResetPersistVariable(ctx, sysVar.Name)
+		persistSess, ok := ctx.Session.(sql.PersistableSession)
+		if !ok {
+			return sql.ErrUnsupportedFeature.New("RESET PERSIST")
+		}
+		if sysVar.Name == "" {
+			err = persistSess.ResetPersistAll(ctx)
+		}
+		err = persistSess.ResetPersistVariable(ctx, sysVar.Name)
 		if err != nil {
 			return err
 		}

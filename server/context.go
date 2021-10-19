@@ -25,7 +25,6 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.
@@ -38,7 +37,7 @@ type DoneFunc func()
 // DefaultSessionBuilder is a SessionBuilder that returns a base session.
 func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
 	client := sql.Client{Address: c.RemoteAddr().String(), User: c.User, Capabilities: c.Capabilities}
-	return sql.NewSession(addr, client, c.ConnectionID, config.NewMapConfig(map[string]string{})), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
+	return sql.NewSession(addr, client, c.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
 }
 
 // SessionManager is in charge of creating new sessions for the given
