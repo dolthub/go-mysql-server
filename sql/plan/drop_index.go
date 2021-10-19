@@ -84,22 +84,22 @@ func (d *DropIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, sql.ErrTableNotFound.New(n.Name() + similar)
 	}
 
-	index := ctx.Index(db.Name(), d.Name)
+	index := ctx.GetIndexRegistry().Index(db.Name(), d.Name)
 	if index == nil {
 		return nil, ErrIndexNotFound.New(d.Name, n.Name(), db.Name())
 	}
-	ctx.ReleaseIndex(index)
+	ctx.GetIndexRegistry().ReleaseIndex(index)
 
-	if !ctx.CanRemoveIndex(index) {
+	if !ctx.GetIndexRegistry().CanRemoveIndex(index) {
 		return nil, ErrIndexNotAvailable.New(d.Name)
 	}
 
-	done, err := ctx.DeleteIndex(db.Name(), d.Name, true)
+	done, err := ctx.GetIndexRegistry().DeleteIndex(db.Name(), d.Name, true)
 	if err != nil {
 		return nil, err
 	}
 
-	driver := ctx.IndexDriver(index.Driver())
+	driver := ctx.GetIndexRegistry().IndexDriver(index.Driver())
 	if driver == nil {
 		return nil, ErrInvalidIndexDriver.New(index.Driver())
 	}
