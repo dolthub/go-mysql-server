@@ -109,32 +109,26 @@ func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, e
 		return node, nil
 	}
 
-	var ij sql.Node
-	plan.Inspect(node, func(node sql.Node) (bool) {
-		switch n := node.(type) {
+	myF := func (c plan.TransformContext) bool {
+		switch c.Node.(type) {
 		case *plan.IndexedJoin:
-			ij = n
-			return false
+			_, hasParent := c.Parent.(*plan.IndexedJoin)
+			return !hasParent
 		default:
 			return true
 		}
+	}
+
+	updated, err := plan.TransformUpCtx(node, myF, func (c plan.TransformContext) (sql.Node, error) {
+		switch n := c.Node.(type) {
+		case *plan.IndexedJoin:
+			return plan.NewIndexedJoinSorter(n, oldJoin.Schema()), nil
+		default:
+			return c.Node, nil
+		}
 	})
 
-	ijs := plan.NewIndexedJoinSorter(ij, oldJoin.Schema())
-
-	us := node.(*plan.Update).Child
-	us, err := us.WithChildren(ijs)
-
-	if err != nil {
-		return nil, err
-	}
-
-	wc, err := node.WithChildren(us)
-	if err != nil {
-		return nil, err
-	}
-
-	return wc, nil
+	return updated, err
 }
 
 // replaceTableAccessWithIndexedAccess replaces table access with indexed access where possible. This can't be a

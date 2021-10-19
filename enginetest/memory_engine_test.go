@@ -105,8 +105,8 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
-		Expected: []sql.Row{{newUpdateResult(6, 6)}}, // TODO: Should be matched = 6
+		Query: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1 WHERE one_pk.c5 < 10`,
+		Expected: []sql.Row{{newUpdateResult(2, 2)}},
 	}
 
 	fmt.Sprintf("%v", test)
