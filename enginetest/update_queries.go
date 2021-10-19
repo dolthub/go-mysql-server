@@ -230,7 +230,7 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
-		ExpectedWriteResult: []sql.Rw{{newUpdateResult(2, 2)}},
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM one_pk;",
 		ExpectedSelect: []sql.Row{
 			sql.NewRow(0, 1, 1, 2, 3, 4),
