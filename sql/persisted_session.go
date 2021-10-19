@@ -1,8 +1,9 @@
 package sql
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/config"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 type PersistableSession interface {
