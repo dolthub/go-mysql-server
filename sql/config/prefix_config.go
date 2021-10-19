@@ -22,9 +22,10 @@ import (
 // PrefixConfig decorates read and write access to the underlying config by appending a prefix to the accessed keys
 // on reads and writes
 type PrefixConfig struct {
-	c ReadWriteConfig
+	c      ReadWriteConfig
 	prefix string
 }
+
 func NewPrefixConfig(cfg ReadWriteConfig, prefix string) PrefixConfig {
 	return PrefixConfig{c: cfg, prefix: prefix}
 }
@@ -50,7 +51,7 @@ func (nsc PrefixConfig) SetStrings(updates map[string]string) error {
 }
 
 func (nsc PrefixConfig) Iter(cb func(string, string) (stop bool)) {
-	nsc.c.Iter(func (k, v string) (stop bool) {
+	nsc.c.Iter(func(k, v string) (stop bool) {
 		if strings.HasPrefix(k, nsc.prefix+".") {
 			return cb(k, v)
 		}
@@ -61,7 +62,7 @@ func (nsc PrefixConfig) Iter(cb func(string, string) (stop bool)) {
 
 func (nsc PrefixConfig) Size() int {
 	count := 0
-	nsc.Iter(func (k,v string) (stop bool) {
+	nsc.Iter(func(k, v string) (stop bool) {
 		count += 1
 		return false
 	})
