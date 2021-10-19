@@ -54,6 +54,8 @@ type Config struct {
 	TLSConfig *tls.Config
 	// RequestSecureTransport will require incoming connections to be TLS. Requires non-|nil| TLSConfig.
 	RequireSecureTransport bool
+	// NoDefaults prevents using persisted configuration for new server sessions
+	NoDefaults bool
 }
 
 // NewDefaultServer creates a Server with the default session builder.
@@ -63,24 +65,24 @@ func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
 
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
-func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
+func NewServer(cnf Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 	var tracer opentracing.Tracer
-	if cfg.Tracer != nil {
-		tracer = cfg.Tracer
+	if cnf.Tracer != nil {
+		tracer = cnf.Tracer
 	} else {
 		tracer = opentracing.NoopTracer{}
 	}
 
-	if cfg.ConnReadTimeout < 0 {
-		cfg.ConnReadTimeout = 0
+	if cnf.ConnReadTimeout < 0 {
+		cnf.ConnReadTimeout = 0
 	}
 
-	if cfg.ConnWriteTimeout < 0 {
-		cfg.ConnWriteTimeout = 0
+	if cnf.ConnWriteTimeout < 0 {
+		cnf.ConnWriteTimeout = 0
 	}
 
-	if cfg.MaxConnections < 0 {
-		cfg.MaxConnections = 0
+	if cnf.MaxConnections < 0 {
+		cnf.MaxConnections = 0
 	}
 
 	handler := NewHandler(e,
@@ -90,10 +92,10 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 			e.Analyzer.Catalog.HasDB,
 			e.MemoryManager,
 			e.ProcessList,
-			cfg.Address),
-		cfg.ConnReadTimeout)
-	a := cfg.Auth.Mysql()
-	l, err := NewListener(cfg.Protocol, cfg.Address, handler)
+			cnf.Address),
+		cnf.ConnReadTimeout)
+	a := cnf.Auth.Mysql()
+	l, err := NewListener(cnf.Protocol, cnf.Address, handler)
 	if err != nil {
 		return nil, err
 	}
@@ -102,9 +104,9 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		Listener:           l,
 		AuthServer:         a,
 		Handler:            handler,
-		ConnReadTimeout:    cfg.ConnReadTimeout,
-		ConnWriteTimeout:   cfg.ConnWriteTimeout,
-		MaxConns:           cfg.MaxConnections,
+		ConnReadTimeout:    cnf.ConnReadTimeout,
+		ConnWriteTimeout:   cnf.ConnWriteTimeout,
+		MaxConns:           cnf.MaxConnections,
 		ConnReadBufferSize: mysql.DefaultConnBufferSize,
 	}
 	vtListnr, err := mysql.NewListenerWithConfig(listenerCfg)
@@ -112,11 +114,11 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		return nil, err
 	}
 
-	if cfg.Version != "" {
-		vtListnr.ServerVersion = cfg.Version
+	if cnf.Version != "" {
+		vtListnr.ServerVersion = cnf.Version
 	}
-	vtListnr.TLSConfig = cfg.TLSConfig
-	vtListnr.RequireSecureTransport = cfg.RequireSecureTransport
+	vtListnr.TLSConfig = cnf.TLSConfig
+	vtListnr.RequireSecureTransport = cnf.RequireSecureTransport
 
 	return &Server{Listener: vtListnr, h: handler}, nil
 }

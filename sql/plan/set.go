@@ -162,8 +162,8 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
-	case sql.SystemVariableScope_Unpersist:
-		err = ctx.UnPersistVariable(ctx, sysVar.Name)
+	case sql.SystemVariableScope_ResetPersist:
+		err = ctx.ResetPersistVariable(ctx, sysVar.Name)
 		if err != nil {
 			return err
 		}

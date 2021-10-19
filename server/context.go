@@ -56,6 +56,7 @@ type SessionManager struct {
 	idxRegs     map[uint32]*sql.IndexRegistry
 	viewRegs    map[uint32]*sql.ViewRegistry
 	pid         uint64
+	noDefaults  bool
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.

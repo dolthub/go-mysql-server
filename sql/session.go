@@ -16,9 +16,11 @@ package sql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -63,7 +65,7 @@ type Session interface {
 	// SetPersistedVariable sets the given system variable to the value given for this session.
 	PersistVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetPersistedVariable sets the given system variable to the value given for this session.
-	UnPersistVariable(ctx *Context, sysVarName string) error
+	ResetPersistVariable(ctx *Context, sysVarName string) error
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetUserVariable sets the given user variable to the value given for this session, or creates it for this session.
@@ -201,29 +203,47 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 
 // PersistVariable implements the Session interface.
 func (s *BaseSession) PersistVariable(ctx *Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
-	if !ok {
-		return ErrUnknownSystemVariable.New(sysVarName)
-	}
-	if !sysVar.Dynamic {
-		return ErrSystemVariableReadOnly.New(sysVarName)
-	}
-	if !IsTextOnly(sysVar.Type) {
-		panic("max fix")
-	}
+	//sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	//if !ok {
+	//	return ErrUnknownSystemVariable.New(sysVarName)
+	//}
+	//if !sysVar.Dynamic {
+	//	return ErrSystemVariableReadOnly.New(sysVarName)
+	//}
+	//if !IsTextOnly(sysVar.Type) {
+	//	panic("max fix")
+	//}
 	//convertedVal, err := sysVar.Type.Convert(value)
 	//if err != nil {
 	//	return err
 	//}
-	convertedVal, _ := value.(string)
+	//convertedVal, ok := value.(string)
+	var convertedVal string
+	switch v := value.(type) {
+	case string:
+		convertedVal = v
+	case int16:
+		//i, ok := v.(int64)
+		//if !ok {
+		//	panic("max fix")
+		//}
+		convertedVal = strconv.FormatInt(int64(v), 10)
+	case bool:
+		convertedVal = strconv.FormatBool(v)
+	default:
+		return errors.New(fmt.Sprintf("invalid variable value: %s: %s", value, v))
+
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.persistConf.SetStrings(map[string]string{sysVar.Name: convertedVal})
+	s.persistConf.SetStrings(map[string]string{sysVarName: convertedVal})
 	return nil
 }
 
 // UnPersistVariable implements the Session interface.
-func (s *BaseSession) UnPersistVariable(ctx *Context, sysVarName string) error {
+func (s *BaseSession) ResetPersistVariable(ctx *Context, sysVarName string) error {
+	// if sysVarName = "" remove all
 	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return ErrUnknownSystemVariable.New(sysVarName)
@@ -495,7 +515,7 @@ func NewSession(server string, client Client, id uint32, conf config.WritableCon
 		addr:          server,
 		client:        client,
 		id:            id,
-		systemVars:   SystemVariables.NewSessionMap(),
+		systemVars:    SystemVariables.NewSessionMap(),
 		persistConf:   conf,
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},

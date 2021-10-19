@@ -34,8 +34,8 @@ const (
 	SystemVariableScope_Persist
 	// SystemVariableScope_PersistOnly is set when the system variable is persisted outside of server context.
 	SystemVariableScope_PersistOnly
-	// SystemVariableScope_Unpersist is used to remove a persisted variable
-	SystemVariableScope_Unpersist
+	// SystemVariableScope_ResetPersist is used to remove a persisted variable
+	SystemVariableScope_ResetPersist
 )
 
 // String returns the scope as an uppercase string.
@@ -49,8 +49,8 @@ func (s SystemVariableScope) String() string {
 		return "GLOBAL, PERSIST"
 	case SystemVariableScope_PersistOnly:
 		return "PERSIST"
-	case SystemVariableScope_Unpersist:
-		return "PERSIST"
+	case SystemVariableScope_ResetPersist:
+		return "RESET PERSIST"
 	case SystemVariableScope_Both:
 		return "GLOBAL, SESSION"
 	default:
