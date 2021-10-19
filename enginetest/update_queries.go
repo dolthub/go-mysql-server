@@ -229,7 +229,7 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk order by pk1, pk2) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
+		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM one_pk;",
 		ExpectedSelect: []sql.Row{
@@ -240,7 +240,7 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
-		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk order by pk1, pk2) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1, one_pk.c2 = one_pk.c2 + 1`,
+		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, one_pk.c2 = one_pk.c2 + 1 ORDER BY one_pk.pk`,
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM one_pk;",
 		ExpectedSelect: []sql.Row{

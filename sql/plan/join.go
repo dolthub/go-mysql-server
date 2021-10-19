@@ -709,3 +709,18 @@ func makeNullable(cols []*sql.Column) []*sql.Column {
 	}
 	return result
 }
+
+func nodeHasJoin(node sql.Node) bool {
+	hasJoinNode := false
+	Inspect(node, func(node sql.Node) bool {
+		switch node.(type) {
+		case JoinNode:
+			hasJoinNode = true
+			return false
+		default:
+			return true
+		}
+	})
+
+	return hasJoinNode
+}

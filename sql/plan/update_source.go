@@ -123,8 +123,8 @@ func (u *updateSourceIter) Close(ctx *sql.Context) error {
 }
 
 func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
-	if j, ok := u.Child.(JoinNode); ok {
-		return j.Schema(), nil
+	if ok := nodeHasJoin(u.Child); ok {
+		return u.Child.Schema(), nil
 	}
 
 	table, err := getUpdatable(u.Child)
