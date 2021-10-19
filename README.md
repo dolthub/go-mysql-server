@@ -12,7 +12,8 @@ ODBC, JDBC, or the default MySQL client shell interface.
 
 [Dolt](https://www.doltdb.com), a SQL database with Git-style 
 versioning, is the main database implementation of this package. 
-Check out that project for reference implementations.
+Check out that project for reference implementations. Or, hop into the Dolt discord [here](https://discord.com/invite/RFwfYpu)
+if you want to talk to the core developers behind GMS.
 
 ## Scope of this project
 

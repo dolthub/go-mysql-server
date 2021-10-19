@@ -105,9 +105,7 @@ func TestResolveSubqueries(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewContext(context.Background(),
-		sql.WithIndexRegistry(sql.NewIndexRegistry()),
-		sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	resolveSubqueries := getRule("resolve_subqueries")
 	finalizeSubqueries := getRule("finalize_subqueries")
 	runTestCases(t, ctx, testCases, a, Rule{
@@ -439,9 +437,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewContext(context.Background(),
-		sql.WithIndexRegistry(sql.NewIndexRegistry()),
-		sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	runTestCases(t, ctx, testCases, a, getRule("resolve_subquery_exprs"))
 }
 

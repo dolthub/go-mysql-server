@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -26,76 +27,111 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	defer span.Finish()
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		if n.Resolved() {
-			return n, nil
-		}
-
-		t, ok := n.(*plan.UnresolvedTable)
+		urt, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, nil
 		}
 
-		name := t.Name()
-		db := t.Database
-		if db == "" {
-			db = ctx.GetCurrentDatabase()
+		viewName := urt.Name()
+		dbName := urt.Database
+		if dbName == "" {
+			dbName = ctx.GetCurrentDatabase()
 		}
 
-		view, err := ctx.View(db, name)
-		if err == nil {
-			a.Log("view resolved: %q", name)
+		var view *sql.View
 
-			// If this view is being asked for with an AS OF clause, then attempt to apply it to every table in the view.
-			if t.AsOf != nil || t.Database != "" {
-				a.Log("applying AS OF clause and database qualifier to view definition")
+		if dbName != "" {
+			db, err := a.Catalog.Database(dbName)
+			if err != nil {
+				return nil, err
+			}
 
-				// TODO: this direct editing of children is necessary because the view definition is declared as an opaque node,
-				//  meaning that plan.TransformUp won't touch its children. It's only supposed to be touched by the
-				//  resolve_subqueries function, which invokes the entire analyzer on the node. This is the only place we have
-				//  to make this exception so far, but there may be others.
-				children := view.Definition().Children()
-				if len(children) == 1 {
-					child, err := plan.TransformUp(children[0], func(n2 sql.Node) (sql.Node, error) {
-						t2, ok := n2.(*plan.UnresolvedTable)
-						if !ok {
-							return n2, nil
-						}
+			if vdb, ok := db.(sql.ViewDatabase); ok {
+				viewDef, ok, err := vdb.GetView(ctx, viewName)
+				if err != nil {
+					return nil, err
+				}
 
-						if t.AsOf != nil {
-							a.Log("applying AS OF clause to view " + t2.Name())
-							if t2.AsOf != nil {
-								return nil, sql.ErrIncompatibleAsOf.New(
-									fmt.Sprintf("cannot combine AS OF clauses %s and %s",
-										t.AsOf.String(), t2.AsOf.String()))
-							}
-							t2, _ = t2.WithAsOf(t.AsOf)
-						}
-
-						if t.Database != "" {
-							a.Log("applying database clause to view " + t2.Name())
-							if t2.Database == "" {
-								t2, _ = t2.WithDatabase(db)
-							}
-						}
-
-						return t2, nil
-					})
-
+				if ok {
+					query, err := parse.Parse(ctx, viewDef)
 					if err != nil {
 						return nil, err
 					}
 
-					return view.Definition().WithChildren(child)
+					view = plan.NewSubqueryAlias(viewName, viewDef, query).AsView()
 				}
 			}
-
-			return view.Definition(), nil
 		}
 
-		if sql.ErrNonExistingView.Is(err) {
+		// If we didn't find the view from the database directly, use the in-session registry
+		var err error
+		if view == nil {
+			view, err = ctx.GetViewRegistry().View(dbName, viewName)
+			if sql.ErrViewDoesNotExist.Is(err) {
+				return n, nil
+			} else if err != nil {
+				return nil, err
+			}
+		}
+
+		a.Log("view resolved: %q", viewName)
+
+		query := view.Definition().Children()[0]
+
+		// If this view is being asked for with an AS OF clause, then attempt to apply it to every table in the view.
+		if urt.AsOf != nil {
+			query, err = applyAsOfToView(query, a, urt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// If the view name was qualified with a database name, apply that same qualifier to any tables in it
+		if urt.Database != "" {
+			query, err = applyDatabaseQualifierToView(query, a, urt.Database)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return view.Definition().WithChildren(query)
+	})
+}
+
+func applyAsOfToView(n sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, error) {
+	a.Log("applying AS OF clause to view definition")
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		urt, ok := n.(*plan.UnresolvedTable)
+		if !ok {
 			return n, nil
 		}
 
-		return nil, err
+		a.Log("applying AS OF clause to view " + urt.Name())
+		if urt.AsOf != nil {
+			return nil, sql.ErrIncompatibleAsOf.New(
+				fmt.Sprintf("cannot combine AS OF clauses %s and %s",
+					asOf.String(), urt.AsOf.String()))
+		}
+
+		return urt.WithAsOf(asOf)
+	})
+}
+
+func applyDatabaseQualifierToView(n sql.Node, a *Analyzer, dbName string) (sql.Node, error) {
+	a.Log("applying database qualifier to view definition")
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		urt, ok := n.(*plan.UnresolvedTable)
+		if !ok {
+			return n, nil
+		}
+
+		a.Log("applying database name to view table " + urt.Name())
+		if urt.Database == "" {
+			return urt.WithDatabase(dbName)
+		}
+
+		return n, nil
 	})
 }

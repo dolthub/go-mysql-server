@@ -57,7 +57,7 @@ func TestMaxIterations(t *testing.T) {
 			return n, nil
 		}).Build())
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	notAnalyzed := plan.NewUnresolvedTable(tName, "")
 	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
 	require.Error(err)
@@ -240,7 +240,7 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 
@@ -319,7 +319,7 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	provider := sql.NewDatabaseProvider(db)
 	a := withoutProcessTracking(NewDefault(provider))
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background())
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.True(result.Resolved())

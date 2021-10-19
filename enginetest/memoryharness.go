@@ -29,8 +29,15 @@ type MemoryHarness struct {
 	parallelism            int
 	numTablePartitions     int
 	indexDriverInitializer IndexDriverInitalizer
+	driver                 sql.IndexDriver
 	nativeIndexSupport     bool
 	session                sql.Session
+}
+
+func (m *MemoryHarness) InitializeIndexDriver(dbs []sql.Database) {
+	if m.indexDriverInitializer != nil {
+		m.driver = m.indexDriverInitializer(dbs)
+	}
 }
 
 func (m *MemoryHarness) NewSession() *sql.Context {
@@ -106,6 +113,9 @@ func (m *MemoryHarness) Parallelism() int {
 func (m *MemoryHarness) NewContext() *sql.Context {
 	if m.session == nil {
 		m.session = NewBaseSession()
+		if m.driver != nil {
+			m.session.GetIndexRegistry().RegisterIndexDriver(m.driver)
+		}
 	}
 
 	return sql.NewContext(

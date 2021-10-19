@@ -87,8 +87,8 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 	}
 
 	var idxRegistry *sql.IndexRegistry
-	if ctx.HasIndexes() {
-		idxRegistry = ctx.IndexRegistry
+	if ctx.GetIndexRegistry().HasIndexes() {
+		idxRegistry = ctx.GetIndexRegistry()
 	}
 
 	return &indexAnalyzer{

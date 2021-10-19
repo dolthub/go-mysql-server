@@ -457,7 +457,6 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-
 			autoVal := getAutoIncrementValue(ctx, t)
 			rows = append(rows, Row{
 				"def",                      // table_catalog
@@ -486,11 +485,20 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			return true, nil
 		})
 
-		for _, view := range ctx.ViewsInDatabase(db.Name()) {
+		if err != nil {
+			return nil, err
+		}
+
+		views, err := viewsInDatabase(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, view := range views {
 			rows = append(rows, Row{
 				"def",                      // table_catalog
 				db.Name(),                  // table_schema
-				view.Name(),                // table_name
+				view.Name,                  // table_name
 				"VIEW",                     // table_type
 				engine,                     // engine
 				10,                         // version (protocol, always 10)
@@ -510,10 +518,6 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				nil,                        // create_options
 				"",                         // table_comment
 			})
-		}
-
-		if err != nil {
-			return nil, err
 		}
 	}
 
@@ -1056,13 +1060,19 @@ func NewInformationSchemaDatabase() Database {
 func viewRowIter(context *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range catalog.AllDatabases() {
-		database := db.Name()
-		for _, view := range context.ViewRegistry.ViewsInDatabase(database) {
+		dbName := db.Name()
+
+		views, err := viewsInDatabase(context, db)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, view := range views {
 			rows = append(rows, Row{
 				"def",
-				database,
-				view.Name(),
-				view.TextDefinition(),
+				dbName,
+				view.Name,
+				view.TextDefinition,
 				"NONE",
 				"YES",
 				"",
@@ -1072,7 +1082,36 @@ func viewRowIter(context *Context, catalog Catalog) (RowIter, error) {
 			})
 		}
 	}
+
 	return RowsToRowIter(rows...), nil
+}
+
+// viewsInDatabase returns all views defined on the database given, consulting both the database itself as well as any
+// views defined in session memory. Typically there will not be both types of views on a single database, but the
+// interfaces do make it possible.
+func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
+	var views []ViewDefinition
+	dbName := db.Name()
+
+	if vdb, ok := db.(ViewDatabase); ok {
+		dbViews, err := vdb.AllViews(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, view := range dbViews {
+			views = append(views, view)
+		}
+	}
+
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
+		views = append(views, ViewDefinition{
+			Name:           view.Name(),
+			TextDefinition: view.TextDefinition(),
+		})
+	}
+
+	return views, nil
 }
 
 // Name implements the sql.Database interface.

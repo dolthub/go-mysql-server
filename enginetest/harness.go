@@ -48,9 +48,8 @@ type SkippingHarness interface {
 // driver they provide.
 type IndexDriverHarness interface {
 	Harness
-	// IndexDriver returns an index driver for the databases given, which will have been created by calls to
-	// NewDatabase().
-	IndexDriver(dbs []sql.Database) sql.IndexDriver
+	// InitializeIndexDriver initializes the index driver for this test run with the databases given
+	InitializeIndexDriver(dbs []sql.Database)
 }
 
 // IndexHarness is an extension to Harness that lets an integrator test their implementation with native

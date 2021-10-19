@@ -33,8 +33,7 @@ func TestAssignCatalog(t *testing.T) {
 	provider := sql.NewDatabaseProvider(db)
 
 	a := NewDefault(provider)
-	idxReg := sql.NewIndexRegistry()
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("foo")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("foo")
 
 	tbl := memory.NewTable("foo", nil)
 
