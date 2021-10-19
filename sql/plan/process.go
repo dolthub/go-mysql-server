@@ -274,17 +274,21 @@ func (i *trackedRowIter) done() {
 	}
 }
 
-func (i *trackedRowIter) Dispose() {
-	if i.node != nil {
-		Inspect(i.node, func(node sql.Node) bool {
-			sql.Dispose(node)
-			return true
-		})
-	}
-	InspectExpressions(i.node, func(e sql.Expression) bool {
+func disposeNode(n sql.Node) {
+	Inspect(n, func(node sql.Node) bool {
+		sql.Dispose(node)
+		return true
+	})
+	InspectExpressions(n, func(e sql.Expression) bool {
 		sql.Dispose(e)
 		return true
 	})
+}
+
+func (i *trackedRowIter) Dispose() {
+	if i.node != nil {
+		disposeNode(i.node)
+	}
 }
 
 func (i *trackedRowIter) Next() (sql.Row, error) {

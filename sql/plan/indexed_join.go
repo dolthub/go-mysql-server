@@ -182,7 +182,11 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	secondaryRow, err := i.secondary.Next()
 	if err != nil {
 		if err == io.EOF {
+			err = i.secondary.Close(i.ctx)
 			i.secondary = nil
+			if err != nil {
+				return nil, err
+			}
 			i.primaryRow = nil
 			return nil, io.EOF
 		}
