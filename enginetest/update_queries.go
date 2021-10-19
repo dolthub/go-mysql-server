@@ -198,17 +198,17 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(int64(3), "third row"),
 		},
 	},
-	//{
-	//	WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1 WHERE one_pk.c5 < 10`,
-	//	ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
-	//	SelectQuery:         "SELECT * FROM two_pk;",
-	//	ExpectedSelect: []sql.Row{
-	//		sql.NewRow(0, 0, 1, 1, 2, 3, 4),
-	//		sql.NewRow(0, 1, 11, 11, 12, 13, 14),
-	//		sql.NewRow(1, 0, 20, 21, 22, 23, 24),
-	//		sql.NewRow(1, 1, 30, 31, 32, 33, 34),
-	//	},
-	//},
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1 WHERE one_pk.c5 < 10`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "SELECT * FROM two_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 11, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 20, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 30, 31, 32, 33, 34),
+		},
+	},
 	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN othertable on othertable.i2 = two_pk.pk2 SET one_pk.c1 = one_pk.c1 + 1`,
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
@@ -220,83 +220,83 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(3, 30, 31, 32, 33, 34),
 		},
 	},
-//	{
-//		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk order by pk1) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = t2.c1 + 1 where one_pk.pk < 1`,
-//		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
-//		SelectQuery:         "SELECT * FROM one_pk where pk < 1",
-//		ExpectedSelect: []sql.Row{
-//			sql.NewRow(0, 1, 1, 2, 3, 4),
-//		},
-//	},
-//	{
-//		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
-//		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
-//		SelectQuery:         "SELECT * FROM one_pk;",
-//		ExpectedSelect: []sql.Row{
-//			sql.NewRow(0, 1, 1, 2, 3, 4),
-//			sql.NewRow(1, 11, 11, 12, 13, 14),
-//			sql.NewRow(2, 20, 21, 22, 23, 24),
-//			sql.NewRow(3, 30, 31, 32, 33, 34),
-//		},
-//	},
-//	{
-//		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1, one_pk.c2 = one_pk.c2 + 1`,
-//		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
-//		SelectQuery:         "SELECT * FROM one_pk;",
-//		ExpectedSelect: []sql.Row{
-//			sql.NewRow(0, 1, 2, 2, 3, 4),
-//			sql.NewRow(1, 11, 12, 12, 13, 14),
-//			sql.NewRow(2, 20, 21, 22, 23, 24),
-//			sql.NewRow(3, 30, 31, 32, 33, 34),
-//		},
-//	},
-//	{
-//		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
-//		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 6)}}, // TODO: Should be matched = 6
-//		SelectQuery:         "SELECT * FROM two_pk;",
-//		ExpectedSelect: []sql.Row{
-//			sql.NewRow(0, 0, 2, 1, 2, 3, 4),
-//			sql.NewRow(0, 1, 12, 11, 12, 13, 14),
-//			sql.NewRow(1, 0, 22, 21, 22, 23, 24),
-//			sql.NewRow(1, 1, 32, 31, 32, 33, 34),
-//		},
-//	},
-//}
-//
-//// These tests return the correct select query answer but the wrong write result.
-//var SkippedUpdateTests = []WriteQueryTest{
-//	{
-//		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
-//		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 6)}}, // TODO: Should be matched = 6
-//		SelectQuery:         "SELECT * FROM two_pk;",
-//		ExpectedSelect: []sql.Row{
-//			sql.NewRow(0, 0, 2, 1, 2, 3, 4),
-//			sql.NewRow(0, 1, 12, 11, 12, 13, 14),
-//			sql.NewRow(1, 0, 22, 21, 22, 23, 24),
-//			sql.NewRow(1, 1, 32, 31, 32, 33, 34),
-//		},
-//	},
-//	{
-//		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`,
-//		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
-//		SelectQuery:         "SELECT * FROM two_pk;",
-//		ExpectedSelect: []sql.Row{
-//			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
-//			sql.NewRow(0, 1, 10, 11, 12, 13, 14),
-//			sql.NewRow(1, 0, 20, 21, 22, 23, 24),
-//			sql.NewRow(1, 1, 31, 31, 32, 33, 34),
-//		},
-//	},
-//	{
-//		WriteQuery:          `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`,
-//		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
-//		SelectQuery:         "SELECT * FROM othertable;",
-//		ExpectedSelect: []sql.Row{
-//			sql.NewRow("third", 1),
-//			sql.NewRow("second", 2),
-//			sql.NewRow("fourth", 3),
-//		},
-//	},
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk order by pk1) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = t2.c1 + 1 where one_pk.pk < 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM one_pk where pk < 1",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 1, 1, 2, 3, 4),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "SELECT * FROM one_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 1, 1, 2, 3, 4),
+			sql.NewRow(1, 11, 11, 12, 13, 14),
+			sql.NewRow(2, 20, 21, 22, 23, 24),
+			sql.NewRow(3, 30, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN (SELECT * FROM two_pk) as t2 on one_pk.pk = t2.pk1 SET one_pk.c1 = one_pk.c1 + 1, one_pk.c2 = one_pk.c2 + 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "SELECT * FROM one_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 1, 2, 2, 3, 4),
+			sql.NewRow(1, 11, 12, 12, 13, 14),
+			sql.NewRow(2, 20, 21, 22, 23, 24),
+			sql.NewRow(3, 30, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 6)}}, // TODO: Should be matched = 6
+		SelectQuery:         "SELECT * FROM two_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 2, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 12, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 22, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 32, 31, 32, 33, 34),
+		},
+	},
+}
+
+// These tests return the correct select query answer but the wrong write result.
+var SkippedUpdateTests = []WriteQueryTest{
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET one_pk.c1 = one_pk.c1 + 1, two_pk.c1 = two_pk.c2 + 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(8, 6)}}, // TODO: Should be matched = 6
+		SelectQuery:         "SELECT * FROM two_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 2, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 12, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 22, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 32, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "SELECT * FROM two_pk;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 10, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 20, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 31, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`,
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM othertable;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("third", 1),
+			sql.NewRow("second", 2),
+			sql.NewRow("fourth", 3),
+		},
+	},
 }
 
 func newUpdateResult(matched, updated int) sql.OkResult {
