@@ -18,12 +18,12 @@ type PersistableSession interface {
 type PersistedSession struct {
 	Session
 	defaultsConf config.ReadWriteConfig
-	mu sync.Mutex
+	mu           sync.Mutex
 }
 
 // NewBaseSession creates a new empty session.
 func NewPersistedSession(sess Session, defaults config.ReadWriteConfig) *PersistedSession {
-	return &PersistedSession{sess, defaults,sync.Mutex{}}
+	return &PersistedSession{sess, defaults, sync.Mutex{}}
 }
 
 // PersistVariable implements the PersistableSession interface.

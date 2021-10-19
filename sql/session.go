@@ -465,7 +465,7 @@ var autoSessionIDs uint32 = 1
 func NewBaseSession() Session {
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:   SystemVariables.NewSessionMap(),
+		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
 		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
