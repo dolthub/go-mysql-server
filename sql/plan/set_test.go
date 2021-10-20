@@ -16,12 +16,15 @@ package plan
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/config"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
@@ -49,4 +52,64 @@ func TestSet(t *testing.T) {
 	require.NoError(err)
 	require.Equal(sql.Int64, typ)
 	require.Equal(int64(1), v)
+}
+
+
+func newPersistedSqlContext() (*sql.Context, config.ReadWriteConfig) {
+	ctx, _ := context.WithCancel(context.TODO())
+
+	sess := sql.NewBaseSession()
+	conf := config.NewMapConfig(map[string]string{"max_connections": "1000"})
+	persistedSess := sql.NewPersistedSession(sess, conf)
+	sqlCtx := sql.NewContext(ctx)
+	sqlCtx.Session = persistedSess
+	return sqlCtx, conf
+}
+
+func TestPersistedSessionSetIterator(t *testing.T) {
+	require := require.New(t)
+
+	setTests := []struct {
+		title		 string
+		name         string
+		value        int
+		scope 		 sql.SystemVariableScope
+		err          *errors.Kind
+		globalCmp   string
+		persistedCmp string
+	}{
+		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil,"10", "10"},
+		{"persist only", "max_connections", 10, sql.SystemVariableScope_PersistOnly, nil, "151", "10"},
+		{"no persist", "auto_increment_increment", 3300, sql.SystemVariableScope_Global, nil, "3300", ""},
+		{"persist error", "nonexistant", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, "", ""},
+		{"persist only error", "nonexistant", 10, sql.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, "", ""},
+	}
+
+	for _, test := range setTests {
+		t.Run(test.title, func (t *testing.T) {
+			sqlCtx, conf := newPersistedSqlContext()
+			s := NewSet(
+				[]sql.Expression{
+					expression.NewSetField(expression.NewSystemVar(test.name, test.scope), expression.NewLiteral(int64(test.value), sql.Int64)),
+				},
+			)
+
+			_, err := s.RowIter(sqlCtx, nil)
+			if test.err != nil {
+				assert.True(t, test.err.Is(err))
+				return
+			} else {
+				require.NoError(err)
+			}
+
+			res := conf.GetStringOrDefault(test.name, "")
+			assert.Equal(t, test.persistedCmp, res)
+
+			sysVar, val, _ := sql.SystemVariables.GetGlobal(test.name)
+			typ, _ := sysVar.Type.(sql.SystemVariableType)
+			encoded, err := typ.EncodeValue(val)
+			require.NoError(err)
+			assert.Equal(t, test.globalCmp, encoded)
+		})
+	}
 }

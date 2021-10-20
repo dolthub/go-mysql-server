@@ -41,7 +41,6 @@ func (s *PersistedSession) PersistVariable(ctx *Context, sysVarName string, valu
 		return err
 	}
 
-	//convertedVal, ok := value.(string)
 	t, ok := sysVar.Type.(SystemVariableType)
 	if !ok {
 		return ErrInvalidSystemVariableType.New(convertedVal, sysVar.Type)
@@ -51,24 +50,6 @@ func (s *PersistedSession) PersistVariable(ctx *Context, sysVarName string, valu
 	if err != nil {
 		return err
 	}
-
-	//var encoded string = sysVar.Type.Enco
-	//switch  {
-	//case IsTextOnly(sysVar.Type):
-	//	encodedS
-	//case IsInteger(sysVar.Type):
-	//case IsTrue(sysVar.Type), IsFalse(sysVar.Type):
-	//case IsFloat(sysVar.Type):
-	//
-	//	convertedVal = v
-	//case int16:
-	//	convertedVal = strconv.FormatInt(int64(v), 10)
-	//case bool:
-	//	convertedVal = strconv.FormatBool(v)
-	//default:
-	//	return errors.New(fmt.Sprintf("invalid variable value: %s: %s", value, v))
-	//
-	//}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -94,12 +75,13 @@ func (s *PersistedSession) ResetPersistVariable(ctx *Context, sysVarName string)
 
 // ResetPersistAll implements the PersistableSession interface.
 func (s *PersistedSession) ResetPersistAll(ctx *Context) error {
-	allVars := make([]string, 0, len(systemVars))
+	allVars := make([]string, s.defaultsConf.Size())
 	i := 0
-	for _, v := range systemVars {
-		allVars[i] = v.Name
+	s.defaultsConf.Iter(func(k, v string) bool {
+		allVars[i] = k
 		i++
-	}
+		return false
+	})
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.defaultsConf.Unset(allVars)
