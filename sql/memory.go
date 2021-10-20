@@ -216,3 +216,9 @@ func (m *MemoryManager) Free() {
 		}
 	}
 }
+
+func (m *MemoryManager) NumCaches() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.caches)
+}

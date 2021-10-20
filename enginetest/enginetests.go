@@ -3630,6 +3630,8 @@ func TestQueryWithContext(t *testing.T, ctx *sql.Context, e *sqle.Engine, q stri
 	require.NoError(err, "Unexpected error for query %s", q)
 
 	checkResults(t, require, expected, expectedCols, sch, rows, q)
+
+	require.Equal(0, ctx.Memory.NumCaches())
 }
 
 func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row, expectedCols []*sql.Column, sch sql.Schema, rows []sql.Row, q string) {
