@@ -37,7 +37,7 @@ func newPersistedSqlContext() (*Context, config.ReadWriteConfig) {
 
 func TestInitPersistedSession(t *testing.T) {
 	sqlCtx, _ := newPersistedSqlContext()
-	res, err := sqlCtx.Session.(PersistedSession).defaultsConf.GetString("max_connections")
+	res, err := sqlCtx.Session.(*PersistedSession).defaultsConf.GetString("max_connections")
 	require.NoError(t, err)
 	assert.Equal(t, "1000", res)
 }

@@ -171,11 +171,18 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	return nil
 }
 
-// init initializes SystemVariables as it functions as a global variable.
-func init() {
+func InitSystemVariables() {
 	for _, sysVar := range systemVars {
 		SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
 	}
+}
+
+// init initializes SystemVariables as it functions as a global variable.
+func init() {
+	InitSystemVariables()
+	//for _, sysVar := range systemVars {
+	//	SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
+	//}
 }
 
 //TODO: Add from the following sources because MySQL likes to not have every variable on a single page:

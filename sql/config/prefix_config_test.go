@@ -15,15 +15,24 @@ var ConfigVals = map[string]string{
 	"k1":        "v1",
 }
 
+func newConfigVals() map[string]string {
+	newConfig := make(map[string]string)
+	for k, v := range ConfigVals {
+		newConfig[k] = v
+	}
+	return newConfig
+}
+
 func newPrefixConfig(prefix string) PrefixConfig {
-	mc := NewMapConfig(ConfigVals)
+
+	mc := NewMapConfig(newConfigVals())
 	return NewPrefixConfig(mc, prefix)
 
 }
 
 func TestPrefixConfigSet(t *testing.T) {
 	conf := newPrefixConfig("test")
-	conf.SetStrings(ConfigVals)
+	conf.SetStrings(newConfigVals())
 	v1, _ := conf.c.GetString("test.k1")
 	assert.Equal(t, v1, "v1")
 }

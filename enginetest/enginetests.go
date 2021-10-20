@@ -32,7 +32,6 @@ import (
 	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/config"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
@@ -3572,7 +3571,7 @@ func NewSession(harness Harness) *sql.Context {
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() sql.Session {
-	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1, config.NewMapConfig(map[string]string{}))
+	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1)
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {

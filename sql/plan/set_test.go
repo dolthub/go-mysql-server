@@ -85,6 +85,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 
 	for _, test := range setTests {
 		t.Run(test.title, func(t *testing.T) {
+			sql.InitSystemVariables()
 			sqlCtx, conf := newPersistedSqlContext()
 			s := NewSet(
 				[]sql.Expression{
