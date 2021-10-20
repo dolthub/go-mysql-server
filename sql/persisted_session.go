@@ -22,7 +22,7 @@ type PersistedSession struct {
 	mu           sync.Mutex
 }
 
-// NewBaseSession creates a new empty session.
+// NewPersistedSession wraps a session and can write system variables to a defaults config
 func NewPersistedSession(sess Session, defaults config.ReadWriteConfig) *PersistedSession {
 	return &PersistedSession{sess, defaults, sync.Mutex{}}
 }

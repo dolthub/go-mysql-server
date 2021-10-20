@@ -65,24 +65,24 @@ func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
 
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
-func NewServer(cnf Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
+func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 	var tracer opentracing.Tracer
-	if cnf.Tracer != nil {
-		tracer = cnf.Tracer
+	if cfg.Tracer != nil {
+		tracer = cfg.Tracer
 	} else {
 		tracer = opentracing.NoopTracer{}
 	}
 
-	if cnf.ConnReadTimeout < 0 {
-		cnf.ConnReadTimeout = 0
+	if cfg.ConnReadTimeout < 0 {
+		cfg.ConnReadTimeout = 0
 	}
 
-	if cnf.ConnWriteTimeout < 0 {
-		cnf.ConnWriteTimeout = 0
+	if cfg.ConnWriteTimeout < 0 {
+		cfg.ConnWriteTimeout = 0
 	}
 
-	if cnf.MaxConnections < 0 {
-		cnf.MaxConnections = 0
+	if cfg.MaxConnections < 0 {
+		cfg.MaxConnections = 0
 	}
 
 	handler := NewHandler(e,
@@ -92,10 +92,10 @@ func NewServer(cnf Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 			e.Analyzer.Catalog.HasDB,
 			e.MemoryManager,
 			e.ProcessList,
-			cnf.Address),
-		cnf.ConnReadTimeout)
-	a := cnf.Auth.Mysql()
-	l, err := NewListener(cnf.Protocol, cnf.Address, handler)
+			cfg.Address),
+		cfg.ConnReadTimeout)
+	a := cfg.Auth.Mysql()
+	l, err := NewListener(cfg.Protocol, cfg.Address, handler)
 	if err != nil {
 		return nil, err
 	}
@@ -104,9 +104,9 @@ func NewServer(cnf Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		Listener:           l,
 		AuthServer:         a,
 		Handler:            handler,
-		ConnReadTimeout:    cnf.ConnReadTimeout,
-		ConnWriteTimeout:   cnf.ConnWriteTimeout,
-		MaxConns:           cnf.MaxConnections,
+		ConnReadTimeout:    cfg.ConnReadTimeout,
+		ConnWriteTimeout:   cfg.ConnWriteTimeout,
+		MaxConns:           cfg.MaxConnections,
 		ConnReadBufferSize: mysql.DefaultConnBufferSize,
 	}
 	vtListnr, err := mysql.NewListenerWithConfig(listenerCfg)
@@ -114,11 +114,11 @@ func NewServer(cnf Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		return nil, err
 	}
 
-	if cnf.Version != "" {
-		vtListnr.ServerVersion = cnf.Version
+	if cfg.Version != "" {
+		vtListnr.ServerVersion = cfg.Version
 	}
-	vtListnr.TLSConfig = cnf.TLSConfig
-	vtListnr.RequireSecureTransport = cnf.RequireSecureTransport
+	vtListnr.TLSConfig = cfg.TLSConfig
+	vtListnr.RequireSecureTransport = cfg.RequireSecureTransport
 
 	return &Server{Listener: vtListnr, h: handler}, nil
 }

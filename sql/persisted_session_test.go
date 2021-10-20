@@ -25,7 +25,6 @@ import (
 
 func newPersistedSqlContext() (*Context, config.ReadWriteConfig) {
 	ctx, _ := context.WithCancel(context.TODO())
-
 	sess := NewBaseSession()
 	conf := config.NewMapConfig(map[string]string{"max_connections": "1000"})
 	persistedSess := NewPersistedSession(sess, conf)
@@ -33,7 +32,6 @@ func newPersistedSqlContext() (*Context, config.ReadWriteConfig) {
 	sqlCtx.Session = persistedSess
 	return sqlCtx, conf
 }
-
 
 func TestInitPersistedSession(t *testing.T) {
 	sqlCtx, _ := newPersistedSqlContext()
@@ -55,7 +53,7 @@ func TestPersistVariable(t *testing.T) {
 	}
 
 	for _, test := range persistTests {
-		t.Run(test.title, func (t *testing.T) {
+		t.Run(test.title, func(t *testing.T) {
 			sqlCtx, conf := newPersistedSqlContext()
 			err := sqlCtx.Session.(PersistableSession).PersistVariable(sqlCtx, test.name, test.value)
 			if test.err != nil {

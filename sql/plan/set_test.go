@@ -54,10 +54,8 @@ func TestSet(t *testing.T) {
 	require.Equal(int64(1), v)
 }
 
-
 func newPersistedSqlContext() (*sql.Context, config.ReadWriteConfig) {
 	ctx, _ := context.WithCancel(context.TODO())
-
 	sess := sql.NewBaseSession()
 	conf := config.NewMapConfig(map[string]string{"max_connections": "1000"})
 	persistedSess := sql.NewPersistedSession(sess, conf)
@@ -70,23 +68,23 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 	require := require.New(t)
 
 	setTests := []struct {
-		title		 string
+		title        string
 		name         string
-		value        int
-		scope 		 sql.SystemVariableScope
+		value        interface{}
+		scope        sql.SystemVariableScope
 		err          *errors.Kind
-		globalCmp   string
+		globalCmp    string
 		persistedCmp string
 	}{
-		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil,"10", "10"},
+		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil, "10", "10"},
 		{"persist only", "max_connections", 10, sql.SystemVariableScope_PersistOnly, nil, "151", "10"},
 		{"no persist", "auto_increment_increment", 3300, sql.SystemVariableScope_Global, nil, "3300", ""},
-		{"persist error", "nonexistant", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, "", ""},
-		{"persist only error", "nonexistant", 10, sql.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, "", ""},
+		{"persist unknown variable", "nonexistant", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, "", ""},
+		{"persist only unknown variable", "nonexistant", 10, sql.SystemVariableScope_PersistOnly, sql.ErrUnknownSystemVariable, "", ""},
 	}
 
 	for _, test := range setTests {
-		t.Run(test.title, func (t *testing.T) {
+		t.Run(test.title, func(t *testing.T) {
 			sqlCtx, conf := newPersistedSqlContext()
 			s := NewSet(
 				[]sql.Expression{
