@@ -16,12 +16,12 @@ package plan
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/config"

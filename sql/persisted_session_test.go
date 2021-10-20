@@ -16,11 +16,13 @@ package sql
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql/config"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 func newPersistedSqlContext() (*Context, config.ReadWriteConfig) {
