@@ -70,7 +70,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 	setTests := []struct {
 		title        string
 		name         string
-		value        interface{}
+		value        int
 		scope        sql.SystemVariableScope
 		err          *errors.Kind
 		globalCmp    string
