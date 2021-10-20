@@ -53,7 +53,7 @@ func (nsc PrefixConfig) SetStrings(updates map[string]string) error {
 func (nsc PrefixConfig) Iter(cb func(string, string) (stop bool)) {
 	nsc.c.Iter(func(k, v string) (stop bool) {
 		if strings.HasPrefix(k, nsc.prefix+".") {
-			return cb(k, v)
+			return cb(strings.TrimPrefix(k, nsc.prefix+"."), v)
 		}
 		return false
 	})
