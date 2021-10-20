@@ -381,6 +381,7 @@ type tableEditor struct {
 	table             *Table
 	initialAutoIncVal interface{}
 	initialPartitions map[string][]sql.Row
+	ea *tableEditAccumulator
 	initialInsert     int
 }
 
@@ -392,6 +393,7 @@ var _ sql.RowDeleter = (*tableEditor)(nil)
 func (t *tableEditor) Close(*sql.Context) error {
 	// TODO: it would be nice to apply all pending updates here at once, rather than directly in the Insert / Update
 	//  / Delete methods.
+	t.table.partitions = t.ea.UpdatedPartitions
 	return nil
 }
 
@@ -420,23 +422,23 @@ func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
 }
 
 func (t *Table) Inserter(*sql.Context) sql.RowInserter {
-	return &tableEditor{t, nil, nil, 0}
+	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Updater(*sql.Context) sql.RowUpdater {
-	return &tableEditor{t, nil, nil, 0}
+	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Replacer(*sql.Context) sql.RowReplacer {
-	return &tableEditor{t, nil, nil, 0}
+	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
-	return &tableEditor{t, nil, nil, 0}
+	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
-	return &tableEditor{t, nil, nil, 0}
+	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
@@ -473,7 +475,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		t.table.insert = 0
 	}
 
-	t.table.partitions[key] = append(t.table.partitions[key], row)
+	t.ea.UpdatedPartitions[key] = append(t.ea.UpdatedPartitions[key], row)
 
 	idx := t.table.autoColIdx
 	if idx >= 0 {
@@ -555,7 +557,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	}
 
 	matches := false
-	for partitionIndex, partition := range t.table.partitions {
+	for partitionIndex, partition := range t.ea.UpdatedPartitions {
 		for partitionRowIndex, partitionRow := range partition {
 			matches = true
 
@@ -564,7 +566,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 			pkColIdxes := t.pkColumnIndexes()
 			if len(pkColIdxes) > 0 {
 				if columnsMatch(pkColIdxes, partitionRow, row) {
-					t.table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+					t.ea.UpdatedPartitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 					break
 				}
 			}
@@ -577,7 +579,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 			}
 
 			if matches {
-				t.table.partitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
+				t.ea.UpdatedPartitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
 				break
 			}
 		}
@@ -608,7 +610,7 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	matches := false
-	for partitionIndex, partition := range t.table.partitions {
+	for partitionIndex, partition := range t.ea.UpdatedPartitions {
 		for partitionRowIndex, partitionRow := range partition {
 			var err error
 			matches, err = rowsAreEqual(ctx, t.table.schema, oldRow, partitionRow)
@@ -616,7 +618,7 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 				return err
 			}
 			if matches {
-				t.table.partitions[partitionIndex][partitionRowIndex] = newRow
+				t.ea.UpdatedPartitions[partitionIndex][partitionRowIndex] = newRow
 				break
 			}
 		}
@@ -638,7 +640,7 @@ func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
 	pkColIdxes := t.pkColumnIndexes()
 
 	if len(pkColIdxes) > 0 {
-		for _, partition := range t.table.partitions {
+		for _, partition := range t.ea.UpdatedPartitions {
 			for _, partitionRow := range partition {
 				if columnsMatch(pkColIdxes, partitionRow, row) {
 					vals := make([]interface{}, len(pkColIdxes))
@@ -668,6 +670,28 @@ func (t *tableEditor) pkColumnIndexes() []int {
 func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
 	return !columnsMatch(pkColIdxes, row, row2)
+}
+
+type tableEditAccumulator struct {
+	table             *Table
+	UpdatedPartitions map[string][]sql.Row
+}
+
+func NewTableEditAccumulator(table *Table) *tableEditAccumulator {
+	updatedPartitions := make(map[string][]sql.Row)
+
+	for partStr, rowSlice := range table.partitions {
+		newRowSlice := make([]sql.Row, len(rowSlice))
+		for i, row := range rowSlice {
+			newRowSlice[i] = row.Copy()
+		}
+		updatedPartitions[partStr] = newRowSlice
+	}
+
+	return &tableEditAccumulator{
+		table:             table,
+		UpdatedPartitions: updatedPartitions,
+	}
 }
 
 // Returns whether the values for the columns given match in the two rows provided

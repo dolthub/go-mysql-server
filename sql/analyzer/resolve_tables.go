@@ -27,7 +27,7 @@ var dualTable = func() sql.Table {
 	t := memory.NewTable(dualTableName, sql.Schema{
 		{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
 	})
-	_ = t.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
+	// _ = t.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
 	return t
 }()
 
