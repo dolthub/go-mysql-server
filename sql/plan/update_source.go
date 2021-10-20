@@ -123,7 +123,7 @@ func (u *updateSourceIter) Close(ctx *sql.Context) error {
 }
 
 func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
-	if ok := nodeHasJoin(u.Child); ok {
+	if nodeHasJoin(u.Child) {
 		return u.Child.Schema(), nil
 	}
 
