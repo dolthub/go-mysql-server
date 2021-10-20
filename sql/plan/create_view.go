@@ -53,7 +53,7 @@ func NewCreateView(
 }
 
 // View returns the view that will be created by this node.
-func (cv *CreateView) View() sql.View {
+func (cv *CreateView) View() *sql.View {
 	return cv.Definition.AsView()
 }
 
@@ -76,30 +76,28 @@ func (cv *CreateView) Resolved() bool {
 // empty.
 func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	view := cv.View()
-	registry := ctx.ViewRegistry
+	registry := ctx.GetViewRegistry()
 
 	if cv.IsReplace {
-		err := registry.Delete(cv.database.Name(), view.Name())
-		if err != nil && !sql.ErrNonExistingView.Is(err) {
-			return sql.RowsToRowIter(), err
-		}
-		if dropper, ok := cv.database.(sql.ViewDropper); ok {
+		if dropper, ok := cv.database.(sql.ViewDatabase); ok {
 			err := dropper.DropView(ctx, cv.Name)
-			if err != nil && !sql.ErrNonExistingView.Is(err) {
+			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
+				return sql.RowsToRowIter(), err
+			}
+		} else {
+			err := registry.Delete(cv.database.Name(), view.Name())
+			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
 				return sql.RowsToRowIter(), err
 			}
 		}
 	}
 
-	creator, ok := cv.database.(sql.ViewCreator)
+	creator, ok := cv.database.(sql.ViewDatabase)
 	if ok {
-		err := creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition)
-		if err != nil {
-			return sql.RowsToRowIter(), err
-		}
+		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition)
+	} else {
+		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), view)
 	}
-
-	return sql.RowsToRowIter(), registry.Register(cv.database.Name(), view)
 }
 
 // Schema implements the Node interface. It always returns nil.
@@ -135,7 +133,7 @@ func (cv *CreateView) Database() sql.Database {
 	return cv.database
 }
 
-// Database implements the Databaser interface, and it returns a copy of this
+// WithDatabase implements the Databaser interface, and it returns a copy of this
 // node with the specified database.
 func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
 	newCreate := *cv
