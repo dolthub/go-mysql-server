@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TODO: wrap a map config and verify set and get
@@ -11,7 +12,7 @@ var ConfigVals = map[string]string{
 	"scopeA.k1": "v1",
 	"scopeA.k2": "v2",
 	"scopeB.k3": "v3",
-	"k1": "v1",
+	"k1":        "v1",
 }
 
 func newPrefixConfig(prefix string) PrefixConfig {
@@ -31,7 +32,7 @@ func TestPrefixConfigGet(t *testing.T) {
 	t.Run("test GetString", func(t *testing.T) {
 		conf := newPrefixConfig("scopeA")
 		v1, _ := conf.GetString("k1")
-		assert.Equal(t,"v1", v1)
+		assert.Equal(t, "v1", v1)
 	})
 
 	t.Run("test GetString fails out of scope", func(t *testing.T) {
@@ -43,13 +44,13 @@ func TestPrefixConfigGet(t *testing.T) {
 	t.Run("test GetStringofDefault", func(t *testing.T) {
 		conf := newPrefixConfig("scopeA")
 		v1, _ := conf.GetString("k1")
-		assert.Equal(t,"v1", v1)
+		assert.Equal(t, "v1", v1)
 	})
 
 	t.Run("test GetStringOrDefault fails out of scope", func(t *testing.T) {
 		conf := newPrefixConfig("scopeA")
 		res := conf.GetStringOrDefault("k3", "default")
-		assert.Equal(t,"default", res)
+		assert.Equal(t, "default", res)
 	})
 }
 
@@ -59,7 +60,7 @@ func TestPrefixConfigUnset(t *testing.T) {
 		err := conf.Unset([]string{"k1"})
 		assert.NoError(t, err)
 		res := conf.GetStringOrDefault("k3", "default")
-		assert.Equal(t,"default", res)
+		assert.Equal(t, "default", res)
 	})
 
 	t.Run("test Unset doesn't affect other scope", func(t *testing.T) {
@@ -67,10 +68,9 @@ func TestPrefixConfigUnset(t *testing.T) {
 		err := conf.Unset([]string{"k1"})
 		assert.NoError(t, err)
 		res := conf.c.GetStringOrDefault("k1", "")
-		assert.Equal(t,"v1", res)
+		assert.Equal(t, "v1", res)
 	})
 }
-
 
 func TestPrefixConfigSize(t *testing.T) {
 	conf := newPrefixConfig("scopeA")
@@ -81,7 +81,7 @@ func TestPrefixConfigSize(t *testing.T) {
 func TestPrefixConfigIter(t *testing.T) {
 	conf := newPrefixConfig("scopeA")
 	keys := make([]string, 0, 6)
-	conf.Iter(func (k, v string) bool {
+	conf.Iter(func(k, v string) bool {
 		keys = append(keys, k)
 		return false
 	})

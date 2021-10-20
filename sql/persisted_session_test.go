@@ -16,11 +16,13 @@ package sql
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql/config"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
+
+	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 func newPersistedSqlContext() (*Context, config.ReadWriteConfig) {
@@ -33,7 +35,6 @@ func newPersistedSqlContext() (*Context, config.ReadWriteConfig) {
 	sqlCtx.Session = persistedSess
 	return sqlCtx, conf
 }
-
 
 func TestInitPersistedSession(t *testing.T) {
 	sqlCtx, _ := newPersistedSqlContext()
@@ -55,7 +56,7 @@ func TestPersistVariable(t *testing.T) {
 	}
 
 	for _, test := range persistTests {
-		t.Run(test.title, func (t *testing.T) {
+		t.Run(test.title, func(t *testing.T) {
 			sqlCtx, conf := newPersistedSqlContext()
 			err := sqlCtx.Session.(PersistableSession).PersistVariable(sqlCtx, test.name, test.value)
 			if test.err != nil {

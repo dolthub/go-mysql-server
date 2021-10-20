@@ -16,12 +16,12 @@ package plan
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/src-d/go-errors.v1"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/config"
@@ -54,7 +54,6 @@ func TestSet(t *testing.T) {
 	require.Equal(int64(1), v)
 }
 
-
 func newPersistedSqlContext() (*sql.Context, config.ReadWriteConfig) {
 	ctx, _ := context.WithCancel(context.TODO())
 
@@ -70,15 +69,15 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 	require := require.New(t)
 
 	setTests := []struct {
-		title		 string
+		title        string
 		name         string
 		value        int
-		scope 		 sql.SystemVariableScope
+		scope        sql.SystemVariableScope
 		err          *errors.Kind
-		globalCmp   string
+		globalCmp    string
 		persistedCmp string
 	}{
-		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil,"10", "10"},
+		{"persist var", "max_connections", 10, sql.SystemVariableScope_Persist, nil, "10", "10"},
 		{"persist only", "max_connections", 10, sql.SystemVariableScope_PersistOnly, nil, "151", "10"},
 		{"no persist", "auto_increment_increment", 3300, sql.SystemVariableScope_Global, nil, "3300", ""},
 		{"persist error", "nonexistant", 10, sql.SystemVariableScope_Persist, sql.ErrUnknownSystemVariable, "", ""},
@@ -86,7 +85,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 	}
 
 	for _, test := range setTests {
-		t.Run(test.title, func (t *testing.T) {
+		t.Run(test.title, func(t *testing.T) {
 			sqlCtx, conf := newPersistedSqlContext()
 			s := NewSet(
 				[]sql.Expression{
