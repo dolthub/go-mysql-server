@@ -1485,7 +1485,6 @@ var PlanTests = []QueryPlanTest{
 			"                 └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
-
 }
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.

@@ -46,9 +46,9 @@ func (i *IndexedJoinSorter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 	}
 
 	return &indexedJoinSorterIter{
-		indexedJoinIter: itr,
+		indexedJoinIter:   itr,
 		indexedJoinSchema: i.Child.Schema(),
-		oldSchema: i.OldJoinSchema,
+		oldSchema:         i.OldJoinSchema,
 	}, nil
 }
 
@@ -57,9 +57,9 @@ func (i *IndexedJoinSorter) Schema() sql.Schema {
 }
 
 type indexedJoinSorterIter struct {
-	indexedJoinIter sql.RowIter
+	indexedJoinIter   sql.RowIter
 	indexedJoinSchema sql.Schema
-	oldSchema sql.Schema
+	oldSchema         sql.Schema
 }
 
 var _ sql.RowIter = (*indexedJoinSorterIter)(nil)

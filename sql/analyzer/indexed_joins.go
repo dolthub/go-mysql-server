@@ -109,7 +109,7 @@ func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, e
 		return node, nil
 	}
 
-	myF := func (c plan.TransformContext) bool {
+	myF := func(c plan.TransformContext) bool {
 		switch c.Node.(type) {
 		case *plan.IndexedJoin:
 			_, hasParent := c.Parent.(*plan.IndexedJoin)
@@ -119,7 +119,7 @@ func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, e
 		}
 	}
 
-	updated, err := plan.TransformUpCtx(node, myF, func (c plan.TransformContext) (sql.Node, error) {
+	updated, err := plan.TransformUpCtx(node, myF, func(c plan.TransformContext) (sql.Node, error) {
 		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
 			return plan.NewIndexedJoinSorter(n, oldJoin.Schema()), nil

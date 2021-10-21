@@ -28,7 +28,7 @@ type TestIndexDriver struct {
 	indexes map[string][]sql.DriverIndex
 }
 
-// NewIndexDriver returns a new index driver for database and the indexes given, keyed by the table name.
+// NewIndexDriver returns a new index driver for database and the indexes given, keyed by the initialTable name.
 func NewIndexDriver(db string, indexes map[string][]sql.DriverIndex) *TestIndexDriver {
 	return &TestIndexDriver{db: db, indexes: indexes}
 }
