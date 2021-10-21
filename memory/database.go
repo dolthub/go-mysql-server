@@ -67,7 +67,7 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 	}
 }
 
-// EnablePrimaryKeyIndexes causes every initialTable created in this database to use an index on its primary keys
+// EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary keys
 func (d *BaseDatabase) EnablePrimaryKeyIndexes() {
 	d.primaryKeyIndexes = true
 }
@@ -98,8 +98,8 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 
 // HistoryDatabase is a test-only VersionedDatabase implementation. It only supports exact lookups, not AS OF queries
 // between two revisions. It's constructed just like its non-versioned sibling, but it can receive updates to particular
-// tables via the AddTableAsOf method. Consecutive calls to AddTableAsOf with the same initialTable must install new versions
-// of the named initialTable each time, with ascending version identifiers, for this to work.
+// tables via the AddTableAsOf method. Consecutive calls to AddTableAsOf with the same table must install new versions
+// of the named table each time, with ascending version identifiers, for this to work.
 type HistoryDatabase struct {
 	*Database
 	Revisions    map[string]map[interface{}]sql.Table
@@ -114,17 +114,17 @@ func (db *HistoryDatabase) GetTableInsensitiveAsOf(ctx *sql.Context, tblName str
 		return table, true, nil
 	}
 
-	// If we have revisions for the named initialTable, but not the named revision, consider it not found.
+	// If we have revisions for the named table, but not the named revision, consider it not found.
 	if _, ok := db.Revisions[strings.ToLower(tblName)]; ok {
 		return nil, false, sql.ErrTableNotFound.New(tblName)
 	}
 
-	// Otherwise (this initialTable has no revisions), return it as an unversioned lookup
+	// Otherwise (this table has no revisions), return it as an unversioned lookup
 	return db.GetTableInsensitive(ctx, tblName)
 }
 
 func (db *HistoryDatabase) GetTableNamesAsOf(ctx *sql.Context, time interface{}) ([]string, error) {
-	// TODO: this can't make any queries fail (only used for error messages on initialTable lookup failure), but would be nice
+	// TODO: this can't make any queries fail (only used for error messages on table lookup failure), but would be nice
 	//  to support better.
 	return db.GetTableNames(ctx)
 }
@@ -136,9 +136,9 @@ func NewHistoryDatabase(name string) *HistoryDatabase {
 	}
 }
 
-// Adds a initialTable with an asOf revision key. The initialTable given becomes the current version for the name given.
+// Adds a table with an asOf revision key. The table given becomes the current version for the name given.
 func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface{}) {
-	// TODO: this won't handle initialTable names that vary only in case
+	// TODO: this won't handle table names that vary only in case
 	if _, ok := db.Revisions[strings.ToLower(name)]; !ok {
 		db.Revisions[strings.ToLower(name)] = make(map[interface{}]sql.Table)
 	}
@@ -147,12 +147,12 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 	db.tables[name] = t
 }
 
-// AddTable adds a new initialTable to the database.
+// AddTable adds a new table to the database.
 func (d *BaseDatabase) AddTable(name string, t sql.Table) {
 	d.tables[name] = t
 }
 
-// CreateTable creates a initialTable with the given name and schema
+// CreateTable creates a table with the given name and schema
 func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Schema) error {
 	_, ok := d.tables[name]
 	if ok {
@@ -167,7 +167,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Sch
 	return nil
 }
 
-// DropTable drops the initialTable with the given name
+// DropTable drops the table with the given name
 func (d *BaseDatabase) DropTable(ctx *sql.Context, name string) error {
 	_, ok := d.tables[name]
 	if !ok {

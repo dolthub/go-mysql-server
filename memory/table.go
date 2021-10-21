@@ -30,7 +30,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// Table represents an in-memory database initialTable.
+// Table represents an in-memory database table.
 type Table struct {
 	// Schema and related info
 	name             string
@@ -459,7 +459,7 @@ func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 	return inserter.Close(ctx)
 }
 
-// Insert a new row into the initialTable.
+// Insert a new row into the table.
 func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.table.schema, row); err != nil {
 		return err
@@ -556,7 +556,7 @@ func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (boo
 	return true, nil
 }
 
-// Delete the given row from the initialTable.
+// Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	if err := checkRow(t.table.schema, row); err != nil {
 		return err
@@ -660,7 +660,7 @@ func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (interface{}, error) {
 	return t.autoIncVal, nil
 }
 
-// GetNextAutoIncrementValue gets the next auto increment value for the memory initialTable the increment.
+// GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (interface{}, error) {
 	autoIncCol := t.schema[t.autoColIdx]
 	cmp, err := autoIncCol.Type.Compare(insertVal, t.autoIncVal)
@@ -976,7 +976,7 @@ func (t *Table) columnIndexes(colNames []string) ([]int, error) {
 	return columns, nil
 }
 
-// EnablePrimaryKeyIndexes enables the use of primary key indexes on this initialTable.
+// EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
 func (t *Table) EnablePrimaryKeyIndexes() {
 	t.pkIndexesEnabled = true
 }

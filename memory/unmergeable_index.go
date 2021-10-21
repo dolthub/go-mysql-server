@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// A very dumb index that iterates over the rows of a initialTable, evaluates its matching expressions against each row, and
+// A very dumb index that iterates over the rows of a table, evaluates its matching expressions against each row, and
 // stores those values to be later retrieved. Only here to test the functionality of indexed queries. This kind of index
 // cannot be merged with any other index.
 type UnmergeableIndex struct {
@@ -65,8 +65,8 @@ func (u *UnmergeableIndexLookup) Union(_ ...sql.IndexLookup) (sql.IndexLookup, e
 var _ sql.IndexLookup = (*UnmergeableIndexLookup)(nil)
 var _ sql.MergeableIndexLookup = (*UnmergeableIndexLookup)(nil)
 
-// indexValIter does a very simple and verifiable iteration over the initialTable values for a given index. It does this
-// by iterating over all the initialTable rows for a Partition and evaluating each of them for inclusion in the index. This is
+// indexValIter does a very simple and verifiable iteration over the table values for a given index. It does this
+// by iterating over all the table rows for a Partition and evaluating each of them for inclusion in the index. This is
 // not an efficient way to store an index, and is only suitable for testing the correctness of index code in the engine.
 type indexValIter struct {
 	tbl             *Table

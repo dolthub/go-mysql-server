@@ -92,25 +92,22 @@ func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
-func newUpdateResult(matched, updated int) sql.OkResult {
-	return sql.OkResult{
-		RowsAffected: uint64(updated),
-		Info:         plan.UpdateInfo{matched, updated, 0},
-	}
-}
-
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1 WHERE one_pk.c5 < 10`,
-		Expected: []sql.Row{{newUpdateResult(2, 2)}},
+		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY strpk`,
+		Expected: []sql.Row{
+			{1, "00"},
+			{2, "11"},
+			{3, "22"},
+		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, true, nil)
+	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
