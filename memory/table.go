@@ -390,11 +390,10 @@ var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
 
-func (t *tableEditor) Close(*sql.Context) error {
+func (t *tableEditor) Close(ctx *sql.Context) error {
 	// TODO: it would be nice to apply all pending updates here at once, rather than directly in the Insert / Update
 	//  / Delete methods.
-	t.table.partitions = t.ea.updatedPartitions
-	return nil
+	return t.ea.ApplyEdits(ctx, t.table)
 }
 
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
@@ -414,7 +413,8 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 	t.table.insert = t.initialInsert
 	t.table.autoIncVal = t.initialAutoIncVal
 	t.table.partitions = t.initialPartitions
-	t.ea.updatedPartitions = t.initialPartitions
+	t.ea.adds = make([]sql.Row, 0)
+	t.ea.deletes =  make([]sql.Row, 0)
 	return nil
 }
 
@@ -466,18 +466,24 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	if err := t.checkUniquenessConstraints(row); err != nil {
+	partitionRow, added, _ := t.ea.Get(row)
+	if added {
+		pkColIdxes := t.pkColumnIndexes() // TODO: Make this better
+		vals := make([]interface{}, len(pkColIdxes))
+		for _, i := range pkColIdxes {
+			vals[i] = row[pkColIdxes[i]]
+		}
+		return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
+	}
+
+	// problem is removal from delete
+
+	err := t.ea.Insert(row)
+	if err != nil {
 		return err
 	}
 
-	key := string(t.table.keys[t.table.insert])
-	t.table.insert++
-	if t.table.insert == len(t.table.keys) {
-		t.table.insert = 0
-	}
-
-	t.ea.updatedPartitions[key] = append(t.ea.updatedPartitions[key], row)
-
+	// TODO: Make sure this right
 	idx := t.table.autoColIdx
 	if idx >= 0 {
 		// autoIncVal = max(autoIncVal, insertVal)
@@ -557,40 +563,9 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	matches := false
-	for partitionIndex, partition := range t.ea.updatedPartitions {
-		for partitionRowIndex, partitionRow := range partition {
-			matches = true
-
-			// For DELETE queries, we will have previously selected the row in order to delete it. For REPLACE, we will just
-			// have the row to be replaced, so we need to consider primary key information.
-			pkColIdxes := t.pkColumnIndexes()
-			if len(pkColIdxes) > 0 {
-				if columnsMatch(pkColIdxes, partitionRow, row) {
-					t.ea.updatedPartitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
-					break
-				}
-			}
-
-			// If we had no primary key match (or have no primary key), check each row for a total match
-			var err error
-			matches, err = rowsAreEqual(ctx, t.table.schema, row, partitionRow)
-			if err != nil {
-				return err
-			}
-
-			if matches {
-				t.ea.updatedPartitions[partitionIndex] = append(partition[:partitionRowIndex], partition[partitionRowIndex+1:]...)
-				break
-			}
-		}
-		if matches {
-			break
-		}
-	}
-
-	if !matches {
-		return sql.ErrDeleteRowNotFound.New()
+	err := t.ea.Delete(row)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -605,27 +580,25 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	if t.pkColsDiffer(oldRow, newRow) {
-		if err := t.checkUniquenessConstraints(newRow); err != nil {
-			return err
+		partitionRow, ok, _ := t.ea.Get(newRow)
+		if ok {
+			pkColIdxes := t.pkColumnIndexes() // TODO: Make this better
+			vals := make([]interface{}, len(pkColIdxes))
+			for _, i := range pkColIdxes {
+				vals[i] = newRow[pkColIdxes[i]]
+			}
+			return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
 		}
 	}
 
-	matches := false
-	for partitionIndex, partition := range t.ea.updatedPartitions {
-		for partitionRowIndex, partitionRow := range partition {
-			var err error
-			matches, err = rowsAreEqual(ctx, t.table.schema, oldRow, partitionRow)
-			if err != nil {
-				return err
-			}
-			if matches {
-				t.ea.updatedPartitions[partitionIndex][partitionRowIndex] = newRow
-				break
-			}
-		}
-		if matches {
-			break
-		}
+	err := t.ea.Delete(oldRow)
+	if err != nil {
+		return err
+	}
+
+	err = t.ea.Insert(newRow)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -637,25 +610,25 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val interface{}) e
 	return nil
 }
 
-func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
-	pkColIdxes := t.pkColumnIndexes()
-
-	if len(pkColIdxes) > 0 {
-		for _, partition := range t.ea.updatedPartitions {
-			for _, partitionRow := range partition {
-				if columnsMatch(pkColIdxes, partitionRow, row) {
-					vals := make([]interface{}, len(pkColIdxes))
-					for _, i := range pkColIdxes {
-						vals[i] = row[pkColIdxes[i]]
-					}
-					return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
-				}
-			}
-		}
-	}
-
-	return nil
-}
+//func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
+//	pkColIdxes := t.pkColumnIndexes()
+//
+//	if len(pkColIdxes) > 0 {
+//		for _, partition := range t.ea.updatedPartitions {
+//			for _, partitionRow := range partition {
+//				if columnsMatch(pkColIdxes, partitionRow, row) {
+//					vals := make([]interface{}, len(pkColIdxes))
+//					for _, i := range pkColIdxes {
+//						vals[i] = row[pkColIdxes[i]]
+//					}
+//					return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
+//				}
+//			}
+//		}
+//	}
+//
+//	return nil
+//}
 
 func (t *tableEditor) pkColumnIndexes() []int {
 	var pkColIdxes []int
@@ -671,28 +644,6 @@ func (t *tableEditor) pkColumnIndexes() []int {
 func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
 	return !columnsMatch(pkColIdxes, row, row2)
-}
-
-type tableEditAccumulator struct {
-	table             *Table
-	updatedPartitions map[string][]sql.Row
-}
-
-func NewTableEditAccumulator(table *Table) *tableEditAccumulator {
-	updatedPartitions := make(map[string][]sql.Row)
-
-	for partStr, rowSlice := range table.partitions {
-		newRowSlice := make([]sql.Row, len(rowSlice))
-		for i, row := range rowSlice {
-			newRowSlice[i] = row.Copy()
-		}
-		updatedPartitions[partStr] = newRowSlice
-	}
-
-	return &tableEditAccumulator{
-		table:             table,
-		updatedPartitions: updatedPartitions,
-	}
 }
 
 // Returns whether the values for the columns given match in the two rows provided

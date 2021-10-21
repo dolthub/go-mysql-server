@@ -29,6 +29,10 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 			}
 		})
 
+		if _, ok := jn.(*plan.CrossJoin); ok {
+			return nil, sql.ErrUnsupportedFeature.New()
+		}
+
 		if jn == nil {
 			return n, nil
 		}

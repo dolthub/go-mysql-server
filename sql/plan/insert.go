@@ -310,23 +310,6 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 				return i.ignoreOrClose(err)
 			}
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-
-			insertable, err := GetInsertable(i.tableNode)
-			if err != nil {
-				return i.ignoreOrClose(err)
-			}
-
-			i.inserter = insertable.Inserter(i.ctx)
-
-			i.inserter.Close(i.ctx)
-			updatable, err := getUpdatable(i.tableNode)
-			if err != nil {
-				return i.ignoreOrClose(err)
-			}
-
-			i.updater = updatable.Updater(i.ctx)
-
-
 			return i.handleOnDuplicateKeyUpdate(row, ue.Existing)
 		}
 	}
@@ -348,11 +331,6 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(row, rowToUpdate sql.Row) (retur
 	}
 
 	err = i.updater.Update(i.ctx, rowToUpdate, newRow)
-	if err != nil {
-		return nil, err
-	}
-
-	err = i.updater.Close(i.ctx)
 	if err != nil {
 		return nil, err
 	}
