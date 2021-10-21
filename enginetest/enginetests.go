@@ -2876,7 +2876,7 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Query:    "SELECT i FROM (SELECT i FROM mytable LIMIT 2) t ORDER BY i",
+			Query:    "SELECT i FROM (SELECT i FROM mytable ORDER BY i LIMIT 2) t",
 			Expected: []sql.Row{{int64(1)}},
 		},
 		// TODO: this is broken: the session limit is applying inappropriately to the subquery

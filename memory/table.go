@@ -467,7 +467,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 	partitionRow, added, _ := t.ea.Get(row)
 	if added {
-		pkColIdxes := t.pkColumnIndexes() // TODO: Make this better
+		pkColIdxes := t.pkColumnIndexes()
 		vals := make([]interface{}, len(pkColIdxes))
 		for _, i := range pkColIdxes {
 			vals[i] = row[pkColIdxes[i]]
@@ -475,17 +475,13 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
 	}
 
-	// problem is removal from delete
-
 	err := t.ea.Insert(row)
 	if err != nil {
 		return err
 	}
 
-	// TODO: Make sure this right
 	idx := t.table.autoColIdx
 	if idx >= 0 {
-		// autoIncVal = max(autoIncVal, insertVal)
 		autoCol := t.table.schema[idx]
 		cmp, err := autoCol.Type.Compare(row[idx], t.table.autoIncVal)
 		if err != nil {
@@ -579,9 +575,9 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	if t.pkColsDiffer(oldRow, newRow) {
-		partitionRow, ok, _ := t.ea.Get(newRow)
-		if ok {
-			pkColIdxes := t.pkColumnIndexes() // TODO: Make this better
+		partitionRow, added, _ := t.ea.Get(newRow)
+		if added {
+			pkColIdxes := t.pkColumnIndexes()
 			vals := make([]interface{}, len(pkColIdxes))
 			for _, i := range pkColIdxes {
 				vals[i] = newRow[pkColIdxes[i]]
@@ -608,26 +604,6 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val interface{}) e
 	t.table.autoIncVal = val
 	return nil
 }
-
-//func (t *tableEditor) checkUniquenessConstraints(row sql.Row) error {
-//	pkColIdxes := t.pkColumnIndexes()
-//
-//	if len(pkColIdxes) > 0 {
-//		for _, partition := range t.ea.updatedPartitions {
-//			for _, partitionRow := range partition {
-//				if columnsMatch(pkColIdxes, partitionRow, row) {
-//					vals := make([]interface{}, len(pkColIdxes))
-//					for _, i := range pkColIdxes {
-//						vals[i] = row[pkColIdxes[i]]
-//					}
-//					return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
-//				}
-//			}
-//		}
-//	}
-//
-//	return nil
-//}
 
 func (t *tableEditor) pkColumnIndexes() []int {
 	var pkColIdxes []int
