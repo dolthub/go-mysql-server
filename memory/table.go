@@ -391,8 +391,6 @@ var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
-	// TODO: it would be nice to apply all pending updates here at once, rather than directly in the Insert / Update
-	//  / Delete methods.
 	return t.ea.ApplyEdits(ctx, t.table)
 }
 
@@ -566,6 +564,7 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 	return nil
 }
 
+// Update the given row from the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
 	if err := checkRow(t.table.schema, oldRow); err != nil {
 		return err

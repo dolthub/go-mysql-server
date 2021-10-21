@@ -50,19 +50,10 @@ func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, err
 	}
 
-	var joinSchema sql.Schema
-
-	switch n := u.Child.(*UpdateSource).Child.(type) {
-	case *IndexedJoinSorter:
-		joinSchema = n.OldJoinSchema
-	default:
-		joinSchema = n.Schema()
-	}
-
 	return &updateJoinIter{
 		ctx:              ctx,
 		updateSourceIter: ji,
-		joinSchema:       joinSchema,
+		joinSchema:       u.Child.(*UpdateSource).Child.Schema(),
 		updaters:         u.updaters,
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),

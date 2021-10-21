@@ -101,15 +101,18 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		return n, nil
 	}
 
-	return wrapIndexedJoinForUpdateCases(withIndexedTableAccess, oldJoin)
+	if _, ok := withIndexedTableAccess.(*plan.Update); ok {
+		withIndexedTableAccess, err = wrapIndexedJoinForUpdateCases(withIndexedTableAccess, oldJoin)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return withIndexedTableAccess, nil
 }
 
 func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, error) {
-	if _, ok := node.(*plan.Update); !ok {
-		return node, nil
-	}
-
-	myF := func(c plan.TransformContext) bool {
+	topLevelIndexedJoinSelector := func(c plan.TransformContext) bool {
 		switch c.Node.(type) {
 		case *plan.IndexedJoin:
 			_, hasParent := c.Parent.(*plan.IndexedJoin)
@@ -119,7 +122,8 @@ func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, e
 		}
 	}
 
-	updated, err := plan.TransformUpCtx(node, myF, func(c plan.TransformContext) (sql.Node, error) {
+	// Convert the top level indexed join into using the indexed join sorter
+	updated, err := plan.TransformUpCtx(node, topLevelIndexedJoinSelector, func(c plan.TransformContext) (sql.Node, error) {
 		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
 			return plan.NewIndexedJoinSorter(n, oldJoin.Schema()), nil

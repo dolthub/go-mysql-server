@@ -30,6 +30,7 @@ var dualTable = func() sql.Table {
 
 	ctx := sql.NewEmptyContext()
 
+	// Need to run through the proper inserting steps to add data to the dummy table.
 	inserter := t.Inserter(ctx)
 	inserter.StatementBegin(ctx)
 	_ = inserter.Insert(sql.NewEmptyContext(), sql.NewRow("x"))

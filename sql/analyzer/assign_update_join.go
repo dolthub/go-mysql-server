@@ -19,17 +19,23 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 		}
 
 		var jn sql.Node
+		unsupported := false
 		plan.Inspect(us, func(node sql.Node) bool {
 			switch node.(type) {
-			case *plan.CrossJoin, plan.JoinNode, *plan.IndexedJoin, *plan.IndexedJoinSorter:
+			case plan.JoinNode, *plan.IndexedJoinSorter:
 				jn = node
+				return false
+			// every IndexedJoin must be wrapped under an IndexedJoinSorter
+			case *plan.CrossJoin, *plan.IndexedJoin, *plan.LeftJoin, *plan.RightJoin:
+				jn = node
+				unsupported = true
 				return false
 			default:
 				return true
 			}
 		})
 
-		if _, ok := jn.(*plan.CrossJoin); ok {
+		if unsupported {
 			return nil, sql.ErrUnsupportedFeature.New()
 		}
 
