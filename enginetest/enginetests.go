@@ -2456,7 +2456,7 @@ func TestWindowAgg(t *testing.T, harness Harness) {
 		{5, 0},
 	}, nil, nil)
 
-	TestQuery(t, harness, e, `SELECT a, first_value(a) over (partition by b) FROM t1 order by a`, []sql.Row{
+	TestQuery(t, harness, e, `SELECT a, first_value(a) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
 		{0, 0},
 		{1, 1},
 		{2, 2},
@@ -2465,12 +2465,12 @@ func TestWindowAgg(t *testing.T, harness Harness) {
 		{5, 5},
 	}, nil, nil)
 
-	TestQuery(t, harness, e, `SELECT a, first_value(a-1) over (partition by b order by c) FROM t1 order by a`, []sql.Row{
+	TestQuery(t, harness, e, `SELECT a, first_value(a-1) over (partition by b order by a ASC, c ASC) FROM t1 order by a`, []sql.Row{
 		{0, -1},
-		{1, 3},
+		{1, 0},
 		{2, 1},
 		{3, -1},
-		{4, 3},
+		{4, 0},
 		{5, 4},
 	}, nil, nil)
 

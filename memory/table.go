@@ -381,7 +381,7 @@ type tableEditor struct {
 	table             *Table
 	initialAutoIncVal interface{}
 	initialPartitions map[string][]sql.Row
-	ea *tableEditAccumulator
+	ea tableEditAccumulator
 	initialInsert     int
 }
 
@@ -413,8 +413,7 @@ func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) e
 	t.table.insert = t.initialInsert
 	t.table.autoIncVal = t.initialAutoIncVal
 	t.table.partitions = t.initialPartitions
-	t.ea.adds = make([]sql.Row, 0)
-	t.ea.deletes =  make([]sql.Row, 0)
+	t.ea.Clear()
 	return nil
 }
 
