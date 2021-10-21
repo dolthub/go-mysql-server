@@ -18,6 +18,8 @@ import (
 	"math"
 	"strings"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 // SystemVariableScope represents the scope of a system variable.
@@ -171,18 +173,48 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	return nil
 }
 
-func InitSystemVariables() {
+func DecodeSystemVar(name string, val string) (interface{}, error) {
+	sysVar, ok := systemVars[name]
+	if !ok {
+		return nil, ErrUnknownSystemVariable.New(name)
+	}
+
+	t, ok := sysVar.Type.(SystemVariableType)
+	if !ok {
+		return nil, ErrUnknownSystemVariable.New(name)
+	}
+
+	decoded, err := t.DecodeValue(val)
+	if err != nil {
+		return nil, err
+	}
+
+	return decoded, nil
+}
+
+func InitSystemVariablesWithDefaults(defaults config.ReadableConfig) error {
 	for _, sysVar := range systemVars {
 		SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
 	}
+
+	var err error
+	var decoded interface{}
+	if defaults != nil {
+		defaults.Iter(func(k, v string) bool {
+			decoded, err = DecodeSystemVar(k, v)
+			if err != nil {
+				return true
+			}
+			SystemVariables.sysVarVals[k] = decoded
+			return false
+		})
+	}
+	return err
 }
 
 // init initializes SystemVariables as it functions as a global variable.
 func init() {
-	InitSystemVariables()
-	//for _, sysVar := range systemVars {
-	//	SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
-	//}
+	InitSystemVariablesWithDefaults(nil)
 }
 
 //TODO: Add from the following sources because MySQL likes to not have every variable on a single page:

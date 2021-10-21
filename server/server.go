@@ -16,6 +16,7 @@ package server
 
 import (
 	"crypto/tls"
+	"github.com/dolthub/go-mysql-server/sql"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -23,6 +24,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/auth"
+	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 // Server is a MySQL server for SQLe engines.
@@ -58,14 +60,53 @@ type Config struct {
 	NoDefaults bool
 }
 
+func (c Config) WithDefaults(conf config.ReadableConfig) (Config, error) {
+	if v, err := conf.GetString("max_connections"); err == nil {
+		decoded, err := sql.DecodeSystemVar("max_connections", v)
+		if err != nil {
+			return Config{}, err
+		}
+		mc := decoded.(int64)
+		c.MaxConnections = uint64(mc)
+	}
+	if v, err := conf.GetString("net_write_timeout"); err == nil {
+		decoded, err := sql.DecodeSystemVar("net_write_timeout", v)
+		if err != nil {
+			return Config{}, err
+		}
+		timeout := decoded.(int64)
+		c.ConnWriteTimeout = time.Duration(timeout) * time.Millisecond
+	}
+	if v, err := conf.GetString("net_read_timeout"); err == nil {
+		decoded, err := sql.DecodeSystemVar("net_read_timeout", v)
+		if err != nil {
+			return Config{}, err
+		}
+		timeout := decoded.(int64)
+		c.ConnReadTimeout = time.Duration(timeout) * time.Millisecond
+	}
+	return c, nil
+}
+
 // NewDefaultServer creates a Server with the default session builder.
 func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
-	return NewServer(cfg, e, DefaultSessionBuilder)
+	return NewServer(cfg, e, DefaultSessionBuilder, nil)
 }
 
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
-func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
+func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, defaults config.ReadableConfig) (*Server, error) {
+	// merge defaults into sysVars and server config
+	var err error
+	if defaults != nil {
+		sql.InitSystemVariablesWithDefaults(defaults)
+		// TODO separate logic for merging cli config, persisted config, defaults config into MySQL conf
+		cfg, err = cfg.WithDefaults(defaults)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var tracer opentracing.Tracer
 	if cfg.Tracer != nil {
 		tracer = cfg.Tracer
