@@ -62,7 +62,7 @@ type Config struct {
 
 func (c Config) WithDefaults(conf config.ReadableConfig) (Config, error) {
 	if v, err := conf.GetString("max_connections"); err == nil {
-		decoded, err := sql.DecodeSystemVar("max_connections", v)
+		decoded, err := sql.DecodeSysVarValue("max_connections", v)
 		if err != nil {
 			return Config{}, err
 		}
@@ -70,7 +70,7 @@ func (c Config) WithDefaults(conf config.ReadableConfig) (Config, error) {
 		c.MaxConnections = uint64(mc)
 	}
 	if v, err := conf.GetString("net_write_timeout"); err == nil {
-		decoded, err := sql.DecodeSystemVar("net_write_timeout", v)
+		decoded, err := sql.DecodeSysVarValue("net_write_timeout", v)
 		if err != nil {
 			return Config{}, err
 		}
@@ -78,7 +78,7 @@ func (c Config) WithDefaults(conf config.ReadableConfig) (Config, error) {
 		c.ConnWriteTimeout = time.Duration(timeout) * time.Millisecond
 	}
 	if v, err := conf.GetString("net_read_timeout"); err == nil {
-		decoded, err := sql.DecodeSystemVar("net_read_timeout", v)
+		decoded, err := sql.DecodeSysVarValue("net_read_timeout", v)
 		if err != nil {
 			return Config{}, err
 		}
@@ -98,7 +98,7 @@ func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
 func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, defaults config.ReadableConfig) (*Server, error) {
 	// merge defaults into sysVars and server config
 	var err error
-	if defaults != nil {
+	if defaults != nil && !cfg.NoDefaults {
 		sql.InitSystemVariablesWithDefaults(defaults)
 		// TODO separate logic for merging cli config, persisted config, defaults config into MySQL conf
 		cfg, err = cfg.WithDefaults(defaults)

@@ -15,11 +15,58 @@
 package server
 
 import (
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/auth"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/config"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
+
+
+func TestServerDefaults(t *testing.T) {
+	serverConf := Config{
+		Protocol: "tcp",
+		Address:  "localhost:3306",
+		Auth:     auth.NewNativeSingle("root", "", auth.AllPermissions),
+	}
+
+	t.Run("no defaults", func(t *testing.T) {
+		defaults := config.NewMapConfig(map[string]string{
+			"max_connections":   "1000",
+			"net_write_timeout": "1",
+			"net_read_timeout":  "1",
+		})
+		sql.InitSystemVariablesWithDefaults(nil)
+
+		serverConf.NoDefaults = true
+		s, err := NewServer(serverConf, sqle.New(analyzer.NewDefault(nil), &sqle.Config{}), testSessionBuilder, defaults)
+		defer s.Close()
+		assert.NoError(t, err)
+
+		_, val, _ := sql.SystemVariables.GetGlobal("max_connections")
+		assert.Equal(t, int64(151), val)
+	})
+
+	t.Run("with defaults", func(t *testing.T) {
+		defaults := config.NewMapConfig(map[string]string{
+			"max_connections":   "1000",
+			"net_write_timeout": "1",
+			"net_read_timeout":  "1",
+		})
+		sql.InitSystemVariablesWithDefaults(nil)
+
+		serverConf.NoDefaults = false
+		s, err := NewServer(serverConf, sqle.New(analyzer.NewDefault(nil), &sqle.Config{}), testSessionBuilder, defaults)
+		defer s.Close()
+		assert.NoError(t, err)
+
+		_, val, _ := sql.SystemVariables.GetGlobal("max_connections")
+		assert.Equal(t, int64(1000), val)
+	})
+}
 
 func TestConfigWithDefaults(t *testing.T) {
 	defaults := config.NewMapConfig(map[string]string{

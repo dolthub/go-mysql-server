@@ -173,7 +173,7 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	return nil
 }
 
-func DecodeSystemVar(name string, val string) (interface{}, error) {
+func DecodeSysVarValue(name string, val string) (interface{}, error) {
 	sysVar, ok := systemVars[name]
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(name)
@@ -201,7 +201,7 @@ func InitSystemVariablesWithDefaults(defaults config.ReadableConfig) error {
 	var decoded interface{}
 	if defaults != nil {
 		defaults.Iter(func(k, v string) bool {
-			decoded, err = DecodeSystemVar(k, v)
+			decoded, err = DecodeSysVarValue(k, v)
 			if err != nil {
 				return true
 			}
