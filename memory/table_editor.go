@@ -29,7 +29,7 @@ type tableEditAccumulator interface {
 	Get(value sql.Row) (sql.Row, bool, bool)
 	// ApplyEdits takes a initialTable and runs through a sequence of inserts and deletes that have been stored in the
 	// accumulator.
-	ApplyEdits(ctx *sql.Context, table *Table) error
+	ApplyEdits(ctx *sql.Context) (*Table, error)
 	// Clear wipes all of the stored inserts and deletes that may or may not have been applied.
 	Clear()
 }
@@ -45,17 +45,17 @@ func NewTableEditAccumulator(t *Table) tableEditAccumulator {
 	}
 
 	return &pkTableEditAccumulator{
-		table:   t,
-		adds:    make(map[uint64]sql.Row, 0),
-		deletes: make(map[uint64]sql.Row, 0),
+		initialTable: t,
+		adds:         make(map[uint64]sql.Row, 0),
+		deletes:      make(map[uint64]sql.Row, 0),
 	}
 }
 
 // pkTableEditAccumulator manages the updates of keyed tables. It uses a map to efficiently toggle edits.
 type pkTableEditAccumulator struct {
-	table   *Table
-	adds    map[uint64]sql.Row
-	deletes map[uint64]sql.Row
+	initialTable *Table
+	adds         map[uint64]sql.Row
+	deletes      map[uint64]sql.Row
 }
 
 var _ tableEditAccumulator = (*pkTableEditAccumulator)(nil)
@@ -92,7 +92,10 @@ func (pke *pkTableEditAccumulator) Delete(value sql.Row) error {
 // Get implements the tableEditAccumulator interface.
 func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, bool) {
 	pks := pke.getPks(value)
-	pkHash, _ := sql.HashOf(pks)
+	pkHash, err := sql.HashOf(pks)
+	if err != nil {
+		return nil, false, false
+	}
 
 	r, exists := pke.adds[pkHash]
 	if exists {
@@ -105,7 +108,7 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, bool) {
 	}
 
 	pkColIdxes := pke.pkColumnIndexes()
-	for _, partition := range pke.table.partitions {
+	for _, partition := range pke.initialTable.partitions {
 		for _, partitionRow := range partition {
 			if columnsMatch(pkColIdxes, partitionRow, value) {
 				return partitionRow, true, false
@@ -117,22 +120,22 @@ func (pke *pkTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, bool) {
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
+func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) (*Table, error) {
 	for _, val := range pke.deletes {
-		err := pke.deleteHelper(ctx, table, val)
+		err := pke.deleteHelper(ctx, pke.initialTable, val)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	for _, val := range pke.adds {
-		err := pke.insertHelper(ctx, table, val)
+		err := pke.insertHelper(ctx, pke.initialTable, val)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return pke.initialTable, nil
 }
 
 // Clear implements the tableEditAccumulator interface.
@@ -144,9 +147,9 @@ func (pke *pkTableEditAccumulator) Clear() {
 // pkColumnIndexes returns the indexes of the primary keys in the initialized table.
 func (pke *pkTableEditAccumulator) pkColumnIndexes() []int {
 	var pkColIdxes []int
-	for _, column := range pke.table.schema {
+	for _, column := range pke.initialTable.schema {
 		if column.PrimaryKey {
-			idx, _ := pke.table.getField(column.Name)
+			idx, _ := pke.initialTable.getField(column.Name)
 			pkColIdxes = append(pkColIdxes, idx)
 		}
 	}
@@ -289,22 +292,22 @@ func (k *keylessTableEditAccumulator) Get(value sql.Row) (sql.Row, bool, bool) {
 }
 
 // ApplyEdits implements the tableEditAccumulator interface.
-func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context, table *Table) error {
+func (k *keylessTableEditAccumulator) ApplyEdits(ctx *sql.Context) (*Table, error) {
 	for _, val := range k.deletes {
-		err := k.deleteHelper(ctx, table, val)
+		err := k.deleteHelper(ctx, k.initialTable, val)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	for _, val := range k.adds {
-		err := k.insertHelper(ctx, table, val)
+		err := k.insertHelper(ctx, k.initialTable, val)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return k.initialTable, nil
 }
 
 // Clear implements the tableEditAccumulator interface.

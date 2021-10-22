@@ -391,7 +391,14 @@ var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
-	return t.ea.ApplyEdits(ctx, t.table)
+	tbl, err := t.ea.ApplyEdits(ctx)
+	if err != nil {
+		return err
+	}
+
+	t.table = tbl
+
+	return nil
 }
 
 func (t *tableEditor) StatementBegin(ctx *sql.Context) {
