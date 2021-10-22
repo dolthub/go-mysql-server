@@ -439,4 +439,5 @@ func (s *Subquery) Dispose() {
 		s.disposeFunc()
 		s.disposeFunc = nil
 	}
+	disposeNode(s.Query)
 }

@@ -527,12 +527,19 @@ func (i *joinIter) loadSecondaryInMemory() error {
 			break
 		}
 		if err != nil {
+			iter.Close(i.ctx)
 			return err
 		}
 
 		if err := i.secondaryRows.Add(row); err != nil {
+			iter.Close(i.ctx)
 			return err
 		}
+	}
+
+	err = iter.Close(i.ctx)
+	if err != nil {
+		return err
 	}
 
 	if len(i.secondaryRows.Get()) == 0 {
@@ -578,7 +585,11 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 	rightRow, err := i.secondary.Next()
 	if err != nil {
 		if err == io.EOF {
+			err = i.secondary.Close(i.ctx)
 			i.secondary = nil
+			if err != nil {
+				return nil, err
+			}
 			i.primaryRow = nil
 
 			// If we got to this point and the mode is still unknown it means
@@ -679,7 +690,6 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 
 func (i *joinIter) Close(ctx *sql.Context) (err error) {
 	i.Dispose()
-	i.secondary = nil
 
 	if i.primary != nil {
 		if err = i.primary.Close(ctx); err != nil {
@@ -693,6 +703,7 @@ func (i *joinIter) Close(ctx *sql.Context) (err error) {
 
 	if i.secondary != nil {
 		err = i.secondary.Close(ctx)
+		i.secondary = nil
 	}
 
 	return err
@@ -708,4 +719,19 @@ func makeNullable(cols []*sql.Column) []*sql.Column {
 		result[i] = &col
 	}
 	return result
+}
+
+func nodeHasJoin(node sql.Node) bool {
+	hasJoinNode := false
+	Inspect(node, func(node sql.Node) bool {
+		switch node.(type) {
+		case JoinNode, *CrossJoin, *IndexedJoinSorter:
+			hasJoinNode = true
+			return false
+		default:
+			return true
+		}
+	})
+
+	return hasJoinNode
 }

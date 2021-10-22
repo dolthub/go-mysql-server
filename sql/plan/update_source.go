@@ -123,9 +123,8 @@ func (u *updateSourceIter) Close(ctx *sql.Context) error {
 }
 
 func (u *UpdateSource) getChildSchema() (sql.Schema, error) {
-	switch n := u.Child.(type) {
-	case JoinNode, *IndexedJoinSorter:
-		return n.Schema(), nil
+	if nodeHasJoin(u.Child) {
+		return u.Child.Schema(), nil
 	}
 
 	table, err := getUpdatable(u.Child)
