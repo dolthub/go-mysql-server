@@ -18,8 +18,6 @@ import (
 	"math"
 	"strings"
 	"sync"
-
-	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 // SystemVariableScope represents the scope of a system variable.
@@ -76,6 +74,17 @@ type SystemVariable struct {
 	Type Type
 	// Default defines the default value of the system variable.
 	Default interface{}
+}
+
+func (sv SystemVariable) Copy() SystemVariable {
+	return SystemVariable{
+		Name:              sv.Name,
+		Scope:             sv.Scope,
+		Dynamic:           sv.Dynamic,
+		SetVarHintApplies: sv.SetVarHintApplies,
+		Type:              sv.Type,
+		Default:           sv.Default,
+	}
 }
 
 // globalSystemVariables is the underlying type of SystemVariables.
@@ -192,29 +201,20 @@ func DecodeSysVarValue(name string, val string) (interface{}, error) {
 	return decoded, nil
 }
 
-func InitSystemVariablesWithDefaults(defaults config.ReadableConfig) error {
+// InitSystemVariables resets the systemVars singleton. Optional globals can be added, either overriding
+// existing variables or new applications specific vars.
+// TODO check system variables for self-consistency
+func InitSystemVariables(globals []SystemVariable) error {
 	for _, sysVar := range systemVars {
 		SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
 	}
-
-	var err error
-	var decoded interface{}
-	if defaults != nil {
-		defaults.Iter(func(k, v string) bool {
-			decoded, err = DecodeSysVarValue(k, v)
-			if err != nil {
-				return true
-			}
-			SystemVariables.sysVarVals[k] = decoded
-			return false
-		})
-	}
-	return err
+	SystemVariables.AddSystemVariables(globals)
+	return nil
 }
 
 // init initializes SystemVariables as it functions as a global variable.
 func init() {
-	InitSystemVariablesWithDefaults(nil)
+	InitSystemVariables(nil)
 }
 
 //TODO: Add from the following sources because MySQL likes to not have every variable on a single page:

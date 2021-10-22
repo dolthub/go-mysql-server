@@ -15,67 +15,46 @@
 package server
 
 import (
-	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
-	"github.com/dolthub/go-mysql-server/sql/config"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
+var testGlobals = []sql.SystemVariable{
+	{
+		Name:    "max_connections",
+		Scope:   sql.SystemVariableScope_Global,
+		Dynamic: true,
+		Type:    sql.NewSystemIntType("max_connections", 1, 100000, false),
+		Default: int64(1000),
+	}, {
+		Name:    "net_write_timeout",
+		Scope:   sql.SystemVariableScope_Both,
+		Dynamic: true,
+		Type:    sql.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
+		Default: int64(1),
+	}, {
+		Name:    "net_read_timeout",
+		Scope:   sql.SystemVariableScope_Both,
+		Dynamic: true,
+		Type:    sql.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
+		Default: int64(1),
+	},
+}
 
-func TestServerDefaults(t *testing.T) {
-	serverConf := Config{
-		Protocol: "tcp",
-		Address:  "localhost:3306",
-		Auth:     auth.NewNativeSingle("root", "", auth.AllPermissions),
+func newPersistedGlobals() []sql.SystemVariable {
+	persistedGlobals := make([]sql.SystemVariable, len(testGlobals))
+	for i, v := range testGlobals {
+		persistedGlobals[i] = v.Copy()
 	}
-
-	t.Run("no defaults", func(t *testing.T) {
-		defaults := config.NewMapConfig(map[string]string{
-			"max_connections":   "1000",
-			"net_write_timeout": "1",
-			"net_read_timeout":  "1",
-		})
-		sql.InitSystemVariablesWithDefaults(nil)
-
-		serverConf.NoDefaults = true
-		s, err := NewServer(serverConf, sqle.New(analyzer.NewDefault(nil), &sqle.Config{}), testSessionBuilder, defaults)
-		defer s.Close()
-		assert.NoError(t, err)
-
-		_, val, _ := sql.SystemVariables.GetGlobal("max_connections")
-		assert.Equal(t, int64(151), val)
-	})
-
-	t.Run("with defaults", func(t *testing.T) {
-		defaults := config.NewMapConfig(map[string]string{
-			"max_connections":   "1000",
-			"net_write_timeout": "1",
-			"net_read_timeout":  "1",
-		})
-		sql.InitSystemVariablesWithDefaults(nil)
-
-		serverConf.NoDefaults = false
-		s, err := NewServer(serverConf, sqle.New(analyzer.NewDefault(nil), &sqle.Config{}), testSessionBuilder, defaults)
-		defer s.Close()
-		assert.NoError(t, err)
-
-		_, val, _ := sql.SystemVariables.GetGlobal("max_connections")
-		assert.Equal(t, int64(1000), val)
-	})
+	return persistedGlobals
 }
 
 func TestConfigWithDefaults(t *testing.T) {
-	defaults := config.NewMapConfig(map[string]string{
-		"max_connections":   "1000",
-		"net_write_timeout": "1",
-		"net_read_timeout":  "1",
-	})
+	sql.InitSystemVariables(newPersistedGlobals())
 	serverConf := Config{}
-	serverConf, err := serverConf.WithDefaults(defaults)
+	serverConf, err := serverConf.WithGlobals()
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1000), serverConf.MaxConnections)
 	assert.Equal(t, time.Duration(1000000), serverConf.ConnReadTimeout)

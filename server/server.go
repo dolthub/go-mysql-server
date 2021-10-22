@@ -24,7 +24,6 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/auth"
-	"github.com/dolthub/go-mysql-server/sql/config"
 )
 
 // Server is a MySQL server for SQLe engines.
@@ -60,29 +59,26 @@ type Config struct {
 	NoDefaults bool
 }
 
-func (c Config) WithDefaults(conf config.ReadableConfig) (Config, error) {
-	if v, err := conf.GetString("max_connections"); err == nil {
-		decoded, err := sql.DecodeSysVarValue("max_connections", v)
-		if err != nil {
-			return Config{}, err
+func (c Config) WithGlobals() (Config, error) {
+	if _, val, ok := sql.SystemVariables.GetGlobal("max_connections"); ok {
+		mc, ok := val.(int64)
+		if !ok {
+			return Config{}, sql.ErrUnknownSystemVariable.New("max_connections")
 		}
-		mc := decoded.(int64)
 		c.MaxConnections = uint64(mc)
 	}
-	if v, err := conf.GetString("net_write_timeout"); err == nil {
-		decoded, err := sql.DecodeSysVarValue("net_write_timeout", v)
-		if err != nil {
-			return Config{}, err
+	if _, val, ok := sql.SystemVariables.GetGlobal("net_write_timeout"); ok {
+		timeout, ok := val.(int64)
+		if !ok {
+			return Config{}, sql.ErrUnknownSystemVariable.New("net_write_timeout")
 		}
-		timeout := decoded.(int64)
 		c.ConnWriteTimeout = time.Duration(timeout) * time.Millisecond
 	}
-	if v, err := conf.GetString("net_read_timeout"); err == nil {
-		decoded, err := sql.DecodeSysVarValue("net_read_timeout", v)
-		if err != nil {
-			return Config{}, err
+	if _, val, ok := sql.SystemVariables.GetGlobal("net_read_timeout"); ok {
+		timeout, ok := val.(int64)
+		if !ok {
+			return Config{}, sql.ErrUnknownSystemVariable.New("net_read_timeout")
 		}
-		timeout := decoded.(int64)
 		c.ConnReadTimeout = time.Duration(timeout) * time.Millisecond
 	}
 	return c, nil
@@ -90,18 +86,16 @@ func (c Config) WithDefaults(conf config.ReadableConfig) (Config, error) {
 
 // NewDefaultServer creates a Server with the default session builder.
 func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
-	return NewServer(cfg, e, DefaultSessionBuilder, nil)
+	return NewServer(cfg, e, DefaultSessionBuilder)
 }
 
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
-func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, defaults config.ReadableConfig) (*Server, error) {
+func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 	// merge defaults into sysVars and server config
 	var err error
-	if defaults != nil && !cfg.NoDefaults {
-		sql.InitSystemVariablesWithDefaults(defaults)
-		// TODO separate logic for merging cli config, persisted config, defaults config into MySQL conf
-		cfg, err = cfg.WithDefaults(defaults)
+	if !cfg.NoDefaults {
+		cfg, err = cfg.WithGlobals()
 		if err != nil {
 			return nil, err
 		}

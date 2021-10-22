@@ -16,39 +16,87 @@ package sql
 
 import (
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/src-d/go-errors.v1"
 	"testing"
-
-	"github.com/dolthub/go-mysql-server/sql/config"
 )
+
+var newConn = SystemVariable{
+	Name:    "max_connections",
+	Scope:   SystemVariableScope_Global,
+	Dynamic: true,
+	Type:    NewSystemIntType("max_connections", 1, 100000, false),
+	Default: int64(1000),
+}
+
+var newTimeout = SystemVariable{
+	Name:    "net_write_timeout",
+	Scope:   SystemVariableScope_Both,
+	Dynamic: true,
+	Type:    NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
+	Default: int64(1),
+}
+
+var newUnknown = SystemVariable{
+	Name:    "net_write_timeout",
+	Scope:   SystemVariableScope_Both,
+	Dynamic: true,
+	Type:    NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
+	Default: int64(1),
+}
 
 func TestInitSystemVariablesWithDefaults(t *testing.T) {
 
 	tests := []struct {
-		name        string
-		defaults    map[string]string
-		err         bool
-		expectedCmp map[string]interface{}
+		name             string
+		persistedGlobals []SystemVariable
+		err              *errors.Kind
+		expectedCmp      []SystemVariable
 	}{
-		{"set max_connections", map[string]string{"max_connections": "1000"}, false, map[string]interface{}{"max_connections": int64(1000)}},
-		{"set two variables", map[string]string{"max_connections": "1000", "net_read_timeout": "1"}, false, map[string]interface{}{"max_connections": int64(1000), "net_read_timeout": int64(1)}},
-		{"decode bad type", map[string]string{"net_read_timeout": "string"}, true, nil},
-		{"unknown system variable", map[string]string{"noexist": "1000"}, true, nil},
+		{
+			name:             "set max_connections",
+			persistedGlobals: []SystemVariable{newConn},
+			expectedCmp:      []SystemVariable{newConn},
+		}, {
+			name:             "set two variables",
+			persistedGlobals: []SystemVariable{newConn, newTimeout},
+			expectedCmp:      []SystemVariable{newConn, newTimeout},
+		}, {
+			name: "bad type",
+			persistedGlobals: []SystemVariable{{
+				Name:    "max_connections",
+				Scope:   SystemVariableScope_Global,
+				Dynamic: true,
+				Type:    NewSystemIntType("max_connections", 1, 100000, false),
+				Default: "1000",
+			}},
+			expectedCmp: []SystemVariable{{
+				Name:    "max_connections",
+				Scope:   SystemVariableScope_Global,
+				Dynamic: true,
+				Type:    NewSystemIntType("max_connections", 1, 100000, false),
+				Default: "1000",
+			}},
+			err: nil, // TODO: nothing is stopping us from setting incorrect types currently
+		}, {
+			name:             "unknown system variable",
+			persistedGlobals: []SystemVariable{newUnknown},
+			expectedCmp:      []SystemVariable{newUnknown},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			defaults := config.NewMapConfig(test.defaults)
-			err := InitSystemVariablesWithDefaults(defaults)
-			if test.err {
-				assert.Error(t, err)
+			err := InitSystemVariables(test.persistedGlobals)
+			if test.err != nil {
+				assert.True(t, test.err.Is(err))
 				return
 			} else {
 				assert.NoError(t, err)
 			}
 
-			for sysVarName, _ := range test.defaults {
-				_, val, _ := SystemVariables.GetGlobal(sysVarName)
-				assert.Equal(t, test.expectedCmp[sysVarName], val)
+			for i, sysVar := range test.persistedGlobals {
+				cmp, _, _ := SystemVariables.GetGlobal(sysVar.Name)
+				assert.Equal(t, test.expectedCmp[i], cmp)
 			}
 		})
 	}

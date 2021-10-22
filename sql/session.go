@@ -122,6 +122,16 @@ type Session interface {
 	SetViewRegistry(*ViewRegistry)
 }
 
+type PersistableSession interface {
+	Session
+	// PersistGlobal writes to the persisted global system variables file
+	PersistGlobal(sysVarName string, value interface{}) error
+	// RemovePersisted deletes a variable from the persisted globals file
+	RemovePersistedGlobal(sysVarName string) error
+	// RemoveAllPersisted clears the contents of the persisted globals file
+	RemoveAllPersistedGlobals() error
+}
+
 // BaseSession is the basic session type.
 type BaseSession struct {
 	id     uint32
@@ -500,7 +510,7 @@ func NewSession(server string, client Client, id uint32) Session {
 var autoSessionIDs uint32 = 1
 
 // NewBaseSession creates a new empty session.
-func NewBaseSession() Session {
+func NewBaseSession() *BaseSession {
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:    SystemVariables.NewSessionMap(),

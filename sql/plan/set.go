@@ -151,11 +151,9 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	case sql.SystemVariableScope_Persist:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
-			// todo find old error
-			return sql.ErrUnsupportedFeature.New("PERSIST")
-
+			return sql.ErrSessionDoesNotSupportPeristence.New()
 		}
-		err = persistSess.PersistVariable(ctx, sysVar.Name, val)
+		err = persistSess.PersistGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
@@ -166,21 +164,21 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	case sql.SystemVariableScope_PersistOnly:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
-			return sql.ErrUnsupportedFeature.New("PERSIST ONLY")
+			return sql.ErrSessionDoesNotSupportPeristence.New()
 		}
-		err = persistSess.PersistVariable(ctx, sysVar.Name, val)
+		err = persistSess.PersistGlobal(sysVar.Name, val)
 		if err != nil {
 			return err
 		}
 	case sql.SystemVariableScope_ResetPersist:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
-			return sql.ErrUnsupportedFeature.New("RESET PERSIST")
+			return sql.ErrSessionDoesNotSupportPeristence.New()
 		}
 		if sysVar.Name == "" {
-			err = persistSess.ResetPersistAll(ctx)
+			err = persistSess.RemoveAllPersistedGlobals()
 		}
-		err = persistSess.ResetPersistVariable(ctx, sysVar.Name)
+		err = persistSess.RemovePersistedGlobal(sysVar.Name)
 		if err != nil {
 			return err
 		}
