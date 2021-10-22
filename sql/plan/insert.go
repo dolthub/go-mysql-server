@@ -309,6 +309,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
 				return i.ignoreOrClose(err)
 			}
+
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
 			return i.handleOnDuplicateKeyUpdate(row, ue.Existing)
 		}
