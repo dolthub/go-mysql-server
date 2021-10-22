@@ -15,10 +15,12 @@
 package server
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var testGlobals = []sql.SystemVariable{
