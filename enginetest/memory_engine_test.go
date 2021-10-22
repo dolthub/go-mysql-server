@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,18 +116,32 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "set system variable defaults",
+			Name: "failed statements data validation for INSERT, UPDATE",
 			SetUpScript: []string{
-				"set @@auto_increment_increment = 100, sql_select_limit = 1",
-				"set @@auto_increment_increment = default, sql_select_limit = default",
+				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
+				"INSERT INTO test VALUES (1,1), (4,4), (5,5);",
 			},
-			Query: "SELECT @@auto_increment_increment, @@sql_select_limit",
-			Expected: []sql.Row{
-				{1, math.MaxInt32},
+			Assertions: []enginetest.ScriptTestAssertion{
+				{
+					Query:          "INSERT INTO test VALUES (2,2), (3,3), (1,1);",
+					ExpectedErrStr: "duplicate primary key given: [1]",
+				},
+				{
+					Query:    "SELECT * FROM test;",
+					Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+				},
+				{
+					Query:          "UPDATE test SET pk = pk + 1;",
+					ExpectedErrStr: "duplicate primary key given: [5]",
+				},
+				{
+					Query:    "SELECT * FROM test;",
+					Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+				},
 			},
 		},
 	}

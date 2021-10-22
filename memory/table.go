@@ -584,6 +584,11 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 		return err
 	}
 
+	err := t.ea.Delete(oldRow)
+	if err != nil {
+		return err
+	}
+
 	if t.pkColsDiffer(oldRow, newRow) {
 		partitionRow, added, _, err := t.ea.Get(newRow)
 		if err != nil {
@@ -600,10 +605,6 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 		}
 	}
 
-	err := t.ea.Delete(oldRow)
-	if err != nil {
-		return err
-	}
 
 	err = t.ea.Insert(newRow)
 	if err != nil {
