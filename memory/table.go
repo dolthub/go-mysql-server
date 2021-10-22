@@ -470,7 +470,11 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	partitionRow, added, _ := t.ea.Get(row)
+	partitionRow, added, _, err := t.ea.Get(row)
+	if err != nil {
+		return err
+	}
+
 	if added {
 		pkColIdxes := t.pkColumnIndexes()
 		vals := make([]interface{}, len(pkColIdxes))
@@ -480,7 +484,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
 	}
 
-	err := t.ea.Insert(row)
+	err = t.ea.Insert(row)
 	if err != nil {
 		return err
 	}
@@ -581,7 +585,11 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	if t.pkColsDiffer(oldRow, newRow) {
-		partitionRow, added, _ := t.ea.Get(newRow)
+		partitionRow, added, _, err := t.ea.Get(newRow)
+		if err != nil {
+			return err
+		}
+
 		if added {
 			pkColIdxes := t.pkColumnIndexes()
 			vals := make([]interface{}, len(pkColIdxes))
