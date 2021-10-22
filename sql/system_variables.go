@@ -201,20 +201,16 @@ func DecodeSysVarValue(name string, val string) (interface{}, error) {
 	return decoded, nil
 }
 
-// InitSystemVariables resets the systemVars singleton. Optional globals can be added, either overriding
-// existing variables or new applications specific vars.
-// TODO check system variables for self-consistency
-func InitSystemVariables(globals []SystemVariable) error {
+// InitSystemVariables resets the systemVars singleton
+func InitSystemVariables() {
 	for _, sysVar := range systemVars {
 		SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
 	}
-	SystemVariables.AddSystemVariables(globals)
-	return nil
 }
 
 // init initializes SystemVariables as it functions as a global variable.
 func init() {
-	InitSystemVariables(nil)
+	InitSystemVariables()
 }
 
 //TODO: Add from the following sources because MySQL likes to not have every variable on a single page:

@@ -52,7 +52,8 @@ func newPersistedGlobals() []sql.SystemVariable {
 }
 
 func TestConfigWithDefaults(t *testing.T) {
-	sql.InitSystemVariables(newPersistedGlobals())
+	sql.InitSystemVariables()
+	sql.SystemVariables.AddSystemVariables(newPersistedGlobals())
 	serverConf := Config{}
 	serverConf, err := serverConf.WithGlobals()
 	assert.NoError(t, err)

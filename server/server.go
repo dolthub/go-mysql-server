@@ -92,7 +92,7 @@ func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
 func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
-	// merge defaults into sysVars and server config
+	// merge globals into sysVars and server config
 	var err error
 	if !cfg.NoDefaults {
 		cfg, err = cfg.WithGlobals()

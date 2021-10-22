@@ -86,13 +86,8 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := InitSystemVariables(test.persistedGlobals)
-			if test.err != nil {
-				assert.True(t, test.err.Is(err))
-				return
-			} else {
-				assert.NoError(t, err)
-			}
+			InitSystemVariables()
+			SystemVariables.AddSystemVariables(test.persistedGlobals)
 
 			for i, sysVar := range test.persistedGlobals {
 				cmp, _, _ := SystemVariables.GetGlobal(sysVar.Name)
