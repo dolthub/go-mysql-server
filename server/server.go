@@ -16,7 +16,6 @@ package server
 
 import (
 	"crypto/tls"
-	"github.com/dolthub/go-mysql-server/sql"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -24,6 +23,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/auth"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Server is a MySQL server for SQLe engines.

@@ -15,9 +15,10 @@
 package sql
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/src-d/go-errors.v1"
-	"testing"
 )
 
 var newConn = SystemVariable{

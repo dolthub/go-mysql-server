@@ -16,7 +16,6 @@ package plan
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/memory"
 	"testing"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -24,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
