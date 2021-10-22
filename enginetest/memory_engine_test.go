@@ -116,7 +116,7 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
@@ -135,7 +135,7 @@ func TestSingleScript(t *testing.T) {
 					Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
 				},
 				{
-					Query:          "UPDATE test SET pk = pk + 1;",
+					Query:          "UPDATE test SET pk = pk + 1 ORDER BY pk;",
 					ExpectedErrStr: "duplicate primary key given: [5]",
 				},
 				{

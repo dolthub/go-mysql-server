@@ -16,8 +16,6 @@ package memory
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"sort"
 )
 
 // tableEditAccumulator tracks the set of inserts and deletes and applies those edits to a initialTable.
@@ -136,45 +134,6 @@ func (pke *pkTableEditAccumulator) ApplyEdits(ctx *sql.Context) (*Table, error) 
 			return nil, err
 		}
 	}
-
-	// Get all rows as table (row iter -> row)
-	rows := make([]sql.Row, 0)
-	for _, partition := range pke.table.partitions {
-		for _, partitionRow := range partition {
-			rows = append(rows, partitionRow)
-		}
-	}
-
-	// Create sorter based on primary sort row
-	idxs := pke.pkColumnIndexes()
-	sortFields := make([]sql.SortField, len(idxs))
-	for j, idx := range idxs {
-		sortFields[j] = sql.SortField{
-			Column: expression.NewGetField(idx, pke.table.schema[idx].Type, pke.table.schema[idx].Name, false),
-			Order: sql.Ascending,
-			NullOrdering: sql.NullsFirst,
-		}
-	}
-
-	// get the sorted rows
-	sorter := &expression.Sorter{
-		SortFields: sortFields,
-		Rows:       rows,
-		LastError:  nil,
-		Ctx:        ctx,
-	}
-	sort.Stable(sorter)
-
-	// recreate table with same properties and reinsert -_-
-	newTable := NewPartitionedTable(pke.table.name, pke.table.schema, len(pke.table.partitions))
-	for _, row := range rows {
-		err := pke.insertHelper(ctx, newTable, row)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	pke.table.partitions = newTable.partitions
 
 	return pke.table, nil
 }

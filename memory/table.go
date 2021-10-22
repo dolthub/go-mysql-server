@@ -605,7 +605,6 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 		}
 	}
 
-
 	err = t.ea.Insert(newRow)
 	if err != nil {
 		return err
