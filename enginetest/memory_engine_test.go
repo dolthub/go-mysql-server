@@ -123,7 +123,7 @@ func TestSingleScript(t *testing.T) {
 			Name: "failed statements data validation for INSERT, UPDATE",
 			SetUpScript: []string{
 				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
-				"INSERT INTO test VALUES (1,1), (4,4), (5,5);",
+				"INSERT INTO test VALUES (1,1), (5,5), (4,4);",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
