@@ -93,15 +93,15 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY strpk`,
+		Query: `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.s=3 SET othertable.s2 = 'fourth';`,
 		Expected: []sql.Row{
-			{1, "00"},
-			{2, "11"},
-			{3, "22"},
+			{"fourth", 1},
+			{"fourth", 2},
+			{"fourth", 3},
 		},
 	}
 

@@ -22,11 +22,11 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 		unsupported := false
 		plan.Inspect(us, func(node sql.Node) bool {
 			switch node.(type) {
-			case plan.JoinNode, *plan.IndexedJoinSorter:
+			case plan.JoinNode, *plan.IndexedJoinSorter, *plan.CrossJoin:
 				jn = node
 				return false
 			// every IndexedJoin must be wrapped under an IndexedJoinSorter
-			case *plan.CrossJoin, *plan.IndexedJoin, *plan.LeftJoin, *plan.RightJoin:
+			case *plan.IndexedJoin, *plan.LeftJoin, *plan.RightJoin:
 				jn = node
 				unsupported = true
 				return false
