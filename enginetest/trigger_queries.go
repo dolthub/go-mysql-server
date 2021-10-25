@@ -1068,6 +1068,12 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query: "select id, is_dirty from is_dirty",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
 				Query: "update trigger_on_update set id = 1, first = 'george', last = 'smith' where id = 1",
 				Expected: []sql.Row{
 					{
@@ -1079,6 +1085,12 @@ end;`,
 							},
 						},
 					},
+				},
+			},
+			{
+				Query: "select id, is_dirty from is_dirty",
+				Expected: []sql.Row{
+					{1, 1},
 				},
 			},
 		},
