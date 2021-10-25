@@ -62,7 +62,11 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			persistedGlobals: []SystemVariable{newConn, newTimeout},
 			expectedCmp:      []SystemVariable{newConn, newTimeout},
 		}, {
-			name: "bad type",
+			name:             "unknown system variable",
+			persistedGlobals: []SystemVariable{newUnknown},
+			expectedCmp:      []SystemVariable{newUnknown},
+		}, {
+			name: "bad type", // TODO: no checks to prevent incorrect types currently
 			persistedGlobals: []SystemVariable{{
 				Name:    "max_connections",
 				Scope:   SystemVariableScope_Global,
@@ -77,11 +81,7 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 				Type:    NewSystemIntType("max_connections", 1, 100000, false),
 				Default: "1000",
 			}},
-			err: nil, // TODO: no checks to prevent incorrect types currently
-		}, {
-			name:             "unknown system variable",
-			persistedGlobals: []SystemVariable{newUnknown},
-			expectedCmp:      []SystemVariable{newUnknown},
+			err: nil,
 		},
 	}
 
