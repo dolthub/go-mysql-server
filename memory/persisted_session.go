@@ -22,12 +22,12 @@ type MapPersistedSession struct {
 	persistedGlobals GlobalsMap
 }
 
-// NewPersistedSession wraps a session and can write system variables to a defaults config
+// NewMapPersistedSession is a sql.PersistableSession that writes global variables to an im-memory map
 func NewMapPersistedSession(sess *sql.BaseSession, persistedGlobals GlobalsMap) *MapPersistedSession {
 	return &MapPersistedSession{BaseSession: sess, persistedGlobals: persistedGlobals}
 }
 
-// PersistGlobal implements the PersistableSession interface.
+// PersistGlobal implements sql.PersistableSession
 func (s *MapPersistedSession) PersistGlobal(sysVarName string, value interface{}) error {
 	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
@@ -36,7 +36,7 @@ func (s *MapPersistedSession) PersistGlobal(sysVarName string, value interface{}
 	return nil
 }
 
-// RemovePersistedGlobal implements the PersistableSession interface.
+// RemovePersistedGlobal implements sql.PersistableSession
 func (s *MapPersistedSession) RemovePersistedGlobal(sysVarName string) error {
 	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
@@ -45,7 +45,7 @@ func (s *MapPersistedSession) RemovePersistedGlobal(sysVarName string) error {
 	return nil
 }
 
-// RemoveAllPersistedGlobals implements the PersistableSession interface.
+// RemoveAllPersistedGlobals implements sql.PersistableSession
 func (s *MapPersistedSession) RemoveAllPersistedGlobals() error {
 	s.persistedGlobals = GlobalsMap{}
 	return nil

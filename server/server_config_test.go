@@ -15,51 +15,72 @@
 package server
 
 import (
-	"testing"
-	"time"
-
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"reflect"
+	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var testGlobals = []sql.SystemVariable{
-	{
-		Name:    "max_connections",
-		Scope:   sql.SystemVariableScope_Global,
-		Dynamic: true,
-		Type:    sql.NewSystemIntType("max_connections", 1, 100000, false),
-		Default: int64(1000),
-	}, {
-		Name:    "net_write_timeout",
-		Scope:   sql.SystemVariableScope_Both,
-		Dynamic: true,
-		Type:    sql.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
-		Default: int64(1),
-	}, {
-		Name:    "net_read_timeout",
-		Scope:   sql.SystemVariableScope_Both,
-		Dynamic: true,
-		Type:    sql.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
-		Default: int64(1),
-	},
-}
-
-func newPersistedGlobals() []sql.SystemVariable {
-	persistedGlobals := make([]sql.SystemVariable, len(testGlobals))
-	for i, v := range testGlobals {
-		persistedGlobals[i] = v
-	}
-	return persistedGlobals
-}
-
 func TestConfigWithDefaults(t *testing.T) {
-	sql.InitSystemVariables()
-	sql.SystemVariables.AddSystemVariables(newPersistedGlobals())
-	serverConf := Config{}
-	serverConf, err := serverConf.WithGlobals()
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(1000), serverConf.MaxConnections)
-	assert.Equal(t, time.Duration(1000000), serverConf.ConnReadTimeout)
-	assert.Equal(t, time.Duration(1000000), serverConf.ConnWriteTimeout)
+	tests := []struct {
+		Name        string
+		Scope       sql.SystemVariableScope
+		Type        sql.SystemVariableType
+		ConfigField string
+		Default     interface{}
+		ExpectedCmp interface{}
+	}{
+		{
+			Name:    "max_connections",
+			Scope:   sql.SystemVariableScope_Global,
+			Type:    sql.NewSystemIntType("max_connections", 1, 100000, false),
+			ConfigField: "MaxConnections",
+			Default: int64(1000),
+			ExpectedCmp: uint64(1000),
+		},
+		{
+			Name: "net_write_timeout",
+			Scope:   sql.SystemVariableScope_Both,
+			Type:    sql.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
+			ConfigField: "ConnWriteTimeout",
+			Default: int64(76),
+			ExpectedCmp: int64(76000000),
+		}, {
+			Name: "net_read_timeout",
+			Scope:   sql.SystemVariableScope_Both,
+			Type:    sql.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
+			ConfigField: "ConnReadTimeout",
+			Default: int64(67),
+			ExpectedCmp: int64(67000000),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("server config var: %s", test.Name), func (t *testing.T) {
+			sql.InitSystemVariables()
+			sql.SystemVariables.AddSystemVariables([]sql.SystemVariable{{
+				Name:    test.Name,
+				Scope:   test.Scope,
+				Dynamic: true,
+				Type:    test.Type,
+				Default: test.Default,
+			}})
+			serverConf := Config{}
+			serverConf, err := serverConf.WithGlobals()
+			assert.NoError(t, err)
+
+			r := reflect.ValueOf(serverConf)
+			f := reflect.Indirect(r).FieldByName(test.ConfigField)
+			var res interface{}
+			switch f.Kind() {
+			case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
+				res = f.Int()
+			case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+				res = f.Uint()
+			}
+			assert.Equal(t, test.ExpectedCmp, res)
+		})
+	}
 }
