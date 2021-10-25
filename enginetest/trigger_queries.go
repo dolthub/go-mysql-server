@@ -1054,6 +1054,47 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "triggered update query which could project",
+		SetUpScript: []string{
+			"create table trigger_on_update (id int primary key, first varchar(25), last varchar(25))",
+			"create table is_dirty (id int primary key, is_dirty bool)",
+			"insert into is_dirty values (1, false)",
+			"insert into trigger_on_update values (1, 'george', 'smith')",
+			`create trigger trigger_on_update_on_update before update on trigger_on_update for each row
+begin
+  update is_dirty set is_dirty = true;
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select id, is_dirty from is_dirty",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				Query: "update trigger_on_update set id = 1, first = 'george', last = 'smith' where id = 1",
+				Expected: []sql.Row{
+					{
+						sql.OkResult{
+							RowsAffected: 0,
+							Info: plan.UpdateInfo{
+								Matched: 1,
+								Updated: 0,
+							},
+						},
+					},
+				},
+			},
+			{
+				Query: "select id, is_dirty from is_dirty",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+		},
+	},
 	// Trigger with subquery
 	{
 		Name: "trigger before insert with subquery expressions",
