@@ -175,7 +175,7 @@ func filterPushdownChildSelector(c plan.TransformContext) bool {
 	case *plan.Window:
 		// Windows operate across the rows they see and cannot have
 		// filters pushed below them. Instead, the step will be run
-		// again by the Transform function, starting at this ndoe.
+		// again by the Transform function, starting at this node.
 		return false
 	case *plan.IndexedJoin:
 		if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
