@@ -48,7 +48,7 @@ var testGlobals = []sql.SystemVariable{
 func newPersistedGlobals() []sql.SystemVariable {
 	persistedGlobals := make([]sql.SystemVariable, len(testGlobals))
 	for i, v := range testGlobals {
-		persistedGlobals[i] = v.Copy()
+		persistedGlobals[i] = v
 	}
 	return persistedGlobals
 }

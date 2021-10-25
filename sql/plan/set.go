@@ -151,7 +151,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	case sql.SystemVariableScope_Persist:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
-			return sql.ErrSessionDoesNotSupportPeristence.New()
+			return sql.ErrSessionDoesNotSupportPersistence.New()
 		}
 		err = persistSess.PersistGlobal(sysVar.Name, val)
 		if err != nil {
@@ -164,7 +164,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	case sql.SystemVariableScope_PersistOnly:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
-			return sql.ErrSessionDoesNotSupportPeristence.New()
+			return sql.ErrSessionDoesNotSupportPersistence.New()
 		}
 		err = persistSess.PersistGlobal(sysVar.Name, val)
 		if err != nil {
@@ -173,7 +173,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	case sql.SystemVariableScope_ResetPersist:
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
-			return sql.ErrSessionDoesNotSupportPeristence.New()
+			return sql.ErrSessionDoesNotSupportPersistence.New()
 		}
 		if sysVar.Name == "" {
 			err = persistSess.RemoveAllPersistedGlobals()

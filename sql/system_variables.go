@@ -76,17 +76,6 @@ type SystemVariable struct {
 	Default interface{}
 }
 
-func (sv SystemVariable) Copy() SystemVariable {
-	return SystemVariable{
-		Name:              sv.Name,
-		Scope:             sv.Scope,
-		Dynamic:           sv.Dynamic,
-		SetVarHintApplies: sv.SetVarHintApplies,
-		Type:              sv.Type,
-		Default:           sv.Default,
-	}
-}
-
 // globalSystemVariables is the underlying type of SystemVariables.
 type globalSystemVariables struct {
 	mutex      *sync.RWMutex
@@ -180,25 +169,6 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	}
 	sv.sysVarVals[name] = convertedVal
 	return nil
-}
-
-func DecodeSysVarValue(name string, val string) (interface{}, error) {
-	sysVar, ok := systemVars[name]
-	if !ok {
-		return nil, ErrUnknownSystemVariable.New(name)
-	}
-
-	t, ok := sysVar.Type.(SystemVariableType)
-	if !ok {
-		return nil, ErrUnknownSystemVariable.New(name)
-	}
-
-	decoded, err := t.DecodeValue(val)
-	if err != nil {
-		return nil, err
-	}
-
-	return decoded, nil
 }
 
 // InitSystemVariables resets the systemVars singleton

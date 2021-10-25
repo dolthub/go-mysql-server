@@ -77,7 +77,7 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 				Type:    NewSystemIntType("max_connections", 1, 100000, false),
 				Default: "1000",
 			}},
-			err: nil, // TODO: nothing is stopping us from setting incorrect types currently
+			err: nil, // TODO: no checks to prevent incorrect types currently
 		}, {
 			name:             "unknown system variable",
 			persistedGlobals: []SystemVariable{newUnknown},

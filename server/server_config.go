@@ -92,15 +92,6 @@ func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
 func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
-	// merge globals into sysVars and server config
-	var err error
-	if !cfg.NoDefaults {
-		cfg, err = cfg.WithGlobals()
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	var tracer opentracing.Tracer
 	if cfg.Tracer != nil {
 		tracer = cfg.Tracer

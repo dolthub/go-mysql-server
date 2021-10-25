@@ -17,18 +17,18 @@ package memory
 import "github.com/dolthub/go-mysql-server/sql"
 
 type GlobalsMap = map[string]interface{}
-type PersistedSession struct {
+type MapPersistedSession struct {
 	*sql.BaseSession
 	persistedGlobals GlobalsMap
 }
 
 // NewPersistedSession wraps a session and can write system variables to a defaults config
-func NewMapPersistedSession(sess *sql.BaseSession, persistedGlobals GlobalsMap) *PersistedSession {
-	return &PersistedSession{BaseSession: sess, persistedGlobals: persistedGlobals}
+func NewMapPersistedSession(sess *sql.BaseSession, persistedGlobals GlobalsMap) *MapPersistedSession {
+	return &MapPersistedSession{BaseSession: sess, persistedGlobals: persistedGlobals}
 }
 
 // PersistGlobal implements the PersistableSession interface.
-func (s *PersistedSession) PersistGlobal(sysVarName string, value interface{}) error {
+func (s *MapPersistedSession) PersistGlobal(sysVarName string, value interface{}) error {
 	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -37,7 +37,7 @@ func (s *PersistedSession) PersistGlobal(sysVarName string, value interface{}) e
 }
 
 // RemovePersistedGlobal implements the PersistableSession interface.
-func (s *PersistedSession) RemovePersistedGlobal(sysVarName string) error {
+func (s *MapPersistedSession) RemovePersistedGlobal(sysVarName string) error {
 	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -46,7 +46,7 @@ func (s *PersistedSession) RemovePersistedGlobal(sysVarName string) error {
 }
 
 // RemoveAllPersistedGlobals implements the PersistableSession interface.
-func (s *PersistedSession) RemoveAllPersistedGlobals() error {
+func (s *MapPersistedSession) RemoveAllPersistedGlobals() error {
 	s.persistedGlobals = GlobalsMap{}
 	return nil
 }

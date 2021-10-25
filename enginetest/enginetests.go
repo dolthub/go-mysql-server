@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/memory"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -3518,6 +3519,63 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "CREATE TABLE t1009(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1009 ADD COLUMN v1 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
 	})
+}
+
+func TestPersist(t *testing.T, harness Harness) {
+	q := []struct {
+		Name            string
+		Query           string
+		Expected        []sql.Row
+		ExpectedGlobal  interface{}
+		ExpectedPersist interface{}
+	}{
+		{
+			Query:           "SET PERSIST max_connections = 1000;",
+			Expected:        []sql.Row{{}},
+			ExpectedGlobal:  int64(1000),
+			ExpectedPersist: int16(1000),
+		}, {
+			Query:           "SET @@PERSIST.max_connections = 1000;",
+			Expected:        []sql.Row{{}},
+			ExpectedGlobal:  int64(1000),
+			ExpectedPersist: int16(1000),
+		}, {
+			Query:           "SET PERSIST_ONLY max_connections = 1000;",
+			Expected:        []sql.Row{{}},
+			ExpectedGlobal:  int64(151),
+			ExpectedPersist: int16(1000),
+		},
+	}
+
+	newSqlContext := func() (*sql.Context, memory.GlobalsMap) {
+		ctx := NewContext(harness)
+		persistedGlobals := memory.GlobalsMap{}
+		persistedSess := memory.NewMapPersistedSession(ctx.Session.(*sql.BaseSession), persistedGlobals)
+		sqlCtx := sql.NewContext(ctx)
+		sqlCtx.Session = persistedSess
+		return sqlCtx, persistedGlobals
+	}
+
+	e := NewEngine(t, harness)
+
+	for _, tt := range q {
+		t.Run(tt.Name, func(t *testing.T) {
+			sql.InitSystemVariables()
+			ctx, globals := newSqlContext()
+
+			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
+
+			if tt.ExpectedGlobal != nil {
+				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
+				require.Equal(t, tt.ExpectedGlobal, res)
+			}
+
+			if tt.ExpectedGlobal != nil {
+				res := globals["max_connections"]
+				assert.Equal(t, tt.ExpectedPersist, res)
+			}
+		})
+	}
 }
 
 var pid uint64

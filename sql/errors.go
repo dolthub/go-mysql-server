@@ -31,9 +31,6 @@ var (
 	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
 	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
 
-	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a type that is not valid.
-	ErrInvalidSystemVariableType = errors.NewKind("Variable '%s' can't be of type '%T'")
-
 	// ErrSystemVariableCodeFail is returned when failing to encode/decode a system variable.
 	ErrSystemVariableCodeFail = errors.NewKind("unable to encode/decode value '%v' for '%s'")
 
@@ -356,8 +353,8 @@ var (
 	// ErrViewDoesNotExist is returned when a DROP VIEW statement drops a view that does not exist
 	ErrViewDoesNotExist = errors.NewKind("the view %s.%s does not exist")
 
-	// ErrSessionDoesNotSupportPeristence is thrown when a feature is not already supported
-	ErrSessionDoesNotSupportPeristence = errors.NewKind("session does not support persistence")
+	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
+	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
