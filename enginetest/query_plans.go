@@ -1432,6 +1432,49 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE s2 <> 'second' ORDER BY i2 ASC`,
+		ExpectedPlan: "Sort(othertable.i2 ASC)\n" +
+			" └─ Project(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC) as idx, othertable.i2, othertable.s2)\n" +
+			"     └─ Window(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC), othertable.i2, othertable.s2)\n" +
+			"         └─ Filter(NOT((othertable.s2 = \"second\")))\n" +
+			"             └─ Projected table access on [i2 s2]\n" +
+			"                 └─ IndexedTableAccess(othertable on [othertable.s2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable ORDER BY i2 ASC) a WHERE s2 <> 'second'`,
+		ExpectedPlan: "SubqueryAlias(a)\n" +
+			" └─ Filter(NOT((othertable.s2 = \"second\")))\n" +
+			"     └─ Sort(othertable.i2 ASC)\n" +
+			"         └─ Project(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC) as idx, othertable.i2, othertable.s2)\n" +
+			"             └─ Window(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC), othertable.i2, othertable.s2)\n" +
+			"                 └─ Projected table access on [s2 i2]\n" +
+			"                     └─ Table(othertable)\n" +
+			"",
+	},
+	{
+		// In theory it is fine to use the index here, but we currently do not.
+		Query: `SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE i2 < 2 OR i2 > 2 ORDER BY i2 ASC`,
+		ExpectedPlan: "Sort(othertable.i2 ASC)\n" +
+			" └─ Project(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC) as idx, othertable.i2, othertable.s2)\n" +
+			"     └─ Window(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC), othertable.i2, othertable.s2)\n" +
+			"         └─ Filter((othertable.i2 < 2) OR (othertable.i2 > 2))\n" +
+			"             └─ Projected table access on [i2 s2]\n" +
+			"                 └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable ORDER BY i2 ASC) a WHERE i2 < 2 OR i2 > 2`,
+		ExpectedPlan: "SubqueryAlias(a)\n" +
+			" └─ Filter((othertable.i2 < 2) OR (othertable.i2 > 2))\n" +
+			"     └─ Sort(othertable.i2 ASC)\n" +
+			"         └─ Project(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC) as idx, othertable.i2, othertable.s2)\n" +
+			"             └─ Window(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC), othertable.i2, othertable.s2)\n" +
+			"                 └─ Projected table access on [i2 s2]\n" +
+			"                     └─ Table(othertable)\n" +
+			"",
+	},
+	{
 		Query: `DELETE FROM two_pk WHERE c1 > 1`,
 		ExpectedPlan: "Delete\n" +
 			" └─ Filter(two_pk.c1 > 1)\n" +

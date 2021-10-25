@@ -34,6 +34,10 @@ func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return n, nil
 	}
 
+	return pushdownFiltersAtNode(ctx, a, n, scope)
+}
+
+func pushdownFiltersAtNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	indexes, err := getIndexesByTable(ctx, a, n, scope)
 	if err != nil {
 		return nil, err
@@ -168,6 +172,11 @@ func filterPushdownChildSelector(c plan.TransformContext) bool {
 	switch n := c.Parent.(type) {
 	case *plan.TableAlias:
 		return false
+	case *plan.Window:
+		// Windows operate across the rows they see and cannot have
+		// filters pushed below them. Instead, the step will be run
+		// again by the Transform function, starting at this node.
+		return false
 	case *plan.IndexedJoin:
 		if n.JoinType() == plan.JoinTypeLeft || n.JoinType() == plan.JoinTypeRight {
 			return c.ChildNum == 0
@@ -264,6 +273,14 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 
 			// Then move filter predicates directly above their respective tables in joins
 			return pushdownAboveTables(node, filters)
+		case *plan.Window:
+			// Analyze below the Window in isolation to push down
+			// any relevant indexes, for example.
+			child, err := pushdownFiltersAtNode(ctx, a, n.Child, scope)
+			if err != nil {
+				return nil, err
+			}
+			return n.WithChildren(child)
 		default:
 			return n, nil
 		}
@@ -332,6 +349,12 @@ func convertFiltersToIndexedAccess(
 			// For a TableAlias, we apply this pushdown to the
 			// TableAlias, but not to the resolved table directly
 			// beneath it.
+			return false
+		case *plan.Window:
+			// Windows operate across the rows they see and cannot
+			// have filters pushed below them. If there is an index
+			// pushdown, it will get picked up in the isolated pass
+			// run by the filters pushdown transform.
 			return false
 		}
 		return true
