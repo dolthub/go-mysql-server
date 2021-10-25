@@ -599,6 +599,39 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		// In this case, the parser and analyzer collaborate to place the filter below the WINDOW function,
+		// and the window sees the filtered rows.
+		Query: "SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE s2 <> 'second' ORDER BY i2 ASC",
+		Expected: []sql.Row{
+			{2, 1, "third"},
+			{1, 3, "first"},
+		},
+	},
+	{
+		// In this case, the analyzer should not push the filter below the window function.
+		Query: "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable ORDER BY i2 ASC) a WHERE s2 <> 'second'",
+		Expected: []sql.Row{
+			{3, 1, "third"},
+			{1, 3, "first"},
+		},
+	},
+	{
+		// Same as above, but with an available index access on i2
+		Query: "SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE i2 < 2 OR i2 > 2 ORDER BY i2 ASC",
+		Expected: []sql.Row{
+			{2, 1, "third"},
+			{1, 3, "first"},
+		},
+	},
+	{
+		// Same as above, but with an available index access on i2
+		Query: "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable ORDER BY i2 ASC) a WHERE i2 < 2 OR i2 > 2",
+		Expected: []sql.Row{
+			{3, 1, "third"},
+			{1, 3, "first"},
+		},
+	},
+	{
 		Query: `WITH mt1 as (select i,s FROM mytable)
 			SELECT mtouter.i, (select s from mt1 where s = mtouter.s) FROM mt1 as mtouter where mtouter.i > 1 order by 1`,
 		Expected: []sql.Row{
