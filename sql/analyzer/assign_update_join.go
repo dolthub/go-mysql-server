@@ -26,7 +26,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 				jn = node
 				return false
 			// every IndexedJoin must be wrapped under an IndexedJoinSorter
-			case *plan.IndexedJoin, *plan.LeftJoin, *plan.RightJoin:
+			case *plan.IndexedJoin:
 				jn = node
 				unsupported = true
 				return false

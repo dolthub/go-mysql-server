@@ -179,13 +179,13 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 		return true, nil
 	}
 
-	// If the row is all nils we know it should be updated as per the function description.
 	for _, v := range tableRow {
 		if v != nil {
 			return true, nil
 		}
 	}
 
+	// If the row is all nils we know it should not be updated as per the function description.
 	return false, nil
 }
 

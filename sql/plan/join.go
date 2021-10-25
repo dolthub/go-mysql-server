@@ -635,7 +635,6 @@ func (i *joinIter) Next() (sql.Row, error) {
 		secondary, err := i.loadSecondary()
 		if err != nil {
 			if err == io.EOF {
-				// TODO: These are the loosey goosy rows
 				if !i.foundMatch && (i.typ == JoinTypeLeft || i.typ == JoinTypeRight) {
 					row := i.buildRow(primary, nil)
 					return row, nil
