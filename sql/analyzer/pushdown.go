@@ -87,7 +87,7 @@ func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 func canProject(n sql.Node, a *Analyzer) bool {
 	switch n.(type) {
-	case *plan.Update, *plan.RowUpdateAccumulator, *plan.DeleteFrom:
+	case *plan.Update, *plan.RowUpdateAccumulator, *plan.DeleteFrom, *plan.Block, *plan.BeginEndBlock, *plan.TriggerBeginEndBlock:
 		return false
 	}
 
