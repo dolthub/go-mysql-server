@@ -79,6 +79,7 @@ func TestConfigWithDefaults(t *testing.T) {
 				res = f.Int()
 			case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
 				res = f.Uint()
+			default:
 			}
 			assert.Equal(t, test.ExpectedCmp, res)
 		})
