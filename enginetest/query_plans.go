@@ -1509,7 +1509,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Update\n" +
 			" └─ Update Join\n" +
 			"     └─ UpdateSource(SET two_pk.c1 = (two_pk.c1 + 1))\n" +
-			"         └─ IndexedJoinSorter()\n" +
+			"         └─ Project(one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, two_pk.pk1, two_pk.pk2, two_pk.c1, two_pk.c2, two_pk.c3, two_pk.c4, two_pk.c5)\n" +
 			"             └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"                 ├─ Table(two_pk)\n" +
 			"                 └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
@@ -1520,7 +1520,7 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Update\n" +
 			" └─ Update Join\n" +
 			"     └─ UpdateSource(SET one_pk.c1 = (one_pk.c1 + 1),SET one_pk.c2 = (one_pk.c2 + 1))\n " +
-			"        └─ IndexedJoinSorter()\n" +
+			"        └─ Project(one_pk.pk, one_pk.c1, one_pk.c2, one_pk.c3, one_pk.c4, one_pk.c5, t2.pk1, t2.pk2, t2.c1, t2.c2, t2.c3, t2.c4, t2.c5)\n" +
 			"             └─ IndexedJoin(one_pk.pk = t2.pk1)\n" +
 			"                 ├─ SubqueryAlias(t2)\n" +
 			"                 │   └─ Projected table access on [pk1 pk2 c1 c2 c3 c4 c5]\n" +

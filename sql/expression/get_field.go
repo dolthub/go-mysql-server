@@ -126,3 +126,13 @@ func (p *GetField) WithIndex(n int) sql.Expression {
 	p2.fieldIndex = n
 	return &p2
 }
+
+func SchemaToGetFields(s sql.Schema) []sql.Expression {
+	ret := make([]sql.Expression, len(s))
+
+	for i, col := range s {
+		ret[i] = NewGetFieldWithTable(i, col.Type, col.Source, col.Name, col.Nullable)
+	}
+
+	return ret
+}
