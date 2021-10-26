@@ -67,7 +67,7 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 	}
 }
 
-// EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary keys
+// EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary partitionKeys
 func (d *BaseDatabase) EnablePrimaryKeyIndexes() {
 	d.primaryKeyIndexes = true
 }

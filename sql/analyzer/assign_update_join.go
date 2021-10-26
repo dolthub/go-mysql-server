@@ -1,8 +1,6 @@
 package analyzer
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -21,7 +19,7 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 		var jn sql.Node
 		plan.Inspect(us, func(node sql.Node) bool {
 			switch node.(type) {
-			case *plan.CrossJoin, plan.JoinNode:
+			case plan.JoinNode, *plan.IndexedJoinSorter, *plan.CrossJoin, *plan.IndexedJoin:
 				jn = node
 				return false
 			default:
@@ -31,10 +29,6 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 
 		if jn == nil {
 			return n, nil
-		}
-
-		if _, ok = jn.(*plan.InnerJoin); !ok {
-			return n, sql.ErrUnsupportedFeature.New()
 		}
 
 		updaters, err := rowUpdatersByTable(ctx, us, jn)
@@ -71,7 +65,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 
 			keyless := sql.IsKeyless(updatable.Schema())
 			if keyless {
-				return nil, fmt.Errorf("error: keyless tables unsupported for UPDATE JOIN")
+				return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
 			}
 
 			ret[k] = updatable.Updater(ctx)

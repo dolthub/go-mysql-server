@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"fmt"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -57,6 +59,7 @@ func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		updaters:         u.updaters,
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),
+		joinNode:         u.Child.(*UpdateSource).Child,
 	}, nil
 }
 
@@ -86,6 +89,7 @@ type updateJoinIter struct {
 	updaters         map[string]sql.RowUpdater
 	caches           map[string]sql.KeyValueCache
 	disposals        map[string]sql.DisposeFunc
+	joinNode         sql.Node
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
@@ -105,6 +109,21 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 		for tableName, _ := range u.updaters {
 			oldTableRow := tableToOldRowMap[tableName]
 
+			// Handle the case of row being ignored due to it not being valid in the join row.
+			if isRightOrLeftJoin(u.joinNode) {
+				works, err := u.shouldUpdateDirectionalJoin(u.ctx, oldJoinRow, oldTableRow)
+				if err != nil {
+					return nil, err
+				}
+
+				if !works {
+					// rewrite the newJoinRow to ensure an update does not happen
+					tableToNewRowMap[tableName] = oldTableRow
+					continue
+				}
+			}
+
+			// Determine whether this row in the table has already been update
 			cache := u.getOrCreateCache(u.ctx, tableName)
 			hash, err := sql.HashOf(oldTableRow)
 			if err != nil {
@@ -133,6 +152,41 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 			return append(oldJoinRow, newJoinRow...), nil
 		}
 	}
+}
+
+// shouldUpdateDirectionalJoin determines whether a table row should be updated in the context of a large right/left join row.
+// A table row should only be updated if 1) It fits the join conditions (the intersection of the join) 2) It fits only
+// the left or right side of the join (given the direction). A row of all nils that does not pass condition 1 must not
+// be part of the update operation. This is follows the logic as established in the joinIter.
+func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, tableRow sql.Row) (bool, error) {
+	jn := u.joinNode.(JoinNode)
+	var cond sql.Expression
+	switch n := jn.(type) {
+	case *RightJoin:
+		cond = n.Cond
+	case *LeftJoin:
+		cond = n.Cond
+	default:
+		return true, fmt.Errorf("error: should only consider left or right join.")
+	}
+
+	// If the overall row fits the join condition it is fine (i.e. middle of the venn diagram).
+	val, err := cond.Eval(ctx, joinRow)
+	if err != nil {
+		return true, err
+	}
+	if val.(bool) {
+		return true, nil
+	}
+
+	for _, v := range tableRow {
+		if v != nil {
+			return true, nil
+		}
+	}
+
+	// If the row is all nils we know it should not be updated as per the function description.
+	return false, nil
 }
 
 func (u *updateJoinIter) Close(context *sql.Context) error {

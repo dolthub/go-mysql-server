@@ -54,11 +54,14 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 	var tableAliases TableAliases
 	var joinIndexes joinIndexesByTable
+	var oldJoin sql.Node
 	newJoin, err := plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, error) {
 		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
 			return n, nil
 		case plan.JoinNode:
+			oldJoin = n
+
 			var err error
 			tableAliases, err = getTableAliases(n, scope)
 			if err != nil {
@@ -98,7 +101,38 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		return n, nil
 	}
 
+	if _, ok := withIndexedTableAccess.(*plan.Update); ok {
+		withIndexedTableAccess, err = wrapIndexedJoinForUpdateCases(withIndexedTableAccess, oldJoin)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return withIndexedTableAccess, nil
+}
+
+func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, error) {
+	topLevelIndexedJoinSelector := func(c plan.TransformContext) bool {
+		switch c.Node.(type) {
+		case *plan.IndexedJoin:
+			_, hasParent := c.Parent.(*plan.IndexedJoin)
+			return !hasParent
+		default:
+			return true
+		}
+	}
+
+	// Convert the top level indexed join into using the indexed join sorter
+	updated, err := plan.TransformUpCtx(node, topLevelIndexedJoinSelector, func(c plan.TransformContext) (sql.Node, error) {
+		switch n := c.Node.(type) {
+		case *plan.IndexedJoin:
+			return plan.NewIndexedJoinSorter(n, oldJoin.Schema()), nil
+		default:
+			return c.Node, nil
+		}
+	})
+
+	return updated, err
 }
 
 // replaceTableAccessWithIndexedAccess replaces table access with indexed access where possible. This can't be a
@@ -208,6 +242,10 @@ func replaceTableAccessWithIndexedAccess(
 	case *plan.Filter:
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.Project:
+		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
+	case *plan.Update:
+		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
+	case *plan.UpdateSource:
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)
 	case *plan.GroupBy:
 		return replaceIndexedAccessInUnaryNode(ctx, node.UnaryNode, node, a, schema, scope, joinIndexes, tableAliases)

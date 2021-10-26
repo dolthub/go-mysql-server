@@ -725,7 +725,7 @@ func nodeHasJoin(node sql.Node) bool {
 	hasJoinNode := false
 	Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
-		case JoinNode:
+		case JoinNode, *CrossJoin, *IndexedJoinSorter:
 			hasJoinNode = true
 			return false
 		default:
@@ -734,4 +734,13 @@ func nodeHasJoin(node sql.Node) bool {
 	})
 
 	return hasJoinNode
+}
+
+func isRightOrLeftJoin(node sql.Node) bool {
+	jn, ok := node.(JoinNode)
+	if !ok {
+		return false
+	}
+
+	return jn.JoinType() == JoinTypeLeft || jn.JoinType() == JoinTypeRight
 }

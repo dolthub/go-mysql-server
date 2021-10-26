@@ -27,7 +27,15 @@ var dualTable = func() sql.Table {
 	t := memory.NewTable(dualTableName, sql.Schema{
 		{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
 	})
-	_ = t.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
+
+	ctx := sql.NewEmptyContext()
+
+	// Need to run through the proper inserting steps to add data to the dummy table.
+	inserter := t.Inserter(ctx)
+	inserter.StatementBegin(ctx)
+	_ = inserter.Insert(sql.NewEmptyContext(), sql.NewRow("x"))
+	_ = inserter.StatementComplete(ctx)
+	_ = inserter.Close(ctx)
 	return t
 }()
 

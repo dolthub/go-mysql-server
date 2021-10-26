@@ -261,6 +261,140 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(1, 1, 32, 31, 32, 33, 34),
 		},
 	},
+	{
+		WriteQuery:          `UPDATE othertable CROSS JOIN tabletest set othertable.i2 = othertable.i2 * 10`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM othertable order by i2",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("third", 10),
+			sql.NewRow("second", 20),
+			sql.NewRow("first", 30),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE tabletest cross join tabletest as t2 set tabletest.i = tabletest.i * 10`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(10, "first row"),
+			sql.NewRow(20, "second row"),
+			sql.NewRow(30, "third row"),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable, tabletest set tabletest.i = tabletest.i * 10`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(10, "first row"),
+			sql.NewRow(20, "second row"),
+			sql.NewRow(30, "third row"),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "SELECT * FROM two_pk order by pk1 ASC, pk2 ASC;",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
+			sql.NewRow(0, 1, 10, 11, 12, 13, 14),
+			sql.NewRow(1, 0, 20, 21, 22, 23, 24),
+			sql.NewRow(1, 1, 31, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM othertable order by i2",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("third", 1),
+			sql.NewRow("second", 2),
+			sql.NewRow("fourth", 3),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`, // left join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM othertable order by i2",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("fourth", 1),
+			sql.NewRow("fourth", 2),
+			sql.NewRow("fourth", 3),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET tabletest.s = 'fourth row', tabletest.i = tabletest.i + 1`, // left join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(4, "fourth row"),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 LEFT JOIN one_pk on othertable.i2 = one_pk.pk SET one_pk.c1 = one_pk.c1 + 1`, // left join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM one_pk order by pk",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 2, 3, 4),
+			sql.NewRow(1, 11, 11, 12, 13, 14),
+			sql.NewRow(2, 21, 21, 22, 23, 24),
+			sql.NewRow(3, 31, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 LEFT JOIN one_pk on othertable.i2 = one_pk.pk SET one_pk.c1 = one_pk.c1 + 1 where one_pk.pk > 4`, // left join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(0, 0)}},
+		SelectQuery:         "SELECT * FROM one_pk order by pk",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 2, 3, 4),
+			sql.NewRow(1, 10, 11, 12, 13, 14),
+			sql.NewRow(2, 20, 21, 22, 23, 24),
+			sql.NewRow(3, 30, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 LEFT JOIN one_pk on othertable.i2 = 1 and one_pk.pk = 1 SET one_pk.c1 = one_pk.c1 + 1`, // left join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM one_pk order by pk",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(0, 0, 1, 2, 3, 4),
+			sql.NewRow(1, 11, 11, 12, 13, 14),
+			sql.NewRow(2, 20, 21, 22, 23, 24),
+			sql.NewRow(3, 30, 31, 32, 33, 34),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable RIGHT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`, // right join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM othertable order by i2",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("third", 1),
+			sql.NewRow("second", 2),
+			sql.NewRow("fourth", 3),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable RIGHT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.i2 = othertable.i2 + 1`, // right join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM othertable order by i2",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("third", 1),
+			sql.NewRow("second", 2),
+			sql.NewRow("first", 4),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=tabletest.i RIGHT JOIN one_pk on othertable.i2 = 1 and one_pk.pk = 1 SET tabletest.s = 'updated';`, // right join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "updated"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(3, "third row"),
+		},
+	},
 }
 
 // These tests return the correct select query answer but the wrong write result.
@@ -274,17 +408,6 @@ var SkippedUpdateTests = []WriteQueryTest{
 			sql.NewRow(0, 1, 12, 11, 12, 13, 14),
 			sql.NewRow(1, 0, 22, 21, 22, 23, 24),
 			sql.NewRow(1, 1, 32, 31, 32, 33, 34),
-		},
-	},
-	{
-		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`,
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
-		SelectQuery:         "SELECT * FROM two_pk;",
-		ExpectedSelect: []sql.Row{
-			sql.NewRow(0, 0, 1, 1, 2, 3, 4),
-			sql.NewRow(0, 1, 10, 11, 12, 13, 14),
-			sql.NewRow(1, 0, 20, 21, 22, 23, 24),
-			sql.NewRow(1, 1, 31, 31, 32, 33, 34),
 		},
 	},
 	{
@@ -371,11 +494,7 @@ var GenericUpdateErrorTests = []GenericErrorQueryTest{
 
 var UpdateErrorTests = []QueryErrorTest{
 	{
-		Query:       `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`,
-		ExpectedErr: sql.ErrUnsupportedFeature,
-	},
-	{
-		Query:       `UPDATE othertable INNER JOIN tabletest on othertable.i2=3 and tabletest.s=3 SET othertable.s2 = 'fourth'`,
+		Query:       `UPDATE keyless INNER JOIN one_pk on keyless.c0 = one_pk.pk SET keyless.c0 = keyless.c0 + 1`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
 }
