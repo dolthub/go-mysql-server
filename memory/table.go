@@ -46,11 +46,11 @@ type Table struct {
 	columns    []int
 
 	// Data storage
-	partitions map[string][]sql.Row
-	keys       [][]byte
+	partitions    map[string][]sql.Row
+	partitionKeys [][]byte
 
 	// Insert bookkeeping
-	insert int
+	insertPartIdx int
 
 	// Indexed lookups
 	lookup sql.IndexLookup
@@ -110,12 +110,12 @@ func NewPartitionedTable(name string, schema sql.Schema, numPartitions int) *Tab
 	}
 
 	return &Table{
-		name:       name,
-		schema:     schema,
-		partitions: partitions,
-		keys:       keys,
-		autoIncVal: autoIncVal,
-		autoColIdx: autoIncIdx,
+		name:          name,
+		schema:        schema,
+		partitions:    partitions,
+		partitionKeys: keys,
+		autoIncVal:    autoIncVal,
+		autoColIdx:    autoIncIdx,
 	}
 }
 
@@ -141,7 +141,7 @@ func (t *Table) GetPartition(key string) []sql.Row {
 // Partitions implements the sql.Table interface.
 func (t *Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	var keys [][]byte
-	for _, k := range t.keys {
+	for _, k := range t.partitionKeys {
 		if rows, ok := t.partitions[string(k)]; ok && len(rows) > 0 {
 			keys = append(keys, k)
 		}
@@ -377,55 +377,6 @@ func EncodeIndexValue(value *IndexValue) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-type tableEditor struct {
-	table             *Table
-	initialAutoIncVal interface{}
-	initialPartitions map[string][]sql.Row
-	ea                tableEditAccumulator
-	initialInsert     int
-}
-
-var _ sql.RowReplacer = (*tableEditor)(nil)
-var _ sql.RowUpdater = (*tableEditor)(nil)
-var _ sql.RowInserter = (*tableEditor)(nil)
-var _ sql.RowDeleter = (*tableEditor)(nil)
-
-func (t *tableEditor) Close(ctx *sql.Context) error {
-	tbl, err := t.ea.ApplyEdits(ctx)
-	if err != nil {
-		return err
-	}
-
-	t.table = tbl
-
-	return nil
-}
-
-func (t *tableEditor) StatementBegin(ctx *sql.Context) {
-	t.initialInsert = t.table.insert
-	t.initialAutoIncVal = t.table.autoIncVal
-	t.initialPartitions = make(map[string][]sql.Row)
-	for partStr, rowSlice := range t.table.partitions {
-		newRowSlice := make([]sql.Row, len(rowSlice))
-		for i, row := range rowSlice {
-			newRowSlice[i] = row.Copy()
-		}
-		t.initialPartitions[partStr] = newRowSlice
-	}
-}
-
-func (t *tableEditor) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	t.table.insert = t.initialInsert
-	t.table.autoIncVal = t.initialAutoIncVal
-	t.table.partitions = t.initialPartitions
-	t.ea.Clear()
-	return nil
-}
-
-func (t *tableEditor) StatementComplete(ctx *sql.Context) error {
-	return nil
-}
-
 func (t *Table) Inserter(*sql.Context) sql.RowInserter {
 	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
 }
@@ -462,47 +413,6 @@ func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 	return inserter.Close(ctx)
-}
-
-// Insert a new row into the table.
-func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.table.schema, row); err != nil {
-		return err
-	}
-
-	partitionRow, added, _, err := t.ea.Get(row)
-	if err != nil {
-		return err
-	}
-
-	if added {
-		pkColIdxes := t.pkColumnIndexes()
-		vals := make([]interface{}, len(pkColIdxes))
-		for _, i := range pkColIdxes {
-			vals[i] = row[pkColIdxes[i]]
-		}
-		return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
-	}
-
-	err = t.ea.Insert(row)
-	if err != nil {
-		return err
-	}
-
-	idx := t.table.autoColIdx
-	if idx >= 0 {
-		autoCol := t.table.schema[idx]
-		cmp, err := autoCol.Type.Compare(row[idx], t.table.autoIncVal)
-		if err != nil {
-			return err
-		}
-		if cmp > 0 {
-			t.table.autoIncVal = row[idx]
-		}
-		t.table.autoIncVal = increment(t.table.autoIncVal)
-	}
-
-	return nil
 }
 
 func increment(v interface{}) interface{} {
@@ -559,90 +469,6 @@ func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (boo
 		}
 	}
 	return true, nil
-}
-
-// Delete the given row from the table.
-func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(t.table.schema, row); err != nil {
-		return err
-	}
-
-	err := t.ea.Delete(row)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Update the given row from the table.
-func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	if err := checkRow(t.table.schema, oldRow); err != nil {
-		return err
-	}
-	if err := checkRow(t.table.schema, newRow); err != nil {
-		return err
-	}
-
-	err := t.ea.Delete(oldRow)
-	if err != nil {
-		return err
-	}
-
-	if t.pkColsDiffer(oldRow, newRow) {
-		partitionRow, added, _, err := t.ea.Get(newRow)
-		if err != nil {
-			return err
-		}
-
-		if added {
-			pkColIdxes := t.pkColumnIndexes()
-			vals := make([]interface{}, len(pkColIdxes))
-			for _, i := range pkColIdxes {
-				vals[i] = newRow[pkColIdxes[i]]
-			}
-			return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
-		}
-	}
-
-	err = t.ea.Insert(newRow)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// SetAutoIncrementValue sets a new AUTO_INCREMENT value
-func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val interface{}) error {
-	t.table.autoIncVal = val
-	return nil
-}
-
-func (t *tableEditor) pkColumnIndexes() []int {
-	var pkColIdxes []int
-	for _, column := range t.table.schema {
-		if column.PrimaryKey {
-			idx, _ := t.table.getField(column.Name)
-			pkColIdxes = append(pkColIdxes, idx)
-		}
-	}
-	return pkColIdxes
-}
-
-func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
-	pkColIdxes := t.pkColumnIndexes()
-	return !columnsMatch(pkColIdxes, row, row2)
-}
-
-// Returns whether the values for the columns given match in the two rows provided
-func columnsMatch(colIndexes []int, row sql.Row, row2 sql.Row) bool {
-	for _, i := range colIndexes {
-		if row[i] != row2[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // PeekNextAutoIncrementValue peeks at the next AUTO_INCREMENT value
@@ -1019,7 +845,7 @@ func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, erro
 	return t.foreignKeys, nil
 }
 
-// CreateForeignKey implements sql.ForeignKeyAlterableTable. Foreign keys are not enforced on update / delete.
+// CreateForeignKey implements sql.ForeignKeyAlterableTable. Foreign partitionKeys are not enforced on update / delete.
 func (t *Table) CreateForeignKey(_ *sql.Context, fkName string, columns []string, referencedTable string, referencedColumns []string, onUpdate, onDelete sql.ForeignKeyReferenceOption) error {
 	for _, key := range t.foreignKeys {
 		if key.Name == fkName {
@@ -1260,7 +1086,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 
 	t.schema = potentialSchema
 	t.partitions = newTable.partitions
-	t.keys = newTable.keys
+	t.partitionKeys = newTable.partitionKeys
 
 	return nil
 }

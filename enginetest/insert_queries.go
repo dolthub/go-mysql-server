@@ -956,6 +956,29 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "INSERT Accumulator tests",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk int primary key, val int)",
+			"INSERT INTO test values (1,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `INSERT INTO test VALUES (2,2),(2,3)`,
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    `DELETE FROM test where pk = 1;`,
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query: `INSERT INTO test VALUES (1,1)`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{

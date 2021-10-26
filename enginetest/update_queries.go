@@ -262,6 +262,36 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
+		WriteQuery:          `UPDATE othertable CROSS JOIN tabletest set othertable.i2 = othertable.i2 * 10`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM othertable order by i2",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("third", 10),
+			sql.NewRow("second", 20),
+			sql.NewRow("first", 30),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE tabletest cross join tabletest as t2 set tabletest.i = tabletest.i * 10`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(10, "first row"),
+			sql.NewRow(20, "second row"),
+			sql.NewRow(30, "third row"),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable, tabletest set tabletest.i = tabletest.i * 10`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(10, "first row"),
+			sql.NewRow(20, "second row"),
+			sql.NewRow(30, "third row"),
+		},
+	},
+	{
 		WriteQuery:          `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 INNER JOIN two_pk a1 on one_pk.pk = two_pk.pk2 SET two_pk.c1 = two_pk.c1 + 1`, // cross join
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM two_pk order by pk1 ASC, pk2 ASC;",
@@ -462,4 +492,9 @@ var GenericUpdateErrorTests = []GenericErrorQueryTest{
 	},
 }
 
-var UpdateErrorTests = []QueryErrorTest{}
+var UpdateErrorTests = []QueryErrorTest{
+	{
+		Query:       `UPDATE keyless INNER JOIN one_pk on keyless.c0 = one_pk.pk SET keyless.c0 = keyless.c0 + 1`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+}
