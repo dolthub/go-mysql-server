@@ -127,6 +127,7 @@ func (p *GetField) WithIndex(n int) sql.Expression {
 	return &p2
 }
 
+// SchemaToGetFields takes a schema and returns an expression array of GetFields.
 func SchemaToGetFields(s sql.Schema) []sql.Expression {
 	ret := make([]sql.Expression, len(s))
 
