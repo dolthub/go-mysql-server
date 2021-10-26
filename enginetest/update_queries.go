@@ -313,6 +313,16 @@ var UpdateTests = []WriteQueryTest{
 		},
 	},
 	{
+		WriteQuery:          `UPDATE tabletest cross join tabletest as t2 set t2.i = t2.i * 10`, // cross join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(10, "first row"),
+			sql.NewRow(20, "second row"),
+			sql.NewRow(30, "third row"),
+		},
+	},
+	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET othertable.s2 = 'fourth'`, // left join
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM othertable order by i2",
@@ -324,6 +334,16 @@ var UpdateTests = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest on othertable.i2=3 and tabletest.i=3 SET tabletest.s = 'fourth row', tabletest.i = tabletest.i + 1`, // left join
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM tabletest order by i",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow(1, "first row"),
+			sql.NewRow(2, "second row"),
+			sql.NewRow(4, "fourth row"),
+		},
+	},
+	{
+		WriteQuery:          `UPDATE othertable LEFT JOIN tabletest t3 on othertable.i2=3 and t3.i=3 SET t3.s = 'fourth row', t3.i = t3.i + 1`, // left join
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM tabletest order by i",
 		ExpectedSelect: []sql.Row{
