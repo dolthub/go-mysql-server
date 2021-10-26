@@ -130,6 +130,8 @@ type PersistableSession interface {
 	RemovePersistedGlobal(sysVarName string) error
 	// RemoveAllPersisted clears the contents of the persisted globals file
 	RemoveAllPersistedGlobals() error
+	// GetPersistedValue
+	GetPersistedValue(k string) (interface{}, error)
 }
 
 // BaseSession is the basic session type.
@@ -491,7 +493,7 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 }
 
 // NewSession creates a new session with data.
-func NewSession(server string, client Client, id uint32) Session {
+func NewSession(server string, client Client, id uint32) *BaseSession {
 	return &BaseSession{
 		addr:          server,
 		client:        client,

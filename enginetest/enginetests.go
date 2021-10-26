@@ -30,7 +30,6 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/auth"
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -3521,7 +3520,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 }
 
-func TestPersist(t *testing.T, harness Harness) {
+func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql.Context) sql.PersistableSession) {
 	q := []struct {
 		Name            string
 		Query           string
@@ -3533,35 +3532,27 @@ func TestPersist(t *testing.T, harness Harness) {
 			Query:           "SET PERSIST max_connections = 1000;",
 			Expected:        []sql.Row{{}},
 			ExpectedGlobal:  int64(1000),
-			ExpectedPersist: int16(1000),
+			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET @@PERSIST.max_connections = 1000;",
 			Expected:        []sql.Row{{}},
 			ExpectedGlobal:  int64(1000),
-			ExpectedPersist: int16(1000),
+			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET PERSIST_ONLY max_connections = 1000;",
 			Expected:        []sql.Row{{}},
 			ExpectedGlobal:  int64(151),
-			ExpectedPersist: int16(1000),
+			ExpectedPersist: int64(1000),
 		},
 	}
 
-	newSqlContext := func() (*sql.Context, memory.GlobalsMap) {
-		ctx := NewContext(harness)
-		persistedGlobals := memory.GlobalsMap{}
-		persistedSess := memory.NewMapPersistedSession(ctx.Session.(*sql.BaseSession), persistedGlobals)
-		sqlCtx := sql.NewContext(ctx)
-		sqlCtx.Session = persistedSess
-		return sqlCtx, persistedGlobals
-	}
-
 	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
 
 	for _, tt := range q {
 		t.Run(tt.Name, func(t *testing.T) {
 			sql.InitSystemVariables()
-			ctx, globals := newSqlContext()
+			ctx.Session = newPersistableSess(ctx)
 
 			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
 
@@ -3571,8 +3562,10 @@ func TestPersist(t *testing.T, harness Harness) {
 			}
 
 			if tt.ExpectedGlobal != nil {
-				res := globals["max_connections"]
-				assert.Equal(t, tt.ExpectedPersist, res)
+				res, err := ctx.Session.(sql.PersistableSession).GetPersistedValue("max_connections")
+				require.NoError(t, err)
+				assert.Equal(t,
+					tt.ExpectedPersist, res)
 			}
 		})
 	}
@@ -3628,7 +3621,7 @@ func NewSession(harness Harness) *sql.Context {
 
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
-func NewBaseSession() sql.Session {
+func NewBaseSession() *sql.BaseSession {
 	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1)
 }
 

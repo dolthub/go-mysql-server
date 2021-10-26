@@ -18,21 +18,26 @@ import "github.com/dolthub/go-mysql-server/sql"
 
 type GlobalsMap = map[string]interface{}
 type MapPersistedSession struct {
-	*sql.BaseSession
+	sql.Session
 	persistedGlobals GlobalsMap
 }
 
 // NewMapPersistedSession is a sql.PersistableSession that writes global variables to an im-memory map
-func NewMapPersistedSession(sess *sql.BaseSession, persistedGlobals GlobalsMap) *MapPersistedSession {
-	return &MapPersistedSession{BaseSession: sess, persistedGlobals: persistedGlobals}
+func NewMapPersistedSession(sess sql.Session, persistedGlobals GlobalsMap) *MapPersistedSession {
+	return &MapPersistedSession{Session: sess, persistedGlobals: persistedGlobals}
 }
 
 // PersistGlobal implements sql.PersistableSession
 func (s *MapPersistedSession) PersistGlobal(sysVarName string, value interface{}) error {
-	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
+	sysVar, _, ok := sql.SystemVariables.GetGlobal(sysVarName)
+	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
-	s.persistedGlobals[sysVarName] = value
+	val, err := sysVar.Type.Convert(value)
+	if err != nil {
+		return err
+	}
+	s.persistedGlobals[sysVarName] = val
 	return nil
 }
 
@@ -49,4 +54,9 @@ func (s *MapPersistedSession) RemovePersistedGlobal(sysVarName string) error {
 func (s *MapPersistedSession) RemoveAllPersistedGlobals() error {
 	s.persistedGlobals = GlobalsMap{}
 	return nil
+}
+
+// RemoveAllPersistedGlobals implements sql.PersistableSession
+func (s *MapPersistedSession) GetPersistedValue(k string) (interface{}, error) {
+	return s.persistedGlobals[k], nil
 }
