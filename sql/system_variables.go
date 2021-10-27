@@ -1584,7 +1584,7 @@ var systemVars = map[string]SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
-		Default:           int64(30),
+		Default:           int64(8 * 60 * 60 * 1000),
 	},
 	"net_retry_count": {
 		Name:              "net_retry_count",
