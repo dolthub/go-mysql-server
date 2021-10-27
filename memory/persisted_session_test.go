@@ -51,8 +51,8 @@ func TestPersistVariable(t *testing.T) {
 		err         *errors.Kind
 		expectedCmp interface{}
 	}{
-		{"set variable", "max_connections", 10, nil, 10},
-		{"set bad variable", "nonexistent_var", 10, sql.ErrUnknownSystemVariable, nil},
+		{"set variable", "max_connections", int64(10), nil, int64(10)},
+		{"set bad variable", "nonexistent_var", int64(10), sql.ErrUnknownSystemVariable, nil},
 	}
 
 	for _, test := range persistTests {
