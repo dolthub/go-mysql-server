@@ -49,7 +49,7 @@ func ApplyBindings(ctx *sql.Context, n sql.Node, bindings map[string]sql.Express
 	if err != nil {
 		return nil, err
 	}
-	return TransformExpressionsUp(ctx, withSubqueries, func(e sql.Expression) (sql.Expression, error) {
+	return TransformExpressionsUp(withSubqueries, func(e sql.Expression) (sql.Expression, error) {
 		if bv, ok := e.(*expression.BindVar); ok {
 			val, found := bindings[bv.Name]
 			if found {

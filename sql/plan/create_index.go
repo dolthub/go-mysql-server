@@ -47,7 +47,7 @@ type CreateIndex struct {
 	Exprs           []sql.Expression
 	Driver          string
 	Config          map[string]string
-	Catalog         *sql.Catalog
+	Catalog         sql.Catalog
 	CurrentDatabase string
 }
 
@@ -122,9 +122,9 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	var driver sql.IndexDriver
 	if c.Driver == "" {
-		driver = ctx.DefaultIndexDriver()
+		driver = ctx.GetIndexRegistry().DefaultIndexDriver()
 	} else {
-		driver = ctx.IndexDriver(c.Driver)
+		driver = ctx.GetIndexRegistry().IndexDriver(c.Driver)
 	}
 
 	if driver == nil {
@@ -172,7 +172,7 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		iter:    iter,
 	}
 
-	created, ready, err := ctx.AddIndex(index)
+	created, ready, err := ctx.GetIndexRegistry().AddIndex(index)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,6 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 	createIndex := func() {
 		c.createIndex(ctx, log, driver, index, iter, created, ready)
-		c.Catalog.ProcessList.Done(ctx.Pid())
 	}
 
 	log.Info("starting to save the index")
@@ -230,7 +229,7 @@ func (c *CreateIndex) createIndex(
 		ctx.Error(0, "unable to save the index: %s", err)
 		logrus.WithField("err", err).Error("unable to save the index")
 
-		deleted, err := ctx.DeleteIndex(index.Database(), index.ID(), true)
+		deleted, err := ctx.GetIndexRegistry().DeleteIndex(index.Database(), index.ID(), true)
 		if err != nil {
 			ctx.Error(0, "unable to delete index: %s", err)
 			logrus.WithField("err", err).Error("unable to delete the index")
@@ -302,7 +301,7 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, err := expression.TransformUp(ctx, e, func(e sql.Expression) (sql.Expression, error) {
+		ex, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
 				return e, nil

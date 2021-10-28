@@ -20,13 +20,12 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // CreateDB creates an in memory database that lasts the length of the process only.
 type CreateDB struct {
-	Catalog     *sql.Catalog
+	Catalog     sql.Catalog
 	dbName      string
 	IfNotExists bool
 }
@@ -69,8 +68,10 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	db := memory.NewDatabase(c.dbName)
-	c.Catalog.AddDatabase(db)
+	err := c.Catalog.CreateDatabase(ctx, c.dbName)
+	if err != nil {
+		return nil, err
+	}
 
 	return sql.RowsToRowIter(rows...), nil
 }
@@ -88,7 +89,7 @@ func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
 
 // DropDB removes a databases from the Catalog and updates the active database if it gets removed itself.
 type DropDB struct {
-	Catalog  *sql.Catalog
+	Catalog  sql.Catalog
 	dbName   string
 	IfExists bool
 }
@@ -131,7 +132,10 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		}
 	}
 
-	d.Catalog.RemoveDatabase(d.dbName)
+	err := d.Catalog.RemoveDatabase(ctx, d.dbName)
+	if err != nil {
+		return nil, err
+	}
 
 	// Unsets the current database
 	if ctx.GetCurrentDatabase() == d.dbName {

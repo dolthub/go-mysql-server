@@ -62,10 +62,33 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(left, right)
 	}
 
+	// ENUM and SET must be considered when doing comparisons, as they can match arbitrary strings to numbers based on
+	// their elements. For other types it seems there are other considerations, therefore we only take the type for
+	// ENUM and SET, and default to direct literal comparisons for all other types. Eventually we will need to make our
+	// comparisons context-sensitive, as all comparisons should probably be based on the column/variable if present.
+	// Until then, this is a workaround specifically for ENUM and SET.
 	var compareType sql.Type
-	left, right, compareType, err = c.castLeftAndRight(left, right)
-	if err != nil {
-		return 0, err
+	switch c.Left().(type) {
+	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
+		compareType = c.Left().Type()
+	default:
+		switch c.Right().(type) {
+		case *GetField, *UserVar, *SystemVar, *ProcedureParam:
+			compareType = c.Right().Type()
+		}
+	}
+	if compareType != nil {
+		_, isEnum := compareType.(sql.EnumType)
+		_, isSet := compareType.(sql.SetType)
+		if !isEnum && !isSet {
+			compareType = nil
+		}
+	}
+	if compareType == nil {
+		left, right, compareType, err = c.castLeftAndRight(left, right)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return compareType.Compare(left, right)
@@ -200,7 +223,7 @@ func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (e *Equals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (e *Equals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
@@ -273,7 +296,7 @@ func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 // WithChildren implements the Expression interface.
-func (e *NullSafeEquals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (e *NullSafeEquals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
@@ -405,7 +428,7 @@ func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (re *Regexp) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (re *Regexp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(re, len(children), 2)
 	}
@@ -445,7 +468,7 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (gt *GreaterThan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (gt *GreaterThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gt, len(children), 2)
 	}
@@ -485,7 +508,7 @@ func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (lt *LessThan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (lt *LessThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lt, len(children), 2)
 	}
@@ -526,7 +549,7 @@ func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{},
 }
 
 // WithChildren implements the Expression interface.
-func (gte *GreaterThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (gte *GreaterThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gte, len(children), 2)
 	}
@@ -567,7 +590,7 @@ func (lte *LessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 }
 
 // WithChildren implements the Expression interface.
-func (lte *LessThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (lte *LessThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lte, len(children), 2)
 	}
@@ -586,7 +609,4 @@ var (
 	// ErrUnsupportedInOperand is returned when there is an invalid righthand
 	// operand in an IN operator.
 	ErrUnsupportedInOperand = errors.NewKind("right operand in IN operation must be tuple, but is %T")
-	// ErrInvalidOperandColumns is returned when the columns in the left operand
-	// and the elements of the right operand don't match.
-	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
 )

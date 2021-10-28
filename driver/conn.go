@@ -23,16 +23,13 @@ import (
 
 // Conn is a connection to a database.
 type Conn struct {
-	options  Options
-	catalog  *catalog
+	options  *Options
+	dbConn   *dbConn
 	session  sql.Session
 	contexts ContextBuilder
 	indexes  *sql.IndexRegistry
 	views    *sql.ViewRegistry
 }
-
-// Catalog returns the SQL catalog.
-func (c *Conn) Catalog() *sql.Catalog { return c.catalog.engine.Catalog }
 
 // Session returns the SQL session.
 func (c *Conn) Session() sql.Session { return c.session }
@@ -45,7 +42,7 @@ func (c *Conn) Prepare(query string) (driver.Stmt, error) {
 	}
 
 	// validate the query
-	_, err = c.catalog.engine.AnalyzeQuery(ctx, query)
+	_, err = c.dbConn.engine.AnalyzeQuery(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +64,9 @@ func (c *Conn) newContextWithQuery(ctx context.Context, query string) (*sql.Cont
 	return c.contexts.NewContext(ctx, c,
 		sql.WithSession(c.session),
 		sql.WithQuery(query),
-		sql.WithPid(c.catalog.nextProcessID()),
-		sql.WithMemoryManager(c.catalog.engine.Catalog.MemoryManager),
-		sql.WithIndexRegistry(c.indexes),
-		sql.WithViewRegistry(c.views))
+		sql.WithPid(c.dbConn.nextProcessID()),
+		sql.WithMemoryManager(c.dbConn.engine.MemoryManager),
+		sql.WithProcessList(c.dbConn.engine.ProcessList))
 }
 
 type fakeTransaction struct{}

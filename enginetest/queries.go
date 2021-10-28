@@ -21,6 +21,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
@@ -225,6 +226,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT floor(i), s FROM mytable mt ORDER BY floor(i) DESC",
+		Expected: []sql.Row{
+			{3, "third row"},
+			{2, "second row"},
+			{1, "first row"},
+		},
+	},
+	{
+		Query: "SELECT floor(i), avg(char_length(s)) FROM mytable mt group by 1 ORDER BY floor(i) DESC",
+		Expected: []sql.Row{
+			{3, 9.0},
+			{2, 10.0},
+			{1, 9.0},
+		},
+	},
+	{
 		Query:    "SELECT i AS x FROM mytable ORDER BY x DESC",
 		Expected: []sql.Row{{3}, {2}, {1}},
 	},
@@ -372,6 +389,36 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: `SELECT i, s, i2, s2 FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
+		Expected: []sql.Row{
+			{1, "first row", 1, "third"},
+			{2, "second row", 2, "second"},
+			{3, "third row", 3, "first"},
+		},
+	},
+	{
+		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
+		Expected: []sql.Row{
+			{2, "second row", "second", 2, 2, "second row"},
+		},
+	},
+	{
 		Query: `SELECT a.column_0, b.column_1 FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a
 			join (values row(2,4), row(1.0,"ab")) b on a.column_0 = b.column_0 and a.column_0 = b.column_0
 			order by 1`,
@@ -411,6 +458,15 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select * from tabletest t1 join tabletest t2 on t2.s = t1.s where t2.i > 10",
 		Expected: []sql.Row{},
+	},
+	{
+		Query: "select * from one_pk where c1 in (select opk1.c1 from one_pk opk1 left join one_pk opk2 on opk1.c2 = opk2.c2)",
+		Expected: []sql.Row{
+			{0, 0, 1, 2, 3, 4},
+			{1, 10, 11, 12, 13, 14},
+			{2, 20, 21, 22, 23, 24},
+			{3, 30, 31, 32, 33, 34},
+		},
 	},
 	{
 		Query: `select mt.i, 
@@ -1092,6 +1148,166 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "SELECT 1 FROM DUAL WHERE 1 in (1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((3, 4), (5, 6), (1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in ((3, 4), (5, 6))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6), (1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) > (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) >= (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <= (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) < (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) != (0, 1)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) <=> (0, 1)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) <=> (1, null)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in ((1, 2))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual) in ((1, 2), (2, 3), (3, 4))",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) = (select 3, 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual where false) = ((1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 3, 4 from dual where false) in ((1, 2))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 3, 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE null = (select 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE null <=> (select 4 from dual where false)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) <=> (select 1, 4 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) <=> (select null, null from dual)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in (select 1, 2 from dual)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual where false) in (select 1, 2 from dual)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual where false) in (select 1, 2 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 1, 2 from dual) in (select 1, 2 from dual where false)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (select 5, 6 from dual) in ((1, 2), (2, 3), (3, 4))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) in (select 5, 6 from dual union select 1, 2 from dual)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT (((1,2),3)) = (((1,2),3)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) = (((1,2),3)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,2),4)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (((1,3),2)) in (((1,2),6), ((1,3),2)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (1, 2) in (select 1, 2 from dual) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (1, 2) in (select 2, 3 from dual) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (select 1, 2 from dual) in ((1, 2)) from dual",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT (select 2, 3 from dual) in ((1, 2)) from dual",
+		Expected: []sql.Row{{false}},
+	},
+	{
 		Query:    `SELECT 'a' NOT IN ('b','c',null,'d')`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: sql.Schema{
@@ -1451,6 +1667,13 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT dt1.i FROM datetime_table dt1 join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day)) order by 1",
 		Expected: []sql.Row{{1}, {2}},
+	},
+	{
+		Query: "SELECT unix_timestamp(timestamp_col) div 60 * 60 as timestamp_col, avg(i) from datetime_table group by 1 order by unix_timestamp(timestamp_col) div 60 * 60",
+		Expected: []sql.Row{
+			{1577966400, 1.0},
+			{1578225600, 2.0},
+			{1578398400, 3.0}},
 	},
 	{
 		Query:    "SELECT COUNT(*) FROM mytable;",
@@ -2455,22 +2678,6 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		Expected: []sql.Row{
-			{float64(1), int64(1)},
-			{float64(2), int64(2)},
-			{float64(3), int64(3)},
-		},
-	},
-	{
-		Query: "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
-		Expected: []sql.Row{
-			{float64(1), int64(1)},
-			{float64(2), int64(2)},
-			{float64(3), int64(3)},
-		},
-	},
-	{
 		Query: "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY sum ASC",
 		Expected: []sql.Row{
 			{float64(1), int64(1)},
@@ -2568,9 +2775,9 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA`,
 		Expected: []sql.Row{
-			{"information_schema", "utf8mb4", "utf8mb4_0900_ai_ci"},
-			{"mydb", "utf8mb4", "utf8mb4_0900_ai_ci"},
-			{"foo", "utf8mb4", "utf8mb4_0900_ai_ci"},
+			{"information_schema", "utf8mb4", "utf8mb4_0900_bin"},
+			{"mydb", "utf8mb4", "utf8mb4_0900_bin"},
+			{"foo", "utf8mb4", "utf8mb4_0900_bin"},
 		},
 	},
 	{
@@ -2736,7 +2943,7 @@ var QueryTests = []QueryTest{
 		Query: `SHOW CREATE DATABASE mydb`,
 		Expected: []sql.Row{{
 			"mydb",
-			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */",
+			"CREATE DATABASE `mydb` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin */",
 		}},
 	},
 	{
@@ -2948,7 +3155,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW COLLATION`,
+		Query: "SHOW COLLATION WHERE `Collation` IN ('binary', 'utf8_general_ci', 'utf8mb4_0900_ai_ci')",
 		Expected: []sql.Row{
 			{
 				sql.Collation_binary.String(),
@@ -2961,7 +3168,7 @@ var QueryTests = []QueryTest{
 			},
 			{
 				sql.Collation_utf8_general_ci.String(),
-				"utf8",
+				"utf8mb3",
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].ID,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsDefault,
 				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsCompiled,
@@ -2984,34 +3191,7 @@ var QueryTests = []QueryTest{
 		Expected: nil,
 	},
 	{
-		Query: `SHOW COLLATION LIKE 'utf8%'`,
-		Expected: []sql.Row{
-			{
-				sql.Collation_utf8_general_ci.String(),
-				"utf8",
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].PadSpace,
-			},
-			{
-				sql.Collation_utf8mb4_0900_ai_ci.String(),
-				"utf8mb4",
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_utf8mb4_0900_ai_ci.Name].PadSpace,
-			},
-		},
-	},
-	{
-		Query:    `SHOW COLLATION WHERE charset = 'foo'`,
-		Expected: nil,
-	},
-	{
-		Query: "SHOW COLLATION WHERE `Default` = 'Yes'",
+		Query: `SHOW COLLATION LIKE 'bin%'`,
 		Expected: []sql.Row{
 			{
 				sql.Collation_binary.String(),
@@ -3022,15 +3202,15 @@ var QueryTests = []QueryTest{
 				sql.CollationToMySQLVals[sql.Collation_binary.Name].SortLen,
 				sql.CollationToMySQLVals[sql.Collation_binary.Name].PadSpace,
 			},
-			{
-				sql.Collation_utf8_general_ci.String(),
-				"utf8",
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].ID,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsDefault,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].IsCompiled,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].SortLen,
-				sql.CollationToMySQLVals[sql.Collation_utf8_general_ci.Name].PadSpace,
-			},
+		},
+	},
+	{
+		Query:    `SHOW COLLATION WHERE charset = 'foo'`,
+		Expected: nil,
+	},
+	{
+		Query: "SHOW COLLATION WHERE `Default` = 'Yes' AND `Collation` LIKE 'utf8mb4%'",
+		Expected: []sql.Row{
 			{
 				sql.Collation_utf8mb4_0900_ai_ci.String(),
 				"utf8mb4",
@@ -3799,12 +3979,11 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"first row"}},
 	},
 	{
-		Query: `SELECT pk, (SELECT pk FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) FROM one_pk opk ORDER BY 1`,
+		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY 2`,
 		Expected: []sql.Row{
-			{0, nil},
-			{1, 0},
-			{2, 1},
-			{3, 2},
+			{1, "00"},
+			{2, "11"},
+			{3, "22"},
 		},
 	},
 	{
@@ -4774,6 +4953,15 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{float64(8)}},
 	},
 	{
+		Query: `SELECT /*+ JOIN_ORDER(a, c, b, d) */ a.c1, b.c2, c.c3, d.c4 FROM one_pk a JOIN one_pk b ON a.pk = b.pk JOIN one_pk c ON c.pk = b.pk JOIN (select * from one_pk) d ON d.pk = c.pk`,
+		Expected: []sql.Row{
+			{0, 1, 2, 3},
+			{10, 11, 12, 13},
+			{20, 21, 22, 23},
+			{30, 31, 32, 33},
+		},
+	},
+	{
 		Query: "SELECT * FROM people WHERE last_name='doe' and first_name='jane' order by dob",
 		Expected: []sql.Row{
 			sql.NewRow(dob(1990, 2, 21), "jane", "doe", "", int64(68), int64(1)),
@@ -5083,6 +5271,86 @@ var QueryTests = []QueryTest{
 			},
 		},
 	},
+	{
+		Query: `SELECT CONVERT_TZ("2004-01-01 4:00:00", "+00:00", "+04:00")`,
+		Expected: []sql.Row{
+			{time.Date(2004, 1, 1, 8, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: `SELECT CONVERT_TZ(datetime_col, "+00:00", "+04:00") FROM datetime_table WHERE i = 1`,
+		Expected: []sql.Row{
+			{time.Date(2020, 1, 1, 16, 0, 0, 0, time.UTC)},
+		},
+	},
+	{
+		Query: `SELECT 1 from dual WHERE EXISTS (SELECT 1 from dual);`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query: `SELECT 1 from dual WHERE EXISTS (SELECT NULL from dual);`,
+		Expected: []sql.Row{
+			{1},
+		},
+	},
+	{
+		Query:    `SELECT * FROM two_pk WHERE EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT 2 + 2 WHERE NOT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{4}},
+	},
+	{
+		Query:    `SELECT distinct pk1 FROM two_pk WHERE EXISTS (SELECT pk from one_pk where pk <= two_pk.pk1)`,
+		Expected: []sql.Row{{0}, {1}},
+	},
+	{
+		Query:    `select pk from one_pk where exists (SELECT pk1 FROM two_pk);`,
+		Expected: []sql.Row{{0}, {1}, {2}, {3}},
+	},
+	{
+		Query:    `SELECT EXISTS (SELECT NULL from dual);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT NOT EXISTS (SELECT NULL FROM dual)`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `select exists (SELECT pk1 FROM two_pk);`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT EXISTS (SELECT pk FROM one_pk WHERE pk > 4)`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `START TRANSACTION READ ONLY`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `START TRANSACTION READ WRITE`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW GLOBAL STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW SESSION STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW STATUS LIKE 'Bytes_received'`,
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -5375,8 +5643,39 @@ var BrokenQueries = []QueryTest{
 	},
 	// https://github.com/dolthub/go-mysql-server/issues/600
 	{
-		Query: `SELECT json_unquote(json_extract('{"hi":"there"}', '$.nope'))`,
+		Query:    `SELECT json_unquote(json_extract('{"hi":"there"}', '$.nope'))`,
 		Expected: []sql.Row{{nil}}, // currently returns string "null"
+	},
+	// Null-safe and type conversion tuple comparison is not correctly
+	// implemented yet.
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) in ((1, null))",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (1, null) != (0, null)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (0, null) = (0, null)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE ('0', 0) = (0, '0')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "SELECT 1 FROM DUAL WHERE (null, null) = (select null, null from dual)",
+		Expected: []sql.Row{},
+	},
+	// pushdownGroupByAliases breaks queries where subquery expressions
+	// reference the outer table and an alias gets pushed to a projection
+	// below a group by node.
+	{
+		Query: "SELECT c AS i_do_not_conflict, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY i_do_not_conflict;",
+	},
+	{
+		Query: "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
 	},
 }
 
@@ -5425,6 +5724,62 @@ var VersionedQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"myhistorytable"},
 		},
+	},
+}
+
+var VersionedScripts = []ScriptTest{
+	{
+		Name: "user var for AS OF expression",
+		SetUpScript: []string{
+			"SET @rev1 = '2019-01-01', @rev2 = '2019-01-02'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT *  FROM myhistorytable AS OF @rev1 AS foo ORDER BY i",
+				Expected: []sql.Row{
+					{int64(1), "first row, 1"},
+					{int64(2), "second row, 1"},
+					{int64(3), "third row, 1"},
+				},
+			},
+			{
+				Query: "SELECT *  FROM myhistorytable AS OF @rev2 AS foo ORDER BY i",
+				Expected: []sql.Row{
+					{int64(1), "first row, 2"},
+					{int64(2), "second row, 2"},
+					{int64(3), "third row, 2"},
+				},
+			},
+			{
+				Query: "SHOW TABLES AS OF @rev1 LIKE 'myhistorytable'",
+				Expected: []sql.Row{
+					{"myhistorytable"},
+				},
+			},
+		},
+	},
+}
+
+var DateParseQueries = []QueryTest{
+	{
+		Query:    "SELECT STR_TO_DATE('Jan 3, 2000', '%b %e, %Y')",
+		Expected: []sql.Row{{time.Date(2000, time.January, 3, 0, 0, 0, 0, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('May 3, 10:23:00 PM 2000', '%b %e, %H:%i:%s %p %Y')",
+		Expected: []sql.Row{{time.Date(2000, time.May, 3, 22, 23, 0, 0, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01/02/99 314', '%m/%e/%y %f')",
+		Expected: []sql.Row{{time.Date(1999, time.January, 2, 0, 0, 0, 314000, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('01/02/99 05:14:12 PM', '%m/%e/%y %r')",
+		Expected: []sql.Row{{time.Date(1999, time.January, 2, 17, 14, 12, 0, time.Local)}},
+	},
+	{
+		Query:    "SELECT STR_TO_DATE('invalid', 'notvalid')",
+		Expected: []sql.Row{{sql.Null}},
 	},
 }
 
@@ -5525,7 +5880,7 @@ var InfoSchemaQueries = []QueryTest{
 		Query: `SHOW FULL COLUMNS FROM mytable`,
 		Expected: []sql.Row{
 			{"i", "bigint", nil, "NO", "PRI", "", "", "", ""},
-			{"s", "varchar(20)", "utf8mb4_0900_ai_ci", "NO", "UNI", "", "", "", "column s"},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "", "", "", "column s"},
 		},
 	},
 	{
@@ -6163,11 +6518,80 @@ var errorQueries = []QueryErrorTest{
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,
-		ExpectedErrStr: "unable to cast \"abc\" of type string to float64",
+		ExpectedErrStr: `error: 'abc' is not a valid value for 'DOUBLE'`,
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":{"a": "abc"}}', '$.id')-1;`,
-		ExpectedErrStr: `unable to cast map[string]interface {}{"a":"abc"} of type map[string]interface {} to float64`,
+		ExpectedErrStr: `error: 'map[string]interface {}' is not a valid value type for 'DOUBLE'`,
+	},
+	{
+		Query:       `alter table mytable add primary key (s)`,
+		ExpectedErr: sql.ErrMultiplePrimaryKeysDefined,
+	},
+	// TODO: The following two queries should work. See https://github.com/dolthub/go-mysql-server/issues/542.
+	{
+		Query:       "SELECT SUM(i), i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		ExpectedErr: analyzer.ErrAggregationUnsupported,
+	},
+	{
+		Query:       "SELECT SUM(i) as sum, i FROM mytable GROUP BY i ORDER BY 1+SUM(i) ASC",
+		ExpectedErr: analyzer.ErrAggregationUnsupported,
+	},
+	{
+		Query:       "select ((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (select 1, 2 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select concat((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1, 2) = (1) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1) in (select 1, 2 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (1, 2) in (select 1, 2, 3 from dual) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (select 1 from dual) in ((1, 2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1,2))) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1),2)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1))) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select (((1,2),3)) = (((1,2),3),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select ((4,5),((1,2),3)) = ((1,2),(4,5)) from dual",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "SELECT (2, 2)=1 FROM dual where exists (SELECT 1 FROM dual)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk where strpk > "0" ORDER BY 2`,
+		ExpectedErr: sql.ErrColumnNotFound,
 	},
 }
 
@@ -6268,10 +6692,10 @@ var ViewTests = []QueryTest{
 	},
 	// info schema support
 	{
-		Query: "select * from information_schema.views where table_schema = 'mydb'",
+		Query: "select * from information_schema.views where table_schema = 'mydb' order by table_name",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{
@@ -6362,9 +6786,9 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "select * from information_schema.views where table_schema = 'mydb'",
 		Expected: []sql.Row{
-			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
-			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
-			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_ai_ci"),
+			sql.NewRow("def", "mydb", "myview", "SELECT * FROM mytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview1", "SELECT * FROM myhistorytable", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
+			sql.NewRow("def", "mydb", "myview2", "SELECT * FROM myview1 WHERE i = 1", "NONE", "YES", "", "DEFINER", "utf8mb4", "utf8mb4_0900_bin"),
 		},
 	},
 	{
@@ -6381,63 +6805,63 @@ var ShowTableStatusQueries = []QueryTest{
 	{
 		Query: `SHOW TABLE STATUS FROM mydb`,
 		Expected: []sql.Row{
-			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(96), uint64(288), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(96), uint64(288), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS LIKE '%table'`,
 		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
 		Expected: []sql.Row{
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS WHERE Name = 'mytable'`,
 		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS`,
 		Expected: []sql.Row{
-			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(96), uint64(288), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"fk_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(96), uint64(288), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
 		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
 		Expected: []sql.Row{
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_ai_ci", nil, nil, nil},
+			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 }

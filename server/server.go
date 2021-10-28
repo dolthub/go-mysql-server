@@ -15,6 +15,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -49,6 +50,10 @@ type Config struct {
 	ConnWriteTimeout time.Duration
 	// MaxConnections is the maximum number of simultaneous connections that the server will allow.
 	MaxConnections uint64
+	// TLSConfig is the configuration for TLS on this server. If |nil|, TLS is not supported.
+	TLSConfig *tls.Config
+	// RequestSecureTransport will require incoming connections to be TLS. Requires non-|nil| TLSConfig.
+	RequireSecureTransport bool
 }
 
 // NewDefaultServer creates a Server with the default session builder.
@@ -82,8 +87,9 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 		NewSessionManager(
 			sb,
 			tracer,
-			e.Catalog.HasDB,
-			e.Catalog.MemoryManager,
+			e.Analyzer.Catalog.HasDB,
+			e.MemoryManager,
+			e.ProcessList,
 			cfg.Address),
 		cfg.ConnReadTimeout)
 	a := cfg.Auth.Mysql()
@@ -109,6 +115,8 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 	if cfg.Version != "" {
 		vtListnr.ServerVersion = cfg.Version
 	}
+	vtListnr.TLSConfig = cfg.TLSConfig
+	vtListnr.RequireSecureTransport = cfg.RequireSecureTransport
 
 	return &Server{Listener: vtListnr, h: handler}, nil
 }

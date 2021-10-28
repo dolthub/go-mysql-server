@@ -40,9 +40,10 @@ type JSONArrayAgg struct {
 }
 
 var _ sql.FunctionExpression = &JSONArrayAgg{}
+var _ sql.Aggregation = &JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
-func NewJSONArrayAgg(ctx *sql.Context, arg sql.Expression) *JSONArrayAgg {
+func NewJSONArrayAgg(arg sql.Expression) *JSONArrayAgg {
 	return &JSONArrayAgg{expression.UnaryExpression{Child: arg}}
 }
 
@@ -52,9 +53,9 @@ func (j *JSONArrayAgg) FunctionName() string {
 }
 
 // NewBuffer creates a new buffer for the aggregation.
-func (j *JSONArrayAgg) NewBuffer() sql.Row {
+func (j *JSONArrayAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	var row []interface{}
-	return sql.NewRow(row)
+	return &jsonArrayBuffer{row, j}, nil
 }
 
 // Type returns the type of the result.
@@ -81,16 +82,26 @@ func (j *JSONArrayAgg) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONArrayAgg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (j *JSONArrayAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 1)
 	}
-	return NewJSONArrayAgg(ctx, children[0]), nil
+	return NewJSONArrayAgg(children[0]), nil
 }
 
-// Update implements the Aggregation interface.
-func (j *JSONArrayAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := j.Child.Eval(ctx, row)
+// Eval implements the Expression interface.
+func (j *JSONArrayAgg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("JSONArrayAgg")
+}
+
+type jsonArrayBuffer struct {
+	vals []interface{}
+	jaa  *JSONArrayAgg
+}
+
+// Update implements the AggregationBuffer interface.
+func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := j.jaa.Child.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -104,24 +115,18 @@ func (j *JSONArrayAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		v = doc.Val
 	}
 
-	buffer[0] = append(buffer[0].([]interface{}), v)
+	j.vals = append(j.vals, v)
 
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (j *JSONArrayAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	arr1 := buffer[0].([]interface{})
-	arr2 := partial[0].([]interface{})
-
-	buffer[0] = append(arr1, arr2...)
-
-	return nil
+// Eval implements the AggregationBuffer interface.
+func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return sql.JSONDocument{Val: j.vals}, nil
 }
 
-// Eval implements the Aggregation interface.
-func (j *JSONArrayAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	return sql.JSONDocument{Val: buffer[0]}, nil
+// Dispose implements the Disposable interface.
+func (j *jsonArrayBuffer) Dispose() {
 }
 
 // JSON_OBJECTAGG(key, value) [over_clause]
@@ -139,9 +144,10 @@ type JSONObjectAgg struct {
 }
 
 var _ sql.FunctionExpression = JSONObjectAgg{}
+var _ sql.Aggregation = JSONObjectAgg{}
 
 // NewJSONObjectAgg creates a new JSONArrayAgg function.
-func NewJSONObjectAgg(ctx *sql.Context, key, value sql.Expression) sql.Expression {
+func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
 	return JSONObjectAgg{key: key, value: value}
 }
 
@@ -150,6 +156,7 @@ func (j JSONObjectAgg) FunctionName() string {
 	return "json_objectagg"
 }
 
+// Resolved implements the Expression interface.
 func (j JSONObjectAgg) Resolved() bool {
 	return j.key.Resolved() && j.value.Resolved()
 }
@@ -158,35 +165,49 @@ func (j JSONObjectAgg) String() string {
 	return fmt.Sprintf("JSON_OBJECTAGG(%s, %s)", j.key, j.value)
 }
 
+// Type implements the Expression interface.
 func (j JSONObjectAgg) Type() sql.Type {
 	return sql.JSON
 }
 
+// IsNullable implements the Expression interface.
 func (j JSONObjectAgg) IsNullable() bool {
 	return false
 }
 
+// Children implements the Expression interface.
 func (j JSONObjectAgg) Children() []sql.Expression {
 	return []sql.Expression{j.key, j.value}
 }
 
-func (j JSONObjectAgg) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+// WithChildren implements the Expression interface.
+func (j JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
 
-	return NewJSONObjectAgg(ctx, children[0], children[1]), nil
+	return NewJSONObjectAgg(children[0], children[1]), nil
 }
 
 // NewBuffer implements the Aggregation interface.
-func (j JSONObjectAgg) NewBuffer() sql.Row {
+func (j JSONObjectAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	row := make(map[string]interface{})
-	return sql.NewRow(row)
+	return &jsonObjectBuffer{row, &j}, nil
 }
 
-// Update implements the Aggregation interface.
-func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	key, err := j.key.Eval(ctx, row)
+// Eval implements the Expression interface.
+func (j JSONObjectAgg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("JSONObjectAgg")
+}
+
+type jsonObjectBuffer struct {
+	vals map[string]interface{}
+	joa  *JSONObjectAgg
+}
+
+// Update implements the AggregationBuffer interface.
+func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	key, err := j.joa.key.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -196,7 +217,7 @@ func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return sql.ErrJSONObjectAggNullKey.New()
 	}
 
-	val, err := j.value.Eval(ctx, row)
+	val, err := j.joa.value.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -211,30 +232,25 @@ func (j JSONObjectAgg) Update(ctx *sql.Context, buffer, row sql.Row) error {
 	}
 
 	// Update the map.
-	mp := buffer[0].(map[string]interface{})
-
 	keyAsString, err := sql.LongText.Convert(key)
 	if err != nil {
 		return nil
 	}
-	mp[keyAsString.(string)] = val
+	j.vals[keyAsString.(string)] = val
 
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (j JSONObjectAgg) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return j.Update(ctx, buffer, partial)
-}
-
-// Eval implements the Aggregation interface.
-func (j JSONObjectAgg) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	mp := buffer[0].(map[string]interface{})
-
+// Eval implements the AggregationBuffer interface.
+func (j *jsonObjectBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	// When no rows are present return NULL
-	if len(mp) == 0 {
+	if len(j.vals) == 0 {
 		return nil, nil
 	}
 
-	return sql.JSONDocument{Val: mp}, nil
+	return sql.JSONDocument{Val: j.vals}, nil
+}
+
+// Dispose implements the Disposable interface.
+func (j *jsonObjectBuffer) Dispose() {
 }

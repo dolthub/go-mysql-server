@@ -20,6 +20,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const ConnectionIdLogField = "connectionID"
+const ConnectTimeLogKey = "connectTime"
+
 func init() {
 	// V quickly checks if the logging verbosity meets a threshold.
 	vtlog.V = func(level glog.Level) glog.Verbose {

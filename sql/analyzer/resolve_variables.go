@@ -26,77 +26,127 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// resolveVariables replaces UnresolvedColumn which are variables with their literal values
+func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, ctx := ctx.Span("resolve_variables")
+	defer span.Finish()
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if n.Resolved() {
+			return n, nil
+		}
+
+		resolveVars := func(e sql.Expression) (sql.Expression, error) {
+			uc, ok := e.(column)
+			if !ok || e.Resolved() {
+				return e, nil
+			}
+
+			expr, ok, err := resolveSystemOrUserVariable(ctx, a, uc)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				return expr, nil
+			}
+
+			return e, nil
+		}
+
+		// Set nodes need to resolve the right-hand side of an expression only
+		if n, ok := n.(*plan.Set); ok {
+			return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+				sf, ok := e.(*expression.SetField)
+				if !ok {
+					return e, nil
+				}
+
+				nr, err := expression.TransformUp(sf.Right, resolveVars)
+				if err != nil {
+					return nil, err
+				}
+
+				return sf.WithChildren(sf.Left, nr)
+			})
+		}
+
+		return plan.TransformExpressionsUp(n, resolveVars)
+	})
+}
+
 // resolveSetVariables replaces SET @@var and SET @var expressions with appropriately resolved expressions for the
 // left-hand side, and evaluate the right-hand side where possible, including filling in defaults. Also validates that
 // system variables are known to the system.
 func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	_, ok := n.(*plan.Set)
-	if !ok || n.Resolved() {
-		return n, nil
-	}
-
-	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
-		sf, ok := e.(*expression.SetField)
-		if !ok {
-			return e, nil
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		_, ok := n.(*plan.Set)
+		if !ok || n.Resolved() {
+			return n, nil
 		}
 
-		setExpr := sf.Left
-		varName := sf.Left.String()
-		setVal, err := getSetVal(ctx, varName, sf.Right)
-		if err != nil {
-			return nil, err
-		}
+		return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+			sf, ok := e.(*expression.SetField)
+			if !ok {
+				return e, nil
+			}
 
-		if _, ok := sf.Left.(*expression.UnresolvedColumn); ok {
-			var scope sqlparser.SetScope
-			varName, scope, err = sqlparser.VarScope(varName)
+			setExpr := sf.Left
+			varName := sf.Left.String()
+			setVal, err := getSetVal(ctx, varName, sf.Right)
 			if err != nil {
 				return nil, err
 			}
 
-			switch scope {
-			case sqlparser.SetScope_None:
-				return sf, nil
-			case sqlparser.SetScope_Global:
-				_, _, ok = sql.SystemVariables.GetGlobal(varName)
-				if !ok {
-					return nil, sql.ErrUnknownSystemVariable.New(varName)
-				}
-				setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Global)
-			case sqlparser.SetScope_Persist:
-				return nil, sql.ErrUnsupportedFeature.New("PERSIST")
-			case sqlparser.SetScope_PersistOnly:
-				return nil, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
-			case sqlparser.SetScope_Session:
-				_, err = ctx.GetSessionVariable(ctx, varName)
+			if _, ok := sf.Left.(*expression.UnresolvedColumn); ok {
+				var scope sqlparser.SetScope
+				varName, scope, err = sqlparser.VarScope(varName)
 				if err != nil {
 					return nil, err
 				}
-				setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Session)
-			case sqlparser.SetScope_User:
-				setExpr = expression.NewUserVar(varName)
-			default: // shouldn't happen
-				return nil, fmt.Errorf("unknown set scope %v", scope)
-			}
-		}
 
-		// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
-		// unresolved columns.
-		if _, ok := setExpr.(*expression.SystemVar); ok {
-			if uc, ok := setVal.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
-				_, setScope, _ := sqlparser.VarScope(uc.Name())
-				if setScope == sqlparser.SetScope_None {
-					setVal = expression.NewLiteral(uc.Name(), sql.LongText)
+				switch scope {
+				case sqlparser.SetScope_None:
+					return sf, nil
+				case sqlparser.SetScope_Global:
+					_, _, ok = sql.SystemVariables.GetGlobal(varName)
+					if !ok {
+						return nil, sql.ErrUnknownSystemVariable.New(varName)
+					}
+					setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Global)
+				case sqlparser.SetScope_Persist:
+					return nil, sql.ErrUnsupportedFeature.New("PERSIST")
+				case sqlparser.SetScope_PersistOnly:
+					return nil, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
+				case sqlparser.SetScope_Session:
+					_, err = ctx.GetSessionVariable(ctx, varName)
+					if err != nil {
+						return nil, err
+					}
+					setExpr = expression.NewSystemVar(varName, sql.SystemVariableScope_Session)
+				case sqlparser.SetScope_User:
+					setExpr = expression.NewUserVar(varName)
+				default: // shouldn't happen
+					return nil, fmt.Errorf("unknown set scope %v", scope)
 				}
 			}
-		}
-		if _, ok := setExpr.(*expression.SystemVar); ok {
-			return sf.WithChildren(ctx, setExpr, setVal)
-		} else if _, ok := setExpr.(*expression.UserVar); ok {
-			return sf.WithChildren(ctx, setExpr, setVal)
-		}
-		return sf, nil
+
+			// Special case: for system variables, MySQL allows naked strings (without quotes), which get interpreted as
+			// unresolved columns.
+			if _, ok := setExpr.(*expression.SystemVar); ok {
+				if uc, ok := setVal.(*expression.UnresolvedColumn); ok && uc.Table() == "" {
+					_, setScope, _ := sqlparser.VarScope(uc.Name())
+					if setScope == sqlparser.SetScope_None {
+						setVal = expression.NewLiteral(uc.Name(), sql.LongText)
+					}
+				}
+			}
+			if _, ok := setExpr.(*expression.SystemVar); ok {
+				return sf.WithChildren(setExpr, setVal)
+			} else if _, ok := setExpr.(*expression.UserVar); ok {
+				return sf.WithChildren(setExpr, setVal)
+			}
+			return sf, nil
+		})
 	})
 }
 
@@ -109,7 +159,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		sf, ok := e.(*expression.SetField)
 		if !ok {
 			return e, nil
@@ -138,11 +188,55 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 				}
 			}
 
-			return sf.WithChildren(ctx, expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
+			return sf.WithChildren(expression.NewSystemVar(varName, sql.SystemVariableScope_Session), setVal)
 		}
 
 		return sf, nil
 	})
+}
+
+func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, bool, error) {
+	var varName string
+	var scope sqlparser.SetScope
+	var err error
+	if col.Table() != "" {
+		varName, scope, err = sqlparser.VarScope(col.Table(), col.Name())
+		if err != nil {
+			return nil, false, err
+		}
+	} else {
+		varName, scope, err = sqlparser.VarScope(col.Name())
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	switch scope {
+	case sqlparser.SetScope_None:
+		return nil, false, nil
+	case sqlparser.SetScope_Global:
+		_, _, ok := sql.SystemVariables.GetGlobal(varName)
+		if !ok {
+			return nil, false, sql.ErrUnknownSystemVariable.New(varName)
+		}
+		a.Log("resolved column %s to global system variable", col)
+		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global), true, nil
+	case sqlparser.SetScope_Persist:
+		return nil, false, sql.ErrUnsupportedFeature.New("PERSIST")
+	case sqlparser.SetScope_PersistOnly:
+		return nil, false, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
+	case sqlparser.SetScope_Session:
+		_, err = ctx.GetSessionVariable(ctx, varName)
+		if err != nil {
+			return nil, false, err
+		}
+		a.Log("resolved column %s to session system variable", col)
+		return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), true, nil
+	case sqlparser.SetScope_User:
+		a.Log("resolved column %s to user variable", col)
+		return expression.NewUserVar(varName), true, nil
+	default: // shouldn't happen
+		return nil, false, fmt.Errorf("unknown set scope %v", scope)
+	}
 }
 
 // getSetVal evaluates the right hand side of a SetField expression and returns an evaluated value as appropriate

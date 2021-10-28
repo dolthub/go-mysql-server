@@ -37,11 +37,10 @@ func TestMaxIterations(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	db.AddTable(tName, table)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
+	provider := sql.NewDatabaseProvider(db)
 
 	count := 0
-	a := withoutProcessTracking(NewBuilder(catalog).AddPostAnalyzeRule("loop",
+	a := withoutProcessTracking(NewBuilder(provider).AddPostAnalyzeRule("loop",
 		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 
 			switch n.(type) {
@@ -58,7 +57,7 @@ func TestMaxIterations(t *testing.T) {
 			return n, nil
 		}).Build())
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	notAnalyzed := plan.NewUnresolvedTable(tName, "")
 	analyzed, err := a.Analyze(ctx, notAnalyzed, nil)
 	require.Error(err)
@@ -188,9 +187,8 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	db.AddTable("mytable2", table2)
 	db.AddTable("mytable3", table3)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := withoutProcessTracking(NewDefault(catalog))
+	provider := sql.NewDatabaseProvider(db)
+	a := withoutProcessTracking(NewDefault(provider))
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -242,7 +240,7 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 
@@ -318,11 +316,10 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 	db.AddTable("ref_commits", refCommits)
 	db.AddTable("commits", commits)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := withoutProcessTracking(NewDefault(catalog))
+	provider := sql.NewDatabaseProvider(db)
+	a := withoutProcessTracking(NewDefault(provider))
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry()))
+	ctx := sql.NewContext(context.Background())
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 	require.True(result.Resolved())

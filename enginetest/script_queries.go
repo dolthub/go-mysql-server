@@ -803,11 +803,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"1-2-3-4"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id`,
+				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id order by o_id asc`,
 				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
@@ -840,7 +840,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       `SELECT group_concat((SELECT * FROM t LIMIT 1)) from t`,
-				ExpectedErr: sql.ErrSubqueryMultipleColumns,
+				ExpectedErr: sql.ErrInvalidOperandColumns,
 			},
 			{
 				Query:       `SELECT group_concat((SELECT * FROM x)) from t`,
@@ -851,7 +851,7 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id`,
+				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
@@ -936,8 +936,8 @@ var ScriptTests = []ScriptTest{
 			"CREATE TABLE mytable (pk int, v1 int)",
 			"INSERT INTO mytable VALUES(1,1)",
 			"INSERT INTO mytable VALUES(1,1)",
-			"INSERT INTO mytable VALUES(1,2)",
 			"INSERT INTO mytable VALUES(2,2)",
+			"INSERT INTO mytable VALUES(1,2)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -965,11 +965,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{float64(14)}, {float64(5)}, {float64(47)}},
 			},
 			{
-				Query:    "SELECT pk, SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk",
+				Query:    "SELECT pk, SUM(DISTINCT v1), MAX(v1) FROM mytable GROUP BY pk ORDER BY pk",
 				Expected: []sql.Row{{int64(1), float64(3), int64(2)}, {int64(2), float64(2), int64(2)}},
 			},
 			{
-				Query:    "SELECT pk, MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk",
+				Query:    "SELECT pk, MIN(DISTINCT v1), MAX(DISTINCT v1) FROM mytable GROUP BY pk ORDER BY pk",
 				Expected: []sql.Row{{int64(1), int64(1), int64(2)}, {int64(2), int64(2), int64(2)}},
 			},
 			{
@@ -1111,6 +1111,130 @@ var ScriptTests = []ScriptTest{
 					InsertID:     0,
 					Info:         nil,
 				}}},
+			},
+		},
+	},
+	{
+		Name: "Issue #499",
+		SetUpScript: []string{
+			"CREATE TABLE test (time TIMESTAMP, value DOUBLE);",
+			`INSERT INTO test VALUES 
+			("2021-07-04 10:00:00", 1.0),
+			("2021-07-03 10:00:00", 2.0),
+			("2021-07-02 10:00:00", 3.0),
+			("2021-07-01 10:00:00", 4.0);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT
+				UNIX_TIMESTAMP(time) DIV 60 * 60 AS "time",
+				avg(value) AS "value"
+				FROM test
+				GROUP BY 1
+				ORDER BY UNIX_TIMESTAMP(time) DIV 60 * 60`,
+				Expected: []sql.Row{
+					{1625133600, 4.0},
+					{1625220000, 3.0},
+					{1625306400, 2.0},
+					{1625392800, 1.0},
+				},
+			},
+		},
+	},
+	{
+		Name: "WHERE clause considers ENUM/SET types for comparisons",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
+			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+			},
+		},
+	},
+	{
+		Name: "Slightly more complex example for the Exists Clause",
+		SetUpScript: []string{
+			"create table store(store_id int, item_id int, primary key (store_id, item_id))",
+			"create table items(item_id int primary key, price int)",
+			"insert into store values (0, 1), (0,2),(0,3),(1,2),(1,4),(2,1)",
+			"insert into items values (1, 10), (2, 20), (3, 30),(4,40)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from store WHERE EXISTS (SELECT price from items where price > 10 and store.item_id = items.item_id)",
+				Expected: []sql.Row{{0, 2}, {0, 3}, {1, 2}, {1, 4}},
+			},
+		},
+	},
+	{
+		Name: "Simple Update Join test that manipulates two tables",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key);",
+			`CREATE TABLE test2 (pk int primary key, val int);`,
+			`INSERT into test values (0),(1),(2),(3)`,
+			`INSERT into test2 values (0, 0),(1, 1),(2, 2),(3, 3)`,
+			`CREATE TABLE test3(k int, val int, primary key (k, val))`,
+			`INSERT into test3 values (1,2),(1,3),(1,4)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `update test2 inner join (select * from test3 order by val) as t3 on test2.pk = t3.k SET test2.val=t3.val`,
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{
+					Matched:  1,
+					Updated:  1,
+					Warnings: 0,
+				}}}},
+			},
+			{
+				Query: "SELECT val FROM test2 where pk = 1",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: `update test inner join test2 on test.pk = test2.pk SET test.pk=test.pk*10, test2.pk = test2.pk * 4 where test.pk < 10;`,
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 6, Info: plan.UpdateInfo{
+					Matched:  6, // TODO: The answer should be 8
+					Updated:  6,
+					Warnings: 0,
+				}}}},
+			},
+			{
+				Query: "SELECT * FROM test",
+				Expected: []sql.Row{
+					{0},
+					{10},
+					{20},
+					{30},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2",
+				Expected: []sql.Row{
+					{0, 0},
+					{4, 2},
+					{8, 2},
+					{12, 3},
+				},
 			},
 		},
 	},

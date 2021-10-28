@@ -23,7 +23,7 @@ import (
 // ShowTableStatus returns the status of the tables in a database.
 type ShowTableStatus struct {
 	db      sql.Database
-	Catalog *sql.Catalog
+	Catalog sql.Catalog
 }
 
 var _ sql.Databaser = (*ShowTableStatus)(nil)

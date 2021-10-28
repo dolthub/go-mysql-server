@@ -16,11 +16,11 @@ type memTable struct {
 	Schema       sql.Schema
 	Records      Records
 
-	once    sync.Once
-	catalog *sql.Catalog
+	once       sync.Once
+	dbProvider sql.DatabaseProvider
 }
 
-func (f *memTable) Resolve(name string, _ *driver.Options) (string, *sql.Catalog, error) {
+func (f *memTable) Resolve(name string, _ *driver.Options) (string, sql.DatabaseProvider, error) {
 	f.once.Do(func() {
 		table := memory.NewTable(f.TableName, f.Schema)
 
@@ -34,12 +34,13 @@ func (f *memTable) Resolve(name string, _ *driver.Options) (string, *sql.Catalog
 		database := memory.NewDatabase(f.DatabaseName)
 		database.AddTable(f.TableName, table)
 
-		f.catalog = sql.NewCatalog()
-		f.catalog.AddDatabase(database)
-		f.catalog.AddDatabase(information_schema.NewInformationSchemaDatabase(f.catalog))
+		pro := memory.NewMemoryDBProvider(
+			database,
+			information_schema.NewInformationSchemaDatabase())
+		f.dbProvider = pro
 	})
 
-	return name, f.catalog, nil
+	return name, f.dbProvider, nil
 }
 
 func personMemTable(database, table string) (*memTable, Records) {

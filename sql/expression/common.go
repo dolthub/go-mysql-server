@@ -108,3 +108,10 @@ func ExpressionsResolved(exprs ...sql.Expression) bool {
 
 	return true
 }
+
+func Dispose(e sql.Expression) {
+	sql.Inspect(e, func(e sql.Expression) bool {
+		sql.Dispose(e)
+		return true
+	})
+}

@@ -149,6 +149,9 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 	allDatetime := true
 
 	for _, arg := range args {
+		if !arg.Resolved() {
+			return nil, nil
+		}
 		argType := arg.Type()
 		if sql.IsTuple(argType) {
 			return nil, sql.ErrInvalidType.New("tuple")
@@ -200,8 +203,12 @@ var _ sql.FunctionExpression = (*Greatest)(nil)
 var ErrUnsupportedType = errors.NewKind("unsupported type for greatest/least argument: %T")
 
 // NewGreatest creates a new Greatest UDF
-func NewGreatest(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return &Greatest{Args: args}, nil
+func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
+	retType, err := compRetType(args...)
+	if err != nil {
+		return nil, err
+	}
+	return &Greatest{Args: args, returnType: retType}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -236,8 +243,8 @@ func (f *Greatest) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Greatest) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewGreatest(ctx, children...)
+func (f *Greatest) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewGreatest(children...)
 }
 
 // Resolved implements the Expression interface.
@@ -247,7 +254,7 @@ func (f *Greatest) Resolved() bool {
 			return false
 		}
 	}
-	return true
+	return f.returnType != nil
 }
 
 // Children implements the Expression interface.
@@ -285,14 +292,6 @@ func lessThan(a, b interface{}) bool {
 
 // Eval implements the Expression interface.
 func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if f.returnType == nil {
-		retType, err := compRetType(f.Args...)
-		if err != nil {
-			return nil, err
-		}
-		f.returnType = retType
-	}
-
 	return compEval(f.returnType, f.Args, ctx, row, greaterThan)
 }
 
@@ -309,8 +308,12 @@ type Least struct {
 var _ sql.FunctionExpression = (*Least)(nil)
 
 // NewLeast creates a new Least UDF
-func NewLeast(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
-	return &Least{Args: args}, nil
+func NewLeast(args ...sql.Expression) (sql.Expression, error) {
+	retType, err := compRetType(args...)
+	if err != nil {
+		return nil, err
+	}
+	return &Least{Args: args, returnType: retType}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -345,8 +348,8 @@ func (f *Least) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *Least) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NewLeast(ctx, children...)
+func (f *Least) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLeast(children...)
 }
 
 // Resolved implements the Expression interface.
@@ -356,7 +359,7 @@ func (f *Least) Resolved() bool {
 			return false
 		}
 	}
-	return true
+	return f.returnType != nil
 }
 
 // Children implements the Expression interface.
@@ -364,13 +367,5 @@ func (f *Least) Children() []sql.Expression { return f.Args }
 
 // Eval implements the Expression interface.
 func (f *Least) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if f.returnType == nil {
-		retType, err := compRetType(f.Args...)
-		if err != nil {
-			return nil, err
-		}
-		f.returnType = retType
-	}
-
 	return compEval(f.returnType, f.Args, ctx, row, lessThan)
 }

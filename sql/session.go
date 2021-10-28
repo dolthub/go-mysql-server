@@ -26,6 +26,8 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 type key uint
@@ -101,17 +103,43 @@ type Session interface {
 	SetIgnoreAutoCommit(ignore bool)
 	// GetIgnoreAutoCommit returns whether this session should ignore the @@autocommit variable
 	GetIgnoreAutoCommit() bool
+	// GetLogger returns the logger for this session, useful if clients want to log messages with the same format / output
+	// as the running server. Clients should instantiate their own global logger with formatting options, and session
+	// implementations should return the logger to be used for the running server.
+	GetLogger() *logrus.Entry
+	// SetLogger sets the logger to use for this session, which will always be an extension of the one returned by
+	// GetLogger, extended with session information
+	SetLogger(*logrus.Entry)
+	// GetIndexRegistry returns the index registry for this session
+	GetIndexRegistry() *IndexRegistry
+	// GetViewRegistry returns the view registry for this session
+	GetViewRegistry() *ViewRegistry
+	// SetIndexRegistry sets the index registry for this session. Integrators should set an index registry in the event
+	// they are using an index driver.
+	SetIndexRegistry(*IndexRegistry)
+	// SetViewRegistry sets the view registry for this session. Integrators should set a view registry if their database
+	// doesn't implement ViewDatabase and they want views created to persist across sessions.
+	SetViewRegistry(*ViewRegistry)
 }
 
 // BaseSession is the basic session type.
 type BaseSession struct {
-	id               uint32
-	addr             string
+	id     uint32
+	addr   string
+	client Client
+
+	// TODO(andy): in principle, we shouldn't
+	//   have concurrent access to the session.
+	//   Needs investigation.
+	mu sync.RWMutex
+
+	// |mu| protects the following state
+	logger           *logrus.Entry
 	currentDB        string
-	client           Client
-	mu               *sync.RWMutex
 	systemVars       map[string]interface{}
 	userVars         map[string]interface{}
+	idxReg           *IndexRegistry
+	viewReg          *ViewRegistry
 	warnings         []*Warning
 	warncnt          uint16
 	locks            map[string]bool
@@ -121,11 +149,32 @@ type BaseSession struct {
 	ignoreAutocommit bool
 }
 
+func (s *BaseSession) GetLogger() *logrus.Entry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.logger == nil {
+		log := logrus.StandardLogger()
+		s.logger = logrus.NewEntry(log)
+	}
+	return s.logger
+}
+
+func (s *BaseSession) SetLogger(logger *logrus.Entry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logger = logger
+}
+
 func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.ignoreAutocommit = ignore
 }
 
 func (s *BaseSession) GetIgnoreAutoCommit() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.ignoreAutocommit
 }
 
@@ -214,11 +263,15 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 
 // GetCurrentDatabase gets the current database for this session
 func (s *BaseSession) GetCurrentDatabase() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.currentDB
 }
 
 // SetCurrentDatabase sets the current database for this session
 func (s *BaseSession) SetCurrentDatabase(dbName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.currentDB = dbName
 }
 
@@ -306,12 +359,40 @@ func (s *BaseSession) IterLocks(cb func(name string) error) error {
 
 // GetQueriedDatabase implements the Session interface.
 func (s *BaseSession) GetQueriedDatabase() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.queriedDb
 }
 
 // SetQueriedDatabase implements the Session interface.
 func (s *BaseSession) SetQueriedDatabase(dbName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.queriedDb = dbName
+}
+
+func (s *BaseSession) GetIndexRegistry() *IndexRegistry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.idxReg
+}
+
+func (s *BaseSession) GetViewRegistry() *ViewRegistry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.viewReg
+}
+
+func (s *BaseSession) SetIndexRegistry(reg *IndexRegistry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.idxReg = reg
+}
+
+func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.viewReg = reg
 }
 
 type (
@@ -350,6 +431,8 @@ func (s *BaseSession) SetLastQueryInfo(key string, value int64) {
 }
 
 func (s *BaseSession) GetLastQueryInfo(key string) int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.lastQueryInfo[key]
 }
 
@@ -386,10 +469,14 @@ func HasDefaultValue(ctx *Context, s Session, key string) (bool, interface{}) {
 }
 
 func (s *BaseSession) GetTransaction() Transaction {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.tx
 }
 
 func (s *BaseSession) SetTransaction(tx Transaction) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.tx = tx
 }
 
@@ -401,7 +488,9 @@ func NewSession(server string, client Client, id uint32) Session {
 		id:            id,
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
-		mu:            &sync.RWMutex{},
+		idxReg:        NewIndexRegistry(),
+		viewReg:       NewViewRegistry(),
+		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
 	}
@@ -416,7 +505,9 @@ func NewBaseSession() Session {
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:    SystemVariables.NewSessionMap(),
 		userVars:      make(map[string]interface{}),
-		mu:            &sync.RWMutex{},
+		idxReg:        NewIndexRegistry(),
+		viewReg:       NewViewRegistry(),
+		mu:            sync.RWMutex{},
 		locks:         make(map[string]bool),
 		lastQueryInfo: defaultLastQueryInfo(),
 	}
@@ -426,14 +517,13 @@ func NewBaseSession() Session {
 type Context struct {
 	context.Context
 	Session
-	*IndexRegistry
-	*ViewRegistry
-	Memory    *MemoryManager
-	pid       uint64
-	query     string
-	queryTime time.Time
-	tracer    opentracing.Tracer
-	rootSpan  opentracing.Span
+	Memory      *MemoryManager
+	ProcessList ProcessList
+	pid         uint64
+	query       string
+	queryTime   time.Time
+	tracer      opentracing.Tracer
+	rootSpan    opentracing.Span
 }
 
 // ContextOption is a function to configure the context.
@@ -443,18 +533,6 @@ type ContextOption func(*Context)
 func WithSession(s Session) ContextOption {
 	return func(ctx *Context) {
 		ctx.Session = s
-	}
-}
-
-func WithIndexRegistry(ir *IndexRegistry) ContextOption {
-	return func(ctx *Context) {
-		ctx.IndexRegistry = ir
-	}
-}
-
-func WithViewRegistry(vr *ViewRegistry) ContextOption {
-	return func(ctx *Context) {
-		ctx.ViewRegistry = vr
 	}
 }
 
@@ -493,6 +571,12 @@ func WithRootSpan(s opentracing.Span) ContextOption {
 	}
 }
 
+func WithProcessList(p ProcessList) ContextOption {
+	return func(ctx *Context) {
+		ctx.ProcessList = p
+	}
+}
+
 var ctxNowFunc = time.Now
 var ctxNowFuncMutex = &sync.Mutex{}
 
@@ -518,22 +602,24 @@ func NewContext(
 	ctx context.Context,
 	opts ...ContextOption,
 ) *Context {
-	c := &Context{ctx, NewBaseSession(), nil, nil, nil, 0, "", ctxNowFunc(), opentracing.NoopTracer{}, nil}
+	c := &Context{
+		Context:   ctx,
+		Session:   NewBaseSession(),
+		queryTime: ctxNowFunc(),
+		tracer:    opentracing.NoopTracer{},
+	}
 	for _, opt := range opts {
 		opt(c)
-	}
-
-	if c.IndexRegistry == nil {
-		c.IndexRegistry = NewIndexRegistry()
-	}
-
-	if c.ViewRegistry == nil {
-		c.ViewRegistry = NewViewRegistry()
 	}
 
 	if c.Memory == nil {
 		c.Memory = NewMemoryManager(ProcessMemory)
 	}
+
+	if c.ProcessList == nil {
+		c.ProcessList = EmptyProcessList{}
+	}
+
 	return c
 }
 
@@ -572,36 +658,15 @@ func (c *Context) Span(
 	span := c.tracer.StartSpan(opName, opts...)
 	ctx := opentracing.ContextWithSpan(c.Context, span)
 
-	return span, &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
-	}
+	return span, c.WithContext(ctx)
 }
 
 // NewSubContext creates a new sub-context with the current context as parent. Returns the resulting context.CancelFunc
 // as well as the new *sql.Context, which be used to cancel the new context before the parent is finished.
 func (c *Context) NewSubContext() (*Context, context.CancelFunc) {
 	ctx, cancelFunc := context.WithCancel(c.Context)
-	return &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
-	}, cancelFunc
+
+	return c.WithContext(ctx), cancelFunc
 }
 
 func (c *Context) WithCurrentDB(db string) *Context {
@@ -611,18 +676,9 @@ func (c *Context) WithCurrentDB(db string) *Context {
 
 // WithContext returns a new context with the given underlying context.
 func (c *Context) WithContext(ctx context.Context) *Context {
-	return &Context{
-		Context:       ctx,
-		Session:       c.Session,
-		IndexRegistry: c.IndexRegistry,
-		ViewRegistry:  c.ViewRegistry,
-		Memory:        c.Memory,
-		pid:           c.Pid(),
-		query:         c.Query(),
-		queryTime:     c.queryTime,
-		tracer:        c.tracer,
-		rootSpan:      c.rootSpan,
-	}
+	nc := *c
+	nc.Context = ctx
+	return &nc
 }
 
 // RootSpan returns the root span, if any.
@@ -646,6 +702,11 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 		Code:    code,
 		Message: fmt.Sprintf(msg, args...),
 	})
+}
+
+func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
+	eg, egCtx := errgroup.WithContext(c.Context)
+	return eg, c.WithContext(egCtx)
 }
 
 // NewSpanIter creates a RowIter executed in the given span.

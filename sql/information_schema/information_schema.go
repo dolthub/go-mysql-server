@@ -85,8 +85,8 @@ type informationSchemaDatabase struct {
 type informationSchemaTable struct {
 	name    string
 	schema  Schema
-	catalog *Catalog
-	rowIter func(*Context, *Catalog) (RowIter, error)
+	catalog Catalog
+	rowIter func(*Context, Catalog) (RowIter, error)
 }
 
 type informationSchemaPartition struct {
@@ -443,7 +443,7 @@ var innoDBTempTableSchema = Schema{
 	{Name: "space", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
 }
 
-func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
+func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		tableType := "BASE TABLE"
@@ -457,7 +457,6 @@ func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-
 			autoVal := getAutoIncrementValue(ctx, t)
 			rows = append(rows, Row{
 				"def",                      // table_catalog
@@ -486,11 +485,20 @@ func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 			return true, nil
 		})
 
-		for _, view := range ctx.ViewsInDatabase(db.Name()) {
+		if err != nil {
+			return nil, err
+		}
+
+		views, err := viewsInDatabase(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, view := range views {
 			rows = append(rows, Row{
 				"def",                      // table_catalog
 				db.Name(),                  // table_schema
-				view.Name(),                // table_name
+				view.Name,                  // table_name
 				"VIEW",                     // table_type
 				engine,                     // engine
 				10,                         // version (protocol, always 10)
@@ -511,16 +519,12 @@ func tablesRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 				"",                         // table_comment
 			})
 		}
-
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return RowsToRowIter(rows...), nil
 }
 
-func columnsRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
+func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases() {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
@@ -573,7 +577,7 @@ func columnsRowIter(ctx *Context, cat *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func schemataRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases()
 
 	var rows []Row
@@ -590,7 +594,7 @@ func schemataRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func collationsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for cName := range CollationToMySQLVals {
 		c := Collations[cName]
@@ -607,7 +611,7 @@ func collationsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func charsetRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedCharsets {
 		rows = append(rows, Row{
@@ -620,7 +624,7 @@ func charsetRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func engineRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
 		rows = append(rows, Row{
@@ -635,7 +639,7 @@ func engineRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		triggerDb, ok := db.(TriggerDatabase)
@@ -735,7 +739,7 @@ func triggersRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func checkConstraintsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tableNames, err := db.GetTableNames(ctx)
@@ -766,7 +770,7 @@ func checkConstraintsRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func tableConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func tableConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tableNames, err := db.GetTableNames(ctx)
@@ -852,7 +856,7 @@ func getColumnNamesFromIndex(idx Index, table Table) []string {
 	return indexCols
 }
 
-func keyColumnConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tableNames, err := db.GetTableNames(ctx)
@@ -921,7 +925,7 @@ func keyColumnConstraintRowIter(ctx *Context, c *Catalog) (RowIter, error) {
 
 // innoDBTempTableIter returns info on the temporary tables stored in the session.
 // TODO: Since Table ids and Space are not yet supported this table is not completely accurate yet.
-func innoDBTempTableIter(ctx *Context, c *Catalog) (RowIter, error) {
+func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases() {
 		tb, ok := db.(TemporaryTableDatabase)
@@ -942,147 +946,133 @@ func innoDBTempTableIter(ctx *Context, c *Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func emptyRowIter(ctx *Context, c *Catalog) (RowIter, error) {
+func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
 // NewInformationSchemaDatabase creates a new INFORMATION_SCHEMA Database.
-func NewInformationSchemaDatabase(cat *Catalog) Database {
+func NewInformationSchemaDatabase() Database {
 	return &informationSchemaDatabase{
 		name: InformationSchemaDatabaseName,
 		tables: map[string]Table{
 			FilesTableName: &informationSchemaTable{
-				name:    FilesTableName,
-				schema:  filesSchema,
-				catalog: cat,
+				name:   FilesTableName,
+				schema: filesSchema,
 			},
 			ColumnStatisticsTableName: &informationSchemaTable{
-				name:    ColumnStatisticsTableName,
-				schema:  columnStatisticsSchema,
-				catalog: cat,
+				name:   ColumnStatisticsTableName,
+				schema: columnStatisticsSchema,
 			},
 			TablesTableName: &informationSchemaTable{
 				name:    TablesTableName,
 				schema:  tablesSchema,
-				catalog: cat,
 				rowIter: tablesRowIter,
 			},
 			ColumnsTableName: &informationSchemaTable{
 				name:    ColumnsTableName,
 				schema:  columnsSchema,
-				catalog: cat,
 				rowIter: columnsRowIter,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:    SchemataTableName,
 				schema:  schemataSchema,
-				catalog: cat,
 				rowIter: schemataRowIter,
 			},
 			CollationsTableName: &informationSchemaTable{
 				name:    CollationsTableName,
 				schema:  collationsSchema,
-				catalog: cat,
 				rowIter: collationsRowIter,
 			},
 			CharacterSetsTableName: &informationSchemaTable{
 				name:    CharacterSetsTableName,
 				schema:  characterSetSchema,
-				catalog: cat,
 				rowIter: charsetRowIter,
 			},
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
 				schema:  statisticsSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:    TableConstraintsTableName,
 				schema:  tableConstraintsSchema,
-				catalog: cat,
 				rowIter: tableConstraintRowIter,
 			},
 			ReferentialConstraintsTableName: &informationSchemaTable{
 				name:    ReferentialConstraintsTableName,
 				schema:  referentialConstraintsSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			KeyColumnUsageTableName: &informationSchemaTable{
 				name:    KeyColumnUsageTableName,
 				schema:  keyColumnUsageSchema,
-				catalog: cat,
 				rowIter: keyColumnConstraintRowIter,
 			},
 			TriggersTableName: &informationSchemaTable{
 				name:    TriggersTableName,
 				schema:  triggersSchema,
-				catalog: cat,
 				rowIter: triggersRowIter,
 			},
 			EventsTableName: &informationSchemaTable{
 				name:    EventsTableName,
 				schema:  eventsSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			RoutinesTableName: &informationSchemaTable{
 				name:    RoutinesTableName,
 				schema:  routinesSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			ViewsTableName: &informationSchemaTable{
 				name:    ViewsTableName,
 				schema:  viewsSchema,
-				catalog: cat,
 				rowIter: viewRowIter,
 			},
 			UserPrivilegesTableName: &informationSchemaTable{
 				name:    UserPrivilegesTableName,
 				schema:  userPrivilegesSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			EnginesTableName: &informationSchemaTable{
 				name:    EnginesTableName,
 				schema:  enginesSchema,
-				catalog: cat,
 				rowIter: engineRowIter,
 			},
 			CheckConstraintsTableName: &informationSchemaTable{
 				name:    CheckConstraintsTableName,
 				schema:  checkConstraintsSchema,
-				catalog: cat,
 				rowIter: checkConstraintsRowIter,
 			},
 			PartitionsTableName: &informationSchemaTable{
 				name:    PartitionsTableName,
 				schema:  partitionSchema,
-				catalog: cat,
 				rowIter: emptyRowIter,
 			},
 			InnoDBTempTableName: &informationSchemaTable{
 				name:    InnoDBTempTableName,
 				schema:  innoDBTempTableSchema,
-				catalog: cat,
 				rowIter: innoDBTempTableIter,
 			},
 		},
 	}
 }
 
-func viewRowIter(context *Context, catalog *Catalog) (RowIter, error) {
+func viewRowIter(context *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range catalog.AllDatabases() {
-		database := db.Name()
-		for _, view := range context.ViewRegistry.ViewsInDatabase(database) {
+		dbName := db.Name()
+
+		views, err := viewsInDatabase(context, db)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, view := range views {
 			rows = append(rows, Row{
 				"def",
-				database,
-				view.Name(),
-				view.TextDefinition(),
+				dbName,
+				view.Name,
+				view.TextDefinition,
 				"NONE",
 				"YES",
 				"",
@@ -1092,7 +1082,36 @@ func viewRowIter(context *Context, catalog *Catalog) (RowIter, error) {
 			})
 		}
 	}
+
 	return RowsToRowIter(rows...), nil
+}
+
+// viewsInDatabase returns all views defined on the database given, consulting both the database itself as well as any
+// views defined in session memory. Typically there will not be both types of views on a single database, but the
+// interfaces do make it possible.
+func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
+	var views []ViewDefinition
+	dbName := db.Name()
+
+	if vdb, ok := db.(ViewDatabase); ok {
+		dbViews, err := vdb.AllViews(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, view := range dbViews {
+			views = append(views, view)
+		}
+	}
+
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(dbName) {
+		views = append(views, ViewDefinition{
+			Name:           view.Name(),
+			TextDefinition: view.TextDefinition(),
+		})
+	}
+
+	return views, nil
 }
 
 // Name implements the sql.Database interface.
@@ -1125,6 +1144,11 @@ func (t *informationSchemaTable) Schema() Schema {
 	return t.schema
 }
 
+func (t *informationSchemaTable) AssignCatalog(cat Catalog) Table {
+	t.catalog = cat
+	return t
+}
+
 // Partitions implements the sql.Table interface.
 func (t *informationSchemaTable) Partitions(ctx *Context) (PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(t.Name())}}, nil
@@ -1137,6 +1161,9 @@ func (t *informationSchemaTable) PartitionRows(ctx *Context, partition Partition
 	}
 	if t.rowIter == nil {
 		return RowsToRowIter(), nil
+	}
+	if t.catalog == nil {
+		return nil, fmt.Errorf("nil catalog for info schema table %s", t.name)
 	}
 
 	return t.rowIter(ctx, t.catalog)

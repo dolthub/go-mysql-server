@@ -39,7 +39,6 @@ func TestNullIf(t *testing.T) {
 	}
 
 	f := NewNullIf(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, sql.LongText, "ex1", true),
 		expression.NewGetField(1, sql.LongText, "ex2", true),
 	)
@@ -47,7 +46,6 @@ func TestNullIf(t *testing.T) {
 
 	var3 := sql.MustCreateStringWithDefaults(sqltypes.VarChar, 3)
 	f = NewNullIf(
-		sql.NewEmptyContext(),
 		expression.NewGetField(0, var3, "ex1", true),
 		expression.NewGetField(1, var3, "ex2", true),
 	)

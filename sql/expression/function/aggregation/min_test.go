@@ -27,7 +27,7 @@ import (
 func TestMin_Name(t *testing.T) {
 	assert := require.New(t)
 
-	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
 	assert.Equal("MIN(field)", m.String())
 }
 
@@ -35,14 +35,14 @@ func TestMin_Eval_Int32(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := m.NewBuffer()
+	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := m.NewBuffer()
 
-	m.Update(ctx, b, sql.NewRow(int32(7)))
-	m.Update(ctx, b, sql.NewRow(int32(2)))
-	m.Update(ctx, b, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(int32(7)))
+	b.Update(ctx, sql.NewRow(int32(2)))
+	b.Update(ctx, sql.NewRow(nil))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(int32(2), v)
 }
@@ -51,14 +51,14 @@ func TestMin_Eval_Text(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "field", true))
-	b := m.NewBuffer()
+	m := NewMin(expression.NewGetField(0, sql.Text, "field", true))
+	b, _ := m.NewBuffer()
 
-	m.Update(ctx, b, sql.NewRow("a"))
-	m.Update(ctx, b, sql.NewRow("A"))
-	m.Update(ctx, b, sql.NewRow("b"))
+	b.Update(ctx, sql.NewRow("a"))
+	b.Update(ctx, sql.NewRow("A"))
+	b.Update(ctx, sql.NewRow("b"))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal("A", v)
 }
@@ -67,18 +67,18 @@ func TestMin_Eval_Timestamp(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Timestamp, "field", true))
-	b := m.NewBuffer()
+	m := NewMin(expression.NewGetField(0, sql.Timestamp, "field", true))
+	b, _ := m.NewBuffer()
 
 	expected, _ := time.Parse(sql.TimestampDatetimeLayout, "2006-01-02 15:04:05")
 	someTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2007-01-02 15:04:05")
 	otherTime, _ := time.Parse(sql.TimestampDatetimeLayout, "2008-01-02 15:04:05")
 
-	m.Update(ctx, b, sql.NewRow(someTime))
-	m.Update(ctx, b, sql.NewRow(expected))
-	m.Update(ctx, b, sql.NewRow(otherTime))
+	b.Update(ctx, sql.NewRow(someTime))
+	b.Update(ctx, sql.NewRow(expected))
+	b.Update(ctx, sql.NewRow(otherTime))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(expected, v)
 }
@@ -87,14 +87,14 @@ func TestMin_Eval_NULL(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := m.NewBuffer()
+	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := m.NewBuffer()
 
-	m.Update(ctx, b, sql.NewRow(nil))
-	m.Update(ctx, b, sql.NewRow(nil))
-	m.Update(ctx, b, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
+	b.Update(ctx, sql.NewRow(nil))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
@@ -103,10 +103,10 @@ func TestMin_Eval_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := m.NewBuffer()
+	m := NewMin(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := m.NewBuffer()
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(nil, v)
 }
@@ -115,34 +115,34 @@ func TestMin_Distinct(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	m := NewMin(sql.NewEmptyContext(), expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
-	b := m.NewBuffer()
+	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	b, _ := m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{2}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{2}))
+	require.NoError(t, b.Update(ctx, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.Row{3}))
 
-	v, err := m.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(1, v)
 
-	m = NewMin(sql.NewEmptyContext(), expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
-	b = m.NewBuffer()
+	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, sql.Int32, "field", true)))
+	b, _ = m.NewBuffer()
 
 	require.Equal(t, "MIN(DISTINCT field)", m.String())
 
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{1}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{2}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{nil}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{nil}))
-	require.NoError(t, m.Update(ctx, b, sql.Row{3}))
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{1}))
+	require.NoError(t, b.Update(ctx, sql.Row{2}))
+	require.NoError(t, b.Update(ctx, sql.Row{nil}))
+	require.NoError(t, b.Update(ctx, sql.Row{nil}))
+	require.NoError(t, b.Update(ctx, sql.Row{3}))
 
-	v, err = m.Eval(ctx, b)
+	v, err = b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(1, v)
 }

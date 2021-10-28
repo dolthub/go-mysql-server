@@ -18,8 +18,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -88,7 +90,7 @@ func TestExchangeCancelled(t *testing.T) {
 				expression.NewGetField(1, sql.Int64, "val", false),
 				expression.NewLiteral(int64(4), sql.Int64),
 			),
-			&partitionable{nil, 3, 6},
+			&partitionable{nil, 3, 2048},
 		),
 	)
 
@@ -106,14 +108,40 @@ func TestExchangeCancelled(t *testing.T) {
 	require.Equal(context.Canceled, err)
 }
 
-func TestExchangePanicRecover(t *testing.T) {
+func TestExchangeIterPartitionsPanic(t *testing.T) {
 	ctx := sql.NewContext(context.Background())
-	it := &partitionPanic{}
-	ex := newExchangeRowIter(ctx, 1, it, nil, nil)
-	ex.start()
-	it.Close(ctx)
+	piter, err := (&partitionable{nil, 3, 2048}).Partitions(ctx)
+	assert.NoError(t, err)
+	closedCh := make(chan sql.Partition)
+	close(closedCh)
+	err = iterPartitions(ctx, piter, closedCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
 
-	require.True(t, it.closed)
+	openCh := make(chan sql.Partition)
+	err = iterPartitions(ctx, &partitionPanic{}, openCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+}
+
+func TestExchangeIterPartitionRowsPanic(t *testing.T) {
+	ctx := sql.NewContext(context.Background())
+	partitions := make(chan sql.Partition, 1)
+	partitions <- Partition("test")
+	err := iterPartitionRows(ctx, func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+		return &rowIterPanic{}, nil
+	}, partitions, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
+
+	closedCh := make(chan sql.Row)
+	close(closedCh)
+	partitions <- Partition("test")
+	err = iterPartitionRows(ctx, func(*sql.Context, sql.Partition) (sql.RowIter, error) {
+		return &partitionRows{Partition("test"), 10}, nil
+	}, partitions, closedCh)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "panic")
 }
 
 type partitionable struct {
@@ -134,11 +162,11 @@ func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (partitionable) Children() []sql.Node { return nil }
 
 func (p partitionable) Partitions(*sql.Context) (sql.PartitionIter, error) {
-	return &exchangePartitionIter{p.partitions}, nil
+	return &exchangePartitionIter{int32(p.partitions)}, nil
 }
 
 func (p partitionable) PartitionRows(_ *sql.Context, part sql.Partition) (sql.RowIter, error) {
-	return &partitionRows{part, p.rowsPerPartition}, nil
+	return &partitionRows{part, int32(p.rowsPerPartition)}, nil
 }
 
 func (partitionable) Schema() sql.Schema {
@@ -157,39 +185,50 @@ func (p Partition) Key() []byte {
 }
 
 type exchangePartitionIter struct {
-	num int
+	num int32
 }
 
 func (i *exchangePartitionIter) Next() (sql.Partition, error) {
-	if i.num <= 0 {
+	new := atomic.AddInt32(&i.num, -1)
+	if new < 0 {
 		return nil, io.EOF
 	}
 
-	i.num--
-	return Partition(fmt.Sprint(i.num + 1)), nil
+	return Partition(fmt.Sprint(new + 1)), nil
 }
 
 func (i *exchangePartitionIter) Close(_ *sql.Context) error {
-	i.num = -1
+	atomic.StoreInt32(&i.num, -1)
 	return nil
 }
 
 type partitionRows struct {
 	sql.Partition
-	num int
+	num int32
 }
 
 func (r *partitionRows) Next() (sql.Row, error) {
-	if r.num <= 0 {
+	new := atomic.AddInt32(&r.num, -1)
+	if new < 0 {
 		return nil, io.EOF
 	}
 
-	r.num--
-	return sql.NewRow(string(r.Key()), int64(r.num+1)), nil
+	return sql.NewRow(string(r.Key()), int64(new+1)), nil
 }
 
 func (r *partitionRows) Close(*sql.Context) error {
-	r.num = -1
+	atomic.StoreInt32(&r.num, -1)
+	return nil
+}
+
+type rowIterPanic struct {
+}
+
+func (*rowIterPanic) Next() (sql.Row, error) {
+	panic("i panic")
+}
+
+func (*rowIterPanic) Close(*sql.Context) error {
 	return nil
 }
 

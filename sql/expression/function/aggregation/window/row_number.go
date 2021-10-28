@@ -31,7 +31,7 @@ type RowNumber struct {
 var _ sql.FunctionExpression = (*RowNumber)(nil)
 var _ sql.WindowAggregation = (*RowNumber)(nil)
 
-func NewRowNumber(ctx *sql.Context) sql.Expression {
+func NewRowNumber() sql.Expression {
 	return &RowNumber{}
 }
 
@@ -95,7 +95,7 @@ func (r *RowNumber) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (r *RowNumber) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	window, err := r.window.FromExpressions(children)
 	if err != nil {
 		return nil, err

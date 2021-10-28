@@ -150,7 +150,7 @@ func TestReleaseAllLocks(t *testing.T) {
 	assert.Equal(t, sql.LockInUse, state)
 	assert.Equal(t, user0.ID(), owner)
 
-	_, err = ReleaseAllLocksForLS(ls)(user0, nil)
+	_, err = releaseAllLocksForLS(ls)(user0, nil)
 	require.NoError(t, err)
 
 	count = 0
@@ -170,4 +170,11 @@ func TestReleaseAllLocks(t *testing.T) {
 	ls.GetLockState("lock2")
 	assert.Equal(t, sql.LockFree, state)
 	assert.Equal(t, uint32(0), owner)
+}
+
+// releaseAllLocksForLS returns the logic to execute when the sql function release_all_locks is executed
+func releaseAllLocksForLS(ls *sql.LockSubsystem) func(*sql.Context, sql.Row) (interface{}, error) {
+	return func(ctx *sql.Context, _ sql.Row) (interface{}, error) {
+		return ls.ReleaseAll(ctx)
+	}
 }

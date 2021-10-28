@@ -169,7 +169,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, err
 		}
 		if dir == nil {
-			return nil, sql.ErrSecureFileDirNotSet.New()
+			dir = ""
 		}
 
 		fileName = filepath.Join(dir.(string), l.File)

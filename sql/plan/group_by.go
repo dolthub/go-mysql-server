@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 // ErrGroupBy is returned when the aggregation is not supported.
@@ -122,16 +123,11 @@ func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(exprs), expected)
 	}
 
-	var agg = make([]sql.Expression, len(g.SelectedExprs))
-	for i := 0; i < len(g.SelectedExprs); i++ {
-		agg[i] = exprs[i]
-	}
+	agg := make([]sql.Expression, len(g.SelectedExprs))
+	copy(agg, exprs[:len(g.SelectedExprs)])
 
-	var grouping = make([]sql.Expression, len(g.GroupByExprs))
-	offset := len(g.SelectedExprs)
-	for i := 0; i < len(g.GroupByExprs); i++ {
-		grouping[i] = exprs[i+offset]
-	}
+	grouping := make([]sql.Expression, len(g.GroupByExprs))
+	copy(grouping, exprs[len(g.SelectedExprs):])
 
 	return NewGroupBy(agg, grouping, g.Child), nil
 }
@@ -192,7 +188,7 @@ type groupByIter struct {
 	selectedExprs []sql.Expression
 	child         sql.RowIter
 	ctx           *sql.Context
-	buf           []sql.Row
+	buf           []sql.AggregationBuffer
 	done          bool
 }
 
@@ -201,7 +197,7 @@ func newGroupByIter(ctx *sql.Context, selectedExprs []sql.Expression, child sql.
 		selectedExprs: selectedExprs,
 		child:         child,
 		ctx:           ctx,
-		buf:           make([]sql.Row, len(selectedExprs)),
+		buf:           make([]sql.AggregationBuffer, len(selectedExprs)),
 	}
 }
 
@@ -212,8 +208,12 @@ func (i *groupByIter) Next() (sql.Row, error) {
 
 	i.done = true
 
+	var err error
 	for j, a := range i.selectedExprs {
-		i.buf[j] = newAggregationBuffer(a)
+		i.buf[j], err = newAggregationBuffer(a)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for {
@@ -225,17 +225,24 @@ func (i *groupByIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		if err := updateBuffers(i.ctx, i.buf, i.selectedExprs, row); err != nil {
+		if err := updateBuffers(i.ctx, i.buf, row); err != nil {
 			return nil, err
 		}
 	}
 
-	return evalBuffers(i.ctx, i.buf, i.selectedExprs)
+	return evalBuffers(i.ctx, i.buf)
 }
 
 func (i *groupByIter) Close(ctx *sql.Context) error {
+	i.Dispose()
 	i.buf = nil
 	return i.child.Close(ctx)
+}
+
+func (i *groupByIter) Dispose() {
+	for _, b := range i.buf {
+		b.Dispose()
+	}
 }
 
 type groupByGroupingIter struct {
@@ -274,12 +281,12 @@ func (i *groupByGroupingIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	buffers, err := i.aggregations.Get(i.keys[i.pos])
+	buffers, err := i.get(i.keys[i.pos])
 	if err != nil {
 		return nil, err
 	}
 	i.pos++
-	return evalBuffers(i.ctx, buffers.([]sql.Row), i.selectedExprs)
+	return evalBuffers(i.ctx, buffers)
 }
 
 func (i *groupByGroupingIter) compute() error {
@@ -297,30 +304,26 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		if _, err := i.aggregations.Get(key); err != nil {
-			var buf = make([]sql.Row, len(i.selectedExprs))
+		b, err := i.get(key)
+		if sql.ErrKeyNotFound.Is(err) {
+			b = make([]sql.AggregationBuffer, len(i.selectedExprs))
 			for j, a := range i.selectedExprs {
-				// Each group by operation processes keys in order due to the implicit sort provided to it.
-				// So when a DISTINCT operation occurs with a group by, we can simply dispose and recreate a new cache
-				// within the wrapped DistinctExpression.
-				disposeOfAggregationCaches(a)
-
-				buf[j] = newAggregationBuffer(a)
+				b[j], err = newAggregationBuffer(a)
+				if err != nil {
+					return err
+				}
 			}
 
-			if err := i.aggregations.Put(key, buf); err != nil {
+			if err := i.aggregations.Put(key, b); err != nil {
 				return err
 			}
 
 			i.keys = append(i.keys, key)
-		}
-
-		b, err := i.aggregations.Get(key)
-		if err != nil {
+		} else if err != nil {
 			return err
 		}
 
-		err = updateBuffers(i.ctx, b.([]sql.Row), i.selectedExprs, row)
+		err = updateBuffers(i.ctx, b, row)
 		if err != nil {
 			return err
 		}
@@ -329,7 +332,23 @@ func (i *groupByGroupingIter) compute() error {
 	return nil
 }
 
+func (i *groupByGroupingIter) get(key uint64) ([]sql.AggregationBuffer, error) {
+	v, err := i.aggregations.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, nil
+	}
+	return v.([]sql.AggregationBuffer), err
+}
+
+func (i *groupByGroupingIter) put(key uint64, val []sql.AggregationBuffer) error {
+	return i.aggregations.Put(key, val)
+}
+
 func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
+	i.Dispose()
 	i.aggregations = nil
 	if i.dispose != nil {
 		i.dispose()
@@ -337,6 +356,17 @@ func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
 	}
 
 	return i.child.Close(ctx)
+}
+
+func (i *groupByGroupingIter) Dispose() {
+	for _, k := range i.keys {
+		bs, _ := i.get(k)
+		if bs != nil {
+			for _, b := range bs {
+				b.Dispose()
+			}
+		}
+	}
 }
 
 func groupingKey(
@@ -359,23 +389,23 @@ func groupingKey(
 	return hash.Sum64(), nil
 }
 
-func newAggregationBuffer(expr sql.Expression) sql.Row {
+func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {
 	switch n := expr.(type) {
 	case sql.Aggregation:
 		return n.NewBuffer()
 	default:
-		return nil
+		// The semantics for a non-aggregation in a group by node is Last.
+		return aggregation.NewLast(expr).NewBuffer()
 	}
 }
 
 func updateBuffers(
 	ctx *sql.Context,
-	buffers []sql.Row,
-	aggregates []sql.Expression,
+	buffers []sql.AggregationBuffer,
 	row sql.Row,
 ) error {
-	for i, a := range aggregates {
-		if err := updateBuffer(ctx, buffers, i, a, row); err != nil {
+	for _, b := range buffers {
+		if err := b.Update(ctx, row); err != nil {
 			return err
 		}
 	}
@@ -383,67 +413,19 @@ func updateBuffers(
 	return nil
 }
 
-func updateBuffer(
-	ctx *sql.Context,
-	buffers []sql.Row,
-	idx int,
-	expr sql.Expression,
-	row sql.Row,
-) error {
-	switch n := expr.(type) {
-	case sql.Aggregation:
-		return n.Update(ctx, buffers[idx], row)
-	default:
-		val, err := expr.Eval(ctx, row)
-		if err != nil {
-			return err
-		}
-		buffers[idx] = sql.NewRow(val)
-		return nil
-	}
-}
-
-// disposeOfAggregationCaches looks for any children that wraps a DISTINCT expression and throws away its cache.
-// This is useful for aggregations that pair DISTINCT and groupby.
-func disposeOfAggregationCaches(e sql.Expression) {
-	for _, child := range e.Children() {
-		switch childExp := child.(type) {
-		case *expression.DistinctExpression:
-			childExp.Dispose()
-		}
-	}
-}
-
 func evalBuffers(
 	ctx *sql.Context,
-	buffers []sql.Row,
-	aggregates []sql.Expression,
+	buffers []sql.AggregationBuffer,
 ) (sql.Row, error) {
-	var row = make(sql.Row, len(aggregates))
+	var row = make(sql.Row, len(buffers))
 
-	for i, agg := range aggregates {
-		val, err := evalBuffer(ctx, agg, buffers[i])
+	var err error
+	for i, b := range buffers {
+		row[i], err = b.Eval(ctx)
 		if err != nil {
 			return nil, err
 		}
-		row[i] = val
 	}
 
 	return row, nil
-}
-
-func evalBuffer(
-	ctx *sql.Context,
-	aggregation sql.Expression,
-	buffer sql.Row,
-) (interface{}, error) {
-	switch n := aggregation.(type) {
-	case sql.Aggregation:
-		return n.Eval(ctx, buffer)
-	default:
-		if len(buffer) > 0 {
-			return buffer[0], nil
-		}
-		return nil, nil
-	}
 }

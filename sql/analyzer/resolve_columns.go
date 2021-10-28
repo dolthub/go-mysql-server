@@ -57,7 +57,7 @@ func (*deferredColumn) IsNullable() bool {
 func (*deferredColumn) Children() []sql.Expression { return nil }
 
 // WithChildren implements the Expression interface.
-func (dc *deferredColumn) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (dc *deferredColumn) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(dc, len(children), 0)
 	}
@@ -188,8 +188,8 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 
 		symbols := getNodeAvailableNames(n, scope)
 
-		return plan.TransformExpressions(ctx, n, func(e sql.Expression) (sql.Expression, error) {
-			return qualifyExpression(ctx, e, symbols)
+		return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+			return qualifyExpression(e, symbols)
 		})
 	})
 }
@@ -233,7 +233,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 	return names
 }
 
-func qualifyExpression(ctx *sql.Context, e sql.Expression, symbols availableNames) (sql.Expression, error) {
+func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression, error) {
 	switch col := e.(type) {
 	case column:
 		if col.Resolved() {
@@ -326,7 +326,7 @@ func qualifyExpression(ctx *sql.Context, e sql.Expression, symbols availableName
 	default:
 		// If any other kind of expression has a star, just replace it
 		// with an unqualified star because it cannot be expanded.
-		return expression.TransformUp(ctx, e, func(e sql.Expression) (sql.Expression, error) {
+		return expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 			if _, ok := e.(*expression.Star); ok {
 				return expression.NewStar(), nil
 			}
@@ -376,7 +376,7 @@ const (
 )
 
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
-// the expression's child node. Also handles replacing session variables (treated as columns) with their values.
+// the expression's child node.
 func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
@@ -404,21 +404,13 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return nil, err
 		}
 
-		return plan.TransformExpressionsWithNode(ctx, n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		return plan.TransformExpressionsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, nil
 			}
 
-			expr, ok, err := resolveSystemOrUserVariable(ctx, a, uc)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				return expr, nil
-			}
-
-			return resolveColumnExpression(ctx, a, n, uc, columns)
+			return resolveColumnExpression(a, n, uc, columns)
 		})
 	})
 }
@@ -559,51 +551,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	return columns, nil
 }
 
-func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql.Expression, bool, error) {
-	var varName string
-	var scope sqlparser.SetScope
-	var err error
-	if col.Table() != "" {
-		varName, scope, err = sqlparser.VarScope(col.Table(), col.Name())
-		if err != nil {
-			return nil, false, err
-		}
-	} else {
-		varName, scope, err = sqlparser.VarScope(col.Name())
-		if err != nil {
-			return nil, false, err
-		}
-	}
-	switch scope {
-	case sqlparser.SetScope_None:
-		return nil, false, nil
-	case sqlparser.SetScope_Global:
-		_, _, ok := sql.SystemVariables.GetGlobal(varName)
-		if !ok {
-			return nil, false, sql.ErrUnknownSystemVariable.New(varName)
-		}
-		a.Log("resolved column %s to global system variable", col)
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Global), true, nil
-	case sqlparser.SetScope_Persist:
-		return nil, false, sql.ErrUnsupportedFeature.New("PERSIST")
-	case sqlparser.SetScope_PersistOnly:
-		return nil, false, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
-	case sqlparser.SetScope_Session:
-		_, err = ctx.GetSessionVariable(ctx, varName)
-		if err != nil {
-			return nil, false, err
-		}
-		a.Log("resolved column %s to session system variable", col)
-		return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), true, nil
-	case sqlparser.SetScope_User:
-		a.Log("resolved column %s to user variable", col)
-		return expression.NewUserVar(varName), true, nil
-	default: // shouldn't happen
-		return nil, false, fmt.Errorf("unknown set scope %v", scope)
-	}
-}
-
-func resolveColumnExpression(ctx *sql.Context, a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
+func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]
@@ -648,7 +596,18 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		return n, nil
 	}
 
+	// replacedAliases is a map of original expression string to alias that has been pushed down below the GroupBy in
+	// the new projection node.
+	replacedAliases := make(map[string]string)
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
+		// GroupBy itself.
+		ex, ok := n.(sql.Expressioner)
+		if ok && len(replacedAliases) > 0 {
+			newExprs := replaceExpressionsWithAliases(ex.Expressions(), replacedAliases)
+			return ex.WithExpressions(newExprs...)
+		}
+
 		g, ok := n.(*plan.GroupBy)
 		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
 			return n, nil
@@ -683,7 +642,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		var newSelectedExprs []sql.Expression
-		replacements := make(map[string]string)
 		var projection []sql.Expression
 		// Aliases will keep the aliases that have been pushed down and their
 		// index in the new aggregate.
@@ -710,7 +668,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				delete(groupingColumns, name)
 
 				projection = append(projection, expr)
-				replacements[alias.Child.String()] = alias.Name()
+				replacedAliases[alias.Child.String()] = alias.Name()
 				newSelectedExprs = append(newSelectedExprs, expression.NewUnresolvedColumn(alias.Name()))
 			} else {
 				newSelectedExprs = append(newSelectedExprs, expr)
@@ -725,14 +683,8 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// expressions with a reference to that alias. This is so that we can directly compare the group by an select
 		// expressions for validation, which requires us to know that (table.column as col) and (table.column) are the
 		// same expressions. So if we replace one, replace both.
-		var newGroupBys []sql.Expression
-		for _, expr := range g.GroupByExprs {
-			if alias, ok := replacements[expr.String()]; ok {
-				newGroupBys = append(newGroupBys, expression.NewUnresolvedColumn(alias))
-			} else {
-				newGroupBys = append(newGroupBys, expr)
-			}
-		}
+		// TODO: this is pretty fragile and relies on string matching, need a better solution
+		newGroupBys := replaceExpressionsWithAliases(g.GroupByExprs, replacedAliases)
 
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
@@ -776,7 +728,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if len(renames) > 0 {
 			for i, expr := range newSelectedExprs {
 				var err error
-				newSelectedExprs[i], err = expression.TransformUp(ctx, expr, func(e sql.Expression) (sql.Expression, error) {
+				newSelectedExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the
@@ -799,6 +751,21 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			plan.NewProject(projection, g.Child),
 		), nil
 	})
+}
+
+// replaceExpressionsWithAliases replaces any expressions in the slice given that match the map of aliases given with
+// their alias expression. This is necessary when pushing aliases down the tree, since we introduce a projection node
+// that effectively erases the original columns of a table.
+func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[string]string) []sql.Expression {
+	var newExprs []sql.Expression
+	for _, expr := range exprs {
+		if alias, ok := replacedAliases[expr.String()]; ok {
+			newExprs = append(newExprs, expression.NewUnresolvedColumn(alias))
+		} else {
+			newExprs = append(newExprs, expr)
+		}
+	}
+	return newExprs
 }
 
 func findAllColumns(e sql.Expression) []string {

@@ -234,6 +234,22 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select /*+ JOIN_ORDER( i, k, j ) */  * from one_pk i join one_pk k on i.pk = k.pk join (select pk, rand() r from one_pk) j on i.pk = j.pk`,
+		ExpectedPlan: "IndexedJoin(i.pk = j.pk)\n" +
+			" ├─ IndexedJoin(i.pk = k.pk)\n" +
+			" │   ├─ TableAlias(i)\n" +
+			" │   │   └─ Table(one_pk)\n" +
+			" │   └─ TableAlias(k)\n" +
+			" │       └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			" └─ HashLookup(child: (j.pk), lookup: (i.pk))\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias(j)\n" +
+			"             └─ Project(one_pk.pk, RAND() as r)\n" +
+			"                 └─ Projected table access on [pk]\n" +
+			"                     └─ Table(one_pk)\n" +
+			"",
+	},
+	{
 		Query: `INSERT INTO mytable SELECT sub.i + 10, ot.s2 FROM othertable ot INNER JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2) sub ON sub.i = ot.i2`,
 		ExpectedPlan: "Insert()\n" +
 			" ├─ Table(mytable)\n" +
@@ -316,6 +332,45 @@ var PlanTests = []QueryPlanTest{
 			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
 			"     ├─ Table(mytable)\n" +
 			"     └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 <=> s)`,
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (NOT((othertable.s2 <=> mytable.s))))\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT (s2 = s)`,
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (NOT((othertable.s2 = mytable.s))))\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND CONCAT(s, s2) IS NOT NULL`,
+		ExpectedPlan: "IndexedJoin((mytable.i = othertable.i2) AND (NOT(concat(mytable.s, othertable.s2) IS NULL)))\n" +
+			" ├─ Table(mytable)\n" +
+			" └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND s > s2`,
+		ExpectedPlan: "InnerJoin((mytable.i = othertable.i2) AND (mytable.s > othertable.s2))\n" +
+			" ├─ Projected table access on [i s]\n" +
+			" │   └─ Table(mytable)\n" +
+			" └─ Projected table access on [s2 i2]\n" +
+			"     └─ Table(othertable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM MYTABLE JOIN OTHERTABLE ON i = i2 AND NOT(s > s2)`,
+		ExpectedPlan: "InnerJoin((mytable.i = othertable.i2) AND (NOT((mytable.s > othertable.s2))))\n" +
+			" ├─ Projected table access on [i s]\n" +
+			" │   └─ Table(mytable)\n" +
+			" └─ Projected table access on [s2 i2]\n" +
+			"     └─ Table(othertable)\n" +
 			"",
 	},
 	{
@@ -1327,9 +1382,10 @@ var PlanTests = []QueryPlanTest{
 		AND (SELECT i2 FROM othertable where i2 = i) IS NOT NULL`,
 		ExpectedPlan: "Project(mt.i)\n" +
 			" └─ Filter((NOT((Project(mytable.i)\n" +
-			"     └─ Filter((mytable.i = mt.i) AND (mytable.i > 2))\n" +
+			"     └─ Filter(mytable.i = mt.i)\n" +
 			"         └─ Projected table access on [i]\n" +
-			"             └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"             └─ Filter(mytable.i > 2)\n" +
+			"                 └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"    ) IS NULL)) AND (NOT((Project(othertable.i2)\n" +
 			"     └─ Filter(othertable.i2 = mt.i)\n" +
 			"         └─ Projected table access on [i2]\n" +
@@ -1362,8 +1418,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(t1.pk ASC, t2.pk2 ASC)\n" +
 			" └─ Project(t1.pk, t2.pk2, (Limit(1)\n" +
 			"     └─ Project(one_pk.pk)\n" +
-			"         └─ Filter(one_pk.pk = 1)\n" +
-			"             └─ Projected table access on [pk]\n" +
+			"         └─ Projected table access on [pk]\n" +
+			"             └─ Filter(one_pk.pk = 1)\n" +
 			"                 └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"    ) as (SELECT pk from one_pk where pk = 1 limit 1))\n" +
 			"     └─ CrossJoin\n" +

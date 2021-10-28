@@ -14,7 +14,9 @@
 
 package sql
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 func MustConvert(val interface{}, err error) interface{} {
 	if err != nil {

@@ -46,8 +46,8 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return n, nil
 	}
 
-	childSelector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch parent.(type) {
+	childSelector := func(c plan.TransformContext) bool {
+		switch c.Parent.(type) {
 		// We can't push any indexes down a branch that have already had an index pushed down it
 		case *plan.IndexedTableAccess:
 			return false
@@ -57,8 +57,8 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	// replace the tables with possible index lookups with indexed access
 	for _, idxLookup := range indexLookups {
-		n, err = plan.TransformUpWithSelector(n, childSelector, func(n sql.Node) (sql.Node, error) {
-			switch n := n.(type) {
+		n, err = plan.TransformUpCtx(n, childSelector, func(c plan.TransformContext) (sql.Node, error) {
+			switch n := c.Node.(type) {
 			case *plan.IndexedTableAccess:
 				return n, nil
 			case *plan.TableAlias:
@@ -230,13 +230,14 @@ func getSubqueryIndexes(
 	result := make(map[string]sql.Index)
 	// For every predicate involving a table in the outer scope, see if there's an index lookup possible on its comparands
 	// (the tables in this scope)
-	for _, table := range tablesInScope {
-		indexCols := exprsByTable[table]
+	for _, scopeTable := range tablesInScope {
+		indexCols := exprsByTable[scopeTable]
 		if indexCols != nil {
-			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(),
+			table := indexCols[0].comparandCol.Table()
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table,
 				normalizeExpressions(ctx, tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
-				result[indexCols[0].comparandCol.Table()] = idx
+				result[table] = idx
 			}
 		}
 	}

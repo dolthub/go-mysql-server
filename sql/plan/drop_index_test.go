@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	. "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/test"
 )
 
 func TestDeleteIndex(t *testing.T) {
@@ -37,12 +38,11 @@ func TestDeleteIndex(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
@@ -62,7 +62,9 @@ func TestDeleteIndex(t *testing.T) {
 	di.Catalog = catalog
 	di.CurrentDatabase = "foo"
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	_, err = di.RowIter(ctx, nil)
 	require.NoError(err)
 
@@ -82,19 +84,20 @@ func TestDeleteIndexNotReady(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 
@@ -129,19 +132,20 @@ func TestDeleteIndexOutdated(t *testing.T) {
 	})
 
 	driver := new(mockDriver)
-	catalog := sql.NewCatalog()
 	idxReg := sql.NewIndexRegistry()
 	idxReg.RegisterIndexDriver(driver)
 	db := memory.NewDatabase("foo")
 	db.AddTable("foo", table)
-	catalog.AddDatabase(db)
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
 
 	var expressions = []sql.Expression{
 		expression.NewGetFieldWithTable(0, sql.Int64, "foo", "c", true),
 		expression.NewGetFieldWithTable(1, sql.Int64, "foo", "a", true),
 	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	done, ready, err := idxReg.AddIndex(&mockIndex{id: "idx", db: "foo", table: "foo", exprs: expressions})
 	require.NoError(err)
 	close(done)

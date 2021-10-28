@@ -159,11 +159,13 @@ func getIndexes(
 			return nil, nil
 		}
 	case *expression.InTuple:
-		// Take the index of a SOMETHING IN SOMETHING expression only if:
-		// the right branch is evaluable and the indexlookup supports set
-		// operations.
 		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
-			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, e.Left())...)
+			gf := extractGetField(e.Left())
+			if gf == nil {
+				return nil, nil
+			}
+
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizeExpressions(ctx, tableAliases, e.Left())...)
 			if idx != nil {
 				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
@@ -243,7 +245,12 @@ func getIndexes(
 		}
 	case *expression.Between:
 		if !isEvaluable(e.Val) && isEvaluable(e.Upper) && isEvaluable(e.Lower) {
-			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, e.Val)...)
+			gf := extractGetField(e)
+			if gf == nil {
+				return nil, nil
+			}
+
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizeExpressions(ctx, tableAliases, e.Val)...)
 			if idx != nil {
 
 				upper, err := e.Upper.Eval(sql.NewEmptyContext(), nil)
@@ -382,7 +389,12 @@ func getComparisonIndexLookup(
 	}
 
 	if !isEvaluable(left) && isEvaluable(right) {
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, left)...)
+		gf := extractGetField(left)
+		if gf == nil {
+			return nil, nil
+		}
+
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizeExpressions(ctx, tableAliases, left)...)
 		if idx != nil {
 			value, err := right.Eval(sql.NewEmptyContext(), nil)
 			if err != nil {
@@ -487,7 +499,12 @@ func getNegatedIndexes(
 			return nil, nil
 		}
 
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, left)...)
+		gf := extractGetField(left)
+		if gf == nil {
+			return nil, nil
+		}
+
+		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizeExpressions(ctx, tableAliases, left)...)
 		if idx == nil {
 			return nil, nil
 		}
@@ -526,7 +543,12 @@ func getNegatedIndexes(
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
 		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
-			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, e.Left())...)
+			gf := extractGetField(e.Left())
+			if gf == nil {
+				return nil, nil
+			}
+
+			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizeExpressions(ctx, tableAliases, e.Left())...)
 			if idx != nil {
 				nidx, ok := idx.(sql.NegateIndex)
 				if !ok {
@@ -686,7 +708,7 @@ func getMultiColumnIndexes(
 				continue
 			}
 
-			lookup, err := getMultiColumnIndexForExpressions(ctx, a, ia, selected, exps, tableAliases)
+			lookup, err := getMultiColumnIndexForExpressions(ctx, a, ia, table, selected, exps, tableAliases)
 			if err != nil {
 				return nil, err
 			}
@@ -720,12 +742,13 @@ func getMultiColumnIndexForExpressions(
 	ctx *sql.Context,
 	a *Analyzer,
 	ia *indexAnalyzer,
+	table string,
 	selected []sql.Expression,
 	exprs []joinColExpr,
 	tableAliases TableAliases,
 ) (*indexLookup, error) {
 
-	index := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), normalizeExpressions(ctx, tableAliases, selected...)...)
+	index := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, selected...)...)
 	if index == nil {
 		return nil, nil
 	}
@@ -1103,7 +1126,7 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 // convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
 // equivalent as far as the index interfaces are concerned.
 func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
-	expr, _ := expression.TransformUp(ctx, e, func(e sql.Expression) (sql.Expression, error) {
+	expr, _ := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
 		isNull, ok := e.(*expression.IsNull)
 		if !ok {
 			return e, nil

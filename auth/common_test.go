@@ -32,31 +32,29 @@ import (
 
 const port = 33336
 
-func authEngine(au auth.Auth) (*sqle.Engine, *sql.IndexRegistry, error) {
-	db := memory.NewDatabase("test")
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	idxReg := sql.NewIndexRegistry()
+func authEngine(au auth.Auth) (*sqle.Engine, error) {
 
 	tblName := "test"
-
 	table := memory.NewTable(tblName, sql.Schema{
 		{Name: "id", Type: sql.Text, Nullable: false, Source: tblName},
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tblName},
 	})
 
+	db := memory.NewDatabase("test")
 	db.AddTable(tblName, table)
 
-	a := analyzer.NewBuilder(catalog).Build()
+	pro := memory.NewMemoryDBProvider(db)
+
+	a := analyzer.NewBuilder(pro).Build()
 	config := &sqle.Config{Auth: au}
 
-	return sqle.New(catalog, a, config), idxReg, nil
+	return sqle.New(a, config), nil
 }
 
-func authServer(a auth.Auth) (*server.Server, *sql.IndexRegistry, error) {
-	engine, idxReg, err := authEngine(a)
+func authServer(a auth.Auth) (*server.Server, error) {
+	engine, err := authEngine(a)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	config := server.Config{
@@ -68,12 +66,12 @@ func authServer(a auth.Auth) (*server.Server, *sql.IndexRegistry, error) {
 
 	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	go s.Start()
 
-	return s, idxReg, nil
+	return s, nil
 }
 
 func connString(user, password string) string {
@@ -95,7 +93,7 @@ func testAuthentication(
 	t.Helper()
 	req := require.New(t)
 
-	s, _, err := authServer(a)
+	s, err := authServer(a)
 	req.NoError(err)
 
 	for _, c := range tests {
@@ -151,7 +149,7 @@ func testAuthorization(
 	t.Helper()
 	req := require.New(t)
 
-	e, idxReg, err := authEngine(a)
+	e, err := authEngine(a)
 	req.NoError(err)
 
 	for i, c := range tests {
@@ -161,9 +159,7 @@ func testAuthorization(
 			session := sql.NewSession("localhost", sql.Client{Address: "client", User: c.user}, uint32(i))
 			ctx := sql.NewContext(context.TODO(),
 				sql.WithSession(session),
-				sql.WithPid(uint64(i)),
-				sql.WithIndexRegistry(idxReg),
-				sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("test")
+				sql.WithPid(uint64(i))).WithCurrentDB("test")
 
 			_, _, err := e.Query(ctx, c.query)
 
@@ -191,7 +187,7 @@ func testAudit(
 	t.Helper()
 	req := require.New(t)
 
-	s, _, err := authServer(a)
+	s, err := authServer(a)
 	req.NoError(err)
 
 	for _, c := range tests {

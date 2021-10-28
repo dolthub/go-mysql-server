@@ -205,7 +205,7 @@ func TestExprToTableFilters(t *testing.T) {
 	assert.Equal(t, expected, filters)
 
 	filters = exprToTableFilters(expression.NewAnd(
-		expression.NewEquals(lit(1), mustExpr(function.NewRand(sql.NewEmptyContext()))),
+		expression.NewEquals(lit(1), mustExpr(function.NewRand())),
 		expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "f", false),
 	))
 	expected = filtersByTable{

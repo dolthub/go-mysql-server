@@ -26,7 +26,7 @@ func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 var _ sql.FunctionExpression = ConnectionID{}
 
-func NewConnectionID(ctx *sql.Context) sql.Expression {
+func NewConnectionID() sql.Expression {
 	return ConnectionID{
 		NoArgFunc: NoArgFunc{"connection_id", sql.Uint32},
 	}
@@ -38,8 +38,8 @@ func (c ConnectionID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c ConnectionID) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(ctx, c, children)
+func (c ConnectionID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, children)
 }
 
 type User struct {
@@ -56,13 +56,13 @@ func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 var _ sql.FunctionExpression = User{}
 
-func NewUser(ctx *sql.Context) sql.Expression {
+func NewUser() sql.Expression {
 	return User{
 		NoArgFunc: NoArgFunc{"user", sql.LongText},
 	}
 }
 
-func NewCurrentUser(ctx *sql.Context) sql.Expression {
+func NewCurrentUser() sql.Expression {
 	return User{
 		NoArgFunc: NoArgFunc{"current_user", sql.LongText},
 	}
@@ -74,6 +74,6 @@ func (c User) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (c User) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(ctx, c, children)
+func (c User) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NoArgFuncWithChildren(c, children)
 }

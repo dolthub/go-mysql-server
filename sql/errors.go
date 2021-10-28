@@ -221,9 +221,6 @@ var (
 	// ErrLoadDataCharacterLength is returned when a symbol is of the wrong character length for a LOAD DATA operation.
 	ErrLoadDataCharacterLength = errors.NewKind("%s must be 1 character long")
 
-	// ErrSecureFileDirNotSet is returned when LOAD DATA INFILE is called but the secure_file_priv system variable is not set.
-	ErrSecureFileDirNotSet = errors.NewKind("secure_file_priv needs to be set to a directory")
-
 	// ErrJSONObjectAggNullKey is returned when JSON_OBJECTAGG is run on a table with NULL keys
 	ErrJSONObjectAggNullKey = errors.NewKind("JSON documents may not contain NULL member names")
 
@@ -243,11 +240,6 @@ var (
 	// more than 1 row without an attached IN clause.
 	ErrExpectedSingleRow = errors.NewKind("the subquery returned more than 1 row")
 
-	// ErrSubqueryMultipleColumns is returned when an expression subquery returns
-	// more than a single column.
-	ErrSubqueryMultipleColumns = errors.NewKind(
-		"operand contains more than one column",
-	)
 	// ErrUnknownConstraint is returned when a DROP CONSTRAINT statement refers to a constraint that doesn't exist
 	ErrUnknownConstraint = errors.NewKind("Constraint %q does not exist")
 
@@ -272,6 +264,9 @@ var (
 	// ErrForeignKeyColumnCountMismatch is called when the declared column and referenced column counts do not match.
 	ErrForeignKeyColumnCountMismatch = errors.NewKind("the foreign key must reference an equivalent number of columns")
 
+	// ErrForeignKeyNotResolved is called when an add or update is attempted on a foreign key that has not been resolved yet.
+	ErrForeignKeyNotResolved = errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))")
+
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 
@@ -293,6 +288,70 @@ var (
 	// ErrTableCopyingNotSupported is returned when a table invokes the TableCopierDatabase interface's
 	// CopyTableData method without supporting the interface
 	ErrTableCopyingNotSupported = errors.NewKind("error: Table copying not supported")
+
+	// ErrMultiplePrimaryKeysDefined is returned when a table invokes CreatePrimaryKey with a primary key already
+	// defined.
+	ErrMultiplePrimaryKeysDefined = errors.NewKind("error: Multiple primary keys defined")
+
+	// ErrWrongAutoKey is returned when a table invokes DropPrimaryKey without first removing the auto increment property
+	// (if it exists) on it.
+	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition: there can be only one auto column and it must be defined as a key")
+
+	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
+	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
+
+	// ErrCantDropFieldOrKey is returned when a table invokes DropPrimaryKey on a keyless table.
+	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")
+
+	// ErrCantDropIndex is return when a table can't drop an index due to a foreign key relationship.
+	ErrCantDropIndex = errors.NewKind("error: can't drop index '%s': needed in a foreign key constraint")
+
+	// ErrImmutableDatabaseProvider is returned when attempting to edit an immutable database databaseProvider.
+	ErrImmutableDatabaseProvider = errors.NewKind("error: can't modify database databaseProvider")
+
+	// ErrInvalidValue is returned when a given value does not match what is expected.
+	ErrInvalidValue = errors.NewKind(`error: '%v' is not a valid value for '%v'`)
+
+	// ErrInvalidValueType is returned when a given value's type does not match what is expected.
+	ErrInvalidValueType = errors.NewKind(`error: '%T' is not a valid value type for '%v'`)
+
+	// ErrFunctionNotFound is thrown when a function is not found
+	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
+
+	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
+	// function is different from the function arity.
+	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")
+
+	// ErrDatabaseNotFound is thrown when a database is not found
+	ErrDatabaseNotFound = errors.NewKind("database not found: %s")
+
+	// ErrNoDatabaseSelected is thrown when a database is not selected and the query requires one
+	ErrNoDatabaseSelected = errors.NewKind("no database selected")
+
+	// ErrAsOfNotSupported is thrown when an AS OF query is run on a database that can't support it
+	ErrAsOfNotSupported = errors.NewKind("AS OF not supported for database %s")
+
+	// ErrIncompatibleAsOf is thrown when an AS OF clause is used in an incompatible manner, such as when using an AS OF
+	// expression with a view when the view definition has its own AS OF expressions.
+	ErrIncompatibleAsOf = errors.NewKind("incompatible use of AS OF: %s")
+
+	// ErrPidAlreadyUsed is returned when the pid is already registered.
+	ErrPidAlreadyUsed = errors.NewKind("pid %d is already in use")
+
+	// ErrInvalidOperandColumns is returned when the columns in the left
+	// operand and the elements of the right operand don't match. Also
+	// returned for invalid number of columns in projections, filters,
+	// joins, etc.
+	ErrInvalidOperandColumns = errors.NewKind("operand should have %d columns, but has %d")
+
+	// ErrReadOnlyTransaction is returned when a write query is executed in a READ ONLY transaction.
+	ErrReadOnlyTransaction = errors.NewKind("cannot execute statement in a READ ONLY transaction")
+
+	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
+	ErrExistingView = errors.NewKind("the view %s.%s already exists")
+
+	// ErrViewDoesNotExist is returned when a DROP VIEW statement drops a view that does not exist
+	ErrViewDoesNotExist = errors.NewKind("the view %s.%s does not exist")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, bool) {
@@ -313,7 +372,7 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERDbCreateExists
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
-	case ErrSubqueryMultipleColumns.Is(err):
+	case ErrInvalidOperandColumns.Is(err):
 		code = mysql.EROperandColumns
 	case ErrInsertIntoNonNullableProvidedNull.Is(err):
 		code = mysql.ERBadNullError
@@ -331,6 +390,18 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERDupEntry
 	case ErrInvalidJSONText.Is(err):
 		code = 3141 // TODO: Needs to be added to vitess
+	case ErrMultiplePrimaryKeysDefined.Is(err):
+		code = mysql.ERMultiplePriKey
+	case ErrWrongAutoKey.Is(err):
+		code = mysql.ERWrongAutoKey
+	case ErrKeyColumnDoesNotExist.Is(err):
+		code = mysql.ERKeyColumnDoesNotExist
+	case ErrCantDropFieldOrKey.Is(err):
+		code = mysql.ERCantDropFieldOrKey
+	case ErrReadOnlyTransaction.Is(err):
+		code = 1792 // TODO: Needs to be added to vitess
+	case ErrCantDropIndex.Is(err):
+		code = 1553 // TODO: Needs to be added to vitess
 	default:
 		code = mysql.ERUnknownError
 	}

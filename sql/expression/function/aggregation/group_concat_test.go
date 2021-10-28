@@ -27,12 +27,12 @@ import (
 func TestGroupConcat_FunctionName(t *testing.T) {
 	assert := require.New(t)
 
-	m, err := NewGroupConcat(sql.NewEmptyContext(), "field", nil, ",", nil, 1024)
+	m, err := NewGroupConcat("field", nil, ",", nil, 1024)
 	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field)", m.String())
 
-	m, err = NewGroupConcat(sql.NewEmptyContext(), "field", nil, "-", nil, 1024)
+	m, err = NewGroupConcat("field", nil, "-", nil, 1024)
 	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field separator '-')", m.String())
@@ -42,7 +42,7 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 		{expression.NewUnresolvedColumn("field2"), sql.Descending, 0},
 	}
 
-	m, err = NewGroupConcat(sql.NewEmptyContext(), "field", sf, "-", nil, 1024)
+	m, err = NewGroupConcat("field", sf, "-", nil, 1024)
 	require.NoError(t, err)
 
 	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
@@ -61,15 +61,15 @@ func TestGroupConcat_PastMaxLen(t *testing.T) {
 	require.NoError(t, err)
 	maxLen := maxLenInt.(uint64)
 
-	gc, err := NewGroupConcat(sql.NewEmptyContext(), "", nil, ",", []sql.Expression{expression.NewGetField(0, sql.Int64, "int", true)}, int(maxLen))
+	gc, err := NewGroupConcat("", nil, ",", []sql.Expression{expression.NewGetField(0, sql.Int64, "int", true)}, int(maxLen))
 	require.NoError(t, err)
 
-	buf := gc.NewBuffer()
+	buf, _ := gc.NewBuffer()
 	for _, row := range rows {
-		require.NoError(t, gc.Update(ctx, buf, row))
+		require.NoError(t, buf.Update(ctx, row))
 	}
 
-	result, err := gc.Eval(ctx, buf)
+	result, err := buf.Eval(ctx)
 	rs := result.(string)
 
 	require.NoError(t, err)
@@ -93,15 +93,15 @@ func TestGroupConcat_ReturnType(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		gc, err := NewGroupConcat(sql.NewEmptyContext(), "", nil, ",", tt.expression, tt.maxLen)
+		gc, err := NewGroupConcat("", nil, ",", tt.expression, tt.maxLen)
 		require.NoError(t, err)
 
-		buf := gc.NewBuffer()
+		buf, _ := gc.NewBuffer()
 
-		err = gc.Update(ctx, buf, tt.row)
+		err = buf.Update(ctx, tt.row)
 		require.NoError(t, err)
 
-		_, err = gc.Eval(ctx, buf)
+		_, err = buf.Eval(ctx)
 		require.NoError(t, err)
 
 		require.Equal(t, tt.returnType, gc.Type())

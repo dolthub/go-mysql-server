@@ -59,22 +59,22 @@ type Options struct {
 
 // A Provider resolves SQL catalogs.
 type Provider interface {
-	Resolve(name string, options *Options) (string, *sql.Catalog, error)
+	Resolve(name string, options *Options) (string, sql.DatabaseProvider, error)
 }
 
 // A Driver exposes an engine as a stdlib SQL driver.
 type Driver struct {
 	provider Provider
-	options  Options
+	options  *Options
 	sessions SessionBuilder
 	contexts ContextBuilder
 
-	mu       sync.Mutex
-	catalogs map[*sql.Catalog]*catalog
+	mu  sync.Mutex
+	dbs map[string]*dbConn
 }
 
 // New returns a driver using the specified provider.
-func New(provider Provider, options Options) *Driver {
+func New(provider Provider, options *Options) *Driver {
 	sessions, ok := provider.(SessionBuilder)
 	if !ok {
 		sessions = DefaultSessionBuilder{}
@@ -90,7 +90,7 @@ func New(provider Provider, options Options) *Driver {
 		options:  options,
 		sessions: sessions,
 		contexts: contexts,
-		catalogs: map[*sql.Catalog]*catalog{},
+		dbs:      map[string]*dbConn{},
 	}
 }
 
@@ -106,6 +106,9 @@ func (d *Driver) Open(name string) (driver.Conn, error) {
 // OpenConnector calls the driver factory and returns a new connector.
 func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	options := d.options // copy
+	if options == nil {
+		options = &Options{}
+	}
 
 	dsnURI, err := url.Parse(dsn)
 	if err == nil {
@@ -129,18 +132,18 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 		dsn = dsnURI.String()
 	}
 
-	server, sqlCat, err := d.provider.Resolve(dsn, &options)
+	server, pro, err := d.provider.Resolve(dsn, options)
 	if err != nil {
 		return nil, err
 	}
 
 	d.mu.Lock()
-	cat, ok := d.catalogs[sqlCat]
+	db, ok := d.dbs[server]
 	if !ok {
-		anlz := analyzer.NewDefault(sqlCat)
-		engine := sqle.New(sqlCat, anlz, nil)
-		cat = &catalog{engine: engine}
-		d.catalogs[sqlCat] = cat
+		anlz := analyzer.NewDefault(pro)
+		engine := sqle.New(anlz, nil)
+		db = &dbConn{engine: engine}
+		d.dbs[server] = db
 	}
 	d.mu.Unlock()
 
@@ -148,11 +151,11 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 		driver:  d,
 		options: options,
 		server:  server,
-		catalog: cat,
+		dbConn:  db,
 	}, nil
 }
 
-type catalog struct {
+type dbConn struct {
 	engine *sqle.Engine
 
 	mu     sync.Mutex
@@ -160,14 +163,14 @@ type catalog struct {
 	procID uint64
 }
 
-func (c *catalog) nextConnectionID() uint32 {
+func (c *dbConn) nextConnectionID() uint32 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.connID++
 	return c.connID
 }
 
-func (c *catalog) nextProcessID() uint64 {
+func (c *dbConn) nextProcessID() uint64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.procID++
@@ -179,9 +182,9 @@ func (c *catalog) nextProcessID() uint64 {
 // by multiple goroutines.
 type Connector struct {
 	driver  *Driver
-	options Options
+	options *Options
 	server  string
-	catalog *catalog
+	dbConn  *dbConn
 }
 
 // Driver returns the driver.
@@ -190,12 +193,9 @@ func (c *Connector) Driver() driver.Driver { return c.driver }
 // Server returns the server name.
 func (c *Connector) Server() string { return c.server }
 
-// Catalog returns the SQL catalog.
-func (c *Connector) Catalog() *sql.Catalog { return c.catalog.engine.Catalog }
-
 // Connect returns a connection to the database.
 func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
-	id := c.catalog.nextConnectionID()
+	id := c.dbConn.nextConnectionID()
 
 	session, err := c.driver.sessions.NewSession(ctx, id, c)
 	if err != nil {
@@ -206,7 +206,7 @@ func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
 	views := sql.NewViewRegistry()
 	return &Conn{
 		options:  c.options,
-		catalog:  c.catalog,
+		dbConn:   c.dbConn,
 		session:  session,
 		contexts: c.driver.contexts,
 		indexes:  indexes,

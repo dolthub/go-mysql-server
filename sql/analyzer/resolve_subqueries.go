@@ -94,7 +94,7 @@ func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformExpressionsUpWithNode(ctx, n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
 		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 		// query might cause them to need to shift their field indexes.
@@ -171,10 +171,12 @@ func nodeIsCacheable(n sql.Node, lowestAllowedIdx int) bool {
 					return false
 				}
 			}
-		} else if sa, ok := node.(*plan.SubqueryAlias); ok {
-			if !nodeIsCacheable(sa.Child, 0) {
-				cacheable = false
-			}
+		} else if _, ok := node.(*plan.SubqueryAlias); ok {
+			// SubqueryAliases are always cacheable.  In fact, we
+			// do not go far enough here yet. CTEs must be cached /
+			// materialized and the same result set used throughout
+			// the query when they are non-determinstic in order to
+			// give correct results.
 			return false
 		}
 		return true
@@ -203,7 +205,7 @@ func isDeterminstic(n sql.Node) bool {
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // and if all expressions in the subquery are deterministic.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformExpressionsUpWithNode(ctx, n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
 		if !ok || !s.Resolved() {
 			return e, nil
@@ -222,18 +224,23 @@ func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 
 // cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
-// node on top of those nodes when it is safe to do so.
+// node on top of those nodes.
 func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	n, err := plan.TransformUpWithParent(n, func(child, parent sql.Node, childNum int) (sql.Node, error) {
-		_, isJoin := parent.(plan.JoinNode)
-		_, isIndexedJoin := parent.(*plan.IndexedJoin)
+	n, err := plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+		_, isJoin := c.Parent.(plan.JoinNode)
+		_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
 		if isJoin || isIndexedJoin {
-			sa, isSubqueryAlias := child.(*plan.SubqueryAlias)
-			if isSubqueryAlias && isDeterminstic(sa.Child) {
-				return plan.NewCachedResults(child), nil
+			_, isSubqueryAlias := c.Node.(*plan.SubqueryAlias)
+			if isSubqueryAlias {
+				// SubqueryAliases are always cacheable. They
+				// cannot reference their outside scope and
+				// even when they have non-determinstic
+				// expressions they should return the same
+				// results across multiple iterations.
+				return plan.NewCachedResults(c.Node), nil
 			}
 		}
-		return child, nil
+		return c.Node, nil
 	})
 	if err != nil {
 		return n, err
@@ -243,24 +250,24 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	// We only want to do this if we're at the top of the tree.
 	// TODO: Not a perfect indicator of whether we're at the top of the tree...
 	if scope == nil {
-		selector := func(parent sql.Node, child sql.Node, childNum int) bool {
-			if _, isIndexedJoin := parent.(*plan.IndexedJoin); isIndexedJoin {
-				return childNum == 0
-			} else if j, isJoin := parent.(plan.JoinNode); isJoin {
+		selector := func(c plan.TransformContext) bool {
+			if _, isIndexedJoin := c.Parent.(*plan.IndexedJoin); isIndexedJoin {
+				return c.ChildNum == 0
+			} else if j, isJoin := c.Parent.(plan.JoinNode); isJoin {
 				if j.JoinType() == plan.JoinTypeRight {
-					return childNum == 1
+					return c.ChildNum == 1
 				} else {
-					return childNum == 0
+					return c.ChildNum == 0
 				}
 			}
 			return true
 		}
-		n, err = plan.TransformUpWithSelector(n, selector, func(n sql.Node) (sql.Node, error) {
-			cr, isCR := n.(*plan.CachedResults)
+		n, err = plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, error) {
+			cr, isCR := c.Node.(*plan.CachedResults)
 			if isCR {
 				return cr.UnaryNode.Child, nil
 			}
-			return n, nil
+			return c.Node, nil
 		})
 	}
 	return n, err

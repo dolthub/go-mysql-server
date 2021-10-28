@@ -260,7 +260,7 @@ func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, pr
 // resolveProcedureParamsTransform resolves all of the named parameters and declared variables inside of a node.
 // In cases where an expression contains nodes, this will also walk those nodes.
 func resolveProcedureParamsTransform(ctx *sql.Context, paramNames map[string]struct{}, n sql.Node) (sql.Node, error) {
-	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "" {
@@ -326,7 +326,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		case *expression.ProcedureParam:
 			return expr.WithParamReference(pRef), nil
 		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
-			newQuery, err := plan.TransformExpressionsUp(ctx, expr.Query, procParamTransformFunc)
+			newQuery, err := plan.TransformExpressionsUp(expr.Query, procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}
@@ -337,7 +337,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			return e, nil
 		}
 	}
-	transformedProcedure, err := plan.TransformExpressionsUp(ctx, procedure, procParamTransformFunc)
+	transformedProcedure, err := plan.TransformExpressionsUp(procedure, procParamTransformFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -345,17 +345,17 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	transformedProcedure, err = plan.TransformUp(transformedProcedure, func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
 		case *plan.InsertInto:
-			newSource, err := plan.TransformExpressionsUp(ctx, n.Source, procParamTransformFunc)
+			newSource, err := plan.TransformExpressionsUp(n.Source, procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}
 			return n.WithSource(newSource), nil
 		case *plan.Union:
-			newLeft, err := plan.TransformExpressionsUp(ctx, n.Left(), procParamTransformFunc)
+			newLeft, err := plan.TransformExpressionsUp(n.Left(), procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}
-			newRight, err := plan.TransformExpressionsUp(ctx, n.Right(), procParamTransformFunc)
+			newRight, err := plan.TransformExpressionsUp(n.Right(), procParamTransformFunc)
 			if err != nil {
 				return nil, err
 			}
@@ -368,10 +368,10 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		return nil, err
 	}
 
-	transformedProcedure, err = plan.TransformUpWithParent(transformedProcedure, func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error) {
-		rt, ok := n.(*plan.ResolvedTable)
+	transformedProcedure, err = plan.TransformUpCtx(transformedProcedure, nil, func(c plan.TransformContext) (sql.Node, error) {
+		rt, ok := c.Node.(*plan.ResolvedTable)
 		if !ok {
-			return n, nil
+			return c.Node, nil
 		}
 		return plan.NewProcedureResolvedTable(rt), nil
 	})

@@ -26,7 +26,7 @@ import (
 func TestJsonArrayAgg_Name(t *testing.T) {
 	assert := require.New(t)
 
-	m := NewJSONArrayAgg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
+	m := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
 	assert.Equal("JSON_ARRAYAGG(field)", m.String())
 }
 
@@ -34,13 +34,13 @@ func TestJsonArrayAgg_SimpleIntField(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJSONArrayAgg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := j.NewBuffer()
+	j := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := j.NewBuffer()
 
-	j.Update(ctx, b, sql.NewRow(float64(7)))
-	j.Update(ctx, b, sql.NewRow(float64(2)))
+	b.Update(ctx, sql.NewRow(float64(7)))
+	b.Update(ctx, sql.NewRow(float64(2)))
 
-	v, err := j.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(sql.MustJSON(`[7, 2]`), v)
 }
@@ -49,13 +49,13 @@ func TestJsonArrayAgg_Strings(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJSONArrayAgg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := j.NewBuffer()
+	j := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := j.NewBuffer()
 
-	j.Update(ctx, b, sql.NewRow("hi"))
-	j.Update(ctx, b, sql.NewRow("hello"))
+	b.Update(ctx, sql.NewRow("hi"))
+	b.Update(ctx, sql.NewRow("hello"))
 
-	v, err := j.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(sql.MustJSON(`["hi","hello"]`), v)
 }
@@ -64,10 +64,10 @@ func TestJsonArrayAgg_Empty(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJSONArrayAgg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "field", true))
-	b := j.NewBuffer()
+	j := NewJSONArrayAgg(expression.NewGetField(0, sql.Int32, "field", true))
+	b, _ := j.NewBuffer()
 
-	v, err := j.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(sql.JSONDocument{Val: []interface{}(nil)}, v)
 }
@@ -76,11 +76,11 @@ func TestJsonArrayAgg_JSON(t *testing.T) {
 	assert := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	j := NewJSONArrayAgg(sql.NewEmptyContext(), expression.NewGetField(0, sql.JSON, "field", true))
-	b := j.NewBuffer()
-	j.Update(ctx, b, sql.NewRow(sql.MustJSON(`{"key1": "value1", "key2": "value2"}`)))
+	j := NewJSONArrayAgg(expression.NewGetField(0, sql.JSON, "field", true))
+	b, _ := j.NewBuffer()
+	b.Update(ctx, sql.NewRow(sql.MustJSON(`{"key1": "value1", "key2": "value2"}`)))
 
-	v, err := j.Eval(ctx, b)
+	v, err := b.Eval(ctx)
 	assert.NoError(err)
 	assert.Equal(sql.MustJSON(`[{"key1": "value1", "key2": "value2"}]`), v)
 }

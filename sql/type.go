@@ -615,6 +615,41 @@ func NumColumns(t Type) int {
 	return len(v)
 }
 
+// ErrIfMismatchedColumns returns an operand error if the number of columns in
+// t1 is not equal to the number of columns in t2. If the number of columns is
+// equal, and both types are tuple types, it recurses into each subtype,
+// asserting that those subtypes are structurally identical as well.
+func ErrIfMismatchedColumns(t1, t2 Type) error {
+	if NumColumns(t1) != NumColumns(t2) {
+		return ErrInvalidOperandColumns.New(NumColumns(t1), NumColumns(t2))
+	}
+	v1, ok1 := t1.(tupleType)
+	v2, ok2 := t2.(tupleType)
+	if ok1 && ok2 {
+		for i := range v1 {
+			if err := ErrIfMismatchedColumns(v1[i], v2[i]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// ErrIfMismatchedColumnsInTuple returns an operand error is t2 is not a tuple
+// type whose subtypes are structurally identical to t1.
+func ErrIfMismatchedColumnsInTuple(t1, t2 Type) error {
+	v2, ok2 := t2.(tupleType)
+	if !ok2 {
+		return ErrInvalidOperandColumns.New(NumColumns(t1), NumColumns(t2))
+	}
+	for _, v := range v2 {
+		if err := ErrIfMismatchedColumns(t1, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UnderlyingType returns the underlying type of an array if the type is an
 // array, or the type itself in any other case.
 func UnderlyingType(t Type) Type {

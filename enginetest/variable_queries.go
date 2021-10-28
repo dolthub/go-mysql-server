@@ -32,6 +32,23 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set system variables and user variables",
+		SetUpScript: []string{
+			"SET @myvar = @@autocommit",
+			"SET autocommit = @myvar",
+			"SET @myvar2 = @myvar - 1, @myvar3 = @@autocommit - 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select @myvar, @@autocommit, @myvar2, @myvar3",
+				// TODO: unclear why the last var is getting a float type, should be an int
+				Expected: []sql.Row{
+					{1, 1, 0, 0.0},
+				},
+			},
+		},
+	},
+	{
 		Name: "set system variables mixed case",
 		SetUpScript: []string{
 			"set @@auto_increment_INCREMENT = 100, sql_select_LIMIT = 1",
@@ -123,6 +140,36 @@ var VariableQueries = []ScriptTest{
 		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
 		Expected: []sql.Row{
 			{"charset", "charset", "charset"},
+		},
+	},
+	{
+		Name: "set character set",
+		SetUpScript: []string{
+			`set character set utf8`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8", "utf8mb4", "utf8"},
+		},
+	},
+	{
+		Name: "set charset",
+		SetUpScript: []string{
+			`set charset utf8`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8", "utf8mb4", "utf8"},
+		},
+	},
+	{
+		Name: "set charset quoted",
+		SetUpScript: []string{
+			`set charset 'utf8'`,
+		},
+		Query: "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"utf8", "utf8mb4", "utf8"},
 		},
 	},
 	{

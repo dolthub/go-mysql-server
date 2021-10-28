@@ -71,7 +71,7 @@ func TestInSubquery(t *testing.T) {
 			),
 			nil,
 			nil,
-			expression.ErrInvalidOperandColumns,
+			sql.ErrInvalidOperandColumns,
 		},
 		{
 			"left is in right",
@@ -159,7 +159,7 @@ func TestNotInSubquery(t *testing.T) {
 			),
 			nil,
 			nil,
-			expression.ErrInvalidOperandColumns,
+			sql.ErrInvalidOperandColumns,
 		},
 		{
 			"left is in right",

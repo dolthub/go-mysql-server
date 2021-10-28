@@ -23,10 +23,19 @@ import (
 )
 
 func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
-	ctx := sql.NewEmptyContext()
-
 	t.Helper()
+
+	ctx := sql.NewEmptyContext()
 	v, err := e.Eval(ctx, row)
+	require.NoError(t, err)
+	return v
+}
+
+func evalBuffer(t *testing.T, buf sql.AggregationBuffer) interface{} {
+	t.Helper()
+
+	ctx := sql.NewEmptyContext()
+	v, err := buf.Eval(ctx)
 	require.NoError(t, err)
 	return v
 }
@@ -35,12 +44,9 @@ func aggregate(t *testing.T, agg sql.Aggregation, rows ...sql.Row) interface{} {
 	t.Helper()
 
 	ctx := sql.NewEmptyContext()
-	buf := agg.NewBuffer()
+	buf, _ := agg.NewBuffer()
 	for _, row := range rows {
-		require.NoError(t, agg.Update(ctx, buf, row))
+		require.NoError(t, buf.Update(ctx, row))
 	}
-
-	v, err := agg.Eval(ctx, buf)
-	require.NoError(t, err)
-	return v
+	return evalBuffer(t, buf)
 }

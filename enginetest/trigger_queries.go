@@ -1054,6 +1054,30 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	// Trigger with subquery
+	{
+		Name: "trigger before insert with subquery expressions",
+		SetUpScript: []string{
+			"create table rn (id int primary key, upstream_edge_id int, downstream_edge_id int)",
+			"create table sn (id int primary key, target_id int, source_id int)",
+			`
+create trigger rn_on_insert before insert on rn
+for each row
+begin
+  if
+    (select target_id from sn where id = NEW.upstream_edge_id) <> (select source_id from sn where id = NEW.downstream_edge_id)
+  then
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'broken';
+  end if;
+end;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select id from rn",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 	// Complex trigger scripts
 	{
 		Name: "trigger before insert, multiple triggers defined",

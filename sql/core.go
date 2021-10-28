@@ -64,7 +64,7 @@ type Expression interface {
 	// It will return an error if the number of children is different than
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
-	WithChildren(ctx *Context, children ...Expression) (Expression, error)
+	WithChildren(children ...Expression) (Expression, error)
 }
 
 // FunctionExpression is an Expression that represents a function.
@@ -83,19 +83,23 @@ type NonDeterministicExpression interface {
 }
 
 // Aggregation implements an aggregation expression, where an
-// aggregation buffer is created for each grouping (NewBuffer) and rows in the
-// grouping are fed to the buffer (Update). Multiple buffers can be merged
-// (Merge), making partial aggregations possible.
-// Note that Eval must be called with the final aggregation buffer in order to
-// get the final result.
+// aggregation buffer is created for each grouping (NewBuffer). Rows for the
+// grouping should be fed to the buffer with |Update| and the buffer should be
+// eval'd with |Eval|. Calling |Eval| directly on an Aggregation expression is
+// typically an error.
 type Aggregation interface {
 	Expression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
-	NewBuffer() Row
-	// Update updates the given buffer with the given row.
-	Update(ctx *Context, buffer, row Row) error
-	// Merge merges a partial buffer into a global one.
-	Merge(ctx *Context, buffer, partial Row) error
+	NewBuffer() (AggregationBuffer, error)
+}
+
+type AggregationBuffer interface {
+	Disposable
+
+	// Eval the given buffer.
+	Eval(*Context) (interface{}, error)
+	// Update the given buffer with the given row.
+	Update(ctx *Context, row Row) error
 }
 
 // WindowAggregation implements a window aggregation expression. A WindowAggregation is similar to an Aggregation,
@@ -270,6 +274,7 @@ const (
 	IndexConstraint_Unique
 	IndexConstraint_Fulltext
 	IndexConstraint_Spatial
+	IndexConstraint_Primary
 )
 
 // IndexColumn is the column by which to add to an index.
@@ -343,6 +348,16 @@ type CheckAlterableTable interface {
 	CreateCheck(ctx *Context, check *CheckDefinition) error
 	// DropCheck removes a check constraint from the database.
 	DropCheck(ctx *Context, chName string) error
+}
+
+// PrimaryKeyAlterableTable represents a table that supports primary key changes.
+type PrimaryKeyAlterableTable interface {
+	Table
+	// CreatePrimaryKey creates a primary key for this table, using the provided parameters.
+	// Returns an error if the new primary key set is not compatible with the current table data.
+	CreatePrimaryKey(ctx *Context, columns []IndexColumn) error
+	// DropPrimaryKey drops a primary key on a table. Returns an error if that table does not have a key.
+	DropPrimaryKey(ctx *Context) error
 }
 
 // TableEditor is the base interface for sub interfaces that can update rows in a table during an INSERT, REPLACE,
@@ -496,11 +511,17 @@ type DatabaseProvider interface {
 type MutableDatabaseProvider interface {
 	DatabaseProvider
 
-	// AddDatabase adds a new Database to the provider's collection.
-	AddDatabase(db Database)
+	// CreateDatabase creates a database and adds it to the provider's collection.
+	CreateDatabase(ctx *Context, name string) error
 
-	// DropDatabase removes a database from the providers's collection.
-	DropDatabase(name string)
+	// DropDatabase removes a database from the provider's collection.
+	DropDatabase(ctx *Context, name string) error
+}
+
+// FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
+type FunctionProvider interface {
+	// Function returns the function with the name provided, case-insensitive
+	Function(name string) (Function, error)
 }
 
 // Database represents the database.
@@ -540,10 +561,18 @@ type VersionedDatabase interface {
 	GetTableNamesAsOf(ctx *Context, asOf interface{}) ([]string, error)
 }
 
+type TransactionCharacteristic int
+
+const (
+	ReadWrite TransactionCharacteristic = iota
+	ReadOnly
+)
+
 // Transaction is an opaque type implemented by an integrator to record necessary information at the start of a
 // transaction. Active transactions will be recorded in the session.
 type Transaction interface {
 	fmt.Stringer
+	IsReadOnly() bool
 }
 
 // TransactionDatabase is a Database that can BEGIN, ROLLBACK and COMMIT transactions, as well as create SAVEPOINTS and
@@ -552,7 +581,7 @@ type TransactionDatabase interface {
 	Database
 
 	// StartTransaction starts a new transaction and returns it
-	StartTransaction(ctx *Context) (Transaction, error)
+	StartTransaction(ctx *Context, tCharacteristic TransactionCharacteristic) (Transaction, error)
 
 	// CommitTransaction commits the transaction given
 	CommitTransaction(ctx *Context, tx Transaction) error
@@ -698,23 +727,32 @@ type TemporaryTableCreator interface {
 	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
 }
 
-// ViewCreator should be implemented by databases that want to know when a view
-// has been created.
-type ViewCreator interface {
-	// Notifies the database that a view with the given name and the given
-	// select statement as been created.
+// ViewDefinition is the named textual definition of a view
+type ViewDefinition struct {
+	Name           string
+	TextDefinition string
+}
+
+// ViewDatabase is implemented by databases that persist view definitions
+type ViewDatabase interface {
+	// CreateView persists the definition a view with the name and select statement given. If a view with that name
+	// already exists, should return ErrExistingView
 	CreateView(ctx *Context, name string, selectStatement string) error
+
+	// DropView deletes the view named from persistent storage. If the view doesn't exist, should return
+	// ErrViewDoesNotExist
+	DropView(ctx *Context, name string) error
+
+	// GetView returns the textual definition of the view with the name given, or false if it doesn't exist.
+	GetView(ctx *Context, viewName string) (string, bool, error)
+
+	// AllViews returns the definitions of all views in the database
+	AllViews(ctx *Context) ([]ViewDefinition, error)
 }
 
 // TableDropper should be implemented by databases that can drop tables.
 type TableDropper interface {
 	DropTable(ctx *Context, name string) error
-}
-
-// ViewDropper should be implemented by databases that want to know when a view
-// is dropped.
-type ViewDropper interface {
-	DropView(ctx *Context, name string) error
 }
 
 // TableRenamer should be implemented by databases that can rename tables.

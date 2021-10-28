@@ -106,7 +106,8 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 
 		if filtersMoved == 0 {
-			return n, nil
+			topJoin = n
+			return topJoin, nil
 		}
 
 		if len(condFilters) > 0 {
@@ -134,16 +135,16 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	// Add a new filter node with all removed predicates above the top level InnerJoin. Or, if there is a filter node
 	// above that, combine into a new filter.
-	selector := func(parent sql.Node, child sql.Node, childNum int) bool {
-		switch parent.(type) {
+	selector := func(c plan.TransformContext) bool {
+		switch c.Parent.(type) {
 		case *plan.Filter:
 			return false
 		}
-		return parent != topJoin
+		return c.Parent != topJoin
 	}
 
-	return plan.TransformUpWithSelector(node, selector, func(node sql.Node) (sql.Node, error) {
-		switch node := node.(type) {
+	return plan.TransformUpCtx(node, selector, func(c plan.TransformContext) (sql.Node, error) {
+		switch node := c.Node.(type) {
 		case *plan.Filter:
 			return plan.NewFilter(
 				expression.JoinAnd(append([]sql.Expression{node.Expression}, nonJoinFilters...)...),
@@ -167,7 +168,7 @@ func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(ctx, n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
 		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
 			return c.Child, nil
 		}
@@ -244,7 +245,7 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql
 			return node, nil
 		}
 
-		e, err := expression.TransformUp(ctx, filter.Expression, func(e sql.Expression) (sql.Expression, error) {
+		e, err := expression.TransformUp(filter.Expression, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case *expression.Or:
 				if isTrue(e.Left) {

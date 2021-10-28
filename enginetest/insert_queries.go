@@ -191,6 +191,12 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(999), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}},
 	},
 	{
+		WriteQuery:          `INSERT INTO typestable (id, ti, da) VALUES (999, '2021-09-1', '2021-9-01');`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT id, ti, da FROM typestable WHERE id = 999;",
+		ExpectedSelect:      []sql.Row{{int64(999), sql.MustConvert(sql.Timestamp.Convert("2021-09-01")), sql.MustConvert(sql.Date.Convert("2021-09-01"))}},
+	},
+	{
 		WriteQuery: `INSERT INTO typestable SET id=999, i8=null, i16=null, i32=null, i64=null, u8=null, u16=null, u32=null, u64=null,
 			f32=null, f64=null, ti=null, da=null, te=null, bo=null, js=null, bl=null;`,
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
@@ -845,6 +851,111 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "explicit DEFAULT",
+		SetUpScript: []string{
+			"CREATE TABLE mytable(id int PRIMARY KEY, v2 int NOT NULL DEFAULT '2')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO mytable (id, v2)values (1, DEFAULT)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable",
+				Expected: []sql.Row{
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "explicit DEFAULT with multiple values",
+		SetUpScript: []string{
+			"CREATE TABLE mytable(id int PRIMARY KEY, v2 int NOT NULL DEFAULT '2')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO mytable (id, v2)values (1, DEFAULT), (2, DEFAULT)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "SELECT * FROM mytable",
+				Expected: []sql.Row{
+					{1, 2},
+					{2, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
+		SetUpScript: []string{
+			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+			"INSERT IGNORE INTO y VALUES (1, 1), (1,2), (2, 2), (3, 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM y",
+				Expected: []sql.Row{
+					{1, 1}, {2, 2}, {3, 3},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (1, 2), (4,4)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (5, NULL)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERBadNullError,
+			},
+			{
+				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk FROM y WHERE pk > 1);",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERSubqueryNo1Row,
+			},
+			{
+				Query: "INSERT IGNORE INTO y SELECT 10, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERSubqueryNo1Row,
+			},
+			{
+				Query: "INSERT IGNORE INTO y SELECT 11, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual) UNION SELECT 12, 0 FROM dual;",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERSubqueryNo1Row,
+			},
+			{
+				Query: "INSERT IGNORE INTO y SELECT 13, 0 FROM dual UNION SELECT 14, 0 FROM dual WHERE 1=(SELECT 1 FROM dual UNION SELECT 2 FROM dual);",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERSubqueryNo1Row,
+			},
+			{
+				Query: "INSERT IGNORE INTO y VALUES (3, 8)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 0}},
+				},
+				ExpectedWarning: mysql.ERDupEntry,
+			},
+		},
+	},
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
@@ -941,49 +1052,6 @@ var InsertErrorScripts = []ScriptTest{
 }
 
 var InsertIgnoreScripts = []ScriptTest{
-	{
-		Name: "Try INSERT IGNORE with primary key, non null, and single row violations",
-		SetUpScript: []string{
-			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
-			"INSERT IGNORE INTO y VALUES (1, 1), (1,2), (2, 2), (3, 3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM y",
-				Expected: []sql.Row{
-					{1, 1}, {2, 2}, {3, 3},
-				},
-			},
-			{
-				Query: "INSERT IGNORE INTO y VALUES (1, 2), (4,4)",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
-				},
-				ExpectedWarning: mysql.ERDupEntry,
-			},
-			{
-				Query: "INSERT IGNORE INTO y VALUES (5, NULL)",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 1}},
-				},
-				ExpectedWarning: mysql.ERBadNullError,
-			},
-			{
-				Query: "INSERT IGNORE INTO y SELECT * FROM y WHERE pk=(SELECT pk FROM y WHERE pk > 1);",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 0}},
-				},
-				ExpectedWarning: mysql.ERSubqueryNo1Row,
-			},
-			{
-				Query: "INSERT IGNORE INTO y VALUES (3, 8)",
-				Expected: []sql.Row{
-					{sql.OkResult{RowsAffected: 0}},
-				},
-				ExpectedWarning: mysql.ERDupEntry,
-			},
-		},
-	},
 	{
 		Name: "Test that INSERT IGNORE with Non nullable columns works",
 		SetUpScript: []string{

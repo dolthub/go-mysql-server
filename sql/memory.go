@@ -32,6 +32,12 @@ type Disposable interface {
 	Dispose()
 }
 
+func Dispose(i interface{}) {
+	if d, ok := i.(Disposable); ok {
+		d.Dispose()
+	}
+}
+
 // Freeable objects can free their memory.
 type Freeable interface {
 	// Free the memory.
@@ -209,4 +215,10 @@ func (m *MemoryManager) Free() {
 			f.Free()
 		}
 	}
+}
+
+func (m *MemoryManager) NumCaches() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.caches)
 }

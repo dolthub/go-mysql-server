@@ -967,8 +967,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"DEFINER",             // Security_type
 						"hi",                  // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 					{
 						"mydb",                // Db
@@ -980,8 +980,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"INVOKER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 					{
 						"mydb",                // Db
@@ -993,8 +993,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"DEFINER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 				},
 			},
@@ -1011,8 +1011,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"INVOKER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 					{
 						"mydb",                // Db
@@ -1024,8 +1024,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"DEFINER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 				},
 			},
@@ -1046,8 +1046,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"DEFINER",             // Security_type
 						"hi",                  // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 					{
 						"mydb",                // Db
@@ -1059,8 +1059,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"INVOKER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 					{
 						"mydb",                // Db
@@ -1072,8 +1072,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"DEFINER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 				},
 			},
@@ -1090,8 +1090,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"DEFINER",             // Security_type
 						"hi",                  // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 					{
 						"mydb",                // Db
@@ -1103,8 +1103,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"DEFINER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 				},
 			},
@@ -1121,8 +1121,8 @@ var ProcedureShowStatus = []ScriptTest{
 						"INVOKER",             // Security_type
 						"",                    // Comment
 						"utf8mb4",             // character_set_client
-						"utf8mb4_0900_ai_ci",  // collation_connection
-						"utf8mb4_0900_ai_ci",  // Database Collation
+						"utf8mb4_0900_bin",    // collation_connection
+						"utf8mb4_0900_bin",    // Database Collation
 					},
 				},
 			},

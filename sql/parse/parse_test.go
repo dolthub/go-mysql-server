@@ -1503,6 +1503,9 @@ CREATE TABLE t2
 	`INSERT INTO t1 VALUES (b'0111')`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
 		expression.NewLiteral(uint64(7), sql.Uint64),
 	}}), false, []string{}, []sql.Expression{}, false),
+	`INSERT INTO t1 (col1, col2) VALUES ('a', DEFAULT)`: plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("t1", ""), plan.NewValues([][]sql.Expression{{
+		expression.NewLiteral("a", sql.LongText),
+	}}), false, []string{"col1"}, []sql.Expression{}, false),
 	`UPDATE t1 SET col1 = ?, col2 = ? WHERE id = ?`: plan.NewUpdate(
 		plan.NewFilter(
 			expression.NewEquals(expression.NewUnresolvedColumn("id"), expression.NewBindVar("v3")),
@@ -2419,8 +2422,8 @@ CREATE TABLE t2
 		),
 		showCollationProjection,
 	),
-	"BEGIN":                                  plan.NewStartTransaction(""),
-	"START TRANSACTION":                      plan.NewStartTransaction(""),
+	"BEGIN":                                  plan.NewStartTransaction("", sql.ReadWrite),
+	"START TRANSACTION":                      plan.NewStartTransaction("", sql.ReadWrite),
 	"COMMIT":                                 plan.NewCommit(""),
 	`ROLLBACK`:                               plan.NewRollback(""),
 	"SAVEPOINT abc":                          plan.NewCreateSavepoint("", "abc"),
@@ -3270,4 +3273,172 @@ func TestPrintTree(t *testing.T) {
                  │   └─ UnresolvedTable(tbl)
                  └─ UnresolvedTable(bar)
 `, node.String())
+}
+
+func TestParseColumnTypeString(t *testing.T) {
+	tests := []struct {
+		columnType      string
+		expectedSqlType sql.Type
+	}{
+		{
+			"tinyint",
+			sql.Int8,
+		},
+		{
+			"SMALLINT",
+			sql.Int16,
+		},
+		{
+			"MeDiUmInT",
+			sql.Int24,
+		},
+		{
+			"INT",
+			sql.Int32,
+		},
+		{
+			"BIGINT",
+			sql.Int64,
+		},
+		{
+			"TINYINT UNSIGNED",
+			sql.Uint8,
+		},
+		{
+			"SMALLINT UNSIGNED",
+			sql.Uint16,
+		},
+		{
+			"MEDIUMINT UNSIGNED",
+			sql.Uint24,
+		},
+		{
+			"INT UNSIGNED",
+			sql.Uint32,
+		},
+		{
+			"BIGINT UNSIGNED",
+			sql.Uint64,
+		},
+		{
+			"BOOLEAN",
+			sql.Int8,
+		},
+		{
+			"FLOAT",
+			sql.Float32,
+		},
+		{
+			"DOUBLE",
+			sql.Float64,
+		},
+		{
+			"REAL",
+			sql.Float64,
+		},
+		{
+			"DECIMAL",
+			sql.MustCreateDecimalType(10, 0),
+		},
+		{
+			"DECIMAL(22)",
+			sql.MustCreateDecimalType(22, 0),
+		},
+		{
+			"DECIMAL(55, 13)",
+			sql.MustCreateDecimalType(55, 13),
+		},
+		{
+			"DEC(34, 2)",
+			sql.MustCreateDecimalType(34, 2),
+		},
+		{
+			"FIXED(4, 4)",
+			sql.MustCreateDecimalType(4, 4),
+		},
+		{
+			"BIT(31)",
+			sql.MustCreateBitType(31),
+		},
+		{
+			"TINYBLOB",
+			sql.TinyBlob,
+		},
+		{
+			"BLOB",
+			sql.Blob,
+		},
+		{
+			"MEDIUMBLOB",
+			sql.MediumBlob,
+		},
+		{
+			"LONGBLOB",
+			sql.LongBlob,
+		},
+		{
+			"TINYTEXT",
+			sql.TinyText,
+		},
+		{
+			"TEXT",
+			sql.Text,
+		},
+		{
+			"MEDIUMTEXT",
+			sql.MediumText,
+		},
+		{
+			"LONGTEXT",
+			sql.LongText,
+		},
+		{
+			"CHAR(5)",
+			sql.MustCreateStringWithDefaults(sqltypes.Char, 5),
+		},
+		{
+			"VARCHAR(255)",
+			sql.MustCreateStringWithDefaults(sqltypes.VarChar, 255),
+		},
+		{
+			"VARCHAR(300) COLLATE cp1257_lithuanian_ci",
+			sql.MustCreateString(sqltypes.VarChar, 300, sql.Collation_cp1257_lithuanian_ci),
+		},
+		{
+			"BINARY(6)",
+			sql.MustCreateBinary(sqltypes.Binary, 6),
+		},
+		{
+			"VARBINARY(256)",
+			sql.MustCreateBinary(sqltypes.VarBinary, 256),
+		},
+		{
+			"YEAR",
+			sql.Year,
+		},
+		{
+			"DATE",
+			sql.Date,
+		},
+		{
+			"TIME",
+			sql.Time,
+		},
+		{
+			"TIMESTAMP",
+			sql.Timestamp,
+		},
+		{
+			"DATETIME",
+			sql.Datetime,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.columnType, func(t *testing.T) {
+			res, err := ParseColumnTypeString(sql.NewEmptyContext(), test.columnType)
+			require.NoError(t, err)
+			require.Equal(t, test.expectedSqlType, res)
+		})
+	}
 }

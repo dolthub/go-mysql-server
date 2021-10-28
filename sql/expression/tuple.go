@@ -66,6 +66,14 @@ func (t Tuple) String() string {
 	return fmt.Sprintf("(%s)", strings.Join(exprs, ", "))
 }
 
+func (t Tuple) DebugString() string {
+	var exprs = make([]string, len(t))
+	for i, e := range t {
+		exprs[i] = sql.DebugString(e)
+	}
+	return fmt.Sprintf("TUPLE(%s)", strings.Join(exprs, ", "))
+}
+
 // Resolved implements the Expression interface.
 func (t Tuple) Resolved() bool {
 	for _, e := range t {
@@ -92,7 +100,7 @@ func (t Tuple) Type() sql.Type {
 }
 
 // WithChildren implements the Expression interface.
-func (t Tuple) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (t Tuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != len(t) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), len(t))
 	}

@@ -205,7 +205,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, error) {
 	return func(n sql.Node) (sql.Node, error) {
 		switch n := n.(type) {
-		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, sql.Table, *ValueDerivedTable:
+		case *Project, *GroupBy, *Having, *SubqueryAlias, *Window, sql.Table, *ValueDerivedTable, *Union:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
@@ -254,6 +254,8 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
+	returnsTuple := len(s.Query.Schema()) > 1
+
 	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
 	col := len(row)
 	var result []interface{}
@@ -267,7 +269,11 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 			return nil, err
 		}
 
-		result = append(result, row[col])
+		if returnsTuple {
+			result = append(result, append([]interface{}{}, row[col:]...))
+		} else {
+			result = append(result, row[col])
+		}
 	}
 
 	if err := iter.Close(ctx); err != nil {
@@ -310,6 +316,47 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 	return cache, putAllRows(cache, result)
 }
 
+// HasResultRow returns whether the subquery has a result set > 0.
+func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
+	// First check if the query was cached.
+	s.cacheMu.Lock()
+	cached := s.resultsCached
+	s.cacheMu.Unlock()
+
+	if cached {
+		return len(s.cache) > 0, nil
+	}
+
+	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
+	// result rows are prepended with the scope row.
+	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	if err != nil {
+		return false, err
+	}
+
+	iter, err := q.RowIter(ctx, row)
+	if err != nil {
+		return false, err
+	}
+
+	// Call the iterator once and see if it has a row. If io.EOF is received return false.
+	_, err = iter.Next()
+	if err == io.EOF {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	err = iter.Close(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
 	for _, val := range vals {
 		rowKey, err := sql.HashOf(sql.NewRow(val))
@@ -326,7 +373,7 @@ func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
 
 // IsNullable implements the Expression interface.
 func (s *Subquery) IsNullable() bool {
-	return s.Query.Schema()[0].Nullable
+	return true
 }
 
 func (s *Subquery) String() string {
@@ -344,12 +391,19 @@ func (s *Subquery) Resolved() bool {
 
 // Type implements the Expression interface.
 func (s *Subquery) Type() sql.Type {
-	// TODO: handle row results (more than one column)
-	return s.Query.Schema()[0].Type
+	qs := s.Query.Schema()
+	if len(qs) == 1 {
+		return s.Query.Schema()[0].Type
+	}
+	ts := make([]sql.Type, len(qs))
+	for i, c := range qs {
+		ts[i] = c.Type
+	}
+	return sql.CreateTuple(ts...)
 }
 
 // WithChildren implements the Expression interface.
-func (s *Subquery) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (s *Subquery) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 0)
 	}
@@ -385,4 +439,5 @@ func (s *Subquery) Dispose() {
 		s.disposeFunc()
 		s.disposeFunc = nil
 	}
+	disposeNode(s.Query)
 }

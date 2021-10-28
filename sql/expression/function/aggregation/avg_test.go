@@ -26,7 +26,7 @@ import (
 func TestAvg_String(t *testing.T) {
 	require := require.New(t)
 
-	avg := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "col1", true))
+	avg := NewAvg(expression.NewGetField(0, sql.Int32, "col1", true))
 	require.Equal("AVG(col1)", avg.String())
 }
 
@@ -34,110 +34,80 @@ func TestAvg_Float64(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	avg := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Float64, "col1", true))
-	buffer := avg.NewBuffer()
-	avg.Update(ctx, buffer, sql.NewRow(float64(23.2220000)))
+	avg := NewAvg(expression.NewGetField(0, sql.Float64, "col1", true))
+	buffer, _ := avg.NewBuffer()
+	buffer.Update(ctx, sql.NewRow(float64(23.2220000)))
 
-	require.Equal(float64(23.222), eval(t, avg, buffer))
+	require.Equal(float64(23.222), evalBuffer(t, buffer))
 }
 
 func TestAvg_Eval_INT32(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Int32, "col1", true))
-	buffer := avgNode.NewBuffer()
-	require.Equal(nil, eval(t, avgNode, buffer))
+	avgNode := NewAvg(expression.NewGetField(0, sql.Int32, "col1", true))
+	buffer, _ := avgNode.NewBuffer()
+	require.Equal(nil, evalBuffer(t, buffer))
 
-	avgNode.Update(ctx, buffer, sql.NewRow(int32(1)))
-	require.Equal(float64(1), eval(t, avgNode, buffer))
+	buffer.Update(ctx, sql.NewRow(int32(1)))
+	require.Equal(float64(1), evalBuffer(t, buffer))
 
-	avgNode.Update(ctx, buffer, sql.NewRow(int32(2)))
-	require.Equal(float64(1.5), eval(t, avgNode, buffer))
+	buffer.Update(ctx, sql.NewRow(int32(2)))
+	require.Equal(float64(1.5), evalBuffer(t, buffer))
 }
 
 func TestAvg_Eval_UINT64(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Uint64, "col1", true))
-	buffer := avgNode.NewBuffer()
-	require.Equal(nil, eval(t, avgNode, buffer))
+	avgNode := NewAvg(expression.NewGetField(0, sql.Uint64, "col1", true))
+	buffer, _ := avgNode.NewBuffer()
+	require.Equal(nil, evalBuffer(t, buffer))
 
-	err := avgNode.Update(ctx, buffer, sql.NewRow(uint64(1)))
+	err := buffer.Update(ctx, sql.NewRow(uint64(1)))
 	require.NoError(err)
-	require.Equal(float64(1), eval(t, avgNode, buffer))
+	require.Equal(float64(1), evalBuffer(t, buffer))
 
-	err = avgNode.Update(ctx, buffer, sql.NewRow(uint64(2)))
+	err = buffer.Update(ctx, sql.NewRow(uint64(2)))
 	require.NoError(err)
-	require.Equal(float64(1.5), eval(t, avgNode, buffer))
+	require.Equal(float64(1.5), evalBuffer(t, buffer))
 }
 
 func TestAvg_Eval_String(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Text, "col1", true))
-	buffer := avgNode.NewBuffer()
-	require.Equal(nil, eval(t, avgNode, buffer))
+	avgNode := NewAvg(expression.NewGetField(0, sql.Text, "col1", true))
+	buffer, _ := avgNode.NewBuffer()
+	require.Equal(nil, evalBuffer(t, buffer))
 
-	err := avgNode.Update(ctx, buffer, sql.NewRow("foo"))
+	err := buffer.Update(ctx, sql.NewRow("foo"))
 	require.NoError(err)
-	require.Equal(float64(0), eval(t, avgNode, buffer))
+	require.Equal(float64(0), evalBuffer(t, buffer))
 
-	err = avgNode.Update(ctx, buffer, sql.NewRow("2"))
+	err = buffer.Update(ctx, sql.NewRow("2"))
 	require.NoError(err)
-	require.Equal(float64(1), eval(t, avgNode, buffer))
-}
-
-func TestAvg_Merge(t *testing.T) {
-	require := require.New(t)
-	ctx := sql.NewEmptyContext()
-
-	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Float32, "col1", true))
-	require.NotNil(avgNode)
-
-	buffer1 := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(ctx, buffer1))
-	err := avgNode.Update(ctx, buffer1, sql.NewRow(float32(1)))
-	require.NoError(err)
-	err = avgNode.Update(ctx, buffer1, sql.NewRow(float32(4)))
-	require.NoError(err)
-	require.Equal(float64(2.5), eval(t, avgNode, buffer1))
-
-	buffer2 := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(ctx, buffer2))
-	err = avgNode.Update(ctx, buffer2, sql.NewRow(float32(2)))
-	require.NoError(err)
-	err = avgNode.Update(ctx, buffer2, sql.NewRow(float32(7)))
-	require.NoError(err)
-	err = avgNode.Update(ctx, buffer2, sql.NewRow(float32(12)))
-	require.NoError(err)
-	require.Equal(float64(7), eval(t, avgNode, buffer2))
-
-	err = avgNode.Merge(ctx, buffer1, buffer2)
-	require.NoError(err)
-	require.Equal(float64(5.2), eval(t, avgNode, buffer1))
+	require.Equal(float64(1), evalBuffer(t, buffer))
 }
 
 func TestAvg_NULL(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Uint64, "col1", true))
-	buffer := avgNode.NewBuffer()
-	require.Zero(avgNode.Eval(ctx, buffer))
+	avgNode := NewAvg(expression.NewGetField(0, sql.Uint64, "col1", true))
+	buffer, _ := avgNode.NewBuffer()
+	require.Zero(evalBuffer(t, buffer))
 
-	err := avgNode.Update(ctx, buffer, sql.NewRow(nil))
+	err := buffer.Update(ctx, sql.NewRow(nil))
 	require.NoError(err)
-	require.Equal(nil, eval(t, avgNode, buffer))
+	require.Equal(nil, evalBuffer(t, buffer))
 }
 
 func TestAvg_NUMS_AND_NULLS(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	avgNode := NewAvg(sql.NewEmptyContext(), expression.NewGetField(0, sql.Uint64, "col1", true))
+	avgNode := NewAvg(expression.NewGetField(0, sql.Uint64, "col1", true))
 
 	testCases := []struct {
 		name     string
@@ -168,14 +138,12 @@ func TestAvg_NUMS_AND_NULLS(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			buf := avgNode.NewBuffer()
+			buf, _ := avgNode.NewBuffer()
 			for _, row := range tt.rows {
-				require.NoError(avgNode.Update(ctx, buf, row))
+				require.NoError(buf.Update(ctx, row))
 			}
 
-			result, err := avgNode.Eval(ctx, buf)
-			require.NoError(err)
-			require.Equal(tt.expected, result)
+			require.Equal(tt.expected, evalBuffer(t, buf))
 		})
 	}
 }
@@ -185,7 +153,7 @@ func TestAvg_Distinct(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	ad := expression.NewDistinctExpression(expression.NewGetField(0, nil, "myfield", false))
-	avg := NewAvg(sql.NewEmptyContext(), ad)
+	avg := NewAvg(ad)
 
 	// first validate that the expression's name is correct
 	require.Equal("AVG(DISTINCT myfield)", avg.String())
@@ -234,16 +202,12 @@ func TestAvg_Distinct(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			ad.Dispose()
-
-			buf := avg.NewBuffer()
+			buf, _ := avg.NewBuffer()
 			for _, row := range tt.rows {
-				require.NoError(avg.Update(ctx, buf, row))
+				require.NoError(buf.Update(ctx, row))
 			}
 
-			result, err := avg.Eval(ctx, buf)
-			require.NoError(err)
-			require.Equal(tt.expected, result)
+			require.Equal(tt.expected, evalBuffer(t, buf))
 		})
 	}
 }

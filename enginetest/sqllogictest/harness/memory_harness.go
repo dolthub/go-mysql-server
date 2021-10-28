@@ -26,6 +26,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -45,9 +46,9 @@ func (h *memoryHarness) EngineStr() string {
 }
 
 func (h *memoryHarness) Init() error {
-	h.engine = sqle.NewDefault()
 	db := h.harness.NewDatabase("mydb")
-	h.engine.AddDatabase(db)
+	pro := memory.NewMemoryDBProvider(db)
+	h.engine = sqle.NewDefault(pro)
 	return nil
 }
 
@@ -78,7 +79,7 @@ func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results [
 	defer func() {
 		if r := recover(); r != nil {
 			// Panics leave the engine in a bad state that we have to clean up
-			h.engine.Catalog.ProcessList.Kill(pid)
+			h.engine.ProcessList.Kill(pid)
 			panic(r)
 		}
 	}()

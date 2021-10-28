@@ -29,7 +29,7 @@ import (
 func TestNegateIndex(t *testing.T) {
 	require := require.New(t)
 
-	catalog := sql.NewCatalog()
+	provider := sql.NewDatabaseProvider()
 	idxReg := sql.NewIndexRegistry()
 	idx1 := &memory.MergeableIndex{
 		TableName: "t1",
@@ -42,7 +42,7 @@ func TestNegateIndex(t *testing.T) {
 	close(done)
 	<-ready
 
-	a := NewDefault(catalog)
+	a := NewDefault(provider)
 
 	t1 := memory.NewTable("t1", sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
@@ -61,7 +61,9 @@ func TestNegateIndex(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	result, err := getIndexesByTable(ctx, a, node, nil)
 	require.NoError(err)
 
@@ -76,7 +78,7 @@ func TestNegateIndex(t *testing.T) {
 func TestAssignIndexes(t *testing.T) {
 	require := require.New(t)
 
-	catalog := sql.NewCatalog()
+	provider := sql.NewDatabaseProvider()
 	idxReg := sql.NewIndexRegistry()
 	idx1 := &memory.MergeableIndex{
 		TableName: "t2",
@@ -115,7 +117,7 @@ func TestAssignIndexes(t *testing.T) {
 	close(done)
 	<-ready
 
-	a := NewDefault(catalog)
+	a := NewDefault(provider)
 
 	t1 := memory.NewTable("t1", sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
@@ -150,7 +152,9 @@ func TestAssignIndexes(t *testing.T) {
 		),
 	)
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	result, err := getIndexesByTable(ctx, a, node, nil)
 	require.NoError(err)
 
@@ -1104,7 +1108,7 @@ func TestGetIndexes(t *testing.T) {
 		},
 	}
 
-	catalog := sql.NewCatalog()
+	provider := sql.NewDatabaseProvider()
 	idxReg := sql.NewIndexRegistry()
 	for _, idx := range indexes {
 		done, ready, err := idxReg.AddIndex(idx)
@@ -1113,14 +1117,16 @@ func TestGetIndexes(t *testing.T) {
 		<-ready
 	}
 
-	a := NewDefault(catalog)
+	a := NewDefault(provider)
 
 	var i int
 	for _, tt := range testCases {
 		t.Run(tt.expr.String(), func(t *testing.T) {
 			require := require.New(t)
 
-			ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+			sess := sql.NewBaseSession()
+			sess.SetIndexRegistry(idxReg)
+			ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 			ia, err := getIndexesForNode(ctx, a, nil)
 			require.NoError(err)
 			testExpr := convertIsNullForIndexes(ctx, tt.expr)
@@ -1140,7 +1146,7 @@ func TestGetIndexes(t *testing.T) {
 func TestGetMultiColumnIndexes(t *testing.T) {
 	require := require.New(t)
 
-	catalog := sql.NewCatalog()
+	provider := sql.NewDatabaseProvider()
 	idxReg := sql.NewIndexRegistry()
 	indexes := []*memory.MergeableIndex{
 		{
@@ -1185,7 +1191,7 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 		<-ready
 	}
 
-	a := NewDefault(catalog)
+	a := NewDefault(provider)
 
 	exprs := []sql.Expression{
 		eq(
@@ -1224,7 +1230,9 @@ func TestGetMultiColumnIndexes(t *testing.T) {
 		),
 	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(idxReg))
+	sess := sql.NewBaseSession()
+	sess.SetIndexRegistry(idxReg)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	ia, err := getIndexesForNode(ctx, a, nil)
 	require.NoError(err)
 

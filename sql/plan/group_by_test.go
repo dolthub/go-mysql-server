@@ -31,7 +31,7 @@ func TestGroupBySchema(t *testing.T) {
 	child := memory.NewTable("test", nil)
 	agg := []sql.Expression{
 		expression.NewAlias("c1", expression.NewLiteral("s", sql.LongText)),
-		expression.NewAlias("c2", aggregation.NewCount(sql.NewEmptyContext(), expression.NewStar())),
+		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
 	gb := NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
 	require.Equal(sql.Schema{
@@ -45,7 +45,7 @@ func TestGroupByResolved(t *testing.T) {
 
 	child := memory.NewTable("test", nil)
 	agg := []sql.Expression{
-		expression.NewAlias("c2", aggregation.NewCount(sql.NewEmptyContext(), expression.NewStar())),
+		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
 	gb := NewGroupBy(agg, nil, NewResolvedTable(child, nil, nil))
 	require.True(gb.Resolved())
@@ -115,7 +115,9 @@ func TestGroupByEvalEmptyBuffer(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	r, err := evalBuffer(ctx, expression.NewGetField(0, sql.LongText, "col1", true), sql.Row{})
+	b, err := newAggregationBuffer(expression.NewGetField(0, sql.LongText, "col1", true))
+	require.NoError(err)
+	r, err := b.Eval(ctx)
 	require.NoError(err)
 	require.Nil(r)
 }
@@ -145,12 +147,12 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 
 	p := NewGroupBy(
 		[]sql.Expression{
-			aggregation.NewCount(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "col1", true)),
+			aggregation.NewCount(expression.NewGetField(0, sql.LongText, "col1", true)),
 			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		[]sql.Expression{
-			aggregation.NewCount(sql.NewEmptyContext(), expression.NewGetField(0, sql.LongText, "col1", true)),
-			expression.NewGetField(1, sql.Int64, "col2", true),
+			expression.NewGetField(0, sql.LongText, "col1", true),
+			expression.NewIsNull(expression.NewGetField(1, sql.Int64, "col2", true)),
 		},
 		NewResolvedTable(child, nil, nil),
 	)
@@ -172,7 +174,6 @@ func BenchmarkGroupBy(b *testing.B) {
 	node := NewGroupBy(
 		[]sql.Expression{
 			aggregation.NewMax(
-				sql.NewEmptyContext(),
 				expression.NewGetField(1, sql.Int64, "b", false),
 			),
 		},
@@ -204,7 +205,6 @@ func BenchmarkGroupBy(b *testing.B) {
 		[]sql.Expression{
 			expression.NewGetField(0, sql.Int64, "a", false),
 			aggregation.NewMax(
-				sql.NewEmptyContext(),
 				expression.NewGetField(1, sql.Int64, "b", false),
 			),
 		},

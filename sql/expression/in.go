@@ -77,7 +77,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case Tuple:
 		for _, el := range right {
 			if sql.NumColumns(el.Type()) != leftElems {
-				return nil, ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
+				return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
 			}
 		}
 
@@ -118,7 +118,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (in *InTuple) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (in *InTuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}

@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -270,7 +269,7 @@ func TestQualifyColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
+									aggregation.NewMax(uc("y")),
 								},
 								plan.NewResolvedTable(table2, nil, nil),
 							),
@@ -290,7 +289,7 @@ func TestQualifyColumns(t *testing.T) {
 							),
 							plan.NewProject(
 								[]sql.Expression{
-									aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
+									aggregation.NewMax(uc("y")),
 								},
 								plan.NewResolvedTable(table2, nil, nil),
 							),
@@ -308,7 +307,7 @@ func TestQualifyColumns(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
+								aggregation.NewMax(uc("y")),
 							},
 							plan.NewFilter(
 								gt(
@@ -324,7 +323,7 @@ func TestQualifyColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(sql.NewEmptyContext(), uc("y")),
+					aggregation.NewMax(uc("y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -336,7 +335,7 @@ func TestQualifyColumns(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(sql.NewEmptyContext(), uqc("mytable2", "y")),
+					aggregation.NewMax(uqc("mytable2", "y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -355,7 +354,7 @@ func TestQualifyColumns(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(sql.NewEmptyContext(), uqc("mytable2", "y")),
+								aggregation.NewMax(uqc("mytable2", "y")),
 							},
 							plan.NewFilter(
 								gt(
@@ -371,7 +370,7 @@ func TestQualifyColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(sql.NewEmptyContext(), uqc("mytable2", "y")),
+					aggregation.NewMax(uqc("mytable2", "y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -574,7 +573,7 @@ func TestResolveColumns(t *testing.T) {
 					plan.NewSubquery(
 						plan.NewProject(
 							[]sql.Expression{
-								aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "y")),
+								aggregation.NewMax(gf(3, "t2", "y")),
 							},
 							plan.NewFilter(
 								gt(
@@ -590,7 +589,7 @@ func TestResolveColumns(t *testing.T) {
 			)),
 			node: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "y")),
+					aggregation.NewMax(gf(3, "t2", "y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -602,7 +601,7 @@ func TestResolveColumns(t *testing.T) {
 			),
 			expected: plan.NewProject(
 				[]sql.Expression{
-					aggregation.NewMax(sql.NewEmptyContext(), gf(3, "t2", "y")),
+					aggregation.NewMax(gf(3, "t2", "y")),
 				},
 				plan.NewFilter(
 					gt(
@@ -616,41 +615,6 @@ func TestResolveColumns(t *testing.T) {
 	}
 
 	runTestCases(t, nil, testCases, nil, f)
-}
-
-func TestResolveColumnsSession(t *testing.T) {
-	require := require.New(t)
-
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
-	err := ctx.SetUserVariable(ctx, "foo_bar", int64(42))
-	require.NoError(err)
-	err = ctx.SetSessionVariable(ctx, "autocommit", true)
-	require.NoError(err)
-
-	node := plan.NewProject(
-		[]sql.Expression{
-			uc("@foo_bar"),
-			uc("@bar_baz"),
-			uc("@@autocommit"),
-			uc("@myvar"),
-		},
-		plan.NewResolvedTable(dualTable, nil, nil),
-	)
-
-	result, err := resolveColumns(ctx, NewDefault(nil), node, nil)
-	require.NoError(err)
-
-	expected := plan.NewProject(
-		[]sql.Expression{
-			expression.NewUserVar("foo_bar"),
-			expression.NewUserVar("bar_baz"),
-			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
-			expression.NewUserVar("myvar"),
-		},
-		plan.NewResolvedTable(dualTable, nil, nil),
-	)
-
-	require.Equal(expected, result)
 }
 
 func TestPushdownGroupByAliases(t *testing.T) {

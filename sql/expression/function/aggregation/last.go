@@ -28,9 +28,10 @@ type Last struct {
 }
 
 var _ sql.FunctionExpression = (*Last)(nil)
+var _ sql.Aggregation = (*Last)(nil)
 
 // NewLast returns a new Last node.
-func NewLast(ctx *sql.Context, e sql.Expression) *Last {
+func NewLast(e sql.Expression) *Last {
 	return &Last{expression.UnaryExpression{Child: e}}
 }
 
@@ -49,21 +50,35 @@ func (l *Last) String() string {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (l *Last) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (l *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLast(ctx, children[0]), nil
+	return NewLast(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (l *Last) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (l *Last) NewBuffer() (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(l.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return &lastBuffer{nil, bufferChild}, nil
 }
 
-// Update implements the Aggregation interface.
-func (l *Last) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := l.Child.Eval(ctx, row)
+// Eval implements the sql.Expression interface.
+func (l *Last) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Last")
+}
+
+type lastBuffer struct {
+	val  interface{}
+	expr sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (l *lastBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := l.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -72,18 +87,17 @@ func (l *Last) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		return nil
 	}
 
-	buffer[0] = v
+	l.val = v
 
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (l *Last) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	buffer[0] = partial[0]
-	return nil
+// Eval implements the AggregationBuffer interface.
+func (l *lastBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	return l.val, nil
 }
 
-// Eval implements the Aggregation interface.
-func (l *Last) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	return buffer[0], nil
+// Dispose implements the Disposable interface.
+func (l *lastBuffer) Dispose() {
+	expression.Dispose(l.expr)
 }

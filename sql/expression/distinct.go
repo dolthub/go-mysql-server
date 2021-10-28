@@ -94,7 +94,7 @@ func (de *DistinctExpression) Children() []sql.Expression {
 	return []sql.Expression{de.Child}
 }
 
-func (de *DistinctExpression) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (de *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, fmt.Errorf("DistinctExpression has an invalid number of children")
 	}

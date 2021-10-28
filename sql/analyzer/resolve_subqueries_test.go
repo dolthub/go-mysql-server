@@ -43,9 +43,7 @@ func TestResolveSubqueries(t *testing.T) {
 	db.AddTable("baz", baz)
 
 	// Unlike most analyzer functions, resolving subqueries needs a fully functioning analyzer
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := withoutProcessTracking(NewDefault(catalog))
+	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db)))
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -107,9 +105,7 @@ func TestResolveSubqueries(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewContext(context.Background(),
-		sql.WithIndexRegistry(sql.NewIndexRegistry()),
-		sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	resolveSubqueries := getRule("resolve_subqueries")
 	finalizeSubqueries := getRule("finalize_subqueries")
 	runTestCases(t, ctx, testCases, a, Rule{
@@ -139,9 +135,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 	db.AddTable("mytable2", table2)
 
 	// Unlike most analyzer functions, resolving subqueries needs a fully functioning analyzer
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := withoutProcessTracking(NewDefault(catalog))
+	a := withoutProcessTracking(NewDefault(sql.NewDatabaseProvider(db)))
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -443,9 +437,7 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 		},
 	}
 
-	ctx := sql.NewContext(context.Background(),
-		sql.WithIndexRegistry(sql.NewIndexRegistry()),
-		sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB("mydb")
+	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
 	runTestCases(t, ctx, testCases, a, getRule("resolve_subquery_exprs"))
 }
 
@@ -561,7 +553,7 @@ func TestCacheSubqueryResults(t *testing.T) {
 							},
 							plan.NewFilter(
 								gt(
-									mustExpr(function.NewRand(sql.NewEmptyContext())),
+									mustExpr(function.NewRand()),
 									gf(3, "mytable2", "x"),
 								),
 								plan.NewResolvedTable(table2, nil, nil),

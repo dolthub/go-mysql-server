@@ -216,7 +216,6 @@ func TestRegexpLikeWithoutFlags(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(fmt.Sprintf("%s|%s", test.text, test.pattern), func(t *testing.T) {
 			f, err := NewRegexpLike(
-				sql.NewEmptyContext(),
 				expression.NewLiteral(test.text, sql.LongText),
 				expression.NewLiteral(test.pattern, sql.LongText),
 			)
@@ -269,7 +268,6 @@ func TestRegexpLikeWithFlags(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(fmt.Sprintf("%v|%v", test.text, test.pattern), func(t *testing.T) {
 			f, err := NewRegexpLike(
-				sql.NewEmptyContext(),
 				expression.NewLiteral(test.text, sql.LongText),
 				expression.NewLiteral(test.pattern, sql.LongText),
 				expression.NewLiteral(test.flags, sql.LongText),
@@ -285,13 +283,11 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	f, err := NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral("", sql.LongText),
 	)
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 
 	f, err = NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral("", sql.LongText),
 		expression.NewLiteral("", sql.LongText),
 		expression.NewLiteral("", sql.LongText),
@@ -300,7 +296,6 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.True(t, sql.ErrInvalidArgumentNumber.Is(err))
 
 	f, err = NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral("foo", sql.LongText),
 		expression.NewLiteral("foo", sql.LongText),
 		expression.NewLiteral("z", sql.LongText),
@@ -310,7 +305,6 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.True(t, sql.ErrInvalidArgument.Is(err))
 
 	f, err = NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral(nil, sql.Null),
 		expression.NewLiteral("foo", sql.LongText),
 		expression.NewLiteral("i", sql.LongText),
@@ -321,7 +315,6 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.Equal(t, nil, res)
 
 	f, err = NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral("foo", sql.LongText),
 		expression.NewLiteral(nil, sql.Null),
 		expression.NewLiteral("i", sql.LongText),
@@ -332,7 +325,6 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.Equal(t, nil, res)
 
 	f, err = NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral("foo", sql.LongText),
 		expression.NewLiteral("foo", sql.LongText),
 		expression.NewLiteral(nil, sql.Null),
@@ -343,7 +335,6 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.Equal(t, nil, res)
 
 	f, err = NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral(nil, sql.Null),
 		expression.NewLiteral("foo", sql.LongText),
 	)
@@ -353,7 +344,6 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.Equal(t, nil, res)
 
 	f, err = NewRegexpLike(
-		sql.NewEmptyContext(),
 		expression.NewLiteral("foo", sql.LongText),
 		expression.NewLiteral(nil, sql.Null),
 	)

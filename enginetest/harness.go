@@ -26,6 +26,8 @@ type Harness interface {
 	NewDatabase(name string) sql.Database
 	// NewDatabases returns a set of new databases, for test setup that requires more than one database.
 	NewDatabases(names ...string) []sql.Database
+	// NewDatabaseProvider returns a sql.MutableDatabaseProvider to use for a test.
+	NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider
 	// NewTable takes a database previously created by NewDatabase and returns a table created with the given schema.
 	NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error)
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
@@ -46,9 +48,8 @@ type SkippingHarness interface {
 // driver they provide.
 type IndexDriverHarness interface {
 	Harness
-	// IndexDriver returns an index driver for the databases given, which will have been created by calls to
-	// NewDatabase().
-	IndexDriver(dbs []sql.Database) sql.IndexDriver
+	// InitializeIndexDriver initializes the index driver for this test run with the databases given
+	InitializeIndexDriver(dbs []sql.Database)
 }
 
 // IndexHarness is an extension to Harness that lets an integrator test their implementation with native

@@ -43,6 +43,7 @@ func TestHandlerOutput(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo",
 		),
 		0,
@@ -141,6 +142,62 @@ func TestHandlerOutput(t *testing.T) {
 	}
 }
 
+func TestHandlerComPrepare(t *testing.T) {
+	e := setupMemDB(require.New(t))
+	dummyConn := &mysql.Conn{ConnectionID: 1}
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			testSessionBuilder,
+			opentracing.NoopTracer{},
+			func(db string) bool { return db == "test" },
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		0,
+	)
+	handler.NewConnection(dummyConn)
+
+	type testcase struct {
+		name      string
+		statement string
+		expected  []*query.Field
+	}
+
+	for _, test := range []testcase{
+		{
+			name:      "insert statement returns nil schema",
+			statement: "insert into test (c1) values (?)",
+			expected:  nil,
+		},
+		{
+			name:      "update statement returns nil schema",
+			statement: "update test set c1 = ?",
+			expected:  nil,
+		},
+		{
+			name:      "delete statement returns nil schema",
+			statement: "delete from test where c1 = ?",
+			expected:  nil,
+		},
+		{
+			name:      "select statement returns nil schema",
+			statement: "select c1 from test where c1 > ?",
+			expected: []*query.Field{
+				{Name: "c1", Type: query.Type_INT32, Charset: mysql.CharacterSetUtf8},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler.ComInitDB(dummyConn, "test")
+			schema, err := handler.ComPrepare(dummyConn, test.statement)
+			require.NoError(t, err)
+			require.Equal(t, test.expected, schema)
+		})
+	}
+}
+
 func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
@@ -148,12 +205,13 @@ func TestHandlerKill(t *testing.T) {
 	handler := NewHandler(
 		e,
 		NewSessionManager(
-			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, *sql.IndexRegistry, *sql.ViewRegistry, error) {
-				return sql.NewSession(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), sql.NewIndexRegistry(), sql.NewViewRegistry(), nil
+			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+				return sql.NewSession(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
-			sql.NewMemoryManager(nil),
+			e.MemoryManager,
+			e.ProcessList,
 			"foo",
 		),
 		0,
@@ -181,7 +239,7 @@ func TestHandlerKill(t *testing.T) {
 	require.NoError(err)
 	ctx1, err := handler.sm.NewContextWithQuery(conn1, "SELECT 1")
 	require.NoError(err)
-	ctx1, err = handler.e.Catalog.AddProcess(ctx1, "SELECT 1")
+	ctx1, err = handler.e.ProcessList.AddProcess(ctx1, "SELECT 1")
 	require.NoError(err)
 
 	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result) error {
@@ -196,7 +254,7 @@ func TestHandlerKill(t *testing.T) {
 func assertNoConnProcesses(t *testing.T, e *sqle.Engine, conn uint32) {
 	t.Helper()
 
-	for _, p := range e.Catalog.Processes() {
+	for _, p := range e.ProcessList.Processes() {
 		if p.Connection == conn {
 			t.Errorf("expecting no processes with connection id %d", conn)
 		}
@@ -233,6 +291,7 @@ func TestHandlerTimeout(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo"),
 		1*time.Second)
 
@@ -241,6 +300,7 @@ func TestHandlerTimeout(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo"),
 		0)
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
@@ -292,6 +352,7 @@ func TestOkClosedConnection(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo",
 		),
 		0,
@@ -443,6 +504,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			opentracing.NoopTracer{},
 			func(db string) bool { return db == "test" },
 			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
 			"foo",
 		),
 		0,

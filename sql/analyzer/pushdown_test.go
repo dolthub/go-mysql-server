@@ -43,9 +43,7 @@ func TestPushdownProjectionToTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := NewDefault(catalog)
+	a := NewDefault(sql.NewDatabaseProvider())
 
 	// TODO: test interaction with filtered tables
 	tests := []analyzerFnTestCase{
@@ -114,9 +112,7 @@ func TestPushdownFilterToTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := NewDefault(catalog)
+	a := NewDefault(sql.NewDatabaseProvider(db))
 
 	tests := []analyzerFnTestCase{
 		{
@@ -230,9 +226,7 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := NewDefault(catalog)
+	a := NewDefault(sql.NewDatabaseProvider(db))
 
 	tests := []analyzerFnTestCase{
 		{
@@ -578,9 +572,7 @@ func TestPushdownIndex(t *testing.T) {
 	db.AddTable("mytable", table)
 	db.AddTable("mytable2", table2)
 
-	catalog := sql.NewCatalog()
-	catalog.AddDatabase(db)
-	a := NewDefault(catalog)
+	a := NewDefault(sql.NewDatabaseProvider(db))
 
 	tests := []analyzerFnTestCase{
 		{
@@ -764,7 +756,7 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewResolvedTable(table2, nil, nil),
 							mustIndexLookup(idxTable2I2.Get(21)),
 							idxTable2I2,
-							[]sql.Expression{gfCol(0, mytable2I)},
+							[]sql.Expression{gfCol(3, mytable2I)},
 						),
 					),
 				),
@@ -921,7 +913,7 @@ func TestPushdownIndex(t *testing.T) {
 							plan.NewResolvedTable(table2, nil, nil),
 							mustIndexLookup(idxTable2I2.Get(21)),
 							idxTable2I2,
-							[]sql.Expression{gfCol(0, mytable2I)},
+							[]sql.Expression{gfCol(3, mytable2I)},
 						),
 					),
 				),
@@ -1067,7 +1059,7 @@ func TestPushdownIndex(t *testing.T) {
 								plan.NewResolvedTable(table2, nil, nil),
 								mustIndexLookup(idxTable2I2.Get(21)),
 								idxTable2I2,
-								[]sql.Expression{gfColAlias(0, mytable2I, "t2")},
+								[]sql.Expression{gfColAlias(3, mytable2I, "t2")},
 							),
 						),
 					),
@@ -1154,7 +1146,7 @@ func TestPushdownIndex(t *testing.T) {
 								plan.NewResolvedTable(table2, nil, nil),
 								mustIndexLookup(idxTable2I2.Get(21)),
 								idxTable2I2,
-								[]sql.Expression{gfColAlias(0, mytable2I, "t2")},
+								[]sql.Expression{gfColAlias(3, mytable2I, "t2")},
 							),
 						),
 					),
@@ -1459,7 +1451,7 @@ func TestPushdownIndex(t *testing.T) {
 									plan.NewResolvedTable(table2, nil, nil),
 									mustIndexLookup(idxTable2I2.Get(21)),
 									idxTable2I2,
-									[]sql.Expression{gfColAlias(0, mytable2I, "t2")},
+									[]sql.Expression{gfColAlias(3, mytable2I, "t2")},
 								),
 							),
 						),

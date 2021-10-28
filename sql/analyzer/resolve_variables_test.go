@@ -15,8 +15,11 @@
 package analyzer
 
 import (
+	"context"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -25,7 +28,6 @@ import (
 )
 
 func TestResolveSetVariables(t *testing.T) {
-	ctx := sql.NewEmptyContext()
 	rule := getRuleFrom(OnceBeforeDefault, "resolve_set_variables")
 
 	var testCases = []analyzerFnTestCase{
@@ -79,13 +81,13 @@ func TestResolveSetVariables(t *testing.T) {
 			node: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("@@auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(expression.NewSystemVar("auto_increment_increment", sql.SystemVariableScope_Session), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},
@@ -94,13 +96,13 @@ func TestResolveSetVariables(t *testing.T) {
 			node: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(uc("@@sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 			expected: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(expression.NewSystemVar("sql_mode", sql.SystemVariableScope_Session), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},
@@ -109,7 +111,7 @@ func TestResolveSetVariables(t *testing.T) {
 			node: plan.NewSet(
 				[]sql.Expression{
 					expression.NewSetField(uc("auto_increment_increment"), expression.NewArithmetic(lit(2), lit(3), "+")),
-					expression.NewSetField(uc("sql_mode"), mustExpr(function.NewConcat(ctx, uc("@@sql_mode"), uc("@@sql_mode")))),
+					expression.NewSetField(uc("sql_mode"), mustExpr(function.NewConcat(uc("@@sql_mode"), uc("@@sql_mode")))),
 				},
 			),
 		},
@@ -138,4 +140,39 @@ func TestResolveBarewordSetVariables(t *testing.T) {
 	}
 
 	runTestCases(t, nil, testCases, nil, *rule)
+}
+
+func TestResolveColumnsSession(t *testing.T) {
+	require := require.New(t)
+
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
+	err := ctx.SetUserVariable(ctx, "foo_bar", int64(42))
+	require.NoError(err)
+	err = ctx.SetSessionVariable(ctx, "autocommit", true)
+	require.NoError(err)
+
+	node := plan.NewProject(
+		[]sql.Expression{
+			uc("@foo_bar"),
+			uc("@bar_baz"),
+			uc("@@autocommit"),
+			uc("@myvar"),
+		},
+		plan.NewResolvedTable(dualTable, nil, nil),
+	)
+
+	result, err := resolveVariables(ctx, NewDefault(nil), node, nil)
+	require.NoError(err)
+
+	expected := plan.NewProject(
+		[]sql.Expression{
+			expression.NewUserVar("foo_bar"),
+			expression.NewUserVar("bar_baz"),
+			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
+			expression.NewUserVar("myvar"),
+		},
+		plan.NewResolvedTable(dualTable, nil, nil),
+	)
+
+	require.Equal(expected, result)
 }

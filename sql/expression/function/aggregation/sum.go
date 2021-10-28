@@ -28,9 +28,10 @@ type Sum struct {
 }
 
 var _ sql.FunctionExpression = (*Sum)(nil)
+var _ sql.Aggregation = (*Sum)(nil)
 
 // NewSum returns a new Sum node.
-func NewSum(ctx *sql.Context, e sql.Expression) *Sum {
+func NewSum(e sql.Expression) *Sum {
 	return &Sum{expression.UnaryExpression{Child: e}}
 }
 
@@ -49,21 +50,36 @@ func (m *Sum) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (m *Sum) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (m *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
-	return NewSum(ctx, children[0]), nil
+	return NewSum(children[0]), nil
 }
 
 // NewBuffer creates a new buffer to compute the result.
-func (m *Sum) NewBuffer() sql.Row {
-	return sql.NewRow(nil)
+func (m *Sum) NewBuffer() (sql.AggregationBuffer, error) {
+	bufferChild, err := expression.Clone(m.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return &sumBuffer{true, 0, bufferChild}, nil
 }
 
-// Update implements the Aggregation interface.
-func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
-	v, err := m.Child.Eval(ctx, row)
+// Eval implements the Expression interface.
+func (m *Sum) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New("Sum")
+}
+
+type sumBuffer struct {
+	isnil bool
+	sum   float64
+	expr  sql.Expression
+}
+
+// Update implements the AggregationBuffer interface.
+func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := m.expr.Eval(ctx, row)
 	if err != nil {
 		return err
 	}
@@ -77,23 +93,25 @@ func (m *Sum) Update(ctx *sql.Context, buffer, row sql.Row) error {
 		val = float64(0)
 	}
 
-	if buffer[0] == nil {
-		buffer[0] = float64(0)
+	if m.isnil {
+		m.sum = 0
+		m.isnil = false
 	}
 
-	buffer[0] = buffer[0].(float64) + val.(float64)
+	m.sum += val.(float64)
 
 	return nil
 }
 
-// Merge implements the Aggregation interface.
-func (m *Sum) Merge(ctx *sql.Context, buffer, partial sql.Row) error {
-	return m.Update(ctx, buffer, partial)
+// Eval implements the AggregationBuffer interface.
+func (m *sumBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if m.isnil {
+		return nil, nil
+	}
+	return m.sum, nil
 }
 
-// Eval implements the Aggregation interface.
-func (m *Sum) Eval(ctx *sql.Context, buffer sql.Row) (interface{}, error) {
-	sum := buffer[0]
-
-	return sum, nil
+// Dispose implements the Disposable interface.
+func (m *sumBuffer) Dispose() {
+	expression.Dispose(m.expr)
 }

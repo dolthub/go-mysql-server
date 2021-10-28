@@ -33,7 +33,7 @@ type FirstValue struct {
 var _ sql.FunctionExpression = (*FirstValue)(nil)
 var _ sql.WindowAggregation = (*FirstValue)(nil)
 
-func NewFirstValue(ctx *sql.Context, e sql.Expression) sql.Expression {
+func NewFirstValue(e sql.Expression) sql.Expression {
 	return &FirstValue{nil, expression.UnaryExpression{Child: e}, 0}
 }
 
@@ -100,7 +100,7 @@ func (f *FirstValue) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (f *FirstValue) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (f *FirstValue) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) < 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}

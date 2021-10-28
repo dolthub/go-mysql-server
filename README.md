@@ -12,7 +12,8 @@ ODBC, JDBC, or the default MySQL client shell interface.
 
 [Dolt](https://www.doltdb.com), a SQL database with Git-style 
 versioning, is the main database implementation of this package. 
-Check out that project for reference implementations.
+Check out that project for reference implementations. Or, hop into the Dolt discord [here](https://discord.com/invite/RFwfYpu)
+if you want to talk to the core developers behind GMS.
 
 ## Scope of this project
 
@@ -159,6 +160,7 @@ examples on how to connect to go-mysql-server using them.
 |`SOUNDEX(str)`| returns the soundex of a string.|
 |`SPLIT(str,sep)`| returns the parts of the string `str` split by the separator `sep` as a JSON array of strings.|
 |`SQRT(X)`| returns the square root of a nonnegative number `X`.|
+| `STR_TO_DATE(date_str, format_str)`| parses the date/datetime/timestamp expression according to the format specifier. |
 |`SUBSTR(str, pos, [len])`| returns a substring from the string `str` starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
 |`SUBSTRING(str, pos, [len])`| returns a substring from the string `str` starting at `pos` with a length of `len` characters. If no `len` is provided, all characters from `pos` until the end will be taken.|
 |`SUBSTRING_INDEX(str, delim, count)` | Returns a substring after `count` appearances of `delim`. If `count` is negative, counts from the right side of the string. |
@@ -211,63 +213,73 @@ database implementation:
 package main
 
 import (
-    "time"
+	"time"
 
-    "github.com/dolthub/go-mysql-server/auth"
-    "github.com/dolthub/go-mysql-server/memory"
-    "github.com/dolthub/go-mysql-server/server"
-    "github.com/dolthub/go-mysql-server/sql"
-    sqle "github.com/dolthub/go-mysql-server"
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/auth"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/server"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
+// Example of how to implement a MySQL server based on a Engine:
+//
+// ```
+// > mysql --host=127.0.0.1 --port=5123 -u user -ppass db -e "SELECT * FROM mytable"
+// +----------+-------------------+-------------------------------+---------------------+
+// | name     | email             | phone_numbers                 | created_at          |
+// +----------+-------------------+-------------------------------+---------------------+
+// | John Doe | john@doe.com      | ["555-555-555"]               | 2018-04-18 09:41:13 |
+// | John Doe | johnalt@doe.com   | []                            | 2018-04-18 09:41:13 |
+// | Jane Doe | jane@doe.com      | []                            | 2018-04-18 09:41:13 |
+// | Evil Bob | evilbob@gmail.com | ["555-666-555","666-666-666"] | 2018-04-18 09:41:13 |
+// +----------+-------------------+-------------------------------+---------------------+
+// ```
 func main() {
-    driver := sqle.NewDefault()
-    driver.AddDatabase(createTestDatabase())
+	engine := sqle.NewDefault(
+		sql.NewDatabaseProvider(
+			createTestDatabase(),
+			information_schema.NewInformationSchemaDatabase(),
+		))
 
-    config := server.Config{
-        Protocol: "tcp",
-        Address:  "localhost:3306",
-        Auth:     auth.NewNativeSingle("user", "pass", auth.AllPermissions),
-    }
+	config := server.Config{
+		Protocol: "tcp",
+		Address:  "localhost:3306",
+		Auth:     auth.NewNativeSingle("root", "", auth.AllPermissions),
+	}
 
-    s, err := server.NewDefaultServer(config, driver)
-    if err != nil {
-        panic(err)
-    }
+	s, err := server.NewDefaultServer(config, engine)
+	if err != nil {
+		panic(err)
+	}
 
-    s.Start()
+	s.Start()
 }
 
 func createTestDatabase() *memory.Database {
-    const (
-        dbName    = "test"
-        tableName = "mytable"
-    )
+	const (
+		dbName    = "mydb"
+		tableName = "mytable"
+	)
 
-    db := memory.NewDatabase(dbName)
-    table := memory.NewTable(tableName, sql.Schema{
-        {Name: "name", Type: sql.Text, Nullable: false, Source: tableName},
-        {Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
-        {Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
-        {Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
-    })
+	db := memory.NewDatabase(dbName)
+	table := memory.NewTable(tableName, sql.Schema{
+		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName},
+		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
+		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
+		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
+	})
 
-    db.AddTable(tableName, table)
-    ctx := sql.NewEmptyContext()
-
-    rows := []sql.Row{
-        sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()),
-        sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()),
-        sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()),
-        sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, time.Now()),
-	}
-
-    for _, row := range rows {
-        table.Insert(ctx, row)
-    }
-
-    return db
+	db.AddTable(tableName, table)
+	ctx := sql.NewEmptyContext()
+	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
+	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()))
+	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()))
+	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, time.Now()))
+	return db
 }
+
 ```
 
 Then, you can connect to the server with any MySQL client:

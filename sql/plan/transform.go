@@ -19,195 +19,113 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// TransformUp applies a transformation function to the given tree from the
-// bottom up.
-func TransformUp(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
-	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
-		return f(node)
-	}
-
-	children := node.Children()
-	if len(children) == 0 {
-		return f(node)
-	}
-
-	newChildren := make([]sql.Node, len(children))
-	for i, c := range children {
-		c, err := TransformUp(c, f)
-		if err != nil {
-			return nil, err
-		}
-		newChildren[i] = c
-	}
-
-	node, err := node.WithChildren(newChildren...)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(node)
+// TransformContext is the parameter to the Transform{,Selector}.
+type TransformContext struct {
+	// Node is the currently visited node which will be transformed.
+	Node sql.Node
+	// Parent is the current parent of the transforming node.
+	Parent sql.Node
+	// ChildNum is the index of Node in Parent.Children().
+	ChildNum int
+	// SchemaPrefix is the concatenation of the Parent's SchemaPrefix with
+	// child.Schema() for all child with an index < ChildNum in
+	// Parent.Children(). For many Nodes, this represents the schema of the
+	// |row| parameter that is going to be passed to this node by its
+	// parent in a RowIter() call. This field is only non-nil if the entire
+	// in-order traversal of the tree up to this point is Resolved().
+	SchemaPrefix sql.Schema
 }
 
-// TransformNodeWithParentFunc is an analog to sql.TransformNodeFunc that also includes the parent of the node being
-// transformed. The parent is for inspection only, and cannot be altered.
-type TransformNodeWithParentFunc func(n sql.Node, parent sql.Node, childNum int) (sql.Node, error)
+// Transformer is a function which will return new sql.Node values for a given
+// TransformContext.
+type Transformer func(TransformContext) (sql.Node, error)
 
-// TransformUpWithParent applies a transformation function to the given tree from the bottom up, with the additional
-// context of the parent node of the node under inspection.
-func TransformUpWithParent(node sql.Node, f TransformNodeWithParentFunc) (sql.Node, error) {
-	return transformUpWithParent(node, nil, -1, f)
+// TransformSelector is a function which will allow TransformUpCtx to not
+// traverse past a certain TransformContext. If this function returns |false|
+// for a given TransformContext, the subtree is not transformed and the child
+// is kept in its existing place in the parent as-is.
+type TransformSelector func(TransformContext) bool
+
+// TransformUpCtx transforms |n| from the bottom up, left to right, by passing
+// each node to |f|. If |s| is non-nil, does not descend into children where
+// |s| returns false.
+func TransformUpCtx(n sql.Node, s TransformSelector, f Transformer) (sql.Node, error) {
+	return transformUpCtx(TransformContext{n, nil, -1, sql.Schema{}}, s, f)
 }
 
-// transformUpWithParent is the internal implementation of TransformUpWithParent that allows passing a parent node.
-func transformUpWithParent(node sql.Node, parent sql.Node, childNum int, f TransformNodeWithParentFunc) (sql.Node, error) {
-	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
-		return f(node, parent, childNum)
+func transformUpCtx(c TransformContext, s TransformSelector, f Transformer) (sql.Node, error) {
+	if o, ok := c.Node.(sql.OpaqueNode); ok && o.Opaque() {
+		return f(c)
 	}
 
-	children := node.Children()
+	children := c.Node.Children()
 	if len(children) == 0 {
-		return f(node, parent, childNum)
+		return f(c)
 	}
 
+	childPrefix := append(sql.Schema{}, c.SchemaPrefix...)
 	newChildren := make([]sql.Node, len(children))
-	for i, c := range children {
-		c, err := transformUpWithParent(c, node, i, f)
-		if err != nil {
-			return nil, err
-		}
-		newChildren[i] = c
-	}
-
-	node, err := node.WithChildren(newChildren...)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(node, parent, childNum)
-}
-
-// ChildSelector is a func that returns whether the child of a parent node should be walked as part of a transformation.
-// If not, that child and its portion of the subtree is skipped.
-type ChildSelector func(parent sql.Node, child sql.Node, childNum int) bool
-
-// TransformUpWithSelector works like TransformUp, but allows the caller to decide which children of a node are walked.
-func TransformUpWithSelector(node sql.Node, selector ChildSelector, f sql.TransformNodeFunc) (sql.Node, error) {
-	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
-		return f(node)
-	}
-
-	children := node.Children()
-	if len(children) == 0 {
-		return f(node)
-	}
-
-	newChildren := make([]sql.Node, len(children))
-	for i, c := range children {
-		if selector(node, c, i) {
-			c, err := TransformUpWithSelector(c, selector, f)
+	for i, child := range children {
+		cc := TransformContext{child, c.Node, i, childPrefix}
+		if s == nil || s(cc) {
+			var err error
+			child, err = transformUpCtx(cc, s, f)
 			if err != nil {
 				return nil, err
 			}
-			newChildren[i] = c
+		}
+		newChildren[i] = child
+		if child.Resolved() && childPrefix != nil {
+			cs := child.Schema()
+			childPrefix = append(childPrefix, cs...)
 		} else {
-			newChildren[i] = c
+			childPrefix = nil
 		}
 	}
 
-	node, err := node.WithChildren(newChildren...)
+	node, err := c.Node.WithChildren(newChildren...)
 	if err != nil {
 		return nil, err
 	}
 
-	return f(node)
+	return f(TransformContext{node, c.Parent, c.ChildNum, c.SchemaPrefix})
+}
+
+// TransformUp applies a transformation function to the given tree from the
+// bottom up.
+func TransformUp(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
+	return TransformUpCtx(node, nil, func(c TransformContext) (sql.Node, error) {
+		return f(c.Node)
+	})
 }
 
 // TransformExpressionsUp applies a transformation function to all expressions
 // on the given tree from the bottom up.
-func TransformExpressionsUpWithNode(ctx *sql.Context, node sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
-	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
-		return TransformExpressionsWithNode(ctx, node, f)
-	}
-
-	children := node.Children()
-	if len(children) == 0 {
-		return TransformExpressionsWithNode(ctx, node, f)
-	}
-
-	newChildren := make([]sql.Node, len(children))
-	for i, c := range children {
-		c, err := TransformExpressionsUpWithNode(ctx, c, f)
-		if err != nil {
-			return nil, err
-		}
-		newChildren[i] = c
-	}
-
-	node, err := node.WithChildren(newChildren...)
-	if err != nil {
-		return nil, err
-	}
-
-	return TransformExpressionsWithNode(ctx, node, f)
+func TransformExpressionsUpWithNode(node sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
+	return TransformUp(node, func(n sql.Node) (sql.Node, error) {
+		return TransformExpressionsWithNode(n, f)
+	})
 }
 
 // TransformExpressionsUp applies a transformation function to all expressions
 // on the given tree from the bottom up.
-func TransformExpressionsUp(ctx *sql.Context, node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
-	if o, ok := node.(sql.OpaqueNode); ok && o.Opaque() {
-		return TransformExpressions(ctx, node, f)
-	}
-
-	children := node.Children()
-	if len(children) == 0 {
-		return TransformExpressions(ctx, node, f)
-	}
-
-	newChildren := make([]sql.Node, len(children))
-	for i, c := range children {
-		c, err := TransformExpressionsUp(ctx, c, f)
-		if err != nil {
-			return nil, err
-		}
-		newChildren[i] = c
-	}
-
-	node, err := node.WithChildren(newChildren...)
-	if err != nil {
-		return nil, err
-	}
-
-	return TransformExpressions(ctx, node, f)
+func TransformExpressionsUp(node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
+	return TransformExpressionsUpWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		return f(e)
+	})
 }
 
 // TransformExpressions applies a transformation function to all expressions
 // on the given node.
-func TransformExpressions(ctx *sql.Context, node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
-	e, ok := node.(sql.Expressioner)
-	if !ok {
-		return node, nil
-	}
-
-	exprs := e.Expressions()
-	if len(exprs) == 0 {
-		return node, nil
-	}
-
-	newExprs := make([]sql.Expression, len(exprs))
-	for i, e := range exprs {
-		e, err := expression.TransformUp(ctx, e, f)
-		if err != nil {
-			return nil, err
-		}
-		newExprs[i] = e
-	}
-
-	return e.WithExpressions(newExprs...)
+func TransformExpressions(node sql.Node, f sql.TransformExprFunc) (sql.Node, error) {
+	return TransformExpressionsWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		return f(e)
+	})
 }
 
 // TransformExpressions applies a transformation function to all expressions
 // on the given node.
-func TransformExpressionsWithNode(ctx *sql.Context, n sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
+func TransformExpressionsWithNode(n sql.Node, f expression.TransformExprWithNodeFunc) (sql.Node, error) {
 	e, ok := n.(sql.Expressioner)
 	if !ok {
 		return n, nil
@@ -220,7 +138,7 @@ func TransformExpressionsWithNode(ctx *sql.Context, n sql.Node, f expression.Tra
 
 	newExprs := make([]sql.Expression, len(exprs))
 	for i, e := range exprs {
-		e, err := expression.TransformUpWithNode(ctx, n, e, f)
+		e, err := expression.TransformUpWithNode(n, e, f)
 		if err != nil {
 			return nil, err
 		}

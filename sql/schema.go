@@ -93,3 +93,13 @@ func (s Schema) HasAutoIncrement() bool {
 
 	return false
 }
+
+func IsKeyless(s Schema) bool {
+	for _, c := range s {
+		if c.PrimaryKey {
+			return false
+		}
+	}
+
+	return true
+}

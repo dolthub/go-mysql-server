@@ -45,7 +45,6 @@ var nilKey, _ = sql.HashOf(sql.NewRow(nil))
 // Eval implements the Expression interface.
 func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	typ := in.Left.Type().Promote()
-	leftElems := sql.NumColumns(typ)
 	left, err := in.Left.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -65,12 +64,12 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch right := in.Right.(type) {
 	case *Subquery:
-		if leftElems > 1 {
-			// TODO: support more than one element in IN
-			return nil, expression.ErrInvalidOperandColumns.New(leftElems, 1)
+		if sql.NumColumns(typ) != sql.NumColumns(right.Type()) {
+			return nil, sql.ErrInvalidOperandColumns.New(sql.NumColumns(typ), sql.NumColumns(right.Type()))
 		}
 
 		typ := right.Type()
+
 		values, err := right.HashMultiple(ctx, row)
 		if err != nil {
 			return nil, err
@@ -115,7 +114,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (in *InSubquery) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+func (in *InSubquery) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}

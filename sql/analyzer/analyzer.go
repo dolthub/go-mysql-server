@@ -52,16 +52,16 @@ type Builder struct {
 	onceAfterRules      []Rule
 	validationRules     []Rule
 	afterAllRules       []Rule
-	catalog             *sql.Catalog
+	provider            sql.DatabaseProvider
 	debug               bool
 	parallelism         int
 }
 
 // NewBuilder creates a new Builder from a specific catalog.
 // This builder allow us add custom Rules and modify some internal properties.
-func NewBuilder(c *sql.Catalog) *Builder {
+func NewBuilder(pro sql.DatabaseProvider) *Builder {
 	return &Builder{
-		catalog:         c,
+		provider:        pro,
 		onceBeforeRules: OnceBeforeDefault,
 		defaultRules:    DefaultRules,
 		onceAfterRules:  OnceAfterDefault,
@@ -158,93 +158,11 @@ func (ab *Builder) RemoveAfterAllRule(name string) *Builder {
 	return ab
 }
 
+var log = logrus.New()
+
 func init() {
-	logrus.SetFormatter(simpleLogFormatter{})
-}
-
-// Build creates a new Analyzer using all previous data setted to the Builder
-func (ab *Builder) Build() *Analyzer {
-	_, debug := os.LookupEnv(debugAnalyzerKey)
-	var batches = []*Batch{
-		&Batch{
-			Desc:       "pre-analyzer",
-			Iterations: maxAnalysisIterations,
-			Rules:      ab.preAnalyzeRules,
-		},
-		&Batch{
-			Desc:       "once-before",
-			Iterations: 1,
-			Rules:      ab.onceBeforeRules,
-		},
-		&Batch{
-			Desc:       "default-rules",
-			Iterations: maxAnalysisIterations,
-			Rules:      ab.defaultRules,
-		},
-		&Batch{
-			Desc:       "once-after",
-			Iterations: 1,
-			Rules:      ab.onceAfterRules,
-		},
-		&Batch{
-			Desc:       "post-analyzer",
-			Iterations: maxAnalysisIterations,
-			Rules:      ab.postAnalyzeRules,
-		},
-		&Batch{
-			Desc:       "pre-validation",
-			Iterations: 1,
-			Rules:      ab.preValidationRules,
-		},
-		&Batch{
-			Desc:       "validation",
-			Iterations: 1,
-			Rules:      ab.validationRules,
-		},
-		&Batch{
-			Desc:       "post-validation",
-			Iterations: 1,
-			Rules:      ab.postValidationRules,
-		},
-		&Batch{
-			Desc:       "after-all",
-			Iterations: 1,
-			Rules:      ab.afterAllRules,
-		},
-	}
-
-	return &Analyzer{
-		Debug:          debug || ab.debug,
-		contextStack:   make([]string, 0),
-		Batches:        batches,
-		Catalog:        ab.catalog,
-		Parallelism:    ab.parallelism,
-		ProcedureCache: NewProcedureCache(),
-	}
-}
-
-// Analyzer analyzes nodes of the execution plan and applies rules and validations
-// to them.
-type Analyzer struct {
-	// Whether to log various debugging messages
-	Debug bool
-	// Whether to output the query plan at each step of the analyzer
-	Verbose bool
-	// A stack of debugger context. See PushDebugContext, PopDebugContext
-	contextStack []string
-	Parallelism  int
-	// Batches of Rules to apply.
-	Batches []*Batch
-	// Catalog of databases and registered functions.
-	Catalog *sql.Catalog
-	// ProcedureCache is a cache of stored procedures.
-	ProcedureCache *ProcedureCache
-}
-
-// NewDefault creates a default Analyzer instance with all default Rules and configuration.
-// To add custom rules, the easiest way is use the Builder.
-func NewDefault(c *sql.Catalog) *Analyzer {
-	return NewBuilder(c).Build()
+	// TODO: give the option for debug analyzer logging format to match the global one
+	log.SetFormatter(simpleLogFormatter{})
 }
 
 type simpleLogFormatter struct{}
@@ -272,15 +190,100 @@ func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	return ([]byte)(msg), nil
 }
 
+// Build creates a new Analyzer using all previous data setted to the Builder
+func (ab *Builder) Build() *Analyzer {
+	_, debug := os.LookupEnv(debugAnalyzerKey)
+	var batches = []*Batch{
+		{
+			Desc:       "pre-analyzer",
+			Iterations: maxAnalysisIterations,
+			Rules:      ab.preAnalyzeRules,
+		},
+		{
+			Desc:       "once-before",
+			Iterations: 1,
+			Rules:      ab.onceBeforeRules,
+		},
+		{
+			Desc:       "default-rules",
+			Iterations: maxAnalysisIterations,
+			Rules:      ab.defaultRules,
+		},
+		{
+			Desc:       "once-after",
+			Iterations: 1,
+			Rules:      ab.onceAfterRules,
+		},
+		{
+			Desc:       "post-analyzer",
+			Iterations: maxAnalysisIterations,
+			Rules:      ab.postAnalyzeRules,
+		},
+		{
+			Desc:       "pre-validation",
+			Iterations: 1,
+			Rules:      ab.preValidationRules,
+		},
+		{
+			Desc:       "validation",
+			Iterations: 1,
+			Rules:      ab.validationRules,
+		},
+		{
+			Desc:       "post-validation",
+			Iterations: 1,
+			Rules:      ab.postValidationRules,
+		},
+		{
+			Desc:       "after-all",
+			Iterations: 1,
+			Rules:      ab.afterAllRules,
+		},
+	}
+
+	return &Analyzer{
+		Debug:          debug || ab.debug,
+		contextStack:   make([]string, 0),
+		Batches:        batches,
+		Catalog:        NewCatalog(ab.provider),
+		Parallelism:    ab.parallelism,
+		ProcedureCache: NewProcedureCache(),
+	}
+}
+
+// Analyzer analyzes nodes of the execution plan and applies rules and validations
+// to them.
+type Analyzer struct {
+	// Whether to log various debugging messages
+	Debug bool
+	// Whether to output the query plan at each step of the analyzer
+	Verbose bool
+	// A stack of debugger context. See PushDebugContext, PopDebugContext
+	contextStack []string
+	Parallelism  int
+	// Batches of Rules to apply.
+	Batches []*Batch
+	// Catalog of databases and registered functions.
+	Catalog sql.Catalog
+	// ProcedureCache is a cache of stored procedures.
+	ProcedureCache *ProcedureCache
+}
+
+// NewDefault creates a default Analyzer instance with all default Rules and configuration.
+// To add custom rules, the easiest way is use the Builder.
+func NewDefault(provider sql.DatabaseProvider) *Analyzer {
+	return NewBuilder(provider).Build()
+}
+
 // Log prints an INFO message to stdout with the given message and args
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
 	if a != nil && a.Debug {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			logrus.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
+			log.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
 		} else {
-			logrus.Infof(msg, args...)
+			log.Infof(msg, args...)
 		}
 	}
 }
@@ -290,9 +293,9 @@ func (a *Analyzer) LogNode(n sql.Node) {
 	if a != nil && n != nil && a.Verbose {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			logrus.Infof("%s:\n%s", ctx, sql.DebugString(n))
+			log.Infof("%s:\n%s", ctx, sql.DebugString(n))
 		} else {
-			logrus.Infof("%s", sql.DebugString(n))
+			log.Infof("%s", sql.DebugString(n))
 		}
 	}
 }
