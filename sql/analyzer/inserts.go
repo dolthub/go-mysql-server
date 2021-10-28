@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -69,7 +71,11 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		dstSchema := insertable.Schema()
 
 		// If no columns are given, use the full schema
-		columnNames := insert.ColumnNames
+		columnNames := make([]string, len(insert.ColumnNames))
+		for i, name := range insert.ColumnNames {
+			columnNames[i] = strings.ToLower(name) // normalize the column name
+		}
+
 		if len(columnNames) == 0 {
 			columnNames = make([]string, len(dstSchema))
 			for i, f := range dstSchema {
@@ -103,7 +109,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, c
 	for i, f := range destTbl.Schema() {
 		found := false
 		for j, col := range columnNames {
-			if f.Name == col {
+			if strings.EqualFold(f.Name, col) {
 				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
 				found = true
 				break
@@ -137,7 +143,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, c
 func validateColumns(columnNames []string, dstSchema sql.Schema) error {
 	dstColNames := make(map[string]struct{})
 	for _, dstCol := range dstSchema {
-		dstColNames[dstCol.Name] = struct{}{}
+		dstColNames[strings.ToLower(dstCol.Name)] = struct{}{}
 	}
 	usedNames := make(map[string]struct{})
 	for _, columnName := range columnNames {
