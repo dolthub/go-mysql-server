@@ -1505,7 +1505,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `UPDATE one_pk INNER JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
+		Query: `UPDATE /*+ JOIN_ORDER(two_pk, one_pk) */ one_pk JOIN two_pk on one_pk.pk = two_pk.pk1 SET two_pk.c1 = two_pk.c1 + 1`,
 		ExpectedPlan: "Update\n" +
 			" └─ Update Join\n" +
 			"     └─ UpdateSource(SET two_pk.c1 = (two_pk.c1 + 1))\n" +

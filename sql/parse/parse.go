@@ -1624,6 +1624,11 @@ func convertUpdate(ctx *sql.Context, d *sqlparser.Update) (sql.Node, error) {
 		return nil, err
 	}
 
+	// If the top level node can store comments and one was provided, store it.
+	if cn, ok := node.(sql.CommentedNode); ok && len(d.Comments) > 0 {
+		node = cn.WithComment(string(d.Comments[0]))
+	}
+
 	updateExprs, err := assignmentExprsToExpressions(ctx, d.Exprs)
 	if err != nil {
 		return nil, err
