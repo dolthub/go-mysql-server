@@ -5674,6 +5674,11 @@ var BrokenQueries = []QueryTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/go-mysql-server/issues/600
+	{
+		Query:    `SELECT json_unquote(json_extract('{"hi":"there"}', '$.nope'))`,
+		Expected: []sql.Row{{nil}}, // currently returns string "null"
+	},
 	// Null-safe and type conversion tuple comparison is not correctly
 	// implemented yet.
 	{
