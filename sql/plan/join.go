@@ -725,7 +725,7 @@ func nodeHasJoin(node sql.Node) bool {
 	hasJoinNode := false
 	Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
-		case JoinNode, *CrossJoin, *IndexedJoinSorter:
+		case JoinNode, *CrossJoin, *IndexedJoin:
 			hasJoinNode = true
 			return false
 		default:

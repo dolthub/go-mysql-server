@@ -122,11 +122,11 @@ func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, e
 		}
 	}
 
-	// Convert the top level indexed join into using the indexed join sorter
+	// Wrap the top level Indexed Join with a Project Node to preserve the original join schema.
 	updated, err := plan.TransformUpCtx(node, topLevelIndexedJoinSelector, func(c plan.TransformContext) (sql.Node, error) {
 		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
-			return plan.NewIndexedJoinSorter(n, oldJoin.Schema()), nil
+			return plan.NewProject(expression.SchemaToGetFields(oldJoin.Schema()), n), nil
 		default:
 			return c.Node, nil
 		}
