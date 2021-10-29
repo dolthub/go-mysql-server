@@ -122,6 +122,7 @@ type Session interface {
 	SetViewRegistry(*ViewRegistry)
 }
 
+// PersistableSession supports serializing/deserializing global system variables/
 type PersistableSession interface {
 	Session
 	// PersistGlobal writes to the persisted global system variables file
@@ -492,8 +493,8 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 	s.tx = tx
 }
 
-// NewSession creates a new session with data.
-func NewSession(server string, client Client, id uint32) *BaseSession {
+// NewBaseSessionWithClientServer creates a new session with data.
+func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	return &BaseSession{
 		addr:          server,
 		client:        client,

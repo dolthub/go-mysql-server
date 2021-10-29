@@ -58,7 +58,7 @@ type Config struct {
 	NoDefaults bool
 }
 
-func (c Config) WithGlobals() (Config, error) {
+func (c Config) NewConfig() (Config, error) {
 	if _, val, ok := sql.SystemVariables.GetGlobal("max_connections"); ok {
 		mc, ok := val.(int64)
 		if !ok {

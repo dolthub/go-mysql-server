@@ -69,7 +69,7 @@ func TestConfigWithDefaults(t *testing.T) {
 				Default: test.Default,
 			}})
 			serverConf := Config{}
-			serverConf, err := serverConf.WithGlobals()
+			serverConf, err := serverConf.NewConfig()
 			assert.NoError(t, err)
 
 			r := reflect.ValueOf(serverConf)

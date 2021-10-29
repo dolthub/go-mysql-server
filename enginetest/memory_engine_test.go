@@ -484,7 +484,7 @@ func TestAddDropPks(t *testing.T) {
 func TestPersist(t *testing.T) {
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
 		persistedGlobals := memory.GlobalsMap{}
-		persistedSess := memory.NewMapPersistedSession(ctx.Session, persistedGlobals)
+		persistedSess := memory.NewInMemoryPersistedSession(ctx.Session, persistedGlobals)
 		return persistedSess
 	}
 	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)

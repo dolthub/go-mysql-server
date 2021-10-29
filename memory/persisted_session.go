@@ -17,18 +17,18 @@ package memory
 import "github.com/dolthub/go-mysql-server/sql"
 
 type GlobalsMap = map[string]interface{}
-type MapPersistedSession struct {
+type InMemoryPersistedSession struct {
 	sql.Session
 	persistedGlobals GlobalsMap
 }
 
-// NewMapPersistedSession is a sql.PersistableSession that writes global variables to an im-memory map
-func NewMapPersistedSession(sess sql.Session, persistedGlobals GlobalsMap) *MapPersistedSession {
-	return &MapPersistedSession{Session: sess, persistedGlobals: persistedGlobals}
+// NewInMemoryPersistedSession is a sql.PersistableSession that writes global variables to an im-memory map
+func NewInMemoryPersistedSession(sess sql.Session, persistedGlobals GlobalsMap) *InMemoryPersistedSession {
+	return &InMemoryPersistedSession{Session: sess, persistedGlobals: persistedGlobals}
 }
 
 // PersistGlobal implements sql.PersistableSession
-func (s *MapPersistedSession) PersistGlobal(sysVarName string, value interface{}) error {
+func (s *InMemoryPersistedSession) PersistGlobal(sysVarName string, value interface{}) error {
 	sysVar, _, ok := sql.SystemVariables.GetGlobal(sysVarName)
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
@@ -42,7 +42,7 @@ func (s *MapPersistedSession) PersistGlobal(sysVarName string, value interface{}
 }
 
 // RemovePersistedGlobal implements sql.PersistableSession
-func (s *MapPersistedSession) RemovePersistedGlobal(sysVarName string) error {
+func (s *InMemoryPersistedSession) RemovePersistedGlobal(sysVarName string) error {
 	if _, _, ok := sql.SystemVariables.GetGlobal(sysVarName); !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}
@@ -51,12 +51,12 @@ func (s *MapPersistedSession) RemovePersistedGlobal(sysVarName string) error {
 }
 
 // RemoveAllPersistedGlobals implements sql.PersistableSession
-func (s *MapPersistedSession) RemoveAllPersistedGlobals() error {
+func (s *InMemoryPersistedSession) RemoveAllPersistedGlobals() error {
 	s.persistedGlobals = GlobalsMap{}
 	return nil
 }
 
 // RemoveAllPersistedGlobals implements sql.PersistableSession
-func (s *MapPersistedSession) GetPersistedValue(k string) (interface{}, error) {
+func (s *InMemoryPersistedSession) GetPersistedValue(k string) (interface{}, error) {
 	return s.persistedGlobals[k], nil
 }
