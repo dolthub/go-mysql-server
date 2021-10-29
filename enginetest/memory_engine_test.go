@@ -494,6 +494,15 @@ func TestAddDropPks(t *testing.T) {
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestPersist(t *testing.T) {
+	newSess := func(ctx *sql.Context) sql.PersistableSession {
+		persistedGlobals := memory.GlobalsMap{}
+		persistedSess := memory.NewInMemoryPersistedSession(ctx.Session, persistedGlobals)
+		return persistedSess
+	}
+	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
+}
+
 func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {

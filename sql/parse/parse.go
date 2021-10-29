@@ -2938,9 +2938,15 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Exp
 			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Global)
 			res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_Persist:
-			return nil, sql.ErrUnsupportedFeature.New("PERSIST")
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Persist)
+			res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_PersistOnly:
-			return nil, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_PersistOnly)
+			res[i] = expression.NewSetField(varToSet, innerExpr)
+			// TODO reset persist
+		//case sqlparser.SetScope_ResetPersist:
+		//	varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_ResetPersist)
+		//	res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_Session:
 			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Session)
 			res[i] = expression.NewSetField(varToSet, innerExpr)

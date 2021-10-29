@@ -30,6 +30,12 @@ const (
 	SystemVariableScope_Session
 	// SystemVariableScope_Both is set when the system variable exists in both the global and session contexts.
 	SystemVariableScope_Both
+	// SystemVariableScope_Persist is set when the system variable is global and persisted.
+	SystemVariableScope_Persist
+	// SystemVariableScope_PersistOnly is set when the system variable is persisted outside of server context.
+	SystemVariableScope_PersistOnly
+	// SystemVariableScope_ResetPersist is used to remove a persisted variable
+	SystemVariableScope_ResetPersist
 )
 
 // String returns the scope as an uppercase string.
@@ -39,6 +45,12 @@ func (s SystemVariableScope) String() string {
 		return "GLOBAL"
 	case SystemVariableScope_Session:
 		return "SESSION"
+	case SystemVariableScope_Persist:
+		return "GLOBAL, PERSIST"
+	case SystemVariableScope_PersistOnly:
+		return "PERSIST"
+	case SystemVariableScope_ResetPersist:
+		return "RESET PERSIST"
 	case SystemVariableScope_Both:
 		return "GLOBAL, SESSION"
 	default:
@@ -159,11 +171,16 @@ func (sv *globalSystemVariables) SetGlobal(name string, val interface{}) error {
 	return nil
 }
 
-// init initializes SystemVariables as it functions as a global variable.
-func init() {
+// InitSystemVariables resets the systemVars singleton
+func InitSystemVariables() {
 	for _, sysVar := range systemVars {
 		SystemVariables.sysVarVals[sysVar.Name] = sysVar.Default
 	}
+}
+
+// init initializes SystemVariables as it functions as a global variable.
+func init() {
+	InitSystemVariables()
 }
 
 //TODO: Add from the following sources because MySQL likes to not have every variable on a single page:

@@ -28,7 +28,7 @@ func TestProcessList(t *testing.T) {
 	require := require.New(t)
 
 	p := NewProcessList()
-	sess := sql.NewSession("0.0.0.0:3306", sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.AddProcess(ctx, "SELECT foo")
 	require.NoError(err)
@@ -121,8 +121,8 @@ func sortByPid(slice []sql.Process) {
 func TestKillConnection(t *testing.T) {
 	pl := NewProcessList()
 
-	s1 := sql.NewSession("", sql.Client{}, 1)
-	s2 := sql.NewSession("", sql.Client{}, 2)
+	s1 := sql.NewBaseSessionWithClientServer("", sql.Client{}, 1)
+	s2 := sql.NewBaseSessionWithClientServer("", sql.Client{}, 2)
 
 	var killed = make(map[uint64]bool)
 	for i := uint64(1); i <= 3; i++ {

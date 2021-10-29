@@ -187,7 +187,7 @@ func TestShowProcessList(t *testing.T) {
 	addr := "127.0.0.1:34567"
 
 	p := sqle.NewProcessList()
-	sess := sql.NewSession("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr, User: "foo"}, 1)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
 	ctx, err := p.AddProcess(ctx, "SELECT foo")
