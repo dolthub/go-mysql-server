@@ -65,8 +65,6 @@ func newPersistedSqlContext() (*sql.Context, memory.GlobalsMap) {
 }
 
 func TestPersistedSessionSetIterator(t *testing.T) {
-	require := require.New(t)
-
 	setTests := []struct {
 		title        string
 		name         string
@@ -98,7 +96,7 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 				assert.True(t, test.err.Is(err))
 				return
 			} else {
-				require.NoError(err)
+				assert.NoError(t, err)
 			}
 
 			res := globals[test.name]

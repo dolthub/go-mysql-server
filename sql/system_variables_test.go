@@ -46,7 +46,6 @@ var newUnknown = SystemVariable{
 }
 
 func TestInitSystemVariablesWithDefaults(t *testing.T) {
-
 	tests := []struct {
 		name             string
 		persistedGlobals []SystemVariable

@@ -171,6 +171,7 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 			return err
 		}
 	case sql.SystemVariableScope_ResetPersist:
+		// TODO: add parser support for RESET PERSIST
 		persistSess, ok := ctx.Session.(sql.PersistableSession)
 		if !ok {
 			return sql.ErrSessionDoesNotSupportPersistence.New()
