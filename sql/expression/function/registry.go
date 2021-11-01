@@ -151,6 +151,7 @@ var BuiltIns = []sql.Function{
 	sql.Function2{Name: "repeat", Fn: NewRepeat},
 	sql.Function3{Name: "replace", Fn: NewReplace},
 	sql.Function1{Name: "reverse", Fn: NewReverse},
+	sql.Function2{Name: "right", Fn: NewRight},
 	sql.FunctionN{Name: "round", Fn: NewRound},
 	sql.Function0{Name: "row_count", Fn: NewRowCount},
 	sql.Function0{Name: "row_number", Fn: window.NewRowNumber},
