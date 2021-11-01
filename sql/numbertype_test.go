@@ -34,8 +34,8 @@ func TestNumberCompare(t *testing.T) {
 		val2        interface{}
 		expectedCmp int
 	}{
-		{Int8, nil, 0, -1},
-		{Uint24, 0, nil, 1},
+		{Int8, nil, 0, 1},
+		{Uint24, 0, nil, -1},
 		{Float64, nil, nil, 0},
 
 		{Boolean, 0, 1, -1},

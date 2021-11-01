@@ -30,8 +30,8 @@ func TestBitCompare(t *testing.T) {
 		val2        interface{}
 		expectedCmp int
 	}{
-		{MustCreateBitType(1), nil, 0, -1},
-		{MustCreateBitType(1), 0, nil, 1},
+		{MustCreateBitType(1), nil, 0, 1},
+		{MustCreateBitType(1), 0, nil, -1},
 		{MustCreateBitType(1), nil, nil, 0},
 		{MustCreateBitType(1), 0, 1, -1},
 		{MustCreateBitType(10), 0, true, -1},

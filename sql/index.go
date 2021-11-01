@@ -14,15 +14,12 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+)
 
-// Index is the basic representation of an index. It can be extended with
-// more functionality by implementing more specific interfaces.
+// Index is the representation of an index, and also creates an IndexLookup when given a collection of ranges.
 type Index interface {
-	// Get returns an IndexLookup for the given key in the index.
-	Get(key ...interface{}) (IndexLookup, error)
-	// Has checks if the given key is present in the index.
-	Has(partition Partition, key ...interface{}) (bool, error)
 	// ID returns the identifier of the index.
 	ID() string
 	// Database returns the database name this index belongs to.
@@ -42,61 +39,32 @@ type Index interface {
 	// IsGenerated returns whether this index was generated. Generated indexes
 	// are used for index access, but are not displayed (such as with SHOW INDEXES).
 	IsGenerated() bool
+	// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns (RangeColumns),
+	// and it is possible for ranges to overlap (however they will not be subsets of one another). Each Range
+	// is ordered by the column expressions (as returned by Expressions) with the RangeColumn representing the
+	// searchable area for each column expression. Multiple RangeColumnExprs per RangeColumn are equivalent to the union
+	// of those RangeColumnExprs, e.g. (x < 1 OR x > 10) will return two RangeColumnExprs, where matching either is
+	// valid for the column "x". If an integrator is unable to process the given ranges, then a nil may be returned. An
+	// error should be returned only in the event that an error occurred.
+	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
+	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
+	// match the string returned from Index.Expressions().
+	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
-// AscendIndex is an index that is sorted in ascending order.
-type AscendIndex interface {
-	// AscendGreaterOrEqual returns an IndexLookup for keys that are greater
-	// or equal to the given keys.
-	AscendGreaterOrEqual(keys ...interface{}) (IndexLookup, error)
-	// AscendLessThan returns an IndexLookup for keys that are less than the
-	// given keys.
-	AscendLessThan(keys ...interface{}) (IndexLookup, error)
-	// AscendRange returns an IndexLookup for keys that are within the given
-	// range.
-	AscendRange(greaterOrEqual, lessThan []interface{}) (IndexLookup, error)
-}
-
-// DescendIndex is an index that is sorted in descending order.
-type DescendIndex interface {
-	// DescendGreater returns an IndexLookup for keys that are greater
-	// than the given keys.
-	DescendGreater(keys ...interface{}) (IndexLookup, error)
-	// DescendLessOrEqual returns an IndexLookup for keys that are less than or
-	// equal to the given keys.
-	DescendLessOrEqual(keys ...interface{}) (IndexLookup, error)
-	// DescendRange returns an IndexLookup for keys that are within the given
-	// range.
-	DescendRange(lessOrEqual, greaterThan []interface{}) (IndexLookup, error)
-}
-
-// NegateIndex is an index that supports retrieving negated values.
-type NegateIndex interface {
-	// Not returns an IndexLookup for keys that are not equal
-	// to the given keys.
-	Not(keys ...interface{}) (IndexLookup, error)
-}
-
-// IndexLookup is the implementation-specific definition of an index lookup, created by calls to Index.Get(). The
-// IndexLookup must contain all necessary information to retrieve exactly the rows in the table specified by key(s)
-// specified in Index.Get(). Implementors are responsible for all semantics of correctly returning rows that match an
-// index lookup. By default, only a single index can be used for a given table access. Implementors can implement the
-// Mergeable interface to optionally allow IndexLookups to be merged with others.
+// IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
+// information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
+// Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
 type IndexLookup interface {
 	fmt.Stringer
+	// Index returns the index that created this IndexLookup.
+	Index() Index
+	// Ranges returns each Range that created this IndexLookup.
+	Ranges() RangeCollection
 }
 
-// MergeableIndexLookup is a specialization of IndexLookup that allows IndexLookups to be merged together. This allows
-// multiple indexes to be used for a single table access, if the implementor can support it via merging the lookups of
-// the two indexes.
-type MergeableIndexLookup interface {
-	IndexLookup
-	// IsMergeable checks whether the current IndexLookup can be merged with the given one. If true, then all other
-	// methods in the interface are expected to return a new IndexLookup that represents the given set operation of the
-	// two operands.
-	IsMergeable(IndexLookup) bool
-	// Intersection returns a new IndexLookup with the intersection of the current IndexLookup and the ones given.
-	Intersection(...IndexLookup) (IndexLookup, error)
-	// Union returns a new IndexLookup with the union of the current IndexLookup and the ones given.
-	Union(...IndexLookup) (IndexLookup, error)
+// ColumnExpressionType returns a column expression along with its Type.
+type ColumnExpressionType struct {
+	Expression string
+	Type       Type
 }

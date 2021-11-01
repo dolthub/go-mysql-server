@@ -32,8 +32,8 @@ func TestEnumCompare(t *testing.T) {
 		val2        interface{}
 		expectedCmp int
 	}{
-		{[]string{"one", "two"}, Collation_Default, nil, 1, -1},
-		{[]string{"one", "two"}, Collation_Default, "one", nil, 1},
+		{[]string{"one", "two"}, Collation_Default, nil, 1, 1},
+		{[]string{"one", "two"}, Collation_Default, "one", nil, -1},
 		{[]string{"one", "two"}, Collation_Default, nil, nil, 0},
 		{[]string{"one", "two"}, Collation_Default, 1, "two", -1},
 		{[]string{"one", "two"}, Collation_Default, 2, []byte("one"), 1},

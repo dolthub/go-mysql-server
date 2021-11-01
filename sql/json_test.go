@@ -33,11 +33,11 @@ func TestJsonCompare(t *testing.T) {
 		{`[0]`, `{"a": 0}`, 1},
 		{`{"a": 0}`, `"a"`, 1},
 		{`"a"`, `0`, 1},
-		{`0`, `null`, 1},
+		{`0`, `null`, -1},
 
 		// null
-		{`null`, `0`, -1},
-		{`0`, `null`, 1},
+		{`null`, `0`, 1},
+		{`0`, `null`, -1},
 		{`null`, `null`, 0},
 
 		// boolean

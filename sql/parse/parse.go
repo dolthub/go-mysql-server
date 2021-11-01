@@ -1196,7 +1196,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 		var comment string
 		for _, option := range ddl.IndexSpec.Options {
-			if option.Name == sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD) {
+			if strings.ToLower(option.Name) == strings.ToLower(sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD)) {
 				comment = string(option.Value.Val)
 			}
 		}

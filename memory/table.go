@@ -484,7 +484,7 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 		return nil, err
 	}
 
-	if cmp > 0 {
+	if cmp > 0 && insertVal != nil {
 		t.autoIncVal = insertVal
 	}
 
@@ -815,7 +815,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 				idx, field := t.getField(column.Name)
 				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 			}
-			indexes = append(indexes, &MergeableIndex{
+			indexes = append(indexes, &Index{
 				DB:         "",
 				DriverName: "",
 				Tbl:        t,
@@ -939,17 +939,15 @@ func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint s
 		exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 	}
 
-	return &UnmergeableIndex{
-		MergeableIndex{
-			DB:         "",
-			DriverName: "",
-			Tbl:        t,
-			TableName:  t.name,
-			Exprs:      exprs,
-			Name:       name,
-			Unique:     constraint == sql.IndexConstraint_Unique,
-			CommentStr: comment,
-		},
+	return &Index{
+		DB:         "",
+		DriverName: "",
+		Tbl:        t,
+		TableName:  t.name,
+		Exprs:      exprs,
+		Name:       name,
+		Unique:     constraint == sql.IndexConstraint_Unique,
+		CommentStr: comment,
 	}, nil
 }
 

@@ -106,8 +106,8 @@ func TestDecimalCompare(t *testing.T) {
 		val2        interface{}
 		expectedCmp int
 	}{
-		{1, 0, nil, 0, -1},
-		{1, 0, 0, nil, 1},
+		{1, 0, nil, 0, 1},
+		{1, 0, 0, nil, -1},
 		{1, 0, nil, nil, 0},
 		{1, 0, "-3.2", 2, -1},
 		{1, 1, ".738193", .6948274, 0},

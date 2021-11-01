@@ -31,6 +31,7 @@ type MemoryHarness struct {
 	indexDriverInitializer IndexDriverInitalizer
 	driver                 sql.IndexDriver
 	nativeIndexSupport     bool
+	skippedQueries         map[string]struct{}
 	session                sql.Session
 }
 
@@ -53,6 +54,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		indexDriverInitializer: indexDriverInitalizer,
 		parallelism:            parallelism,
 		nativeIndexSupport:     useNativeIndexes,
+		skippedQueries:         make(map[string]struct{}),
 	}
 }
 
@@ -60,15 +62,15 @@ func NewDefaultMemoryHarness() *MemoryHarness {
 	return NewMemoryHarness("default", 1, testNumPartitions, true, nil)
 }
 
-var skippedQueries = []string{}
-
 func (m *MemoryHarness) SkipQueryTest(query string) bool {
-	for _, skippedQuery := range skippedQueries {
-		if strings.Contains(strings.ToLower(query), strings.ToLower(skippedQuery)) {
-			return true
-		}
+	_, ok := m.skippedQueries[strings.ToLower(query)]
+	return ok
+}
+
+func (m *MemoryHarness) QueriesToSkip(queries ...string) {
+	for _, query := range queries {
+		m.skippedQueries[strings.ToLower(query)] = struct{}{}
 	}
-	return false
 }
 
 func NewSkippingMemoryHarness() *SkippingMemoryHarness {

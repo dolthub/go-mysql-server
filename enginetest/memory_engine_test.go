@@ -53,7 +53,6 @@ var numPartitionsVals = []int{
 }
 var indexBehaviors = []*indexBehaviorTestParams{
 	{"none", nil, false},
-	{"unmergableIndexes", unmergableIndexDriver, false},
 	{"mergableIndexes", mergableIndexDriver, false},
 	{"nativeIndexes", nil, true},
 	{"nativeAndMergable", mergableIndexDriver, true},
@@ -156,6 +155,37 @@ func TestSingleScript(t *testing.T) {
 	}
 }
 
+func TestUnbuildableIndex(t *testing.T) {
+	var scripts = []enginetest.ScriptTest{
+		{
+			Name: "Failing index builder still returning correct results",
+			SetUpScript: []string{
+				"CREATE TABLE mytable2 (i BIGINT PRIMARY KEY, s VARCHAR(20))",
+				"CREATE UNIQUE INDEX mytable2_s ON mytable2 (s)",
+				fmt.Sprintf("CREATE INDEX mytable2_i_s ON mytable2 (i, s) COMMENT '%s'", memory.CommentPreventingIndexBuilding),
+				"INSERT INTO mytable2 VALUES (1, 'first row'), (2, 'second row'), (3, 'third row')",
+			},
+			Assertions: []enginetest.ScriptTestAssertion{
+				{
+					Query: "SELECT i FROM mytable2 WHERE i IN (SELECT i FROM mytable2) ORDER BY i",
+					Expected: []sql.Row{
+						{1},
+						{2},
+						{3},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range scripts {
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		engine := enginetest.NewEngine(t, harness)
+
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
+}
+
 func TestBrokenQueries(t *testing.T) {
 	enginetest.RunQueryTests(t, enginetest.NewSkippingMemoryHarness(), enginetest.BrokenQueries)
 }
@@ -189,7 +219,6 @@ func TestVersionedQueries(t *testing.T) {
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
-		{"unmergableIndexes", unmergableIndexDriver, true},
 		{"nativeIndexes", nil, true},
 		{"nativeAndMergable", mergableIndexDriver, true},
 	}
@@ -197,6 +226,8 @@ func TestQueryPlans(t *testing.T) {
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			// The IN expression requires mergeable indexes meaning that an unmergeable index returns a different result, so we skip this test
+			harness.QueriesToSkip("SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i in (1, 2, 3, 4)")
 			enginetest.TestQueryPlans(t, harness)
 		})
 	}
@@ -503,53 +534,6 @@ func TestPersist(t *testing.T) {
 	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
 }
 
-func unmergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
-	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
-		"mytable": {
-			newUnmergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false)),
-			newUnmergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-			newUnmergableIndex(dbs, "mytable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "mytable", "i", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "mytable", "s", false)),
-		},
-		"othertable": {
-			newUnmergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false)),
-			newUnmergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-			newUnmergableIndex(dbs, "othertable",
-				expression.NewGetFieldWithTable(0, sql.Text, "othertable", "s2", false),
-				expression.NewGetFieldWithTable(1, sql.Text, "othertable", "i2", false)),
-		},
-		"bigtable": {
-			newUnmergableIndex(dbs, "bigtable",
-				expression.NewGetFieldWithTable(0, sql.Text, "bigtable", "t", false)),
-		},
-		"floattable": {
-			newUnmergableIndex(dbs, "floattable",
-				expression.NewGetFieldWithTable(2, sql.Text, "floattable", "f64", false)),
-		},
-		"niltable": {
-			newUnmergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(0, sql.Int64, "niltable", "i", false)),
-			newUnmergableIndex(dbs, "niltable",
-				expression.NewGetFieldWithTable(1, sql.Int64, "niltable", "i2", true)),
-		},
-		"one_pk": {
-			newUnmergableIndex(dbs, "one_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "one_pk", "pk", false)),
-		},
-		"two_pk": {
-			newUnmergableIndex(dbs, "two_pk",
-				expression.NewGetFieldWithTable(0, sql.Int8, "two_pk", "pk1", false),
-				expression.NewGetFieldWithTable(1, sql.Int8, "two_pk", "pk2", false),
-			),
-		},
-	})
-}
-
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
@@ -597,28 +581,12 @@ func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	})
 }
 
-func newUnmergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.UnmergeableIndex {
+func newMergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.Index {
 	db, table := findTable(dbs, tableName)
 	if db == nil {
 		return nil
 	}
-	return &memory.UnmergeableIndex{
-		memory.MergeableIndex{
-			DB:         db.Name(),
-			DriverName: memory.IndexDriverId,
-			TableName:  tableName,
-			Tbl:        table.(*memory.Table),
-			Exprs:      exprs,
-		},
-	}
-}
-
-func newMergableIndex(dbs []sql.Database, tableName string, exprs ...sql.Expression) *memory.MergeableIndex {
-	db, table := findTable(dbs, tableName)
-	if db == nil {
-		return nil
-	}
-	return &memory.MergeableIndex{
+	return &memory.Index{
 		DB:         db.Name(),
 		DriverName: memory.IndexDriverId,
 		TableName:  tableName,

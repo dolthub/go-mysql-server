@@ -724,9 +724,9 @@ func compareNulls(a interface{}, b interface{}) (bool, int) {
 	if aIsNull && bIsNull {
 		return true, 0
 	} else if aIsNull && !bIsNull {
-		return true, -1
-	} else if !aIsNull && bIsNull {
 		return true, 1
+	} else if !aIsNull && bIsNull {
+		return true, -1
 	}
 	return false, 0
 }

@@ -34,8 +34,8 @@ func TestStringCompare(t *testing.T) {
 		val2        interface{}
 		expectedCmp int
 	}{
-		{MustCreateBinary(sqltypes.Binary, 10), nil, 0, -1},
-		{MustCreateStringWithDefaults(sqltypes.Text, 10), 0, nil, 1},
+		{MustCreateBinary(sqltypes.Binary, 10), nil, 0, 1},
+		{MustCreateStringWithDefaults(sqltypes.Text, 10), 0, nil, -1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), nil, nil, 0},
 
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), 0, 1, -1},

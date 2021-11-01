@@ -54,6 +54,14 @@ type decimalType struct {
 	scale               uint8
 }
 
+// InternalDecimalType is a special DecimalType that is used internally for Decimal comparisons. Not intended for usage
+// from integrators.
+var InternalDecimalType DecimalType = decimalType{
+	exclusiveUpperBound: decimal.New(1, int32(65)),
+	precision:           95,
+	scale:               30,
+}
+
 // CreateDecimalType creates a DecimalType.
 func CreateDecimalType(precision uint8, scale uint8) (DecimalType, error) {
 	if precision > DecimalTypeMaxPrecision {

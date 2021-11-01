@@ -81,6 +81,14 @@ func (i *dummyLookup) Values(partition sql.Partition) (sql.IndexValueIter, error
 	return &dummyLookupIter{values: values}, nil
 }
 
+func (i *dummyLookup) Index() sql.Index {
+	panic("not implemented")
+}
+
+func (i *dummyLookup) Ranges() sql.RangeCollection {
+	panic("not implemented")
+}
+
 type dummyLookupIter struct {
 	values []*memory.IndexValue
 	pos    int
