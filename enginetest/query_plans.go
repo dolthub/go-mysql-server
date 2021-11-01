@@ -906,11 +906,9 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1`,
 		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
-			" └─ LeftJoin(one_pk.pk = two_pk.pk1)\n" +
-			"     ├─ Projected table access on [pk]\n" +
-			"     │   └─ Table(one_pk)\n" +
-			"     └─ Projected table access on [pk1 pk2]\n" +
-			"         └─ Table(two_pk)\n" +
+			" └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -1028,6 +1026,14 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1`,
 		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
 			" └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+			"     ├─ Table(one_pk)\n" +
+			"     └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT /*+ JOIN_ORDER(two_pk, one_pk) */ pk,pk1,pk2 FROM one_pk JOIN two_pk ON pk=pk1`,
+		ExpectedPlan: "Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
+			" └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
 			"     ├─ Table(two_pk)\n" +
 			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
@@ -1109,8 +1115,8 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
-			"         ├─ Table(two_pk)\n" +
-			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -1118,10 +1124,10 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ Table(two_pk)\n" +
-			"         └─ TableAlias(opk)\n" +
-			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ Table(one_pk)\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -1129,10 +1135,10 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
 			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
-			"         ├─ TableAlias(tpk)\n" +
-			"         │   └─ Table(two_pk)\n" +
-			"         └─ TableAlias(opk)\n" +
-			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ Table(one_pk)\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -1274,11 +1280,9 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk LEFT JOIN two_pk ON pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
-			"     └─ LeftJoin(one_pk.pk = two_pk.pk1)\n" +
-			"         ├─ Projected table access on [pk]\n" +
-			"         │   └─ Table(one_pk)\n" +
-			"         └─ Projected table access on [pk1 pk2]\n" +
-			"             └─ Table(two_pk)\n" +
+			"     └─ LeftIndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -1373,7 +1377,7 @@ var PlanTests = []QueryPlanTest{
 			"         └─ Filter((t2.pk2 = 1) AND (t2.pk1 = 1))\n" +
 			"             └─ Projected table access on [pk1 pk2]\n" +
 			"                 └─ TableAlias(t2)\n" +
-			"                     └─ Table(two_pk)\n" +
+			"                     └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{

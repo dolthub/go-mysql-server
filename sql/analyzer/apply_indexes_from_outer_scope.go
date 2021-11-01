@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -142,6 +143,9 @@ func getOuterScopeIndexes(
 		return true
 	})
 
+	if err != nil {
+		return nil, err
+	}
 	if len(indexes) == 0 {
 		return nil, nil
 	}
@@ -151,7 +155,10 @@ func getOuterScopeIndexes(
 	for table, idx := range indexes {
 		if exprsByTable[table] != nil {
 			// creating a key expression can fail in some cases, just skip this table
-			keyExpr := createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases)
+			keyExpr, err := createIndexKeyExpr(ctx, idx, exprsByTable[table], tableAliases)
+			if err != nil {
+				return nil, err
+			}
 			if keyExpr == nil {
 				continue
 			}
@@ -168,24 +175,34 @@ func getOuterScopeIndexes(
 }
 
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
-func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases) []sql.Expression {
+func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, error) {
+	// To allow partial matching, we need to see if the expressions are a prefix of the index
+	idxExpressions := idx.Expressions()
+	normalizedJoinExprStrs := make([]string, len(joinExprs))
+	for i := range joinExprs {
+		normalizedJoinExprStrs[i] = normalizeExpression(ctx, tableAliases, joinExprs[i].colExpr).String()
+	}
+	if !exprsAreIndexPrefix(normalizedJoinExprStrs, idxExpressions) {
+		return nil, nil
+	}
+	// Since the expressions are a prefix, we cut the index expressions we are using to just those involved
+	idxPrefixExpressions := idxExpressions[:len(normalizedJoinExprStrs)]
 
-	keyExprs := make([]sql.Expression, len(idx.Expressions()))
-
+	keyExprs := make([]sql.Expression, len(idxPrefixExpressions))
 IndexExpressions:
-	for i, idxExpr := range idx.Expressions() {
+	for i, idxExpr := range idxPrefixExpressions {
 		for j := range joinExprs {
-			if idxExpr == normalizeExpression(ctx, tableAliases, joinExprs[j].colExpr).String() {
+			if idxExpr == normalizedJoinExprStrs[j] {
 				keyExprs[i] = joinExprs[j].comparand
 				continue IndexExpressions
 			}
 		}
 
-		// If we finished the loop, we didn't match this index expression
-		return nil
+		return nil, fmt.Errorf("index `%s` reported having prefix of `%v` but has expressions `%v`",
+			idx.ID(), normalizedJoinExprStrs, idxExpressions)
 	}
 
-	return keyExprs
+	return keyExprs, nil
 }
 
 func getSubqueryIndexes(
@@ -234,7 +251,7 @@ func getSubqueryIndexes(
 		indexCols := exprsByTable[scopeTable]
 		if indexCols != nil {
 			table := indexCols[0].comparandCol.Table()
-			idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table,
+			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table,
 				normalizeExpressions(ctx, tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
 				result[table] = idx

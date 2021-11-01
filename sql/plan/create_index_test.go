@@ -389,13 +389,15 @@ func (i *mockIndex) Expressions() []string {
 	return exprs
 }
 
-func (i *mockIndex) Get(key ...interface{}) (sql.IndexLookup, error) {
+func (*mockIndex) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
 	panic("unimplemented")
 }
-func (i *mockIndex) Has(sql.Partition, ...interface{}) (bool, error) {
+func (*mockIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
 	panic("unimplemented")
 }
-func (*mockIndex) Driver() string { return "mock" }
+
+func (*mockIndex) Build(ctx *sql.Context) (sql.IndexLookup, error) { panic("unimplemented") }
+func (*mockIndex) Driver() string                                  { return "mock" }
 
 type mockDriver struct {
 	config  map[string]map[string]string

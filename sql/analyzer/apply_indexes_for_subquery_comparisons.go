@@ -68,12 +68,15 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 		return nil
 	}
 	defer indexes.releaseUsedIndexes()
-	idx := indexes.IndexByExpression(ctx, ctx.GetCurrentDatabase(), rt.Name(), normalizeExpressions(ctx, tableAliases, gf)...)
+	idx := indexes.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rt.Name(), normalizeExpressions(ctx, tableAliases, gf)...)
 	if idx == nil {
 		return nil
 	}
 	keyExpr := gf.WithIndex(0)
 	ita := plan.NewIndexedTableAccess(rt, idx, []sql.Expression{keyExpr})
+	if canBuildIndex, err := ita.CanBuildIndex(ctx); err != nil || !canBuildIndex {
+		return nil
+	}
 	return plan.NewIndexedInSubqueryFilter(subq, ita, len(node.Child.Schema()), gf, equals)
 }
 

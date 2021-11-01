@@ -33,8 +33,8 @@ func TestDatetimeCompare(t *testing.T) {
 		val2        interface{}
 		expectedCmp int
 	}{
-		{Date, nil, 0, -1},
-		{Datetime, 0, nil, 1},
+		{Date, nil, 0, 1},
+		{Datetime, 0, nil, -1},
 		{Timestamp, nil, nil, 0},
 
 		{Date, time.Date(2012, 12, 12, 12, 12, 12, 12, time.UTC),

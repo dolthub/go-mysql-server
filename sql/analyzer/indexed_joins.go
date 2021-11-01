@@ -435,12 +435,17 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
 // RowIter method of an IndexedTableAccess node. Column expressions must match the declared column order of the index.
 func createIndexLookupKeyExpression(ctx *sql.Context, ji *joinIndex, tableAliases TableAliases) []sql.Expression {
+	idxExprs := ji.index.Expressions()
+	count := len(idxExprs)
+	if count > len(ji.cols) {
+		count = len(ji.cols)
+	}
+	keyExprs := make([]sql.Expression, count)
 
-	keyExprs := make([]sql.Expression, len(ji.index.Expressions()))
 IndexExpressions:
-	for i, idxExpr := range ji.index.Expressions() {
+	for i := 0; i < count; i++ {
 		for j, col := range ji.cols {
-			if idxExpr == normalizeExpression(ctx, tableAliases, col).String() {
+			if idxExprs[i] == normalizeExpression(ctx, tableAliases, col).String() {
 				keyExprs[i] = ji.comparandExprs[j]
 				continue IndexExpressions
 			}
@@ -761,8 +766,8 @@ func getEqualityIndexes(
 	}
 
 	leftIdx, rightIdx :=
-		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), leftCol.col.Table(), normalizeExpressions(ctx, tableAliases, cond.Left())...),
-		ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), rightCol.col.Table(), normalizeExpressions(ctx, tableAliases, cond.Right())...)
+		ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), leftCol.col.Table(), normalizeExpressions(ctx, tableAliases, cond.Left())...),
+		ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), rightCol.col.Table(), normalizeExpressions(ctx, tableAliases, cond.Right())...)
 
 	// Figure out which table is on the left and right in the join
 	leftJoinPosition := plan.JoinTypeLeft
@@ -813,13 +818,13 @@ func getJoinIndex(
 	indexesByTable := make(joinIndexesByTable)
 	for table, cols := range exprsByTable {
 		exprs := extractExpressions(cols)
-		idx := ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, exprs...)...)
+		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, exprs...)...)
 		// If we do not find a perfect index, we take the first single column partial index if there is one.
 		// This currently only finds single column indexes. A better search would look for the most complete
 		// index available, covering the columns with the most specificity / highest cardinality.
 		if idx == nil && len(exprs) > 1 {
 			for _, e := range exprs {
-				idx = ia.IndexByExpression(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, e)...)
+				idx = ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, e)...)
 				if idx != nil {
 					break
 				}
