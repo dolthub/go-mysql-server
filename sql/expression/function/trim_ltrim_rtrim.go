@@ -110,14 +110,14 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// remove from left
 	if dir_text == "l" || dir_text == "b" {
-		for start < end && str_text[start:start+n] == pat_text {
+		for start+n < end && str_text[start:start+n] == pat_text {
 			start += n
 		}
 	}
 
 	// remove from right
 	if dir_text == "r" || dir_text == "b" {
-		for start < end && str_text[end-n:end] == pat_text {
+		for start+n < end && str_text[end-n:end] == pat_text {
 			end -= n
 		}
 	}
