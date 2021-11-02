@@ -17,8 +17,11 @@ package function
 import (
 	"fmt"
 	"reflect"
+	"strings"
+	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 type Trim struct {
@@ -114,7 +117,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// remove from right
-	if dir_text == "l" || dir_text == "b" {
+	if dir_text == "r" || dir_text == "b" {
 		for start < end && str_text[end-n:end] == pat_text {
 			end -= n
 		}
@@ -143,6 +146,104 @@ func (t Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 3)
 	}
 	return NewTrim(children[0], children[1], children[2]), nil
+}
+
+type LeftTrim struct {
+	expression.UnaryExpression
+}
+
+func NewLeftTrim(str sql.Expression) sql.Expression {
+	return &LeftTrim{expression.UnaryExpression{Child: str}}
+}
+
+var _ sql.FunctionExpression = (*LeftTrim)(nil)
+
+func (t *LeftTrim) FunctionName() string {
+	return "ltrim"
+}
+
+func (t *LeftTrim) Type() sql.Type { return sql.LongText }
+
+func (t *LeftTrim) String() string {
+	return fmt.Sprintf("ltrim(%s)", t.Child)
+}
+
+func (t *LeftTrim) IsNullable() bool {
+	return t.Child.IsNullable()
+}
+
+func (t *LeftTrim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+	return NewLeftTrim(children[0]), nil
+}
+
+func (t *LeftTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := t.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if str == nil {
+		return nil, nil
+	}
+
+	str, err = sql.LongText.Convert(str)
+	if err != nil {
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
+	}
+
+	return strings.TrimLeftFunc(str.(string), unicode.IsSpace), nil
+}
+
+type RightTrim struct {
+	expression.UnaryExpression
+}
+
+func NewRightTrim(str sql.Expression) sql.Expression {
+	return &RightTrim{expression.UnaryExpression{Child: str}}
+}
+
+var _ sql.FunctionExpression = (*RightTrim)(nil)
+
+func (t *RightTrim) FunctionName() string {
+	return "rtrim"
+}
+
+func (t *RightTrim) Type() sql.Type { return sql.LongText }
+
+func (t *RightTrim) String() string {
+	return fmt.Sprintf("rtrim(%s)", t.Child)
+}
+
+func (t *RightTrim) IsNullable() bool {
+	return t.Child.IsNullable()
+}
+
+func (t *RightTrim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+	return NewRightTrim(children[0]), nil
+}
+
+func (t *RightTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := t.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if str == nil {
+		return nil, nil
+	}
+
+	str, err = sql.LongText.Convert(str)
+	if err != nil {
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
+	}
+
+	return strings.TrimRightFunc(str.(string), unicode.IsSpace), nil
 }
 
 /*
