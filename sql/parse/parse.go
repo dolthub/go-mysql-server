@@ -1196,7 +1196,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 		var comment string
 		for _, option := range ddl.IndexSpec.Options {
-			if option.Name == sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD) {
+			if strings.ToLower(option.Name) == strings.ToLower(sqlparser.KeywordString(sqlparser.COMMENT_KEYWORD)) {
 				comment = string(option.Value.Val)
 			}
 		}
@@ -2949,9 +2949,15 @@ func setExprsToExpressions(ctx *sql.Context, e sqlparser.SetVarExprs) ([]sql.Exp
 			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Global)
 			res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_Persist:
-			return nil, sql.ErrUnsupportedFeature.New("PERSIST")
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Persist)
+			res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_PersistOnly:
-			return nil, sql.ErrUnsupportedFeature.New("PERSIST_ONLY")
+			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_PersistOnly)
+			res[i] = expression.NewSetField(varToSet, innerExpr)
+			// TODO reset persist
+		//case sqlparser.SetScope_ResetPersist:
+		//	varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_ResetPersist)
+		//	res[i] = expression.NewSetField(varToSet, innerExpr)
 		case sqlparser.SetScope_Session:
 			varToSet := expression.NewSystemVar(setExpr.Name.String(), sql.SystemVariableScope_Session)
 			res[i] = expression.NewSetField(varToSet, innerExpr)

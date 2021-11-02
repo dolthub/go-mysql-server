@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"sort"
 	"strings"
 	"sync"
 
@@ -311,6 +312,7 @@ func (r *IndexRegistry) IndexByExpression(ctx *Context, db string, expr ...Expre
 		})
 	}
 
+	var indexes []Index
 	for _, k := range r.indexOrder {
 		idx := r.indexes[k]
 		if !r.canUseIndex(idx) {
@@ -318,14 +320,31 @@ func (r *IndexRegistry) IndexByExpression(ctx *Context, db string, expr ...Expre
 		}
 
 		if idx.Database() == db {
-			if exprListsEqual(idx.Expressions(), expressions) {
-				r.retainIndex(db, idx.ID())
-				return idx
+			if exprsAreIndexPrefix(expressions, idx.Expressions()) {
+				indexes = append(indexes, idx)
 			}
 		}
 	}
+	if len(indexes) == 0 {
+		return nil
+	}
 
-	return nil
+	exprLen := len(expressions)
+	sort.Slice(indexes, func(i, j int) bool {
+		idxI := indexes[i]
+		idxJ := indexes[j]
+		idxILen := len(idxI.Expressions())
+		idxJLen := len(idxJ.Expressions())
+		if idxILen == exprLen && idxJLen != exprLen {
+			return true
+		} else if idxILen != exprLen && idxJLen == exprLen {
+			return false
+		} else {
+			return idxILen > idxJLen || idxI.ID() < idxJ.ID()
+		}
+	})
+	r.retainIndex(db, indexes[0].ID())
+	return indexes[0]
 }
 
 // ExpressionsWithIndexes finds all the combinations of expressions with
@@ -422,6 +441,47 @@ func exprListsEqual(a, b []string) bool {
 
 		if !found {
 			return false
+		}
+	}
+
+	return true
+}
+
+//TODO: move this somewhere so that it's not super public but doesn't create an import cycle
+// exprsAreIndexPrefix returns whether exprs are a subset of indexExprs. It is assumed that indexExprs are ordered by their
+// declaration. For example `INDEX (v3, v2, v1)` would pass in `[]string{"v3", "v2", v1"}` and no other order.
+func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
+	if len(exprs) > len(indexExprs) {
+		return false
+	}
+
+	visitedIndexExprs := make([]bool, len(indexExprs))
+	for _, expr := range exprs {
+		found := false
+		for j, indexExpr := range indexExprs {
+			if visitedIndexExprs[j] {
+				continue
+			}
+			if expr == indexExpr {
+				visitedIndexExprs[j] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	// This checks that the order is preserved, as all true booleans should be first, with every boolean afterward false
+	expectation := true
+	for _, visitedExpr := range visitedIndexExprs {
+		if visitedExpr == expectation {
+			continue
+		} else if visitedExpr && !expectation {
+			return false
+		} else if !visitedExpr && expectation {
+			expectation = false
 		}
 	}
 

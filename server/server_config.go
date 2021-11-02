@@ -1,0 +1,84 @@
+// Copyright 2020-2021 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package server
+
+import (
+	"crypto/tls"
+	"time"
+
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/opentracing/opentracing-go"
+
+	"github.com/dolthub/go-mysql-server/auth"
+	"github.com/dolthub/go-mysql-server/sql"
+)
+
+// Server is a MySQL server for SQLe engines.
+type Server struct {
+	Listener *mysql.Listener
+	h        *Handler
+}
+
+// Config for the mysql server.
+type Config struct {
+	// Protocol for the connection.
+	Protocol string
+	// Address of the server.
+	Address string
+	// Auth of the server.
+	Auth auth.Auth
+	// Tracer to use in the server. By default, a noop tracer will be used if
+	// no tracer is provided.
+	Tracer opentracing.Tracer
+	// Version string to advertise in running server
+	Version string
+	// ConnReadTimeout is the server's read timeout
+	ConnReadTimeout time.Duration
+	// ConnWriteTimeout is the server's write timeout
+	ConnWriteTimeout time.Duration
+	// MaxConnections is the maximum number of simultaneous connections that the server will allow.
+	MaxConnections uint64
+	// TLSConfig is the configuration for TLS on this server. If |nil|, TLS is not supported.
+	TLSConfig *tls.Config
+	// RequestSecureTransport will require incoming connections to be TLS. Requires non-|nil| TLSConfig.
+	RequireSecureTransport bool
+	// NoDefaults prevents using persisted configuration for new server sessions
+	NoDefaults bool
+}
+
+func (c Config) NewConfig() (Config, error) {
+	if _, val, ok := sql.SystemVariables.GetGlobal("max_connections"); ok {
+		mc, ok := val.(int64)
+		if !ok {
+			return Config{}, sql.ErrUnknownSystemVariable.New("max_connections")
+		}
+		c.MaxConnections = uint64(mc)
+	}
+	if _, val, ok := sql.SystemVariables.GetGlobal("net_write_timeout"); ok {
+		timeout, ok := val.(int64)
+		if !ok {
+			return Config{}, sql.ErrUnknownSystemVariable.New("net_write_timeout")
+		}
+		c.ConnWriteTimeout = time.Duration(timeout) * time.Millisecond
+	}
+	if _, val, ok := sql.SystemVariables.GetGlobal("net_read_timeout"); ok {
+		timeout, ok := val.(int64)
+		if !ok {
+			return Config{}, sql.ErrUnknownSystemVariable.New("net_read_timeout")
+		}
+		c.ConnReadTimeout = time.Duration(timeout) * time.Millisecond
+	}
+	return c, nil
+}

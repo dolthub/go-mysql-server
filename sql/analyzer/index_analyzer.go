@@ -15,7 +15,7 @@
 package analyzer
 
 import (
-	"strings"
+	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -76,6 +76,12 @@ func getIndexesForNode(ctx *sql.Context, a *Analyzer, n sql.Node) (*indexAnalyze
 					analysisErr = err
 					return false
 				}
+			case *plan.IndexedTableAccess:
+				err := indexesForTable(n.Name(), n.ResolvedTable)
+				if err != nil {
+					analysisErr = err
+					return false
+				}
 			}
 
 			return true
@@ -112,13 +118,24 @@ func (r *indexAnalyzer) IndexesByTable(ctx *sql.Context, db, table string) []sql
 	return indexes
 }
 
-// IndexByExpression returns an index by the given expression. It will return nil if no index is found. If more than
-// one expression is given, all of them must match for the index to be matched.
-func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, table string, expr ...sql.Expression) sql.Index {
-	// Multiple expressions may be the same so we filter out duplicates
+// MatchingIndex returns the exact match if an index exists that perfectly matches the given expressions, otherwise it
+// returns the longest matching index for the given expressions.
+func (r *indexAnalyzer) MatchingIndex(ctx *sql.Context, db string, table string, exprs ...sql.Expression) sql.Index {
+	indexes := r.MatchingIndexes(ctx, db, table, exprs...)
+	if len(indexes) > 0 {
+		return indexes[0]
+	}
+	return nil
+}
+
+// MatchingIndexes returns a list of all matching indexes for the given expressions, with any indexes that exactly match
+// the given expressions sorted first, and all other indexes sorted by expression count in descending order after the
+// exact matches.
+func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, db string, table string, exprs ...sql.Expression) []sql.Index {
+	// As multiple expressions may be the same, we filter out duplicates
 	distinctExprs := make(map[string]struct{})
 	var exprStrs []string
-	for _, e := range expr {
+	for _, e := range exprs {
 		es := e.String()
 		if _, ok := distinctExprs[es]; !ok {
 			distinctExprs[es] = struct{}{}
@@ -126,23 +143,48 @@ func (r *indexAnalyzer) IndexByExpression(ctx *sql.Context, db string, table str
 		}
 	}
 
-	for _, idx := range r.indexesByTable[strings.ToLower(table)] {
-		if exprListsEqual(idx.Expressions(), exprStrs) {
-			return idx
+	type idxWithLen struct {
+		sql.Index
+		exprLen int
+	}
+
+	var indexes []idxWithLen
+	for _, idx := range r.indexesByTable[table] {
+		indexExprs := idx.Expressions()
+		if exprsAreIndexPrefix(exprStrs, indexExprs) {
+			indexes = append(indexes, idxWithLen{idx, len(indexExprs)})
 		}
 	}
 
 	if r.indexRegistry != nil {
-		idx := r.indexRegistry.IndexByExpression(ctx, db, expr...)
-		r.registryIdxes = append(r.registryIdxes, idx)
-		return idx
+		idx := r.indexRegistry.IndexByExpression(ctx, db, exprs...)
+		if idx != nil {
+			r.registryIdxes = append(r.registryIdxes, idx)
+			indexes = append(indexes, idxWithLen{idx, len(idx.Expressions())})
+		}
 	}
 
-	return nil
+	exprLen := len(exprStrs)
+	sort.Slice(indexes, func(i, j int) bool {
+		idxI := indexes[i]
+		idxJ := indexes[j]
+		if idxI.exprLen == exprLen && idxJ.exprLen != exprLen {
+			return true
+		} else if idxI.exprLen != exprLen && idxJ.exprLen == exprLen {
+			return false
+		} else {
+			return idxI.exprLen > idxJ.exprLen || idxI.Index.ID() < idxJ.Index.ID()
+		}
+	})
+	sortedIndexes := make([]sql.Index, len(indexes))
+	for i := 0; i < len(sortedIndexes); i++ {
+		sortedIndexes[i] = indexes[i].Index
+	}
+	return sortedIndexes
 }
 
 // ExpressionsWithIndexes finds all the combinations of expressions with matching indexes. This only matches
-// multi-column indexes.
+// multi-column indexes. Sorts the list of expressions by their length in descending order.
 func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expression) [][]sql.Expression {
 	var results [][]sql.Expression
 
@@ -184,6 +226,9 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 		results = append(results, indexes...)
 	}
 
+	sort.Slice(results, func(i, j int) bool {
+		return len(results[i]) > len(results[j])
+	})
 	return results
 }
 
@@ -200,31 +245,40 @@ func (r *indexAnalyzer) releaseUsedIndexes() {
 	}
 }
 
-// exprListsEqual returns whether a and b have the same items.
-func exprListsEqual(a, b []string) bool {
-	if len(a) != len(b) {
+// exprsAreIndexPrefix returns whether exprs are a subset of indexExprs. It is assumed that indexExprs are ordered by their
+// declaration. For example `INDEX (v3, v2, v1)` would pass in `[]string{"v3", "v2", v1"}` and no other order.
+func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
+	if len(exprs) > len(indexExprs) {
 		return false
 	}
 
-	var visited = make([]bool, len(b))
-
-	for _, va := range a {
+	visitedIndexExprs := make([]bool, len(indexExprs))
+	for _, expr := range exprs {
 		found := false
-
-		for j, vb := range b {
-			if visited[j] {
+		for j, indexExpr := range indexExprs {
+			if visitedIndexExprs[j] {
 				continue
 			}
-
-			if va == vb {
-				visited[j] = true
+			if expr == indexExpr {
+				visitedIndexExprs[j] = true
 				found = true
 				break
 			}
 		}
-
 		if !found {
 			return false
+		}
+	}
+
+	// This checks that the order is preserved, as all true booleans should be first, with every boolean afterward false
+	expectation := true
+	for _, visitedExpr := range visitedIndexExprs {
+		if visitedExpr == expectation {
+			continue
+		} else if visitedExpr && !expectation {
+			return false
+		} else if !visitedExpr && expectation {
+			expectation = false
 		}
 	}
 

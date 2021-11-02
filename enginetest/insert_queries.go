@@ -572,6 +572,14 @@ var InsertQueries = []WriteQueryTest{
 			{4, 44},
 		},
 	},
+	{
+		WriteQuery:          `INSERT INTO othertable(S2,I2) values ('fourth',0)`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         `SELECT * FROM othertable where s2='fourth'`,
+		ExpectedSelect: []sql.Row{
+			{"fourth", 0},
+		},
+	},
 }
 
 var InsertScripts = []ScriptTest{
@@ -976,6 +984,18 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 1}},
 				},
+			},
+		},
+	},
+	{
+		Name: "INSERT Case Sensitivity",
+		SetUpScript: []string{
+			"CREATE TABLE test (PK int PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into test(pk) values (1)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 		},
 	},

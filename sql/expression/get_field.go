@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -136,4 +137,29 @@ func SchemaToGetFields(s sql.Schema) []sql.Expression {
 	}
 
 	return ret
+}
+
+// ExtractGetField returns the inner GetField expression from another expression. If there are multiple GetField
+// expressions that are not the same, then none of the GetField expressions are returned.
+func ExtractGetField(e sql.Expression) *GetField {
+	var field *GetField
+	multipleFields := false
+	sql.Inspect(e, func(expr sql.Expression) bool {
+		if f, ok := expr.(*GetField); ok {
+			if field == nil {
+				field = f
+			} else if strings.ToLower(field.table) != strings.ToLower(f.table) ||
+				strings.ToLower(field.name) != strings.ToLower(f.name) {
+				multipleFields = true
+				return false
+			}
+			return true
+		}
+		return true
+	})
+
+	if multipleFields {
+		return nil
+	}
+	return field
 }

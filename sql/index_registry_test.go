@@ -424,16 +424,21 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
-func (i dummyIdx) ID() string                                  { return i.id }
-func (i dummyIdx) Get(...interface{}) (IndexLookup, error)     { panic("not implemented") }
-func (i dummyIdx) Has(Partition, ...interface{}) (bool, error) { panic("not implemented") }
-func (i dummyIdx) Database() string                            { return i.database }
-func (i dummyIdx) Table() string                               { return i.table }
-func (i dummyIdx) Driver() string                              { return "dummy" }
-func (i dummyIdx) IsUnique() bool                              { return false }
-func (i dummyIdx) Comment() string                             { return "" }
-func (i dummyIdx) IsGenerated() bool                           { return false }
-func (i dummyIdx) IndexType() string                           { return "BTREE" }
+func (i dummyIdx) ID() string        { return i.id }
+func (i dummyIdx) Database() string  { return i.database }
+func (i dummyIdx) Table() string     { return i.table }
+func (i dummyIdx) Driver() string    { return "dummy" }
+func (i dummyIdx) IsUnique() bool    { return false }
+func (i dummyIdx) Comment() string   { return "" }
+func (i dummyIdx) IsGenerated() bool { return false }
+func (i dummyIdx) IndexType() string { return "BTREE" }
+
+func (i dummyIdx) NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error) {
+	panic("not implemented")
+}
+func (i dummyIdx) ColumnExpressionTypes(ctx *Context) []ColumnExpressionType {
+	panic("not implemented")
+}
 
 type dummyExpr struct {
 	index   int

@@ -80,6 +80,30 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
 }
 
+func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
+	// If the lookup was provided at analysis time (static evaluation), then an index was already built
+	if i.lookup != nil {
+		return true, nil
+	}
+
+	// Otherwise, grab the return type of the expressions and use the zero value
+	key := make([]interface{}, len(i.keyExprs))
+	for i, keyExpr := range i.keyExprs {
+		key[i] = keyExpr.Type().Zero()
+	}
+
+	idxBuilder := sql.NewIndexBuilder(ctx, i.index)
+	for keyIndex := 0; keyIndex < len(key); keyIndex++ {
+		idxBuilder = idxBuilder.Equals(ctx, i.keyExprs[keyIndex].String(), key[keyIndex])
+	}
+	lookup, err := idxBuilder.Build(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return lookup != nil, nil
+}
+
 func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
 	if i.lookup != nil {
@@ -96,7 +120,12 @@ func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.Index
 		}
 	}
 
-	lookup, err := i.index.Get(key...)
+	idxExpressions := i.index.Expressions()
+	idxBuilder := sql.NewIndexBuilder(ctx, i.index)
+	for keyIndex := 0; keyIndex < len(key); keyIndex++ {
+		idxBuilder = idxBuilder.Equals(ctx, idxExpressions[keyIndex], key[keyIndex])
+	}
+	lookup, err := idxBuilder.Build(ctx)
 	if err != nil {
 		return nil, err
 	}

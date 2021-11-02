@@ -3520,6 +3520,57 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 }
 
+func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql.Context) sql.PersistableSession) {
+	q := []struct {
+		Name            string
+		Query           string
+		Expected        []sql.Row
+		ExpectedGlobal  interface{}
+		ExpectedPersist interface{}
+	}{
+		{
+			Query:           "SET PERSIST max_connections = 1000;",
+			Expected:        []sql.Row{{}},
+			ExpectedGlobal:  int64(1000),
+			ExpectedPersist: int64(1000),
+		}, {
+			Query:           "SET @@PERSIST.max_connections = 1000;",
+			Expected:        []sql.Row{{}},
+			ExpectedGlobal:  int64(1000),
+			ExpectedPersist: int64(1000),
+		}, {
+			Query:           "SET PERSIST_ONLY max_connections = 1000;",
+			Expected:        []sql.Row{{}},
+			ExpectedGlobal:  int64(151),
+			ExpectedPersist: int64(1000),
+		},
+	}
+
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
+
+	for _, tt := range q {
+		t.Run(tt.Name, func(t *testing.T) {
+			sql.InitSystemVariables()
+			ctx.Session = newPersistableSess(ctx)
+
+			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
+
+			if tt.ExpectedGlobal != nil {
+				_, res, _ := sql.SystemVariables.GetGlobal("max_connections")
+				require.Equal(t, tt.ExpectedGlobal, res)
+			}
+
+			if tt.ExpectedGlobal != nil {
+				res, err := ctx.Session.(sql.PersistableSession).GetPersistedValue("max_connections")
+				require.NoError(t, err)
+				assert.Equal(t,
+					tt.ExpectedPersist, res)
+			}
+		})
+	}
+}
+
 var pid uint64
 
 func NewContext(harness Harness) *sql.Context {
@@ -3570,8 +3621,8 @@ func NewSession(harness Harness) *sql.Context {
 
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
-func NewBaseSession() sql.Session {
-	return sql.NewSession("address", sql.Client{Address: "client", User: "user"}, 1)
+func NewBaseSession() *sql.BaseSession {
+	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "client", User: "user"}, 1)
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {

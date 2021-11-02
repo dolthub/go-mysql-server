@@ -148,6 +148,41 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		if err != nil {
 			return err
 		}
+	case sql.SystemVariableScope_Persist:
+		persistSess, ok := ctx.Session.(sql.PersistableSession)
+		if !ok {
+			return sql.ErrSessionDoesNotSupportPersistence.New()
+		}
+		err = persistSess.PersistGlobal(sysVar.Name, val)
+		if err != nil {
+			return err
+		}
+		err = sql.SystemVariables.SetGlobal(sysVar.Name, val)
+		if err != nil {
+			return err
+		}
+	case sql.SystemVariableScope_PersistOnly:
+		persistSess, ok := ctx.Session.(sql.PersistableSession)
+		if !ok {
+			return sql.ErrSessionDoesNotSupportPersistence.New()
+		}
+		err = persistSess.PersistGlobal(sysVar.Name, val)
+		if err != nil {
+			return err
+		}
+	case sql.SystemVariableScope_ResetPersist:
+		// TODO: add parser support for RESET PERSIST
+		persistSess, ok := ctx.Session.(sql.PersistableSession)
+		if !ok {
+			return sql.ErrSessionDoesNotSupportPersistence.New()
+		}
+		if sysVar.Name == "" {
+			err = persistSess.RemoveAllPersistedGlobals()
+		}
+		err = persistSess.RemovePersistedGlobal(sysVar.Name)
+		if err != nil {
+			return err
+		}
 	default: // should never be hit
 		return fmt.Errorf("unable to set `%s` due to unknown scope `%v`", sysVar.Name, sysVar.Scope)
 	}
