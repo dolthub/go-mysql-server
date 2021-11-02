@@ -191,7 +191,7 @@ var (
 	// ErrInvalidColTypeDefinition is returned when a column type-definition has argument violations.
 	ErrInvalidColTypeDefinition = errors.NewKind("column %s type definition is invalid: %s")
 
-	// ErrDatabaseExists is returned when a CREATE DATABASE is called on a table that already exists.
+	// ErrDatabaseExists is returned when CREATE DATABASE attempts to create a database that already exists.
 	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
 	// ErrInvalidConstraintFunctionsNotSupported is returned when a CONSTRAINT CHECK is called with a sub-function expression.
