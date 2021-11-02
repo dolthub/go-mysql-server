@@ -77,7 +77,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 	if added {
 		pkColIdxes := t.pkColumnIndexes()
 		vals := make([]interface{}, len(pkColIdxes))
-		for _, i := range pkColIdxes {
+		for i, _ := range pkColIdxes {
 			vals[i] = row[pkColIdxes[i]]
 		}
 		return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)
@@ -141,7 +141,7 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 		if added {
 			pkColIdxes := t.pkColumnIndexes()
 			vals := make([]interface{}, len(pkColIdxes))
-			for _, i := range pkColIdxes {
+			for i, _ := range pkColIdxes {
 				vals[i] = newRow[pkColIdxes[i]]
 			}
 			return sql.NewUniqueKeyErr(fmt.Sprint(vals), true, partitionRow)

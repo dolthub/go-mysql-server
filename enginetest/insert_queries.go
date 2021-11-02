@@ -572,6 +572,16 @@ var InsertQueries = []WriteQueryTest{
 			{4, 44},
 		},
 	},
+	{
+		WriteQuery:          `INSERT INTO othertable VALUES ("fourth", 1) ON DUPLICATE KEY UPDATE s2="fourth"`,
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM othertable",
+		ExpectedSelect: []sql.Row{
+			sql.NewRow("first", int64(3)),
+			sql.NewRow("second", int64(2)),
+			sql.NewRow("fourth", int64(1)),
+		},
+	},
 }
 
 var InsertScripts = []ScriptTest{
