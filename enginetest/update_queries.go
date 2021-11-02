@@ -28,6 +28,12 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
 	},
 	{
+		WriteQuery:          "UPDATE mytable SET S = 'updated';",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM mytable;",
+		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
+	},
+	{
 		WriteQuery:          "UPDATE mytable SET s = ?;",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
