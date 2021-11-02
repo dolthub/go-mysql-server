@@ -191,11 +191,8 @@ var (
 	// ErrInvalidColTypeDefinition is returned when a column type-definition has argument violations.
 	ErrInvalidColTypeDefinition = errors.NewKind("column %s type definition is invalid: %s")
 
-	// ErrCannotCreateDatabaseExists is returned when a CREATE DATABASE is called on a table that already exists.
-	ErrCannotCreateDatabaseExists = errors.NewKind("can't create database %s; database exists")
-
-	// ErrCannotDropDatabaseDoesntExist is returned when a DROP DATABASE is callend when a table is dropped that doesn't exist.
-	ErrCannotDropDatabaseDoesntExist = errors.NewKind("can't drop database %s; database doesn't exist")
+	// ErrDatabaseExists is returned when a CREATE DATABASE is called on a table that already exists.
+	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
 	// ErrInvalidConstraintFunctionsNotSupported is returned when a CONSTRAINT CHECK is called with a sub-function expression.
 	ErrInvalidConstraintFunctionsNotSupported = errors.NewKind("Invalid constraint expression, functions not supported: %s")
@@ -371,7 +368,7 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 	switch {
 	case ErrTableNotFound.Is(err):
 		code = mysql.ERNoSuchTable
-	case ErrCannotCreateDatabaseExists.Is(err):
+	case ErrDatabaseExists.Is(err):
 		code = mysql.ERDbCreateExists
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
