@@ -17,6 +17,140 @@ package function
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/dolthub/go-mysql-server/sql"
+)
+
+type Trim struct {
+	str sql.Expression
+	pat sql.Expression
+	dir sql.Expression
+}
+
+var _ sql.FunctionExpression = (*Trim)(nil)
+
+func NewTrim(str, pat, dir sql.Expression) sql.Expression {
+	return &Trim{str, pat, dir}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (t *Trim) FunctionName() string {
+	return "trim"
+}
+
+// Children implements the Expression interface.
+func (t *Trim) Children() []sql.Expression {
+	return []sql.Expression{t.str, t.pat, t.dir}
+}
+
+// Eval implements the Expression interface.
+func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate pattern
+	pat, err := t.pat.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cast to string
+	var pat_text string
+	switch pat := pat.(type) {
+	case string:
+		pat_text = pat
+	case []byte:
+		pat_text = string(pat)
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
+	}
+
+	// Evaluate string value
+	str, err := t.str.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cast to string type
+	var str_text string
+	switch str := str.(type) {
+	case string:
+		str_text = str
+	case []byte:
+		str_text = string(str)
+	case nil:
+		return nil, nil
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	// Evaluate direction
+	dir, err := t.dir.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Cast to string type
+	var dir_text string
+	switch dir := dir.(type) {
+	case string:
+		dir_text = dir
+	case []byte:
+		dir_text = string(dir)
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	start := 0
+	end := len(str_text)
+	n := len(pat_text)
+
+	if n > end {
+		return str_text, nil
+	}
+
+	// remove from left
+	if dir_text == "l" || dir_text == "b" {
+		for start < end && str_text[start:start+n] == pat_text {
+			start += n
+		}
+	}
+
+	// remove from right
+	if dir_text == "l" || dir_text == "b" {
+		for start < end && str_text[end-n:end] == pat_text {
+			end -= n
+		}
+	}
+
+	return str_text[start:end], nil
+}
+
+// IsNullable implements the Expression interface.
+func (t Trim) IsNullable() bool {
+	return t.str.IsNullable() || t.pat.IsNullable()
+}
+
+func (t Trim) String() string {
+	return fmt.Sprintf("TRIM(%s, %s, %s)", t.str, t.pat, t.pat)
+}
+
+func (t Trim) Resolved() bool {
+	return t.str.Resolved() && t.pat.Resolved() && t.pat.Resolved()
+}
+
+func (Trim) Type() sql.Type { return sql.LongText }
+
+func (t Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 3 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 3)
+	}
+	return NewTrim(children[0], children[1], children[2]), nil
+}
+
+/*
+package function
+
+import (
+	"fmt"
+	"reflect"
 	"strings"
 	"unicode"
 
@@ -126,3 +260,4 @@ func (t *Trim) Eval(
 		return strings.TrimFunc(str.(string), unicode.IsSpace), nil
 	}
 }
+*/
