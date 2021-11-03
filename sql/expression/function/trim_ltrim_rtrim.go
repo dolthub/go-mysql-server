@@ -59,14 +59,9 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// Cast to string
-	var pat_text string
-	switch pat := pat.(type) {
-	case string:
-		pat_text = pat
-	case []byte:
-		pat_text = string(pat)
-	default:
+	// Convert pat into string
+	pat, err = sql.LongText.Convert(pat)
+	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
 	}
 
@@ -76,43 +71,36 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// Cast to string type
-	var str_text string
-	switch str := str.(type) {
-	case string:
-		str_text = str
-	case []byte:
-		str_text = string(str)
-	case nil:
-		return nil, nil
-	default:
+	// Convert pat into string
+	str, err = sql.LongText.Convert(str)
+	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
 
 	start := 0
-	end := len(str_text)
-	n := len(pat_text)
+	end := len(str.(string))
+	n := len(pat.(string))
 
 	// Empty pattern, do nothing
 	if n == 0 {
-		return str_text, nil
+		return str, nil
 	}
 
 	// Trim Leading
 	if t.dir == LEADING || t.dir == BOTH {
-		for start+n <= end && str_text[start:start+n] == pat_text {
+		for start+n <= end && str.(string)[start:start+n] == pat {
 			start += n
 		}
 	}
 
 	// Trim Trailiing
 	if t.dir == TRAILING || t.dir == BOTH {
-		for start+n <= end && str_text[end-n:end] == pat_text {
+		for start+n <= end && str.(string)[end-n:end] == pat {
 			end -= n
 		}
 	}
 
-	return str_text[start:end], nil
+	return str.(string)[start:end], nil
 }
 
 // IsNullable implements the Expression interface.

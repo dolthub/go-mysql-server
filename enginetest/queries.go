@@ -1795,6 +1795,14 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT TRIM(LEADING "test" FROM TRIM("  test  "))`,
 		Expected: []sql.Row{{""}},
 	},
+	{
+		Query:    `SELECT TRIM(LEADING 1 FROM "11111112")`,
+		Expected: []sql.Row{{"2"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING 1 FROM 11111112)`,
+		Expected: []sql.Row{{"2"}},
+	},
 
 	{
 		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
