@@ -71,6 +71,11 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Nil string
+	if str == nil {
+		return nil, nil
+	}
+
 	// Convert pat into string
 	str, err = sql.LongText.Convert(str)
 	if err != nil {

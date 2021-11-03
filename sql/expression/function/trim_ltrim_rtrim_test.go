@@ -24,7 +24,7 @@ import (
 )
 
 func TestTrim(t *testing.T) {
-	f := NewTrim(expression.NewGetField(0, sql.LongText, "", false), expression.NewGetField(1, sql.LongText, "", false), expression.NewGetField(2, sql.LongText, "", false))
+	f := NewTrim(expression.NewGetField(0, sql.LongText, "", false), expression.NewGetField(1, sql.LongText, "", false), "b")
 	testCases := []struct {
 		name     string
 		row      sql.Row
