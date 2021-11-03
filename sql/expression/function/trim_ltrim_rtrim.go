@@ -100,14 +100,14 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Trim Leading
 	if t.dir == LEADING || t.dir == BOTH {
-		for start+n < end && str_text[start:start+n] == pat_text {
+		for start+n <= end && str_text[start:start+n] == pat_text {
 			start += n
 		}
 	}
 
 	// Trim Trailiing
 	if t.dir == TRAILING || t.dir == BOTH {
-		for start+n < end && str_text[end-n:end] == pat_text {
+		for start+n <= end && str_text[end-n:end] == pat_text {
 			end -= n
 		}
 	}
