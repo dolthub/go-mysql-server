@@ -1750,6 +1750,52 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
 		Expected: []sql.Row{{"secon"}},
 	},
+
+	{
+		Query:    `SELECT TRIM("   foo   ")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(" " FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING " " FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo   "}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING " " FROM "   foo   ")`,
+		Expected: []sql.Row{{"   foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(BOTH " " FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM("" FROM " foo")`,
+		Expected: []sql.Row{{" foo"}},
+	},
+	{
+		Query:    `SELECT TRIM("bar" FROM "barfoobar")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING "bar" FROM "barfoobar")`,
+		Expected: []sql.Row{{"barfoo"}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING "foo" FROM "foo")`,
+		Expected: []sql.Row{{""}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING "ooo" FROM TRIM("oooo"))`,
+		Expected: []sql.Row{{"o"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING "test" FROM TRIM("  test  "))`,
+		Expected: []sql.Row{{""}},
+	},
+
 	{
 		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
 		Expected: []sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
