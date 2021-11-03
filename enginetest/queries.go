@@ -1791,10 +1791,33 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT TRIM(LEADING "ooo" FROM TRIM("oooo"))`,
 		Expected: []sql.Row{{"o"}},
 	},
+
+	{
+		Query:    `SELECT TRIM(BOTH "foo" FROM TRIM("barfoobar"))`,
+		Expected: []sql.Row{{"barfoobar"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING "bar" FROM TRIM("foobar"))`,
+		Expected: []sql.Row{{"foobar"}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING "oo" FROM TRIM("oof"))`,
+		Expected: []sql.Row{{"oof"}},
+	},
+
 	{
 		Query:    `SELECT TRIM(LEADING "test" FROM TRIM("  test  "))`,
 		Expected: []sql.Row{{""}},
 	},
+	{
+		Query:    `SELECT TRIM(LEADING CONCAT("a", "b") FROM TRIM("ababab"))`,
+		Expected: []sql.Row{{""}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING CONCAT("a", "b") FROM CONCAT("test","ab"))`,
+		Expected: []sql.Row{{"test"}},
+	},
+
 	{
 		Query:    `SELECT TRIM(LEADING 1 FROM "11111112")`,
 		Expected: []sql.Row{{"2"}},

@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+
 const (
 	LEADING  string = "l"
 	TRAILING string = "r"
@@ -98,7 +99,7 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// Trim Trailiing
+	// Trim Trailing
 	if t.dir == TRAILING || t.dir == BOTH {
 		for start+n <= end && str.(string)[end-n:end] == pat {
 			end -= n
