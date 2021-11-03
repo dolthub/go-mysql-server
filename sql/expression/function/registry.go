@@ -179,7 +179,6 @@ var BuiltIns = []sql.Function{
 	sql.Function2{Name: "timediff", Fn: NewTimeDiff},
 	sql.FunctionN{Name: "timestamp", Fn: NewTimestamp},
 	sql.Function1{Name: "to_base64", Fn: NewToBase64},
-	sql.Function3{Name: "trim", Fn: NewTrim},
 	sql.Function1{Name: "ucase", Fn: NewUpper},
 	sql.Function1{Name: "unhex", Fn: NewUnhex},
 	sql.FunctionN{Name: "unix_timestamp", Fn: NewUnixTimestamp},

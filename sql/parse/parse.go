@@ -2324,13 +2324,11 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		var (
 			pat sql.Expression
 			str sql.Expression
-			dir sql.Expression
 			err error
 		)
 		pat, err = ExprToExpression(ctx, v.Pattern)
 		str, err = ExprToExpression(ctx, v.Str)
-		dir, err = ExprToExpression(ctx, v.Dir)
-		return function.NewTrim(str, pat, dir), err
+		return function.NewTrim(str, pat, v.Dir), err
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(ctx, v)
 	case *sqlparser.IsExpr:

@@ -23,15 +23,21 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
+const (
+	LEADING  string = "l"
+	TRAILING string = "r"
+	BOTH     string = "b"
+)
+
 type Trim struct {
 	str sql.Expression
 	pat sql.Expression
-	dir sql.Expression
+	dir string
 }
 
 var _ sql.FunctionExpression = (*Trim)(nil)
 
-func NewTrim(str, pat, dir sql.Expression) sql.Expression {
+func NewTrim(str sql.Expression, pat sql.Expression, dir string) sql.Expression {
 	return &Trim{str, pat, dir}
 }
 
@@ -42,7 +48,7 @@ func (t *Trim) FunctionName() string {
 
 // Children implements the Expression interface.
 func (t *Trim) Children() []sql.Expression {
-	return []sql.Expression{t.str, t.pat, t.dir}
+	return []sql.Expression{t.str, t.pat}
 }
 
 // Eval implements the Expression interface.
@@ -83,40 +89,24 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
 
-	// Evaluate direction
-	dir, err := t.dir.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	// Cast to string type
-	var dir_text string
-	switch dir := dir.(type) {
-	case string:
-		dir_text = dir
-	case []byte:
-		dir_text = string(dir)
-	default:
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
-	}
-
 	start := 0
 	end := len(str_text)
 	n := len(pat_text)
 
-	if n == 0 || n > end {
+	// Empty pattern, do nothing
+	if n == 0 {
 		return str_text, nil
 	}
 
-	// remove from left
-	if dir_text == "l" || dir_text == "b" {
+	// Trim Leading
+	if t.dir == LEADING || t.dir == BOTH {
 		for start+n < end && str_text[start:start+n] == pat_text {
 			start += n
 		}
 	}
 
-	// remove from right
-	if dir_text == "r" || dir_text == "b" {
+	// Trim Trailiing
+	if t.dir == TRAILING || t.dir == BOTH {
 		for start+n < end && str_text[end-n:end] == pat_text {
 			end -= n
 		}
@@ -141,10 +131,10 @@ func (t Trim) Resolved() bool {
 func (Trim) Type() sql.Type { return sql.LongText }
 
 func (t Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 3 {
-		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 3)
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
 	}
-	return NewTrim(children[0], children[1], children[2]), nil
+	return NewTrim(children[0], children[1], t.dir), nil
 }
 
 type LeftTrim struct {
