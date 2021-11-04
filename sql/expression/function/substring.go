@@ -381,6 +381,101 @@ func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewLeft(children[0], children[1]), nil
 }
 
+// Right is a function that returns the last N characters of a string expression.
+type Right struct {
+	str sql.Expression
+	len sql.Expression
+}
+
+var _ sql.FunctionExpression = Right{}
+
+// NewRight creates a new RIGHT function.
+func NewRight(str, len sql.Expression) sql.Expression {
+	return Right{str, len}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (r Right) FunctionName() string {
+	return "right"
+}
+
+// Children implements the Expression interface.
+func (r Right) Children() []sql.Expression {
+	return []sql.Expression{r.str, r.len}
+}
+
+// Eval implements the Expression interface.
+func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	str, err := r.str.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	var text []rune
+	switch str := str.(type) {
+	case string:
+		text = []rune(str)
+	case []byte:
+		text = []rune(string(str))
+	case nil:
+		return nil, nil
+	default:
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	var length int64
+	runeCount := int64(len(text))
+	len, err := r.len.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if len == nil {
+		return nil, nil
+	}
+
+	len, err = sql.Int64.Convert(len)
+	if err != nil {
+		return nil, err
+	}
+
+	length = len.(int64)
+
+	if length > runeCount {
+		length = runeCount
+	}
+	if length <= 0 {
+		return "", nil
+	}
+
+	return string(text[runeCount-length:]), nil
+}
+
+// IsNullable implements the Expression interface.
+func (r Right) IsNullable() bool {
+	return r.str.IsNullable() || r.len.IsNullable()
+}
+
+func (r Right) String() string {
+	return fmt.Sprintf("RIGHT(%s, %s)", r.str, r.len)
+}
+
+// Resolved implements the Expression interface.
+func (r Right) Resolved() bool {
+	return r.str.Resolved() && r.len.Resolved()
+}
+
+// Type implements the Expression interface.
+func (Right) Type() sql.Type { return sql.LongText }
+
+// WithChildren implements the Expression interface.
+func (r Right) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 2)
+	}
+	return NewRight(children[0], children[1]), nil
+}
+
 type Instr struct {
 	str    sql.Expression
 	substr sql.Expression
