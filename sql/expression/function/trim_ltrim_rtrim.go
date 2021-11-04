@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-
 const (
 	LEADING  string = "l"
 	TRAILING string = "r"
