@@ -2320,6 +2320,15 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 		return function.NewSubstring(name, from, to)
+	case *sqlparser.TrimExpr:
+		var (
+			pat sql.Expression
+			str sql.Expression
+			err error
+		)
+		pat, err = ExprToExpression(ctx, v.Pattern)
+		str, err = ExprToExpression(ctx, v.Str)
+		return function.NewTrim(str, pat, v.Dir), err
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(ctx, v)
 	case *sqlparser.IsExpr:

@@ -1751,6 +1751,96 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"secon"}},
 	},
 	{
+		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
+	},
+	{
+		Query:    `SELECT TRIM("row" from mytable.s) AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{"first "}, sql.Row{"second "}, sql.Row{"third "}},
+	},
+	{
+		Query:    `SELECT TRIM(mytable.s from "first row") AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{""}, sql.Row{"first row"}, sql.Row{"first row"}},
+	},
+	{
+		Query:    `SELECT TRIM(mytable.s from mytable.s) AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{""}, sql.Row{""}, sql.Row{""}},
+	},
+	{
+		Query:    `SELECT TRIM("   foo   ")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(" " FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING " " FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo   "}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING " " FROM "   foo   ")`,
+		Expected: []sql.Row{{"   foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(BOTH " " FROM "   foo   ")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM("" FROM " foo")`,
+		Expected: []sql.Row{{" foo"}},
+	},
+	{
+		Query:    `SELECT TRIM("bar" FROM "barfoobar")`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING "bar" FROM "barfoobar")`,
+		Expected: []sql.Row{{"barfoo"}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING "foo" FROM "foo")`,
+		Expected: []sql.Row{{""}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING "ooo" FROM TRIM("oooo"))`,
+		Expected: []sql.Row{{"o"}},
+	},
+	{
+		Query:    `SELECT TRIM(BOTH "foo" FROM TRIM("barfoobar"))`,
+		Expected: []sql.Row{{"barfoobar"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING "bar" FROM TRIM("foobar"))`,
+		Expected: []sql.Row{{"foobar"}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING "oo" FROM TRIM("oof"))`,
+		Expected: []sql.Row{{"oof"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING "test" FROM TRIM("  test  "))`,
+		Expected: []sql.Row{{""}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING CONCAT("a", "b") FROM TRIM("ababab"))`,
+		Expected: []sql.Row{{""}},
+	},
+	{
+		Query:    `SELECT TRIM(TRAILING CONCAT("a", "b") FROM CONCAT("test","ab"))`,
+		Expected: []sql.Row{{"test"}},
+	},
+
+	{
+		Query:    `SELECT TRIM(LEADING 1 FROM "11111112")`,
+		Expected: []sql.Row{{"2"}},
+	},
+	{
+		Query:    `SELECT TRIM(LEADING 1 FROM 11111112)`,
+		Expected: []sql.Row{{"2"}},
+	},
+
+	{
 		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
 		Expected: []sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
 	},
