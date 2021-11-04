@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"reflect"
 	"strings"
 
@@ -93,14 +94,14 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Trim Leading
-	if t.dir == LEADING || t.dir == BOTH {
+	if t.dir == sqlparser.Leading || t.dir == sqlparser.Both {
 		for start+n <= end && str.(string)[start:start+n] == pat {
 			start += n
 		}
 	}
 
 	// Trim Trailing
-	if t.dir == TRAILING || t.dir == BOTH {
+	if t.dir == sqlparser.Trailing || t.dir == sqlparser.Both {
 		for start+n <= end && str.(string)[end-n:end] == pat {
 			end -= n
 		}

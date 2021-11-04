@@ -1752,6 +1752,22 @@ var QueryTests = []QueryTest{
 	},
 
 	{
+		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
+	},
+	{
+		Query:    `SELECT TRIM("row" from mytable.s) AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{"first "}, sql.Row{"second "}, sql.Row{"third "}},
+	},
+	{
+		Query:    `SELECT TRIM(mytable.s from "first row") AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{""}, sql.Row{"first row"}, sql.Row{"first row"}},
+	},
+	{
+		Query:    `SELECT TRIM(mytable.s from mytable.s) AS s FROM mytable`,
+		Expected: []sql.Row{sql.Row{""}, sql.Row{""}, sql.Row{""}},
+	},
+	{
 		Query:    `SELECT TRIM("   foo   ")`,
 		Expected: []sql.Row{{"foo"}},
 	},
