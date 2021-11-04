@@ -1750,7 +1750,6 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
 		Expected: []sql.Row{{"secon"}},
 	},
-
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
 		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
