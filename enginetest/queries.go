@@ -1807,7 +1807,6 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT TRIM(LEADING "ooo" FROM TRIM("oooo"))`,
 		Expected: []sql.Row{{"o"}},
 	},
-
 	{
 		Query:    `SELECT TRIM(BOTH "foo" FROM TRIM("barfoobar"))`,
 		Expected: []sql.Row{{"barfoobar"}},
@@ -1820,7 +1819,6 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT TRIM(TRAILING "oo" FROM TRIM("oof"))`,
 		Expected: []sql.Row{{"oof"}},
 	},
-
 	{
 		Query:    `SELECT TRIM(LEADING "test" FROM TRIM("  test  "))`,
 		Expected: []sql.Row{{""}},
