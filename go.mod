@@ -3,7 +3,7 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20211104191448-4cc2d2c92f1d
+	github.com/dolthub/vitess v0.0.0-20211108230711-9b4006809d3b
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529
@@ -33,7 +33,5 @@ require (
 )
 
 replace github.com/oliveagle/jsonpath => github.com/dolthub/jsonpath v0.0.0-20210609232853-d49537a30474
-
-replace github.com/dolthub/vitess => ../vitess
 
 go 1.15
