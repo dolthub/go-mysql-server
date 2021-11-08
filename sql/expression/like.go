@@ -32,13 +32,14 @@ func newDefaultLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
 // Like performs pattern matching against two strings.
 type Like struct {
 	BinaryExpression
+	escape sql.Expression
 	pool   *sync.Pool
 	once   sync.Once
 	cached bool
 }
 
 // NewLike creates a new LIKE expression.
-func NewLike(left, right sql.Expression) sql.Expression {
+func NewLike(left, right, escape sql.Expression) sql.Expression {
 	var cached = true
 	sql.Inspect(right, func(e sql.Expression) bool {
 		if _, ok := e.(*GetField); ok {
@@ -49,6 +50,7 @@ func NewLike(left, right sql.Expression) sql.Expression {
 
 	return &Like{
 		BinaryExpression: BinaryExpression{left, right},
+		escape:			  escape,
 		pool:             nil,
 		once:             sync.Once{},
 		cached:           cached,
@@ -130,7 +132,34 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := patternToGoRegex(v.(string))
+
+	if l.escape == nil {
+		s := patternToGoRegex(v.(string))
+		return &s, nil
+	}
+
+	e, err := l.escape.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	e, err = sql.LongText.Convert(e)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use normal patternToGoRegex when escape is empty string
+	if len(e.(string)) == 0 {
+		s := patternToGoRegex(v.(string))
+		return &s, nil
+	}
+
+	// e should be exactly one character
+	if len(e.(string)) > 1 {
+		return nil, sql.ErrInvalidArgument.New("ESCAPE")
+	}
+
+	s := patternToGoRegexCustom(v.(string), e.(string))
 	return &s, nil
 }
 
@@ -143,7 +172,7 @@ func (l *Like) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}
-	return NewLike(children[0], children[1]), nil
+	return NewLike(children[0], children[1], l.escape), nil
 }
 
 func patternToGoRegex(pattern string) string {
@@ -160,10 +189,62 @@ func patternToGoRegex(pattern string) string {
 				buf.WriteRune('.')
 			}
 		case '%':
-			if !escaped {
-				buf.WriteString(".*")
-			} else {
+			if escaped {
 				buf.WriteRune(r)
+			} else {
+				buf.WriteString(".*")
+			}
+		case '\\':
+			if escaped {
+				buf.WriteString(`\\`)
+			} else {
+				escaped = true
+				continue
+			}
+		default:
+			if escaped {
+				buf.WriteString(`\`)
+			}
+			buf.WriteRune(r)
+		}
+
+		if escaped {
+			escaped = false
+		}
+	}
+
+	buf.WriteRune('$')
+	return buf.String()
+}
+
+
+func patternToGoRegexCustom(pattern, escape string) string {
+	var buf bytes.Buffer
+	buf.WriteString("(?s)")
+	buf.WriteRune('^')
+	var escaped bool
+	//var customEscaped bool
+
+	for _, r := range strings.Replace(strings.Replace(regexp.QuoteMeta(pattern), `\\`, `\`, -1), regexp.QuoteMeta(escape), escape, -1) {
+		switch r {
+		case rune(escape[0]):
+			if escaped {
+				buf.WriteString(regexp.QuoteMeta(escape))
+			} else {
+				escaped = true
+				continue
+			}
+		case '_':
+			if escaped {
+				buf.WriteRune(r)
+			} else {
+				buf.WriteRune('.')
+			}
+		case '%':
+			if escaped {
+				buf.WriteRune(r)
+			} else {
+				buf.WriteString(".*")
 			}
 		case '\\':
 			if escaped {
