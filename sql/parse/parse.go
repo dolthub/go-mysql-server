@@ -2669,8 +2669,6 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 		}
 	}
 
-
-
 	switch strings.ToLower(c.Operator) {
 	case sqlparser.RegexpStr:
 		return expression.NewRegexp(left, right), nil

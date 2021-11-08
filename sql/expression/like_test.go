@@ -83,16 +83,16 @@ func TestLike(t *testing.T) {
 
 	testCases := []struct {
 		pattern, value, escape string
-		ok             bool
+		ok                     bool
 	}{
 		{"a__", "abc", "", true},
 		{"a__", "abcd", "", false},
-		{"a%b", "acb", "",true},
-		{"a%b", "acdkeflskjfdklb","", true},
-		{"a%b", "ab", "",true},
-		{"a%b", "a", "",false},
-		{"a_b", "ab", "",false},
-		{"aa:%", "AA:BB:CC:DD:EE:FF", "",true},
+		{"a%b", "acb", "", true},
+		{"a%b", "acdkeflskjfdklb", "", true},
+		{"a%b", "ab", "", true},
+		{"a%b", "a", "", false},
+		{"a_b", "ab", "", false},
+		{"aa:%", "AA:BB:CC:DD:EE:FF", "", true},
 	}
 
 	for _, tt := range testCases {
