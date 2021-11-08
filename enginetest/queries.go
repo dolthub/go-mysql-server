@@ -1750,6 +1750,25 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon'`,
 		Expected: []sql.Row{{"secon"}},
 	},
+
+	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%a_%" ESCAPE 'a'`,
+		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
+	},
+	/*
+	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$_%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"first_row", 1}, sql.Row{"second_row", 2}, sql.Row{"third_row", 3}},
+	},
+	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "first$_%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"first_row", 1}},
+	},
+	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$_row" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"first_row", 1}, sql.Row{"second_row", 2}, sql.Row{"third_row", 3}},
+	},
+	*/
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
 		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
