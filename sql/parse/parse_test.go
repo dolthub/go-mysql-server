@@ -1535,6 +1535,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
+			nil,
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
 	),
@@ -1542,6 +1543,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
+			nil,
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
 	),
@@ -1556,6 +1558,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
+			nil,
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
 	),
@@ -1570,6 +1573,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
+			nil,
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 	),
@@ -1577,6 +1581,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Table"),
 			expression.NewLiteral("foo", sql.LongText),
+			nil,
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, expression.NewLiteral("abc", sql.LongText)),
 	),
@@ -2230,6 +2235,7 @@ CREATE TABLE t2
 			expression.NewLike(
 				expression.NewUnresolvedColumn("i"),
 				expression.NewLiteral("foo", sql.LongText),
+				nil,
 			),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2240,6 +2246,7 @@ CREATE TABLE t2
 			expression.NewNot(expression.NewLike(
 				expression.NewUnresolvedColumn("i"),
 				expression.NewLiteral("foo", sql.LongText),
+				nil,
 			)),
 			plan.NewUnresolvedTable("foo", ""),
 		),
@@ -2257,6 +2264,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Field"),
 			expression.NewLiteral("bar", sql.LongText),
+			nil,
 		),
 		plan.NewShowColumns(false, plan.NewUnresolvedTable("foo", "")),
 	),
@@ -2264,6 +2272,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("Name"),
 			expression.NewLiteral("foo", sql.LongText),
+			nil,
 		),
 		plan.NewShowTableStatus(sql.UnresolvedDatabase("")),
 	),
@@ -2412,6 +2421,7 @@ CREATE TABLE t2
 		expression.NewLike(
 			expression.NewUnresolvedColumn("collation"),
 			expression.NewLiteral("foo", sql.LongText),
+			nil,
 		),
 		showCollationProjection,
 	),

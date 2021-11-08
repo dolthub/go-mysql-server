@@ -78,7 +78,7 @@ func TestLike(t *testing.T) {
 	f := NewLike(
 		NewGetField(0, sql.Text, "", false),
 		NewGetField(1, sql.Text, "", false),
-		NewGetField(1, sql.Text, "", false),
+		nil,
 	)
 
 	testCases := []struct {
