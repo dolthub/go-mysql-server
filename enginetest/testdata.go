@@ -78,6 +78,36 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	var table sql.Table
 	var err error
 
+	if includeTable(includedTables, "specialtable") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "specialtable", sql.Schema{
+				{Name: "name", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "specialtable"},
+			})
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow("first_row"),
+					sql.NewRow("second_row"),
+					sql.NewRow("third_row"),
+					sql.NewRow(`%`),
+					sql.NewRow(`'`),
+					sql.NewRow(`"`),
+					sql.NewRow("\t"),
+					sql.NewRow("\n"),
+					sql.NewRow("\v"),
+					sql.NewRow(`test%test`),
+					sql.NewRow(`test'test`),
+					sql.NewRow(`test"test`),
+					sql.NewRow("test\ttest"),
+					sql.NewRow("test\ntest"),
+					sql.NewRow("test\vtest"),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "specialtable", err)
+			}
+		})
+	}
+
 	if includeTable(includedTables, "mytable") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "mytable", sql.Schema{
