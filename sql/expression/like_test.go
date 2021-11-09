@@ -69,7 +69,7 @@ func TestCustomPatternToRegex(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.in, func(t *testing.T) {
-			require.Equal(t, tt.out, patternToGoRegexCustom(tt.in, tt.escape))
+			require.Equal(t, tt.out, patternToGoRegexWithEscape(tt.in, tt.escape))
 		})
 	}
 }

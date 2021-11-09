@@ -159,7 +159,7 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
 		return nil, sql.ErrInvalidArgument.New("ESCAPE")
 	}
 
-	s := patternToGoRegexCustom(v.(string), e.(string))
+	s := patternToGoRegexWithEscape(v.(string), e.(string))
 	return &s, nil
 }
 
@@ -218,7 +218,7 @@ func patternToGoRegex(pattern string) string {
 }
 
 
-func patternToGoRegexCustom(pattern, escape string) string {
+func patternToGoRegexWithEscape(pattern, escape string) string {
 	var buf bytes.Buffer
 	buf.WriteString("(?s)")
 	buf.WriteRune('^')
