@@ -6700,6 +6700,14 @@ var errorQueries = []QueryErrorTest{
 		},
 	},
 	{
+		Query:       `SELECT * FROM specialtable t WHERE t.name LIKE '$%' ESCAPE 'abc'`,
+		ExpectedErr: sql.ErrInvalidArgument,
+	},
+	{
+		Query:       `SELECT * FROM specialtable t WHERE t.name LIKE '$%' ESCAPE '$$'`,
+		ExpectedErr: sql.ErrInvalidArgument,
+	},
+	{
 		Query:       `SELECT JSON_OBJECT("a","b","c") FROM dual`,
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
 	},
