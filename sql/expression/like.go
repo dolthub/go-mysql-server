@@ -50,7 +50,7 @@ func NewLike(left, right, escape sql.Expression) sql.Expression {
 
 	return &Like{
 		BinaryExpression: BinaryExpression{left, right},
-		escape:			  escape,
+		escape:           escape,
 		pool:             nil,
 		once:             sync.Once{},
 		cached:           cached,
@@ -217,13 +217,11 @@ func patternToGoRegex(pattern string) string {
 	return buf.String()
 }
 
-
 func patternToGoRegexWithEscape(pattern, escape string) string {
 	var buf bytes.Buffer
 	buf.WriteString("(?s)")
 	buf.WriteRune('^')
 	var escaped bool
-	//var customEscaped bool
 
 	for _, r := range strings.Replace(strings.Replace(regexp.QuoteMeta(pattern), `\\`, `\`, -1), regexp.QuoteMeta(escape), escape, -1) {
 		switch r {
