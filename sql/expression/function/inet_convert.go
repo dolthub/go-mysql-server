@@ -26,40 +26,40 @@ import (
 
 type INET struct {
 	val sql.Expression
-	ipv6, aton bool
+	ipv4, aton bool
 }
 
 var _ sql.FunctionExpression = (*INET)(nil)
 
 func NewINETATON(val sql.Expression) sql.Expression {
-	return &INET{val, false, true}
-}
-
-func NewINET6ATON(val sql.Expression) sql.Expression {
 	return &INET{val, true, true}
 }
 
+func NewINET6ATON(val sql.Expression) sql.Expression {
+	return &INET{val, false, true}
+}
+
 func NewINETNTOA(val sql.Expression) sql.Expression {
-	return &INET{val, false, false}
+	return &INET{val, true, false}
 }
 
 func NewINET6NTOA(val sql.Expression) sql.Expression {
-	return &INET{val, true, false}
+	return &INET{val, false, false}
 }
 
 // FunctionName implements sql.FunctionExpression
 func (i *INET) FunctionName() string {
-	if i.ipv6 {
-		if i.aton {
-			return "inet6_aton"
-		} else {
-			return "inet6_ntoa"
-		}
-	} else {
+	if i.ipv4 {
 		if i.aton {
 			return "inet_aton"
 		} else {
 			return "inet_ntoa"
+		}
+	} else {
+		if i.aton {
+			return "inet6_aton"
+		} else {
+			return "inet6_ntoa"
 		}
 	}
 }
@@ -93,17 +93,7 @@ func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		// TODO: should be able to run hex(ipv6int), but our hex function only handles 32 bit ints
-		if i.ipv6 {
-			tmp := ip.To16()
-			if tmp == nil {
-				// TODO: return Warning incorrect string value
-				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
-			}
-
-			ipv6int := big.NewInt(0)
-			ipv6int.SetBytes(tmp)
-			return ipv6int, nil
-		} else {
+		if i.ipv4 {
 			tmp := ip.To4()
 			if tmp == nil {
 				// If you try to parse IPv6 as IPv4
@@ -113,11 +103,31 @@ func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 			ipv4int := binary.BigEndian.Uint32(tmp)
 			return ipv4int, nil
+		} else {
+			tmp := ip.To16()
+			if tmp == nil {
+				// TODO: return Warning incorrect string value
+				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+			}
+
+			ipv6int := big.NewInt(0)
+			ipv6int.SetBytes(tmp)
+			return ipv6int, nil
 		}
 	} else {
-		if i.ipv6 {
-			// TODO: how to convert into bigint?
+		if i.ipv4 {
+			// Convert val into int
+			val, err = sql.Int32.Convert(val)
+			if err != nil {
+				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+			}
 
+			// Create new IPv4, and fill with val
+			ipv4 := make(net.IP, 4)
+			binary.BigEndian.PutUint32(ipv4, uint32(val.(int32)))
+
+			return ipv4.String(), nil
+		} else {
 			// Convert val into string then into big int
 			val, err = sql.LongText.Convert(val)
 			if err != nil {
@@ -134,18 +144,6 @@ func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			var ipv6 net.IP = ipv6int.Bytes()
 
 			return ipv6.String(), nil
-		} else {
-			// Convert val into int
-			val, err = sql.Int32.Convert(val)
-			if err != nil {
-				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
-			}
-
-			// Create new IPv4, and fill with val
-			ipv4 := make(net.IP, 4)
-			binary.BigEndian.PutUint32(ipv4, uint32(val.(int32)))
-
-			return ipv4.String(), nil
 		}
 	}
 }
@@ -156,17 +154,17 @@ func (i INET) IsNullable() bool {
 }
 
 func (i INET) String() string {
-	if i.ipv6 {
-		if i.aton {
-			return fmt.Sprintf("INET6_ATON(%s)", i.val)
-		} else {
-			return fmt.Sprintf("INET6_NTOA(%s)", i.val)
-		}
-	} else {
+	if i.ipv4 {
 		if i.aton {
 			return fmt.Sprintf("INET_ATON(%s)", i.val)
 		} else {
 			return fmt.Sprintf("INET_NTOA(%s)", i.val)
+		}
+	} else {
+		if i.aton {
+			return fmt.Sprintf("INET6_ATON(%s)", i.val)
+		} else {
+			return fmt.Sprintf("INET6_NTOA(%s)", i.val)
 		}
 	}
 }
@@ -181,17 +179,17 @@ func (i INET) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	if i.ipv6 {
-		if i.aton {
-			return NewINET6ATON(i.val), nil
-		} else {
-			return NewINET6NTOA(i.val), nil
-		}
-	} else {
+	if i.ipv4 {
 		if i.aton {
 			return NewINETATON(i.val), nil
 		} else {
 			return NewINETNTOA(i.val), nil
+		}
+	} else {
+		if i.aton {
+			return NewINET6ATON(i.val), nil
+		} else {
+			return NewINET6NTOA(i.val), nil
 		}
 	}
 }
