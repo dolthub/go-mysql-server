@@ -2659,17 +2659,13 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 		return nil, err
 	}
 
-	// TODO: is this the right way to do this?
-	var escape sql.Expression
-	escape = nil
+	var escape sql.Expression = nil
 	if c.Escape != nil {
 		escape, err = ExprToExpression(ctx, c.Escape)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-
 
 	switch strings.ToLower(c.Operator) {
 	case sqlparser.RegexpStr:
