@@ -95,6 +95,12 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					sql.NewRow("\t"),
 					sql.NewRow("\n"),
 					sql.NewRow("\v"),
+					sql.NewRow(`test%test`),
+					sql.NewRow(`test'test`),
+					sql.NewRow(`test"test`),
+					sql.NewRow("test\ttest"),
+					sql.NewRow("test\ntest"),
+					sql.NewRow("test\vtest"),
 					)
 				} else {
 				t.Logf("Warning: could not create table %s: %s", "specialtable", err)

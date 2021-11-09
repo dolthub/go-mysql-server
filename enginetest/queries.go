@@ -1791,6 +1791,34 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{sql.Row{"\v"}},
 	},
 	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "test$%test" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"test%test"}},
+	},
+	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$%%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{"%"}, sql.Row{"test%test"}},
+	},
+	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$'%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{`'`}, sql.Row{`test'test`}},
+	},
+	{
+		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%\"%" ESCAPE '$'`,
+		Expected: []sql.Row{sql.Row{`"`}, sql.Row{`test"test`}},
+	},
+	{
+		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE 'test$\ttest' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"test\ttest"}},
+	},
+	{
+		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE '%$\n%' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\n"}, sql.Row{"test\ntest"}},
+	},
+	{
+		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
+		Expected: []sql.Row{sql.Row{"\v"}, sql.Row{"test\vtest"}},
+	},
+	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
 		Expected: []sql.Row{sql.Row{"first row"}, sql.Row{"second row"}, sql.Row{"third row"}},
 	},
