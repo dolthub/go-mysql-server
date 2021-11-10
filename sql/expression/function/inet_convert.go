@@ -92,7 +92,6 @@ func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 		}
 
-		// TODO: should be able to run hex(ipv6int), but our hex function only handles 32 bit ints
 		if i.ipv4 {
 			tmp := ip.To4()
 			if tmp == nil {
@@ -104,7 +103,14 @@ func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			ipv4int := binary.BigEndian.Uint32(tmp)
 			return ipv4int, nil
 		} else {
-			tmp := ip.To16()
+			// If possible to do it as IPv4, do that
+			tmp := ip.To4()
+			if tmp != nil {
+				ipv4int := binary.BigEndian.Uint32(tmp)
+				return ipv4int, nil
+			}
+
+			tmp = ip.To16()
 			if tmp == nil {
 				// TODO: return Warning incorrect string value
 				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
