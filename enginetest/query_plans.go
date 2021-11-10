@@ -464,6 +464,13 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM mytable WHERE i in (1, 2, 3, 4)`,
+		ExpectedPlan: "Filter(mytable.i HASH IN (1, 2, 3, 4))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i BETWEEN 10 AND 20`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +

@@ -17,12 +17,18 @@ package expression
 import (
 	"fmt"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+var ErrUnsupportedHashInOperand = errors.NewKind("hash IN operator expects Tuple expression, found %T")
+var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects Literal subexpressions, found %T")
 
 // InTuple is an expression that checks an expression is inside a list of expressions.
 type InTuple struct {
 	BinaryExpression
+	//elements map[interface{}]sql.Expression
 }
 
 // We implement Comparer because we have a Left() and a Right(), but we can't be Compare()d
@@ -46,6 +52,7 @@ func (in *InTuple) Right() sql.Expression {
 
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
+	// TODO if right is a literal expr, build the hash map
 	return &InTuple{BinaryExpression{left, right}}
 }
 
@@ -75,6 +82,8 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch right := in.Right().(type) {
 	case Tuple:
+		// TODO eliminate this loop
+		// TODO preserve invalid comparison?
 		for _, el := range right {
 			if sql.NumColumns(el.Type()) != leftElems {
 				return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
@@ -141,4 +150,86 @@ func (in *InTuple) Children() []sql.Expression {
 // NewNotInTuple creates a new NotInTuple expression.
 func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 	return NewNot(NewInTuple(left, right))
+}
+
+// InTuple is an expression that checks an expression is inside a list of expressions.
+type HashInTuple struct {
+	InTuple
+	cmp       map[interface{}]sql.Expression
+	hasNull   bool
+	rightType sql.Type
+}
+
+// NewHashInTuple creates an InTuple expression.
+func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
+	cmp, hasNull, t, err := newInMap(right)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull, rightType: t}, nil
+}
+
+// Eval implements the Expression interface.
+func (hin *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if hin.hasNull {
+		return nil, nil
+	}
+
+	typ := hin.Left().Type().Promote()
+	leftElems := sql.NumColumns(typ)
+	left, err := hin.Left().Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if left == nil {
+		return nil, nil
+	}
+
+	left, err = hin.rightType.Convert(left)
+	if err != nil {
+		return nil, err
+	}
+
+	right, ok := hin.cmp[left]
+	if !ok {
+		return false, nil
+	}
+	if sql.NumColumns(right.Type()) != leftElems {
+		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type()))
+	}
+
+	return true, nil
+}
+
+func (hin *HashInTuple) String() string {
+	return fmt.Sprintf("(%s HASH IN %s)", hin.Left(), hin.Right())
+}
+
+func (hin *HashInTuple) DebugString() string {
+	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hin.Left()), sql.DebugString(hin.Right()))
+}
+
+func newInMap(expr sql.Expression) (map[interface{}]sql.Expression, bool, sql.Type, error) {
+	elements := make(map[interface{}]sql.Expression)
+	hasNull := false
+	var t sql.Type
+	switch right := expr.(type) {
+	case Tuple:
+		for _, el := range right {
+			switch l := el.(type) {
+			case *Literal:
+				if t == nil {
+					t = l.Type()
+				}
+				elements[l.value] = el
+			default:
+				return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+			}
+		}
+	default:
+		return nil, hasNull, t, ErrUnsupportedHashInOperand.New(right)
+	}
+	return elements, hasNull, t, nil
 }
