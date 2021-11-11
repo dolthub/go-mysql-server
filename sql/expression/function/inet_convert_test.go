@@ -34,7 +34,7 @@ func TestNewINETATON(t *testing.T) {
 		{"valid ipv4 address", sql.NewRow("10.0.5.10"), uint32(167773450), false},
 		// Output does not match MySQL, but it also indicates it shouldn't be used for short-form anyway: https://dev.mysql.com/doc/refman/8.0/en/miscellaneous-functions.html#function_inet-aton
 		{"valid short-form ipv4 address", sql.NewRow("10.5.10"), nil, false},
-		{"valid shoft-form ip4 address (non-string)", sql.NewRow(10.0), nil, false},
+		{"valid short-form ip4 address (non-string)", sql.NewRow(10.0), nil, false},
 		{"valid ipv6 address", sql.NewRow("::10.0.5.10"), nil, false},
 		{"valid ipv6 address", sql.NewRow("fdfe::5a55:caff:fefa:9098"), nil, false},
 		{"invalid ipv4 address", sql.NewRow("1.10.0.5.10"), nil, false},
@@ -137,6 +137,10 @@ func TestNewINET6NTOA(t *testing.T) {
 		{"floating point ipv4", sql.NewRow(10.1), nil, false},
 		{"valid ipv6 int", sql.NewRow("\x00\x00\x00\x00"), "0.0.0.0", false},
 		{"valid ipv6 int", sql.NewRow("\xfd\xfe\x00\x00\x00\x00\x00\x00\x5a\x55\xca\xff\xfe\xfa\x90\x98"), "fdfe::5a55:caff:fefa:9098", false},
+		{"valid ipv4-mapped int", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x0a\x00\x05\x0a"), "::ffff:10.0.5.10", false},
+		{"valid ipv4-compatible int", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a\x00\x05\x0a"), "::10.0.5.10", false},
+		{"all zeros", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"), "::", false},
+		{"only last 4 bytes filled", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x12\x34"), "::1234", false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {

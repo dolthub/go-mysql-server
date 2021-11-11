@@ -17,139 +17,301 @@ package function
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
-	"math/big"
 	"net"
-	"reflect"
 	"strings"
 )
 
-type IsIP struct {
+type IsIPv4 struct {
 	val sql.Expression
-	ipv4, mapped, compat bool
+}
+var _ sql.FunctionExpression = (*IsIPv4)(nil)
+
+func NewIsIPv4(val sql.Expression) sql.Expression {
+	return &IsIPv4{val}
 }
 
-var _ sql.FunctionExpression = (*IsIP)(nil)
-
-func NewIsIP6(val sql.Expression) sql.Expression {
-	return &IsIP{val, false, false, false}
-}
-
-func NewIsIP4(val sql.Expression) sql.Expression {
-	return &IsIP{val, true, false, false}
-}
-
-func NewIsIP4Compat(val sql.Expression) sql.Expression {
-	return &IsIP{val, false, true, false}
-}
-
-func NewIsIP4Mapped(val sql.Expression) sql.Expression {
-	return &IsIP{val, false, false, true}
-}
-
-func (i *IsIP) FunctionName() string {
-	if i.compat {
-		return "is_ip4_compat"
-	} else if i.mapped{
-		return "is_ip4_mapped"
-	} else if i.ipv4{
-		return "is_ip4"
-	} else {
-		return "is_ip6"
-	}
+func (i *IsIPv4) FunctionName() string {
+	return "is_ipv4"
 }
 
 // Children implements the Expression interface
-func (i *IsIP) Children() []sql.Expression {
+func (i *IsIPv4) Children() []sql.Expression {
 	return []sql.Expression{i.val}
 }
 
-// Eval implements the Expression interface
-func (i *IsIP) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// TODO: Maybe they shouldn't all be together; this kind of messy and confusing
+// IsNullable implements the Expression interface
+func (i IsIPv4) IsNullable() bool {
+	return i.val.IsNullable()
+}
 
+func (i IsIPv4) String() string {
+	return fmt.Sprintf("IS_IPV4(%s)", i.val)
+}
+
+func (i IsIPv4) Resolved() bool {
+	return i.val.Resolved()
+}
+
+func (IsIPv4) Type() sql.Type { return sql.LongText }
+
+func (i IsIPv4) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+	return NewIsIPv4(i.val), nil
+}
+
+
+// Eval implements the Expression interface
+func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
 	val, err := i.val.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	// Expect to receive IPv4 Address, otherwise receiving expect ipv6 (big) int
-	if i.compat || i.mapped {
-		// Convert to into string, then into big int
-		val, err = sql.LongText.Convert(val)
-		if err != nil {
-			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
-		}
-		ipv6int := new(big.Int)
-		ipv6int, ok := ipv6int.SetString(val.(string), 10)
-		if !ok {
-			// TODO: figure out right error
-			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
-		}
-
-		// Check if IPv4 compatible
-		if i.compat {
-			compatPrefix := new(big.Int)
-			compatPrefix.SetString("0", 10)
-			ipv6int.Rsh(ipv6int, 32)
-			return ipv6int.Cmp(compatPrefix) == 0, nil
-		}
-
-		// Check if IPv4 mapped
-		mappedPrefix := new(big.Int)
-		mappedPrefix.SetString("FFFF", 16)
-		ipv6int.Rsh(ipv6int, 32)
-		return ipv6int.Cmp(mappedPrefix) == 0, nil
+	// If null, return nul
+	if val == nil {
+		return nil, nil
 	}
 
-	// Parse IP address, return false if not valid ip
-	ip := net.ParseIP(val.(string))
-	if ip == nil {
+	// Must be of type string
+	switch val.(type) {
+	case string:
+		// Parse IP address, return false if not valid ip
+		ip := net.ParseIP(val.(string))
+		if ip == nil {
+			return false, nil
+		}
+
+		// Check if ip address is valid IPv4 address
+		return ip.To4() != nil, nil
+	default:
 		return false, nil
 	}
+}
 
-	// Check if ip address is valid IPv4 address
-	if i.ipv4 {
-		return ip.To4() != nil, nil
-	}
+type IsIPv6 struct {
+	val sql.Expression
+}
+var _ sql.FunctionExpression = (*IsIPv6)(nil)
 
-	return ip.To16() != nil && (strings.Count(val.(string),":") >= 2), nil
+func NewIsIPv6(val sql.Expression) sql.Expression {
+	return &IsIPv6{val}
+}
+
+func (i *IsIPv6) FunctionName() string {
+	return "is_ipv6"
+}
+
+// Children implements the Expression interface
+func (i *IsIPv6) Children() []sql.Expression {
+	return []sql.Expression{i.val}
 }
 
 // IsNullable implements the Expression interface
-func (i IsIP) IsNullable() bool {
+func (i IsIPv6) IsNullable() bool {
 	return i.val.IsNullable()
 }
 
-func (i IsIP) String() string {
-	if i.compat {
-		return fmt.Sprintf("IS_IP4_COMPAT(%s)", i.val)
-	} else if i.mapped {
-		return fmt.Sprintf("IS_IP4_MAPPED(%s)", i.val)
-	} else if i.ipv4 {
-		return fmt.Sprintf("IS_IP4(%s)", i.val)
-	} else {
-		return fmt.Sprintf("IS_IP6(%s)", i.val)
-	}
+func (i IsIPv6) String() string {
+	return fmt.Sprintf("IS_IPV6(%s)", i.val)
 }
 
-func (i IsIP) Resolved() bool {
+func (i IsIPv6) Resolved() bool {
 	return i.val.Resolved()
 }
 
-func (IsIP) Type() sql.Type { return sql.LongText }
+func (IsIPv6) Type() sql.Type { return sql.LongText }
 
-func (i IsIP) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	if i.compat {
-		return NewIsIP4Compat(i.val), nil
-	} else if i.mapped {
-		return NewIsIP4Mapped(i.val), nil
-	} else if i.ipv4 {
-		return NewIsIP4(i.val), nil
-	} else {
-		return NewIsIP6(i.val), nil
+	return NewIsIPv6(i.val), nil
+}
+
+
+// Eval implements the Expression interface
+func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate value
+	val, err := i.val.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// If null, return nul
+	if val == nil {
+		return nil, nil
+	}
+
+	// Must be of type string
+	switch val.(type) {
+	case string:
+		// Parse IP address, return false if not valid ip
+		ip := net.ParseIP(val.(string))
+		if ip == nil {
+			return false, nil
+		}
+
+		// Check if ip address is valid IPv6 address
+		return ip.To16() != nil && (strings.Count(val.(string), ":") >= 2), nil
+	default:
+		return false, nil
+	}
+}
+
+type IsIPv4Compat struct {
+	val sql.Expression
+}
+var _ sql.FunctionExpression = (*IsIPv4Compat)(nil)
+
+func NewIsIPv4Compat(val sql.Expression) sql.Expression {
+	return &IsIPv4Compat{val}
+}
+
+func (i *IsIPv4Compat) FunctionName() string {
+	return "is_ipv4_compat"
+}
+
+// Children implements the Expression interface
+func (i *IsIPv4Compat) Children() []sql.Expression {
+	return []sql.Expression{i.val}
+}
+
+// IsNullable implements the Expression interface
+func (i IsIPv4Compat) IsNullable() bool {
+	return i.val.IsNullable()
+}
+
+func (i IsIPv4Compat) String() string {
+	return fmt.Sprintf("IS_IPV4_COMPAT(%s)", i.val)
+}
+
+func (i IsIPv4Compat) Resolved() bool {
+	return i.val.Resolved()
+}
+
+func (IsIPv4Compat) Type() sql.Type { return sql.LongText }
+
+func (i IsIPv4Compat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+	return NewIsIPv4Compat(i.val), nil
+}
+
+// Eval implements the Expression interface
+func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate value
+	val, err := i.val.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// If null, return nul
+	if val == nil {
+		return nil, nil
+	}
+
+	// Expect to receive a hex encoded string
+	switch val.(type) {
+	case string:
+		// Convert into byte array
+		ip := []byte(val.(string))
+
+		// Must be of length 16
+		if len(ip) != 16 {
+			return false, nil
+		}
+
+		// Check if first 12 bytes are all 0
+		for _, b := range ip[:12] {
+			if b != 0 {
+				return false, nil
+			}
+		}
+		return true, nil
+	default:
+		return false, nil
+	}
+}
+
+type IsIPv4Mapped struct {
+	val sql.Expression
+}
+var _ sql.FunctionExpression = (*IsIPv4Mapped)(nil)
+
+func NewIsIPv4Mapped(val sql.Expression) sql.Expression {
+	return &IsIPv4Mapped{val}
+}
+
+func (i *IsIPv4Mapped) FunctionName() string {
+	return "is_ipv4_mapped"
+}
+
+// Children implements the Expression interface
+func (i *IsIPv4Mapped) Children() []sql.Expression {
+	return []sql.Expression{i.val}
+}
+
+// IsNullable implements the Expression interface
+func (i IsIPv4Mapped) IsNullable() bool {
+	return i.val.IsNullable()
+}
+
+func (i IsIPv4Mapped) String() string {
+	return fmt.Sprintf("IS_IPV4_MAPPED(%s)", i.val)
+}
+
+func (i IsIPv4Mapped) Resolved() bool {
+	return i.val.Resolved()
+}
+
+func (IsIPv4Mapped) Type() sql.Type { return sql.LongText }
+
+func (i IsIPv4Mapped) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+	return NewIsIPv4Mapped(i.val), nil
+}
+
+
+// Eval implements the Expression interface
+func (i *IsIPv4Mapped) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate value
+	val, err := i.val.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// If null, return nul
+	if val == nil {
+		return nil, nil
+	}
+
+	// Expect to receive a hex encoded string
+	switch val.(type) {
+	case string:
+		// Convert into byte array
+		ip := []byte(val.(string))
+
+		// Must be of length 16
+		if len(ip) != 16 {
+			return false, nil
+		}
+
+		// Check if first 10 bytes are all 0
+		for _, b := range ip[:10] {
+			if b != 0 {
+				return false, nil
+			}
+		}
+
+		// Bytes 11 and 12 must be 0xFF
+		return ip[10] == 0xFF && ip[11] == 0xFF, nil
+	default:
+		return false, nil
 	}
 }

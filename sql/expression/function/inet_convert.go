@@ -16,11 +16,11 @@ package function
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"net"
 	"reflect"
+	"strings"
 )
 
 type INETATON struct {
@@ -167,9 +167,9 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Received IPv4 address
-	ipv4 := ip.To4()
-	if ipv4 != nil {
+	// if it doesn't contain colons, treat it as ipv4
+	if strings.Count(val.(string), ":") < 2 {
+		ipv4 := ip.To4()
 		return string(ipv4), nil
 	}
 
@@ -178,7 +178,7 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if ipv6 == nil {
 		// Invalid IPv6 address
 		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
-		return "why why", nil
+		return nil, nil
 	}
 
 	// Return as string
@@ -318,6 +318,7 @@ func (i *INET6NTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Only convert if received string as input
 	switch val.(type) {
 	case string:
+		/* TODO: delete this, excludes correct strings
 		// Attempt to decode, should fail for correct binary string
 		_, err = hex.DecodeString(val.(string))
 		// Able to be decoded, throw error
@@ -327,6 +328,7 @@ func (i *INET6NTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 
 		}
+		*/
 		// Convert to byte array
 		tmp := []byte(val.(string))
 
@@ -342,25 +344,28 @@ func (i *INET6NTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		// Check to see if it can be treated as some form IPv4, first 10 bytes are 0
-		zeroCount := 0
+		// Check to see if it should be printed as IPv6; non-zero within first 10 bytes
 		for _, b := range tmp[:10] {
-			zeroCount += int(b)
+			if b != 0 {
+				// Create new IPv6
+				var ipv6 net.IP = tmp
+				return ipv6.String(), nil
+			}
 		}
 
 		// IPv4-compatible (12 bytes of 0x00)
-		if zeroCount == 0 && tmp[10] == 0 && tmp[11] == 0 && (tmp[12] != 0 || tmp[13] != 0) {
+		if tmp[10] == 0 && tmp[11] == 0 && (tmp[12] != 0 || tmp[13] != 0) {
 			var ipv4 net.IP = tmp[12:]
 			return "::" + ipv4.String(), nil
 		}
 
 		// IPv4-mapped (10 bytes of 0x00 followed by 2 bytes of 0xFF)
-		if zeroCount == 0 && tmp[10] == 0xFF && tmp[11] == 0xFF {
+		if tmp[10] == 0xFF && tmp[11] == 0xFF {
 			var ipv4 net.IP = tmp[12:]
 			return "::ffff:" + ipv4.String(), nil
 		}
 
-		// Create new IPv6
+		// Print as IPv6 by default
 		var ipv6 net.IP = tmp
 		return ipv6.String(), nil
 	default:
