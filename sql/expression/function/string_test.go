@@ -67,7 +67,7 @@ func TestUnhexFunc(t *testing.T) {
 	f := sql.Function1{Name: "unhex", Fn: NewUnhex}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
-	tf.AddSucceeding([]byte{0x4d, 0x79, 0x53, 0x51, 0x4c}, "4D7953514C")
+	tf.AddSucceeding([]byte("MySQL"), "4D7953514C")
 	tf.AddSucceeding([]byte{0x1, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef}, "0123456789abcdef")
 	tf.AddSucceeding([]byte{0x8f}, "8F")
 	tf.AddSucceeding([]byte{0x8f}, "8f")
