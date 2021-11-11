@@ -150,6 +150,9 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		return hexForString(s), nil
 
+	case []byte:
+		return hexForString(string(val)), nil
+
 	default:
 		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
 	}
@@ -258,7 +261,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return string(res), nil
+	return res, nil
 }
 
 // WithChildren implements the sql.Expression interface
