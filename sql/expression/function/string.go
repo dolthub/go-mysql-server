@@ -258,7 +258,7 @@ func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return string(res), nil
+	return res, nil
 }
 
 // WithChildren implements the sql.Expression interface
