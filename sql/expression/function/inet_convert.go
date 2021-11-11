@@ -17,10 +17,11 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"net"
 	"reflect"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
