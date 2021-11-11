@@ -17,8 +17,14 @@ package expression
 import (
 	"fmt"
 
+	"github.com/cespare/xxhash"
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+var ErrUnsupportedHashInOperand = errors.NewKind("hash IN operator expects Tuple expression, found %T")
+var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects Literal subexpressions, found %T")
 
 // InTuple is an expression that checks an expression is inside a list of expressions.
 type InTuple struct {
@@ -141,4 +147,104 @@ func (in *InTuple) Children() []sql.Expression {
 // NewNotInTuple creates a new NotInTuple expression.
 func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 	return NewNot(NewInTuple(left, right))
+}
+
+// HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
+type HashInTuple struct {
+	InTuple
+	cmp       map[uint64]sql.Expression
+	hasNull   bool
+	rightType sql.Type
+}
+
+var _ Comparer = (*InTuple)(nil)
+
+// NewHashInTuple creates an InTuple expression.
+func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
+	cmp, hasNull, t, err := newInMap(right)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull, rightType: t}, nil
+}
+
+// Eval implements the Expression interface.
+func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if hit.hasNull {
+		return nil, nil
+	}
+
+	leftElems := sql.NumColumns(hit.Left().Type().Promote())
+	left, err := hit.Left().Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if left == nil {
+		return nil, nil
+	}
+
+	left, err = hit.rightType.Convert(left)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := hashOf(left)
+	if err != nil {
+		return nil, err
+	}
+	right, ok := hit.cmp[key]
+	if !ok {
+		return false, nil
+	}
+	if sql.NumColumns(right.Type()) != leftElems {
+		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type()))
+	}
+
+	return true, nil
+}
+
+func (hit *HashInTuple) String() string {
+	return fmt.Sprintf("(%s HASH IN %s)", hit.Left(), hit.Right())
+}
+
+func (hit *HashInTuple) DebugString() string {
+	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hit.Left()), sql.DebugString(hit.Right()))
+}
+
+func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, error) {
+	elements := make(map[uint64]sql.Expression)
+	hasNull := false
+	var t sql.Type
+	switch right := expr.(type) {
+	case Tuple:
+		for _, el := range right {
+			switch l := el.(type) {
+			case *Literal:
+				if t == nil {
+					t = l.Type()
+				}
+				key, err := hashOf(l.value)
+				if err != nil {
+					return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+				}
+				elements[key] = el
+			default:
+				return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+			}
+		}
+	default:
+		return nil, hasNull, t, ErrUnsupportedHashInOperand.New(right)
+	}
+	return elements, hasNull, t, nil
+}
+
+// copied variant from cache.go
+func hashOf(i interface{}) (uint64, error) {
+	hash := xxhash.New()
+	if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", i))); err != nil {
+		return 0, err
+	}
+	return hash.Sum64(), nil
 }

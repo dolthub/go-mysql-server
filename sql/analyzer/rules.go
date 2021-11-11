@@ -96,6 +96,7 @@ var OnceAfterDefault = []Rule{
 	{"cache_subquery_results", cacheSubqueryResults},
 	{"cache_subquery_aliases_in_joins", cacheSubqueryAlisesInJoins},
 	{"apply_hash_lookups", applyHashLookups},
+	{"apply_hash_in", applyHashIn},
 	{"resolve_insert_rows", resolveInsertRows},
 	{"apply_triggers", applyTriggers},
 	{"apply_procedures", applyProcedures},

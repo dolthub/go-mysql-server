@@ -189,3 +189,98 @@ func TestNotInTuple(t *testing.T) {
 		})
 	}
 }
+
+func TestHashInTuple(t *testing.T) {
+	testCases := []struct {
+		name      string
+		left      sql.Expression
+		right     sql.Expression
+		row       sql.Row
+		result    interface{}
+		staticErr *errors.Kind
+		evalErr   *errors.Kind
+	}{
+		{
+			"left is nil",
+			expression.NewLiteral(nil, sql.Null),
+			expression.NewTuple(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"left and right don't have the same cols",
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			expression.ErrUnsupportedHashInSubexpression,
+			nil,
+		},
+		{
+			"right is an unsupported operand",
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(int64(2), sql.Int64),
+			nil,
+			nil,
+			expression.ErrUnsupportedHashInOperand,
+			nil,
+		},
+		{
+			"left is in right",
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(0), sql.Int64),
+			),
+			sql.NewRow(int64(1)),
+			true,
+			nil,
+			nil,
+		},
+		{
+			"left is not in right",
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewLiteral(int64(0), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			sql.NewRow(int64(1), int64(3)),
+			false,
+			nil,
+			nil,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			expr, err := expression.NewHashInTuple(tt.left, tt.right)
+			if tt.staticErr != nil {
+				require.Error(err)
+				require.True(tt.staticErr.Is(err))
+			} else {
+				result, err := expr.Eval(sql.NewEmptyContext(), tt.row)
+				if tt.evalErr != nil {
+					require.Error(err)
+					require.True(tt.evalErr.Is(err))
+				} else {
+					require.NoError(err)
+					require.Equal(tt.result, result)
+				}
+			}
+		})
+	}
+}
