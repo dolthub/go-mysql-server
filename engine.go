@@ -436,3 +436,60 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 
 	return analyzedCreateTable.Schema(), nil
 }
+
+func CreateShortCircuitCreateTable(ctx *sql.Context, pro sql.DatabaseProvider, dbName string, tableName string, schema sql.Schema) error {
+	e := NewDefault(pro)
+
+	createTable := plan.NewCreateTable(sql.UnresolvedDatabase(dbName), tableName, false, false, &plan.TableSpec{Schema: schema})
+
+	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
+	if err != nil {
+		return err
+	}
+
+	analyzedQueryProcess, ok := analyzed.(*plan.QueryProcess)
+	if !ok {
+		return fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
+	}
+
+	iter, err := analyzedQueryProcess.Child.RowIter(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	for {
+		_, err = iter.Next()
+		if err != nil {
+			return iter.Close(ctx)
+		}
+	}
+}
+
+func CreateShortCircuitInsert(ctx *sql.Context, analyzer *analyzer.Analyzer, dbname string, tableName string, source sql.RowIter, schema sql.Schema) error {
+	src := plan.NewRowIterSource(source, schema)
+	dest := plan.NewUnresolvedTable(tableName, dbname)
+
+	insert := plan.NewInsertInto(sql.UnresolvedDatabase(dbname), dest, src, false, nil, nil, false)
+	analyzed, err := analyzer.Analyze(ctx, insert, nil)
+	if err != nil {
+		return err
+	}
+
+	analyzedQueryProcess, ok := analyzed.(*plan.QueryProcess)
+	if !ok {
+		return fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
+	}
+	//panic("dsadas")
+
+	iter, err := analyzedQueryProcess.Child.RowIter(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	for {
+		_, err = iter.Next()
+		if err != nil {
+			return iter.Close(ctx)
+		}
+	}
+}
