@@ -98,7 +98,7 @@ func TestINET6ATON(t *testing.T) {
 		err      bool
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
-		{"valid ipv4 address", sql.NewRow("10.0.5.10"), uint32(167773450), false},
+		{"valid ipv4 address", sql.NewRow("10.0.5.10"), "\x0a\x00\x05\x0a", false},
 		{"valid ipv4-mapped ipv6 address", sql.NewRow("::10.0.5.10"), "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a\x00\x05\x0a", false},
 		{"valid short-form ipv4 address", sql.NewRow("10.5.10"), nil, false},
 		{"valid ipv6 address", sql.NewRow("fdfe::5a55:caff:fefa:9098"), "\xfd\xfe\x00\x00\x00\x00\x00\x00\x5a\x55\xca\xff\xfe\xfa\x90\x98", false},
@@ -122,6 +122,7 @@ func TestINET6ATON(t *testing.T) {
 	}
 }
 
+// TODO: write test cases for weird ipv4-mapped compressed
 func TestNewINET6NTOA(t *testing.T) {
 	f := NewINET6NTOA(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {

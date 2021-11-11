@@ -16,230 +16,355 @@ package function
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"net"
 	"reflect"
 )
 
-type INET struct {
+type INETATON struct {
 	val sql.Expression
-	ipv4, aton bool
 }
 
-var _ sql.FunctionExpression = (*INET)(nil)
+var _ sql.FunctionExpression = (*INETATON)(nil)
 
 func NewINETATON(val sql.Expression) sql.Expression {
-	return &INET{val, true, true}
+	return &INETATON{val}
 }
 
-func NewINET6ATON(val sql.Expression) sql.Expression {
-	return &INET{val, false, true}
+func (i *INETATON) FunctionName() string {
+	return "inet_aton"
 }
 
-func NewINETNTOA(val sql.Expression) sql.Expression {
-	return &INET{val, true, false}
+// IsNullable implements the Expression interface
+func (i INETATON) IsNullable() bool {
+	return i.val.IsNullable()
 }
 
-func NewINET6NTOA(val sql.Expression) sql.Expression {
-	return &INET{val, false, false}
+func (i INETATON) String() string {
+	return fmt.Sprintf("INET_ATON(%s)", i.val)
 }
 
-// FunctionName implements sql.FunctionExpression
-func (i *INET) FunctionName() string {
-	if i.ipv4 {
-		if i.aton {
-			return "inet_aton"
-		} else {
-			return "inet_ntoa"
-		}
-	} else {
-		if i.aton {
-			return "inet6_aton"
-		} else {
-			return "inet6_ntoa"
-		}
-	}
+func (i INETATON) Resolved() bool {
+	return i.val.Resolved()
 }
 
-// Children implements the Expression interface
-func (i *INET) Children() []sql.Expression {
+func (INETATON) Type() sql.Type {
+	return sql.LongText
+}
+
+func (i *INETATON) Children() []sql.Expression {
 	return []sql.Expression{i.val}
 }
 
-// Eval implements the Expression interface
-func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (i INETATON) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+	return NewINETATON(i.val), nil
+}
+
+func (i *INETATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
 	val, err := i.val.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
+	// Return null if given null
 	if val == nil {
 		return nil, nil
 	}
 
-	// Convert based on conversion type
-	if i.aton {
-		// Expect to receive an IP address, so convert val into string
-		val, err = sql.LongText.Convert(val)
-		if err != nil {
-			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+	// Expect to receive an IP address, so convert val into string
+	val, err = sql.LongText.Convert(val)
+	if err != nil {
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+	}
+
+	// Parse IP address
+	ip := net.ParseIP(val.(string))
+	if ip == nil {
+		// Failed to Parse IP correctly
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		return nil, nil
+	}
+
+	// Expect an IPv4 address
+	ipv4 := ip.To4()
+	if ipv4 == nil {
+		// Received invalid IPv4 address (IPv6 address are invalid)
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		return nil, nil
+	}
+
+	// Return IPv4 address as uint32
+	ipv4int := binary.BigEndian.Uint32(ipv4)
+	return ipv4int, nil
+}
+
+
+type INET6ATON struct {
+	val sql.Expression
+}
+
+var _ sql.FunctionExpression = (*INET6ATON)(nil)
+
+func NewINET6ATON(val sql.Expression) sql.Expression {
+	return &INET6ATON{val}
+}
+
+func (i *INET6ATON) FunctionName() string {
+	return "inet6_aton"
+}
+
+// IsNullable implements the Expression interface
+func (i INET6ATON) IsNullable() bool {
+	return i.val.IsNullable()
+}
+
+func (i INET6ATON) String() string {
+	return fmt.Sprintf("INET6_ATON(%s)", i.val)
+}
+
+func (i INET6ATON) Resolved() bool {
+	return i.val.Resolved()
+}
+
+func (INET6ATON) Type() sql.Type {
+	return sql.LongText
+}
+
+func (i *INET6ATON) Children() []sql.Expression {
+	return []sql.Expression{i.val}
+}
+
+func (i INET6ATON) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+	return NewINET6ATON(i.val), nil
+}
+
+func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate value
+	val, err := i.val.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return null if given null
+	if val == nil {
+		return nil, nil
+	}
+
+	// Parse IP address
+	ip := net.ParseIP(val.(string))
+	if ip == nil {
+		// Failed to Parse IP correctly
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		return nil, nil
+	}
+
+	// Received IPv4 address
+	ipv4 := ip.To4()
+	if ipv4 != nil {
+		return string(ipv4), nil
+	}
+
+	// Received IPv6 address
+	ipv6 := ip.To16()
+	if ipv6 == nil {
+		// Invalid IPv6 address
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		return "why why", nil
+	}
+
+	// Return as string
+	return string(ipv6), nil
+}
+
+
+type INETNTOA struct {
+	val sql.Expression
+}
+
+var _ sql.FunctionExpression = (*INETNTOA)(nil)
+
+func NewINETNTOA(val sql.Expression) sql.Expression {
+	return &INETNTOA{val}
+}
+
+func (i *INETNTOA) FunctionName() string {
+	return "inet_ntoa"
+}
+
+// IsNullable implements the Expression interface
+func (i INETNTOA) IsNullable() bool {
+	return i.val.IsNullable()
+}
+
+func (i INETNTOA) String() string {
+	return fmt.Sprintf("INET_NTOA(%s)", i.val)
+}
+
+func (i INETNTOA) Resolved() bool {
+	return i.val.Resolved()
+}
+
+func (INETNTOA) Type() sql.Type {
+	return sql.LongText
+}
+
+func (i *INETNTOA) Children() []sql.Expression {
+	return []sql.Expression{i.val}
+}
+
+func (i INETNTOA) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+	return NewINETNTOA(i.val), nil
+}
+
+func (i *INETNTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate value
+	val, err := i.val.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return null if given null
+	if val == nil {
+		return nil, nil
+	}
+
+	// Convert val into int
+	ipv4int, err := sql.Int32.Convert(val)
+	if ipv4int != nil && err != nil {
+		return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+	}
+
+	// Received a hex string instead of int
+	if ipv4int == nil {
+		// Create new IPv4
+		var ipv4 net.IP = []byte{0, 0, 0, 0}
+		return ipv4.String(), nil
+	}
+
+	// Create new IPv4, and fill with val
+	ipv4 := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ipv4, uint32(ipv4int.(int32))) // TODO: can't cast directly to uint32, any other way?
+
+	return ipv4.String(), nil
+}
+
+
+type INET6NTOA struct {
+	val sql.Expression
+}
+
+var _ sql.FunctionExpression = (*INET6NTOA)(nil)
+
+func NewINET6NTOA(val sql.Expression) sql.Expression {
+	return &INET6NTOA{val}
+}
+
+func (i *INET6NTOA) FunctionName() string {
+	return "inet6_ntoa"
+}
+
+// IsNullable implements the Expression interface
+func (i INET6NTOA) IsNullable() bool {
+	return i.val.IsNullable()
+}
+
+func (i INET6NTOA) String() string {
+	return fmt.Sprintf("INET6_NTOA(%s)", i.val)
+}
+
+func (i INET6NTOA) Resolved() bool {
+	return i.val.Resolved()
+}
+
+func (INET6NTOA) Type() sql.Type {
+	return sql.LongText
+}
+
+func (i *INET6NTOA) Children() []sql.Expression {
+	return []sql.Expression{i.val}
+}
+
+func (i INET6NTOA) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+	return NewINET6NTOA(i.val), nil
+}
+
+func (i *INET6NTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate value
+	val, err := i.val.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return null if given null
+	if val == nil {
+		return nil, nil
+	}
+
+	// Only convert if received string as input
+	switch val.(type) {
+	case string:
+		// Attempt to decode, should fail for correct binary string
+		_, err = hex.DecodeString(val.(string))
+		// Able to be decoded, throw error
+		if err == nil {
+			ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+			//return "able to be decoded, not a byte string", nil
+			return nil, nil
+
+		}
+		// Convert to byte array
+		tmp := []byte(val.(string))
+
+		// Exactly 4 bytes, treat as IPv4 address
+		if len(tmp) == 4 {
+			var ipv4 net.IP = tmp
+			return ipv4.String(), nil
 		}
 
-		// Parse IP address
-		ip := net.ParseIP(val.(string))
-		if ip == nil {
-			// Failed to Parse IP correctly
+		// There must be exactly 4 or 16 bytes (len == 4 satisfied above)
+		if len(tmp) != 16 {
 			ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
 			return nil, nil
 		}
 
-		if i.ipv4 {
-			// Expect an IPv4 address
-			tmp := ip.To4()
-			if tmp == nil {
-				// Received invalid IPv4 address (IPv6 address are invalid)
-				ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
-				return nil, nil
-			}
-
-			// Return IPv4 address as uint32
-			ipv4int := binary.BigEndian.Uint32(tmp)
-			return ipv4int, nil
-		} else {
-			// Received IPv4 address
-			ipv4 := ip.To4()
-			if ipv4 != nil {
-				return string(ipv4), nil
-			}
-
-			/*
-			// Sometimes above check is wrong, check if it really can be treated as IPv4
-			tmp := 0
-			for _, b := range ip[:12] {
-				tmp += int(b)
-			}
-
-			// Force it to be IPv4
-			if tmp == 0 {
-				newipv4 := make(net.IP, 4)
-				binary.BigEndian.PutUint32(newipv4, binary.BigEndian.Uint32(ip[12:]))
-				return string(newipv4), nil
-			}
-
-			*/
-
-			// Received IPv6 address
-			ipv6 := ip.To16()
-			if ipv6 == nil {
-				// Invalid IPv6 address
-				ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
-				return nil, nil
-			}
-
-			// Return as string
-			return string(ipv6), nil
+		// Check to see if it can be treated as some form IPv4, first 10 bytes are 0
+		zeroCount := 0
+		for _, b := range tmp[:10] {
+			zeroCount += int(b)
 		}
-	} else {
-		if i.ipv4 {
-			// Convert val into int
-			ipv4int, err := sql.Int32.Convert(val)
-			if ipv4int != nil && err != nil {
-				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
-			}
 
-			// Received a hex string instead of int
-			if ipv4int == nil {
-				// Create new IPv4
-				var ipv4 net.IP = []byte{0, 0, 0, 0}
-				return ipv4.String(), nil
-			}
-
-			// Create new IPv4, and fill with val
-			ipv4 := make(net.IP, 4)
-			binary.BigEndian.PutUint32(ipv4, uint32(ipv4int.(int32))) // TODO: can't cast directly to uint32, any other way?
-
-			return ipv4.String(), nil
-		} else {
-			// TODO: for some reason integers work??
-
-			// Convert into string
-			val, err = sql.LongText.Convert(val)
-			if err != nil {
-				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
-			}
-
-			// There must be a multiple of 4 number of bytes
-			tmp := []byte(val.(string))
-			if len(tmp) % 4 != 0 {
-				ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
-				return nil, nil
-			}
-
-			// Create new IPv6
-			var ipv6 net.IP = tmp
-
-			// Check to see if it can be treated as IPv4
-			tmp1 := 0
-			for _, b := range ipv6[:12] {
-				tmp1 += int(b)
-			}
-
-			// Force it to be IPv4
-			if tmp1 == 0 {
-				newipv4 := make(net.IP, 4)
-				binary.BigEndian.PutUint32(newipv4, binary.BigEndian.Uint32(ipv6[12:]))
-				return newipv4.String(), nil
-			}
-
-			return ipv6.String(), nil
+		// IPv4-compatible (12 bytes of 0x00)
+		if zeroCount == 0 && tmp[10] == 0 && tmp[11] == 0 && (tmp[12] != 0 || tmp[13] != 0) {
+			var ipv4 net.IP = tmp[12:]
+			return "::" + ipv4.String(), nil
 		}
-	}
-}
 
-// IsNullable implements the Expression interface
-func (i INET) IsNullable() bool {
-	return i.val.IsNullable()
-}
-
-func (i INET) String() string {
-	if i.ipv4 {
-		if i.aton {
-			return fmt.Sprintf("INET_ATON(%s)", i.val)
-		} else {
-			return fmt.Sprintf("INET_NTOA(%s)", i.val)
+		// IPv4-mapped (10 bytes of 0x00 followed by 2 bytes of 0xFF)
+		if zeroCount == 0 && tmp[10] == 0xFF && tmp[11] == 0xFF {
+			var ipv4 net.IP = tmp[12:]
+			return "::ffff:" + ipv4.String(), nil
 		}
-	} else {
-		if i.aton {
-			return fmt.Sprintf("INET6_ATON(%s)", i.val)
-		} else {
-			return fmt.Sprintf("INET6_NTOA(%s)", i.val)
-		}
-	}
-}
 
-func (i INET) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (INET) Type() sql.Type { return sql.LongText }
-
-func (i INET) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
-	}
-	if i.ipv4 {
-		if i.aton {
-			return NewINETATON(i.val), nil
-		} else {
-			return NewINETNTOA(i.val), nil
-		}
-	} else {
-		if i.aton {
-			return NewINET6ATON(i.val), nil
-		} else {
-			return NewINET6NTOA(i.val), nil
-		}
+		// Create new IPv6
+		var ipv6 net.IP = tmp
+		return ipv6.String(), nil
+	default:
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%v'' for function %s", val, i.FunctionName()))
+		return nil, nil
 	}
 }
