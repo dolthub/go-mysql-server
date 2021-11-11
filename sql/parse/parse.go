@@ -2745,7 +2745,7 @@ func selectExprNeedsAlias(e *sqlparser.AliasedExpr, expr sql.Expression) bool {
 	complex := false
 	sql.Inspect(expr, func(expr sql.Expression) bool {
 		switch expr.(type) {
-		case *plan.Subquery, *expression.UnresolvedFunction, *expression.Case, *expression.InTuple, *plan.InSubquery:
+		case *plan.Subquery, *expression.UnresolvedFunction, *expression.Case, *expression.InTuple, *plan.InSubquery, *expression.HashInTuple:
 			complex = true
 			return false
 		default:

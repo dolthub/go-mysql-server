@@ -17,6 +17,7 @@ package expression
 import (
 	"fmt"
 
+	"github.com/cespare/xxhash"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -151,10 +152,12 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
 	InTuple
-	cmp       map[interface{}]sql.Expression
+	cmp       map[uint64]sql.Expression
 	hasNull   bool
 	rightType sql.Type
 }
+
+var _ Comparer = (*InTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
 func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
@@ -187,7 +190,11 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	right, ok := hit.cmp[left]
+	key, err := hashOf(left)
+	if err != nil {
+		return nil, err
+	}
+	right, ok := hit.cmp[key]
 	if !ok {
 		return false, nil
 	}
@@ -206,8 +213,8 @@ func (hit *HashInTuple) DebugString() string {
 	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hit.Left()), sql.DebugString(hit.Right()))
 }
 
-func newInMap(expr sql.Expression) (map[interface{}]sql.Expression, bool, sql.Type, error) {
-	elements := make(map[interface{}]sql.Expression)
+func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, error) {
+	elements := make(map[uint64]sql.Expression)
 	hasNull := false
 	var t sql.Type
 	switch right := expr.(type) {
@@ -218,7 +225,11 @@ func newInMap(expr sql.Expression) (map[interface{}]sql.Expression, bool, sql.Ty
 				if t == nil {
 					t = l.Type()
 				}
-				elements[l.value] = el
+				key, err := hashOf(l.value)
+				if err != nil {
+					return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+				}
+				elements[key] = el
 			default:
 				return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
 			}
@@ -227,4 +238,13 @@ func newInMap(expr sql.Expression) (map[interface{}]sql.Expression, bool, sql.Ty
 		return nil, hasNull, t, ErrUnsupportedHashInOperand.New(right)
 	}
 	return elements, hasNull, t, nil
+}
+
+// copied variant from cache.go
+func hashOf(i interface{}) (uint64, error) {
+	hash := xxhash.New()
+	if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", i))); err != nil {
+		return 0, err
+	}
+	return hash.Sum64(), nil
 }
