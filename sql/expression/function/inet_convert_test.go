@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
+
 func TestNewINETATON(t *testing.T) {
 	f := NewINETATON(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
@@ -56,7 +57,6 @@ func TestNewINETATON(t *testing.T) {
 		})
 	}
 }
-
 
 func TestNewINETNTOA(t *testing.T) {
 	f := NewINETNTOA(expression.NewGetField(0, sql.LongText, "", false))
@@ -99,7 +99,7 @@ func TestINET6ATON(t *testing.T) {
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
 		{"valid ipv4 address", sql.NewRow("10.0.5.10"), []byte{10, 0, 5, 10}, false},
-		{"valid ipv4-mapped ipv6 address", sql.NewRow("::10.0.5.10"), []byte{0,0,0,0,0,0,0,0,0,0,0,0,10,0,5,10}, false},
+		{"valid ipv4-mapped ipv6 address", sql.NewRow("::10.0.5.10"), []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 5, 10}, false},
 		{"valid short-form ipv4 address", sql.NewRow("10.5.10"), nil, false},
 		{"valid ipv6 address", sql.NewRow("fdfe::5a55:caff:fefa:9098"), []byte{0xfd, 0xfe, 0, 0, 0, 0, 0, 0, 0x5a, 0x55, 0xca, 0xff, 0xfe, 0xfa, 0x90, 0x98}, false},
 		{"invalid ipv4 address", sql.NewRow("1.10.0.5.10"), nil, false},
@@ -135,7 +135,7 @@ func TestNewINET6NTOA(t *testing.T) {
 		{"valid ipv4 int", sql.NewRow(uint32(167773450)), nil, false},
 		{"valid ipv4 int as string", sql.NewRow("167773450"), nil, false},
 		{"floating point ipv4", sql.NewRow(10.1), nil, false},
-		{"valid ipv6 int", sql.NewRow([]byte{0,0,0,0}), "0.0.0.0", false},
+		{"valid ipv6 int", sql.NewRow([]byte{0, 0, 0, 0}), "0.0.0.0", false},
 		{"valid ipv6 int", sql.NewRow([]byte{0xfd, 0xfe, 0, 0, 0, 0, 0, 0, 0x5a, 0x55, 0xca, 0xff, 0xfe, 0xfa, 0x90, 0x98}), "fdfe::5a55:caff:fefa:9098", false},
 		{"valid ipv4-mapped int", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 10, 0, 5, 10}), "::ffff:10.0.5.10", false},
 		{"valid ipv4-compatible int", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 5, 10}), "::10.0.5.10", false},

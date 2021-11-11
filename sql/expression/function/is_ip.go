@@ -16,14 +16,16 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"net"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type IsIPv4 struct {
 	val sql.Expression
 }
+
 var _ sql.FunctionExpression = (*IsIPv4)(nil)
 
 func NewIsIPv4(val sql.Expression) sql.Expression {
@@ -61,7 +63,6 @@ func (i IsIPv4) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewIsIPv4(i.val), nil
 }
 
-
 // Eval implements the Expression interface
 func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
@@ -94,6 +95,7 @@ func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 type IsIPv6 struct {
 	val sql.Expression
 }
+
 var _ sql.FunctionExpression = (*IsIPv6)(nil)
 
 func NewIsIPv6(val sql.Expression) sql.Expression {
@@ -131,7 +133,6 @@ func (i IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewIsIPv6(i.val), nil
 }
 
-
 // Eval implements the Expression interface
 func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
@@ -164,6 +165,7 @@ func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 type IsIPv4Compat struct {
 	val sql.Expression
 }
+
 var _ sql.FunctionExpression = (*IsIPv4Compat)(nil)
 
 func NewIsIPv4Compat(val sql.Expression) sql.Expression {
@@ -237,6 +239,7 @@ func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 type IsIPv4Mapped struct {
 	val sql.Expression
 }
+
 var _ sql.FunctionExpression = (*IsIPv4Mapped)(nil)
 
 func NewIsIPv4Mapped(val sql.Expression) sql.Expression {
@@ -273,7 +276,6 @@ func (i IsIPv4Mapped) WithChildren(children ...sql.Expression) (sql.Expression, 
 	}
 	return NewIsIPv4Mapped(i.val), nil
 }
-
 
 // Eval implements the Expression interface
 func (i *IsIPv4Mapped) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

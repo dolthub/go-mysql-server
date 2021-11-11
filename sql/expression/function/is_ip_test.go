@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
+
 func TestNewIsIPv4(t *testing.T) {
 	f := NewIsIPv4(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {

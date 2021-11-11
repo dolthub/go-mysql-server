@@ -17,10 +17,11 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"net"
 	"reflect"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type INETATON struct {
@@ -104,7 +105,6 @@ func (i *INETATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return ipv4int, nil
 }
 
-
 type INET6ATON struct {
 	val sql.Expression
 }
@@ -185,7 +185,6 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return []byte(ipv6), nil
 }
 
-
 type INETNTOA struct {
 	val sql.Expression
 }
@@ -259,7 +258,6 @@ func (i *INETNTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	return ipv4.String(), nil
 }
-
 
 type INET6NTOA struct {
 	val sql.Expression
