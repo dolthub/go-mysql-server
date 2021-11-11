@@ -17,11 +17,9 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
-	"math/big"
+	"github.com/dolthub/go-mysql-server/sql"
 	"net"
 	"reflect"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type INET struct {
@@ -77,9 +75,13 @@ func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if val == nil {
+		return nil, nil
+	}
+
 	// Convert based on conversion type
 	if i.aton {
-		// Convert val into string
+		// Expect to receive an IP address, so convert val into string
 		val, err = sql.LongText.Convert(val)
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
@@ -88,66 +90,108 @@ func (i *INET) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		// Parse IP address
 		ip := net.ParseIP(val.(string))
 		if ip == nil {
-			// TODO: return error Incorrect string value <val> for function <func_name>
-			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+			// Failed to Parse IP correctly
+			ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+			return nil, nil
 		}
 
 		if i.ipv4 {
+			// Expect an IPv4 address
 			tmp := ip.To4()
 			if tmp == nil {
-				// If you try to parse IPv6 as IPv4
-				// TODO: return Warning incorrect string value
-				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+				// Received invalid IPv4 address (IPv6 address are invalid)
+				ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+				return nil, nil
 			}
 
+			// Return IPv4 address as uint32
 			ipv4int := binary.BigEndian.Uint32(tmp)
 			return ipv4int, nil
 		} else {
-			// If possible to do it as IPv4, do that
-			tmp := ip.To4()
-			if tmp != nil {
-				ipv4int := binary.BigEndian.Uint32(tmp)
-				return ipv4int, nil
+			// Received IPv4 address
+			ipv4 := ip.To4()
+			if ipv4 != nil {
+				return string(ipv4), nil
 			}
 
-			tmp = ip.To16()
-			if tmp == nil {
-				// TODO: return Warning incorrect string value
-				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+			/*
+			// Sometimes above check is wrong, check if it really can be treated as IPv4
+			tmp := 0
+			for _, b := range ip[:12] {
+				tmp += int(b)
 			}
 
-			ipv6int := big.NewInt(0)
-			ipv6int.SetBytes(tmp)
-			return ipv6int, nil
+			// Force it to be IPv4
+			if tmp == 0 {
+				newipv4 := make(net.IP, 4)
+				binary.BigEndian.PutUint32(newipv4, binary.BigEndian.Uint32(ip[12:]))
+				return string(newipv4), nil
+			}
+
+			*/
+
+			// Received IPv6 address
+			ipv6 := ip.To16()
+			if ipv6 == nil {
+				// Invalid IPv6 address
+				ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+				return nil, nil
+			}
+
+			// Return as string
+			return string(ipv6), nil
 		}
 	} else {
 		if i.ipv4 {
 			// Convert val into int
-			val, err = sql.Int32.Convert(val)
-			if err != nil {
+			ipv4int, err := sql.Int32.Convert(val)
+			if ipv4int != nil && err != nil {
 				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+			}
+
+			// Received a hex string instead of int
+			if ipv4int == nil {
+				// Create new IPv4
+				var ipv4 net.IP = []byte{0, 0, 0, 0}
+				return ipv4.String(), nil
 			}
 
 			// Create new IPv4, and fill with val
 			ipv4 := make(net.IP, 4)
-			binary.BigEndian.PutUint32(ipv4, uint32(val.(int32)))
+			binary.BigEndian.PutUint32(ipv4, uint32(ipv4int.(int32))) // TODO: can't cast directly to uint32, any other way?
 
 			return ipv4.String(), nil
 		} else {
-			// Convert val into string then into big int
+			// TODO: for some reason integers work??
+
+			// Convert into string
 			val, err = sql.LongText.Convert(val)
 			if err != nil {
 				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
 			}
-			ipv6int := new(big.Int)
-			ipv6int, ok := ipv6int.SetString(val.(string), 10)
-			if !ok {
-				// TODO: figure out right error
-				return nil, sql.ErrInvalidType.New(reflect.TypeOf(val).String())
+
+			// There must be a multiple of 4 number of bytes
+			tmp := []byte(val.(string))
+			if len(tmp) % 4 != 0 {
+				ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+				return nil, nil
 			}
 
 			// Create new IPv6
-			var ipv6 net.IP = ipv6int.Bytes()
+			var ipv6 net.IP = tmp
+
+			// Check to see if it can be treated as IPv4
+			tmp1 := 0
+			for _, b := range ipv6[:12] {
+				tmp1 += int(b)
+			}
+
+			// Force it to be IPv4
+			if tmp1 == 0 {
+				newipv4 := make(net.IP, 4)
+				binary.BigEndian.PutUint32(newipv4, binary.BigEndian.Uint32(ipv6[12:]))
+				return newipv4.String(), nil
+			}
 
 			return ipv6.String(), nil
 		}

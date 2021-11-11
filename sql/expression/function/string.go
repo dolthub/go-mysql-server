@@ -17,7 +17,6 @@ package function
 import (
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -150,11 +149,6 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		s += fractionOfSecString(val)
 
 		return hexForString(s), nil
-
-	case *big.Int:
-		// Convert big into to string, padded with 0s
-		s := fmt.Sprintf("%032X", val)
-		return s, nil
 
 	default:
 		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
