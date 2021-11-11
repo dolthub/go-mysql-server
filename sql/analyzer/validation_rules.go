@@ -509,7 +509,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 					case *plan.InSubquery, *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 						*expression.LessThan, *expression.GreaterThanOrEqual, *expression.LessThanOrEqual:
 						err = sql.ErrIfMismatchedColumns(e.Children()[0].Type(), e.Children()[1].Type())
-					case *expression.InTuple:
+					case *expression.InTuple, *expression.HashInTuple:
 						t, ok := e.Children()[1].(expression.Tuple)
 						if ok && len(t.Children()) == 1 {
 							// A single element Tuple treats itself like the element it contains.
