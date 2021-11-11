@@ -172,8 +172,7 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	typ := hit.Left().Type().Promote()
-	leftElems := sql.NumColumns(typ)
+	leftElems := sql.NumColumns(hit.Left().Type().Promote())
 	left, err := hit.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
