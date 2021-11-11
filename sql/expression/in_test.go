@@ -223,8 +223,8 @@ func TestHashInTuple(t *testing.T) {
 				expression.NewLiteral(int64(2), sql.Int64),
 			),
 			nil,
+			false,
 			nil,
-			sql.ErrInvalidOperandColumns,
 			nil,
 		},
 		{

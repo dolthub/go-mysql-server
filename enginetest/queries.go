@@ -1181,6 +1181,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "SELECT 'HOMER' IN (1.0)",
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    "SELECT (1,2) in ((0,1), (1,0), (1,2))",
+		Expected: []sql.Row{{true}},
+	},
+	{
 		Query:    "SELECT 1 FROM DUAL WHERE 1 in (1)",
 		Expected: []sql.Row{{1}},
 	},

@@ -153,21 +153,20 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
 	InTuple
-	cmp       map[uint64]sql.Expression
-	hasNull   bool
-	rightType sql.Type
+	cmp     map[uint64]sql.Expression
+	hasNull bool
 }
 
 var _ Comparer = (*InTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
 func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
-	cmp, hasNull, t, err := newInMap(right)
+	cmp, hasNull, err := newInMap(right, left.Type())
 	if err != nil {
 		return nil, err
 	}
 
-	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull, rightType: t}, nil
+	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull}, nil
 }
 
 // Eval implements the Expression interface.
@@ -184,9 +183,6 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	// check for short circuits before attempting to hash
 	leftElems := sql.NumColumns(left.Type().Promote())
-	if sql.NumColumns(hit.rightType) != leftElems {
-		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(hit.rightType))
-	}
 
 	leftVal, err := left.Eval(ctx, row)
 	if err != nil {
@@ -197,14 +193,18 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	key, err := hashOf(left, hit.rightType)
+	key, err := hashOf(left, hit.Left().Type())
 	if err != nil {
 		return nil, err
 	}
 
-	_, ok := hit.cmp[key]
+	right, ok := hit.cmp[key]
 	if !ok {
 		return false, nil
+	}
+
+	if sql.NumColumns(right.Type().Promote()) != leftElems {
+		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type().Promote()))
 	}
 
 	return true, nil
@@ -219,37 +219,31 @@ func (hit *HashInTuple) DebugString() string {
 }
 
 // newInMap will hash Literal and Tuple expressions, and return a map of the hash to original expression
-func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, error) {
+func newInMap(expr sql.Expression, lType sql.Type) (map[uint64]sql.Expression, bool, error) {
+	if lType == sql.Null {
+		return nil, true, nil
+	}
+
 	elements := make(map[uint64]sql.Expression)
 	hasNull := false
-	var t sql.Type
 	switch right := expr.(type) {
 	case Tuple:
 		for _, el := range right {
-			if t == nil {
-				t = el.Type()
-			} else {
-				// check that set elements have equivalent column counts
-				numEls := sql.NumColumns(el.Type().Promote())
-				if sql.NumColumns(t) != numEls {
-					return nil, hasNull, nil, sql.ErrInvalidOperandColumns.New(numEls, sql.NumColumns(t))
-				}
-			}
 			switch l := el.(type) {
 			case *Literal, Tuple:
-				key, err := hashOf(l, t)
+				key, err := hashOf(l, lType)
 				if err != nil {
-					return nil, hasNull, t, err
+					return nil, hasNull, err
 				}
 				elements[key] = el
 			default:
-				return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+				return nil, hasNull, ErrUnsupportedHashInSubexpression.New(el)
 			}
 		}
 	default:
-		return nil, hasNull, t, ErrUnsupportedHashInOperand.New(right)
+		return nil, hasNull, ErrUnsupportedHashInOperand.New(right)
 	}
-	return elements, hasNull, t, nil
+	return elements, hasNull, nil
 }
 
 func hashOf(e sql.Expression, t sql.Type) (uint64, error) {
