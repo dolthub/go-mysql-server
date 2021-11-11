@@ -16,17 +16,19 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 	"math"
 	"strings"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Format function returns a result of numX rounded to df decimal places as a string.
 type Format struct {
-	Val sql.Expression
-	Df sql.Expression
+	Val    sql.Expression
+	Df     sql.Expression
 	Locale sql.Expression
 }
 
@@ -149,7 +151,6 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	_, err = fmt.Sscanf(whole, "%d", &i)
 	p := message.NewPrinter(language.English)
 
-
 	if dVal == 0 {
 		return fmt.Sprintf("%s", p.Sprintf("%d", i)), nil
 	}
@@ -158,7 +159,6 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		rp := int(dVal) - len(decimal)
 		decimal += strings.Repeat("0", rp)
 	}
-
 
 	result := fmt.Sprintf("%s.%s", p.Sprintf("%d", i), decimal[:int(dVal)])
 	return result, nil
