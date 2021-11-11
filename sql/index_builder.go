@@ -179,7 +179,11 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	} else if b.isInvalid {
 		return nil, nil
 	} else {
-		return b.idx.NewLookup(ctx, b.Range())
+		rang := b.Range()
+		if len(rang) == 0 {
+			return nil, nil
+		}
+		return b.idx.NewLookup(ctx, rang)
 	}
 }
 

@@ -819,13 +819,13 @@ func getJoinIndex(
 	for table, cols := range exprsByTable {
 		exprs := extractExpressions(cols)
 		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, exprs...)...)
-		// If we do not find a perfect index, we take the first single column partial index if there is one.
-		// This currently only finds single column indexes. A better search would look for the most complete
-		// index available, covering the columns with the most specificity / highest cardinality.
+		// If we do not find a full or partial matching index, we take the first single column index if there is one.
+		// A better search would look for the most complete index available, covering the columns with the most
+		// specificity / highest cardinality.
 		if idx == nil && len(exprs) > 1 {
 			for _, e := range exprs {
 				idx = ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table, normalizeExpressions(ctx, tableAliases, e)...)
-				if idx != nil {
+				if idx != nil && len(idx.Expressions()) == 1 {
 					break
 				}
 			}
