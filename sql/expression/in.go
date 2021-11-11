@@ -152,21 +152,20 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
 	InTuple
-	cmp       map[uint64]sql.Expression
-	hasNull   bool
-	rightType sql.Type
+	cmp     map[uint64]sql.Expression
+	hasNull bool
 }
 
 var _ Comparer = (*InTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
 func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
-	cmp, hasNull, t, err := newInMap(right)
+	cmp, hasNull, err := newInMap(right, left.Type())
 	if err != nil {
 		return nil, err
 	}
 
-	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull, rightType: t}, nil
+	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull}, nil
 }
 
 // Eval implements the Expression interface.
@@ -180,17 +179,11 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-
 	if left == nil {
 		return nil, nil
 	}
 
-	left, err = hit.rightType.Convert(left)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := hashOf(left)
+	key, err := hashOf(left, hit.Left().Type())
 	if err != nil {
 		return nil, err
 	}
@@ -213,35 +206,38 @@ func (hit *HashInTuple) DebugString() string {
 	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hit.Left()), sql.DebugString(hit.Right()))
 }
 
-func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, error) {
+func newInMap(expr sql.Expression, lType sql.Type) (map[uint64]sql.Expression, bool, error) {
+	if lType == sql.Null {
+		return nil, true, nil
+	}
 	elements := make(map[uint64]sql.Expression)
 	hasNull := false
-	var t sql.Type
 	switch right := expr.(type) {
 	case Tuple:
 		for _, el := range right {
 			switch l := el.(type) {
 			case *Literal:
-				if t == nil {
-					t = l.Type()
-				}
-				key, err := hashOf(l.value)
+				i, err := lType.Convert(l.value)
 				if err != nil {
-					return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+					return nil, hasNull, ErrUnsupportedHashInSubexpression.New(el)
+				}
+				key, err := hashOf(i, lType)
+				if err != nil {
+					return nil, hasNull, ErrUnsupportedHashInSubexpression.New(el)
 				}
 				elements[key] = el
 			default:
-				return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+				return nil, hasNull, ErrUnsupportedHashInSubexpression.New(el)
 			}
 		}
 	default:
-		return nil, hasNull, t, ErrUnsupportedHashInOperand.New(right)
+		return nil, hasNull, ErrUnsupportedHashInOperand.New(right)
 	}
-	return elements, hasNull, t, nil
+	return elements, hasNull, nil
 }
 
 // copied variant from cache.go
-func hashOf(i interface{}) (uint64, error) {
+func hashOf(i interface{}, t sql.Type) (uint64, error) {
 	hash := xxhash.New()
 	if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", i))); err != nil {
 		return 0, err
