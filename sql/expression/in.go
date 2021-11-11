@@ -320,8 +320,6 @@ func normalizeLeft(ctx *sql.Context, expr sql.Expression, row sql.Row) (sql.Expr
 			return nil, err
 		}
 		return NewLiteral(v, e.Type()), nil
-	case BindVar:
-		ctx.B
 	default:
 		return nil, ErrUnsupportedHashInOperand.New(e)
 	}

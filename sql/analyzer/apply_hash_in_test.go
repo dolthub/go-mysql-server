@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -70,6 +71,7 @@ func TestApplyHashIn(t *testing.T) {
 		name     string
 		node     sql.Node
 		expected sql.Node
+		err      *errors.Kind
 	}{
 		{
 			name: "filter with literals converted to hash in",
@@ -187,12 +189,18 @@ func TestApplyHashIn(t *testing.T) {
 				),
 				child,
 			),
+			err: expression.ErrUnsupportedHashInSubexpression,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), test.node, nil)
+			if test.err != nil {
+				require.Error(err)
+				require.True(test.err.Is(err))
+				return
+			}
 			require.NoError(err)
 			if test.expected != nil {
 				require.Equal(test.expected, result)
