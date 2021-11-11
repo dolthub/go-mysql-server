@@ -162,8 +162,6 @@ func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-
-
 type IsIPv4Compat struct {
 	val sql.Expression
 }
