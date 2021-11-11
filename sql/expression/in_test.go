@@ -330,7 +330,7 @@ func TestHashInTuple(t *testing.T) {
 			),
 			nil,
 			true,
-			nil,
+			expression.ErrCantHashNestedExpression,
 			nil,
 		},
 	}

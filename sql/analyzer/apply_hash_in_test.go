@@ -3,9 +3,6 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -13,10 +10,6 @@ import (
 )
 
 func TestApplyHashIn(t *testing.T) {
-	require := require.New(t)
-
-	rule := getRule("apply_hash_in")
-
 	table := memory.NewTable("foo", sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
@@ -33,28 +26,14 @@ func TestApplyHashIn(t *testing.T) {
 	)
 
 	hitTuple, _ := expression.NewHashInTuple(
-		expression.NewGetField(0, sql.Int64, "foo", false),
-		expression.NewTuple(
-			expression.NewTuple(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
-			expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
-			expression.NewTuple(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
-		),
-	)
-
-	hitNestedTuple, _ := expression.NewHashInTuple(
 		expression.NewTuple(
 			expression.NewGetField(0, sql.Int64, "a", false),
 			expression.NewGetField(1, sql.Int64, "b", false),
 		),
 		expression.NewTuple(
-			expression.NewTuple(
-				expression.NewLiteral(int64(2), sql.Int64),
-				expression.NewLiteral(int64(1), sql.Int64),
-			),
-			expression.NewTuple(
-				expression.NewLiteral(int64(1), sql.Int64),
-				expression.NewLiteral(int64(0), sql.Int64),
-			),
+			expression.NewTuple(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+			expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
+			expression.NewTuple(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
 		),
 	)
 
@@ -67,12 +46,7 @@ func TestApplyHashIn(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	tests := []struct {
-		name     string
-		node     sql.Node
-		expected sql.Node
-		err      *errors.Kind
-	}{
+	tests := []analyzerFnTestCase{
 		{
 			name: "filter with literals converted to hash in",
 			node: plan.NewFilter(
@@ -125,7 +99,10 @@ func TestApplyHashIn(t *testing.T) {
 			name: "filter with tuple expression converted to hash in",
 			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewGetField(0, sql.Int64, "foo", false),
+					expression.NewTuple(
+						expression.NewGetField(0, sql.Int64, "a", false),
+						expression.NewGetField(1, sql.Int64, "b", false),
+					),
 					expression.NewTuple(
 						expression.NewTuple(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
 						expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
@@ -140,30 +117,36 @@ func TestApplyHashIn(t *testing.T) {
 			),
 		},
 		{
-			name: "filter with nested tuple expression converted to hash in",
+			name: "filter with nested tuple expression not selected",
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewTuple(
-						expression.NewGetField(0, sql.Int64, "a", false),
+						expression.NewTuple(
+							expression.NewGetField(0, sql.Int64, "a", false),
+							expression.NewGetField(1, sql.Int64, "b", false),
+						),
 						expression.NewGetField(1, sql.Int64, "b", false),
 					),
 					expression.NewTuple(
 						expression.NewTuple(
-							expression.NewLiteral(int64(2), sql.Int64),
+							expression.NewTuple(
+								expression.NewLiteral(int64(2), sql.Int64),
+								expression.NewLiteral(int64(1), sql.Int64),
+							),
 							expression.NewLiteral(int64(1), sql.Int64),
 						),
 						expression.NewTuple(
-							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewTuple(
+								expression.NewLiteral(int64(2), sql.Int64),
+								expression.NewLiteral(int64(1), sql.Int64),
+							),
 							expression.NewLiteral(int64(0), sql.Int64),
 						),
 					),
 				),
 				child,
 			),
-			expected: plan.NewFilter(
-				hitNestedTuple,
-				child,
-			),
+			err: expression.ErrCantHashNestedExpression,
 		},
 		{
 			name: "filter with binding expression not selected",
@@ -193,20 +176,5 @@ func TestApplyHashIn(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), test.node, nil)
-			if test.err != nil {
-				require.Error(err)
-				require.True(test.err.Is(err))
-				return
-			}
-			require.NoError(err)
-			if test.expected != nil {
-				require.Equal(test.expected, result)
-			} else {
-				require.Equal(test.node, result)
-			}
-		})
-	}
+	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule("apply_hash_in"))
 }

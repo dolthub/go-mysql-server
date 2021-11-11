@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"github.com/cespare/xxhash"
 
 	"github.com/cespare/xxhash"
 	"gopkg.in/src-d/go-errors.v1"
@@ -26,6 +25,7 @@ import (
 
 var ErrUnsupportedHashInOperand = errors.NewKind("hash IN operator expects Tuple in right expression, found %T")
 var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects Tuple, Literal, or GetField subexpressions, found %T")
+var ErrCantHashNestedExpression = errors.NewKind("hash IN operator only supports literals and unnested tuples, found %T")
 
 // InTuple is an expression that checks an expression is inside a list of expressions.
 type InTuple struct {
@@ -239,7 +239,7 @@ func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, e
 			case *Literal, Tuple:
 				key, err := hashOf(l, t)
 				if err != nil {
-					return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+					return nil, hasNull, t, err
 				}
 				elements[key] = el
 			default:
@@ -284,14 +284,8 @@ func hashOfTuple(tup Tuple) (uint64, error) {
 			if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", v.value))); err != nil {
 				return 0, err
 			}
-		case Tuple:
-			nestHash, err := hashOfTuple(v)
-			if err != nil {
-				return 0, err
-			}
-			if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", nestHash))); err != nil {
-				return 0, err
-			}
+		default:
+			return 0, ErrCantHashNestedExpression.New(v)
 		}
 	}
 	return hash.Sum64(), nil
