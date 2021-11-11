@@ -28,7 +28,6 @@ var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects
 // InTuple is an expression that checks an expression is inside a list of expressions.
 type InTuple struct {
 	BinaryExpression
-	//elements map[interface{}]sql.Expression
 }
 
 // We implement Comparer because we have a Left() and a Right(), but we can't be Compare()d
@@ -52,7 +51,6 @@ func (in *InTuple) Right() sql.Expression {
 
 // NewInTuple creates an InTuple expression.
 func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
-	// TODO if right is a literal expr, build the hash map
 	return &InTuple{BinaryExpression{left, right}}
 }
 
@@ -82,8 +80,6 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch right := in.Right().(type) {
 	case Tuple:
-		// TODO eliminate this loop
-		// TODO preserve invalid comparison?
 		for _, el := range right {
 			if sql.NumColumns(el.Type()) != leftElems {
 				return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(el.Type()))
@@ -152,7 +148,7 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 	return NewNot(NewInTuple(left, right))
 }
 
-// InTuple is an expression that checks an expression is inside a list of expressions.
+// HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
 	InTuple
 	cmp       map[interface{}]sql.Expression
@@ -171,14 +167,14 @@ func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
 }
 
 // Eval implements the Expression interface.
-func (hin *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if hin.hasNull {
+func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if hit.hasNull {
 		return nil, nil
 	}
 
-	typ := hin.Left().Type().Promote()
+	typ := hit.Left().Type().Promote()
 	leftElems := sql.NumColumns(typ)
-	left, err := hin.Left().Eval(ctx, row)
+	left, err := hit.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -187,12 +183,12 @@ func (hin *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	left, err = hin.rightType.Convert(left)
+	left, err = hit.rightType.Convert(left)
 	if err != nil {
 		return nil, err
 	}
 
-	right, ok := hin.cmp[left]
+	right, ok := hit.cmp[left]
 	if !ok {
 		return false, nil
 	}
@@ -203,12 +199,12 @@ func (hin *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return true, nil
 }
 
-func (hin *HashInTuple) String() string {
-	return fmt.Sprintf("(%s HASH IN %s)", hin.Left(), hin.Right())
+func (hit *HashInTuple) String() string {
+	return fmt.Sprintf("(%s HASH IN %s)", hit.Left(), hit.Right())
 }
 
-func (hin *HashInTuple) DebugString() string {
-	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hin.Left()), sql.DebugString(hin.Right()))
+func (hit *HashInTuple) DebugString() string {
+	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hit.Left()), sql.DebugString(hit.Right()))
 }
 
 func newInMap(expr sql.Expression) (map[interface{}]sql.Expression, bool, sql.Type, error) {

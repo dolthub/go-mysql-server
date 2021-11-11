@@ -52,7 +52,7 @@ var DefaultRules = []Rule{
 	{"resolve_orderby_literals", resolveOrderByLiterals},
 	{"resolve_functions", resolveFunctions},
 	{"flatten_table_aliases", flattenTableAliases},
-	{"5", pushdownSort},
+	{"pushdown_sort", pushdownSort},
 	{"pushdown_groupby_aliases", pushdownGroupByAliases},
 	{"pushdown_subquery_alias_filters", pushdownSubqueryAliasFilters},
 	{"qualify_columns", qualifyColumns},
