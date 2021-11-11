@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-func TestNewIsIPv4(t *testing.T) {
+func TestIsIPv4(t *testing.T) {
 	f := NewIsIPv4(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
@@ -55,7 +55,7 @@ func TestNewIsIPv4(t *testing.T) {
 	}
 }
 
-func TestNewIsIPv6(t *testing.T) {
+func TestIsIPv6(t *testing.T) {
 	f := NewIsIPv6(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
@@ -88,7 +88,7 @@ func TestNewIsIPv6(t *testing.T) {
 	}
 }
 
-func TestNewIsIPv4Compat(t *testing.T) {
+func TestIsIPv4Compat(t *testing.T) {
 	f := NewIsIPv4Compat(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
@@ -120,7 +120,7 @@ func TestNewIsIPv4Compat(t *testing.T) {
 	}
 }
 
-func TestNewIsIPv4Mapped(t *testing.T) {
+func TestIsIPv4Mapped(t *testing.T) {
 	f := NewIsIPv4Mapped(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string

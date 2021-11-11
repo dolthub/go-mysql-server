@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"net"
 	"strings"
 
@@ -23,50 +24,36 @@ import (
 )
 
 type IsIPv4 struct {
-	val sql.Expression
+	expression.UnaryExpression
 }
 
 var _ sql.FunctionExpression = (*IsIPv4)(nil)
 
 func NewIsIPv4(val sql.Expression) sql.Expression {
-	return &IsIPv4{val}
+	return &IsIPv4{expression.UnaryExpression{Child: val}}
 }
 
 func (i *IsIPv4) FunctionName() string {
 	return "is_ipv4"
 }
 
-// Children implements the Expression interface
-func (i *IsIPv4) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-// IsNullable implements the Expression interface
-func (i IsIPv4) IsNullable() bool {
-	return i.val.IsNullable()
-}
-
 func (i IsIPv4) String() string {
-	return fmt.Sprintf("IS_IPV4(%s)", i.val)
+	return fmt.Sprintf("IS_IPV4(%s)", i.Child.String())
 }
 
-func (i IsIPv4) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (IsIPv4) Type() sql.Type { return sql.LongText }
+func (IsIPv4) Type() sql.Type { return sql.Boolean }
 
 func (i IsIPv4) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv4(i.val), nil
+	return NewIsIPv4(children[0]), nil
 }
 
 // Eval implements the Expression interface
 func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -93,50 +80,36 @@ func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type IsIPv6 struct {
-	val sql.Expression
+	expression.UnaryExpression
 }
 
 var _ sql.FunctionExpression = (*IsIPv6)(nil)
 
 func NewIsIPv6(val sql.Expression) sql.Expression {
-	return &IsIPv6{val}
+	return &IsIPv6{expression.UnaryExpression{Child: val}}
 }
 
 func (i *IsIPv6) FunctionName() string {
 	return "is_ipv6"
 }
 
-// Children implements the Expression interface
-func (i *IsIPv6) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-// IsNullable implements the Expression interface
-func (i IsIPv6) IsNullable() bool {
-	return i.val.IsNullable()
-}
-
 func (i IsIPv6) String() string {
-	return fmt.Sprintf("IS_IPV6(%s)", i.val)
+	return fmt.Sprintf("IS_IPV6(%s)", i.Child.String())
 }
 
-func (i IsIPv6) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (IsIPv6) Type() sql.Type { return sql.LongText }
+func (IsIPv6) Type() sql.Type { return sql.Boolean }
 
 func (i IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv6(i.val), nil
+	return NewIsIPv6(children[0]), nil
 }
 
 // Eval implements the Expression interface
 func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -163,50 +136,36 @@ func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type IsIPv4Compat struct {
-	val sql.Expression
+	expression.UnaryExpression
 }
 
 var _ sql.FunctionExpression = (*IsIPv4Compat)(nil)
 
 func NewIsIPv4Compat(val sql.Expression) sql.Expression {
-	return &IsIPv4Compat{val}
+	return &IsIPv4Compat{expression.UnaryExpression{Child: val}}
 }
 
 func (i *IsIPv4Compat) FunctionName() string {
 	return "is_ipv4_compat"
 }
 
-// Children implements the Expression interface
-func (i *IsIPv4Compat) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-// IsNullable implements the Expression interface
-func (i IsIPv4Compat) IsNullable() bool {
-	return i.val.IsNullable()
-}
-
 func (i IsIPv4Compat) String() string {
-	return fmt.Sprintf("IS_IPV4_COMPAT(%s)", i.val)
+	return fmt.Sprintf("IS_IPV4_COMPAT(%s)", i.Child.String())
 }
 
-func (i IsIPv4Compat) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (IsIPv4Compat) Type() sql.Type { return sql.LongText }
+func (IsIPv4Compat) Type() sql.Type { return sql.Boolean }
 
 func (i IsIPv4Compat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv4Compat(i.val), nil
+	return NewIsIPv4Compat(children[0]), nil
 }
 
 // Eval implements the Expression interface
 func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -237,50 +196,36 @@ func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 type IsIPv4Mapped struct {
-	val sql.Expression
+	expression.UnaryExpression
 }
 
 var _ sql.FunctionExpression = (*IsIPv4Mapped)(nil)
 
 func NewIsIPv4Mapped(val sql.Expression) sql.Expression {
-	return &IsIPv4Mapped{val}
+	return &IsIPv4Mapped{expression.UnaryExpression{Child: val}}
 }
 
 func (i *IsIPv4Mapped) FunctionName() string {
 	return "is_ipv4_mapped"
 }
 
-// Children implements the Expression interface
-func (i *IsIPv4Mapped) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-// IsNullable implements the Expression interface
-func (i IsIPv4Mapped) IsNullable() bool {
-	return i.val.IsNullable()
-}
-
 func (i IsIPv4Mapped) String() string {
-	return fmt.Sprintf("IS_IPV4_MAPPED(%s)", i.val)
+	return fmt.Sprintf("IS_IPV4_MAPPED(%s)", i.Child.String())
 }
 
-func (i IsIPv4Mapped) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (IsIPv4Mapped) Type() sql.Type { return sql.LongText }
+func (IsIPv4Mapped) Type() sql.Type { return sql.Boolean }
 
 func (i IsIPv4Mapped) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsIPv4Mapped(i.val), nil
+	return NewIsIPv4Mapped(children[0]), nil
 }
 
 // Eval implements the Expression interface
 func (i *IsIPv4Mapped) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

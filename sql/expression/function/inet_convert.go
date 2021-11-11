@@ -17,6 +17,7 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"net"
 	"reflect"
 	"strings"
@@ -24,51 +25,38 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-type INETATON struct {
-	val sql.Expression
+type InetAton struct {
+	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*INETATON)(nil)
+var _ sql.FunctionExpression = (*InetAton)(nil)
 
-func NewINETATON(val sql.Expression) sql.Expression {
-	return &INETATON{val}
+func NewInetAton(val sql.Expression) sql.Expression {
+	return &InetAton{expression.UnaryExpression{Child: val}}
 }
 
-func (i *INETATON) FunctionName() string {
+func (i *InetAton) FunctionName() string {
 	return "inet_aton"
 }
 
-// IsNullable implements the Expression interface
-func (i INETATON) IsNullable() bool {
-	return i.val.IsNullable()
+func (i InetAton) String() string {
+	return fmt.Sprintf("INET_ATON(%s)", i.Child.String())
 }
 
-func (i INETATON) String() string {
-	return fmt.Sprintf("INET_ATON(%s)", i.val)
+func (InetAton) Type() sql.Type {
+	return sql.Uint32
 }
 
-func (i INETATON) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (INETATON) Type() sql.Type {
-	return sql.LongText
-}
-
-func (i *INETATON) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-func (i INETATON) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i InetAton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewINETATON(i.val), nil
+	return NewInetAton(children[0]), nil
 }
 
-func (i *INETATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -85,10 +73,11 @@ func (i *INETATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Parse IP address
-	ip := net.ParseIP(val.(string))
+	ipstr := val.(string)
+	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
 		return nil, nil
 	}
 
@@ -96,7 +85,7 @@ func (i *INETATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ipv4 := ip.To4()
 	if ipv4 == nil {
 		// Received invalid IPv4 address (IPv6 address are invalid)
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
 		return nil, nil
 	}
 
@@ -105,51 +94,38 @@ func (i *INETATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return ipv4int, nil
 }
 
-type INET6ATON struct {
-	val sql.Expression
+type Inet6Aton struct {
+	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*INET6ATON)(nil)
+var _ sql.FunctionExpression = (*Inet6Aton)(nil)
 
-func NewINET6ATON(val sql.Expression) sql.Expression {
-	return &INET6ATON{val}
+func NewInet6Aton(val sql.Expression) sql.Expression {
+	return &Inet6Aton{expression.UnaryExpression{Child: val}}
 }
 
-func (i *INET6ATON) FunctionName() string {
+func (i *Inet6Aton) FunctionName() string {
 	return "inet6_aton"
 }
 
-// IsNullable implements the Expression interface
-func (i INET6ATON) IsNullable() bool {
-	return i.val.IsNullable()
+func (i Inet6Aton) String() string {
+	return fmt.Sprintf("INET6_ATON(%s)", i.Child.String())
 }
 
-func (i INET6ATON) String() string {
-	return fmt.Sprintf("INET6_ATON(%s)", i.val)
+func (Inet6Aton) Type() sql.Type {
+	return sql.LongBlob
 }
 
-func (i INET6ATON) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (INET6ATON) Type() sql.Type {
-	return sql.LongText
-}
-
-func (i *INET6ATON) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-func (i INET6ATON) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i Inet6Aton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewINET6ATON(i.val), nil
+	return NewInet6Aton(children[0]), nil
 }
 
-func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -160,10 +136,11 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Parse IP address
-	ip := net.ParseIP(val.(string))
+	ipstr := val.(string)
+	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
 		return nil, nil
 	}
 
@@ -177,7 +154,7 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ipv6 := ip.To16()
 	if ipv6 == nil {
 		// Invalid IPv6 address
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
 		return nil, nil
 	}
 
@@ -185,51 +162,38 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return []byte(ipv6), nil
 }
 
-type INETNTOA struct {
-	val sql.Expression
+type InetNtoa struct {
+	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*INETNTOA)(nil)
+var _ sql.FunctionExpression = (*InetNtoa)(nil)
 
-func NewINETNTOA(val sql.Expression) sql.Expression {
-	return &INETNTOA{val}
+func NewInetNtoa(val sql.Expression) sql.Expression {
+	return &InetNtoa{expression.UnaryExpression{Child: val}}
 }
 
-func (i *INETNTOA) FunctionName() string {
+func (i *InetNtoa) FunctionName() string {
 	return "inet_ntoa"
 }
 
-// IsNullable implements the Expression interface
-func (i INETNTOA) IsNullable() bool {
-	return i.val.IsNullable()
+func (i InetNtoa) String() string {
+	return fmt.Sprintf("INET_NTOA(%s)", i.Child.String())
 }
 
-func (i INETNTOA) String() string {
-	return fmt.Sprintf("INET_NTOA(%s)", i.val)
-}
-
-func (i INETNTOA) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (INETNTOA) Type() sql.Type {
+func (InetNtoa) Type() sql.Type {
 	return sql.LongText
 }
 
-func (i *INETNTOA) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-func (i INETNTOA) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i InetNtoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewINETNTOA(i.val), nil
+	return NewInetNtoa(children[0]), nil
 }
 
-func (i *INETNTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -259,51 +223,38 @@ func (i *INETNTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return ipv4.String(), nil
 }
 
-type INET6NTOA struct {
-	val sql.Expression
+type Inet6Ntoa struct {
+	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*INET6NTOA)(nil)
+var _ sql.FunctionExpression = (*Inet6Ntoa)(nil)
 
-func NewINET6NTOA(val sql.Expression) sql.Expression {
-	return &INET6NTOA{val}
+func NewInet6Ntoa(val sql.Expression) sql.Expression {
+	return &Inet6Ntoa{expression.UnaryExpression{Child: val}}
 }
 
-func (i *INET6NTOA) FunctionName() string {
+func (i *Inet6Ntoa) FunctionName() string {
 	return "inet6_ntoa"
 }
 
-// IsNullable implements the Expression interface
-func (i INET6NTOA) IsNullable() bool {
-	return i.val.IsNullable()
+func (i Inet6Ntoa) String() string {
+	return fmt.Sprintf("INET6_NTOA(%s)", i.Child.String())
 }
 
-func (i INET6NTOA) String() string {
-	return fmt.Sprintf("INET6_NTOA(%s)", i.val)
-}
-
-func (i INET6NTOA) Resolved() bool {
-	return i.val.Resolved()
-}
-
-func (INET6NTOA) Type() sql.Type {
+func (Inet6Ntoa) Type() sql.Type {
 	return sql.LongText
 }
 
-func (i *INET6NTOA) Children() []sql.Expression {
-	return []sql.Expression{i.val}
-}
-
-func (i INET6NTOA) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i Inet6Ntoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewINET6NTOA(i.val), nil
+	return NewInet6Ntoa(children[0]), nil
 }
 
-func (i *INET6NTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
-	val, err := i.val.Eval(ctx, row)
+	val, err := i.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

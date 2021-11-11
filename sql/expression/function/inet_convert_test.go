@@ -23,8 +23,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-func TestNewINETATON(t *testing.T) {
-	f := NewINETATON(expression.NewGetField(0, sql.LongText, "", false))
+func TestInetAton(t *testing.T) {
+	f := NewInetAton(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -58,8 +58,8 @@ func TestNewINETATON(t *testing.T) {
 	}
 }
 
-func TestNewINETNTOA(t *testing.T) {
-	f := NewINETNTOA(expression.NewGetField(0, sql.LongText, "", false))
+func TestInetNtoa(t *testing.T) {
+	f := NewInetNtoa(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -89,8 +89,8 @@ func TestNewINETNTOA(t *testing.T) {
 	}
 }
 
-func TestINET6ATON(t *testing.T) {
-	f := NewINET6ATON(expression.NewGetField(0, sql.LongText, "", false))
+func TestInet6Aton(t *testing.T) {
+	f := NewInet6Aton(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -122,8 +122,8 @@ func TestINET6ATON(t *testing.T) {
 	}
 }
 
-func TestNewINET6NTOA(t *testing.T) {
-	f := NewINET6NTOA(expression.NewGetField(0, sql.LongText, "", false))
+func TestInet6Ntoa(t *testing.T) {
+	f := NewInet6Ntoa(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
