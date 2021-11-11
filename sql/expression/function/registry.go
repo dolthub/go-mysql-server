@@ -77,6 +77,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "first", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewFirst(e) }},
 	sql.Function1{Name: "floor", Fn: NewFloor},
 	sql.Function0{Name: "found_rows", Fn: NewFoundRows},
+	sql.FunctionN{Name: "format", Fn: NewFormat},
 	sql.Function1{Name: "from_base64", Fn: NewFromBase64},
 	sql.FunctionN{Name: "greatest", Fn: NewGreatest},
 	sql.Function0{Name: "group_concat", Fn: aggregation.NewEmptyGroupConcat},
