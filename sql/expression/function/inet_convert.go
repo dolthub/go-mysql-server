@@ -318,18 +318,7 @@ func (i *INET6NTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Only convert if received string as input
 	switch val.(type) {
 	case string:
-		/* TODO: delete this, excludes correct strings
-		// Attempt to decode, should fail for correct binary string
-		_, err = hex.DecodeString(val.(string))
-		// Able to be decoded, throw error
-		if err == nil {
-			ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
-			//return "able to be decoded, not a byte string", nil
-			return nil, nil
-
-		}
-		*/
-		// Convert to byte array
+		// TODO change this and others to expect byte slices
 		tmp := []byte(val.(string))
 
 		// Exactly 4 bytes, treat as IPv4 address
