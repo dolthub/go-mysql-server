@@ -216,24 +216,21 @@ func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	// Expect to receive a hex encoded string
 	switch val.(type) {
-	case string:
-		// Convert into byte array
-		ip := []byte(val.(string))
-
+	case []byte:
 		// Must be of length 16
-		if len(ip) != 16 {
+		if len(val.([]byte)) != 16 {
 			return false, nil
 		}
 
 		// Check if first 12 bytes are all 0
-		for _, b := range ip[:12] {
+		for _, b := range val.([]byte)[:12] {
 			if b != 0 {
 				return false, nil
 			}
 		}
 		return true, nil
 	default:
-		return false, nil
+		return nil, nil
 	}
 }
 
@@ -293,24 +290,21 @@ func (i *IsIPv4Mapped) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	// Expect to receive a hex encoded string
 	switch val.(type) {
-	case string:
-		// Convert into byte array
-		ip := []byte(val.(string))
-
+	case []byte:
 		// Must be of length 16
-		if len(ip) != 16 {
+		if len(val.([]byte)) != 16 {
 			return false, nil
 		}
 
 		// Check if first 10 bytes are all 0
-		for _, b := range ip[:10] {
+		for _, b := range val.([]byte)[:10] {
 			if b != 0 {
 				return false, nil
 			}
 		}
 
 		// Bytes 11 and 12 must be 0xFF
-		return ip[10] == 0xFF && ip[11] == 0xFF, nil
+		return val.([]byte)[10] == 0xFF && val.([]byte)[11] == 0xFF, nil
 	default:
 		return false, nil
 	}

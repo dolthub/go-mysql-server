@@ -170,7 +170,7 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// if it doesn't contain colons, treat it as ipv4
 	if strings.Count(val.(string), ":") < 2 {
 		ipv4 := ip.To4()
-		return string(ipv4), nil
+		return []byte(ipv4), nil
 	}
 
 	// Received IPv6 address
@@ -181,8 +181,8 @@ func (i *INET6ATON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Return as string
-	return string(ipv6), nil
+	// Return as []byte
+	return []byte(ipv6), nil
 }
 
 
@@ -317,45 +317,44 @@ func (i *INET6NTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Only convert if received string as input
 	switch val.(type) {
-	case string:
-		// TODO change this and others to expect byte slices
-		tmp := []byte(val.(string))
+	case []byte:
+		ipbytes := val.([]byte)
 
 		// Exactly 4 bytes, treat as IPv4 address
-		if len(tmp) == 4 {
-			var ipv4 net.IP = tmp
+		if len(ipbytes) == 4 {
+			var ipv4 net.IP = ipbytes
 			return ipv4.String(), nil
 		}
 
 		// There must be exactly 4 or 16 bytes (len == 4 satisfied above)
-		if len(tmp) != 16 {
-			ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", val.(string), i.FunctionName()))
+		if len(ipbytes) != 16 {
+			ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", string(val.([]byte)), i.FunctionName()))
 			return nil, nil
 		}
 
 		// Check to see if it should be printed as IPv6; non-zero within first 10 bytes
-		for _, b := range tmp[:10] {
+		for _, b := range ipbytes[:10] {
 			if b != 0 {
 				// Create new IPv6
-				var ipv6 net.IP = tmp
+				var ipv6 net.IP = ipbytes
 				return ipv6.String(), nil
 			}
 		}
 
 		// IPv4-compatible (12 bytes of 0x00)
-		if tmp[10] == 0 && tmp[11] == 0 && (tmp[12] != 0 || tmp[13] != 0) {
-			var ipv4 net.IP = tmp[12:]
+		if ipbytes[10] == 0 && ipbytes[11] == 0 && (ipbytes[12] != 0 || ipbytes[13] != 0) {
+			var ipv4 net.IP = ipbytes[12:]
 			return "::" + ipv4.String(), nil
 		}
 
 		// IPv4-mapped (10 bytes of 0x00 followed by 2 bytes of 0xFF)
-		if tmp[10] == 0xFF && tmp[11] == 0xFF {
-			var ipv4 net.IP = tmp[12:]
+		if ipbytes[10] == 0xFF && ipbytes[11] == 0xFF {
+			var ipv4 net.IP = ipbytes[12:]
 			return "::ffff:" + ipv4.String(), nil
 		}
 
 		// Print as IPv6 by default
-		var ipv6 net.IP = tmp
+		var ipv6 net.IP = ipbytes
 		return ipv6.String(), nil
 	default:
 		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%v'' for function %s", val, i.FunctionName()))

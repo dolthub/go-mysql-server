@@ -98,10 +98,10 @@ func TestINET6ATON(t *testing.T) {
 		err      bool
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
-		{"valid ipv4 address", sql.NewRow("10.0.5.10"), "\x0a\x00\x05\x0a", false},
-		{"valid ipv4-mapped ipv6 address", sql.NewRow("::10.0.5.10"), "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a\x00\x05\x0a", false},
+		{"valid ipv4 address", sql.NewRow("10.0.5.10"), []byte{10, 0, 5, 10}, false},
+		{"valid ipv4-mapped ipv6 address", sql.NewRow("::10.0.5.10"), []byte{0,0,0,0,0,0,0,0,0,0,0,0,10,0,5,10}, false},
 		{"valid short-form ipv4 address", sql.NewRow("10.5.10"), nil, false},
-		{"valid ipv6 address", sql.NewRow("fdfe::5a55:caff:fefa:9098"), "\xfd\xfe\x00\x00\x00\x00\x00\x00\x5a\x55\xca\xff\xfe\xfa\x90\x98", false},
+		{"valid ipv6 address", sql.NewRow("fdfe::5a55:caff:fefa:9098"), []byte{0xfd, 0xfe, 0, 0, 0, 0, 0, 0, 0x5a, 0x55, 0xca, 0xff, 0xfe, 0xfa, 0x90, 0x98}, false},
 		{"invalid ipv4 address", sql.NewRow("1.10.0.5.10"), nil, false},
 		{"valid ipv6 address", sql.NewRow("thisisnotavalidipaddress"), nil, false},
 	}
@@ -135,12 +135,12 @@ func TestNewINET6NTOA(t *testing.T) {
 		{"valid ipv4 int", sql.NewRow(uint32(167773450)), nil, false},
 		{"valid ipv4 int as string", sql.NewRow("167773450"), nil, false},
 		{"floating point ipv4", sql.NewRow(10.1), nil, false},
-		{"valid ipv6 int", sql.NewRow("\x00\x00\x00\x00"), "0.0.0.0", false},
-		{"valid ipv6 int", sql.NewRow("\xfd\xfe\x00\x00\x00\x00\x00\x00\x5a\x55\xca\xff\xfe\xfa\x90\x98"), "fdfe::5a55:caff:fefa:9098", false},
-		{"valid ipv4-mapped int", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\x0a\x00\x05\x0a"), "::ffff:10.0.5.10", false},
-		{"valid ipv4-compatible int", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a\x00\x05\x0a"), "::10.0.5.10", false},
-		{"all zeros", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"), "::", false},
-		{"only last 4 bytes filled", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x12\x34"), "::1234", false},
+		{"valid ipv6 int", sql.NewRow([]byte{0,0,0,0}), "0.0.0.0", false},
+		{"valid ipv6 int", sql.NewRow([]byte{0xfd, 0xfe, 0, 0, 0, 0, 0, 0, 0x5a, 0x55, 0xca, 0xff, 0xfe, 0xfa, 0x90, 0x98}), "fdfe::5a55:caff:fefa:9098", false},
+		{"valid ipv4-mapped int", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 10, 0, 5, 10}), "::ffff:10.0.5.10", false},
+		{"valid ipv4-compatible int", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 5, 10}), "::10.0.5.10", false},
+		{"all zeros", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}), "::", false},
+		{"only last 4 bytes filled", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x12, 0x34}), "::1234", false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
