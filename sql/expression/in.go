@@ -23,8 +23,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var ErrUnsupportedHashInOperand = errors.NewKind("hash IN operator expects Tuple expression, found %T")
-var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects Literal subexpressions, found %T")
+var ErrUnsupportedHashInOperand = errors.NewKind("hash IN operator expects Tuple in right expression, found %T")
+var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects Tuple, Literal, or GetField subexpressions, found %T")
 
 // InTuple is an expression that checks an expression is inside a list of expressions.
 type InTuple struct {
@@ -175,11 +175,13 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
+	// convert GetField to Literal, necessary for hashing
 	left, err := normalizeLeft(ctx, hit.Left(), row)
 	if err != nil {
 		return nil, err
 	}
 
+	// check for short circuits before attempting to hash
 	leftElems := sql.NumColumns(left.Type().Promote())
 	if sql.NumColumns(hit.rightType) != leftElems {
 		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(hit.rightType))
@@ -199,12 +201,9 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	right, ok := hit.cmp[key]
+	_, ok := hit.cmp[key]
 	if !ok {
 		return false, nil
-	}
-	if sql.NumColumns(right.Type()) != leftElems {
-		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type()))
 	}
 
 	return true, nil
@@ -218,6 +217,7 @@ func (hit *HashInTuple) DebugString() string {
 	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hit.Left()), sql.DebugString(hit.Right()))
 }
 
+// newInMap will hash Literal and Tuple expressions, and return a map of the hash to original expression
 func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, error) {
 	elements := make(map[uint64]sql.Expression)
 	hasNull := false
@@ -228,6 +228,7 @@ func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, e
 			if t == nil {
 				t = el.Type()
 			} else {
+				// check that set elements have equivalent column counts
 				numEls := sql.NumColumns(el.Type().Promote())
 				if sql.NumColumns(t) != numEls {
 					return nil, hasNull, nil, sql.ErrInvalidOperandColumns.New(numEls, sql.NumColumns(t))
@@ -255,15 +256,15 @@ func hashOf(e sql.Expression, t sql.Type) (uint64, error) {
 	case Tuple:
 		return hashOfTuple(v)
 	case *Literal:
-		return hashOfLiteral(v.value, t)
+		return hashOfLiteral(v, t)
 	default:
 		return 0, ErrUnsupportedHashInSubexpression.New(v)
 	}
 }
 
-func hashOfLiteral(i interface{}, t sql.Type) (uint64, error) {
+func hashOfLiteral(l *Literal, t sql.Type) (uint64, error) {
 	hash := xxhash.New()
-	i, err := t.Convert(i)
+	i, err := t.Convert(l.value)
 	if err != nil {
 		return 0, err
 	}
@@ -273,13 +274,12 @@ func hashOfLiteral(i interface{}, t sql.Type) (uint64, error) {
 	return hash.Sum64(), nil
 }
 
+// hashOfTuple will recursively hash a Tuple tree with Literal leaves
 func hashOfTuple(tup Tuple) (uint64, error) {
 	hash := xxhash.New()
-	vals := make([]interface{}, 0, len(tup))
 	for _, el := range tup {
 		switch v := el.(type) {
 		case *Literal:
-			vals = append(vals, v.value)
 			if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", v.value))); err != nil {
 				return 0, err
 			}
@@ -288,7 +288,6 @@ func hashOfTuple(tup Tuple) (uint64, error) {
 			if err != nil {
 				return 0, err
 			}
-			vals = append(vals, nestHash)
 			if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", nestHash))); err != nil {
 				return 0, err
 			}
