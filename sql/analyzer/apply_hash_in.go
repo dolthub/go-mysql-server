@@ -24,9 +24,15 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
 		if f, ok := c.Node.(*plan.Filter); ok {
 			if i, ok := f.Expression.(*expression.InTuple); ok {
-				if hin, err := expression.NewHashInTuple(i.Left(), i.Right()); err == nil {
-					return plan.NewFilter(hin, f.Child), nil
+				//	if hin, err := expression.NewHashInTuple(i.Left(), i.Right()); err == nil {
+				//		return plan.NewFilter(hin, f.Child), nil
+				//	}
+				//}
+				hin, err := expression.NewHashInTuple(i.Left(), i.Right())
+				if err != nil {
+					return nil, err
 				}
+				return plan.NewFilter(hin, f.Child), nil
 			}
 		}
 		return c.Node, nil

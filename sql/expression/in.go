@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"github.com/cespare/xxhash"
 
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -173,24 +174,43 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	leftElems := sql.NumColumns(hit.Left().Type().Promote())
-	left, err := hit.Left().Eval(ctx, row)
+	leftVal, err := hit.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if left == nil {
+	if leftVal == nil {
 		return nil, nil
 	}
 
-	left, err = hit.rightType.Convert(left)
-	if err != nil {
-		return nil, err
+	//left, err = hit.rightType.Convert(left)
+	//if err != nil {
+	//	return nil, err
+	//}
+	var right sql.Expression
+	var ok bool
+	switch l := hit.Left().(type) {
+	case Tuple:
+		key, err := hashTuple(l)
+		if err != nil {
+			return nil, err
+		}
+		right, ok = hit.cmp[key]
+		if !ok {
+			return false, nil
+		}
+	case *Literal:
+		right, ok = hit.cmp[leftVal]
+		if !ok {
+			return false, nil
+		}
+	default:
 	}
 
-	right, ok := hit.cmp[left]
-	if !ok {
-		return false, nil
-	}
+	//right, ok := hit.cmp[left]
+	//if !ok {
+	//	return false, nil
+	//}
 	if sql.NumColumns(right.Type()) != leftElems {
 		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type()))
 	}
@@ -213,12 +233,18 @@ func newInMap(expr sql.Expression) (map[interface{}]sql.Expression, bool, sql.Ty
 	switch right := expr.(type) {
 	case Tuple:
 		for _, el := range right {
-			switch l := el.(type) {
+			switch v := el.(type) {
 			case *Literal:
 				if t == nil {
-					t = l.Type()
+					t = v.Type()
 				}
-				elements[l.value] = el
+				elements[v.value] = el
+			case Tuple:
+				key, err := hashTuple(v)
+				if err != nil {
+					return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+				}
+				elements[key] = el
 			default:
 				return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
 			}
@@ -227,4 +253,12 @@ func newInMap(expr sql.Expression) (map[interface{}]sql.Expression, bool, sql.Ty
 		return nil, hasNull, t, ErrUnsupportedHashInOperand.New(right)
 	}
 	return elements, hasNull, t, nil
+}
+
+func hashTuple(t Tuple) (uint64, error) {
+	hash := xxhash.New()
+	if _, err := hash.Write([]byte(t.String())); err != nil {
+		return 0, err
+	}
+	return hash.Sum64(), nil
 }
