@@ -22,12 +22,38 @@ func TestApplyHashIn(t *testing.T) {
 		{Name: "c", Type: sql.Int64, Source: "foo"},
 	})
 
-	hit, _ := expression.NewHashInTuple(
+	hitLiteral, _ := expression.NewHashInTuple(
 		expression.NewGetField(0, sql.Int64, "foo", false),
 		expression.NewTuple(
 			expression.NewLiteral(int64(2), sql.Int64),
 			expression.NewLiteral(int64(1), sql.Int64),
 			expression.NewLiteral(int64(0), sql.Int64),
+		),
+	)
+
+	hitTuple, _ := expression.NewHashInTuple(
+		expression.NewGetField(0, sql.Int64, "foo", false),
+		expression.NewTuple(
+			expression.NewTuple(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
+			expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
+			expression.NewTuple(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
+		),
+	)
+
+	hitNestedTuple, _ := expression.NewHashInTuple(
+		expression.NewTuple(
+			expression.NewGetField(0, sql.Int64, "a", false),
+			expression.NewGetField(1, sql.Int64, "b", false),
+		),
+		expression.NewTuple(
+			expression.NewTuple(
+				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			expression.NewTuple(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(0), sql.Int64),
+			),
 		),
 	)
 
@@ -59,7 +85,7 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
-				hit,
+				hitLiteral,
 				child,
 			),
 		},
@@ -84,7 +110,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 			expected: plan.NewFilter(
 				expression.NewAnd(
-					hit,
+					hitLiteral,
 					expression.NewEquals(
 						expression.NewBindVar("foo_id"),
 						expression.NewLiteral(int8(2), sql.Int8),
@@ -94,7 +120,7 @@ func TestApplyHashIn(t *testing.T) {
 			),
 		},
 		{
-			name: "filter with tuple expression not selected",
+			name: "filter with tuple expression converted to hash in",
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewGetField(0, sql.Int64, "foo", false),
@@ -107,14 +133,33 @@ func TestApplyHashIn(t *testing.T) {
 				child,
 			),
 			expected: plan.NewFilter(
+				hitTuple,
+				child,
+			),
+		},
+		{
+			name: "filter with nested tuple expression converted to hash in",
+			node: plan.NewFilter(
 				expression.NewInTuple(
-					expression.NewGetField(0, sql.Int64, "foo", false),
 					expression.NewTuple(
-						expression.NewTuple(expression.NewLiteral(int64(2), sql.Int64), expression.NewLiteral(int64(1), sql.Int64)),
-						expression.NewTuple(expression.NewLiteral(int64(1), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
-						expression.NewTuple(expression.NewLiteral(int64(0), sql.Int64), expression.NewLiteral(int64(0), sql.Int64)),
+						expression.NewGetField(0, sql.Int64, "a", false),
+						expression.NewGetField(1, sql.Int64, "b", false),
+					),
+					expression.NewTuple(
+						expression.NewTuple(
+							expression.NewLiteral(int64(2), sql.Int64),
+							expression.NewLiteral(int64(1), sql.Int64),
+						),
+						expression.NewTuple(
+							expression.NewLiteral(int64(1), sql.Int64),
+							expression.NewLiteral(int64(0), sql.Int64),
+						),
 					),
 				),
+				child,
+			),
+			expected: plan.NewFilter(
+				hitNestedTuple,
 				child,
 			),
 		},
