@@ -255,7 +255,7 @@ func (i *INETNTOA) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Create new IPv4, and fill with val
 	ipv4 := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ipv4, uint32(ipv4int.(int32))) // TODO: can't cast directly to uint32, any other way?
+	binary.BigEndian.PutUint32(ipv4, uint32(ipv4int.(int32)))
 
 	return ipv4.String(), nil
 }

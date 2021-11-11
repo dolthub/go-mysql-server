@@ -122,7 +122,6 @@ func TestINET6ATON(t *testing.T) {
 	}
 }
 
-// TODO: write test cases for weird ipv4-mapped compressed
 func TestNewINET6NTOA(t *testing.T) {
 	f := NewINET6NTOA(expression.NewGetField(0, sql.LongText, "", false))
 	testCases := []struct {
