@@ -39,6 +39,8 @@ func TestPatternToRegex(t *testing.T) {
 		{`a\\b`, `(?s)^a\\b$`},
 		{`a\\\_b`, `(?s)^a\\_b$`},
 		{`(ab)`, `(?s)^\(ab\)$`},
+		{`$`, `(?s)^\$$`},
+		{`$$`, `(?s)^\$\$$`},
 	}
 
 	for _, tt := range testCases {
@@ -48,24 +50,49 @@ func TestPatternToRegex(t *testing.T) {
 	}
 }
 
+func TestCustomPatternToRegex(t *testing.T) {
+	testCases := []struct {
+		in, out, escape string
+	}{
+		{`a%`, `(?s)^%$`, `a`},
+		{`a_`, `(?s)^_$`, `a`},
+		{`\_`, `(?s)^_$`, `a`},
+		{`\_`, `(?s)^_$`, `\`},
+		{`a%a%`, `(?s)^%%$`, `a`},
+		{`a%a_`, `(?s)^%_$`, `a`},
+		{`$%`, `(?s)^%$`, `$`},
+		{`$%$%`, `(?s)^%%$`, `$`},
+		{`$$`, `(?s)^\$$`, `$`},
+		{`$\`, `(?s)^\\$`, `$`},
+		{`\$`, `(?s)^\$$`, `$`},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.in, func(t *testing.T) {
+			require.Equal(t, tt.out, patternToGoRegexWithEscape(tt.in, tt.escape))
+		})
+	}
+}
+
 func TestLike(t *testing.T) {
 	f := NewLike(
 		NewGetField(0, sql.Text, "", false),
 		NewGetField(1, sql.Text, "", false),
+		nil,
 	)
 
 	testCases := []struct {
-		pattern, value string
-		ok             bool
+		pattern, value, escape string
+		ok                     bool
 	}{
-		{"a__", "abc", true},
-		{"a__", "abcd", false},
-		{"a%b", "acb", true},
-		{"a%b", "acdkeflskjfdklb", true},
-		{"a%b", "ab", true},
-		{"a%b", "a", false},
-		{"a_b", "ab", false},
-		{"aa:%", "AA:BB:CC:DD:EE:FF", true},
+		{"a__", "abc", "", true},
+		{"a__", "abcd", "", false},
+		{"a%b", "acb", "", true},
+		{"a%b", "acdkeflskjfdklb", "", true},
+		{"a%b", "ab", "", true},
+		{"a%b", "a", "", false},
+		{"a_b", "ab", "", false},
+		{"aa:%", "AA:BB:CC:DD:EE:FF", "", true},
 	}
 
 	for _, tt := range testCases {

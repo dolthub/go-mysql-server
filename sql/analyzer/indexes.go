@@ -164,17 +164,18 @@ func getIndexes(
 		if len(rightIndexes) > 0 {
 			return nil, nil
 		}
-	case *expression.InTuple:
-		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
-			gf := expression.ExtractGetField(e.Left())
+	case *expression.InTuple, *expression.HashInTuple:
+		cmp := e.(expression.Comparer)
+		if !isEvaluable(cmp.Left()) && isEvaluable(cmp.Right()) {
+			gf := expression.ExtractGetField(cmp.Left())
 			if gf == nil {
 				return nil, nil
 			}
 
-			colExprs := normalizeExpressions(ctx, tableAliases, e.Left())
+			colExprs := normalizeExpressions(ctx, tableAliases, cmp.Left())
 			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), colExprs...)
 			if idx != nil {
-				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
+				value, err := cmp.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
 				}
@@ -202,7 +203,7 @@ func getIndexes(
 					return nil, err
 				}
 
-				getField := expression.ExtractGetField(e.Left())
+				getField := expression.ExtractGetField(cmp.Left())
 				if getField == nil {
 					return result, nil
 				}
@@ -480,20 +481,21 @@ func getNegatedIndexes(
 		}
 
 		return result, nil
-	case *expression.InTuple:
+	case *expression.InTuple, *expression.HashInTuple:
+		cmp := e.(expression.Comparer)
 		// Take the index of a SOMETHING IN SOMETHING expression only if:
 		// the right branch is evaluable and the indexlookup supports set
 		// operations.
-		if !isEvaluable(e.Left()) && isEvaluable(e.Right()) {
-			gf := expression.ExtractGetField(e.Left())
+		if !isEvaluable(cmp.Left()) && isEvaluable(cmp.Right()) {
+			gf := expression.ExtractGetField(cmp.Left())
 			if gf == nil {
 				return nil, nil
 			}
 
-			normalizedExpressions := normalizeExpressions(ctx, tableAliases, e.Left())
+			normalizedExpressions := normalizeExpressions(ctx, tableAliases, cmp.Left())
 			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
 			if idx != nil {
-				value, err := e.Right().Eval(sql.NewEmptyContext(), nil)
+				value, err := cmp.Right().Eval(sql.NewEmptyContext(), nil)
 				if err != nil {
 					return nil, err
 				}
@@ -520,14 +522,14 @@ func getNegatedIndexes(
 					return nil, err
 				}
 
-				getField := expression.ExtractGetField(e.Left())
+				getField := expression.ExtractGetField(cmp.Left())
 				if getField == nil {
 					return nil, nil
 				}
 
 				return indexLookupsByTable{
 					getField.Table(): {
-						exprs:   []sql.Expression{e.Left()},
+						exprs:   []sql.Expression{cmp.Left()},
 						indexes: []sql.Index{idx},
 						lookup:  lookup,
 					},

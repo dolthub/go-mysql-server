@@ -224,7 +224,7 @@ func TestHashInTuple(t *testing.T) {
 			),
 			nil,
 			nil,
-			expression.ErrUnsupportedHashInSubexpression,
+			sql.ErrInvalidOperandColumns,
 			nil,
 		},
 		{
@@ -258,6 +258,78 @@ func TestHashInTuple(t *testing.T) {
 			),
 			sql.NewRow(int64(1), int64(3)),
 			false,
+			nil,
+			nil,
+		},
+		{
+			"left tuple is in right",
+			expression.NewTuple(
+				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(0), sql.Int64),
+				),
+			),
+			nil,
+			true,
+			nil,
+			nil,
+		},
+		{
+			"left get field tuple is in right",
+			expression.NewTuple(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				expression.NewGetField(1, sql.Int64, "foo", false),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(0), sql.Int64),
+				),
+			),
+			sql.NewRow(int64(1), int64(0)),
+			true,
+			nil,
+			nil,
+		},
+		{
+			"left nested tuple is in right",
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewTuple(
+						expression.NewLiteral(int64(2), sql.Int64),
+						expression.NewLiteral(int64(1), sql.Int64),
+					),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewTuple(
+					expression.NewTuple(
+						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int64(2), sql.Int64),
+					),
+					expression.NewLiteral(int64(0), sql.Int64),
+				),
+			),
+			nil,
+			true,
 			nil,
 			nil,
 		},

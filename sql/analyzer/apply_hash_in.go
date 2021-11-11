@@ -22,19 +22,27 @@ import (
 
 func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
-		if f, ok := c.Node.(*plan.Filter); ok {
-			if i, ok := f.Expression.(*expression.InTuple); ok {
-				//	if hin, err := expression.NewHashInTuple(i.Left(), i.Right()); err == nil {
-				//		return plan.NewFilter(hin, f.Child), nil
-				//	}
-				//}
-				hin, err := expression.NewHashInTuple(i.Left(), i.Right())
-				if err != nil {
-					return nil, err
-				}
-				return plan.NewFilter(hin, f.Child), nil
-			}
+		filter, ok := c.Node.(*plan.Filter)
+		if !ok {
+			return c.Node, nil
 		}
-		return c.Node, nil
+
+		e, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
+			switch e := expr.(type) {
+			case *expression.InTuple:
+				switch e.Left().(type) {
+				// cannot HASH IN *plan.Subquery
+				case expression.Tuple, *expression.Literal, *expression.GetField:
+					return expression.NewHashInTuple(e.Left(), e.Right())
+				default:
+				}
+			default:
+			}
+			return expr, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return filter.WithExpressions(e)
 	})
 }
