@@ -192,3 +192,43 @@ func TestLeft(t *testing.T) {
 		})
 	}
 }
+
+func TestRight(t *testing.T) {
+	f := NewRight(
+		expression.NewGetField(0, sql.LongText, "str", true),
+		expression.NewGetField(1, sql.Int64, "len", false),
+	)
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"both null", sql.NewRow(nil, nil), nil, false},
+		{"null string", sql.NewRow(nil, 1), nil, false},
+		{"null len", sql.NewRow("foo", nil), nil, false},
+		{"len == string.len", sql.NewRow("foo", 3), "foo", false},
+		{"len > string.len", sql.NewRow("foo", 10), "foo", false},
+		{"len == 0", sql.NewRow("foo", 0), "", false},
+		{"len < 0", sql.NewRow("foo", -1), "", false},
+		{"len < string.len", sql.NewRow("foo", 2), "oo", false},
+		{"bad string type", sql.NewRow(1, 1), "", true},
+		{"bad len type", sql.NewRow("hello", "hello"), "", true},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			ctx := sql.NewEmptyContext()
+
+			v, err := f.Eval(ctx, tt.row)
+			if tt.err {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.expected, v)
+			}
+		})
+	}
+}

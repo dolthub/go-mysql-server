@@ -64,7 +64,7 @@ func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 			return sql.RowsToRowIter(rows...), nil
 		} else {
-			return nil, sql.ErrCannotCreateDatabaseExists.New(c.dbName)
+			return nil, sql.ErrDatabaseExists.New(c.dbName)
 		}
 	}
 
@@ -128,7 +128,7 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 			return sql.RowsToRowIter(rows...), nil
 		} else {
-			return nil, sql.ErrCannotDropDatabaseDoesntExist.New(d.dbName)
+			return nil, sql.ErrDatabaseNotFound.New(d.dbName)
 		}
 	}
 

@@ -1777,7 +1777,7 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
-		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrCannotCreateDatabaseExists)
+		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
 
 		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists)
 	})

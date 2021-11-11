@@ -24,20 +24,20 @@ import (
 )
 
 func TestTrim(t *testing.T) {
-	f := NewTrim(expression.NewGetField(0, sql.LongText, "", false))
+	f := NewTrim(expression.NewGetField(0, sql.LongText, "", false), expression.NewGetField(1, sql.LongText, "", false), "b")
 	testCases := []struct {
 		name     string
 		row      sql.Row
 		expected interface{}
 		err      bool
 	}{
-		{"null input", sql.NewRow(nil), nil, false},
-		{"trimmed string", sql.NewRow("foo"), "foo", false},
-		{"spaces in both sides", sql.NewRow("  foo    "), "foo", false},
-		{"spaces in left side", sql.NewRow("  foo"), "foo", false},
-		{"spaces in right side", sql.NewRow("foo    "), "foo", false},
-		{"two words with spaces", sql.NewRow(" foo   bar "), "foo   bar", false},
-		{"different kinds of spaces", sql.NewRow("\r\tfoo   bar \v"), "foo   bar", false},
+		{"null input", sql.NewRow(nil, " ", "b"), nil, false},
+		{"trimmed string", sql.NewRow("foo", " ", "b"), "foo", false},
+		{"spaces in both sides", sql.NewRow("  foo    ", " ", "b"), "foo", false},
+		{"spaces in left side", sql.NewRow("  foo", " ", "b"), "foo", false},
+		{"spaces in right side", sql.NewRow("foo    ", " ", "b"), "foo", false},
+		{"two words with spaces", sql.NewRow(" foo   bar ", " ", "b"), "foo   bar", false},
+		{"different kinds of spaces", sql.NewRow("\r\tfoo   bar \v", " ", "b"), "\r\tfoo   bar \v", false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestLTrim(t *testing.T) {
 		{"spaces in left side", sql.NewRow("  foo"), "foo", false},
 		{"spaces in right side", sql.NewRow("foo    "), "foo    ", false},
 		{"two words with spaces", sql.NewRow(" foo   bar "), "foo   bar ", false},
-		{"different kinds of spaces", sql.NewRow("\r\tfoo   bar \v"), "foo   bar \v", false},
+		{"different kinds of spaces", sql.NewRow("\r\tfoo   bar \v"), "\r\tfoo   bar \v", false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestRTrim(t *testing.T) {
 		{"spaces in left side", sql.NewRow("  foo"), "  foo", false},
 		{"spaces in right side", sql.NewRow("foo    "), "foo", false},
 		{"two words with spaces", sql.NewRow(" foo   bar "), " foo   bar", false},
-		{"different kinds of spaces", sql.NewRow("\r\tfoo   bar \v"), "\r\tfoo   bar", false},
+		{"different kinds of spaces", sql.NewRow("\r\tfoo   bar \v"), "\r\tfoo   bar \v", false},
 	}
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {

@@ -442,6 +442,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					filter = expression.NewLike(
 						expression.NewUnresolvedColumn("Table"),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
+						nil,
 					)
 				}
 			}
@@ -467,6 +468,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Name"),
 					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
 				)
 			}
 		}
@@ -499,6 +501,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					filter = expression.NewLike(
 						expression.NewUnresolvedColumn("Table"),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
+						nil,
 					)
 				}
 			}
@@ -535,6 +538,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					expression.NewLike(
 						expression.NewUnresolvedColumn("Field"),
 						pattern,
+						nil,
 					),
 					node,
 				)
@@ -599,6 +603,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				filter = expression.NewLike(
 					expression.NewUnresolvedColumn("Charset"),
 					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
 				)
 			}
 		}
@@ -2320,6 +2325,15 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 		return function.NewSubstring(name, from, to)
+	case *sqlparser.TrimExpr:
+		var (
+			pat sql.Expression
+			str sql.Expression
+			err error
+		)
+		pat, err = ExprToExpression(ctx, v.Pattern)
+		str, err = ExprToExpression(ctx, v.Str)
+		return function.NewTrim(str, pat, v.Dir), err
 	case *sqlparser.ComparisonExpr:
 		return comparisonExprToExpression(ctx, v)
 	case *sqlparser.IsExpr:
@@ -2645,6 +2659,14 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 		return nil, err
 	}
 
+	var escape sql.Expression = nil
+	if c.Escape != nil {
+		escape, err = ExprToExpression(ctx, c.Escape)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	switch strings.ToLower(c.Operator) {
 	case sqlparser.RegexpStr:
 		return expression.NewRegexp(left, right), nil
@@ -2685,9 +2707,9 @@ func comparisonExprToExpression(ctx *sql.Context, c *sqlparser.ComparisonExpr) (
 			return nil, ErrUnsupportedFeature.New(fmt.Sprintf("NOT IN %T", right))
 		}
 	case sqlparser.LikeStr:
-		return expression.NewLike(left, right), nil
+		return expression.NewLike(left, right, escape), nil
 	case sqlparser.NotLikeStr:
-		return expression.NewNot(expression.NewLike(left, right)), nil
+		return expression.NewNot(expression.NewLike(left, right, escape)), nil
 	default:
 		return nil, ErrUnsupportedFeature.New(c.Operator)
 	}
@@ -2989,6 +3011,7 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 			filter = expression.NewLike(
 				expression.NewUnresolvedColumn("Name"),
 				expression.NewLiteral(s.Filter.Like, sql.LongText),
+				nil,
 			)
 		}
 	}
