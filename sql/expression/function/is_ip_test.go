@@ -96,10 +96,10 @@ func TestNewIsIPv4Compat(t *testing.T) {
 		err      bool
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
-		{"valid ipv4 address", sql.NewRow("\x0a\x00\x01\x0A"), false, false},
-		{"valid ipv4-compat ipv6 address", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0a\x00\x01\x0A"), true, false},
-		{"valid ipv4-mapped ipv6 address", sql.NewRow("\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00\x00\x0a\x00\x01\x0A"), false, false},
-		{"malformed hex string", sql.NewRow("\x00\x00"), false, false},
+		{"valid ipv4 address", sql.NewRow([]byte{10, 0, 1, 10}), false, false},
+		{"valid ipv4-compat ipv6 address", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 1, 10}), true, false},
+		{"valid ipv4-mapped ipv6 address", sql.NewRow([]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0, 0, 10, 0, 1, 10}), false, false},
+		{"malformed hex string", sql.NewRow([]byte{0, 0}), false, false},
 		{"invalid ip address", sql.NewRow("thisisnotavalidipaddress"), false, false},
 	}
 	for _, tt := range testCases {

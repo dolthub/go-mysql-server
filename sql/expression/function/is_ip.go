@@ -131,7 +131,6 @@ func (i IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewIsIPv6(i.val), nil
 }
 
-
 // Eval implements the Expression interface
 func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate value
@@ -160,6 +159,8 @@ func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return false, nil
 	}
 }
+
+
 
 type IsIPv4Compat struct {
 	val sql.Expression
@@ -230,7 +231,7 @@ func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		}
 		return true, nil
 	default:
-		return nil, nil
+		return false, nil
 	}
 }
 
