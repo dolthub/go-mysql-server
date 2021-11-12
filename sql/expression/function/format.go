@@ -164,6 +164,9 @@ func (f *Format) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (*Format) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewFormat(children...)
+func (f *Format) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if (len(children) == 2 && f.Locale == nil) || (len(children) == 3 && f.Locale != nil) {
+		return NewFormat(children...)
+	}
+	return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 }

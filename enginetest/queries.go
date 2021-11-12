@@ -374,6 +374,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT FORMAT(i, 3) FROM mytable;",
+		Expected: []sql.Row{
+			{"1.000"},
+			{"2.000"},
+			{"3.000"},
+		},
+	},
+	{
 		Query: `SELECT column_0, sum(column_1) FROM 
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
 			group by 1 order by 1`,
