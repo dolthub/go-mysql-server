@@ -38,13 +38,13 @@ func (i *IsIPv4) FunctionName() string {
 	return "is_ipv4"
 }
 
-func (i IsIPv4) String() string {
+func (i *IsIPv4) String() string {
 	return fmt.Sprintf("IS_IPV4(%s)", i.Child.String())
 }
 
-func (IsIPv4) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv4) Type() sql.Type { return sql.Boolean }
 
-func (i IsIPv4) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv4) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
@@ -94,13 +94,13 @@ func (i *IsIPv6) FunctionName() string {
 	return "is_ipv6"
 }
 
-func (i IsIPv6) String() string {
+func (i *IsIPv6) String() string {
 	return fmt.Sprintf("IS_IPV6(%s)", i.Child.String())
 }
 
-func (IsIPv6) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv6) Type() sql.Type { return sql.Boolean }
 
-func (i IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv6) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
@@ -150,13 +150,13 @@ func (i *IsIPv4Compat) FunctionName() string {
 	return "is_ipv4_compat"
 }
 
-func (i IsIPv4Compat) String() string {
+func (i *IsIPv4Compat) String() string {
 	return fmt.Sprintf("IS_IPV4_COMPAT(%s)", i.Child.String())
 }
 
-func (IsIPv4Compat) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv4Compat) Type() sql.Type { return sql.Boolean }
 
-func (i IsIPv4Compat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv4Compat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
@@ -210,13 +210,13 @@ func (i *IsIPv4Mapped) FunctionName() string {
 	return "is_ipv4_mapped"
 }
 
-func (i IsIPv4Mapped) String() string {
+func (i *IsIPv4Mapped) String() string {
 	return fmt.Sprintf("IS_IPV4_MAPPED(%s)", i.Child.String())
 }
 
-func (IsIPv4Mapped) Type() sql.Type { return sql.Boolean }
+func (i *IsIPv4Mapped) Type() sql.Type { return sql.Boolean }
 
-func (i IsIPv4Mapped) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsIPv4Mapped) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
