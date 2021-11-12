@@ -16,20 +16,21 @@ package function
 
 import (
 	"fmt"
+	"math"
+	"strings"
+
 	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
-	"math"
-	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Format function returns a result of NumValue rounded to NumDecimalPlaces as a string.
 type Format struct {
-	NumValue    		sql.Expression
-	NumDecimalPlaces    sql.Expression
-	Locale 				sql.Expression
+	NumValue         sql.Expression
+	NumDecimalPlaces sql.Expression
+	Locale           sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Format)(nil)
@@ -39,13 +40,13 @@ func NewFormat(args ...sql.Expression) (sql.Expression, error) {
 	var numValue, numDecimalPlaces, locale sql.Expression
 	switch len(args) {
 	case 2:
-		numValue 			= args[0]
-		numDecimalPlaces 	= args[1]
-		locale 				= nil
+		numValue = args[0]
+		numDecimalPlaces = args[1]
+		locale = nil
 	case 3:
-		numValue 		 	= args[0]
-		numDecimalPlaces 	= args[1]
-		locale 			 	= args[2]
+		numValue = args[0]
+		numDecimalPlaces = args[1]
+		locale = args[2]
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("FORMAT", "2 or 3", len(args))
 	}
