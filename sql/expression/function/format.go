@@ -16,40 +16,40 @@ package function
 
 import (
 	"fmt"
-	"math"
-	"strings"
-
+	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+	"math"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Format function returns a result of numX rounded to df decimal places as a string.
+// Format function returns a result of NumValue rounded to NumDecimalPlaces as a string.
 type Format struct {
-	Val    sql.Expression
-	Df     sql.Expression
-	Locale sql.Expression
+	NumValue    		sql.Expression
+	NumDecimalPlaces    sql.Expression
+	Locale 				sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Format)(nil)
 
 // NewFormat returns a new Format expression.
 func NewFormat(args ...sql.Expression) (sql.Expression, error) {
-	var numX, df, locale sql.Expression
+	var numValue, numDecimalPlaces, locale sql.Expression
 	switch len(args) {
 	case 2:
-		numX = args[0]
-		df = args[1]
-		locale = nil
+		numValue 			= args[0]
+		numDecimalPlaces 	= args[1]
+		locale 				= nil
 	case 3:
-		numX = args[0]
-		df = args[1]
-		locale = args[2]
+		numValue 		 	= args[0]
+		numDecimalPlaces 	= args[1]
+		locale 			 	= args[2]
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("FORMAT", "2 or 3", len(args))
 	}
-	return &Format{numX, df, locale}, nil
+	return &Format{numValue, numDecimalPlaces, locale}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -62,119 +62,104 @@ func (f *Format) Type() sql.Type { return sql.LongText }
 
 // IsNullable implements the Expression interface.
 func (f *Format) IsNullable() bool {
-	return f.Val.IsNullable() || f.Df.IsNullable() || f.Locale.IsNullable()
+	return f.NumValue.IsNullable() || f.NumDecimalPlaces.IsNullable() || (f.Locale != nil && f.Locale.IsNullable())
 }
 
 func (f *Format) String() string {
-	return fmt.Sprintf("format(%s, %s, %s)", f.Val, f.Df, f.Locale)
+	return fmt.Sprintf("format(%s, %s, %s)", f.NumValue, f.NumDecimalPlaces, f.Locale)
 }
 
 // Eval implements the Expression interface.
 func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	value, err := f.Val.Eval(ctx, row)
+	// FORMAT(5932886+.000000000001, 15); ==> "5,932,886.000000000000000" instead of "5,932,886.000000000001000"
+	// number above gets evaluated as 5932886
+	numVal, err := f.NumValue.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if value == nil {
+	if numVal == nil {
 		return nil, nil
 	}
 
-	if !sql.IsNumber(f.Val.Type()) {
-		value, err = sql.Float64.Convert(value)
-		if err != nil {
-			return nil, nil
+	numDP, err := f.NumDecimalPlaces.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if numDP == nil {
+		return nil, nil
+	}
+
+	// cannot handle "5932886+.000000000001" ==> will result conversion error
+	numVal, err = sql.Float64.Convert(numVal)
+	if err != nil {
+		return nil, nil
+	}
+	numValue := numVal.(float64)
+
+	numDP, err = sql.Float64.Convert(numDP)
+	if err != nil {
+		return nil, nil
+	}
+	numDecimalPlaces := numDP.(float64)
+	numDecimalPlaces = math.Round(numDecimalPlaces)
+
+	if numDecimalPlaces < 0 {
+		numDecimalPlaces = 0
+	}
+
+	roundedValue := math.Round(numValue*math.Pow(10.0, numDecimalPlaces)) / math.Pow(10.0, numDecimalPlaces)
+
+	// FORMAT(-5.932887e-08, 2);     		==> -0.00
+	// FORMAT(-0.00000005932887, 2); 		==> 0.00
+	// will return 0.00 for both cases
+	var whole int64
+	var fractionStr string
+	var negative string
+	if roundedValue != 0 {
+		res := decimal.NewFromFloat(roundedValue)
+		whole = res.IntPart()
+		if whole == 0 && res.IsNegative() {
+			negative = "-"
 		}
-	}
 
-	var dVal float64
-	dTemp, err := f.Df.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if dTemp == nil {
-		return nil, nil
-	}
-
-	switch dNum := dTemp.(type) {
-	case float64:
-		dVal = float64(int64(math.Round(dNum)))
-	case float32:
-		dVal = float64(int64(math.Round(float64(dNum))))
-	case int64:
-		dVal = float64(dNum)
-	case int32:
-		dVal = float64(dNum)
-	case int16:
-		dVal = float64(dNum)
-	case int8:
-		dVal = float64(dNum)
-	case uint64:
-		dVal = float64(dNum)
-	case uint32:
-		dVal = float64(dNum)
-	case uint16:
-		dVal = float64(dNum)
-	case uint8:
-		dVal = float64(dNum)
-	case int:
-		dVal = float64(dNum)
-	default:
-		dTemp, err = sql.Float64.Convert(dTemp)
-		if err == nil {
-			dVal = dTemp.(float64)
+		str := res.String()
+		dotIdx := strings.Index(str, ".")
+		if dotIdx == -1 {
+			fractionStr = ""
 		} else {
-			return nil, nil
+			fractionStr = str[dotIdx+1:]
 		}
 	}
 
-	if dVal < float64(0) {
-		dVal = float64(0)
-	}
-	xVal := math.Round(value.(float64)*math.Pow(10.0, dVal)) / math.Pow(10.0, dVal)
-
-	xValStr := fmt.Sprintf("%f", xVal)
-	s := strings.Split(xValStr, ".")
-	argLen := len(s)
-	var whole string
-	var decimal string
-	if argLen > 2 || argLen < 1 {
-		return nil, nil
-	} else if argLen == 2 {
-		whole = s[0]
-		decimal = s[1]
-	} else {
-		whole = s[0]
-		decimal = ""
-	}
-
-	var i int
-	_, err = fmt.Sscanf(whole, "%d", &i)
 	p := message.NewPrinter(language.English)
-
-	if dVal == 0 {
-		return fmt.Sprintf("%s", p.Sprintf("%d", i)), nil
+	formattedWhole := p.Sprintf("%d", whole)
+	if numDecimalPlaces == 0 {
+		return fmt.Sprintf("%s%s", negative, formattedWhole), nil
 	}
 
-	if len(decimal) < int(dVal) {
-		rp := int(dVal) - len(decimal)
-		decimal += strings.Repeat("0", rp)
+	if len(fractionStr) < int(numDecimalPlaces) {
+		rp := int(numDecimalPlaces) - len(fractionStr)
+		fractionStr += strings.Repeat("0", rp)
 	}
 
-	result := fmt.Sprintf("%s.%s", p.Sprintf("%d", i), decimal[:int(dVal)])
+	result := fmt.Sprintf("%s%s.%s", negative, formattedWhole, fractionStr)
 	return result, nil
 }
 
 // Resolved implements the Expression interface.
 func (f *Format) Resolved() bool {
-	return f.Val.Resolved() && f.Df.Resolved() && f.Locale.Resolved()
+	if f.Locale == nil {
+		return f.NumValue.Resolved() && f.NumDecimalPlaces.Resolved()
+	}
+	return f.NumValue.Resolved() && f.NumDecimalPlaces.Resolved() && f.Locale.Resolved()
 }
 
 // Children implements the Expression interface.
 func (f *Format) Children() []sql.Expression {
 	if f.Locale == nil {
-		return []sql.Expression{f.Val, f.Df}
+		return []sql.Expression{f.NumValue, f.NumDecimalPlaces}
 	}
-	return []sql.Expression{f.Val, f.Df, f.Locale}
+	return []sql.Expression{f.NumValue, f.NumDecimalPlaces, f.Locale}
 }
 
 // WithChildren implements the Expression interface.
