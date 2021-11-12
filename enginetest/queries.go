@@ -1910,7 +1910,6 @@ var QueryTests = []QueryTest{
 		Query:    `SELECT TRIM(TRAILING CONCAT("a", "b") FROM CONCAT("test","ab"))`,
 		Expected: []sql.Row{{"test"}},
 	},
-
 	{
 		Query:    `SELECT TRIM(LEADING 1 FROM "11111112")`,
 		Expected: []sql.Row{{"2"}},
@@ -1920,6 +1919,146 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"2"}},
 	},
 
+	{
+		Query:    `SELECT INET_ATON("10.0.5.10")`,
+		Expected: []sql.Row{{uint64(167773450)}},
+	},
+	{
+		Query:    `SELECT INET_NTOA(167773450)`,
+		Expected: []sql.Row{{"10.0.5.10"}},
+	},
+	{
+		Query:    `SELECT INET_ATON("10.0.5.11")`,
+		Expected: []sql.Row{{uint64(167773451)}},
+	},
+	{
+		Query:    `SELECT INET_NTOA(167773451)`,
+		Expected: []sql.Row{{"10.0.5.11"}},
+	},
+	{
+		Query:    `SELECT INET_NTOA(INET_ATON("12.34.56.78"))`,
+		Expected: []sql.Row{{"12.34.56.78"}},
+	},
+	{
+		Query:    `SELECT INET_ATON(INET_NTOA("12345678"))`,
+		Expected: []sql.Row{{uint64(12345678)}},
+	},
+	{
+		Query:    `SELECT INET_ATON("notanipaddress")`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT INET_NTOA("spaghetti")`,
+		Expected: []sql.Row{{"0.0.0.0"}},
+	},
+	{
+		Query:    `SELECT HEX(INET6_ATON("10.0.5.9"))`,
+		Expected: []sql.Row{{"0A000509"}},
+	},
+	{
+		Query:    `SELECT HEX(INET6_ATON("::10.0.5.9"))`,
+		Expected: []sql.Row{{"0000000000000000000000000A000509"}},
+	},
+	{
+		Query:    `SELECT HEX(INET6_ATON("1.2.3.4"))`,
+		Expected: []sql.Row{{"01020304"}},
+	},
+	{
+		Query:    `SELECT HEX(INET6_ATON("fdfe::5455:caff:fefa:9098"))`,
+		Expected: []sql.Row{{"FDFE0000000000005455CAFFFEFA9098"}},
+	},
+	{
+		Query:    `SELECT HEX(INET6_ATON("1111:2222:3333:4444:5555:6666:7777:8888"))`,
+		Expected: []sql.Row{{"11112222333344445555666677778888"}},
+	},
+	{
+		Query:    `SELECT INET6_ATON("notanipaddress")`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA(UNHEX("1234ffff5678ffff1234ffff5678ffff"))`,
+		Expected: []sql.Row{{"1234:ffff:5678:ffff:1234:ffff:5678:ffff"}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA(UNHEX("ffffffff"))`,
+		Expected: []sql.Row{{"255.255.255.255"}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA(UNHEX("000000000000000000000000ffffffff"))`,
+		Expected: []sql.Row{{"::255.255.255.255"}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA(UNHEX("00000000000000000000ffffffffffff"))`,
+		Expected: []sql.Row{{"::ffff:255.255.255.255"}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA(UNHEX("0000000000000000000000000000ffff"))`,
+		Expected: []sql.Row{{"::ffff"}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA(UNHEX("00000000000000000000000000000000"))`,
+		Expected: []sql.Row{{"::"}},
+	},
+	{
+		Query:    `SELECT INET6_NTOA("notanipaddress")`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT IS_IPV4("10.0.1.10")`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT IS_IPV4("::10.0.1.10")`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV4("notanipaddress")`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV6("10.0.1.10")`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV6("::10.0.1.10")`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT IS_IPV6("notanipaddress")`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("10.0.1.10"))`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("::10.0.1.10"))`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("::ffff:10.0.1.10"))`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("notanipaddress"))`,
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("10.0.1.10"))`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("::10.0.1.10"))`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("::ffff:10.0.1.10"))`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("notanipaddress"))`,
+		Expected: []sql.Row{{nil}},
+	},
 	{
 		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
 		Expected: []sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
