@@ -1247,3 +1247,72 @@ func (c CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 func (c CurrTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, children)
 }
+
+type CurrentTimestamp struct {
+	expression.UnaryExpression
+}
+
+var _ sql.FunctionExpression = (*CurrentTimestamp)(nil)
+
+func NewCurrentTimestamp(val sql.Expression) sql.Expression {
+	return &CurrentTimestamp{expression.UnaryExpression{Child: val}}
+}
+
+func (c *CurrentTimestamp) FunctionName() string {
+	return "current_timestamp"
+}
+
+func (c *CurrentTimestamp) String() string {
+	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.Child.String())
+}
+
+func (c *CurrentTimestamp) Type() sql.Type { return sql.LongText }
+
+func (c *CurrentTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+	}
+	return NewCurrentTimestamp(children[0]), nil
+}
+
+func (c *CurrentTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate value
+	val, err := c.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// If null, throw syntax error
+	if val == nil {
+		// TODO: syntax error
+		return nil, nil
+	}
+
+	// Must receive integer, all other types throw syntax error
+	switch val.(type) {
+	case int8:
+		fsp := val.(int8)
+		if fsp > 6 {
+			// TODO: return too high precision
+			return nil, nil
+		}
+		// Get the timestamp
+		t := ctx.QueryTime()
+
+		// Create non-nanosecond portion
+		timeString := fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second())
+
+		// Create nanosecond portion, and process to match MySQL
+		nanosecondString := fmt.Sprintf("%09d", t.Nanosecond())[:fsp]
+		// Remove trailing zeroes
+		nanosecondString = strings.TrimRight(nanosecondString, "0")
+		// Prepend period if not empty string
+		if len(nanosecondString) > 0 {
+			nanosecondString = "." + nanosecondString
+		}
+		return timeString + nanosecondString, nil
+	default:
+		// TODO: syntax error
+		return nil, nil
+	}
+}
