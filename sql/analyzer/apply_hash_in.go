@@ -30,8 +30,11 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 		e, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
 			switch e := expr.(type) {
 			case *expression.InTuple:
-				if hin, err := expression.NewHashInTuple(e.Left(), e.Right()); err == nil {
-					return hin, nil
+				switch e.Left().(type) {
+				// cannot HASH IN *plan.Subquery
+				case expression.Tuple, *expression.Literal, *expression.GetField:
+					return expression.NewHashInTuple(e.Left(), e.Right())
+				default:
 				}
 			default:
 			}
