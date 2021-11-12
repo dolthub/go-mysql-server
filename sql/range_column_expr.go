@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // RangeType returns what a RangeColumnExpr represents, such as a GreaterThan on some column, or a column set between
@@ -150,12 +151,12 @@ func (r RangeColumnExpr) Equals(other RangeColumnExpr) (bool, error) {
 	return cmpLower == 0 && cmpUpper == 0, nil
 }
 
-// HasLowerBound returns whether this RangeColumnExpr has a lower bound.
+// HasLowerBound returns whether this RangeColumnExpr has a value for the lower bound.
 func (r RangeColumnExpr) HasLowerBound() bool {
 	return r.LowerBound != BelowAll{} && r.LowerBound != AboveAll{}
 }
 
-// HasUpperBound returns whether this RangeColumnExpr has an upper bound.
+// HasUpperBound returns whether this RangeColumnExpr has a value for the upper bound.
 func (r RangeColumnExpr) HasUpperBound() bool {
 	return r.UpperBound != BelowAll{} && r.UpperBound != AboveAll{}
 }
@@ -185,6 +186,87 @@ func (r RangeColumnExpr) IsConnected(other RangeColumnExpr) (bool, error) {
 	return comp <= 0, nil
 }
 
+// Overlaps evaluates whether the given RangeColumnExpr overlaps the calling RangeColumnExpr. If they do, returns the
+// overlapping region as a RangeColumnExpr.
+func (r RangeColumnExpr) Overlaps(other RangeColumnExpr) (RangeColumnExpr, bool, error) {
+	if r.typ.String() != other.typ.String() {
+		return EmptyRangeColumnExpr(r.typ), false, nil
+	}
+	comp, err := r.LowerBound.Compare(other.UpperBound, r.typ)
+	if err != nil || comp >= 0 {
+		return EmptyRangeColumnExpr(r.typ), false, err
+	}
+	comp, err = other.LowerBound.Compare(r.UpperBound, r.typ)
+	if err != nil || comp >= 0 {
+		return EmptyRangeColumnExpr(r.typ), false, err
+	}
+	lowerbound, err := GetRangeCutMax(r.typ, r.LowerBound, other.LowerBound)
+	if err != nil {
+		return EmptyRangeColumnExpr(r.typ), false, err
+	}
+	upperbound, err := GetRangeCutMin(r.typ, r.UpperBound, other.UpperBound)
+	if err != nil {
+		return EmptyRangeColumnExpr(r.typ), false, err
+	}
+	return RangeColumnExpr{
+		LowerBound: lowerbound,
+		UpperBound: upperbound,
+		typ:        r.typ,
+	}, true, nil
+}
+
+// Subtract removes the given RangeColumnExpr from the calling RangeColumnExpr. In the event that the given
+// RangeColumnExpr is a strict subset of the calling RangeColumnExpr, two RangeColumnExprs will be returned. If the
+// given RangeColumnExpr does not overlap the calling RangeColumnExpr, then the calling RangeColumnExpr is returned.
+// If the calling RangeColumnExpr is a strict subset (or equivalent) of the given RangeColumnExpr, then an empty slice
+// is returned. In all other cases, a slice with a single RangeColumnExpr will be returned.
+func (r RangeColumnExpr) Subtract(other RangeColumnExpr) ([]RangeColumnExpr, error) {
+	_, overlaps, err := r.Overlaps(other)
+	if err != nil {
+		return nil, err
+	}
+	if !overlaps {
+		return []RangeColumnExpr{r}, nil
+	}
+	lComp, err := r.LowerBound.Compare(other.LowerBound, r.typ)
+	if err != nil {
+		return nil, err
+	}
+	uComp, err := r.UpperBound.Compare(other.UpperBound, r.typ)
+	if err != nil {
+		return nil, err
+	}
+	// Each bound, when compared to the other, has 3 possible states: less (-1), equal (0), or greater (1).
+	// As there are two bounds (upper and lower), that gives us 9 total combinations.
+	// To make use of a switch statement (avoiding 9 if-else statements), we can convert the states to an integer.
+	// Adding 1 to each bound moves the lowest value to 0 and highest to 2, so we can use it as a trit (ternary "bit").
+	switch (3 * (lComp + 1)) + (uComp + 1) {
+	case 0: // lComp == -1 && uComp == -1
+		return []RangeColumnExpr{{r.LowerBound, other.LowerBound, r.typ}}, nil
+	case 1: // lComp == -1 && uComp == 0
+		return []RangeColumnExpr{{r.LowerBound, other.LowerBound, r.typ}}, nil
+	case 2: // lComp == -1 && uComp == 1
+		return []RangeColumnExpr{
+			{r.LowerBound, other.LowerBound, r.typ},
+			{other.UpperBound, r.UpperBound, r.typ},
+		}, nil
+	case 3: // lComp == 0  && uComp == -1
+		return nil, nil
+	case 4: // lComp == 0  && uComp == 0
+		return nil, nil
+	case 5: // lComp == 0  && uComp == 1
+		return []RangeColumnExpr{{other.UpperBound, r.UpperBound, r.typ}}, nil
+	case 6: // lComp == 1  && uComp == -1
+		return nil, nil
+	case 7: // lComp == 1  && uComp == 0
+		return nil, nil
+	case 8: // lComp == 1  && uComp == 1
+		return []RangeColumnExpr{{other.UpperBound, r.UpperBound, r.typ}}, nil
+	default: // should never be hit
+		panic(fmt.Errorf("unknown RangeColumnExpr subtraction case: %d", (3*(lComp+1))+(uComp+1)))
+	}
+}
+
 // IsSubsetOf evaluates whether the calling RangeColumnExpr is fully encompassed by the given RangeColumnExpr.
 func (r RangeColumnExpr) IsSubsetOf(other RangeColumnExpr) (bool, error) {
 	if r.typ.String() != other.typ.String() {
@@ -206,9 +288,32 @@ func (r RangeColumnExpr) IsSupersetOf(other RangeColumnExpr) (bool, error) {
 	return other.IsSubsetOf(r)
 }
 
-// String returns this RangeColumnExpr as a string for debugging purposes. Will panic on errors.
+// String returns this RangeColumnExpr as a string for display purposes.
 func (r RangeColumnExpr) String() string {
-	return fmt.Sprintf("RangeColumnExpr(%s, %s)", r.LowerBound.String(), r.UpperBound.String())
+	return fmt.Sprintf("(%s, %s)", r.LowerBound.String(), r.UpperBound.String())
+}
+
+// DebugString returns this RangeColumnExpr as a string for debugging purposes.
+func (r RangeColumnExpr) DebugString() string {
+	sb := strings.Builder{}
+	switch r.LowerBound.(type) {
+	case Above:
+		sb.WriteString("(" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
+	case Below:
+		sb.WriteString("[" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
+	case AboveAll, BelowAll:
+		sb.WriteString("(-∞")
+	}
+	sb.WriteString(", ")
+	switch r.UpperBound.(type) {
+	case Above:
+		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + "]")
+	case Below:
+		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + ")")
+	case AboveAll, BelowAll:
+		sb.WriteString("∞)")
+	}
+	return sb.String()
 }
 
 // TryIntersect attempts to intersect the given RangeColumnExpr with the calling RangeColumnExpr. Returns true if the
@@ -358,7 +463,7 @@ func (r *rangeColumnExprSlice) Less(i, j int) bool {
 }
 
 // SimplifyRangeColumn combines all RangeColumnExprs that are connected and returns a new slice.
-func SimplifyRangeColumn(rces ...RangeColumnExpr) (RangeColumn, error) {
+func SimplifyRangeColumn(rces ...RangeColumnExpr) ([]RangeColumnExpr, error) {
 	if len(rces) == 0 {
 		return rces, nil
 	}

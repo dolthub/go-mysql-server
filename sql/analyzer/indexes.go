@@ -128,10 +128,10 @@ func getIndexes(
 			foundRightIdx := false
 			if rightIdx, ok := rightIndexes[table]; ok {
 				if canMergeIndexes(leftIdx.lookup, rightIdx.lookup) {
-					var allRanges []sql.Range
-					allRanges = append([]sql.Range{}, leftIdx.lookup.Ranges()...)
+					var allRanges sql.RangeCollection
+					allRanges = append(sql.RangeCollection{}, leftIdx.lookup.Ranges()...)
 					allRanges = append(allRanges, rightIdx.lookup.Ranges()...)
-					newRanges, err := sql.SimplifyRanges(allRanges...)
+					newRanges, err := sql.RemoveOverlappingRanges(allRanges...)
 					if err != nil {
 						return nil, nil
 					}
@@ -185,15 +185,15 @@ func getIndexes(
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				var toUnion []sql.Range
+				var toUnion sql.RangeCollection
 				for _, val := range values {
-					ranges := sql.NewIndexBuilder(ctx, idx).Equals(ctx, colExprs[0].String(), val).Range()
-					if ranges == nil {
+					ranges := sql.NewIndexBuilder(ctx, idx).Equals(ctx, colExprs[0].String(), val).Ranges()
+					if len(ranges) == 0 {
 						return nil, nil
 					}
-					toUnion = append(toUnion, ranges)
+					toUnion = append(toUnion, ranges...)
 				}
-				allRanges, err := sql.SimplifyRanges(toUnion...)
+				allRanges, err := sql.RemoveOverlappingRanges(toUnion...)
 				if err != nil {
 					return nil, err
 				}
@@ -505,13 +505,13 @@ func getNegatedIndexes(
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				var toIntersect []sql.Range
+				var toIntersect sql.RangeCollection
 				for _, val := range values {
-					ranges := sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), val).Range()
-					if ranges == nil {
+					ranges := sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), val).Ranges()
+					if len(ranges) == 0 {
 						return nil, nil
 					}
-					toIntersect = append(toIntersect, ranges)
+					toIntersect = append(toIntersect, ranges...)
 				}
 				allRanges := sql.IntersectRanges(toIntersect...)
 				if allRanges == nil {
