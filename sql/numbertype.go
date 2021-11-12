@@ -462,6 +462,10 @@ func (t numberTypeImpl) IsSigned() bool {
 	return false
 }
 
+func isIntegral(val float64) bool {
+    return val == float64(int64(val))
+}
+
 func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 	switch v := v.(type) {
 	case int:
@@ -509,11 +513,11 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 		}
 		return i, nil
 	case string:
-		i, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil || !isIntegral(f) {
 			return 0, ErrInvalidValue.New(v, t.String())
 		}
-		return i, nil
+		return int64(f), nil
 	case bool:
 		if v {
 			return 1, nil
