@@ -85,89 +85,76 @@ func (i *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLooku
 		exprs = mergeableIndex.ColumnExpressions()
 	}
 
-	var completeExpr sql.Expression
+	var rangeCollectionExpr sql.Expression
 	for _, rang := range ranges {
-		var filterExpr sql.Expression
-		for i, rangeColumn := range rang {
-			var rangeExpr sql.Expression
-			for _, rangeColumnExpr := range rangeColumn {
-				switch rangeColumnExpr.Type() {
-				// Both Empty and All may seem like strange inclusions, but if only one range is given we need some
-				// expression to evaluate, otherwise our expression would be a nil expression which would panic.
-				case sql.RangeType_Empty:
-					rangeExpr = or(rangeExpr, expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(2, sql.Int8)))
-				case sql.RangeType_All:
-					rangeExpr = or(rangeExpr, expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(1, sql.Int8)))
-				case sql.RangeType_GreaterThan:
-					lit, typ := getType(sql.GetRangeCutKey(rangeColumnExpr.LowerBound))
-					rangeExpr = or(rangeExpr, expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lit, typ)))
-				case sql.RangeType_GreaterOrEqual:
-					lit, typ := getType(sql.GetRangeCutKey(rangeColumnExpr.LowerBound))
-					rangeExpr = or(rangeExpr, expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lit, typ)))
-				case sql.RangeType_LessThan:
-					lit, typ := getType(sql.GetRangeCutKey(rangeColumnExpr.UpperBound))
-					rangeExpr = or(rangeExpr, expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(lit, typ)))
-				case sql.RangeType_LessOrEqual:
-					lit, typ := getType(sql.GetRangeCutKey(rangeColumnExpr.UpperBound))
-					rangeExpr = or(rangeExpr, expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(lit, typ)))
-				case sql.RangeType_ClosedClosed:
-					if ok, err := rangeColumnExpr.RepresentsEquals(); err != nil {
-						return nil, err
-					} else if ok {
-						lit, typ := getType(sql.GetRangeCutKey(rangeColumnExpr.LowerBound))
-						if typ == sql.Null {
-							rangeExpr = or(rangeExpr, expression.NewIsNull(exprs[i]))
-						} else {
-							rangeExpr = or(rangeExpr, expression.NewNullSafeEquals(exprs[i], expression.NewLiteral(lit, typ)))
-						}
+		var rangeExpr sql.Expression
+		for i, rce := range rang {
+			var rangeColumnExpr sql.Expression
+			switch rce.Type() {
+			// Both Empty and All may seem like strange inclusions, but if only one range is given we need some
+			// expression to evaluate, otherwise our expression would be a nil expression which would panic.
+			case sql.RangeType_Empty:
+				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(2, sql.Int8))
+			case sql.RangeType_All:
+				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(1, sql.Int8))
+			case sql.RangeType_GreaterThan:
+				lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
+				rangeColumnExpr = expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lit, typ))
+			case sql.RangeType_GreaterOrEqual:
+				lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
+				rangeColumnExpr = expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lit, typ))
+			case sql.RangeType_LessThan:
+				lit, typ := getType(sql.GetRangeCutKey(rce.UpperBound))
+				rangeColumnExpr = expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(lit, typ))
+			case sql.RangeType_LessOrEqual:
+				lit, typ := getType(sql.GetRangeCutKey(rce.UpperBound))
+				rangeColumnExpr = expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(lit, typ))
+			case sql.RangeType_ClosedClosed:
+				if ok, err := rce.RepresentsEquals(); err != nil {
+					return nil, err
+				} else if ok {
+					lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
+					if typ == sql.Null {
+						rangeColumnExpr = expression.NewIsNull(exprs[i])
 					} else {
-						lowLit, lowTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.LowerBound))
-						upLit, upTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.UpperBound))
-						rangeExpr = or(rangeExpr,
-							and(
-								expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-								expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(upLit, upTyp)),
-							),
-						)
+						rangeColumnExpr = expression.NewNullSafeEquals(exprs[i], expression.NewLiteral(lit, typ))
 					}
-				case sql.RangeType_OpenOpen:
-					lowLit, lowTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.LowerBound))
-					upLit, upTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.UpperBound))
-					rangeExpr = or(rangeExpr,
-						and(
-							expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-							expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(upLit, upTyp)),
-						),
-					)
-				case sql.RangeType_OpenClosed:
-					lowLit, lowTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.LowerBound))
-					upLit, upTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.UpperBound))
-					rangeExpr = or(rangeExpr,
-						and(
-							expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-							expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(upLit, upTyp)),
-						),
-					)
-				case sql.RangeType_ClosedOpen:
-					lowLit, lowTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.LowerBound))
-					upLit, upTyp := getType(sql.GetRangeCutKey(rangeColumnExpr.UpperBound))
-					rangeExpr = or(rangeExpr,
-						and(
-							expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-							expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(upLit, upTyp)),
-						),
+				} else {
+					lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
+					upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
+					rangeColumnExpr = and(
+						expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+						expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(upLit, upTyp)),
 					)
 				}
+			case sql.RangeType_OpenOpen:
+				lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
+				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
+				rangeColumnExpr = and(
+					expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+					expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(upLit, upTyp)),
+				)
+			case sql.RangeType_OpenClosed:
+				lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
+				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
+				rangeColumnExpr = and(
+					expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+					expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(upLit, upTyp)),
+				)
+			case sql.RangeType_ClosedOpen:
+				lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
+				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
+				rangeColumnExpr = and(
+					expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+					expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(upLit, upTyp)),
+				)
 			}
-			if rangeExpr == nil {
-				continue
-			}
-			filterExpr = and(filterExpr, rangeExpr)
+			rangeExpr = and(rangeExpr, rangeColumnExpr)
 		}
-		completeExpr = or(completeExpr, filterExpr)
+		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
 	}
 
-	return NewIndexLookup(ctx, mergeableIndex, completeExpr, ranges...), nil
+	return NewIndexLookup(ctx, mergeableIndex, rangeCollectionExpr, ranges...), nil
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
