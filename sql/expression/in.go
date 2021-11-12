@@ -232,6 +232,10 @@ func newInMap(expr sql.Expression, lType sql.Type) (map[uint64]sql.Expression, b
 			switch l := el.(type) {
 			case *Literal, Tuple:
 				key, err := hashOf(l, lType)
+				if sql.ErrInvalidType.Is(err) {
+					// TODO: can't convert a tuple in right expr to left literal type, and vice versa, echo warning?
+					continue
+				}
 				if err != nil {
 					return nil, hasNull, err
 				}
@@ -249,7 +253,11 @@ func newInMap(expr sql.Expression, lType sql.Type) (map[uint64]sql.Expression, b
 func hashOf(e sql.Expression, t sql.Type) (uint64, error) {
 	switch v := e.(type) {
 	case Tuple:
-		return hashOfTuple(v)
+		tupType, ok := t.(sql.TupleType)
+		if !ok {
+			return 0, sql.ErrInvalidType.New(t)
+		}
+		return hashOfTuple(v, tupType)
 	case *Literal:
 		return hashOfLiteral(v, t)
 	default:
@@ -259,9 +267,9 @@ func hashOf(e sql.Expression, t sql.Type) (uint64, error) {
 
 func hashOfLiteral(l *Literal, t sql.Type) (uint64, error) {
 	hash := xxhash.New()
-	i, err := t.Convert(l.value)
+	i, err := t.Promote().Convert(l.value)
 	if err != nil {
-		return 0, err
+		return 0, sql.ErrInvalidType.New(l.value)
 	}
 	if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", i))); err != nil {
 		return 0, err
@@ -270,12 +278,16 @@ func hashOfLiteral(l *Literal, t sql.Type) (uint64, error) {
 }
 
 // hashOfTuple will recursively hash a Tuple tree with Literal leaves
-func hashOfTuple(tup Tuple) (uint64, error) {
+func hashOfTuple(tup Tuple, t sql.TupleType) (uint64, error) {
 	hash := xxhash.New()
-	for _, el := range tup {
+	for i, el := range tup {
 		switch v := el.(type) {
 		case *Literal:
-			if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", v.value))); err != nil {
+			converted, err := t[i].Promote().Convert(v.value)
+			if err != nil {
+				return 0, err
+			}
+			if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", converted))); err != nil {
 				return 0, err
 			}
 		default:
