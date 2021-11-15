@@ -73,8 +73,6 @@ func (f *Format) String() string {
 
 // Eval implements the Expression interface.
 func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// FORMAT(5932886+.000000000001, 15); ==> "5,932,886.000000000000000" instead of "5,932,886.000000000001000"
-	// number above gets evaluated as 5932886
 	numVal, err := f.NumValue.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -105,7 +103,6 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// cannot handle "5932886+.000000000001" ==> will result conversion error
 	numVal, err = sql.Float64.Convert(numVal)
 	if err != nil {
 		return nil, nil
