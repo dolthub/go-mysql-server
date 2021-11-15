@@ -703,7 +703,7 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 	}
 }
 
-// handleLoadData triggers a connections response in the case that a local load data file is sent.
+// handleLoadData triggers a connection response in the case that a LOAD DATA LOCAL command is sent.
 func handleLoadData(c *mysql.Conn, ctx *sql.Context, parsed sql.Node) error {
 	switch n := parsed.(type) {
 	case *plan.InsertInto:
