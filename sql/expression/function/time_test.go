@@ -659,14 +659,14 @@ func TestCurrentTimestamp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sql.RunWithNowFunc(func() time.Time {
 				date := time.Date(
-					2021,		// year
-					1,		// month
-					1,			// day
-					8,			// hour
-					30,		// min
-					15,			// sec
-					12345678, 	// nsec
-					time.UTC,		// location (UTC)
+					2021,     // year
+					1,        // month
+					1,        // day
+					8,        // hour
+					30,       // min
+					15,       // sec
+					12345678, // nsec
+					time.UTC, // location (UTC)
 				)
 				return date
 			}, func() error {
