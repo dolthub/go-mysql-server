@@ -1270,7 +1270,7 @@ func (c *CurrentTimestamp) String() string {
 	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.Child.String())
 }
 
-func (c *CurrentTimestamp) Type() sql.Type { return sql.LongText }
+func (c *CurrentTimestamp) Type() sql.Type { return sql.Datetime }
 
 func (c *CurrentTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
@@ -1318,17 +1318,17 @@ func (c *CurrentTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, err
 	// Get the timestamp
 	t := ctx.QueryTime()
 
-	// Create non-nanosecond portion
-	timeString := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-
-	// Create nanosecond portion, and process to match MySQL
-	nanosecondString := fmt.Sprintf("%09d", t.Nanosecond())[:fsp]
-	// Remove trailing zeroes
-	nanosecondString = strings.TrimRight(nanosecondString, "0")
-
-	// Prepend period if not empty string
-	if len(nanosecondString) > 0 {
-		nanosecondString = "." + nanosecondString
+	// Calculate precision
+	prec := 1
+	for i := 0; i < 9 - fsp; i++ {
+		prec *= 10
 	}
-	return timeString + nanosecondString, nil
+
+	// Round down nano based on precision
+	nano := prec * (t.Nanosecond() / prec)
+
+	// Generate a new timestamp
+	_t := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), nano, t.Location())
+
+	return _t, nil
 }
