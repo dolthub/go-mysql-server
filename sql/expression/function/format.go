@@ -128,7 +128,6 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var whole int64
 	var fractionStr string
 	var negative string
-	// TODO: convert any formatted number to English formatted before separating to whole and fraction
 	if roundedValue != 0 {
 		res := decimal.NewFromFloat(roundedValue)
 		whole = res.IntPart()
