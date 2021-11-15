@@ -22,6 +22,7 @@ import (
 	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+	"golang.org/x/text/number"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -90,6 +91,20 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	locale := language.English
+	if f.Locale != nil {
+		loc, lErr := f.Locale.Eval(ctx, row)
+		if lErr != nil {
+			return nil, lErr
+		}
+		if loc != nil {
+			locale, err = language.Parse(loc.(string))
+			if err != nil {
+				locale = language.English
+			}
+		}
+	}
+
 	// cannot handle "5932886+.000000000001" ==> will result conversion error
 	numVal, err = sql.Float64.Convert(numVal)
 	if err != nil {
@@ -116,6 +131,7 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var whole int64
 	var fractionStr string
 	var negative string
+	// TODO: convert any formatted number to English formatted before separating to whole and fraction
 	if roundedValue != 0 {
 		res := decimal.NewFromFloat(roundedValue)
 		whole = res.IntPart()
@@ -132,18 +148,19 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	p := message.NewPrinter(language.English)
-	formattedWhole := p.Sprintf("%d", whole)
+	p := message.NewPrinter(locale)
+	formattedWhole := p.Sprintf("%v", number.Decimal(whole))
 	if numDecimalPlaces == 0 {
 		return fmt.Sprintf("%s%s", negative, formattedWhole), nil
 	}
 
+	decimalChar := p.Sprintf("%v", number.Decimal(1.5))
 	if len(fractionStr) < int(numDecimalPlaces) {
 		rp := int(numDecimalPlaces) - len(fractionStr)
 		fractionStr += strings.Repeat("0", rp)
 	}
 
-	result := fmt.Sprintf("%s%s.%s", negative, formattedWhole, fractionStr)
+	result := fmt.Sprintf("%s%s%s%s", negative, formattedWhole, decimalChar[1:2], fractionStr)
 	return result, nil
 }
 
@@ -170,3 +187,123 @@ func (f *Format) WithChildren(children ...sql.Expression) (sql.Expression, error
 	}
 	return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 }
+
+//func getLocaleMap() map[string]int {
+//
+//	var localeMap =
+//	{
+//		"ar_AE" :
+//		"ar_BH" :
+//		"ar_DZ" :
+//		"ar_EG" :
+//		"ar_IN" :
+//		"ar_IQ" :
+//		"ar_JO" :
+//		"ar_KW" :
+//		"ar_LB" :
+//		"ar_LY" :
+//		"ar_MA" :
+//		"ar_OM" :
+//		"ar_QA" :
+//		"ar_SA" :
+//		"ar_SD" :
+//		"ar_SY" :
+//		"ar_TN" :
+//		"ar_YE" :
+//		"be_BY" :
+//		"bg_BG" :
+//		"ca_ES" :
+//		"cs_CZ" :
+//		"da_DK" :
+//		"de_AT" :
+//		"de_BE" :
+//		"de_CH" :
+//		"de_DE" :
+//		"de_LU" :
+//		"el_GR" :
+//		"en_AU" :
+//		"en_CA" :
+//		"en_GB" :
+//		"en_IN" :
+//		"en_NZ" :
+//		"en_PH" :
+//		"en_US" :
+//		"en_ZA" :
+//		"en_ZW" :
+//		"es_AR" :
+//		"es_BO" :
+//		"es_CL" :
+//		"es_CO" :
+//		"es_CR" :
+//		"es_DO" :
+//		"es_EC" :
+//		"es_ES" :
+//		"es_GT" :
+//		"es_HN" :
+//		"es_MX" :
+//		"es_NI" :
+//		"es_PA" :
+//		"es_PE" :
+//		"es_PR" :
+//		"es_PY" :
+//		"es_SV" :
+//		"es_US" :
+//		"es_UY" :
+//		"es_VE" :
+//		"et_EE" :
+//		"eu_ES" :
+//		"fi_FI" :
+//		"fo_FO" :
+//		"fr_BE" :
+//		"fr_CA" :
+//		"fr_CH" :
+//		"fr_FR" :
+//		"fr_LU" :
+//		"gl_ES" :
+//		"gu_IN" :
+//		"he_IL" :
+//		"hi_IN" :
+//		"hr_HR" :
+//		"hu_HU" :
+//		"id_ID" :
+//		"is_IS" :
+//		"it_CH" :
+//		"it_IT" :
+//		"ja_JP" :
+//		"ko_KR" :
+//		"lt_LT" :
+//		"lv_LV" :
+//		"mk_MK" :
+//		"mn_MN" :
+//		"ms_MY" :
+//		"nb_NO" :
+//		"nl_BE" :
+//		"nl_NL" :
+//		"no_NO" :
+//		"pl_PL" :
+//		"pt_BR" :
+//		"pt_PT" :
+//		"rm_CH" :
+//		"ro_RO" :
+//		"ru_RU" :
+//		"ru_UA" :
+//		"sk_SK" :
+//		"sl_SI" :
+//		"sq_AL" :
+//		"sr_RS" :
+//		"sv_FI" :
+//		"sv_SE" :
+//		"ta_IN" :
+//		"te_IN" :
+//		"th_TH" :
+//		"tr_TR" :
+//		"uk_UA" :
+//		"ur_PK" :
+//		"vi_VN" :
+//		"zh_CN" :
+//		"zh_HK" :
+//		"zh_TW" :
+//	}
+//
+//	return localeMap
+//}
