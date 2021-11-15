@@ -33,8 +33,8 @@ func TestFormat(t *testing.T) {
 		expected interface{}
 		err      *errors.Kind
 	}{
-		{"float64 is nil", sql.Float64, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"float64 without d", sql.Float64, sql.Int32, sql.NewRow(5555.8, nil), nil, nil},
+		{"float64 is nil", sql.Float64, sql.Int32, sql.NewRow(nil, nil, nil), nil, nil},
+		{"float64 without d", sql.Float64, sql.Int32, sql.NewRow(5555.8, nil, nil), nil, nil},
 		{"float64 with d", sql.Float64, sql.Int32, sql.NewRow(5555.855, 4, nil), "5,555.8550", nil},
 		{"float64 with super big decimal place", sql.Float64, sql.Int32, sql.NewRow(5555.855, 15, nil), "5,555.855000000000000", nil},
 		{"float64 with negative d", sql.Float64, sql.Int32, sql.NewRow(5552.855, -1, nil), "5,553", nil},
