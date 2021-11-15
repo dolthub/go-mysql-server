@@ -16,7 +16,9 @@ package sqle
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/memory"
 
@@ -437,39 +439,32 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	return analyzedCreateTable.Schema(), nil
 }
 
-func CreateShortCircuitCreateTable(ctx *sql.Context, pro sql.DatabaseProvider, dbName string, tableName string, schema sql.Schema) error {
-	e := NewDefault(pro)
+func CreateSpecialInsertNode(ctx *sql.Context, analyzer *analyzer.Analyzer, dbname string, tableName string, source chan sql.Row, schema sql.Schema) (sql.Node, error) {
+	src := plan.NewRowIterSource(schema, source)
+	dest := plan.NewUnresolvedTable(tableName, dbname)
 
-	createTable := plan.NewCreateTable(sql.UnresolvedDatabase(dbName), tableName, false, false, &plan.TableSpec{Schema: schema})
+	insert := plan.NewInsertInto(sql.UnresolvedDatabase(dbname), dest, src, false, nil, nil, false)
 
-	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
+	analyzed, err := analyzer.Analyze(ctx, insert, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	analyzedQueryProcess, ok := analyzed.(*plan.QueryProcess)
 	if !ok {
-		return fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
+		return nil, fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
 	}
 
-	iter, err := analyzedQueryProcess.Child.RowIter(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	for {
-		_, err = iter.Next()
-		if err != nil {
-			return iter.Close(ctx)
-		}
-	}
+	return analyzedQueryProcess.Child, nil
 }
 
-func CreateShortCircuitInsert(ctx *sql.Context, analyzer *analyzer.Analyzer, dbname string, tableName string, source sql.RowIter, schema sql.Schema) error {
-	src := plan.NewRowIterSource(source, schema)
+func CreateShortCircuitInsert(ctx *sql.Context, analyzer *analyzer.Analyzer, dbname string, tableName string, wg sync.WaitGroup, source chan sql.Row, schema sql.Schema) error {
+	src := plan.NewRowIterSource(schema, source)
 	dest := plan.NewUnresolvedTable(tableName, dbname)
 
 	insert := plan.NewInsertInto(sql.UnresolvedDatabase(dbname), dest, src, false, nil, nil, false)
+	commit := plan.NewCommit(sql.UnresolvedDatabase(dbname))
+
 	analyzed, err := analyzer.Analyze(ctx, insert, nil)
 	if err != nil {
 		return err
@@ -479,17 +474,51 @@ func CreateShortCircuitInsert(ctx *sql.Context, analyzer *analyzer.Analyzer, dbn
 	if !ok {
 		return fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
 	}
-	//panic("dsadas")
 
 	iter, err := analyzedQueryProcess.Child.RowIter(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	for {
-		_, err = iter.Next()
-		if err != nil {
-			return iter.Close(ctx)
-		}
+	analyzedCommit, err := analyzer.Analyze(ctx, commit, nil)
+	if err != nil {
+		return err
 	}
+
+	analyzedCommitProcess, ok := analyzedCommit.(*plan.QueryProcess)
+	if !ok {
+		return fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
+	}
+
+	cIter, err := analyzedCommitProcess.Child.RowIter(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	// needs to be a routine. have to clean this up desperately
+	wg.Add(1)
+	// TODO: needs an error channel
+	go func() {
+		defer wg.Done()
+
+		for {
+			_, err = iter.Next()
+			if err != nil {
+				if err == io.EOF {
+					err = nil
+					iter.Close(ctx)
+					cIter.Next()
+					cIter.Close(ctx)
+					break
+				}
+
+				iter.Close(ctx)
+				break
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	return err
 }

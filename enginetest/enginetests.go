@@ -521,7 +521,7 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestLoadData(t *testing.T, harness Harness) {
 	//TODO: fix LOAD DATA
-	t.Skip("relies on setting secure_file_priv, which is illegal")
+	// t.Skip("relies on setting secure_file_priv, which is illegal")
 	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
 	}

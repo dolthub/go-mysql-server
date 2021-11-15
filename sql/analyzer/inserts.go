@@ -171,6 +171,7 @@ func validateValueCount(columnNames []string, values sql.Node) error {
 				return plan.ErrInsertIntoMismatchValueCount.New()
 			}
 		}
+	// TODO: Need to extend to lazy row iter...
 	default:
 		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
 		if len(columnNames) != len(values.Schema()) {

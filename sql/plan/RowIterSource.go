@@ -17,15 +17,16 @@ package plan
 import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
+	"io"
 )
 
 type RowIterSource struct {
-	ri sql.RowIter
 	schema sql.Schema
+	rowChannel chan sql.Row
 }
 
-func NewRowIterSource(ri sql.RowIter, schema sql.Schema) *RowIterSource {
-	return &RowIterSource{ri: ri, schema: schema}
+func NewRowIterSource(schema sql.Schema, rowChannel chan sql.Row) *RowIterSource {
+	return &RowIterSource{schema: schema, rowChannel: rowChannel}
 }
 
 var _ sql.Node = (*RowIterSource)(nil)
@@ -47,7 +48,10 @@ func (r *RowIterSource) Children() []sql.Node {
 }
 
 func (r *RowIterSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return r.ri, nil
+	return &channelRowIter{
+		rowChannel: r.rowChannel,
+		ctx: ctx,
+	}, nil
 }
 
 func (r *RowIterSource) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -56,4 +60,29 @@ func (r *RowIterSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return r, nil
+}
+
+type channelRowIter struct {
+	rowChannel chan sql.Row
+	ctx *sql.Context
+}
+
+var _ sql.RowIter = (*channelRowIter)(nil)
+
+func (c *channelRowIter) Next() (sql.Row, error) {
+	r, ok := <-c.rowChannel
+	if !ok {
+		return nil, io.EOF
+	}
+
+	if r[0] == "fuck" {
+		close(c.rowChannel)
+		return nil, io.EOF
+	}
+
+	return r, nil
+}
+
+func (c *channelRowIter) Close(context *sql.Context) error {
+	return nil
 }
