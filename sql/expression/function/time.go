@@ -1259,7 +1259,7 @@ func (c *CurrTimestamp) IsNullable() bool {
 	return false
 }
 
-func (c* CurrTimestamp) Resolved() bool {
+func (c *CurrTimestamp) Resolved() bool {
 	for _, arg := range c.args {
 		if !arg.Resolved() {
 			return false
