@@ -32,6 +32,12 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(10)}},
 	},
 	{
+		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '64.6');",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
+		ExpectedSelect:      []sql.Row{{int64(64)}},
+	},
+	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', 999);",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
@@ -1018,10 +1024,6 @@ var InsertScripts = []ScriptTest{
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
-	{
-		Name:  "'10.1' is not a valid value for 'INT'",
-		Query: "INSERT INTO mytable (s, i) VALUES ('x', '10.1');",
-	},
 	{
 		Name:  "too few values",
 		Query: "INSERT INTO mytable (s, i) VALUES ('x');",
