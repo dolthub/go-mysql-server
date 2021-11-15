@@ -632,7 +632,7 @@ func TestTimeDiff(t *testing.T) {
 }
 
 func TestCurrentTimestamp(t *testing.T) {
-	f := NewCurrentTimestamp(expression.NewGetField(0, sql.LongText, "foo", false))
+	f, _ := NewCurrTimestamp(expression.NewGetField(0, sql.LongText, "foo", false))
 	date := time.Date(
 		2021,     // year
 		1,        // month
