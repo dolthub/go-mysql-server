@@ -40,15 +40,15 @@ func (i *InetAton) FunctionName() string {
 	return "inet_aton"
 }
 
-func (i InetAton) String() string {
+func (i *InetAton) String() string {
 	return fmt.Sprintf("INET_ATON(%s)", i.Child.String())
 }
 
-func (InetAton) Type() sql.Type {
+func (i *InetAton) Type() sql.Type {
 	return sql.Uint32
 }
 
-func (i InetAton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *InetAton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
@@ -109,15 +109,15 @@ func (i *Inet6Aton) FunctionName() string {
 	return "inet6_aton"
 }
 
-func (i Inet6Aton) String() string {
+func (i *Inet6Aton) String() string {
 	return fmt.Sprintf("INET6_ATON(%s)", i.Child.String())
 }
 
-func (Inet6Aton) Type() sql.Type {
+func (i *Inet6Aton) Type() sql.Type {
 	return sql.LongBlob
 }
 
-func (i Inet6Aton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Inet6Aton) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
@@ -177,15 +177,15 @@ func (i *InetNtoa) FunctionName() string {
 	return "inet_ntoa"
 }
 
-func (i InetNtoa) String() string {
+func (i *InetNtoa) String() string {
 	return fmt.Sprintf("INET_NTOA(%s)", i.Child.String())
 }
 
-func (InetNtoa) Type() sql.Type {
+func (i *InetNtoa) Type() sql.Type {
 	return sql.LongText
 }
 
-func (i InetNtoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *InetNtoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
@@ -238,15 +238,15 @@ func (i *Inet6Ntoa) FunctionName() string {
 	return "inet6_ntoa"
 }
 
-func (i Inet6Ntoa) String() string {
+func (i *Inet6Ntoa) String() string {
 	return fmt.Sprintf("INET6_NTOA(%s)", i.Child.String())
 }
 
-func (Inet6Ntoa) Type() sql.Type {
+func (i *Inet6Ntoa) Type() sql.Type {
 	return sql.LongText
 }
 
-func (i Inet6Ntoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Inet6Ntoa) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}

@@ -22,14 +22,14 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-type tupleType []Type
+type TupleType []Type
 
 // CreateTuple returns a new tuple type with the given element types.
 func CreateTuple(types ...Type) Type {
-	return tupleType(types)
+	return TupleType(types)
 }
 
-func (t tupleType) Compare(a, b interface{}) (int, error) {
+func (t TupleType) Compare(a, b interface{}) (int, error) {
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -60,7 +60,7 @@ func (t tupleType) Compare(a, b interface{}) (int, error) {
 	return 0, nil
 }
 
-func (t tupleType) Convert(v interface{}) (interface{}, error) {
+func (t TupleType) Convert(v interface{}) (interface{}, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -83,7 +83,7 @@ func (t tupleType) Convert(v interface{}) (interface{}, error) {
 	return nil, ErrNotTuple.New(v)
 }
 
-func (t tupleType) MustConvert(v interface{}) interface{} {
+func (t TupleType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
 		panic(err)
@@ -91,15 +91,15 @@ func (t tupleType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
-func (t tupleType) Promote() Type {
+func (t TupleType) Promote() Type {
 	return t
 }
 
-func (t tupleType) SQL(interface{}) (sqltypes.Value, error) {
+func (t TupleType) SQL(interface{}) (sqltypes.Value, error) {
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 
-func (t tupleType) String() string {
+func (t TupleType) String() string {
 	var elems = make([]string, len(t))
 	for i, el := range t {
 		elems[i] = el.String()
@@ -107,11 +107,11 @@ func (t tupleType) String() string {
 	return fmt.Sprintf("TUPLE(%s)", strings.Join(elems, ", "))
 }
 
-func (t tupleType) Type() query.Type {
+func (t TupleType) Type() query.Type {
 	return sqltypes.Expression
 }
 
-func (t tupleType) Zero() interface{} {
+func (t TupleType) Zero() interface{} {
 	zeroes := make([]interface{}, len(t))
 	for i, tt := range t {
 		zeroes[i] = tt.Zero()

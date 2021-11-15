@@ -22,7 +22,7 @@ import (
 type RangeCut interface {
 	// Compare returns an integer stating the relative position of the calling RangeCut to the given RangeCut.
 	Compare(RangeCut, Type) (int, error)
-	// String returns the RangeCut as a string for debugging purposes. Will panic on errors.
+	// String returns the RangeCut as a string for display purposes.
 	String() string
 	// TypeAsLowerBound returns the bound type if the calling RangeCut is the lower bound of a range.
 	TypeAsLowerBound() RangeBoundType
@@ -55,6 +55,36 @@ func GetRangeCutKey(c RangeCut) interface{} {
 	default:
 		panic(fmt.Errorf("need to check the RangeCut type before calling GetRangeCutKey, used on `%T`", c))
 	}
+}
+
+// GetRangeCutMax returns the RangeCut with the highest value.
+func GetRangeCutMax(typ Type, cuts ...RangeCut) (RangeCut, error) {
+	maxCut := cuts[0]
+	for i := 1; i < len(cuts); i++ {
+		comp, err := maxCut.Compare(cuts[i], typ)
+		if err != nil {
+			return maxCut, err
+		}
+		if comp == -1 {
+			maxCut = cuts[i]
+		}
+	}
+	return maxCut, nil
+}
+
+// GetRangeCutMin returns the RangeCut with the lowest value.
+func GetRangeCutMin(typ Type, cuts ...RangeCut) (RangeCut, error) {
+	minCut := cuts[0]
+	for i := 1; i < len(cuts); i++ {
+		comp, err := minCut.Compare(cuts[i], typ)
+		if err != nil {
+			return minCut, err
+		}
+		if comp == 1 {
+			minCut = cuts[i]
+		}
+	}
+	return minCut, nil
 }
 
 // Above represents the position immediately above the contained key.
@@ -122,12 +152,12 @@ func (AboveAll) String() string {
 
 // TypeAsLowerBound implements RangeCut.
 func (AboveAll) TypeAsLowerBound() RangeBoundType {
-	panic("AboveAll TypeAsLowerBound should be unreachable")
+	return Open
 }
 
 // TypeAsUpperBound implements RangeCut.
 func (AboveAll) TypeAsUpperBound() RangeBoundType {
-	panic("AboveAll TypeAsUpperBound should be unreachable")
+	return Open
 }
 
 // Below represents the position immediately below the contained key.
@@ -195,10 +225,10 @@ func (BelowAll) String() string {
 
 // TypeAsLowerBound implements RangeCut.
 func (BelowAll) TypeAsLowerBound() RangeBoundType {
-	panic("BelowAll TypeAsLowerBound should be unreachable")
+	return Open
 }
 
 // TypeAsUpperBound implements RangeCut.
 func (BelowAll) TypeAsUpperBound() RangeBoundType {
-	panic("BelowAll TypeAsUpperBound should be unreachable")
+	return Open
 }

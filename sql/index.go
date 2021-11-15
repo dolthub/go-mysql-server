@@ -39,13 +39,12 @@ type Index interface {
 	// IsGenerated returns whether this index was generated. Generated indexes
 	// are used for index access, but are not displayed (such as with SHOW INDEXES).
 	IsGenerated() bool
-	// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns (RangeColumns),
-	// and it is possible for ranges to overlap (however they will not be subsets of one another). Each Range
-	// is ordered by the column expressions (as returned by Expressions) with the RangeColumn representing the
-	// searchable area for each column expression. Multiple RangeColumnExprs per RangeColumn are equivalent to the union
-	// of those RangeColumnExprs, e.g. (x < 1 OR x > 10) will return two RangeColumnExprs, where matching either is
-	// valid for the column "x". If an integrator is unable to process the given ranges, then a nil may be returned. An
-	// error should be returned only in the event that an error occurred.
+	// NewLookup returns a new IndexLookup for the ranges given. Ranges represent filters over columns. Each Range
+	// is ordered by the column expressions (as returned by Expressions) with the RangeColumnExpr representing the
+	// searchable area for each column expression. Each Range given will not overlap with any other ranges. Additionally,
+	// all ranges will have the same length, and may represent a partial index (matching a prefix rather than the entire
+	// index). If an integrator is unable to process the given ranges, then a nil may be returned. An error should be
+	// returned only in the event that an error occurred.
 	NewLookup(ctx *Context, ranges ...Range) (IndexLookup, error)
 	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
 	// match the string returned from Index.Expressions().

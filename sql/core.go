@@ -888,8 +888,8 @@ func IsTrue(val interface{}) bool {
 // TypesEqual compares two Types and returns whether they are equivalent.
 func TypesEqual(a, b Type) bool {
 	//TODO: replace all of the Type() == Type() calls with TypesEqual
-	if tupA, ok := a.(tupleType); ok {
-		if tupB, ok := b.(tupleType); ok && len(tupA) == len(tupB) {
+	if tupA, ok := a.(TupleType); ok {
+		if tupB, ok := b.(TupleType); ok && len(tupA) == len(tupB) {
 			for i := range tupA {
 				if !TypesEqual(tupA[i], tupB[i]) {
 					return false
@@ -898,7 +898,7 @@ func TypesEqual(a, b Type) bool {
 			return true
 		}
 		return false
-	} else if _, ok := b.(tupleType); ok {
+	} else if _, ok := b.(TupleType); ok {
 		return false
 	}
 	return a == b
