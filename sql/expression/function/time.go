@@ -36,6 +36,8 @@ var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly 
 // ErrUnknownType is thrown when a function encounters and unknown type
 var ErrUnknownType = errors.NewKind("function '%s' encountered unknown type %T")
 
+var ErrTooHighPrecision = errors.NewKind("Too-big precision %d for '%s'. Maximum is %d.")
+
 func getDate(ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row) (interface{}, error) {
@@ -1248,6 +1250,8 @@ func (c CurrTimestamp) WithChildren(children ...sql.Expression) (sql.Expression,
 	return NoArgFuncWithChildren(c, children)
 }
 
+const maxCurrentTimestampPrecision = 6
+
 type CurrentTimestamp struct {
 	expression.UnaryExpression
 }
@@ -1284,35 +1288,47 @@ func (c *CurrentTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, err
 
 	// If null, throw syntax error
 	if val == nil {
-		// TODO: syntax error
-		return nil, nil
+		return nil, ErrTimeUnexpectedlyNil.New(c.FunctionName())
 	}
 
 	// Must receive integer, all other types throw syntax error
+	fsp := 0
 	switch val.(type) {
+	case int:
+		fsp = val.(int)
 	case int8:
-		fsp := val.(int8)
-		if fsp > 6 {
-			// TODO: return too high precision
-			return nil, nil
-		}
-		// Get the timestamp
-		t := ctx.QueryTime()
-
-		// Create non-nanosecond portion
-		timeString := fmt.Sprintf("%02d:%02d:%02d", t.Hour(), t.Minute(), t.Second())
-
-		// Create nanosecond portion, and process to match MySQL
-		nanosecondString := fmt.Sprintf("%09d", t.Nanosecond())[:fsp]
-		// Remove trailing zeroes
-		nanosecondString = strings.TrimRight(nanosecondString, "0")
-		// Prepend period if not empty string
-		if len(nanosecondString) > 0 {
-			nanosecondString = "." + nanosecondString
-		}
-		return timeString + nanosecondString, nil
+		fsp = int(val.(int8))
+	case int16:
+		fsp = int(val.(int16))
+	case int32:
+		fsp = int(val.(int32))
+	case int64:
+		fsp = int(val.(int64))
 	default:
-		// TODO: syntax error
-		return nil, nil
+		return nil, ErrInvalidArgumentType.New(c.FunctionName())
 	}
+
+	// Parse and return answer
+	if fsp > maxCurrentTimestampPrecision {
+		return nil, ErrTooHighPrecision.New(fsp, c.FunctionName(), maxCurrentTimestampPrecision)
+	} else if fsp < 0 {
+		return nil, ErrInvalidArgumentType.New(c.FunctionName())
+	}
+
+	// Get the timestamp
+	t := ctx.QueryTime()
+
+	// Create non-nanosecond portion
+	timeString := fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+
+	// Create nanosecond portion, and process to match MySQL
+	nanosecondString := fmt.Sprintf("%09d", t.Nanosecond())[:fsp]
+	// Remove trailing zeroes
+	nanosecondString = strings.TrimRight(nanosecondString, "0")
+
+	// Prepend period if not empty string
+	if len(nanosecondString) > 0 {
+		nanosecondString = "." + nanosecondString
+	}
+	return timeString + nanosecondString, nil
 }

@@ -630,3 +630,58 @@ func TestTimeDiff(t *testing.T) {
 		})
 	}
 }
+
+func TestCurrentTimestamp(t *testing.T) {
+
+	f := NewCurrentTimestamp(expression.NewGetField(0, sql.LongText, "foo", false))
+
+	testCases := []struct {
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
+	}{
+		{"null date", sql.NewRow(nil), nil, true},
+		{"different int type", sql.NewRow(int8(0)), "2021-01-01 08:30:15", false},
+		{"precision of -1", sql.NewRow(-1), nil, true},
+		{"precision of 0", sql.NewRow(0), "2021-01-01 08:30:15", false},
+		{"precision of 1 trailing 0s are trimmed", sql.NewRow(1), "2021-01-01 08:30:15", false},
+		{"precision of 2", sql.NewRow(2), "2021-01-01 08:30:15.01", false},
+		{"precision of 3", sql.NewRow(3), "2021-01-01 08:30:15.012", false},
+		{"precision of 4", sql.NewRow(4), "2021-01-01 08:30:15.0123", false},
+		{"precision of 5", sql.NewRow(5), "2021-01-01 08:30:15.01234", false},
+		{"precision of 6", sql.NewRow(6), "2021-01-01 08:30:15.012345", false},
+		{"precision of 7 which is too high", sql.NewRow(7), nil, true},
+		{"incorrect type", sql.NewRow("notanint"), nil, true},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sql.RunWithNowFunc(func() time.Time {
+				date := time.Date(
+					2021,		// year
+					1,		// month
+					1,			// day
+					8,			// hour
+					30,		// min
+					15,			// sec
+					12345678, 	// nsec
+					time.UTC,		// location (UTC)
+				)
+				return date
+			}, func() error {
+				ctx := sql.NewEmptyContext()
+				require := require.New(t)
+				val, err := f.Eval(ctx, tt.row)
+				if tt.err {
+					require.Error(err)
+				} else {
+					require.NoError(err)
+					require.Equal(tt.expected, val)
+				}
+				return nil
+			})
+
+		})
+	}
+}
