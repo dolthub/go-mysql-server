@@ -1332,7 +1332,7 @@ func (c *CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	// Calculate precision
 	prec := 1
-	for i := 0; i < 9 - fsp; i++ {
+	for i := 0; i < 9-fsp; i++ {
 		prec *= 10
 	}
 
