@@ -462,7 +462,6 @@ func (t numberTypeImpl) IsSigned() bool {
 	return false
 }
 
-
 func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 	switch v := v.(type) {
 	case int:
