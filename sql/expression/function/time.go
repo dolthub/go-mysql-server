@@ -1273,7 +1273,7 @@ func (c *CurrTimestamp) Resolved() bool {
 
 func (c *CurrTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != len(c.args) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), len(c.args))
 	}
 	return NewCurrTimestamp(children...)
 }
