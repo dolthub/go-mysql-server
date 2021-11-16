@@ -680,7 +680,6 @@ func TestCurrentTimestamp(t *testing.T) {
 				}
 				return nil
 			})
-
 		})
 	}
 }
