@@ -36,6 +36,8 @@ var ErrTimeUnexpectedlyNil = errors.NewKind("time in function '%s' unexpectedly 
 // ErrUnknownType is thrown when a function encounters and unknown type
 var ErrUnknownType = errors.NewKind("function '%s' encountered unknown type %T")
 
+var ErrTooHighPrecision = errors.NewKind("Too-big precision %d for '%s'. Maximum is %d.")
+
 func getDate(ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row) (interface{}, error) {
@@ -1222,28 +1224,123 @@ func (c CurrTime) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	return NoArgFuncWithChildren(c, children)
 }
 
+const maxCurrTimestampPrecision = 6
+
 type CurrTimestamp struct {
-	NoArgFunc
+	args []sql.Expression
 }
 
-var _ sql.FunctionExpression = CurrTimestamp{}
+var _ sql.FunctionExpression = (*CurrTimestamp)(nil)
 
-func NewCurrTimestamp() sql.Expression {
-	return CurrTimestamp{
-		NoArgFunc: NoArgFunc{"current_timestamp", sql.Datetime},
-	}
+func NewCurrTimestamp(args ...sql.Expression) (sql.Expression, error) {
+	return &CurrTimestamp{args}, nil
 }
 
 func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	return ctx.QueryTime(), nil
 }
 
-// Eval implements sql.Expression
-func (c CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return currDatetimeLogic(ctx, row)
+func (c *CurrTimestamp) FunctionName() string {
+	return "current_timestamp"
 }
 
-// WithChildren implements sql.Expression
-func (c CurrTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NoArgFuncWithChildren(c, children)
+func (c *CurrTimestamp) String() string {
+	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.args[0].String())
+}
+
+func (c *CurrTimestamp) Type() sql.Type { return sql.Datetime }
+
+func (c *CurrTimestamp) IsNullable() bool {
+	for _, arg := range c.args {
+		if arg.IsNullable() {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *CurrTimestamp) Resolved() bool {
+	for _, arg := range c.args {
+		if !arg.Resolved() {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *CurrTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 && len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
+	}
+	return NewCurrTimestamp(children...)
+}
+
+func (c *CurrTimestamp) Children() []sql.Expression {
+	return c.args
+}
+
+func (c *CurrTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// If no arguments, just return with 0 precision
+	if len(c.args) == 0 {
+		t := ctx.QueryTime()
+		_t := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, t.Location())
+		return _t, nil
+	}
+
+	// If argument is null
+	if c.args[0] == nil {
+		return nil, ErrTimeUnexpectedlyNil.New(c.FunctionName())
+	}
+
+	// Evaluate value
+	val, err := c.args[0].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// If null, throw syntax error
+	if val == nil {
+		return nil, ErrTimeUnexpectedlyNil.New(c.FunctionName())
+	}
+
+	// Must receive integer, all other types throw syntax error
+	fsp := 0
+	switch val.(type) {
+	case int:
+		fsp = val.(int)
+	case int8:
+		fsp = int(val.(int8))
+	case int16:
+		fsp = int(val.(int16))
+	case int32:
+		fsp = int(val.(int32))
+	case int64:
+		fsp = int(val.(int64))
+	default:
+		return nil, ErrInvalidArgumentType.New(c.FunctionName())
+	}
+
+	// Parse and return answer
+	if fsp > maxCurrTimestampPrecision {
+		return nil, ErrTooHighPrecision.New(fsp, c.FunctionName(), maxCurrTimestampPrecision)
+	} else if fsp < 0 {
+		return nil, ErrInvalidArgumentType.New(c.FunctionName())
+	}
+
+	// Get the timestamp
+	t := ctx.QueryTime()
+
+	// Calculate precision
+	prec := 1
+	for i := 0; i < 9-fsp; i++ {
+		prec *= 10
+	}
+
+	// Round down nano based on precision
+	nano := prec * (t.Nanosecond() / prec)
+
+	// Generate a new timestamp
+	_t := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), nano, t.Location())
+
+	return _t, nil
 }
