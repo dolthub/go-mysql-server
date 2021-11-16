@@ -22,6 +22,7 @@ import (
 	"github.com/shopspring/decimal"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+	"golang.org/x/text/number"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -72,8 +73,6 @@ func (f *Format) String() string {
 
 // Eval implements the Expression interface.
 func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// FORMAT(5932886+.000000000001, 15); ==> "5,932,886.000000000000000" instead of "5,932,886.000000000001000"
-	// number above gets evaluated as 5932886
 	numVal, err := f.NumValue.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -90,7 +89,20 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// cannot handle "5932886+.000000000001" ==> will result conversion error
+	locale := language.English
+	if f.Locale != nil {
+		loc, lErr := f.Locale.Eval(ctx, row)
+		if lErr != nil {
+			return nil, lErr
+		}
+		if loc != nil {
+			locale, err = language.Parse(loc.(string))
+			if err != nil {
+				locale = language.English
+			}
+		}
+	}
+
 	numVal, err = sql.Float64.Convert(numVal)
 	if err != nil {
 		return nil, nil
@@ -132,18 +144,19 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	p := message.NewPrinter(language.English)
-	formattedWhole := p.Sprintf("%d", whole)
+	p := message.NewPrinter(locale)
+	formattedWhole := p.Sprintf("%v", number.Decimal(whole))
 	if numDecimalPlaces == 0 {
 		return fmt.Sprintf("%s%s", negative, formattedWhole), nil
 	}
 
+	decimalChar := p.Sprintf("%v", number.Decimal(1.5))
 	if len(fractionStr) < int(numDecimalPlaces) {
 		rp := int(numDecimalPlaces) - len(fractionStr)
 		fractionStr += strings.Repeat("0", rp)
 	}
 
-	result := fmt.Sprintf("%s%s.%s", negative, formattedWhole, fractionStr)
+	result := fmt.Sprintf("%s%s%s%s", negative, formattedWhole, decimalChar[1:2], fractionStr)
 	return result, nil
 }
 
