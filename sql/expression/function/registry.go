@@ -57,7 +57,7 @@ var BuiltIns = []sql.Function{
 	sql.NewFunction0("curdate", NewCurrDate),
 	sql.NewFunction0("current_date", NewCurrentDate),
 	sql.NewFunction0("current_time", NewCurrentTime),
-	sql.NewFunction0("current_timestamp", NewCurrTimestamp),
+	sql.FunctionN{Name: "current_timestamp", Fn: NewCurrTimestamp},
 	sql.NewFunction0("current_user", NewCurrentUser),
 	sql.NewFunction0("curtime", NewCurrTime),
 	sql.Function0{Name: "database", Fn: NewDatabase},

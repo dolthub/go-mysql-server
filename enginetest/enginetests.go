@@ -520,16 +520,12 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 }
 
 func TestLoadData(t *testing.T, harness Harness) {
-	//TODO: fix LOAD DATA
-	t.Skip("relies on setting secure_file_priv, which is illegal")
 	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
 	}
 }
 
 func TestLoadDataErrors(t *testing.T, harness Harness) {
-	//TODO: fix LOAD DATA
-	t.Skip("relies on setting secure_file_priv, which is illegal")
 	for _, script := range LoadDataErrorScripts {
 		TestScript(t, harness, script)
 	}
@@ -2938,6 +2934,62 @@ func TestTracing(t *testing.T, harness Harness) {
 	}
 
 	require.Equal(expectedSpans, spanOperations)
+}
+
+func TestCurrentTimestamp(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+
+	date := time.Date(
+		2000,      // year
+		12,        // month
+		12,        // day
+		10,        // hour
+		15,        // min
+		45,        // sec
+		987654321, // nsec
+		time.UTC,  // location (UTC)
+	)
+
+	testCases := []struct {
+		Name     string
+		Query    string
+		Expected []sql.Row
+		err      bool
+	}{
+		{"null date", `SELECT CURRENT_TIMESTAMP(NULL)`, nil, true},
+		{"precision of -1", `SELECT CURRENT_TIMESTAMP(-1)`, nil, true},
+		{"precision of 0", `SELECT CURRENT_TIMESTAMP(0)`, []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 0, time.UTC)}}, false},
+		{"precision of 1", `SELECT CURRENT_TIMESTAMP(1)`, []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 900000000, time.UTC)}}, false},
+		{"precision of 2", `SELECT CURRENT_TIMESTAMP(2)`, []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 980000000, time.UTC)}}, false},
+		{"precision of 3", `SELECT CURRENT_TIMESTAMP(3)`, []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987000000, time.UTC)}}, false},
+		{"precision of 4", `SELECT CURRENT_TIMESTAMP(4)`, []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987600000, time.UTC)}}, false},
+		{"precision of 5", `SELECT CURRENT_TIMESTAMP(5)`, []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987650000, time.UTC)}}, false},
+		{"precision of 6", `SELECT CURRENT_TIMESTAMP(6)`, []sql.Row{{time.Date(2000, time.December, 12, 10, 15, 45, 987654000, time.UTC)}}, false},
+		{"precision of 7", `SELECT CURRENT_TIMESTAMP(NULL)`, nil, true},
+		{"incorrect type", `SELECT CURRENT_TIMESTAMP("notanint")`, nil, true},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.Name, func(t *testing.T) {
+			sql.RunWithNowFunc(func() time.Time {
+				return date
+			}, func() error {
+				ctx := sql.NewEmptyContext()
+				//TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
+				if tt.err {
+					require := require.New(t)
+					_, iter, err := e.Query(ctx, tt.Query)
+					_, err = sql.RowIterToRows(ctx, iter)
+					require.Error(err)
+				} else {
+					TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
+				}
+
+				return nil
+			})
+		})
+	}
+
 }
 
 // Runs tests on SHOW TABLE STATUS queries.
