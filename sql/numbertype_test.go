@@ -174,6 +174,8 @@ func TestNumberConvert(t *testing.T) {
 		{Int24, false, int32(0), false},
 		{Int32, nil, nil, false},
 		{Int64, "33", int64(33), false},
+		{Int64, "33.0", int64(33), false},
+		{Int64, "33.1", int64(33), false},
 		{Uint8, int64(34), uint8(34), false},
 		{Uint16, int16(35), uint16(35), false},
 		{Uint24, 36.756, uint32(36), false},
