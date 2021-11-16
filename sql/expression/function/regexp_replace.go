@@ -28,12 +28,7 @@ import (
 // RegexpReplace implements the REGEXP_REPLACE function.
 // https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-replace
 type RegexpReplace struct {
-	Text 		sql.Expression
-	Pattern 	sql.Expression
-	ReplaceStr 	sql.Expression
-	Position 	sql.Expression
-	Occurrence 	sql.Expression
-	Flags 		sql.Expression
+	args		[]sql.Expression
 
 	cachedVal   atomic.Value
 	re          *regexp.Regexp
@@ -45,42 +40,11 @@ var _ sql.FunctionExpression = (*RegexpReplace)(nil)
 
 // NewRegexpReplace creates a new RegexpLike expression.
 func NewRegexpReplace(args ...sql.Expression) (sql.Expression, error) {
-	var r *RegexpReplace
-	switch len(args) {
-	case 6:
-		r = &RegexpReplace{
-			Text:    args[0],
-			Pattern: args[1],
-			ReplaceStr: args[2],
-			Position: args[3],
-			Occurrence: args[4],
-			Flags:   args[5],
-		}
-	case 5:
-		r = &RegexpReplace{
-			Text:    args[0],
-			Pattern: args[1],
-			ReplaceStr: args[2],
-			Position: args[3],
-			Occurrence: args[4],
-		}
-	case 4:
-		r = &RegexpReplace{
-			Text:    args[0],
-			Pattern: args[1],
-			ReplaceStr: args[2],
-			Position: args[3],
-		}
-	case 3:
-		r = &RegexpReplace{
-			Text:    args[0],
-			Pattern: args[1],
-			ReplaceStr: args[2],
-		}
-	default:
+	if len(args) < 3 || len(args) > 6 {
 		return nil, sql.ErrInvalidArgumentNumber.New("regexp_replace", "3,4,5 or 6", len(args))
 	}
-	return r, nil
+
+	return &RegexpReplace{args: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -96,50 +60,27 @@ func (r *RegexpReplace) IsNullable() bool { return true }
 
 // Children implements the sql.Expression interface.
 func (r *RegexpReplace) Children() []sql.Expression {
-	var result = []sql.Expression{r.Text, r.Pattern, r.ReplaceStr}
-	if r.Position != nil {
-		result = append(result, r.Position)
-	}
-	if r.Occurrence != nil {
-		result = append(result, r.Occurrence)
-	}
-	if r.Flags != nil {
-		result = append(result, r.Flags)
-	}
-	return result
+	return r.args
 }
 
 // Resolved implements the sql.Expression interface.
 func (r *RegexpReplace) Resolved() bool {
-	return r.Text.Resolved() &&
-		r.Pattern.Resolved() &&
-		r.ReplaceStr.Resolved() &&
-		(r.Position == nil || r.Position.Resolved()) &&
-		(r.Occurrence == nil || r.Occurrence.Resolved()) &&
-		(r.Flags == nil || r.Flags.Resolved())
+	for _, arg := range r.args {
+		if !arg.Resolved() {
+			return false
+		}
+	}
+	return true
 }
 
 // WithChildren implements the sql.Expression interface.
 func (r *RegexpReplace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	required := 3
-	if r.Position != nil {
-		required = 4
-	}
-	if r.Occurrence != nil {
-		required = 5
-	}
-	if r.Flags != nil {
-		required = 6
-	}
-	if len(children) != required {
-		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), required)
-	}
 	return NewRegexpLike(children...)
 }
 
 func (r *RegexpReplace) String() string {
 	var args []string
-	for _, e := range r.Children() {
+	for _, e := range r.args {
 		args = append(args, e.String())
 	}
 	return fmt.Sprintf("regexp_replace(%s)", strings.Join(args, ", "))
@@ -147,8 +88,13 @@ func (r *RegexpReplace) String() string {
 
 
 func (r *RegexpReplace) compile(ctx *sql.Context) {
+	pattern := r.args[1]
+	var flags sql.Expression = nil
+	if len(r.args) == 6 {
+		flags = r.args[5]
+	}
 	r.compileOnce.Do(func() {
-		r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Flags, r.FunctionName(), nil)
+		r.re, r.compileErr = compileRegex(ctx, pattern, flags, r.FunctionName(), nil)
 	})
 }
 
@@ -163,6 +109,23 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// TODO: if null is passed in anywhere, return null, so need to check for argument lengths
+
+	// Evaluate string value
+	str, err := r.args[0].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if str == nil {
+		return nil, nil
+	}
+	str, err = sql.LongText.Convert(str)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to string
+	_str := str.(string)
+
 	// Create regex
 	r.compile(ctx)
 	if r.compileErr != nil {
@@ -172,33 +135,26 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	// Evaluate text
-	text, err := r.Text.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if text == nil {
-		return nil, nil
-	}
-	text, err = sql.LongText.Convert(text)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert to string
-	_text := text.(string)
-
 	// Evaluate ReplaceStr
-	replaceStr, err := r.ReplaceStr.Eval(ctx, row)
+	replaceStr, err := r.args[2].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 	if replaceStr == nil {
 		return nil, nil
 	}
-	replaceStr, err = sql.LongText.Convert(text)
+	replaceStr, err = sql.LongText.Convert(replaceStr)
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert to string
+	_replaceStr := replaceStr.(string)
+
+	// Check if position argument was provided
+	var pos sql.Expression = nil
+	if len(r.args) >= 4 {
+		pos, err = r.args[3].Eval(ctx, row)
 	}
 
 	// Evaluate Position
