@@ -1245,6 +1245,9 @@ func (c *CurrTimestamp) FunctionName() string {
 }
 
 func (c *CurrTimestamp) String() string {
+	if len(c.args) == 0 {
+		return fmt.Sprintf("CURRENT_TIMESTAMP()")
+	}
 	return fmt.Sprintf("CURRENT_TIMESTAMP(%s)", c.args[0].String())
 }
 
@@ -1269,7 +1272,7 @@ func (c *CurrTimestamp) Resolved() bool {
 }
 
 func (c *CurrTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 0 && len(children) != 1 {
+	if len(children) != len(c.args) {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 	return NewCurrTimestamp(children...)
