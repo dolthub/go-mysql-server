@@ -2944,14 +2944,14 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 
 	date := time.Date(
-		2000,		// year
-		12,		// month
-		12,		// day
-		10,		// hour
-		15,		// min
-		45,			// sec
-		987654321,	// nsec
-		time.UTC,		// location (UTC)
+		2000,      // year
+		12,        // month
+		12,        // day
+		10,        // hour
+		15,        // min
+		45,        // sec
+		987654321, // nsec
+		time.UTC,  // location (UTC)
 	)
 
 	testCases := []struct {
