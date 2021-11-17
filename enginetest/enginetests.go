@@ -2921,7 +2921,7 @@ func TestTracing(t *testing.T, harness Harness) {
 	spans := tracer.Spans
 	var expectedSpans = []string{
 		"plan.Limit",
-		"plan.Sort",
+		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",
 		"plan.Filter",

@@ -15,6 +15,8 @@
 package expression
 
 import (
+	"container/heap"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -81,4 +83,39 @@ func (s *Sorter) Less(i, j int) bool {
 	}
 
 	return false
+}
+
+// TopRowsHeap implements heap.Interface based on Sorter. It inverts the Less()
+// function so that it can be used to implement TopN. heap.Push() rows into it,
+// and if Len() > MAX; heap.Pop() the current min row. Then, at the end of
+// seeing all the rows, call Rows(). Rows() will return the rows which come
+// back from heap.Pop() in reverse order, correctly restoring the order for the
+// TopN elements.
+type TopRowsHeap struct {
+	Sorter
+}
+
+func (h *TopRowsHeap) Less(i, j int) bool {
+	return !h.Sorter.Less(i, j)
+}
+
+func (h *TopRowsHeap) Push(x interface{}) {
+	h.Sorter.Rows = append(h.Sorter.Rows, x.(sql.Row))
+}
+
+func (h *TopRowsHeap) Pop() interface{} {
+	old := h.Sorter.Rows
+	n := len(old)
+	res := old[n-1]
+	h.Sorter.Rows = old[0:n-1]
+	return res
+}
+
+func (h *TopRowsHeap) Rows() ([]sql.Row, error) {
+	l := h.Len()
+	res := make([]sql.Row, l)
+	for i := l-1; i >= 0; i-- {
+		res[i] = heap.Pop(h).(sql.Row)
+	}
+	return res, h.LastError
 }

@@ -715,6 +715,27 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC`,
+		ExpectedPlan: "Sort(datetime_table.date_col ASC)\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ Table(datetime_table)\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
+		ExpectedPlan: "Limit(100)\n" +
+			" └─ TopN(Limit: [100]; datetime_table.date_col ASC)\n" +
+			"     └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"         └─ Table(datetime_table)\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100 OFFSET 100`,
+		ExpectedPlan: "Limit(100)\n" +
+			" └─ Offset(100)\n" +
+			"     └─ TopN(Limit: [(100 + 100)]; datetime_table.date_col ASC)\n" +
+			"         └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"             └─ Table(datetime_table)\n",
+	},
+	{
 		Query: `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.date_col = \"2020-01-01\")\n" +
 			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
