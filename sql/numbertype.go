@@ -510,7 +510,7 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 		return i, nil
 	case string:
 		// Parse first an integer, which allows for more values than float64
-		i, err := strconv.ParseInt(v,10, 64)
+		i, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {
 			return i, nil
 		}
