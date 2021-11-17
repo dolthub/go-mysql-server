@@ -168,22 +168,13 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		pos = 1 // TODO: use constant
 	}
 
-	// Handle type for position
-	_pos := 1
-	switch pos.(type) {
-	case int:
-		_pos = pos.(int)
-	case int8:
-		_pos = int(pos.(int8))
-	case int16:
-		_pos = int(pos.(int16))
-	case int32:
-		_pos = int(pos.(int32))
-	case int64:
-		_pos = int(pos.(int64))
-	default:
-		return nil, nil // TODO: throw error incorrect type
+	// Convert to int32
+	pos, err = sql.Int32.Convert(pos)
+	if err != nil {
+		return nil, err
 	}
+	// Convert to int
+	_pos := int(pos.(int32))
 
 	// Non-positive position throws incorrect parameter
 	if _pos <= 0 {
@@ -210,22 +201,12 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		occ = 0 // TODO: use constant
 	}
 
-	// Handle types for occurrence
-	_occ := 0
-	switch occ.(type) {
-	case int:
-		_occ = occ.(int)
-	case int8:
-		_occ = int(occ.(int8))
-	case int16:
-		_occ = int(occ.(int16))
-	case int32:
-		_occ = int(occ.(int32))
-	case int64:
-		_occ = int(occ.(int64))
-	default:
-		return nil, nil // TODO: incorrect type
+	// Convert occurrence to int32
+	occ, err = sql.Int32.Convert(occ)
+	if err != nil {
+		return nil, err
 	}
+	_occ := int(occ.(int32))
 
 	// MySQL interprets negative occurrences as first for some reason
 	if _occ < 0 {

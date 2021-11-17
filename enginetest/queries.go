@@ -4244,14 +4244,37 @@ var QueryTests = []QueryTest{
 			{3, "third row", 1},
 		},
 	},
-
 	{
 		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X")`,
 		Expected: []sql.Row{{"XXXXX56789"}},
 	},
 	{
+		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2)`,
+		Expected: []sql.Row{{"0XXXX56789"}},
+	},
+	{
+		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2, 2)`,
+		Expected: []sql.Row{{"01X3456789"}},
+	},
+	{
+		Query: `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "i")`,
+		Expected: []sql.Row{{"XXXX XXXX XXXX"}},
+	},
+	{
+		Query: `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "c")`,
+		Expected: []sql.Row{{"TEST XXXX TEST"}},
+	},
+	{
 		Query: `SELECT REGEXP_REPLACE(CONCAT("abc123"), "[0-4]", "X")`,
 		Expected: []sql.Row{{"abcXXX"}},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE s LIKE REGEXP_REPLACE("123456%r1o2w", "[0-9]", "")`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
 	},
 
 

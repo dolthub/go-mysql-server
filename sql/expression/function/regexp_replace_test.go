@@ -166,6 +166,12 @@ func TestRegexpReplaceWithPosition(t *testing.T) {
 			true,
 		},
 		{
+			"string type position",
+			sql.NewRow("abc def ghi", `[a-z]`, "X", "1"),
+			"XXX XXX XXX",
+			false,
+		},
+		{
 			"valid case",
 			sql.NewRow("abc def ghi", `[a-z]`, "X", 1),
 			"XXX XXX XXX",
@@ -222,6 +228,12 @@ func TestRegexpReplaceWithOccurrence(t *testing.T) {
 			"nil occurrence",
 			sql.NewRow("abc def ghi", `[a-z]`, "X", 1, nil),
 			nil,
+			false,
+		},
+		{
+			"string type occurrence",
+			sql.NewRow("abc def ghi", `[a-z]`, "X", 1, "0"),
+			"XXX XXX XXX",
 			false,
 		},
 		{
