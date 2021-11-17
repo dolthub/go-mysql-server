@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"regexp"
 	"strings"
 	"sync"
@@ -167,6 +168,12 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 	if err != nil {
 		return nil, err
 	}
+
+	// Empty regex, throw illegal argument
+	if len(patternVal.(string)) == 0 {
+		return nil, errors.NewKind("Illegal argument to regular expression.").New()
+	}
+
 
 	flagsStr := "(?i)"
 	if flags != nil {
