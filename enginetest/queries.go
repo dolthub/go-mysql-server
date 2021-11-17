@@ -4276,6 +4276,14 @@ var QueryTests = []QueryTest{
 			{3, "third row"},
 		},
 	},
+	{
+		Query: `SELECT REGEXP_REPLACE(s, "[a-z]", "X") from mytable`,
+		Expected: []sql.Row{
+			{"XXXXX XXX"},
+			{"XXXXXX XXX"},
+			{"XXXXX XXX"},
+		},
+	},
 
 	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",
