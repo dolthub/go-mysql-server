@@ -4245,27 +4245,27 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X")`,
+		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X")`,
 		Expected: []sql.Row{{"XXXXX56789"}},
 	},
 	{
-		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2)`,
+		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2)`,
 		Expected: []sql.Row{{"0XXXX56789"}},
 	},
 	{
-		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2, 2)`,
+		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2, 2)`,
 		Expected: []sql.Row{{"01X3456789"}},
 	},
 	{
-		Query: `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "i")`,
+		Query:    `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "i")`,
 		Expected: []sql.Row{{"XXXX XXXX XXXX"}},
 	},
 	{
-		Query: `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "c")`,
+		Query:    `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "c")`,
 		Expected: []sql.Row{{"TEST XXXX TEST"}},
 	},
 	{
-		Query: `SELECT REGEXP_REPLACE(CONCAT("abc123"), "[0-4]", "X")`,
+		Query:    `SELECT REGEXP_REPLACE(CONCAT("abc123"), "[0-4]", "X")`,
 		Expected: []sql.Row{{"abcXXX"}},
 	},
 	{
@@ -4276,7 +4276,6 @@ var QueryTests = []QueryTest{
 			{3, "third row"},
 		},
 	},
-
 
 	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",

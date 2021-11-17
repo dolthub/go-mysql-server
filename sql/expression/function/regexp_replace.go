@@ -16,10 +16,11 @@ package function
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"regexp"
 	"strings"
 	"sync/atomic"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -27,11 +28,11 @@ import (
 // RegexpReplace implements the REGEXP_REPLACE function.
 // https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-replace
 type RegexpReplace struct {
-	args		[]sql.Expression
+	args []sql.Expression
 
-	cachedVal   atomic.Value
-	re          *regexp.Regexp
-	compileErr  error
+	cachedVal  atomic.Value
+	re         *regexp.Regexp
+	compileErr error
 }
 
 var _ sql.FunctionExpression = (*RegexpReplace)(nil)
@@ -86,7 +87,6 @@ func (r *RegexpReplace) String() string {
 	}
 	return fmt.Sprintf("regexp_replace(%s)", strings.Join(args, ", "))
 }
-
 
 func (r *RegexpReplace) compile(ctx *sql.Context, row sql.Row) {
 	pattern := r.args[1]
@@ -238,9 +238,9 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	matches[_occ-1] = _replaceStr
 
 	// Initialize result string
-	res := prefix					// attach prefix
-	res += suffix[:indexes[0][0]] 	// attach text before first match
-	res += matches[0]				// attach first match
+	res := prefix                 // attach prefix
+	res += suffix[:indexes[0][0]] // attach text before first match
+	res += matches[0]             // attach first match
 
 	// Recombine rest of matches
 	for i := 1; i < len(matches); i++ {
