@@ -914,6 +914,12 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func TestComplexIndexQueries(t *testing.T, harness Harness) {
+	for _, script := range ComplexIndexQueries {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestTriggers(t *testing.T, harness Harness) {
 	for _, script := range TriggerTests {
 		TestScript(t, harness, script)

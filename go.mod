@@ -6,6 +6,7 @@ require (
 	github.com/dolthub/vitess v0.0.0-20211112215933-1feb51c6c461
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
