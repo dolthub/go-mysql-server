@@ -4249,6 +4249,10 @@ var QueryTests = []QueryTest{
 		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X")`,
 		Expected: []sql.Row{{"XXXXX56789"}},
 	},
+	{
+		Query: `SELECT REGEXP_REPLACE(CONCAT("abc123"), "[0-4]", "X")`,
+		Expected: []sql.Row{{"abcXXX"}},
+	},
 
 
 	{
