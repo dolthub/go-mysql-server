@@ -4244,6 +4244,13 @@ var QueryTests = []QueryTest{
 			{3, "third row", 1},
 		},
 	},
+
+	{
+		Query: `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X")`,
+		Expected: []sql.Row{{"XXXXX56789"}},
+	},
+
+
 	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",
 		Expected: []sql.Row{
