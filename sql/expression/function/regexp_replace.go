@@ -124,7 +124,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	_str := str.(string)
 
 	// Create regex, should handle null pattern and null flags
-	r.compile(ctx, row) // TODO: Should I write my own instead of using regex_like
+	r.compile(ctx, row)
 	if r.compileErr != nil {
 		return "compile bad", r.compileErr
 	}
@@ -165,7 +165,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 	} else {
 		// Default position is 1, if argument not provided
-		pos = 1 // TODO: use constant
+		pos = 1
 	}
 
 	// Convert to int32
@@ -198,7 +198,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 	} else {
 		// Default occurrence is 0 (replace all occurrences)
-		occ = 0 // TODO: use constant
+		occ = 0
 	}
 
 	// Convert occurrence to int32
