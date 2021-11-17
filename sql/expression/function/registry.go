@@ -157,6 +157,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "radians", Fn: NewRadians},
 	sql.FunctionN{Name: "rand", Fn: NewRand},
 	sql.FunctionN{Name: "regexp_like", Fn: NewRegexpLike},
+	sql.FunctionN{Name: "regexp_replace", Fn: NewRegexpReplace},
 	sql.Function2{Name: "repeat", Fn: NewRepeat},
 	sql.Function3{Name: "replace", Fn: NewReplace},
 	sql.Function1{Name: "reverse", Fn: NewReverse},

@@ -19,7 +19,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 	"regexp"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -32,13 +31,12 @@ type RegexpReplace struct {
 
 	cachedVal   atomic.Value
 	re          *regexp.Regexp
-	compileOnce sync.Once
 	compileErr  error
 }
 
 var _ sql.FunctionExpression = (*RegexpReplace)(nil)
 
-// NewRegexpReplace creates a new RegexpLike expression.
+// NewRegexpReplace creates a new RegexpReplace expression.
 func NewRegexpReplace(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 3 || len(args) > 6 {
 		return nil, sql.ErrInvalidArgumentNumber.New("regexp_replace", "3,4,5 or 6", len(args))
@@ -75,7 +73,10 @@ func (r *RegexpReplace) Resolved() bool {
 
 // WithChildren implements the sql.Expression interface.
 func (r *RegexpReplace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewRegexpLike(children...)
+	if len(children) != len(r.args) {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), len(r.args))
+	}
+	return NewRegexpReplace(children...)
 }
 
 func (r *RegexpReplace) String() string {
@@ -87,28 +88,24 @@ func (r *RegexpReplace) String() string {
 }
 
 
-func (r *RegexpReplace) compile(ctx *sql.Context) {
+func (r *RegexpReplace) compile(ctx *sql.Context, row sql.Row) {
 	pattern := r.args[1]
 	var flags sql.Expression = nil
 	if len(r.args) == 6 {
 		flags = r.args[5]
 	}
-	r.compileOnce.Do(func() {
-		r.re, r.compileErr = compileRegex(ctx, pattern, flags, r.FunctionName(), nil)
-	})
+	r.re, r.compileErr = compileRegex(ctx, pattern, flags, r.FunctionName(), row)
 }
 
 // Eval implements the sql.Expression interface.
 func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("function.RegexpLike")
+	span, ctx := ctx.Span("function.RegexpReplace")
 	defer span.Finish()
 
 	cached := r.cachedVal.Load()
 	if cached != nil {
 		return cached, nil
 	}
-
-	// TODO: if null is passed in anywhere, return null, so need to check for argument lengths
 
 	// Evaluate string value
 	str, err := r.args[0].Eval(ctx, row)
@@ -126,10 +123,10 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	// Convert to string
 	_str := str.(string)
 
-	// Create regex
-	r.compile(ctx)
+	// Create regex, should handle null pattern and null flags
+	r.compile(ctx, row) // TODO: Should I write my own instead of using regex_like
 	if r.compileErr != nil {
-		return nil, r.compileErr
+		return "compile bad", r.compileErr
 	}
 	if r.re == nil {
 		return nil, nil
@@ -151,23 +148,29 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	// Convert to string
 	_replaceStr := replaceStr.(string)
 
-	// Check if position argument was provided
-	var pos sql.Expression = nil
-	if len(r.args) >= 4 {
-		pos, err = r.args[3].Eval(ctx, row)
+	// Do nothing if str is empty
+	if len(_str) == 0 {
+		return _str, nil
 	}
 
-	// Evaluate Position
-	pos, err := r.Position.Eval(ctx, row)
-	if err != nil {
-		return nil, err
+	// Check if position argument was provided
+	var pos interface{} = nil
+	if len(r.args) >= 4 {
+		pos, err = r.args[3].Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if pos == nil {
+			return nil, nil
+		}
+	} else {
+		// Default position is 1, if argument not provided
+		pos = 1 // TODO: use constant
 	}
 
 	// Handle type for position
 	_pos := 1
 	switch pos.(type) {
-	case nil:
-		_pos = 1 // TODO: use constant
 	case int:
 		_pos = pos.(int)
 	case int8:
@@ -179,30 +182,37 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case int64:
 		_pos = int(pos.(int64))
 	default:
-		return nil, nil // TODO: incorrect type
+		return nil, nil // TODO: throw error incorrect type
 	}
 
 	// Non-positive position throws incorrect parameter
 	if _pos <= 0 {
-		return nil, ErrInvalidArgument.New(r.FunctionName())
+		return nil, ErrInvalidArgument.New(r.FunctionName(), fmt.Sprintf("%d", _pos))
 	}
 
 	// Handle out of bounds
-	if _pos > len(_text) {
+	if _pos > len(_str) {
 		return nil, errors.NewKind("Index out of bounds for regular expression search.").New()
 	}
 
-	// Evaluate Occurrence
-	occ, err := r.Occurrence.Eval(ctx, row)
-	if err != nil {
-		return nil, err
+	// Check if Occurrence argument was provided
+	var occ interface{} = nil
+	if len(r.args) >= 5 {
+		occ, err = r.args[4].Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if occ == nil {
+			return nil, nil
+		}
+	} else {
+		// Default occurrence is 0 (replace all occurrences)
+		occ = 0 // TODO: use constant
 	}
 
 	// Handle types for occurrence
 	_occ := 0
-	switch pos.(type) {
-	case nil:
-		_occ = 0 // TODO: use constant
+	switch occ.(type) {
 	case int:
 		_occ = occ.(int)
 	case int8:
@@ -217,45 +227,50 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil // TODO: incorrect type
 	}
 
-
 	// MySQL interprets negative occurrences as first for some reason
 	if _occ < 0 {
 		_occ = 1
 	} else if _occ == 0 {
 		// Replace everything
-		return _text[:_pos-1] + r.re.ReplaceAllString(_text[_pos-1:], replaceStr.(string)), nil
+		return _str[:_pos-1] + r.re.ReplaceAllString(_str[_pos-1:], _replaceStr), nil
 	}
 
+	// Split string into prefix and suffix
+	prefix := _str[:_pos-1]
+	suffix := _str[_pos-1:]
+
 	// Extract all matches
-	matches := r.re.FindAllString(_text[_pos-1:], -1)
-	indexes := r.re.FindAllStringIndex(_text[_pos-1:], -1)
+	matches := r.re.FindAllString(suffix, -1)
+	indexes := r.re.FindAllStringIndex(suffix, -1)
 
 	// No matches, return original string
 	if len(matches) == 0 {
-		return _text, nil
+		return _str, nil
 	}
 
-	// TODO: Might be a way to combine these two cases
 	// If there aren't enough occurrences
 	if _occ > len(matches) {
-		return _text, nil
+		return _str, nil
 	}
 
-	if _occ == 0 {
-		// Replace all occurrences
+	// Replace only the nth occurrence
+	matches[_occ-1] = _replaceStr
 
+	// Initialize result string
+	res := prefix					// attach prefix
+	res += suffix[:indexes[0][0]] 	// attach text before first match
+	res += matches[0]				// attach first match
 
-	} else {
-		// Replace only the nth occurrence
-		matches[_occ - 1] = replaceStr.(string)
+	// Recombine rest of matches
+	for i := 1; i < len(matches); i++ {
+		// Attach text before match
+		res += suffix[indexes[i-1][1]:indexes[i][0]] // end of prev to start of curr match
+		// Attach match
+		res += matches[i]
 	}
 
-	// Recombine matches
-	res := prefix
-	res += _text[:indexes[0][0]]
-	res += matches[0]
+	// Append text after last match
+	res += suffix[indexes[len(indexes)-1][1]:]
 
-
-
-	return matches, nil
+	return res, nil
 }
