@@ -16,11 +16,8 @@ package function
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
-	"sync/atomic"
-
 	"gopkg.in/src-d/go-errors.v1"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -29,10 +26,6 @@ import (
 // https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-replace
 type RegexpReplace struct {
 	args []sql.Expression
-
-	cachedVal  atomic.Value
-	re         *regexp.Regexp
-	compileErr error
 }
 
 var _ sql.FunctionExpression = (*RegexpReplace)(nil)
@@ -88,25 +81,8 @@ func (r *RegexpReplace) String() string {
 	return fmt.Sprintf("regexp_replace(%s)", strings.Join(args, ", "))
 }
 
-func (r *RegexpReplace) compile(ctx *sql.Context, row sql.Row) {
-	pattern := r.args[1]
-	var flags sql.Expression = nil
-	if len(r.args) == 6 {
-		flags = r.args[5]
-	}
-	r.re, r.compileErr = compileRegex(ctx, pattern, flags, r.FunctionName(), row)
-}
-
 // Eval implements the sql.Expression interface.
 func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	span, ctx := ctx.Span("function.RegexpReplace")
-	defer span.Finish()
-
-	cached := r.cachedVal.Load()
-	if cached != nil {
-		return cached, nil
-	}
-
 	// Evaluate string value
 	str, err := r.args[0].Eval(ctx, row)
 	if err != nil {
@@ -123,12 +99,18 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	// Convert to string
 	_str := str.(string)
 
-	// Create regex, should handle null pattern and null flags
-	r.compile(ctx, row)
-	if r.compileErr != nil {
-		return "compile bad", r.compileErr
+	// Handle flags
+	var flags sql.Expression = nil
+	if len(r.args) == 6 {
+		flags = r.args[5]
 	}
-	if r.re == nil {
+
+	// Create regex, should handle null pattern and null flags
+	re, compileErr := compileRegex(ctx, r.args[1], flags, r.FunctionName(), row)
+	if compileErr != nil {
+		return nil, compileErr
+	}
+	if re == nil {
 		return nil, nil
 	}
 
@@ -153,28 +135,28 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return _str, nil
 	}
 
+	// Default position is 1
+	_pos := 1
+
 	// Check if position argument was provided
-	var pos interface{} = nil
 	if len(r.args) >= 4 {
-		pos, err = r.args[3].Eval(ctx, row)
+		// Evaluate position argument
+		pos, err := r.args[3].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		if pos == nil {
 			return nil, nil
 		}
-	} else {
-		// Default position is 1, if argument not provided
-		pos = 1
-	}
 
-	// Convert to int32
-	pos, err = sql.Int32.Convert(pos)
-	if err != nil {
-		return nil, err
+		// Convert to int32
+		pos, err = sql.Int32.Convert(pos)
+		if err != nil {
+			return nil, err
+		}
+		// Convert to int
+		_pos = int(pos.(int32))
 	}
-	// Convert to int
-	_pos := int(pos.(int32))
 
 	// Non-positive position throws incorrect parameter
 	if _pos <= 0 {
@@ -186,34 +168,35 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, errors.NewKind("Index out of bounds for regular expression search.").New()
 	}
 
+	// Default occurrence is 0 (replace all occurrences)
+	_occ := 0
+
 	// Check if Occurrence argument was provided
-	var occ interface{} = nil
 	if len(r.args) >= 5 {
-		occ, err = r.args[4].Eval(ctx, row)
+		occ, err := r.args[4].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		if occ == nil {
 			return nil, nil
 		}
-	} else {
-		// Default occurrence is 0 (replace all occurrences)
-		occ = 0
-	}
 
-	// Convert occurrence to int32
-	occ, err = sql.Int32.Convert(occ)
-	if err != nil {
-		return nil, err
+		// Convert occurrence to int32
+		occ, err = sql.Int32.Convert(occ)
+		if err != nil {
+			return nil, err
+		}
+
+		// Convert to int
+		_occ = int(occ.(int32))
 	}
-	_occ := int(occ.(int32))
 
 	// MySQL interprets negative occurrences as first for some reason
 	if _occ < 0 {
 		_occ = 1
 	} else if _occ == 0 {
 		// Replace everything
-		return _str[:_pos-1] + r.re.ReplaceAllString(_str[_pos-1:], _replaceStr), nil
+		return _str[:_pos-1] + re.ReplaceAllString(_str[_pos-1:], _replaceStr), nil
 	}
 
 	// Split string into prefix and suffix
@@ -221,8 +204,8 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	suffix := _str[_pos-1:]
 
 	// Extract all matches
-	matches := r.re.FindAllString(suffix, -1)
-	indexes := r.re.FindAllStringIndex(suffix, -1)
+	matches := re.FindAllString(suffix, -1)
+	indexes := re.FindAllStringIndex(suffix, -1)
 
 	// No matches, return original string
 	if len(matches) == 0 {
