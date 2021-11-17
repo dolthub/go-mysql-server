@@ -16,11 +16,12 @@ package function
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -173,7 +174,6 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 	if len(patternVal.(string)) == 0 {
 		return nil, errors.NewKind("Illegal argument to regular expression.").New()
 	}
-
 
 	flagsStr := "(?i)"
 	if flags != nil {

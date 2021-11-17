@@ -15,12 +15,12 @@
 package function
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 func TestRegexpReplaceInvalidArgNumber(t *testing.T) {
@@ -59,10 +59,10 @@ func TestRegexpReplace(t *testing.T) {
 	require.NoError(t, err)
 
 	testCases := []struct {
-		name		string
-		row			sql.Row
-		expected	interface{}
-		err			bool
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
 	}{
 		{
 			"nil str",
@@ -106,7 +106,6 @@ func TestRegexpReplace(t *testing.T) {
 			"XXX XXX XXX",
 			false,
 		},
-
 	}
 
 	for _, tt := range testCases {
@@ -134,12 +133,11 @@ func TestRegexpReplaceWithPosition(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-
 	testCases := []struct {
-		name		string
-		row			sql.Row
-		expected	interface{}
-		err			bool
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
 	}{
 		{
 			"nil position",
@@ -217,12 +215,11 @@ func TestRegexpReplaceWithOccurrence(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-
 	testCases := []struct {
-		name		string
-		row			sql.Row
-		expected	interface{}
-		err			bool
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
 	}{
 		{
 			"nil occurrence",
@@ -301,12 +298,11 @@ func TestRegexpReplaceWithFlags(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-
 	testCases := []struct {
-		name		string
-		row			sql.Row
-		expected	interface{}
-		err			bool
+		name     string
+		row      sql.Row
+		expected interface{}
+		err      bool
 	}{
 		{
 			"nil flags",
