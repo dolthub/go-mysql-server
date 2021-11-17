@@ -107,14 +107,14 @@ func (h *TopRowsHeap) Pop() interface{} {
 	old := h.Sorter.Rows
 	n := len(old)
 	res := old[n-1]
-	h.Sorter.Rows = old[0:n-1]
+	h.Sorter.Rows = old[0 : n-1]
 	return res
 }
 
 func (h *TopRowsHeap) Rows() ([]sql.Row, error) {
 	l := h.Len()
 	res := make([]sql.Row, l)
-	for i := l-1; i >= 0; i-- {
+	for i := l - 1; i >= 0; i-- {
 		res[i] = heap.Pop(h).(sql.Row)
 	}
 	return res, h.LastError
