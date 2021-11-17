@@ -70,17 +70,15 @@ type channelRowIter struct {
 var _ sql.RowIter = (*channelRowIter)(nil)
 
 func (c *channelRowIter) Next() (sql.Row, error) {
-	r, ok := <-c.rowChannel
-	if !ok {
+	select {
+	case r, ok := <- c.rowChannel:
+		if !ok {
+			return nil, io.EOF
+		}
+		return r, nil
+	case <-c.ctx.Done():
 		return nil, io.EOF
 	}
-
-	if r[0] == "fuck" {
-		close(c.rowChannel)
-		return nil, io.EOF
-	}
-
-	return r, nil
 }
 
 func (c *channelRowIter) Close(context *sql.Context) error {
