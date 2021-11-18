@@ -274,9 +274,11 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 
 	for {
 		row, err := a.iter.Next()
+		_, isIg := err.(sql.ErrInsertIgnore)
+
 		if err == io.EOF {
 			return sql.NewRow(a.updateRowHandler.okResult()), nil
-		} else if ErrInsertIgnore.Is(err) {
+		} else if isIg {
 			continue
 		} else if err != nil {
 			return nil, err

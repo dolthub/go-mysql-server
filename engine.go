@@ -436,13 +436,30 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	return analyzedCreateTable.Schema(), nil
 }
 
-func CreateSpecialInsertNode(ctx *sql.Context, analyzer *analyzer.Analyzer, dbname string, tableName string, source chan sql.Row, schema sql.Schema) (sql.Node, error) {
+func CreateSpecialInsertNode(ctx *sql.Context, analyzer *analyzer.Analyzer, dbname string, tableName string, source chan sql.Row, schema sql.Schema, ignore bool, errorHandler plan.ErrorHandler) (sql.Node, error) {
 	src := plan.NewRowIterSource(schema, source)
 	dest := plan.NewUnresolvedTable(tableName, dbname)
 
-	insert := plan.NewInsertInto(sql.UnresolvedDatabase(dbname), dest, src, false, nil, nil, false)
-
+	insert := plan.NewInsertInto(sql.UnresolvedDatabase(dbname), dest, src, false, nil, nil, ignore)
 	analyzed, err := analyzer.Analyze(ctx, insert, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	analyzed, err = plan.TransformUp(analyzed, func(node sql.Node) (sql.Node, error) {
+		switch n := node.(type) {
+		case *plan.InsertInto:
+			strat := plan.Propagate
+			if ignore {
+				strat = plan.Ignore
+			}
+			withError := plan.NewErrorHandlerNode(n, strat, errorHandler)
+			return withError, nil
+		default:
+			return n, nil
+		}
+	})
+
 	if err != nil {
 		return nil, err
 	}

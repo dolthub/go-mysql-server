@@ -37,8 +37,6 @@ var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
 var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
 var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %s")
 
-var ErrInsertIgnore = errors.NewKind("This row was ignored") // Used for making sure the row accumulator is correct
-
 // cc: https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 // The INSERT IGNORE syntax applies to these ignorable errors
 // ER_BAD_NULL_ERROR - yes
@@ -258,7 +256,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		res, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
 
 		if err != nil {
-			return nil, i.warnOnIgnorableError(err)
+			return nil, i.warnOnIgnorableError(row, err)
 		}
 
 		if sql.IsFalse(res) {
@@ -415,9 +413,9 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 
 func (i *insertIter) ignoreOrClose(row sql.Row, err error) (sql.Row, error) {
 	if i.ignore {
-		err = i.warnOnIgnorableError(err)
+		err = i.warnOnIgnorableError(row, err)
 		if err != nil {
-			return nil, sql.NewWrappedInsertError(row, err)
+			return nil, err
 		}
 		return nil, nil
 	} else {
@@ -426,7 +424,7 @@ func (i *insertIter) ignoreOrClose(row sql.Row, err error) (sql.Row, error) {
 	}
 }
 
-func (i *insertIter) warnOnIgnorableError(err error) error {
+func (i *insertIter) warnOnIgnorableError(row sql.Row, err error) error {
 	if !i.ignore {
 		return err
 	}
@@ -449,7 +447,7 @@ func (i *insertIter) warnOnIgnorableError(err error) error {
 			}
 
 			// Return the InsertIgnore err to ensure our accumulator doesn't count this row.
-			return ErrInsertIgnore.New()
+			return sql.NewErrInsertIgnore(row)
 		}
 	}
 
@@ -539,7 +537,7 @@ func (i *insertIter) validateNullability(dstSchema sql.Schema, row sql.Row) erro
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if i.ignore {
 				row[count] = col.Type.Zero()
-				_ = i.warnOnIgnorableError(sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+				_ = i.warnOnIgnorableError(row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 			} else {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}

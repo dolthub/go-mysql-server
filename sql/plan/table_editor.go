@@ -50,7 +50,8 @@ func (s *tableEditorIter) Next() (sql.Row, error) {
 		s.editor.StatementBegin(s.onceCtx)
 	})
 	row, err := s.inner.Next()
-	if err != nil && err != io.EOF && !ErrInsertIgnore.Is(err) {
+	_, isIg := err.(sql.ErrInsertIgnore) // todo: shoudln't need this
+	if err != nil && err != io.EOF && !isIg {
 		s.errorEncountered = err
 	}
 	return row, err

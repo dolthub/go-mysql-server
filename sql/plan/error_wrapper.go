@@ -13,3 +13,81 @@
 // limitations under the License.
 
 package plan
+
+import (
+	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
+	"io"
+)
+
+type ErrorHandlingStrategy int
+
+const (
+	Propagate ErrorHandlingStrategy = iota
+	Ignore
+)
+
+type ErrorHandler func (err error)
+
+type ErrorHandlerNode struct {
+	UnaryNode
+	ErrorHandlingStrategy
+	ErrorHandler
+}
+
+var _ sql.Node = (*ErrorHandlerNode)(nil)
+
+func NewErrorHandlerNode(child sql.Node, strategy ErrorHandlingStrategy, errorHandler ErrorHandler) *ErrorHandlerNode {
+	return &ErrorHandlerNode{UnaryNode{Child: child}, strategy, errorHandler}
+}
+
+func (e ErrorHandlerNode) String() string {
+	return fmt.Sprintf("ErrorHandler(%s)", e.Child.String())
+}
+
+func (e ErrorHandlerNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	ri, err := e.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	return &errorHandlerIter{ri, e.ErrorHandlingStrategy, e.ErrorHandler}, nil
+}
+
+func (e ErrorHandlerNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
+	}
+
+	return NewErrorHandlerNode(children[0], e.ErrorHandlingStrategy, e.ErrorHandler), nil
+}
+
+type errorHandlerIter struct {
+	childIter sql.RowIter
+	ErrorHandlingStrategy
+	ErrorHandler
+}
+
+var _ sql.RowIter = (*errorHandlerIter)(nil)
+
+func (e errorHandlerIter) Next() (sql.Row, error) {
+	row, err := e.childIter.Next()
+	if err == io.EOF {
+		return row, err
+	}
+
+	if err != nil {
+		e.ErrorHandler(err)
+		if e.ErrorHandlingStrategy == Propagate {
+			return row, err
+		} else {
+			return row, nil
+		}
+	}
+
+	return row, nil
+}
+
+func (e errorHandlerIter) Close(context *sql.Context) error {
+	return e.childIter.Close(context)
+}

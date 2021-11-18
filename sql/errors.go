@@ -452,3 +452,15 @@ func NewWrappedInsertError(r Row, err error) WrappedInsertError {
 func (w WrappedInsertError) Error() string {
 	return w.Cause.Error()
 }
+
+type ErrInsertIgnore struct {
+	OffendingRow Row
+}
+
+func NewErrInsertIgnore(row Row) ErrInsertIgnore {
+	return ErrInsertIgnore{OffendingRow: row}
+}
+
+func (e ErrInsertIgnore) Error() string {
+	return "Insert ignore error shoudl never be printed"
+}
