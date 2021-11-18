@@ -84,6 +84,7 @@ var infoSchemaTables = []string{
 	"auto_increment_tbl",
 	"people",
 	"datetime_table",
+	"one_pk_three_idx",
 }
 
 // TestInfoSchema runs tests of the information_schema database

@@ -173,6 +173,31 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
+	if includeTable(includedTables, "one_pk_three_idx") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "one_pk_three_idx", sql.Schema{
+				{Name: "pk", Type: sql.Int64, Source: "one_pk_three_idx", PrimaryKey: true},
+				{Name: "v1", Type: sql.Int64, Source: "one_pk_three_idx"},
+				{Name: "v2", Type: sql.Int64, Source: "one_pk_three_idx"},
+				{Name: "v3", Type: sql.Int64, Source: "one_pk_three_idx"},
+			})
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(0, 0, 0, 0),
+					sql.NewRow(1, 0, 0, 1),
+					sql.NewRow(2, 0, 1, 0),
+					sql.NewRow(3, 0, 2, 2),
+					sql.NewRow(4, 1, 0, 0),
+					sql.NewRow(5, 2, 0, 3),
+					sql.NewRow(6, 3, 3, 0),
+					sql.NewRow(7, 4, 4, 4))
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "one_pk_three_idx", err)
+			}
+		})
+	}
+
 	if includeTable(includedTables, "othertable") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "othertable", sql.Schema{
@@ -658,6 +683,7 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 		"create index datetime_table_d on datetime_table (date_col)",
 		"create index datetime_table_dt on datetime_table (datetime_col)",
 		"create index datetime_table_ts on datetime_table (timestamp_col)",
+		"create index one_pk_three_idx_idx on one_pk_three_idx (v1, v2, v3)",
 	}
 
 	for _, q := range createIndexes {
