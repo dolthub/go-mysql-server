@@ -58,7 +58,7 @@ func TestMatchingIndexes(t *testing.T) {
 	}
 
 	ia := &indexAnalyzer{
-		indexesByTable: map[string][]sql.Index{"test": {dummy1, dummy2, dummy3, dummy4}},
+		indexesByTable: map[string][]sql.Index{testTable: {dummy1, dummy2, dummy3, dummy4}},
 		indexRegistry:  nil,
 		registryIdxes:  nil,
 	}
@@ -73,6 +73,50 @@ func TestMatchingIndexes(t *testing.T) {
 	require.Equal(t, dummy2, ia.MatchingIndex(ctx, testDb, testTable, v2, v3, v1))
 	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testDb, testTable, v3))
 	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testDb, testTable, v2, v3))
+}
+
+func TestExpressionsWithIndexesPartialMatching(t *testing.T) {
+	const testDb = "mydb"
+	const testTable = "test"
+
+	v1 := expression.NewLiteral(1, sql.Int64)
+	v2 := expression.NewLiteral(2, sql.Int64)
+	v3 := expression.NewLiteral(3, sql.Int64)
+	v4 := expression.NewLiteral(4, sql.Int64)
+
+	gf1 := expression.NewGetField(0, sql.Int64, "1", false)
+	gf2 := expression.NewGetField(1, sql.Int64, "2", false)
+	//gf3 := expression.NewGetField(2, sql.Int64, "3", false)
+	gf4 := expression.NewGetField(3, sql.Int64, "4", false)
+
+	dummy1 := &dummyIdx{
+		id:       "dummy",
+		expr:     []sql.Expression{v1, v2, v3},
+		database: testDb,
+		table:    testTable,
+	}
+	dummy2 := &dummyIdx{
+		id:       "dummy",
+		expr:     []sql.Expression{v2, v4, v1, v3},
+		database: testDb,
+		table:    testTable,
+	}
+
+	ia := &indexAnalyzer{
+		indexesByTable: map[string][]sql.Index{testTable: {dummy1}},
+		indexRegistry:  nil,
+		registryIdxes:  nil,
+	}
+	exprList := ia.ExpressionsWithIndexes(testDb, gf1, gf2)
+	require.Equal(t, [][]sql.Expression{{gf1, gf2}}, exprList)
+
+	ia = &indexAnalyzer{
+		indexesByTable: map[string][]sql.Index{testTable: {dummy1, dummy2}},
+		indexRegistry:  nil,
+		registryIdxes:  nil,
+	}
+	exprList = ia.ExpressionsWithIndexes(testDb, gf2, gf4, gf1)
+	require.Equal(t, [][]sql.Expression{{gf2, gf4, gf1}, {gf1, gf2}}, exprList)
 }
 
 type dummyIdx struct {

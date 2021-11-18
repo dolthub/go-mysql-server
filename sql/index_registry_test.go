@@ -260,6 +260,9 @@ func TestExpressionsWithIndexes(t *testing.T) {
 			&dummyExpr{0, "foo"},
 			&dummyExpr{1, "bar"},
 		},
+		{
+			&dummyExpr{0, "foo"},
+		},
 	}
 
 	require.ElementsMatch(expected, exprs)
