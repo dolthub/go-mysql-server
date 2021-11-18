@@ -199,16 +199,16 @@ func (i *sortIter) computeSortedRows() error {
 type TopN struct {
 	UnaryNode
 	Limit         sql.Expression
-	SortFields    []sql.SortField
+	Fields        sql.SortFields
 	CalcFoundRows bool
 }
 
 // NewTopN creates a new TopN node.
-func NewTopN(sortFields []sql.SortField, limit sql.Expression, child sql.Node) *TopN {
+func NewTopN(fields sql.SortFields, limit sql.Expression, child sql.Node) *TopN {
 	return &TopN{
-		UnaryNode:  UnaryNode{child},
-		Limit:      limit,
-		SortFields: sortFields,
+		UnaryNode: UnaryNode{child},
+		Limit:     limit,
+		Fields:    fields,
 	}
 }
 
@@ -216,7 +216,7 @@ var _ sql.Expressioner = (*TopN)(nil)
 
 // Resolved implements the Resolvable interface.
 func (n *TopN) Resolved() bool {
-	for _, f := range n.SortFields {
+	for _, f := range n.Fields {
 		if !f.Column.Resolved() {
 			return false
 		}
@@ -247,8 +247,8 @@ func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 func (n *TopN) String() string {
 	pr := sql.NewTreePrinter()
-	var fields = make([]string, len(n.SortFields))
-	for i, f := range n.SortFields {
+	var fields = make([]string, len(n.Fields))
+	for i, f := range n.Fields {
 		fields[i] = fmt.Sprintf("%s %s", f.Column, f.Order)
 	}
 	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", n.Limit.String(), strings.Join(fields, ", "))
@@ -258,8 +258,8 @@ func (n *TopN) String() string {
 
 func (n *TopN) DebugString() string {
 	pr := sql.NewTreePrinter()
-	var fields = make([]string, len(n.SortFields))
-	for i, f := range n.SortFields {
+	var fields = make([]string, len(n.Fields))
+	for i, f := range n.Fields {
 		fields[i] = sql.DebugString(f)
 	}
 	_ = pr.WriteNode("TopN(Limit: [%s]; %s)", sql.DebugString(n.Limit), strings.Join(fields, ", "))
@@ -269,11 +269,7 @@ func (n *TopN) DebugString() string {
 
 // Expressions implements the Expressioner interface.
 func (n *TopN) Expressions() []sql.Expression {
-	var exprs = make([]sql.Expression, len(n.SortFields))
-	for i, f := range n.SortFields {
-		exprs[i] = f.Column
-	}
-	return exprs
+	return n.Fields.ToExpressions()
 }
 
 // WithChildren implements the Node interface.
@@ -282,25 +278,18 @@ func (n *TopN) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
 
-	topn := NewTopN(n.SortFields, n.Limit, children[0])
+	topn := NewTopN(n.Fields, n.Limit, children[0])
 	topn.CalcFoundRows = n.CalcFoundRows
 	return topn, nil
 }
 
 // WithExpressions implements the Expressioner interface.
 func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(n.SortFields) {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.SortFields))
+	if len(exprs) != len(n.Fields) {
+		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields))
 	}
 
-	var fields = make([]sql.SortField, len(n.SortFields))
-	for i, expr := range exprs {
-		fields[i] = sql.SortField{
-			Column:       expr,
-			NullOrdering: n.SortFields[i].NullOrdering,
-			Order:        n.SortFields[i].Order,
-		}
-	}
+	var fields = n.Fields.FromExpressions(exprs)
 
 	topn := NewTopN(fields, n.Limit, n.Child)
 	topn.CalcFoundRows = n.CalcFoundRows
@@ -357,7 +346,7 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 func (i *topRowsIter) computeTopRows() error {
 	topRowsHeap := &expression.TopRowsHeap{
 		expression.Sorter{
-			SortFields: i.n.SortFields,
+			SortFields: i.n.Fields,
 			Rows:       []sql.Row{},
 			LastError:  nil,
 			Ctx:        i.ctx,

@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	//"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -45,10 +43,8 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 			if !ok {
 				if updateCalcFoundRows {
 					updateCalcFoundRows = false
-					//return nil, fmt.Errorf("toggling off CalcFoundRows: %v", sql.DebugString(l))
 					return l.WithCalcFoundRows(false), nil
 				}
-				// return nil, fmt.Errorf("child of limit is not sort: %v", sql.DebugString(l))
 				return tc.Node, nil
 			}
 			topn := plan.NewTopN(childSort.SortFields, l.Limit, childSort.UnaryNode.Child)
