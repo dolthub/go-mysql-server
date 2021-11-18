@@ -23,8 +23,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var ErrUnsupportedHashInOperand = errors.NewKind("hash IN operator expects Tuple expression, found %T")
-var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects Literal subexpressions, found %T")
+var ErrUnsupportedHashInOperand = errors.NewKind("hash IN operator expects Tuple in right expression, found %T")
+var ErrUnsupportedHashInSubexpression = errors.NewKind("hash IN operator expects Tuple, Literal, or GetField subexpressions, found %T")
+var ErrCantHashNestedExpression = errors.NewKind("hash IN operator only supports literals and unnested tuples, found %T")
 
 // InTuple is an expression that checks an expression is inside a list of expressions.
 type InTuple struct {
@@ -152,21 +153,20 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
 	InTuple
-	cmp       map[uint64]sql.Expression
-	hasNull   bool
-	rightType sql.Type
+	cmp     map[uint64]sql.Expression
+	hasNull bool
 }
 
 var _ Comparer = (*InTuple)(nil)
 
 // NewHashInTuple creates an InTuple expression.
 func NewHashInTuple(left, right sql.Expression) (*HashInTuple, error) {
-	cmp, hasNull, t, err := newInMap(right)
+	cmp, hasNull, err := newInMap(right, left.Type())
 	if err != nil {
 		return nil, err
 	}
 
-	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull, rightType: t}, nil
+	return &HashInTuple{InTuple: *NewInTuple(left, right), cmp: cmp, hasNull: hasNull}, nil
 }
 
 // Eval implements the Expression interface.
@@ -175,31 +175,36 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	leftElems := sql.NumColumns(hit.Left().Type().Promote())
-	left, err := hit.Left().Eval(ctx, row)
+	// convert GetField to Literal, necessary for hashing
+	left, err := normalizeLeft(ctx, hit.Left(), row)
 	if err != nil {
 		return nil, err
 	}
 
-	if left == nil {
+	// check for short circuits before attempting to hash
+	leftElems := sql.NumColumns(left.Type().Promote())
+
+	leftVal, err := left.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	if leftVal == nil {
 		return nil, nil
 	}
 
-	left, err = hit.rightType.Convert(left)
+	key, err := hashOf(left, hit.Left().Type())
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := hashOf(left)
-	if err != nil {
-		return nil, err
-	}
 	right, ok := hit.cmp[key]
 	if !ok {
 		return false, nil
 	}
-	if sql.NumColumns(right.Type()) != leftElems {
-		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type()))
+
+	if sql.NumColumns(right.Type().Promote()) != leftElems {
+		return nil, sql.ErrInvalidOperandColumns.New(leftElems, sql.NumColumns(right.Type().Promote()))
 	}
 
 	return true, nil
@@ -213,38 +218,109 @@ func (hit *HashInTuple) DebugString() string {
 	return fmt.Sprintf("(%s HASH IN %s)", sql.DebugString(hit.Left()), sql.DebugString(hit.Right()))
 }
 
-func newInMap(expr sql.Expression) (map[uint64]sql.Expression, bool, sql.Type, error) {
+// newInMap will hash Literal and Tuple expressions, and return a map of the hash to original expression
+func newInMap(expr sql.Expression, lType sql.Type) (map[uint64]sql.Expression, bool, error) {
+	if lType == sql.Null {
+		return nil, true, nil
+	}
+
 	elements := make(map[uint64]sql.Expression)
 	hasNull := false
-	var t sql.Type
 	switch right := expr.(type) {
 	case Tuple:
 		for _, el := range right {
 			switch l := el.(type) {
-			case *Literal:
-				if t == nil {
-					t = l.Type()
+			case *Literal, Tuple:
+				key, err := hashOf(l, lType)
+				if sql.ErrInvalidType.Is(err) {
+					// TODO: can't convert a tuple in right expr to left literal type, and vice versa, echo warning?
+					continue
 				}
-				key, err := hashOf(l.value)
 				if err != nil {
-					return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+					return nil, hasNull, err
 				}
 				elements[key] = el
 			default:
-				return nil, hasNull, t, ErrUnsupportedHashInSubexpression.New(el)
+				return nil, hasNull, ErrUnsupportedHashInSubexpression.New(el)
 			}
 		}
 	default:
-		return nil, hasNull, t, ErrUnsupportedHashInOperand.New(right)
+		return nil, hasNull, ErrUnsupportedHashInOperand.New(right)
 	}
-	return elements, hasNull, t, nil
+	return elements, hasNull, nil
 }
 
-// copied variant from cache.go
-func hashOf(i interface{}) (uint64, error) {
+func hashOf(e sql.Expression, t sql.Type) (uint64, error) {
+	switch v := e.(type) {
+	case Tuple:
+		tupType, ok := t.(sql.TupleType)
+		if !ok {
+			return 0, sql.ErrInvalidType.New(t)
+		}
+		return hashOfTuple(v, tupType)
+	case *Literal:
+		return hashOfLiteral(v, t)
+	default:
+		return 0, ErrUnsupportedHashInSubexpression.New(v)
+	}
+}
+
+func hashOfLiteral(l *Literal, t sql.Type) (uint64, error) {
 	hash := xxhash.New()
+	i, err := t.Promote().Convert(l.value)
+	if err != nil {
+		return 0, sql.ErrInvalidType.New(l.value)
+	}
 	if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", i))); err != nil {
 		return 0, err
 	}
 	return hash.Sum64(), nil
+}
+
+// hashOfTuple will recursively hash a Tuple tree with Literal leaves
+func hashOfTuple(tup Tuple, t sql.TupleType) (uint64, error) {
+	hash := xxhash.New()
+	for i, el := range tup {
+		switch v := el.(type) {
+		case *Literal:
+			converted, err := t[i].Promote().Convert(v.value)
+			if err != nil {
+				return 0, err
+			}
+			if _, err := hash.Write([]byte(fmt.Sprintf("%#v,", converted))); err != nil {
+				return 0, err
+			}
+		default:
+			return 0, ErrCantHashNestedExpression.New(v)
+		}
+	}
+	return hash.Sum64(), nil
+}
+
+func normalizeLeft(ctx *sql.Context, expr sql.Expression, row sql.Row) (sql.Expression, error) {
+	switch e := expr.(type) {
+	case Tuple:
+		return TransformUp(e, func(expr sql.Expression) (sql.Expression, error) {
+			switch e := expr.(type) {
+			case *GetField:
+				v, err := e.Eval(ctx, row)
+				if err != nil {
+					return nil, err
+				}
+				return NewLiteral(v, e.Type()), nil
+			default:
+				return e, nil
+			}
+		})
+	case *Literal:
+		return e, nil
+	case *GetField:
+		v, err := e.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		return NewLiteral(v, e.Type()), nil
+	default:
+		return nil, ErrUnsupportedHashInOperand.New(e)
+	}
 }

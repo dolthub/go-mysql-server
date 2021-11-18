@@ -47,6 +47,13 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM one_pk_three_idx WHERE v1 > 2 AND v2 = 3`,
+		ExpectedPlan: "Filter((one_pk_three_idx.v1 > 2) AND (one_pk_three_idx.v2 = 3))\n" +
+			" └─ Projected table access on [pk v1 v2 v3]\n" +
+			"     └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3])\n" +
+			"",
+	}, //one_pk_three_idx
+	{
 		Query: `select row_number() over (order by i desc), mytable.i as i2 
 				from mytable join othertable on i = i2
 				where mytable.i = 2
@@ -776,6 +783,27 @@ var PlanTests = []QueryPlanTest{
 			"         └─ Projected table access on [i2 s2]\n" +
 			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
+	},
+	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC`,
+		ExpectedPlan: "Sort(datetime_table.date_col ASC)\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ Table(datetime_table)\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
+		ExpectedPlan: "Limit(100)\n" +
+			" └─ TopN(Limit: [100]; datetime_table.date_col ASC)\n" +
+			"     └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"         └─ Table(datetime_table)\n",
+	},
+	{
+		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100 OFFSET 100`,
+		ExpectedPlan: "Limit(100)\n" +
+			" └─ Offset(100)\n" +
+			"     └─ TopN(Limit: [(100 + 100)]; datetime_table.date_col ASC)\n" +
+			"         └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"             └─ Table(datetime_table)\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table where date_col = '2020-01-01'`,

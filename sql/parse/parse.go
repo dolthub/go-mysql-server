@@ -2325,6 +2325,12 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 			return nil, err
 		}
 		return function.NewSubstring(name, from, to)
+	case *sqlparser.CurTimeFuncExpr:
+		fsp, err := ExprToExpression(ctx, v.Fsp)
+		if err != nil {
+			return nil, err
+		}
+		return function.NewCurrTimestamp(fsp)
 	case *sqlparser.TrimExpr:
 		var (
 			pat sql.Expression

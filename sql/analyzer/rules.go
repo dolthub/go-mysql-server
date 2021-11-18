@@ -91,6 +91,7 @@ var OnceAfterDefault = []Rule{
 	{"pushdown_projections", pushdownProjections},
 	{"set_join_scope_len", setJoinScopeLen},
 	{"erase_projection", eraseProjection},
+	{"insert_topn", insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},

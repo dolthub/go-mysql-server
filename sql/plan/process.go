@@ -101,24 +101,30 @@ func (p *QueryProcess) DebugString() string {
 // shouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
 // any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
 func (p *QueryProcess) shouldSetFoundRows() bool {
-	var limit *Limit
+	var fromLimit *bool
+	var fromTopN *bool
 	Inspect(p.Child, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *StartTransaction:
 			return true
 		case *Limit:
-			limit = n
-			return false
+			fromLimit = &n.CalcFoundRows
+			return true
+		case *TopN:
+			fromTopN = &n.CalcFoundRows
+			return true
 		default:
-			return false
+			return true
 		}
 	})
 
-	if limit == nil {
+	if fromLimit == nil && fromTopN == nil {
 		return true
 	}
-
-	return !limit.CalcFoundRows
+	if fromTopN != nil {
+		return !*fromTopN
+	}
+	return !*fromLimit
 }
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process

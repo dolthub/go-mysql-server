@@ -58,6 +58,11 @@ func (l *Limit) Resolved() bool {
 	return l.UnaryNode.Child.Resolved() && l.Limit.Resolved()
 }
 
+func (l Limit) WithCalcFoundRows(v bool) *Limit {
+	l.CalcFoundRows = v
+	return &l
+}
+
 // RowIter implements the Node interface.
 func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Limit", opentracing.Tag{Key: "limit", Value: l.Limit})

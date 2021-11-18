@@ -84,6 +84,8 @@ func assertResultType(t *testing.T, expectedType sql.Type, result interface{}) {
 		assert.Equal(t, expectedType, sql.Datetime)
 	case bool:
 		assert.Equal(t, expectedType, sql.Boolean)
+	case []byte:
+		assert.Equal(t, expectedType, sql.LongBlob)
 	default:
 		assert.Fail(t, "unhandled case")
 	}
