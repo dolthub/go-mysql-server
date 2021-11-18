@@ -462,14 +462,61 @@ func TestConvertCrossJoin(t *testing.T) {
 		{Name: "c", Type: sql.Int64, Source: "foo"},
 		{Name: "d", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
 	})
-	tests := []analyzerFnTestCase{
-		{
-			name: "convert cross join with simple equality filter",
+
+	fieldAx := expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false)
+	fieldBy := expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)
+	litOne := expression.NewLiteral(1, sql.Int64)
+
+	matching := []sql.Expression{
+		expression.NewEquals(fieldAx, fieldBy),
+		expression.NewNullSafeEquals(fieldAx, fieldBy),
+		expression.NewGreaterThan(fieldAx, fieldBy),
+		expression.NewGreaterThanOrEqual(fieldAx, fieldBy),
+		expression.NewNullSafeGreaterThan(fieldAx, fieldBy),
+		expression.NewNullSafeGreaterThanOrEqual(fieldAx, fieldBy),
+		expression.NewLessThan(fieldAx, fieldBy),
+		expression.NewNullSafeLessThan(fieldAx, fieldBy),
+		expression.NewLessThanOrEqual(fieldAx, fieldBy),
+		expression.NewNullSafeLessThanOrEqual(fieldAx, fieldBy),
+		expression.NewAnd(
+			expression.NewEquals(fieldAx, fieldBy),
+			expression.NewEquals(fieldAx, litOne),
+		),
+		expression.NewOr(
+			expression.NewEquals(fieldAx, fieldBy),
+			expression.NewEquals(litOne, litOne),
+		),
+		expression.NewNot(
+			expression.NewEquals(fieldAx, fieldBy),
+		),
+		expression.NewIsFalse(
+			expression.NewEquals(fieldAx, fieldBy),
+		),
+		expression.NewIsTrue(
+			expression.NewEquals(fieldAx, fieldBy),
+		),
+		expression.NewIsNull(
+			expression.NewEquals(fieldAx, fieldBy),
+		),
+	}
+
+	nonMatching := []sql.Expression{
+		expression.NewEquals(
+			expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+			expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
+		),
+		expression.NewEquals(
+			expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+			aggregation.NewMax(expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)),
+		),
+	}
+
+	tests := make([]analyzerFnTestCase, 0, len(matching)+len(nonMatching))
+	for _, t := range matching {
+		new := analyzerFnTestCase{
+			name: t.String(),
 			node: plan.NewFilter(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
+				t,
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(tableA, nil, nil),
 					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
@@ -478,235 +525,30 @@ func TestConvertCrossJoin(t *testing.T) {
 			expected: plan.NewInnerJoin(
 				plan.NewResolvedTable(tableA, nil, nil),
 				plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
+				t,
 			),
-		},
-		// this literal filter should probably be pushed below the join by another transform
-		{
-			name: "convert cross join with AND equality filter",
+		}
+		tests = append(tests, new)
+	}
+	for _, t := range nonMatching {
+		new := analyzerFnTestCase{
+			name: t.String(),
 			node: plan.NewFilter(
-				expression.NewAnd(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewLiteral(1, sql.Int64),
-					),
-				),
+				t,
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(tableA, nil, nil),
 					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
 				),
 			),
 			expected: plan.NewFilter(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewLiteral(1, sql.Int64),
-				),
-				plan.NewInnerJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-				),
-			),
-		},
-		// another transform should eliminate the join when we have an or equality that's statically true
-		{
-			name: "convert cross join with OR equality filter",
-			node: plan.NewFilter(
-				expression.NewOr(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-					expression.NewEquals(
-						expression.NewLiteral(1, sql.Int64),
-						expression.NewLiteral(1, sql.Int64),
-					),
-				),
+				t,
 				plan.NewCrossJoin(
 					plan.NewResolvedTable(tableA, nil, nil),
 					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
 				),
 			),
-			expected: plan.NewInnerJoin(
-				plan.NewResolvedTable(tableA, nil, nil),
-				plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-			),
-		},
-		{
-			name: "convert cross join with NOT equality filter",
-			node: plan.NewFilter(
-				expression.NewNot(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-			expected: plan.NewInnerJoin(
-				plan.NewResolvedTable(tableA, nil, nil),
-				plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				expression.NewNot(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-				),
-			),
-		},
-		{
-			name: "cannot convert cross join to inner if equality only references one table",
-			node: plan.NewFilter(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-			expected: plan.NewFilter(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-		},
-		{
-			name: "cannot convert cross join to inner if equality children are not directly join columns",
-			node: plan.NewFilter(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-					aggregation.NewMax(expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-			expected: plan.NewFilter(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-					aggregation.NewMax(expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-		},
-		{
-			name: "convert cross join to inner if equality is range scan",
-			node: plan.NewFilter(
-				expression.NewGreaterThanOrEqual(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-			expected: plan.NewInnerJoin(
-				plan.NewResolvedTable(tableA, nil, nil),
-				plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				expression.NewGreaterThanOrEqual(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-			),
-		},
-		{
-			name: "convert cross join to inner if equality is null safe range scan",
-			node: plan.NewFilter(
-				expression.NewNullSafeGreaterThanOrEqual(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-			expected: plan.NewInnerJoin(
-				plan.NewResolvedTable(tableA, nil, nil),
-				plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				expression.NewNullSafeGreaterThanOrEqual(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-			),
-		},
-		{
-			name: "convert cross join to inner if equality is boolean false expression",
-			node: plan.NewFilter(
-				expression.NewIsFalse(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-			expected: plan.NewInnerJoin(
-				plan.NewResolvedTable(tableA, nil, nil),
-				plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				expression.NewNot(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-				),
-			),
-		},
-		{
-			name: "convert cross join to inner if equality is boolean true expression",
-			node: plan.NewFilter(
-				expression.NewIsTrue(
-					expression.NewEquals(
-						expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-						expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-					),
-				),
-				plan.NewCrossJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				),
-			),
-			expected: plan.NewInnerJoin(
-				plan.NewResolvedTable(tableA, nil, nil),
-				plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
-					expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false),
-				),
-			),
-		},
+		}
+		tests = append(tests, new)
 	}
 	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule("replace_cross_joins"))
 }
