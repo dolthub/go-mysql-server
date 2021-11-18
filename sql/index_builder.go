@@ -31,7 +31,7 @@ type IndexBuilder struct {
 	isInvalid    bool
 	err          error
 	colExprTypes map[string]Type
-	ranges       map[string]RangeColumn
+	ranges       map[string][]RangeColumnExpr
 }
 
 // NewIndexBuilder returns a new IndexBuilder. Used internally to construct a range that will later be passed to
@@ -46,7 +46,7 @@ func NewIndexBuilder(ctx *Context, idx Index) *IndexBuilder {
 		isInvalid:    false,
 		err:          nil,
 		colExprTypes: colExprTypes,
-		ranges:       make(map[string]RangeColumn),
+		ranges:       make(map[string][]RangeColumnExpr),
 	}
 }
 
@@ -154,12 +154,12 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 	return b
 }
 
-// Range returns the range for this index builder. If the builder is invalid for any reason then this returns nil.
-func (b *IndexBuilder) Range() Range {
+// Ranges returns all ranges for this index builder. If the builder is invalid for any reason then this returns nil.
+func (b *IndexBuilder) Ranges() RangeCollection {
 	if b.err != nil || b.isInvalid {
 		return nil
 	}
-	var rangeCollection Range
+	var allColumns [][]RangeColumnExpr
 	for _, colExpr := range b.idx.Expressions() {
 		ranges, ok := b.ranges[colExpr]
 		if !ok {
@@ -167,9 +167,34 @@ func (b *IndexBuilder) Range() Range {
 			// not have an entry for then we've hit all the ranges.
 			break
 		}
-		rangeCollection = append(rangeCollection, ranges)
+		allColumns = append(allColumns, ranges)
 	}
-	return rangeCollection
+
+	// In the builder ranges map we store multiple column expressions per column, however we want all permutations to
+	// be their own range, so here we're creating a new range for every permutation.
+	colCounts := make([]int, len(allColumns))
+	permutation := make([]int, len(allColumns))
+	for i, rangeColumn := range allColumns {
+		colCounts[i] = len(rangeColumn)
+	}
+	var ranges []Range
+	exit := false
+	for !exit {
+		exit = true
+		currentRange := make(Range, len(allColumns))
+		for colIdx, exprCount := range colCounts {
+			permutation[colIdx] = (permutation[colIdx] + 1) % exprCount
+			if permutation[colIdx] != 0 {
+				exit = false
+				break
+			}
+		}
+		for colIdx, exprIdx := range permutation {
+			currentRange[colIdx] = allColumns[colIdx][exprIdx]
+		}
+		ranges = append(ranges, currentRange)
+	}
+	return ranges
 }
 
 // Build constructs a new IndexLookup based on the ranges that have been built internally by this builder.
@@ -179,7 +204,11 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	} else if b.isInvalid {
 		return nil, nil
 	} else {
-		return b.idx.NewLookup(ctx, b.Range())
+		ranges := b.Ranges()
+		if len(ranges) == 0 {
+			return nil, nil
+		}
+		return b.idx.NewLookup(ctx, ranges...)
 	}
 }
 

@@ -235,7 +235,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	}
 
 	if err != nil {
-		return i.ignoreOrClose(err)
+		return i.ignoreOrClose(row, err)
 	}
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
@@ -246,7 +246,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 
 	err = i.validateNullability(i.schema, row)
 	if err != nil {
-		return i.ignoreOrClose(err)
+		return i.ignoreOrClose(row, err)
 	}
 
 	// apply check constraints
@@ -287,13 +287,13 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 			if err := i.replacer.Insert(i.ctx, row); err != nil {
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
 					_ = i.rowSource.Close(i.ctx)
-					return nil, err
+					return nil, sql.NewWrappedInsertError(row, err)
 				}
 
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
 				if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
 					_ = i.rowSource.Close(i.ctx)
-					return nil, err
+					return nil, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
 				for i := 0; i < len(ue.Existing); i++ {
@@ -307,7 +307,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	} else {
 		if err := i.inserter.Insert(i.ctx, row); err != nil {
 			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
-				return i.ignoreOrClose(err)
+				return i.ignoreOrClose(row, err)
 			}
 
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
@@ -413,12 +413,16 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
-func (i *insertIter) ignoreOrClose(err error) (sql.Row, error) {
+func (i *insertIter) ignoreOrClose(row sql.Row, err error) (sql.Row, error) {
 	if i.ignore {
-		return nil, i.warnOnIgnorableError(err)
+		err = i.warnOnIgnorableError(err)
+		if err != nil {
+			return nil, sql.NewWrappedInsertError(row, err)
+		}
+		return nil, nil
 	} else {
 		_ = i.rowSource.Close(i.ctx)
-		return nil, err
+		return nil, sql.NewWrappedInsertError(row, err)
 	}
 }
 

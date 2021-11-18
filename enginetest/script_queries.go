@@ -1295,6 +1295,21 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "JOIN on non-index-prefix columns do not panic (Dolt Issue #2366)",
+		SetUpScript: []string{
+			"CREATE TABLE `player_season_stat_totals` (`player_id` int NOT NULL, `team_id` int NOT NULL, `season_id` int NOT NULL, `minutes` int, `games_started` int, `games_played` int, `2pm` int, `2pa` int, `3pm` int, `3pa` int, `ftm` int, `fta` int, `ast` int, `stl` int, `blk` int, `tov` int, `pts` int, `orb` int, `drb` int, `trb` int, `pf` int, `season_type_id` int NOT NULL, `league_id` int NOT NULL DEFAULT 0, PRIMARY KEY (`player_id`,`team_id`,`season_id`,`season_type_id`,`league_id`));",
+			"CREATE TABLE `team_seasons` (`team_id` int NOT NULL, `league_id` int NOT NULL, `season_id` int NOT NULL, `prefix` varchar(100), `nickname` varchar(100), `abbreviation` varchar(100), `city` varchar(100), `state` varchar(100), `country` varchar(100), PRIMARY KEY (`team_id`,`league_id`,`season_id`));",
+			"INSERT INTO player_season_stat_totals VALUES (1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1);",
+			"INSERT INTO team_seasons VALUES (1,1,1,'','','','','','');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT stats.* FROM player_season_stat_totals stats LEFT JOIN team_seasons ON team_seasons.team_id = stats.team_id AND team_seasons.season_id = stats.season_id;",
+				Expected: []sql.Row{{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{

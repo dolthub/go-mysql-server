@@ -365,6 +365,10 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 	var code int
 	var sqlState string = ""
 
+	if w, ok := err.(WrappedInsertError); ok {
+		return CastSQLError(w.Cause)
+	}
+
 	switch {
 	case ErrTableNotFound.Is(err):
 		code = mysql.ERNoSuchTable
@@ -431,4 +435,20 @@ func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
 
 func (ue UniqueKeyError) Error() string {
 	return fmt.Sprintf("%s", ue.keyStr)
+}
+
+type WrappedInsertError struct {
+	OffendingRow Row
+	Cause error
+}
+
+func NewWrappedInsertError(r Row, err error) WrappedInsertError {
+	return WrappedInsertError{
+		OffendingRow: r,
+		Cause: err,
+	}
+}
+
+func (w WrappedInsertError) Error() string {
+	return w.Cause.Error()
 }

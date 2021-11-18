@@ -81,6 +81,7 @@ func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 		like = expression.NewLike(
 			expression.NewGetField(0, sql.LongText, "", false),
 			expression.NewGetField(1, sql.LongText, sv.pattern, false),
+			nil,
 		)
 	}
 

@@ -593,10 +593,10 @@ func IsTime(t Type) bool {
 }
 
 // IsTuple checks if t is a tuple type.
-// Note that tupleType instances with just 1 value are not considered
+// Note that TupleType instances with just 1 value are not considered
 // as a tuple, but a parenthesized value.
 func IsTuple(t Type) bool {
-	v, ok := t.(tupleType)
+	v, ok := t.(TupleType)
 	return ok && len(v) > 1
 }
 
@@ -608,7 +608,7 @@ func IsUnsigned(t Type) bool {
 // NumColumns returns the number of columns in a type. This is one for all
 // types, except tuples.
 func NumColumns(t Type) int {
-	v, ok := t.(tupleType)
+	v, ok := t.(TupleType)
 	if !ok {
 		return 1
 	}
@@ -623,8 +623,8 @@ func ErrIfMismatchedColumns(t1, t2 Type) error {
 	if NumColumns(t1) != NumColumns(t2) {
 		return ErrInvalidOperandColumns.New(NumColumns(t1), NumColumns(t2))
 	}
-	v1, ok1 := t1.(tupleType)
-	v2, ok2 := t2.(tupleType)
+	v1, ok1 := t1.(TupleType)
+	v2, ok2 := t2.(TupleType)
 	if ok1 && ok2 {
 		for i := range v1 {
 			if err := ErrIfMismatchedColumns(v1[i], v2[i]); err != nil {
@@ -638,7 +638,7 @@ func ErrIfMismatchedColumns(t1, t2 Type) error {
 // ErrIfMismatchedColumnsInTuple returns an operand error is t2 is not a tuple
 // type whose subtypes are structurally identical to t1.
 func ErrIfMismatchedColumnsInTuple(t1, t2 Type) error {
-	v2, ok2 := t2.(tupleType)
+	v2, ok2 := t2.(TupleType)
 	if !ok2 {
 		return ErrInvalidOperandColumns.New(NumColumns(t1), NumColumns(t2))
 	}

@@ -17,6 +17,7 @@ package expression_test
 import (
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -185,6 +186,212 @@ func TestNotInTuple(t *testing.T) {
 			} else {
 				require.NoError(err)
 				require.Equal(tt.result, result)
+			}
+		})
+	}
+}
+
+func TestHashInTuple(t *testing.T) {
+	testCases := []struct {
+		name      string
+		left      sql.Expression
+		right     sql.Expression
+		row       sql.Row
+		result    interface{}
+		staticErr *errors.Kind
+		evalErr   *errors.Kind
+	}{
+		{
+			"left is nil",
+			expression.NewLiteral(nil, sql.Null),
+			expression.NewTuple(
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			nil,
+			nil,
+			nil,
+		},
+		{
+			"left and right don't have the same cols; right has tuple",
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			false,
+			nil,
+			nil,
+		},
+		{
+			"left and right don't have the same cols; left has tuple",
+			expression.NewTuple(
+				expression.NewLiteral(1, sql.Int64),
+				expression.NewLiteral(0, sql.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			nil,
+			false,
+			nil,
+			nil,
+		},
+		{
+			"right is an unsupported operand",
+			expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(int64(2), sql.Int64),
+			nil,
+			nil,
+			expression.ErrUnsupportedHashInOperand,
+			nil,
+		},
+		{
+			"left is in right",
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+				expression.NewLiteral(int64(0), sql.Int64),
+			),
+			sql.NewRow(int64(1)),
+			true,
+			nil,
+			nil,
+		},
+		{
+			"left is not in right",
+			expression.NewGetField(0, sql.Int64, "foo", false),
+			expression.NewTuple(
+				expression.NewLiteral(int64(0), sql.Int64),
+				expression.NewLiteral(int64(2), sql.Int64),
+			),
+			sql.NewRow(int64(1), int64(3)),
+			false,
+			nil,
+			nil,
+		},
+		{
+			"left tuple is in right",
+			expression.NewTuple(
+				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(0), sql.Int64),
+				),
+			),
+			nil,
+			true,
+			nil,
+			nil,
+		},
+		{
+			"heterogeneous left tuple is in right",
+			expression.NewTuple(
+				expression.NewLiteral(int64(2), sql.Int64),
+				expression.NewLiteral("a", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral("b", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+				),
+				expression.NewTuple(
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral("a", sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20)),
+				),
+			),
+			nil,
+			true,
+			nil,
+			nil,
+		},
+		{
+			"left get field tuple is in right",
+			expression.NewTuple(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				expression.NewGetField(1, sql.Int64, "foo", false),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewTuple(
+					expression.NewLiteral(int64(1), sql.Int64),
+					expression.NewLiteral(int64(0), sql.Int64),
+				),
+			),
+			sql.NewRow(int64(1), int64(0)),
+			true,
+			nil,
+			nil,
+		},
+		{
+			"left nested tuple is in right",
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral(int64(2), sql.Int64),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewLiteral(int64(1), sql.Int64),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewTuple(
+						expression.NewLiteral(int64(2), sql.Int64),
+						expression.NewLiteral(int64(1), sql.Int64),
+					),
+					expression.NewLiteral(int64(1), sql.Int64),
+				),
+				expression.NewTuple(
+					expression.NewTuple(
+						expression.NewLiteral(int64(1), sql.Int64),
+						expression.NewLiteral(int64(2), sql.Int64),
+					),
+					expression.NewLiteral(int64(0), sql.Int64),
+				),
+			),
+			nil,
+			true,
+			expression.ErrCantHashNestedExpression,
+			nil,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
+			expr, err := expression.NewHashInTuple(tt.left, tt.right)
+			if tt.staticErr != nil {
+				require.Error(err)
+				require.True(tt.staticErr.Is(err))
+			} else {
+				result, err := expr.Eval(sql.NewEmptyContext(), tt.row)
+				if tt.evalErr != nil {
+					require.Error(err)
+					require.True(tt.evalErr.Is(err))
+				} else {
+					require.NoError(err)
+					require.Equal(tt.result, result)
+				}
 			}
 		})
 	}

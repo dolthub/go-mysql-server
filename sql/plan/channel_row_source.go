@@ -20,46 +20,46 @@ import (
 	"io"
 )
 
-type RowIterSource struct {
+type ChannelRowSource struct {
 	schema sql.Schema
 	rowChannel chan sql.Row
 }
 
-func NewRowIterSource(schema sql.Schema, rowChannel chan sql.Row) *RowIterSource {
-	return &RowIterSource{schema: schema, rowChannel: rowChannel}
+func NewRowIterSource(schema sql.Schema, rowChannel chan sql.Row) *ChannelRowSource {
+	return &ChannelRowSource{schema: schema, rowChannel: rowChannel}
 }
 
-var _ sql.Node = (*RowIterSource)(nil)
+var _ sql.Node = (*ChannelRowSource)(nil)
 
-func (r *RowIterSource) Resolved() bool {
+func (c *ChannelRowSource) Resolved() bool {
 	return true
 }
 
-func (r *RowIterSource) String() string {
-	return fmt.Sprintf("RowIterSource()")
+func (c *ChannelRowSource) String() string {
+	return fmt.Sprintf("ChannelRowSource()")
 }
 
-func (r *RowIterSource) Schema() sql.Schema {
-	return r.schema
+func (c *ChannelRowSource) Schema() sql.Schema {
+	return c.schema
 }
 
-func (r *RowIterSource) Children() []sql.Node {
+func (c *ChannelRowSource) Children() []sql.Node {
 	return nil
 }
 
-func (r *RowIterSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (c *ChannelRowSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &channelRowIter{
-		rowChannel: r.rowChannel,
-		ctx: ctx,
+		rowChannel: c.rowChannel,
+		ctx:        ctx,
 	}, nil
 }
 
-func (r *RowIterSource) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *ChannelRowSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
 	}
 
-	return r, nil
+	return c, nil
 }
 
 type channelRowIter struct {
