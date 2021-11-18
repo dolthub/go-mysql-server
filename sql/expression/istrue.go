@@ -23,7 +23,7 @@ import (
 // IsTrue is an expression that checks if an expression is true.
 type IsTrue struct {
 	UnaryExpression
-	invert bool
+	Invert bool
 }
 
 const IsTrueStr = "IS TRUE"
@@ -36,7 +36,7 @@ func NewIsTrue(child sql.Expression) *IsTrue {
 
 // NewIsFalse creates a new IsTrue expression with its boolean sense inverted (IsFalse, effectively).
 func NewIsFalse(child sql.Expression) *IsTrue {
-	return &IsTrue{UnaryExpression: UnaryExpression{child}, invert: true}
+	return &IsTrue{UnaryExpression: UnaryExpression{child}, Invert: true}
 }
 
 // Type implements the Expression interface.
@@ -66,7 +66,7 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	if e.invert {
+	if e.Invert {
 		return !boolVal.(bool), nil
 	}
 	return boolVal, nil
@@ -74,7 +74,7 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 func (e *IsTrue) String() string {
 	isStr := IsTrueStr
-	if e.invert {
+	if e.Invert {
 		isStr = IsFalseStr
 	}
 	return e.Child.String() + " " + isStr
@@ -86,7 +86,7 @@ func (e *IsTrue) WithChildren(children ...sql.Expression) (sql.Expression, error
 		return nil, errors.New("incorrect number of children")
 	}
 
-	if e.invert {
+	if e.Invert {
 		return NewIsFalse(children[0]), nil
 	}
 	return NewIsTrue(children[0]), nil
