@@ -223,7 +223,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 		var found = errors.New("found join condition")
 		_, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
-			// TODO make transform with early exit
+			// TODO make transform with continue option
 			switch e := expr.(type) {
 			case expression.Comparer:
 				if comparisonSatisfiesJoinCondition(e, join) {
