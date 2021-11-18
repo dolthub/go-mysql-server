@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"errors"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -202,13 +204,13 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 }
 
 // replaceCrossJoins replaces a filter nested cross join with an equivalent inner join
+// Shove the whole expression into the new inner join as long as at least one subexpression is
+// a valid join key.
 // Filter(e) -> CrossJoin(a,b) with InnerJoin(a,b,e)
-// We handle AND and OR filters specially to maintain logical equivalence.
 func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}
-
 	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
 		filter, ok := c.Node.(*plan.Filter)
 		if !ok {
@@ -219,24 +221,27 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			return c.Node, nil
 		}
 
-		var foundCond bool
+		var found = errors.New("found join condition")
 		_, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
+			// TODO make transform with early exit
 			switch e := expr.(type) {
 			case expression.Comparer:
-				foundCond = foundCond || comparisonSatisfiesJoinCondition(e, join)
+				if comparisonSatisfiesJoinCondition(e, join) {
+					return expr, found
+				}
 			}
-
 			return expr, nil
 		})
+
+		if errors.Is(found, err) {
+			return plan.NewInnerJoin(join.Left(), join.Right(), filter.Expression), nil
+		}
+
 		if err != nil {
 			return c.Node, err
 		}
 
-		if !foundCond {
-			return c.Node, nil
-		}
-		return plan.NewInnerJoin(join.Left(), join.Right(), filter.Expression), nil
-
+		return c.Node, nil
 	})
 }
 
