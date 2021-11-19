@@ -17,7 +17,6 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -451,16 +450,14 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 
 func TestConvertCrossJoin(t *testing.T) {
 	tableA := memory.NewTable("a", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Int64, Source: "foo"},
-		{Name: "c", Type: sql.Int64, Source: "foo"},
-		{Name: "d", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
+		{Name: "x", Type: sql.Int64, Source: "a"},
+		{Name: "y", Type: sql.Int64, Source: "a"},
+		{Name: "z", Type: sql.Int64, Source: "a"},
 	})
-	tableB := memory.NewTable("a", sql.Schema{
-		{Name: "a", Type: sql.Int64, Source: "foo"},
-		{Name: "b", Type: sql.Int64, Source: "foo"},
-		{Name: "c", Type: sql.Int64, Source: "foo"},
-		{Name: "d", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
+	tableB := memory.NewTable("b", sql.Schema{
+		{Name: "x", Type: sql.Int64, Source: "b"},
+		{Name: "y", Type: sql.Int64, Source: "b"},
+		{Name: "z", Type: sql.Int64, Source: "b"},
 	})
 
 	fieldAx := expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false)
@@ -550,5 +547,72 @@ func TestConvertCrossJoin(t *testing.T) {
 		}
 		tests = append(tests, new)
 	}
-	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule("replace_cross_joins"))
+
+	nested := []analyzerFnTestCase{
+		{
+			name: "nested cross joins",
+			node: plan.NewFilter(
+				expression.NewAnd(
+					expression.NewEquals(
+						fieldAx,
+						fieldBy,
+					),
+					expression.NewAnd(
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+							expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+						),
+						expression.NewAnd(
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+								expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+							),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int64, "c", "x", false),
+								expression.NewGetFieldWithTable(1, sql.Int64, "d", "y", false),
+							),
+						),
+					),
+				),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable(tableA, nil, nil),
+					plan.NewCrossJoin(
+						plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
+						plan.NewCrossJoin(
+							plan.NewTableAlias("c", plan.NewResolvedTable(tableB, nil, nil)),
+							plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
+						),
+						),
+				),
+			),
+			expected: plan.NewFilter(
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+					expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false),
+				),
+				plan.NewInnerJoin(
+					plan.NewResolvedTable(tableA, nil, nil),
+					plan.NewInnerJoin(
+						plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
+						plan.NewInnerJoin(
+							plan.NewTableAlias("c", plan.NewResolvedTable(tableB, nil, nil)),
+							plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
+							expression.NewEquals(
+								expression.NewGetFieldWithTable(0, sql.Int64, "c", "x", false),
+								expression.NewGetFieldWithTable(1, sql.Int64, "d", "y", false),
+							),
+						),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+							expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+						),
+						),
+					expression.NewEquals(fieldAx, fieldBy),
+				),
+			),
+		},
+	}
+	tests = append(tests, nested...)
+
+	runTestCases(t, sql.NewEmptyContext(), nested, NewDefault(sql.NewDatabaseProvider()), getRule("replace_cross_joins"))
 }

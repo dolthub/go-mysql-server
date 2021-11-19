@@ -549,6 +549,22 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.s and b.i = c.s and c.i = d.s and c.i = 4`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.s)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ IndexedJoin(b.i = c.s)\n" +
+			"         ├─ TableAlias(b)\n" +
+			"         │   └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"         └─ IndexedJoin(c.i = d.s)\n" +
+			"             ├─ TableAlias(c)\n" +
+			"             │   └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"             └─ TableAlias(d)\n" +
+			"                 └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i BETWEEN 10 AND 20`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +

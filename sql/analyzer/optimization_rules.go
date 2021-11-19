@@ -15,8 +15,6 @@
 package analyzer
 
 import (
-	"errors"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -158,90 +156,6 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		default:
 			return node, nil
 		}
-	})
-}
-
-func toNameableTable(n sql.Node) (out sql.Nameable, ok bool) {
-	switch n.(type) {
-	case *plan.UnresolvedTable, *plan.TableAlias, *plan.ResolvedTable:
-		out, ok = n.(sql.Nameable)
-	}
-	return out, ok
-}
-
-func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoin) bool {
-	var ok bool
-	lt, ok := toNameableTable(j.Left())
-	if !ok {
-		return false
-	}
-	rt, ok := toNameableTable(j.Right())
-	if !ok {
-		return false
-	}
-
-	var re, le *expression.GetField
-	switch e := expr.(type) {
-	case *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
-		*expression.GreaterThanOrEqual, *expression.NullSafeGreaterThanOrEqual,
-		*expression.NullSafeGreaterThan, *expression.LessThan, *expression.LessThanOrEqual,
-		*expression.NullSafeLessThanOrEqual, *expression.NullSafeLessThan:
-		ce, ok := e.(expression.Comparer)
-		if !ok {
-			return false
-		}
-		le, ok = ce.Left().(*expression.GetField)
-		if !ok {
-			return false
-		}
-		re, ok = ce.Right().(*expression.GetField)
-		if !ok {
-			return false
-		}
-	}
-	return le.Table() == lt.Name() && re.Table() == rt.Name() ||
-		le.Table() == rt.Name() && re.Table() == lt.Name()
-}
-
-// replaceCrossJoins replaces a filter nested cross join with an equivalent inner join
-// Shove the whole expression into the new inner join as long as at least one subexpression is
-// a valid join key.
-// Filter(e) -> CrossJoin(a,b) with InnerJoin(a,b,e)
-func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	if !n.Resolved() {
-		return n, nil
-	}
-	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
-		filter, ok := c.Node.(*plan.Filter)
-		if !ok {
-			return c.Node, nil
-		}
-		join, ok := filter.Child.(*plan.CrossJoin)
-		if !ok {
-			return c.Node, nil
-		}
-
-		var found = errors.New("found join condition")
-		_, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
-			// TODO make transform with continue option
-			switch e := expr.(type) {
-			case expression.Comparer:
-				if comparisonSatisfiesJoinCondition(e, join) {
-					return expr, found
-				}
-			}
-			return expr, nil
-		})
-
-		if errors.Is(found, err) {
-			return plan.NewInnerJoin(join.Left(), join.Right(), filter.Expression), nil
-		}
-
-		if err != nil {
-			return c.Node, err
-		}
-
-		return c.Node, nil
 	})
 }
 
