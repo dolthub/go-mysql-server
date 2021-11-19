@@ -70,7 +70,6 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 		dstSchema := insertable.Schema()
 
-
 		// normalize the column name
 		columnNames := make([]string, len(insert.ColumnNames))
 		for i, name := range insert.ColumnNames {
