@@ -20,11 +20,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// getFilterConjugates does a BFS to split a filter expression into
+// getFilterDisjunctions does a BFS to split a filter expression into
 // conjugate expression trees (or predicate leaves) that can be rearranged
 // without breaking logical equivalence.
-func getFilterConjugates(f *plan.Filter) []sql.Expression {
-	conjugates := make([]sql.Expression, 0, 1)
+func getFilterDisjunctions(f *plan.Filter) []sql.Expression {
+	disjunctions := make([]sql.Expression, 0, 1)
 	queue := f.Expressions()
 	for len(queue) > 0 {
 		expr := queue[0]
@@ -33,10 +33,10 @@ func getFilterConjugates(f *plan.Filter) []sql.Expression {
 		case *expression.And:
 			queue = append(queue, e.Left, e.Right)
 		default:
-			conjugates = append(conjugates, e)
+			disjunctions = append(disjunctions, e)
 		}
 	}
-	return conjugates
+	return disjunctions
 }
 
 // comparisonSatisfiesJoinCondition checks a) whether a comparison is a valid join predicate,
@@ -70,10 +70,10 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 		rCols.Contains(le.Name(), le.Table()) && lCols.Contains(re.Name(), re.Table())
 }
 
-// conjugateAppliesToJoin traverses a conjugate's predicate tree, checking if any comparison
-// satisfies the join condition. The input conjugate has already been maximally split,
+// expressionCoversJoin checks whether a subexpressions's comparison predicate
+// satisfies the join condition. The input conjunctions have already been split,
 // so we do not care which predicate satisfies the expression.
-func conjugateAppliesToJoin(j *plan.CrossJoin, c sql.Expression) (found bool) {
+func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
 	return expression.TraverseUp(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
@@ -85,12 +85,10 @@ func conjugateAppliesToJoin(j *plan.CrossJoin, c sql.Expression) (found bool) {
 
 // replaceCrossJoins recursively replaces filter nested cross joins with equivalent inner joins.
 // There are 3 phases after we identify a Filter -> ... -> CrossJoin pattern.
-// 1) Build a list of separable conjugates. Conjugates in this context are maximally separable predicate trees.
-//    Traversing in a top-down fashion, we split AND expressions until we hit leaf predicates or
-//    non-separable expressions (like OR).
-// 2) For every CrossJoin, check whether a subset of conjugates can be applied as a join condition,
-//    and create a new InnerJoin with the matching conjugate expressions.
-// 3) Remove conjugates from the parent Filter that have been pushed into InnerJoins.
+// 1) Build a list of disjunct expressions. Disjunctions are build by top-down splitting conjunctions (AND).
+// 2) For every CrossJoin, check whether a subset of disjuncts covers as join conditions,
+//    and create a new InnerJoin with the matching disjunct expressions.
+// 3) Remove disjuncts from the parent Filter that have been pushed into InnerJoins.
 func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
@@ -98,18 +96,18 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		switch f := n.(type) {
 		case *plan.Filter:
-			var conjugates []sql.Expression
-			var conjToRemove map[int]struct{}
+			var disjuncts []sql.Expression
+			var coveringDisjuncts map[int]struct{}
 			newF, err := plan.TransformUp(f, func(n sql.Node) (sql.Node, error) {
 				switch j := n.(type) {
 				case *plan.CrossJoin:
-					if conjugates == nil {
-						conjugates = getFilterConjugates(f)
-						conjToRemove = make(map[int]struct{}, len(conjugates))
+					if disjuncts == nil {
+						disjuncts = getFilterDisjunctions(f)
+						coveringDisjuncts = make(map[int]struct{}, len(disjuncts))
 					}
-					joinConjs := make([]int, 0, len(conjugates))
-					for i, c := range conjugates {
-						if conjugateAppliesToJoin(j, c) {
+					joinConjs := make([]int, 0, len(disjuncts))
+					for i, c := range disjuncts {
+						if expressionCoversJoin(c, j) {
 							joinConjs = append(joinConjs, i)
 						}
 					}
@@ -118,8 +116,8 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 					}
 					newExprs := make([]sql.Expression, len(joinConjs))
 					for i, v := range joinConjs {
-						conjToRemove[v] = struct{}{}
-						newExprs[i] = conjugates[v]
+						coveringDisjuncts[v] = struct{}{}
+						newExprs[i] = disjuncts[v]
 					}
 					return plan.NewInnerJoin(j.Left(), j.Right(), expression.JoinAnd(newExprs...)), nil
 				}
@@ -130,7 +128,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 
 			// only alter the Filter expression tree if we transferred predicates to an InnerJoin
-			if len(conjToRemove) == 0 {
+			if len(coveringDisjuncts) == 0 {
 				return f, nil
 			}
 
@@ -140,13 +138,13 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 
 			// remove Filter if all expressions were transferred to joins
-			if len(conjugates) == len(conjToRemove) {
+			if len(disjuncts) == len(coveringDisjuncts) {
 				return outFilter.Child, nil
 			}
 
-			newFilterExprs := make([]sql.Expression, 0, len(conjugates)-len(conjToRemove))
-			for i, e := range conjugates {
-				if _, ok := conjToRemove[i]; ok {
+			newFilterExprs := make([]sql.Expression, 0, len(disjuncts)-len(coveringDisjuncts))
+			for i, e := range disjuncts {
+				if _, ok := coveringDisjuncts[i]; ok {
 					continue
 				}
 				newFilterExprs = append(newFilterExprs, e)

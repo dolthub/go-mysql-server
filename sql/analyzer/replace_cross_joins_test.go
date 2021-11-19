@@ -236,20 +236,20 @@ func TestConvertCrossJoin(t *testing.T) {
 				),
 			),
 			expected: plan.NewInnerJoin(
-					plan.NewResolvedTable(tableA, nil, nil),
-					plan.NewInnerJoin(
-						plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
-						plan.NewCrossJoin(
-							plan.NewTableAlias("c", plan.NewResolvedTable(tableB, nil, nil)),
-							plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
-						),
-						expression.NewEquals(
-							expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
-							expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
-						),
+				plan.NewResolvedTable(tableA, nil, nil),
+				plan.NewInnerJoin(
+					plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
+					plan.NewCrossJoin(
+						plan.NewTableAlias("c", plan.NewResolvedTable(tableB, nil, nil)),
+						plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
 					),
-					expression.NewEquals(fieldAx, fieldBy),
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+						expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+					),
 				),
+				expression.NewEquals(fieldAx, fieldBy),
+			),
 		},
 	}
 	tests = append(tests, nested...)
