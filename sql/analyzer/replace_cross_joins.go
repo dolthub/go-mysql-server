@@ -74,14 +74,13 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 // satisfies the join condition. The input conjugate has already been maximally split,
 // so we do not care which predicate satisfies the expression.
 func conjugateAppliesToJoin(j *plan.CrossJoin, c sql.Expression) (found bool) {
-	_, _ = expression.TransformUp(c, func(expr sql.Expression) (sql.Expression, error) {
+	return expression.TraverseUp(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
-			found = found || comparisonSatisfiesJoinCondition(e, j)
+			return comparisonSatisfiesJoinCondition(e, j)
 		}
-		return expr, nil
+		return false
 	})
-	return
 }
 
 // replaceCrossJoins recursively replaces filter nested cross joins with equivalent inner joins.
@@ -100,13 +99,13 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		switch f := n.(type) {
 		case *plan.Filter:
 			var conjugates []sql.Expression
-
-			conjToRemove := make(map[int]struct{}, len(conjugates))
+			var conjToRemove map[int]struct{}
 			newF, err := plan.TransformUp(f, func(n sql.Node) (sql.Node, error) {
 				switch j := n.(type) {
 				case *plan.CrossJoin:
 					if conjugates == nil {
 						conjugates = getFilterConjugates(f)
+						conjToRemove = make(map[int]struct{}, len(conjugates))
 					}
 					joinConjs := make([]int, 0, len(conjugates))
 					for i, c := range conjugates {

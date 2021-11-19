@@ -15,6 +15,8 @@
 package expression
 
 import (
+	"errors"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -49,6 +51,23 @@ func TransformUp(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, err
 	}
 
 	return f(e)
+}
+
+// TraverseUp traverses the given tree from the
+// bottom up, breaking if stop = true is returned
+func TraverseUp(node sql.Expression, f func(sql.Expression) bool) bool {
+	stop := errors.New("stop")
+	wrap := func(n sql.Expression) (sql.Expression, error) {
+		ok := f(n)
+		if ok {
+			return nil, stop
+		}
+		return n, nil
+	}
+	_, err := TransformUp(node, func(node sql.Expression) (sql.Expression, error) {
+		return wrap(node)
+	})
+	return errors.Is(err, stop)
 }
 
 // Clone duplicates an existing sql.Expression, returning new nodes with the
