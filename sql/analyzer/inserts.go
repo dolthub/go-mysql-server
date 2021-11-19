@@ -114,8 +114,7 @@ func existsNonZeroValueCount(values sql.Node) bool {
 			}
 		}
 	default:
-		// TODO: what to do for non values?
-		return false
+		return true
 	}
 	return false
 }
