@@ -156,7 +156,7 @@ func TestConvertCrossJoin(t *testing.T) {
 			),
 		},
 		{
-			name: "nested cross joins",
+			name: "nested cross joins full conversion",
 			node: plan.NewFilter(
 				expression.NewAnd(
 					expression.NewEquals(fieldAx, fieldBy),
@@ -213,6 +213,43 @@ func TestConvertCrossJoin(t *testing.T) {
 					expression.NewEquals(fieldAx, fieldBy),
 				),
 			),
+		},
+		{
+			name: "nested cross joins partial conversion",
+			node: plan.NewFilter(
+				expression.NewAnd(
+					expression.NewEquals(fieldAx, fieldBy),
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+						expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+					),
+				),
+				plan.NewCrossJoin(
+					plan.NewResolvedTable(tableA, nil, nil),
+					plan.NewCrossJoin(
+						plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
+						plan.NewCrossJoin(
+							plan.NewTableAlias("c", plan.NewResolvedTable(tableB, nil, nil)),
+							plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
+						),
+					),
+				),
+			),
+			expected: plan.NewInnerJoin(
+					plan.NewResolvedTable(tableA, nil, nil),
+					plan.NewInnerJoin(
+						plan.NewTableAlias("b", plan.NewResolvedTable(tableB, nil, nil)),
+						plan.NewCrossJoin(
+							plan.NewTableAlias("c", plan.NewResolvedTable(tableB, nil, nil)),
+							plan.NewTableAlias("d", plan.NewResolvedTable(tableB, nil, nil)),
+						),
+						expression.NewEquals(
+							expression.NewGetFieldWithTable(0, sql.Int64, "b", "x", false),
+							expression.NewGetFieldWithTable(1, sql.Int64, "c", "y", false),
+						),
+					),
+					expression.NewEquals(fieldAx, fieldBy),
+				),
 		},
 	}
 	tests = append(tests, nested...)

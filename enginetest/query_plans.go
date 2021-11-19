@@ -586,6 +586,25 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.s AND b.i = c.s`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ InnerJoin(b.i = c.s)\n" +
+			"     │   ├─ InnerJoin(a.i = b.s)\n" +
+			"     │   │   ├─ Projected table access on [i s]\n" +
+			"     │   │   │   └─ TableAlias(a)\n" +
+			"     │   │   │       └─ Table(mytable)\n" +
+			"     │   │   └─ Projected table access on [i s]\n" +
+			"     │   │       └─ TableAlias(b)\n" +
+			"     │   │           └─ Table(mytable)\n" +
+			"     │   └─ Projected table access on [s]\n" +
+			"     │       └─ TableAlias(c)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ TableAlias(d)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i BETWEEN 10 AND 20`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
