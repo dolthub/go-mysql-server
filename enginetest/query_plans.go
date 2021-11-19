@@ -549,7 +549,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.s and b.i = c.s and c.i = d.s and c.i = 4`,
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.s AND b.i = c.s AND c.i = d.s AND c.i = 4`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
 			"     ├─ TableAlias(a)\n" +
@@ -558,10 +558,31 @@ var PlanTests = []QueryPlanTest{
 			"         ├─ TableAlias(b)\n" +
 			"         │   └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"         └─ IndexedJoin(c.i = d.s)\n" +
-			"             ├─ TableAlias(c)\n" +
-			"             │   └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"             ├─ Filter(c.i = 4)\n" +
+			"             │   └─ TableAlias(c)\n" +
+			"             │       └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"             └─ TableAlias(d)\n" +
 			"                 └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.s AND b.i = c.s AND (c.i = d.s OR c.i = 4)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin((c.i = d.s) OR (c.i = 4))\n" +
+			"     ├─ InnerJoin(b.i = c.s)\n" +
+			"     │   ├─ InnerJoin(a.i = b.s)\n" +
+			"     │   │   ├─ Projected table access on [i s]\n" +
+			"     │   │   │   └─ TableAlias(a)\n" +
+			"     │   │   │       └─ Table(mytable)\n" +
+			"     │   │   └─ Projected table access on [i s]\n" +
+			"     │   │       └─ TableAlias(b)\n" +
+			"     │   │           └─ Table(mytable)\n" +
+			"     │   └─ Projected table access on [i s]\n" +
+			"     │       └─ TableAlias(c)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ Projected table access on [s]\n" +
+			"         └─ TableAlias(d)\n" +
+			"             └─ Table(mytable)\n" +
 			"",
 	},
 	{

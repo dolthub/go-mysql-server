@@ -16,6 +16,7 @@ package plan
 
 import (
 	"errors"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -102,7 +103,7 @@ func TransformUp(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
 
 // TransformUp applies a transformation function to the given tree from the
 // bottom up.
-func TraverseUp(node sql.Node, f func(sql.Node) bool) (bool) {
+func TraverseUp(node sql.Node, f func(sql.Node) bool) bool {
 	stop := errors.New("stop")
 	wrap := func(n sql.Node) (sql.Node, error) {
 		ok := f(n)
