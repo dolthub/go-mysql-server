@@ -363,33 +363,37 @@ Indexes:
 			continue
 		}
 
-		if ln := len(idx.Expressions()); ln <= len(exprs) && ln > 1 {
-			var used = make(map[int]struct{})
-			var matched []Expression
-			for _, ie := range idx.Expressions() {
-				var found bool
-				for i, e := range exprs {
-					if _, ok := used[i]; ok {
-						continue
-					}
-
-					if ie == e.String() {
-						used[i] = struct{}{}
-						found = true
-						matched = append(matched, e)
-						break
-					}
+		var used = make(map[int]struct{})
+		var matched []Expression
+		for _, ie := range idx.Expressions() {
+			var found bool
+			for i, e := range exprs {
+				if _, ok := used[i]; ok {
+					continue
 				}
 
-				if !found {
-					continue Indexes
+				if ie == e.String() {
+					used[i] = struct{}{}
+					found = true
+					matched = append(matched, e)
+					break
 				}
 			}
 
-			results = append(results, matched)
+			if !found {
+				break
+			}
 		}
+		if len(matched) == 0 {
+			continue Indexes
+		}
+
+		results = append(results, matched)
 	}
 
+	sort.SliceStable(results, func(i, j int) bool {
+		return len(results[i]) > len(results[j])
+	})
 	return results
 }
 

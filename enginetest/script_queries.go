@@ -1275,6 +1275,16 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
 				Expected: []sql.Row{{4, 5, 6, 7}, {5, 6, 7, 8}},
 			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
+				Expected: []sql.Row{{"Filter((test.v3 = 7) AND (test.v2 >= 6))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
+				Expected: []sql.Row{{4, 5, 6, 7}},
+			},
 		},
 	},
 	{

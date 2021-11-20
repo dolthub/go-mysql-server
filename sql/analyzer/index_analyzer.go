@@ -192,31 +192,32 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 	for _, idxes := range r.indexesByTable {
 	Indexes:
 		for _, idx := range idxes {
-			if ln := len(idx.Expressions()); ln <= len(exprs) && ln > 1 {
-				var used = make(map[int]bool)
-				var matched []sql.Expression
-				for _, ie := range idx.Expressions() {
-					var found bool
-					for i, e := range exprs {
-						if used[i] {
-							continue
-						}
-
-						if ie == e.String() {
-							used[i] = true
-							found = true
-							matched = append(matched, e)
-							break
-						}
+			var used = make(map[int]struct{})
+			var matched []sql.Expression
+			for _, ie := range idx.Expressions() {
+				var found bool
+				for i, e := range exprs {
+					if _, ok := used[i]; ok {
+						continue
 					}
 
-					if !found {
-						continue Indexes
+					if ie == e.String() {
+						used[i] = struct{}{}
+						found = true
+						matched = append(matched, e)
+						break
 					}
 				}
 
-				results = append(results, matched)
+				if !found {
+					break
+				}
 			}
+			if len(matched) == 0 {
+				continue Indexes
+			}
+
+			results = append(results, matched)
 		}
 	}
 
@@ -226,7 +227,7 @@ func (r *indexAnalyzer) ExpressionsWithIndexes(db string, exprs ...sql.Expressio
 		results = append(results, indexes...)
 	}
 
-	sort.Slice(results, func(i, j int) bool {
+	sort.SliceStable(results, func(i, j int) bool {
 		return len(results[i]) > len(results[j])
 	})
 	return results

@@ -286,19 +286,14 @@ func getIndexes(
 		exprs := splitConjunction(e)
 
 		// First treat the AND expression as a match on >= 2 columns (for keys that span multiple columns)
-		multiColumnIndexes, err := getMultiColumnIndexes(ctx, exprs, a, ia, tableAliases)
+		multiColumnIndexes, unusedExprs, err := getMultiColumnIndexes(ctx, exprs, a, ia, tableAliases)
 		if err != nil {
 			return nil, err
 		}
 
 		result := multiColumnIndexes
 		// Next try to match the remaining expressions individually
-		for _, e := range exprs {
-			// But don't handle any expressions already captured by used multi-column indexes
-			if indexHasExpression(multiColumnIndexes, normalizeExpression(ctx, tableAliases, e)) {
-				continue
-			}
-
+		for _, e := range unusedExprs {
 			indexes, err := getIndexes(ctx, a, ia, e, tableAliases)
 			if err != nil {
 				return nil, err
@@ -621,9 +616,10 @@ func getMultiColumnIndexes(
 	a *Analyzer,
 	ia *indexAnalyzer,
 	tableAliases TableAliases,
-) (indexLookupsByTable, error) {
-
+) (indexLookupsByTable, []sql.Expression, error) {
 	result := make(indexLookupsByTable)
+	var unusedExprs []sql.Expression
+	usedExprs := make(map[sql.Expression]struct{})
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
 		cols := make([]sql.Expression, len(exps))
@@ -638,11 +634,16 @@ func getMultiColumnIndexes(
 
 		lookup, err := getMultiColumnIndexForExpressions(ctx, a, ia, table, exprList[0], exps, tableAliases)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if lookup == nil {
 			continue
+		}
+
+		exprMap := make(map[string]struct{})
+		for _, exprListItem := range exprList[0] {
+			exprMap[exprListItem.String()] = struct{}{}
 		}
 
 		if _, ok := result[table]; ok {
@@ -650,19 +651,29 @@ func getMultiColumnIndexes(
 				table: lookup,
 			}
 			if !canMergeIndexLookups(result, newResult) {
-				return nil, nil
+				return nil, nil, nil
 			}
 
 			result, err = indexesIntersection(ctx, result, newResult)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		} else {
 			result[table] = lookup
 		}
+		for _, e := range exps {
+			if _, ok := exprMap[e.col.String()]; ok {
+				usedExprs[e.comparison] = struct{}{}
+			}
+		}
 	}
 
-	return result, nil
+	for _, expr := range exprs {
+		if _, ok := usedExprs[expr]; !ok {
+			unusedExprs = append(unusedExprs, expr)
+		}
+	}
+	return result, unusedExprs, nil
 }
 
 func getMultiColumnIndexForExpressions(

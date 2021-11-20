@@ -509,11 +509,17 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 		}
 		return i, nil
 	case string:
+		// Parse first an integer, which allows for more values than float64
 		i, err := strconv.ParseInt(v, 10, 64)
+		if err == nil {
+			return i, nil
+		}
+		// If that fails, try as a float and truncate it to integral
+		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			return 0, ErrInvalidValue.New(v, t.String())
 		}
-		return i, nil
+		return int64(f), nil
 	case bool:
 		if v {
 			return 1, nil

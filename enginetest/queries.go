@@ -382,6 +382,26 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM 
+			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
+		Expected: []sql.Row{
+			{"4.328.904,00"},
+			{"432.053,49"},
+			{"593.288.775,21"},
+			{"5.784.029,37"},
+			{"-4.229.842,12"},
+			{"-0,01"},
+		},
+	},
+	{
+		Query: "SELECT FORMAT(i, 3, 'da_DK') FROM mytable;",
+		Expected: []sql.Row{
+			{"1,000"},
+			{"2,000"},
+			{"3,000"},
+		},
+	},
+	{
 		Query: `SELECT column_0, sum(column_1) FROM 
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
 			group by 1 order by 1`,
@@ -4225,6 +4245,47 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X")`,
+		Expected: []sql.Row{{"XXXXX56789"}},
+	},
+	{
+		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2)`,
+		Expected: []sql.Row{{"0XXXX56789"}},
+	},
+	{
+		Query:    `SELECT REGEXP_REPLACE("0123456789", "[0-4]", "X", 2, 2)`,
+		Expected: []sql.Row{{"01X3456789"}},
+	},
+	{
+		Query:    `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "i")`,
+		Expected: []sql.Row{{"XXXX XXXX XXXX"}},
+	},
+	{
+		Query:    `SELECT REGEXP_REPLACE("TEST test TEST", "[a-z]", "X", 1, 0, "c")`,
+		Expected: []sql.Row{{"TEST XXXX TEST"}},
+	},
+	{
+		Query:    `SELECT REGEXP_REPLACE(CONCAT("abc123"), "[0-4]", "X")`,
+		Expected: []sql.Row{{"abcXXX"}},
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE s LIKE REGEXP_REPLACE("123456%r1o2w", "[0-9]", "")`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT REGEXP_REPLACE(s, "[a-z]", "X") from mytable`,
+		Expected: []sql.Row{
+			{"XXXXX XXX"},
+			{"XXXXXX XXX"},
+			{"XXXXX XXX"},
+		},
+	},
+
+	{
 		Query: "SELECT * FROM newlinetable WHERE s LIKE '%text%'",
 		Expected: []sql.Row{
 			{int64(1), "\nthere is some text in here"},
@@ -6157,6 +6218,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"myview"},
 			{"newlinetable"},
 			{"niltable"},
+			{"one_pk_three_idx"},
 			{"othertable"},
 			{"tabletest"},
 			{"people"},
@@ -6174,6 +6236,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"myview", "VIEW"},
 			{"newlinetable", "BASE TABLE"},
 			{"niltable", "BASE TABLE"},
+			{"one_pk_three_idx", "BASE TABLE"},
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
 			{"people", "BASE TABLE"},
@@ -6301,6 +6364,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"myview"},
 			{"newlinetable"},
 			{"niltable"},
+			{"one_pk_three_idx"},
 			{"othertable"},
 			{"people"},
 			{"tabletest"},
@@ -6445,6 +6509,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", nil},
 			{"newlinetable", nil},
 			{"niltable", nil},
+			{"one_pk_three_idx", nil},
 			{"othertable", nil},
 			{"people", nil},
 			{"tabletest", nil},
@@ -6469,6 +6534,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "one_pk_three_idx", "PRIMARY KEY", "YES"},
 			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "othertable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "people", "PRIMARY KEY", "YES"},
@@ -6494,6 +6560,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "mytable_s", "def", "mydb", "mytable", "s", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "newlinetable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "niltable", "i", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "one_pk_three_idx", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "othertable", "i2", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "dob", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "first_name", 2, nil, nil, nil, nil},
@@ -7177,6 +7244,7 @@ var ShowTableStatusQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
@@ -7217,6 +7285,7 @@ var ShowTableStatusQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
