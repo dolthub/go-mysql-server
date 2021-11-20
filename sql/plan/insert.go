@@ -269,7 +269,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		if row[i] != nil {
 			row[i], err = col.Type.Convert(row[i])
 			if err != nil {
-				return nil, err
+				return nil, sql.NewWrappedInsertError(row, err)
 			}
 		}
 	}

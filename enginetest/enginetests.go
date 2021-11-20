@@ -521,7 +521,7 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestLoadData(t *testing.T, harness Harness) {
 	//TODO: fix LOAD DATA
-	// t.Skip("relies on setting secure_file_priv, which is illegal")
+	t.Skip("relies on setting secure_file_priv, which is illegal")
 	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
 	}
@@ -3115,7 +3115,8 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query stri
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
-		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		err, _ = sql.CastSQLError(err)
+		require.False(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {

@@ -20,25 +20,17 @@ import (
 	"io"
 )
 
-type ErrorHandlingStrategy int
-
-const (
-	Propagate ErrorHandlingStrategy = iota
-	Ignore
-)
-
 type ErrorHandler func (err error)
 
 type ErrorHandlerNode struct {
 	UnaryNode
-	ErrorHandlingStrategy
 	ErrorHandler
 }
 
 var _ sql.Node = (*ErrorHandlerNode)(nil)
 
-func NewErrorHandlerNode(child sql.Node, strategy ErrorHandlingStrategy, errorHandler ErrorHandler) *ErrorHandlerNode {
-	return &ErrorHandlerNode{UnaryNode{Child: child}, strategy, errorHandler}
+func NewErrorHandlerNode(child sql.Node, errorHandler ErrorHandler) *ErrorHandlerNode {
+	return &ErrorHandlerNode{UnaryNode{Child: child}, errorHandler}
 }
 
 func (e ErrorHandlerNode) String() string {
@@ -51,7 +43,7 @@ func (e ErrorHandlerNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		return nil, err
 	}
 
-	return &errorHandlerIter{ri, e.ErrorHandlingStrategy, e.ErrorHandler}, nil
+	return &errorHandlerIter{ri,e.ErrorHandler}, nil
 }
 
 func (e ErrorHandlerNode) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -59,12 +51,11 @@ func (e ErrorHandlerNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
 
-	return NewErrorHandlerNode(children[0], e.ErrorHandlingStrategy, e.ErrorHandler), nil
+	return NewErrorHandlerNode(children[0], e.ErrorHandler), nil
 }
 
 type errorHandlerIter struct {
 	childIter sql.RowIter
-	ErrorHandlingStrategy
 	ErrorHandler
 }
 
@@ -78,11 +69,6 @@ func (e errorHandlerIter) Next() (sql.Row, error) {
 
 	if err != nil {
 		e.ErrorHandler(err)
-		if e.ErrorHandlingStrategy == Propagate {
-			return row, err
-		} else {
-			return row, nil
-		}
 	}
 
 	return row, nil
