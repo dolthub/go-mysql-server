@@ -439,13 +439,13 @@ func (ue UniqueKeyError) Error() string {
 
 type WrappedInsertError struct {
 	OffendingRow Row
-	Cause error
+	Cause        error
 }
 
 func NewWrappedInsertError(r Row, err error) WrappedInsertError {
 	return WrappedInsertError{
 		OffendingRow: r,
-		Cause: err,
+		Cause:        err,
 	}
 }
 

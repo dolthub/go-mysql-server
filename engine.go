@@ -16,8 +16,9 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/memory"
 	"os"
+
+	"github.com/dolthub/go-mysql-server/memory"
 
 	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"

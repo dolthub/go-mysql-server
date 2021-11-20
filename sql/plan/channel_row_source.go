@@ -16,12 +16,13 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type ChannelRowSource struct {
-	schema sql.Schema
+	schema     sql.Schema
 	rowChannel chan sql.Row
 }
 
@@ -64,7 +65,7 @@ func (c *ChannelRowSource) WithChildren(children ...sql.Node) (sql.Node, error) 
 
 type channelRowIter struct {
 	rowChannel chan sql.Row
-	ctx *sql.Context
+	ctx        *sql.Context
 }
 
 var _ sql.RowIter = (*channelRowIter)(nil)

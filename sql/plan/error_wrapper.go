@@ -16,11 +16,12 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
-type ErrorHandler func (err error)
+type ErrorHandler func(err error)
 
 type ErrorHandlerNode struct {
 	UnaryNode
@@ -43,7 +44,7 @@ func (e ErrorHandlerNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		return nil, err
 	}
 
-	return &errorHandlerIter{ri,e.ErrorHandler}, nil
+	return &errorHandlerIter{ri, e.ErrorHandler}, nil
 }
 
 func (e ErrorHandlerNode) WithChildren(children ...sql.Node) (sql.Node, error) {
