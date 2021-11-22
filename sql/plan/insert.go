@@ -267,10 +267,11 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 	// Do any necessary type conversions to the target schema
 	for i, col := range i.schema {
 		if row[i] != nil {
-			row[i], err = col.Type.Convert(row[i])
+			converted, err := col.Type.Convert(row[i]) // allows for better error handling
 			if err != nil {
 				return nil, sql.NewWrappedInsertError(row, err)
 			}
+			row[i] = converted
 		}
 	}
 

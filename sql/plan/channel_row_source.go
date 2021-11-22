@@ -21,33 +21,40 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// ChannelRowSource is a sql.Node that wraps a channel as a sql.RowIter.
 type ChannelRowSource struct {
 	schema     sql.Schema
 	rowChannel chan sql.Row
 }
 
-func NewRowIterSource(schema sql.Schema, rowChannel chan sql.Row) *ChannelRowSource {
+// NewChannelRowSource returns a ChannelRowSource object.
+func NewChannelRowSource(schema sql.Schema, rowChannel chan sql.Row) *ChannelRowSource {
 	return &ChannelRowSource{schema: schema, rowChannel: rowChannel}
 }
 
 var _ sql.Node = (*ChannelRowSource)(nil)
 
+// Resolved implements the sql.Node interface.
 func (c *ChannelRowSource) Resolved() bool {
 	return true
 }
 
+// String implements the sql.Node interface.
 func (c *ChannelRowSource) String() string {
 	return fmt.Sprintf("ChannelRowSource()")
 }
 
+// Schema implements the sql.Node interface.
 func (c *ChannelRowSource) Schema() sql.Schema {
 	return c.schema
 }
 
+// Children implements the sql.Node interface.
 func (c *ChannelRowSource) Children() []sql.Node {
 	return nil
 }
 
+// RowIter implements the sql.Node interface.
 func (c *ChannelRowSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &channelRowIter{
 		rowChannel: c.rowChannel,
@@ -55,6 +62,7 @@ func (c *ChannelRowSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 	}, nil
 }
 
+// WithChildren implements the sql.Node interface.
 func (c *ChannelRowSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 0)
@@ -63,6 +71,7 @@ func (c *ChannelRowSource) WithChildren(children ...sql.Node) (sql.Node, error) 
 	return c, nil
 }
 
+// channelRowIter wraps the channel under the sql.RowIter interface
 type channelRowIter struct {
 	rowChannel chan sql.Row
 	ctx        *sql.Context
@@ -70,6 +79,7 @@ type channelRowIter struct {
 
 var _ sql.RowIter = (*channelRowIter)(nil)
 
+// Next implements the sql.RowIter interface.
 func (c *channelRowIter) Next() (sql.Row, error) {
 	for r := range c.rowChannel {
 		select {
@@ -82,6 +92,7 @@ func (c *channelRowIter) Next() (sql.Row, error) {
 	return nil, io.EOF
 }
 
+// Close implements the sql.RowIter interface.
 func (c *channelRowIter) Close(context *sql.Context) error {
 	return nil
 }
