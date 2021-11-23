@@ -66,6 +66,7 @@ var DefaultRules = []Rule{
 	{"flatten_aggregation_exprs", flattenAggregationExpressions},
 	{"reorder_projection", reorderProjection},
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
+	{"replace_cross_joins", replaceCrossJoins},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},

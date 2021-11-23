@@ -478,6 +478,258 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.s = b.i OR a.i = 1`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin((a.s = b.i) OR (a.i = 1))\n" +
+			"     ├─ Projected table access on [i s]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ Projected table access on [i]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where NOT(a.i = b.s OR a.s = b.i)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin(NOT(((a.i = b.s) OR (a.s = b.i))))\n" +
+			"     ├─ Projected table access on [i s]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ Projected table access on [s i]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
+			"     ├─ Projected table access on [i s]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ Projected table access on [s i]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i >= b.i`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin(a.i >= b.i)\n" +
+			"     ├─ Projected table access on [i s]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ Projected table access on [i]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ Filter(a.i = a.s)\n" +
+			"     │   └─ Projected table access on [i s]\n" +
+			"     │       └─ TableAlias(a)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ IndexedJoin(b.i = c.i)\n" +
+			"         ├─ TableAlias(b)\n" +
+			"         │   └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"         └─ IndexedJoin(c.i = d.i)\n" +
+			"             ├─ Filter(c.i = 2)\n" +
+			"             │   └─ TableAlias(c)\n" +
+			"             │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"             └─ TableAlias(d)\n" +
+			"                 └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin((c.i = d.s) OR (c.i = 2))\n" +
+			"     ├─ InnerJoin(b.i = c.i)\n" +
+			"     │   ├─ InnerJoin(a.i = b.i)\n" +
+			"     │   │   ├─ Projected table access on [i s]\n" +
+			"     │   │   │   └─ TableAlias(a)\n" +
+			"     │   │   │       └─ Table(mytable)\n" +
+			"     │   │   └─ Projected table access on [i]\n" +
+			"     │   │       └─ TableAlias(b)\n" +
+			"     │   │           └─ Table(mytable)\n" +
+			"     │   └─ Projected table access on [i]\n" +
+			"     │       └─ TableAlias(c)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ Projected table access on [s]\n" +
+			"         └─ TableAlias(d)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ InnerJoin(b.i = c.i)\n" +
+			"     │   ├─ InnerJoin(a.i = b.i)\n" +
+			"     │   │   ├─ Projected table access on [i s]\n" +
+			"     │   │   │   └─ TableAlias(a)\n" +
+			"     │   │   │       └─ Table(mytable)\n" +
+			"     │   │   └─ Projected table access on [i]\n" +
+			"     │   │       └─ TableAlias(b)\n" +
+			"     │   │           └─ Table(mytable)\n" +
+			"     │   └─ Projected table access on [i]\n" +
+			"     │       └─ TableAlias(c)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ TableAlias(d)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i OR a.i = b.s`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin((a.i = b.i) OR (a.i = b.s))\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Concat\n" +
+			"             ├─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"             └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where NOT(a.i = b.s OR a.s = b.i)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin(NOT(((a.i = b.s) OR (a.s = b.i))))\n" +
+			"     ├─ Projected table access on [i s]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ Projected table access on [s i]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin((a.i = b.s) OR (a.s = b.i) IS FALSE)\n" +
+			"     ├─ Projected table access on [i s]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ Projected table access on [s i]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i >= b.i`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin(a.i >= b.i)\n" +
+			"     ├─ Projected table access on [i s]\n" +
+			"     │   └─ TableAlias(a)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ Projected table access on [i]\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.i`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ Filter(a.i = a.i)\n" +
+			"     │   └─ Projected table access on [i s]\n" +
+			"     │       └─ TableAlias(a)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ IndexedJoin(a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table(mytable)\n" +
+			"     └─ IndexedJoin(b.i = c.i)\n" +
+			"         ├─ TableAlias(b)\n" +
+			"         │   └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"         └─ IndexedJoin(c.i = d.i)\n" +
+			"             ├─ Filter(c.i = 2)\n" +
+			"             │   └─ TableAlias(c)\n" +
+			"             │       └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"             └─ TableAlias(d)\n" +
+			"                 └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ InnerJoin((c.i = d.s) OR (c.i = 2))\n" +
+			"     ├─ InnerJoin(b.i = c.i)\n" +
+			"     │   ├─ InnerJoin(a.i = b.i)\n" +
+			"     │   │   ├─ Projected table access on [i s]\n" +
+			"     │   │   │   └─ TableAlias(a)\n" +
+			"     │   │   │       └─ Table(mytable)\n" +
+			"     │   │   └─ Projected table access on [i]\n" +
+			"     │   │       └─ TableAlias(b)\n" +
+			"     │   │           └─ Table(mytable)\n" +
+			"     │   └─ Projected table access on [i]\n" +
+			"     │       └─ TableAlias(c)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ Projected table access on [s]\n" +
+			"         └─ TableAlias(d)\n" +
+			"             └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ InnerJoin(b.s = c.s)\n" +
+			"     │   ├─ InnerJoin(a.i = b.i)\n" +
+			"     │   │   ├─ Projected table access on [i s]\n" +
+			"     │   │   │   └─ TableAlias(a)\n" +
+			"     │   │   │       └─ Table(mytable)\n" +
+			"     │   │   └─ Projected table access on [s i]\n" +
+			"     │   │       └─ TableAlias(b)\n" +
+			"     │   │           └─ Table(mytable)\n" +
+			"     │   └─ Projected table access on [s]\n" +
+			"     │       └─ TableAlias(c)\n" +
+			"     │           └─ Table(mytable)\n" +
+			"     └─ TableAlias(d)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a inner join mytable b on (a.i = b.s) WHERE a.i BETWEEN 10 AND 20`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.s)\n" +
@@ -1121,28 +1373,22 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-			"     └─ Filter((a.pk1 = b.pk1) AND (a.pk2 = b.pk2))\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ Projected table access on [pk1 pk2]\n" +
-			"             │   └─ TableAlias(a)\n" +
-			"             │       └─ Table(two_pk)\n" +
-			"             └─ Projected table access on [pk1 pk2]\n" +
-			"                 └─ TableAlias(b)\n" +
-			"                     └─ Table(two_pk)\n" +
+			"     └─ IndexedJoin((a.pk1 = b.pk1) AND (a.pk2 = b.pk2))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table(two_pk)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
 		Query: `SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
 			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-			"     └─ Filter((a.pk1 = b.pk2) AND (a.pk2 = b.pk1))\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ Projected table access on [pk1 pk2]\n" +
-			"             │   └─ TableAlias(a)\n" +
-			"             │       └─ Table(two_pk)\n" +
-			"             └─ Projected table access on [pk1 pk2]\n" +
-			"                 └─ TableAlias(b)\n" +
-			"                     └─ Table(two_pk)\n" +
+			"     └─ IndexedJoin((a.pk1 = b.pk2) AND (a.pk2 = b.pk1))\n" +
+			"         ├─ TableAlias(a)\n" +
+			"         │   └─ Table(two_pk)\n" +
+			"         └─ TableAlias(b)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -1180,26 +1426,20 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT opk.c5,pk1,pk2 FROM one_pk opk, two_pk tpk WHERE pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(opk.c5 ASC, tpk.pk1 ASC, tpk.pk2 ASC)\n" +
 			" └─ Project(opk.c5, tpk.pk1, tpk.pk2)\n" +
-			"     └─ Filter(opk.pk = tpk.pk1)\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ Projected table access on [c5 pk]\n" +
-			"             │   └─ TableAlias(opk)\n" +
-			"             │       └─ Table(one_pk)\n" +
-			"             └─ Projected table access on [pk1 pk2]\n" +
-			"                 └─ TableAlias(tpk)\n" +
-			"                     └─ Table(two_pk)\n" +
+			"     └─ IndexedJoin(opk.pk = tpk.pk1)\n" +
+			"         ├─ TableAlias(opk)\n" +
+			"         │   └─ Table(one_pk)\n" +
+			"         └─ TableAlias(tpk)\n" +
+			"             └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
 		Query: `SELECT one_pk.c5,pk1,pk2 FROM one_pk,two_pk WHERE pk=pk1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.c5 ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ Project(one_pk.c5, two_pk.pk1, two_pk.pk2)\n" +
-			"     └─ Filter(one_pk.pk = two_pk.pk1)\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ Projected table access on [c5 pk]\n" +
-			"             │   └─ Table(one_pk)\n" +
-			"             └─ Projected table access on [pk1 pk2]\n" +
-			"                 └─ Table(two_pk)\n" +
+			"     └─ IndexedJoin(one_pk.pk = two_pk.pk1)\n" +
+			"         ├─ Table(one_pk)\n" +
+			"         └─ IndexedTableAccess(two_pk on [two_pk.pk1,two_pk.pk2])\n" +
 			"",
 	},
 	{
@@ -1355,12 +1595,11 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT pk,pk1,pk2 FROM one_pk,two_pk WHERE one_pk.c1=two_pk.c1 ORDER BY 1,2,3`,
 		ExpectedPlan: "Sort(one_pk.pk ASC, two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ Project(one_pk.pk, two_pk.pk1, two_pk.pk2)\n" +
-			"     └─ Filter(one_pk.c1 = two_pk.c1)\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ Projected table access on [pk c1]\n" +
-			"             │   └─ Table(one_pk)\n" +
-			"             └─ Projected table access on [pk1 pk2 c1]\n" +
-			"                 └─ Table(two_pk)\n" +
+			"     └─ InnerJoin(one_pk.c1 = two_pk.c1)\n" +
+			"         ├─ Projected table access on [pk c1]\n" +
+			"         │   └─ Table(one_pk)\n" +
+			"         └─ Projected table access on [pk1 pk2 c1]\n" +
+			"             └─ Table(two_pk)\n" +
 			"",
 	},
 	{
@@ -1571,32 +1810,6 @@ var PlanTests = []QueryPlanTest{
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.
 var QueryPlanTODOs = []QueryPlanTest{
-	{
-		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
-		Query: `SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk1 AND a.pk2=b.pk2 ORDER BY 1,2,3`,
-		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-			"     └─ Filter((a.pk1 = b.pk1) AND (a.pk2 = b.pk2))\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
-			"             │   └─ Table(two_pk)\n" +
-			"             └─ TableAlias(b)\n" +
-			"                 └─ Table(two_pk)\n" +
-			"",
-	},
-	{
-		// TODO: this should use an index. CrossJoin needs to be converted to InnerJoin, where clause to join cond
-		Query: `SELECT a.pk1,a.pk2,b.pk1,b.pk2 FROM two_pk a, two_pk b WHERE a.pk1=b.pk2 AND a.pk2=b.pk1 ORDER BY 1,2,3`,
-		ExpectedPlan: "Sort(a.pk1 ASC, a.pk2 ASC, b.pk1 ASC)\n" +
-			" └─ Project(a.pk1, a.pk2, b.pk1, b.pk2)\n" +
-			"     └─ Filter((a.pk1 = b.pk2) AND (a.pk2 = b.pk1))\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(a)\n" +
-			"             │   └─ Table(two_pk)\n" +
-			"             └─ TableAlias(b)\n" +
-			"                 └─ Table(two_pk)\n" +
-			"",
-	},
 	{
 		// TODO: this should use an index. Extra join condition should get moved out of the join clause into a filter
 		Query: `SELECT pk,i,f FROM one_pk RIGHT JOIN niltable ON pk=i and pk > 0 ORDER BY 2,3`,
