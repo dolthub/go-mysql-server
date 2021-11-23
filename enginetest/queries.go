@@ -5774,6 +5774,176 @@ var QueryTests = []QueryTest{
 		Query:    `SHOW STATUS LIKE 'Bytes_received'`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i OR a.i = 1`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{1, "first row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where NOT(a.i = b.i OR a.s = b.i)`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where NOT(a.i = b.i OR a.s = b.i)`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.s OR a.s = b.i IS FALSE`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i >= b.i`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{2, "second row"},
+			{3, "third row"},
+			{3, "third row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query:    `SELECT a.* FROM mytable a, mytable b where a.i = a.s`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
+		Expected: []sql.Row{
+			{2, "second row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{2, "second row"},
+			{2, "second row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.s = c.s`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = b.i OR a.i = 1`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{1, "first row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i >= b.i`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{2, "second row"},
+			{3, "third row"},
+			{3, "third row"},
+			{3, "third row"},
+		},
+	},
+	{
+		Query:    `SELECT a.* FROM mytable a CROSS JOIN mytable b where a.i = a.s`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
+		Expected: []sql.Row{
+			{2, "second row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.i = c.i AND (c.i = d.s OR c.i = 2)`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{2, "second row"},
+			{2, "second row"}},
+	},
+	{
+		Query: `SELECT a.* FROM mytable a CROSS JOIN mytable b CROSS JOIN mytable c CROSS JOIN mytable d where a.i = b.i AND b.s = c.s`,
+		Expected: []sql.Row{
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{

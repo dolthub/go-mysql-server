@@ -53,9 +53,9 @@ func TransformUp(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, err
 	return f(e)
 }
 
-// TraverseUp traverses the given tree from the
-// bottom up, breaking if stop = true is returned
-func TraverseUp(node sql.Expression, f func(sql.Expression) bool) bool {
+// InspectUp traverses the given tree from the bottom up, breaking if
+// stop = true. Returns a bool indicating whether traversal was interrupted.
+func InspectUp(node sql.Expression, f func(sql.Expression) bool) bool {
 	stop := errors.New("stop")
 	wrap := func(n sql.Expression) (sql.Expression, error) {
 		ok := f(n)
