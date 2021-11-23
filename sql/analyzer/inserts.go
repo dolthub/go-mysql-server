@@ -70,13 +70,14 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 		dstSchema := insertable.Schema()
 
-		// If no columns are given, use the full schema
+		// normalize the column name
 		columnNames := make([]string, len(insert.ColumnNames))
 		for i, name := range insert.ColumnNames {
-			columnNames[i] = strings.ToLower(name) // normalize the column name
+			columnNames[i] = strings.ToLower(name)
 		}
 
-		if len(columnNames) == 0 {
+		// If no columns are given and value tuples are not all empty, use the full schema
+		if len(columnNames) == 0 && existsNonZeroValueCount(source) {
 			columnNames = make([]string, len(dstSchema))
 			for i, f := range dstSchema {
 				columnNames[i] = f.Name
@@ -100,6 +101,21 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 		return insert.WithSource(project), nil
 	})
+}
+
+// Ensures that the number of elements in each Value tuple is empty
+func existsNonZeroValueCount(values sql.Node) bool {
+	switch node := values.(type) {
+	case *plan.Values:
+		for _, exprTuple := range node.ExpressionTuples {
+			if len(exprTuple) != 0 {
+				return true
+			}
+		}
+	default:
+		return true
+	}
+	return false
 }
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the

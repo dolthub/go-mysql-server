@@ -26,6 +26,18 @@ import (
 
 var InsertQueries = []WriteQueryTest{
 	{
+		WriteQuery:          "INSERT INTO keyless VALUES ();",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
+		ExpectedSelect:      []sql.Row{{nil, nil}},
+	},
+	{
+		WriteQuery:          "INSERT INTO keyless () VALUES ();",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
+		ExpectedSelect:      []sql.Row{{nil, nil}},
+	},
+	{
 		WriteQuery:          "INSERT INTO mytable (s, i) VALUES ('x', '10.0');",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT i FROM mytable WHERE s = 'x';",
@@ -1024,6 +1036,14 @@ var InsertScripts = []ScriptTest{
 }
 
 var InsertErrorTests = []GenericErrorQueryTest{
+	{
+		Name:  "try to insert empty into col without default value",
+		Query: "INSERT INTO mytable VALUES ();",
+	},
+	{
+		Name:  "try to insert empty into col without default value",
+		Query: "INSERT INTO mytable () VALUES ();",
+	},
 	{
 		Name:  "too few values",
 		Query: "INSERT INTO mytable (s, i) VALUES ('x');",
