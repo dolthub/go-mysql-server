@@ -80,17 +80,12 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		if !ok {
 			return n, nil
 		}
-		var predicates []sql.Expression
-		var movedPredicates map[int]struct{}
+		predicates := splitConjunction(f.Expression)
+		movedPredicates := make(map[int]struct{})
 		newF, err := plan.TransformUp(f, func(n sql.Node) (sql.Node, error) {
 			cj, ok := n.(*plan.CrossJoin)
 			if !ok {
 				return n, nil
-			}
-
-			if predicates == nil {
-				predicates = splitConjunction(f.Expression)
-				movedPredicates = make(map[int]struct{})
 			}
 
 			joinConjs := make([]int, 0, len(predicates))
