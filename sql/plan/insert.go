@@ -260,7 +260,7 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		}
 
 		if sql.IsFalse(res) {
-			return nil, sql.ErrCheckConstraintViolated.New(check.Name)
+			return nil, sql.NewWrappedInsertError(row, sql.ErrCheckConstraintViolated.New(check.Name))
 		}
 	}
 
