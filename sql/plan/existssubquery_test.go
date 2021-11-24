@@ -27,17 +27,17 @@ import (
 
 func TestExistsSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: sql.Text},
-	})
+	}, []int{}))
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{"three"}))
 
-	emptyTable := memory.NewTable("empty", sql.Schema{
+	emptyTable := memory.NewTable("empty", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "empty", Type: sql.Int64},
-	})
+	}, []int{}))
 
 	project := func(expr sql.Expression, tbl *memory.Table) sql.Node {
 		return plan.NewProject([]sql.Expression{

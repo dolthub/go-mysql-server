@@ -219,10 +219,10 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("db")
 
 	wrapInTransaction(t, db, harness, func() {
-		table, err := harness.NewTable(db, "members", sql.Schema{
+		table, err := harness.NewTable(db, "members", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
 			{Name: "team", Type: sql.Text, Source: "members"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(
@@ -280,10 +280,10 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
 
 	wrapInTransaction(t, db, harness, func() {
-		_, err := harness.NewTable(db, "mytable", sql.Schema{
+		_, err := harness.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "mytable"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 	})
 
@@ -311,11 +311,11 @@ func TestReadOnly(t *testing.T, harness Harness) {
 
 func TestExplode(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
-	table, err := harness.NewTable(db, "t", sql.Schema{
+	table, err := harness.NewTable(db, "t", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.CreateArray(sql.Text), Source: "t"},
 		{Name: "c", Type: sql.Text, Source: "t"},
-	})
+	}, []int{}))
 	require.NoError(t, err)
 
 	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
@@ -437,18 +437,18 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
 
 	wrapInTransaction(t, db, harness, func() {
-		table, err := harness.NewTable(db, "foo", sql.Schema{
+		table, err := harness.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "foo"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
 
-		table2, err := harness.NewTable(db, "bar", sql.Schema{
+		table2, err := harness.NewTable(db, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
 			{Name: "c", Type: sql.Int64, Source: "bar"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
@@ -1786,6 +1786,170 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 }
 
+func TestPkOrdinals(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	ctx := NewContext(harness)
+
+	TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
+
+	db, err := e.Analyzer.Catalog.Database("testdb")
+	require.NoError(t, err)
+
+	TestQuery(t, harness, e, "USE testdb", []sql.Row(nil), nil, nil)
+
+	require.Equal(t, ctx.GetCurrentDatabase(), "testdb")
+
+	t.Run("CREATE table out of order PKs", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE a (x int, y int, primary key (y,x))", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "a")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, pkOrds, []int{1, 0})
+	})
+
+	t.Run("Drop column shifts PK ordinals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE b (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE b DROP COLUMN w", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "b")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, []int{3, 1}, pkOrds)
+	})
+
+	t.Run("Add column shifts PK ordinals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE c (u int, v int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE c ADD COLUMN w int AFTER v", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "c")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, []int{4, 1}, pkOrds)
+	})
+
+	t.Run("Modify column shifts PK ordinals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE d (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE d MODIFY COLUMN w int AFTER y", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "d")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, []int{3, 1}, pkOrds)
+	})
+
+	t.Run("Keyless table has no PK ordinals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE e (u int, v int, w int, x int, y int, z int)", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "e")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, []int{}, pkOrds)
+	})
+
+	t.Run("Delete PRIMARY KEY leaves no PK ordinals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE f (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE f DROP PRIMARY KEY", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "f")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, []int{}, pkOrds)
+	})
+
+	t.Run("Add primary key to table creates PK ordinals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE g (u int, v int, w int, x int, y int, z int)", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE g ADD PRIMARY KEY (y,v)", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "g")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, []int{4, 1}, pkOrds)
+	})
+
+	t.Run("Modify column transpose PK", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE h (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE h MODIFY COLUMN y int AFTER u", []sql.Row(nil), nil, nil)
+
+		db, err = e.Analyzer.Catalog.Database("testdb")
+		require.NoError(t, err)
+
+		table, ok, err := db.GetTableInsensitive(ctx, "h")
+
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		require.True(t, ok)
+
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		require.Equal(t, []int{1, 2}, pkOrds)
+	})
+}
+
 func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
 		e := NewEngine(t, harness)
@@ -2491,11 +2655,11 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t1"},
 			{Name: "c", Type: sql.Text, Source: "t1"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2503,11 +2667,11 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 			sql.NewRow("a_2", "b_2", "c_2"),
 			sql.NewRow("a_3", "b_3", "c_3"))
 
-		t2, err := harness.NewTable(db, "t2", sql.Schema{
+		t2, err := harness.NewTable(db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t2"},
 			{Name: "d", Type: sql.Text, Source: "t2"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
@@ -2530,11 +2694,11 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t1"},
 			{Name: "c", Type: sql.Text, Source: "t1"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2542,11 +2706,11 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 			sql.NewRow("a_2", "b_2", "c_2"),
 			sql.NewRow("a_3", "b_3", "c_3"))
 
-		t2, err := harness.NewTable(db, "t2", sql.Schema{
+		t2, err := harness.NewTable(db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t2"},
 			{Name: "c", Type: sql.Text, Source: "t2"},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
@@ -2569,9 +2733,9 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		})
+		}, []int{0}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2579,9 +2743,9 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 			sql.NewRow("a2"),
 			sql.NewRow("a3"))
 
-		t2, err := harness.NewTable(db, "t2", sql.Schema{
+		t2, err := harness.NewTable(db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
-		})
+		}, []int{0}))
 		require.NoError(err)
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
 			sql.NewRow("b1"),
@@ -2609,11 +2773,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		table1, err := harness.NewTable(db, "table1", sql.Schema{
+		table1, err := harness.NewTable(db, "table1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "table1"},
 			{Name: "f", Type: sql.Float64, Source: "table1"},
 			{Name: "t", Type: sql.Text, Source: "table1"},
-		})
+		}, []int{}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
@@ -2622,11 +2786,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 			sql.NewRow(int32(10), float64(2.1), "table1"),
 		)
 
-		table2, err := harness.NewTable(db, "table2", sql.Schema{
+		table2, err := harness.NewTable(db, "table2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i2", Type: sql.Int32, Source: "table2"},
 			{Name: "f2", Type: sql.Float64, Source: "table2"},
 			{Name: "t2", Type: sql.Text, Source: "table2"},
-		})
+		}, []int{}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
@@ -2635,11 +2799,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 			sql.NewRow(int32(20), float64(2.2), "table2"),
 		)
 
-		table3, err := harness.NewTable(db, "table3", sql.Schema{
+		table3, err := harness.NewTable(db, "table3", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "table3"},
 			{Name: "f2", Type: sql.Float64, Source: "table3"},
 			{Name: "t3", Type: sql.Text, Source: "table3"},
-		})
+		}, []int{}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
@@ -3018,10 +3182,10 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	e := sqle.NewDefault(harness.NewDatabaseProvider(db))
 
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "pk", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "v", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		})
+		}, []int{0, 1}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),

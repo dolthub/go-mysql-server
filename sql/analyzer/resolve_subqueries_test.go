@@ -27,16 +27,16 @@ import (
 )
 
 func TestResolveSubqueries(t *testing.T) {
-	foo := memory.NewTable("foo", sql.Schema{
+	foo := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
-	})
-	bar := memory.NewTable("bar", sql.Schema{
+	}, []int{}))
+	bar := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "b", Type: sql.Int64, Source: "bar"},
 		{Name: "k", Type: sql.Int64, Source: "bar"},
-	})
-	baz := memory.NewTable("baz", sql.Schema{
+	}, []int{}))
+	baz := memory.NewTable("baz", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c", Type: sql.Int64, Source: "baz"},
-	})
+	}, []int{}))
 	db := memory.NewDatabase("mydb")
 	db.AddTable("foo", foo)
 	db.AddTable("bar", bar)
@@ -121,14 +121,14 @@ func TestResolveSubqueries(t *testing.T) {
 }
 
 func TestResolveSubqueryExpressions(t *testing.T) {
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "x", Type: sql.Int64, Source: "mytable"},
-	})
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	}, []int{}))
+	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable2"},
 		{Name: "y", Type: sql.Int64, Source: "mytable2"},
-	})
+	}, []int{}))
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -442,14 +442,14 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 }
 
 func TestCacheSubqueryResults(t *testing.T) {
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "x", Type: sql.Int64, Source: "mytable"},
-	})
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	}, []int{}))
+	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable2"},
 		{Name: "y", Type: sql.Int64, Source: "mytable2"},
-	})
+	}, []int{}))
 
 	testCases := []analyzerFnTestCase{
 		{

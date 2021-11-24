@@ -29,11 +29,11 @@ import (
 func TestFlattenAggregationExprs(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
-	})
+	}, []int{}))
 	rule := getRule("flatten_aggregation_exprs")
 
 	tests := []struct {

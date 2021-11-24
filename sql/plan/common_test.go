@@ -27,14 +27,14 @@ import (
 )
 
 var benchtable = func() *memory.Table {
-	schema := sql.Schema{
+	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "strfield", Type: sql.Text, Nullable: true},
 		{Name: "floatfield", Type: sql.Float64, Nullable: true},
 		{Name: "boolfield", Type: sql.Boolean, Nullable: false},
 		{Name: "intfield", Type: sql.Int32, Nullable: false},
 		{Name: "bigintfield", Type: sql.Int64, Nullable: false},
 		{Name: "blobfield", Type: sql.Blob, Nullable: false},
-	}
+	}, []int{})
 	t := memory.NewTable("test", schema)
 
 	for i := 0; i < 100; i++ {
@@ -124,7 +124,7 @@ func collectRows(t *testing.T, node sql.Node) []sql.Row {
 
 func TestIsUnary(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", nil)
+	table := memory.NewTable("foo", sql.PrimaryKeySchema{})
 
 	require.True(IsUnary(NewFilter(nil, NewResolvedTable(table, nil, nil))))
 	require.False(IsUnary(NewCrossJoin(
@@ -135,7 +135,7 @@ func TestIsUnary(t *testing.T) {
 
 func TestIsBinary(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", nil)
+	table := memory.NewTable("foo", sql.PrimaryKeySchema{})
 
 	require.False(IsBinary(NewFilter(nil, NewResolvedTable(table, nil, nil))))
 	require.True(IsBinary(NewCrossJoin(

@@ -19,7 +19,7 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	// Get the correct schema of the CREATE TABLE based on the select query
 	inputSpec := planCreate.TableSpec()
 	selectSchema := analyzedSelect.Schema()
-	mergedSchema := mergeSchemas(inputSpec.Schema, selectSchema)
+	mergedSchema := mergeSchemas(inputSpec.Schema.Schema, selectSchema)
 	newSch := make(sql.Schema, len(mergedSchema))
 
 	for i, col := range mergedSchema {
@@ -28,7 +28,15 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		newSch[i] = &tempCol
 	}
 
-	newSpec := inputSpec.WithSchema(newSch)
+	// TODO : if the select projection node only has one child, find it and use it's primary key ordering
+	pkOrdinals := make([]int, 0)
+	for i, col := range newSch {
+		if col.PrimaryKey {
+			pkOrdinals = append(pkOrdinals, i)
+		}
+	}
+
+	newSpec := inputSpec.WithSchema(sql.NewPrimaryKeySchema(newSch, pkOrdinals))
 
 	newCreateTable := plan.NewCreateTable(planCreate.Database(), planCreate.Name(), planCreate.IfNotExists(), planCreate.Temporary(), newSpec)
 	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)

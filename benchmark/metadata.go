@@ -17,13 +17,13 @@ package benchmark
 import "github.com/dolthub/go-mysql-server/sql"
 
 type tableMetadata struct {
-	schema sql.Schema
+	schema sql.PrimaryKeySchema
 	name   string
 }
 
 var tpchTableMetadata = []tableMetadata{{
 	name: "part",
-	schema: []*sql.Column{
+	schema: sql.NewPrimaryKeySchema(sql.Schema{
 		{
 			Name:     "p_partkey",
 			Nullable: true,
@@ -69,11 +69,11 @@ var tpchTableMetadata = []tableMetadata{{
 			Nullable: true,
 			Type:     sql.Text,
 		},
-	},
+	}, []int{}),
 },
 	{
 		name: "supplier",
-		schema: []*sql.Column{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{
 				Name:     "s_supkey",
 				Nullable: true,
@@ -109,11 +109,11 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		},
+		}, []int{}),
 	},
 	{
 		name: "partsupp",
-		schema: []*sql.Column{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{
 				Name:     "ps_partkey",
 				Nullable: true,
@@ -139,11 +139,11 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		},
+		}, []int{}),
 	},
 	{
 		name: "customer",
-		schema: []*sql.Column{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{
 				Name:     "c_custkey",
 				Nullable: true,
@@ -184,11 +184,11 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		},
+		}, []int{}),
 	},
 	{
 		name: "orders",
-		schema: []*sql.Column{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{
 				Name:     "o_orderkey",
 				Nullable: true,
@@ -236,11 +236,11 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		},
+		}, []int{}),
 	},
 	{
 		name: "lineitem",
-		schema: []*sql.Column{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{
 				Name:     "l_orderkey",
 				Nullable: true,
@@ -327,11 +327,11 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		},
+		}, []int{}),
 	},
 	{
 		name: "nation",
-		schema: []*sql.Column{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{
 				Name:     "n_nationkey",
 				Nullable: true,
@@ -352,11 +352,11 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		},
+		}, []int{}),
 	},
 	{
 		name: "region",
-		schema: []*sql.Column{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{
 				Name:     "r_regionkey",
 				Nullable: true,
@@ -372,6 +372,6 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		},
+		}, []int{}),
 	},
 }

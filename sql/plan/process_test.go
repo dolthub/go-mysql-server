@@ -28,9 +28,9 @@ import (
 func TestQueryProcess(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64},
-	})
+	}, []int{}))
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))
@@ -68,9 +68,9 @@ func TestQueryProcess(t *testing.T) {
 func TestProcessTable(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewPartitionedTable("foo", sql.Schema{
+	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64},
-	}, 2)
+	}, []int{}), 2)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))
@@ -122,9 +122,9 @@ func TestProcessTable(t *testing.T) {
 func TestProcessIndexableTable(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewPartitionedTable("foo", sql.Schema{
+	table := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
-	}, 2)
+	}, []int{}), 2)
 
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(1)))
 	table.Insert(sql.NewEmptyContext(), sql.NewRow(int64(2)))

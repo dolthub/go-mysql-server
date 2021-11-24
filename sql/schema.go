@@ -103,3 +103,21 @@ func IsKeyless(s Schema) bool {
 
 	return true
 }
+
+type PrimaryKeySchema struct {
+	Schema
+	pkOrdinals []int
+}
+
+func NewPrimaryKeySchema(s Schema, pkOrds []int) PrimaryKeySchema {
+	return PrimaryKeySchema{Schema: s, pkOrdinals: pkOrds}
+}
+
+func (pks PrimaryKeySchema) WithOrdinals(o []int) PrimaryKeySchema {
+	pks.pkOrdinals = o
+	return pks
+}
+
+func (pks PrimaryKeySchema) PkOrdinals() []int {
+	return pks.pkOrdinals
+}

@@ -1126,7 +1126,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewAddColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		case sqlparser.DropStr:
 			return plan.NewDropColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String()), nil
 		case sqlparser.RenameStr:
@@ -1136,7 +1136,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewModifyColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewModifyColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		}
 	}
 	if ddl.AutoIncSpec != nil {
@@ -1337,11 +1337,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(c.Table.Qualifier.String()), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
 	}
 
-	schema, err := TableSpecToSchema(nil, c.TableSpec)
-	if err != nil {
-		return nil, err
-	}
-
 	var fkDefs []*sql.ForeignKeyConstraint
 	var chDefs []*sql.CheckConstraint
 	for _, unknownConstraint := range c.TableSpec.Constraints {
@@ -1423,6 +1418,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	qualifier := c.Table.Qualifier.String()
+
+	schema, err := TableSpecToSchema(nil, c.TableSpec)
+	if err != nil {
+		return nil, err
+	}
 
 	tableSpec := &plan.TableSpec{
 		Schema:  schema,
@@ -1689,31 +1689,57 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil, false), nil
 }
 
-// TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
-	err := validateIndexes(tableSpec)
+func getPkOrdinals(ts *sqlparser.TableSpec) []int {
+	for _, idxDef := range ts.Indexes {
+		if idxDef.Info.Primary {
 
+			pkOrdinals := make([]int, 0)
+			colIdx := make(map[string]int)
+			for i := 0; i < len(ts.Columns); i++ {
+				colIdx[ts.Columns[i].Name.Lowered()] = i
+			}
+
+			for _, i := range idxDef.Columns {
+				pkOrdinals = append(pkOrdinals, colIdx[i.Column.Lowered()])
+			}
+
+			return pkOrdinals
+		}
+	}
+
+	// no primary key expression, check for inline PK column
+	for i, col := range ts.Columns {
+		if col.Type.KeyOpt == colKeyPrimary {
+			return []int{i}
+		}
+	}
+
+	return []int{}
+}
+
+// TableSpecToSchema creates a sql.Schema from a parsed TableSpec
+func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.PrimaryKeySchema, error) {
+	err := validateIndexes(tableSpec)
 	if err != nil {
-		return nil, err
+		return sql.PrimaryKeySchema{}, err
 	}
 
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
 		if err != nil {
-			return nil, err
+			return sql.PrimaryKeySchema{}, err
 		}
 
 		schema = append(schema, column)
 	}
 
 	err = validateAutoIncrement(schema)
-
 	if err != nil {
-		return nil, err
+		return sql.PrimaryKeySchema{}, err
 	}
 
-	return schema, nil
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)), nil
 }
 
 func validateIndexes(tableSpec *sqlparser.TableSpec) error {

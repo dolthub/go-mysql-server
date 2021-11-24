@@ -28,12 +28,12 @@ func TestHaving(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Text, Nullable: true},
 		{Name: "col3", Type: sql.Int32, Nullable: true},
 		{Name: "col4", Type: sql.Int64, Nullable: true},
-	}
+	}, []int{})
 	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{

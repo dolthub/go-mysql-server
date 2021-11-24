@@ -66,6 +66,31 @@ func (t Table) Schema() sql.Schema {
 	return createTable.Schema()
 }
 
+// Pks implements sql.PrimaryKeyAlterableTable
+func (t Table) Pks() []sql.IndexColumn {
+	createTable, err := t.getCreateTable()
+	if err != nil {
+		panic(err)
+	}
+
+	pkSch := createTable.PkSchema()
+	pkCols := make([]sql.IndexColumn, len(pkSch.PkOrdinals()))
+	for i, j := range pkSch.PkOrdinals() {
+		col := pkSch.Schema[j]
+		pkCols[i] = sql.IndexColumn{Name: col.Name}
+	}
+	return pkCols
+}
+
+// PrimaryKeySchema implements sql.PrimaryKeyAlterableTable
+func (t Table) PrimaryKeySchema() sql.PrimaryKeySchema {
+	createTable, err := t.getCreateTable()
+	if err != nil {
+		panic(err)
+	}
+	return createTable.PkSchema()
+}
+
 // Partitions implements the interface sql.Table.
 func (t Table) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 	return &tablePartitionIter{}, nil

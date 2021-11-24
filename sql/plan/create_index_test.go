@@ -33,11 +33,11 @@ import (
 func TestCreateIndexAsync(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})
+	}, []int{}))
 
 	idxReg := sql.NewIndexRegistry()
 	driver := new(mockDriver)
@@ -89,11 +89,11 @@ func TestCreateIndexAsync(t *testing.T) {
 func TestCreateIndexNotIndexableExprs(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Blob},
 		{Name: "b", Source: "foo", Type: sql.JSON},
 		{Name: "c", Source: "foo", Type: sql.Text},
-	})
+	}, []int{}))
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -141,11 +141,11 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 func TestCreateIndexSync(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})
+	}, []int{}))
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -198,11 +198,11 @@ func TestCreateIndexChecksum(t *testing.T) {
 	require := require.New(t)
 
 	table := &checksumTable{
-		memory.NewTable("foo", sql.Schema{
+		memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Source: "foo"},
 			{Name: "b", Source: "foo"},
 			{Name: "c", Source: "foo"},
-		}),
+		}, []int{})),
 		"1",
 	}
 
@@ -243,11 +243,11 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 			&underlyingTable{
 				&underlyingTable{
 					&checksumTable{
-						memory.NewTable("foo", sql.Schema{
+						memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 							{Name: "a", Source: "foo"},
 							{Name: "b", Source: "foo"},
 							{Name: "c", Source: "foo"},
-						}),
+						}, []int{})),
 						"1",
 					},
 				},
@@ -283,10 +283,10 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 
 func TestCreateIndexWithIter(t *testing.T) {
 	require := require.New(t)
-	foo := memory.NewPartitionedTable("foo", sql.Schema{
+	foo := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "one", Source: "foo", Type: sql.Int64},
 		{Name: "two", Source: "foo", Type: sql.Int64},
-	}, 2)
+	}, []int{}), 2)
 
 	rows := [][2]int64{
 		{1, 2},

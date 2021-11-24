@@ -28,10 +28,10 @@ import (
 func TestProject(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Text, Nullable: true},
-	}
+	}, []int{})
 	child := memory.NewTable("test", childSchema)
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
@@ -40,10 +40,10 @@ func TestProject(t *testing.T) {
 		NewResolvedTable(child, nil, nil),
 	)
 	require.Equal(1, len(p.Children()))
-	schema := sql.Schema{
+	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col2", Type: sql.Text, Nullable: true},
-	}
-	require.Equal(schema, p.Schema())
+	}, []int{})
+	require.Equal(schema.Schema, p.Schema())
 	iter, err := p.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
@@ -67,10 +67,10 @@ func TestProject(t *testing.T) {
 	p = NewProject([]sql.Expression{
 		expression.NewAlias("foo", expression.NewGetField(1, sql.Text, "col2", true)),
 	}, NewResolvedTable(child, nil, nil))
-	schema = sql.Schema{
+	schema = sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: true},
-	}
-	require.Equal(schema, p.Schema())
+	}, []int{})
+	require.Equal(schema.Schema, p.Schema())
 }
 
 func BenchmarkProject(b *testing.B) {

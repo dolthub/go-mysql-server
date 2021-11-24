@@ -358,6 +358,10 @@ type PrimaryKeyAlterableTable interface {
 	CreatePrimaryKey(ctx *Context, columns []IndexColumn) error
 	// DropPrimaryKey drops a primary key on a table. Returns an error if that table does not have a key.
 	DropPrimaryKey(ctx *Context) error
+	// Pks returns a list of ordered primary key columns
+	Pks() []IndexColumn
+	// PrimaryKeySchema returns this table's PrimaryKeySchema
+	PrimaryKeySchema() PrimaryKeySchema
 }
 
 // TableEditor is the base interface for sub interfaces that can update rows in a table during an INSERT, REPLACE,
@@ -715,7 +719,7 @@ func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error
 type TableCreator interface {
 	// Creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
-	CreateTable(ctx *Context, name string, schema Schema) error
+	CreateTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
@@ -724,7 +728,7 @@ type TemporaryTableCreator interface {
 	Database
 	// Creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
-	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
+	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
 
 // ViewDefinition is the named textual definition of a view

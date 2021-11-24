@@ -12,12 +12,12 @@ import (
 )
 
 func TestApplyHashIn(t *testing.T) {
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
 		{Name: "d", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
-	})
+	}, []int{}))
 
 	hitLiteral, _ := expression.NewHashInTuple(
 		expression.NewGetField(0, sql.Int64, "foo", false),
