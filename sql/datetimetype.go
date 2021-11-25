@@ -207,6 +207,53 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		}
 	case time.Time:
 		res = value.UTC()
+		// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
+		// is zero values, which are important when converting from postgres defaults.
+	case int:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case int8:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case int16:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case int32:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case int64:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case uint8:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case uint16:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case uint32:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case uint64:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
 	default:
 		return zeroTime, ErrConvertToSQL.New(t)
 	}

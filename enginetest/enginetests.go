@@ -3308,15 +3308,63 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "SELECT * FROM t9", []sql.Row{{1, "77"}, {2, "77"}}, nil, nil)
 	})
 
-	// TODO: test that the correct values are set once we set the clock
-	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
+	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
 			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row(nil), nil, nil)
+
+		now := time.Now()
+		sql.RunWithNowFunc(func() time.Time {
+			return now
+		}, func() error {
+			RunQuery(t, e, harness, "insert into t10(pk) values (1)")
+			return nil
+		})
+		TestQuery(
+			t, harness, e,
+			"select * from t10 order by 1",
+			[]sql.Row{{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)}},
+			nil,
+			nil,
+		)
 	})
 
-	// TODO: test that the correct values are set once we set the clock
+	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
+	//  We use "0000-01-01 00:00:00"
+	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
+				"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row(nil), nil, nil)
+
+		RunQuery(t, e, harness, "insert into t10zero(pk) values (1)")
+
+		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
+		TestQuery(
+			t, harness, e,
+			"select * from t10zero order by 1",
+			[]sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), sql.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), sql.Timestamp.Zero()}},
+			nil,
+			nil,
+		)
+	})
+
 	t.Run("Non-DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP expression", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))", []sql.Row(nil), nil, nil)
+
+		now := time.Now()
+		sql.RunWithNowFunc(func() time.Time {
+			return now
+		}, func() error {
+			RunQuery(t, e, harness, "insert into t11(pk) values (1)")
+			return nil
+		})
+
+		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
+		TestQuery(
+			t, harness, e,
+			"select * from t11 order by 1",
+			[]sql.Row{{1, now.UTC().Truncate(time.Hour * 24), now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)}},
+			nil,
+			nil,
+		)
 	})
 
 	t.Run("REPLACE INTO with default expression", func(t *testing.T) {
