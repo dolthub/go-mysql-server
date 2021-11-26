@@ -146,7 +146,7 @@ func (t bitType) Convert(v interface{}) (interface{}, error) {
 		return t.Convert([]byte(val))
 	case []byte:
 		if len(val) > 8 {
-			return nil, fmt.Errorf("%v is beyond the maximum value that can be held by %v bits", value, t.numOfBits)
+			return nil, errBeyondMaxBit.New(value, t.numOfBits)
 		}
 		value = binary.BigEndian.Uint64(append(make([]byte, 8-len(val)), val...))
 	default:

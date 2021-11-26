@@ -354,16 +354,20 @@ var (
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
 )
 
-func CastSQLError(err error) (*mysql.SQLError, bool) {
+func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 	if err == nil {
-		return nil, true
+		return nil, nil, true
 	}
 	if mysqlErr, ok := err.(*mysql.SQLError); ok {
-		return mysqlErr, false
+		return mysqlErr, nil, false
 	}
 
 	var code int
 	var sqlState string = ""
+
+	if w, ok := err.(WrappedInsertError); ok {
+		return CastSQLError(w.Cause)
+	}
 
 	switch {
 	case ErrTableNotFound.Is(err):
@@ -406,7 +410,7 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = mysql.ERUnknownError
 	}
 
-	return mysql.NewSQLError(code, sqlState, err.Error()), false
+	return mysql.NewSQLError(code, sqlState, err.Error()), err, false // return the original error as well
 }
 
 type UniqueKeyError struct {
@@ -431,4 +435,32 @@ func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
 
 func (ue UniqueKeyError) Error() string {
 	return fmt.Sprintf("%s", ue.keyStr)
+}
+
+type WrappedInsertError struct {
+	OffendingRow Row
+	Cause        error
+}
+
+func NewWrappedInsertError(r Row, err error) WrappedInsertError {
+	return WrappedInsertError{
+		OffendingRow: r,
+		Cause:        err,
+	}
+}
+
+func (w WrappedInsertError) Error() string {
+	return w.Cause.Error()
+}
+
+type ErrInsertIgnore struct {
+	OffendingRow Row
+}
+
+func NewErrInsertIgnore(row Row) ErrInsertIgnore {
+	return ErrInsertIgnore{OffendingRow: row}
+}
+
+func (e ErrInsertIgnore) Error() string {
+	return "Insert ignore error shoudl never be printed"
 }

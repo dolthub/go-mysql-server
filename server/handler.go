@@ -507,7 +507,7 @@ func (h *Handler) errorWrappedDoQuery(
 	callback func(*sqltypes.Result) error,
 ) error {
 	err := h.doQuery(c, query, bindings, callback)
-	err, ok := sql.CastSQLError(err)
+	err, _, ok := sql.CastSQLError(err)
 	if ok {
 		return nil
 	} else {
