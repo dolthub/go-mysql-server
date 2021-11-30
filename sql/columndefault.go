@@ -160,7 +160,7 @@ func (e *ColumnDefaultValue) WithType(outType Type) (*ColumnDefaultValue, error)
 
 func (e *ColumnDefaultValue) checkType(outType Type) error {
 	if outType != nil && e.literal {
-		val, err := e.Expression.Eval(NewEmptyContext(), nil) // since it's a literal, we can use an empty context
+		val, err := e.Expression.Eval(nil, nil) // since it's a literal, we can use a nil context
 		if err != nil {
 			return err
 		}
