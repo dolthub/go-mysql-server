@@ -65,11 +65,13 @@ func TestMatchingIndexes(t *testing.T) {
 
 	require.Equal(t, []sql.Index{dummy1, dummy2, dummy3}, ia.MatchingIndexes(ctx, testDb, testTable, v1))
 	require.Equal(t, []sql.Index{dummy3, dummy2}, ia.MatchingIndexes(ctx, testDb, testTable, v2, v1))
+	require.Equal(t, []sql.Index{dummy2, dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v3, v1))
 	require.Equal(t, []sql.Index{dummy2, dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v2, v3, v1))
 	require.Equal(t, []sql.Index{dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v3))
 	require.Equal(t, []sql.Index{dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v2, v3))
 	require.Equal(t, dummy1, ia.MatchingIndex(ctx, testDb, testTable, v1))
 	require.Equal(t, dummy3, ia.MatchingIndex(ctx, testDb, testTable, v2, v1))
+	require.Equal(t, dummy2, ia.MatchingIndex(ctx, testDb, testTable, v3, v1))
 	require.Equal(t, dummy2, ia.MatchingIndex(ctx, testDb, testTable, v2, v3, v1))
 	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testDb, testTable, v3))
 	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testDb, testTable, v2, v3))
