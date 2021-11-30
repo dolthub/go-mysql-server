@@ -104,16 +104,24 @@ func TestIndexByExpression(t *testing.T) {
 	r.statuses[indexKey{"foo", ""}] = IndexReady
 
 	ctx := NewEmptyContext()
-	idx := r.IndexByExpression(ctx, "bar", dummyExpr{1, "2"})
+	idx, prefixCount, err := r.MatchingIndex(ctx, "bar", dummyExpr{1, "2"})
+	require.NoError(err)
+	require.Equal(0, prefixCount)
 	require.Nil(idx)
 
-	idx = r.IndexByExpression(ctx, "foo", dummyExpr{1, "2"})
+	idx, prefixCount, err = r.MatchingIndex(ctx, "foo", dummyExpr{1, "2"})
+	require.NoError(err)
+	require.Equal(1, prefixCount)
 	require.NotNil(idx)
 
-	idx = r.IndexByExpression(ctx, "foo", dummyExpr{2, "3"})
+	idx, prefixCount, err = r.MatchingIndex(ctx, "foo", dummyExpr{2, "3"})
+	require.NoError(err)
+	require.Equal(0, prefixCount)
 	require.Nil(idx)
 
-	idx = r.IndexByExpression(ctx, "foo", dummyExpr{3, "4"})
+	idx, prefixCount, err = r.MatchingIndex(ctx, "foo", dummyExpr{3, "4"})
+	require.NoError(err)
+	require.Equal(0, prefixCount)
 	require.Nil(idx)
 }
 

@@ -182,7 +182,7 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 	for i := range joinExprs {
 		normalizedJoinExprStrs[i] = normalizeExpression(ctx, tableAliases, joinExprs[i].colExpr).String()
 	}
-	if !exprsAreIndexPrefix(normalizedJoinExprStrs, idxExpressions) {
+	if ok, prefixCount := exprsAreIndexSubset(normalizedJoinExprStrs, idxExpressions); !ok || prefixCount != len(normalizedJoinExprStrs) {
 		return nil, nil
 	}
 	// Since the expressions are a prefix, we cut the index expressions we are using to just those involved

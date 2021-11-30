@@ -38,15 +38,17 @@ type IndexBuilder struct {
 // integrators through the Index function NewLookup.
 func NewIndexBuilder(ctx *Context, idx Index) *IndexBuilder {
 	colExprTypes := make(map[string]Type)
+	ranges := make(map[string][]RangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes(ctx) {
 		colExprTypes[cet.Expression] = cet.Type
+		ranges[cet.Expression] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
 	}
 	return &IndexBuilder{
 		idx:          idx,
 		isInvalid:    false,
 		err:          nil,
 		colExprTypes: colExprTypes,
-		ranges:       make(map[string][]RangeColumnExpr),
+		ranges:       ranges,
 	}
 }
 
@@ -212,6 +214,9 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	}
 }
 
+// updateCol updates the internal columns with the given ranges by intersecting each given range with each existing
+// range. That means that each given range is treated as an OR with respect to the other given ranges. If multiple
+// ranges are to be intersected with respect to one another, multiple calls to updateCol should be made.
 func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...RangeColumnExpr) {
 	if len(potentialRanges) == 0 {
 		return
@@ -225,10 +230,8 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 
 	var newRanges []RangeColumnExpr
 	for _, currentRange := range currentRanges {
-		newRange := currentRange
 		for _, potentialRange := range potentialRanges {
-			var err error
-			newRange, ok, err = newRange.TryIntersect(potentialRange)
+			newRange, ok, err := currentRange.TryIntersect(potentialRange)
 			if err != nil {
 				b.isInvalid = true
 				b.err = err
