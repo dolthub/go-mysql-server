@@ -1697,12 +1697,15 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 		return nil, err
 	}
 
-	// TODO: check for conflicting column constraints
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
 		if err != nil {
 			return nil, err
+		}
+
+		if column.PrimaryKey && cd.Type.Sawnull && column.Nullable {
+			return nil, errors.NewKind("All parts of PRIMARY KEY must be NOT NULL").New()
 		}
 
 		schema = append(schema, column)
@@ -1797,7 +1800,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	return &sql.Column{
-		Nullable:      !isPkey && !bool(cd.Type.NotNull),
+		Nullable:      !bool(cd.Type.NotNull),
 		Type:          internalTyp,
 		Name:          cd.Name.String(),
 		PrimaryKey:    isPkey,
