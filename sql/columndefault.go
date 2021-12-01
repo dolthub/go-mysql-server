@@ -145,9 +145,10 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 	}
 }
 
+// CheckType validates that the ColumnDefaultValue has the correct type.
 func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 	if e.outType != nil && e.literal {
-		val, err := e.Expression.Eval(ctx, nil) // since it's a literal, we can use an empty context
+		val, err := e.Expression.Eval(ctx, nil)
 		if err != nil {
 			return err
 		}
