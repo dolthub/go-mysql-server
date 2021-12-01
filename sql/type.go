@@ -66,6 +66,18 @@ type Type interface {
 	fmt.Stringer
 }
 
+type Type2 interface {
+	Type
+
+	// Compare2 returns an integer comparing two values.
+	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
+	Compare2(sqltypes.Value, sqltypes.Value) (int, error)
+	// Convert2 a value of a compatible type to a most accurate type.
+	Convert2(sqltypes.Value) (sqltypes.Value, error)
+	// Zero2 returns the golang zero value for this type
+	Zero2() sqltypes.Value
+}
+
 type LikeMatcher interface {
 	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }

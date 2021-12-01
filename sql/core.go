@@ -142,6 +142,12 @@ type Node interface {
 	WithChildren(...Node) (Node, error)
 }
 
+type Node2 interface {
+	Node
+
+	RowIter2(ctx *Context, row Row2) (RowIter2, error)
+}
+
 // CommentedNode allows comments to be set and retrieved on it
 type CommentedNode interface {
 	Node
