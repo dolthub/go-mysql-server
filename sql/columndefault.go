@@ -32,13 +32,12 @@ var _ Expression = (*ColumnDefaultValue)(nil)
 
 // NewColumnDefaultValue returns a new ColumnDefaultValue expression.
 func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool, mayReturnNil bool) (*ColumnDefaultValue, error) {
-	colDefault := &ColumnDefaultValue{
+	return &ColumnDefaultValue{
 		Expression: expr,
 		outType:    outType,
 		literal:    representsLiteral,
 		returnNil:  mayReturnNil,
-	}
-	return colDefault, nil
+	}, nil
 }
 
 // Children implements sql.Expression
@@ -54,19 +53,22 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 	if e == nil {
 		return nil, nil
 	}
+
 	val, err := e.Expression.Eval(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-	if e.outType != nil {
-		val, err = e.outType.Convert(val)
-		if err != nil {
-			return nil, ErrIncompatibleDefaultType.New()
-		}
-	}
+
 	if val == nil && !e.returnNil {
 		return nil, ErrColumnDefaultReturnedNull.New()
 	}
+
+	if e.outType != nil {
+		if val, err = e.outType.Convert(val); err != nil {
+			return nil, ErrIncompatibleDefaultType.New()
+		}
+	}
+
 	return val, nil
 }
 
@@ -141,4 +143,21 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 	} else {
 		return NewColumnDefaultValue(children[0], e.outType, e.literal, e.returnNil)
 	}
+}
+
+func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
+	if e.outType != nil && e.literal {
+		val, err := e.Expression.Eval(ctx, nil) // since it's a literal, we can use an empty context
+		if err != nil {
+			return err
+		}
+		if val == nil && !e.returnNil {
+			return ErrIncompatibleDefaultType.New()
+		}
+		_, err = e.outType.Convert(val)
+		if err != nil {
+			return ErrIncompatibleDefaultType.New()
+		}
+	}
+	return nil
 }
