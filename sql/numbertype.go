@@ -340,39 +340,22 @@ func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	v, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.NULL, err
-	}
 
+	var val []byte
 	switch t.baseType {
-	case sqltypes.Int8:
-		return sqltypes.MakeTrusted(sqltypes.Int8, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Uint8:
-		return sqltypes.MakeTrusted(sqltypes.Uint8, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Int16:
-		return sqltypes.MakeTrusted(sqltypes.Int16, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Uint16:
-		return sqltypes.MakeTrusted(sqltypes.Uint16, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Int24:
-		return sqltypes.MakeTrusted(sqltypes.Int24, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Uint24:
-		return sqltypes.MakeTrusted(sqltypes.Uint24, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Int32:
-		return sqltypes.MakeTrusted(sqltypes.Int32, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Uint32:
-		return sqltypes.MakeTrusted(sqltypes.Uint32, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Int64:
-		return sqltypes.MakeTrusted(sqltypes.Int64, []byte(fmt.Sprintf("%d", v))), nil
-	case sqltypes.Uint64:
-		return sqltypes.MakeTrusted(sqltypes.Uint64, []byte(fmt.Sprintf("%d", v))), nil
+	case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
+		val = []byte(strconv.FormatInt(mustInt64(v), 10))
+	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
+		val = []byte(strconv.FormatUint(mustUint64(v), 10))
 	case sqltypes.Float32:
-		return sqltypes.MakeTrusted(sqltypes.Float32, []byte(strconv.FormatFloat(float64(v.(float32)), 'f', -1, 32))), nil
+		val = []byte(strconv.FormatFloat(float64(v.(float32)), 'f', -1, 32))
 	case sqltypes.Float64:
-		return sqltypes.MakeTrusted(sqltypes.Float64, []byte(strconv.FormatFloat(v.(float64), 'f', -1, 64))), nil
+		val = []byte(strconv.FormatFloat(v.(float64), 'f', -1, 64))
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}
+
+	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
 
 // String implements Type interface.
@@ -660,5 +643,39 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 		return 0, nil
 	default:
 		return 0, ErrInvalidValueType.New(v, t.String())
+	}
+}
+
+func mustInt64(v interface{}) int64 {
+	switch tv := v.(type) {
+	case int:
+		return int64(tv)
+	case int8:
+		return int64(tv)
+	case int16:
+		return int64(tv)
+	case int32:
+		return int64(tv)
+	case int64:
+		return int64(tv)
+	default:
+		panic("unexpected type")
+	}
+}
+
+func mustUint64(v interface{}) uint64 {
+	switch tv := v.(type) {
+	case uint:
+		return uint64(tv)
+	case uint8:
+		return uint64(tv)
+	case uint16:
+		return uint64(tv)
+	case uint32:
+		return uint64(tv)
+	case uint64:
+		return uint64(tv)
+	default:
+		panic("unexpected type")
 	}
 }
