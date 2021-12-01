@@ -32,16 +32,12 @@ var _ Expression = (*ColumnDefaultValue)(nil)
 
 // NewColumnDefaultValue returns a new ColumnDefaultValue expression.
 func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool, mayReturnNil bool) (*ColumnDefaultValue, error) {
-	colDefault := &ColumnDefaultValue{
+	return &ColumnDefaultValue{
 		Expression: expr,
 		outType:    outType,
 		literal:    representsLiteral,
 		returnNil:  mayReturnNil,
-	}
-	if err := colDefault.checkType(outType); err != nil {
-		return nil, err
-	}
-	return colDefault, nil
+	}, nil
 }
 
 // Children implements sql.Expression
@@ -57,19 +53,22 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 	if e == nil {
 		return nil, nil
 	}
+
 	val, err := e.Expression.Eval(ctx, r)
 	if err != nil {
 		return nil, err
 	}
-	if e.outType != nil {
-		val, err = e.outType.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	if val == nil && !e.returnNil {
 		return nil, ErrColumnDefaultReturnedNull.New()
 	}
+
+	if e.outType != nil {
+		if val, err = e.outType.Convert(val); err != nil {
+			return nil, ErrIncompatibleDefaultType.New()
+		}
+	}
+
 	return val, nil
 }
 
@@ -146,28 +145,17 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 	}
 }
 
-// WithType returns a new default value that converts all resulting values from the internal expression into the given type.
-// If the internal expression results in a value that cannot be converted to the given type, then an error is returned.
-func (e *ColumnDefaultValue) WithType(outType Type) (*ColumnDefaultValue, error) {
-	if e == nil {
-		return nil, nil
-	}
-	if err := e.checkType(outType); err != nil {
-		return nil, err
-	}
-	return NewColumnDefaultValue(e.Expression, outType, e.literal, e.returnNil)
-}
-
-func (e *ColumnDefaultValue) checkType(outType Type) error {
-	if outType != nil && e.literal {
-		val, err := e.Expression.Eval(NewEmptyContext(), nil) // since it's a literal, we can use an empty context
+// CheckType validates that the ColumnDefaultValue has the correct type.
+func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
+	if e.outType != nil && e.literal {
+		val, err := e.Expression.Eval(ctx, nil)
 		if err != nil {
 			return err
 		}
 		if val == nil && !e.returnNil {
 			return ErrIncompatibleDefaultType.New()
 		}
-		_, err = outType.Convert(val)
+		_, err = e.outType.Convert(val)
 		if err != nil {
 			return ErrIncompatibleDefaultType.New()
 		}

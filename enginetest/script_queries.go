@@ -1288,6 +1288,55 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Multiple indexes on the same columns in a different order",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, v3 BIGINT, INDEX v123 (v1, v2, v3), INDEX v321 (v3, v2, v1), INDEX v132 (v1, v3, v2));",
+			"INSERT INTO test VALUES (1,2,3,4), (2,3,4,5), (3,4,5,6), (4,5,6,7), (5,6,7,8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
+				Expected: []sql.Row{{"Filter((test.v1 = 2) AND (test.v2 > 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
+				Expected: []sql.Row{{1, 2, 3, 4}},
+			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
+				Expected: []sql.Row{{"Filter((test.v2 = 4) AND (test.v3 > 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
+				Expected: []sql.Row{{2, 3, 4, 5}},
+			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
+				Expected: []sql.Row{{"Filter((test.v3 = 6) AND (test.v1 > 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
+				Expected: []sql.Row{{3, 4, 5, 6}},
+			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
+				Expected: []sql.Row{{"Filter(((test.v1 = 5) AND (test.v3 <= 10)) AND (test.v2 >= 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
+				Expected: []sql.Row{{4, 5, 6, 7}},
+			},
+		},
+	},
+	{
 		Name: "Ensure proper DECIMAL support (found by fuzzer)",
 		SetUpScript: []string{
 			"CREATE TABLE `GzaKtwgIya` (`K7t5WY` DECIMAL(64,5), `qBjVrN` VARBINARY(1000), `PvqQtc` SET('c3q6y','kxMqhfkK','XlRI8','dF0N63H','hMPjt0KXRLwCGRr','27fi2s','1FSJ','NcPzIN','Za18lbIgxmZ','on4BKKXykVTbJ','WBfO','RMNG','Sd7','FDzbEO','cLRdLOj1y','syo4','Ul','jfsfDCx6s','yEW3','JyQcWFDl'), `1kv7el` FLOAT, `Y3vfRG` BLOB, `Ijq8CK` TINYTEXT, `tzeStN` MEDIUMINT, `Ak83FQ` BINARY(64), `8Nbp3L` DOUBLE, PRIMARY KEY (`K7t5WY`));",

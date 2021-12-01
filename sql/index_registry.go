@@ -283,36 +283,40 @@ type exprWithTable interface {
 	Table() string
 }
 
-// IndexByExpression returns an index by the given expression. It will return
-// nil if the index is not found. If more than one expression is given, all
-// of them must match for the index to be matched.
-func (r *IndexRegistry) IndexByExpression(ctx *Context, db string, expr ...Expression) Index {
+// MatchingIndex returns the index that best fits the given expressions. See analyzer.MatchingIndexes for the rules
+// regarding which index is considered the best. If no index matches then returns nil.
+func (r *IndexRegistry) MatchingIndex(ctx *Context, db string, expr ...Expression) (index Index, prefixCount int, err error) {
 	r.mut.RLock()
 	defer r.mut.RUnlock()
 
 	expressions := make([]string, len(expr))
 	for i, e := range expr {
 		expressions[i] = e.String()
-
+		var err error
 		Inspect(e, func(e Expression) bool {
 			if e == nil {
 				return true
 			}
-
 			if val, ok := e.(exprWithTable); ok {
-				err := r.registerIndexesForTable(ctx, db, val.Table())
-
-				// TODO: fix panics
-				if err != nil {
-					panic(err)
+				iErr := r.registerIndexesForTable(ctx, db, val.Table())
+				if iErr != nil {
+					iErr = err
 				}
 			}
-
 			return true
 		})
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 
-	var indexes []Index
+	type idxWithLen struct {
+		Index
+		exprLen     int
+		prefixCount int
+	}
+
+	var indexes []idxWithLen
 	for _, k := range r.indexOrder {
 		idx := r.indexes[k]
 		if !r.canUseIndex(idx) {
@@ -320,31 +324,34 @@ func (r *IndexRegistry) IndexByExpression(ctx *Context, db string, expr ...Expre
 		}
 
 		if idx.Database() == db {
-			if exprsAreIndexPrefix(expressions, idx.Expressions()) {
-				indexes = append(indexes, idx)
+			indexExprs := idx.Expressions()
+			if ok, pc := exprsAreIndexSubset(expressions, indexExprs); ok && pc >= 1 {
+				indexes = append(indexes, idxWithLen{idx, len(indexExprs), pc})
 			}
 		}
 	}
 	if len(indexes) == 0 {
-		return nil
+		return nil, 0, nil
 	}
 
 	exprLen := len(expressions)
 	sort.Slice(indexes, func(i, j int) bool {
 		idxI := indexes[i]
 		idxJ := indexes[j]
-		idxILen := len(idxI.Expressions())
-		idxJLen := len(idxJ.Expressions())
-		if idxILen == exprLen && idxJLen != exprLen {
+		if idxI.exprLen == exprLen && idxJ.exprLen != exprLen {
 			return true
-		} else if idxILen != exprLen && idxJLen == exprLen {
+		} else if idxI.exprLen != exprLen && idxJ.exprLen == exprLen {
 			return false
+		} else if idxI.prefixCount != idxJ.prefixCount {
+			return idxI.prefixCount > idxJ.prefixCount
+		} else if idxI.exprLen != idxJ.exprLen {
+			return idxI.exprLen > idxJ.exprLen
 		} else {
-			return idxILen > idxJLen || idxI.ID() < idxJ.ID()
+			return idxI.Index.ID() < idxJ.Index.ID()
 		}
 	})
-	r.retainIndex(db, indexes[0].ID())
-	return indexes[0]
+	r.retainIndex(db, indexes[0].Index.ID())
+	return indexes[0].Index, indexes[0].prefixCount, nil
 }
 
 // ExpressionsWithIndexes finds all the combinations of expressions with
@@ -452,11 +459,22 @@ func exprListsEqual(a, b []string) bool {
 }
 
 //TODO: move this somewhere so that it's not super public but doesn't create an import cycle
-// exprsAreIndexPrefix returns whether exprs are a subset of indexExprs. It is assumed that indexExprs are ordered by their
-// declaration. For example `INDEX (v3, v2, v1)` would pass in `[]string{"v3", "v2", v1"}` and no other order.
-func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
+// exprsAreIndexSubset returns whether exprs are a subset of indexExprs. If they are a subset, then also returns how
+// many expressions are the prefix to the index expressions. If the first index expression is not present, then the scan
+// is equivalent to a table scan (which may have special optimizations that do not apply to an index scan). With at
+// least the first index expression (prefixCount >= 1), the searchable area for the index is limited, making an index
+// scan useful. It is assumed that indexExprs are ordered by their declaration. For example `INDEX (v3, v2, v1)` would
+// pass in `[]string{"v3", "v2", v1"}` and no other order.
+//
+// The returned prefixCount states how many expressions are a part of the index prefix. If len(exprs) == prefixCount
+// then all of the expressions are a prefix. If prefixCount == 0 then no expressions are part of the index prefix. This
+// is not recommended for direct index usage, but should instead be used for indexes that may intersect another.
+//
+// Using the above example index, the filter (v2 < 5 AND v1 < 5) is a subset but not a prefix. However, it may be
+// intersected with (v3 > 1 AND v1 > 1) which contains a prefix (but is not a prefix in its entirety).
+func exprsAreIndexSubset(exprs, indexExprs []string) (ok bool, prefixCount int) {
 	if len(exprs) > len(indexExprs) {
-		return false
+		return false, 0
 	}
 
 	visitedIndexExprs := make([]bool, len(indexExprs))
@@ -473,23 +491,19 @@ func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
 			}
 		}
 		if !found {
-			return false
+			return false, 0
 		}
 	}
 
-	// This checks that the order is preserved, as all true booleans should be first, with every boolean afterward false
-	expectation := true
-	for _, visitedExpr := range visitedIndexExprs {
-		if visitedExpr == expectation {
+	// This checks the length of the prefix by checking how many true booleans are encountered before the first false
+	for i, visitedExpr := range visitedIndexExprs {
+		if visitedExpr {
 			continue
-		} else if visitedExpr && !expectation {
-			return false
-		} else if !visitedExpr && expectation {
-			expectation = false
 		}
+		return true, i
 	}
 
-	return true
+	return true, len(exprs)
 }
 
 // AddIndex adds the given index to the registry. The added index will be

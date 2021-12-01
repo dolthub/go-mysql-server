@@ -38,51 +38,45 @@ type Index struct {
 
 var _ sql.Index = (*Index)(nil)
 
-func (i *Index) Database() string                    { return i.DB }
-func (i *Index) Driver() string                      { return i.DriverName }
-func (i *Index) MemTable() *Table                    { return i.Tbl }
-func (i *Index) ColumnExpressions() []sql.Expression { return i.Exprs }
-func (i *Index) IsGenerated() bool                   { return false }
+func (idx *Index) Database() string                    { return idx.DB }
+func (idx *Index) Driver() string                      { return idx.DriverName }
+func (idx *Index) MemTable() *Table                    { return idx.Tbl }
+func (idx *Index) ColumnExpressions() []sql.Expression { return idx.Exprs }
+func (idx *Index) IsGenerated() bool                   { return false }
 
-func (i *Index) Expressions() []string {
+func (idx *Index) Expressions() []string {
 	var exprs []string
-	for _, e := range i.Exprs {
+	for _, e := range idx.Exprs {
 		exprs = append(exprs, e.String())
 	}
 	return exprs
 }
 
-func (i *Index) IsUnique() bool {
-	return i.Unique
+func (idx *Index) IsUnique() bool {
+	return idx.Unique
 }
 
-func (i *Index) Comment() string {
-	return i.CommentStr
+func (idx *Index) Comment() string {
+	return idx.CommentStr
 }
 
-func (i *Index) IndexType() string {
-	if len(i.DriverName) > 0 {
-		return i.DriverName
+func (idx *Index) IndexType() string {
+	if len(idx.DriverName) > 0 {
+		return idx.DriverName
 	}
 	return "BTREE" // fake but so are you
 }
 
 // NewLookup implements the interface sql.Index.
-func (i *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
-	if i.CommentStr == CommentPreventingIndexBuilding {
+func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLookup, error) {
+	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}
 	if len(ranges) == 0 {
 		return nil, nil
 	}
-	exprs := i.ColumnExpressions()
-	if len(ranges[0]) > len(exprs) {
-		return nil, fmt.Errorf("too many keys given: %s=>%d", i.Name, len(ranges[0]))
-	}
-	mergeableIndex := i
-	if len(ranges[0]) < len(exprs) {
-		mergeableIndex = i.Partial(len(ranges[0]))
-		exprs = mergeableIndex.ColumnExpressions()
+	if len(ranges[0]) != len(idx.Exprs) {
+		return nil, fmt.Errorf("expected different key count: %s=>%d/%d", idx.Name, len(idx.Exprs), len(ranges[0]))
 	}
 
 	var rangeCollectionExpr sql.Expression
@@ -99,54 +93,54 @@ func (i *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLooku
 				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(1, sql.Int8))
 			case sql.RangeType_GreaterThan:
 				lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
-				rangeColumnExpr = expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lit, typ))
+				rangeColumnExpr = expression.NewNullSafeGreaterThan(idx.Exprs[i], expression.NewLiteral(lit, typ))
 			case sql.RangeType_GreaterOrEqual:
 				lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
-				rangeColumnExpr = expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lit, typ))
+				rangeColumnExpr = expression.NewNullSafeGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(lit, typ))
 			case sql.RangeType_LessThan:
 				lit, typ := getType(sql.GetRangeCutKey(rce.UpperBound))
-				rangeColumnExpr = expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(lit, typ))
+				rangeColumnExpr = expression.NewNullSafeLessThan(idx.Exprs[i], expression.NewLiteral(lit, typ))
 			case sql.RangeType_LessOrEqual:
 				lit, typ := getType(sql.GetRangeCutKey(rce.UpperBound))
-				rangeColumnExpr = expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(lit, typ))
+				rangeColumnExpr = expression.NewNullSafeLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(lit, typ))
 			case sql.RangeType_ClosedClosed:
 				if ok, err := rce.RepresentsEquals(); err != nil {
 					return nil, err
 				} else if ok {
 					lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
 					if typ == sql.Null {
-						rangeColumnExpr = expression.NewIsNull(exprs[i])
+						rangeColumnExpr = expression.NewIsNull(idx.Exprs[i])
 					} else {
-						rangeColumnExpr = expression.NewNullSafeEquals(exprs[i], expression.NewLiteral(lit, typ))
+						rangeColumnExpr = expression.NewNullSafeEquals(idx.Exprs[i], expression.NewLiteral(lit, typ))
 					}
 				} else {
 					lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
 					upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
 					rangeColumnExpr = and(
-						expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-						expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(upLit, upTyp)),
+						expression.NewNullSafeGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+						expression.NewNullSafeLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(upLit, upTyp)),
 					)
 				}
 			case sql.RangeType_OpenOpen:
 				lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
 				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
 				rangeColumnExpr = and(
-					expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-					expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(upLit, upTyp)),
+					expression.NewNullSafeGreaterThan(idx.Exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+					expression.NewNullSafeLessThan(idx.Exprs[i], expression.NewLiteral(upLit, upTyp)),
 				)
 			case sql.RangeType_OpenClosed:
 				lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
 				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
 				rangeColumnExpr = and(
-					expression.NewNullSafeGreaterThan(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-					expression.NewNullSafeLessThanOrEqual(exprs[i], expression.NewLiteral(upLit, upTyp)),
+					expression.NewNullSafeGreaterThan(idx.Exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+					expression.NewNullSafeLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(upLit, upTyp)),
 				)
 			case sql.RangeType_ClosedOpen:
 				lowLit, lowTyp := getType(sql.GetRangeCutKey(rce.LowerBound))
 				upLit, upTyp := getType(sql.GetRangeCutKey(rce.UpperBound))
 				rangeColumnExpr = and(
-					expression.NewNullSafeGreaterThanOrEqual(exprs[i], expression.NewLiteral(lowLit, lowTyp)),
-					expression.NewNullSafeLessThan(exprs[i], expression.NewLiteral(upLit, upTyp)),
+					expression.NewNullSafeGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(lowLit, lowTyp)),
+					expression.NewNullSafeLessThan(idx.Exprs[i], expression.NewLiteral(upLit, upTyp)),
 				)
 			}
 			rangeExpr = and(rangeExpr, rangeColumnExpr)
@@ -154,13 +148,13 @@ func (i *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLooku
 		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
 	}
 
-	return NewIndexLookup(ctx, mergeableIndex, rangeCollectionExpr, ranges...), nil
+	return NewIndexLookup(ctx, idx, rangeCollectionExpr, ranges...), nil
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
-func (i *Index) ColumnExpressionTypes(*sql.Context) []sql.ColumnExpressionType {
-	cets := make([]sql.ColumnExpressionType, len(i.Exprs))
-	for i, expr := range i.Exprs {
+func (idx *Index) ColumnExpressionTypes(*sql.Context) []sql.ColumnExpressionType {
+	cets := make([]sql.ColumnExpressionType, len(idx.Exprs))
+	for i, expr := range idx.Exprs {
 		cets[i] = sql.ColumnExpressionType{
 			Expression: expr.String(),
 			Type:       expr.Type(),
@@ -169,29 +163,23 @@ func (i *Index) ColumnExpressionTypes(*sql.Context) []sql.ColumnExpressionType {
 	return cets
 }
 
-func (i *Index) ID() string {
-	if len(i.Name) > 0 {
-		return i.Name
+func (idx *Index) ID() string {
+	if len(idx.Name) > 0 {
+		return idx.Name
 	}
 
-	if len(i.Exprs) == 1 {
-		return i.Exprs[0].String()
+	if len(idx.Exprs) == 1 {
+		return idx.Exprs[0].String()
 	}
-	var parts = make([]string, len(i.Exprs))
-	for i, e := range i.Exprs {
+	var parts = make([]string, len(idx.Exprs))
+	for i, e := range idx.Exprs {
 		parts[i] = e.String()
 	}
 
 	return "(" + strings.Join(parts, ", ") + ")"
 }
 
-func (i *Index) Table() string { return i.TableName }
-
-func (i *Index) Partial(len int) *Index {
-	mi := *i
-	mi.Exprs = i.Exprs[:len]
-	return &mi
-}
+func (idx *Index) Table() string { return idx.TableName }
 
 // ExpressionsIndex is an index made out of one or more expressions (usually field expressions), linked to a Table.
 type ExpressionsIndex interface {

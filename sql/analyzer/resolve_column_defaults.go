@@ -527,6 +527,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 	if err != nil {
 		return nil, err
 	}
+
 	//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
 	isLiteral := newDefault.IsLiteral()
 	if unaryMinusExpr, ok := newDefault.Expression.(*expression.UnaryMinus); ok {
@@ -544,6 +545,11 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 
 	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
 	if err != nil {
+		return nil, err
+	}
+
+	// validate type of default expression
+	if err = newDefault.CheckType(ctx); err != nil {
 		return nil, err
 	}
 

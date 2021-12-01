@@ -113,7 +113,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 		return nil, err
 	}
 
-	return ct.WithChildren(ct.Table, stripQueryProcess(triggerLogic))
+	return ct.WithChildren(ct.Table, StripQueryProcess(triggerLogic))
 }
 
 func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
