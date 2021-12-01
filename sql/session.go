@@ -617,7 +617,7 @@ func NewContext(
 ) *Context {
 	c := &Context{
 		Context:   ctx,
-		Session:   NewBaseSession(),
+		Session:   nil,
 		queryTime: ctxNowFunc(),
 		tracer:    opentracing.NoopTracer{},
 	}
@@ -628,9 +628,11 @@ func NewContext(
 	if c.Memory == nil {
 		c.Memory = NewMemoryManager(ProcessMemory)
 	}
-
 	if c.ProcessList == nil {
 		c.ProcessList = EmptyProcessList{}
+	}
+	if c.Session == nil {
+		c.Session = NewBaseSession()
 	}
 
 	return c
