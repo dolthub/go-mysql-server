@@ -47,6 +47,7 @@ func TestHandlerOutput(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
 	)
 	handler.NewConnection(dummyConn)
 
@@ -156,6 +157,7 @@ func TestHandlerComPrepare(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
 	)
 	handler.NewConnection(dummyConn)
 
@@ -215,6 +217,7 @@ func TestHandlerKill(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
 	)
 
 	conn1 := newConn(1)
@@ -293,7 +296,9 @@ func TestHandlerTimeout(t *testing.T) {
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		1*time.Second)
+		1*time.Second,
+		false,
+	)
 
 	noTimeOutHandler := NewHandler(
 		e2, NewSessionManager(testSessionBuilder,
@@ -302,7 +307,9 @@ func TestHandlerTimeout(t *testing.T) {
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		0)
+		0,
+		false,
+	)
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
 	require.Equal(0*time.Second, noTimeOutHandler.readTimeout)
 
@@ -356,6 +363,7 @@ func TestOkClosedConnection(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
 	)
 	c := newConn(1)
 	h.NewConnection(c)
@@ -508,6 +516,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
 	)
 
 	tests := []struct {
