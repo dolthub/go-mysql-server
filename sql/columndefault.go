@@ -38,9 +38,6 @@ func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool
 		literal:    representsLiteral,
 		returnNil:  mayReturnNil,
 	}
-	if err := colDefault.checkType(outType); err != nil {
-		return nil, err
-	}
 	return colDefault, nil
 }
 
@@ -64,7 +61,7 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 	if e.outType != nil {
 		val, err = e.outType.Convert(val)
 		if err != nil {
-			return nil, err
+			return nil, ErrIncompatibleDefaultType.New()
 		}
 	}
 	if val == nil && !e.returnNil {
@@ -144,33 +141,4 @@ func (e *ColumnDefaultValue) WithChildren(children ...Expression) (Expression, e
 	} else {
 		return NewColumnDefaultValue(children[0], e.outType, e.literal, e.returnNil)
 	}
-}
-
-// WithType returns a new default value that converts all resulting values from the internal expression into the given type.
-// If the internal expression results in a value that cannot be converted to the given type, then an error is returned.
-func (e *ColumnDefaultValue) WithType(outType Type) (*ColumnDefaultValue, error) {
-	if e == nil {
-		return nil, nil
-	}
-	if err := e.checkType(outType); err != nil {
-		return nil, err
-	}
-	return NewColumnDefaultValue(e.Expression, outType, e.literal, e.returnNil)
-}
-
-func (e *ColumnDefaultValue) checkType(outType Type) error {
-	if outType != nil && e.literal {
-		val, err := e.Expression.Eval(nil, nil) // since it's a literal, we can use a nil context
-		if err != nil {
-			return err
-		}
-		if val == nil && !e.returnNil {
-			return ErrIncompatibleDefaultType.New()
-		}
-		_, err = outType.Convert(val)
-		if err != nil {
-			return ErrIncompatibleDefaultType.New()
-		}
-	}
-	return nil
 }
