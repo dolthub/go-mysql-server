@@ -239,13 +239,13 @@ func convertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (
 
 	selectStmt, ok := parsed.(*sqlparser.Select)
 	if !ok || len(selectStmt.SelectExprs) != 1 {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
+		return nil, sql.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
 	expr := selectStmt.SelectExprs[0]
 	ae, ok := expr.(*sqlparser.AliasedExpr)
 	if !ok {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
+		return nil, sql.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
 	c, err := parse.ExprToExpression(ctx, ae.Expr)

@@ -352,6 +352,27 @@ var (
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
+
+	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
+	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
+
+	// ErrInvalidSQLValType is returned when a SQL value is of the incorrect type during parsing
+	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
+
+	// ErrInvalidIndexPrefix is returned when an index prefix is outside the accepted range
+	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
+
+	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
+	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in %s index '%s'")
+
+	// ErrInvalidAutoIncCols is returned when an auto_increment column cannot be applied
+	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
+
+	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
+	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
+
+	// ErrInvalidCheckConstraint is returned when a  check constraint is defined incorrectly
+	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

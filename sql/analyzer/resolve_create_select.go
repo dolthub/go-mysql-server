@@ -6,37 +6,37 @@ import (
 )
 
 func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	planCreate, ok := n.(*plan.CreateTable)
-	if !ok || planCreate.Select() == nil {
+	ct, ok := n.(*plan.CreateTable)
+	if !ok || ct.Select() == nil {
 		return n, nil
 	}
 
-	analyzedSelect, err := a.Analyze(ctx, planCreate.Select(), scope)
+	analyzedSelect, err := a.Analyze(ctx, ct.Select(), scope)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get the correct schema of the CREATE TABLE based on the select query
-	inputSpec := planCreate.TableSpec()
+	inputSpec := ct.TableSpec()
 	selectSchema := analyzedSelect.Schema()
 	mergedSchema := mergeSchemas(inputSpec.Schema, selectSchema)
 	newSch := make(sql.Schema, len(mergedSchema))
 
 	for i, col := range mergedSchema {
 		tempCol := *col
-		tempCol.Source = planCreate.Name()
+		tempCol.Source = ct.Name()
 		newSch[i] = &tempCol
 	}
 
 	newSpec := inputSpec.WithSchema(newSch)
 
-	newCreateTable := plan.NewCreateTable(planCreate.Database(), planCreate.Name(), planCreate.IfNotExists(), planCreate.Temporary(), newSpec)
+	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
 	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	return plan.NewTableCopier(planCreate.Database(), StripQueryProcess(analyzedCreate), StripQueryProcess(analyzedSelect), plan.CopierProps{}), nil
+	return plan.NewTableCopier(ct.Database(), StripQueryProcess(analyzedCreate), StripQueryProcess(analyzedSelect), plan.CopierProps{}), nil
 }
 
 // mergeSchemas takes in the table spec of the CREATE TABLE and merges it with the schema used by the

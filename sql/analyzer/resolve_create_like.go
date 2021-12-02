@@ -23,13 +23,13 @@ import (
 )
 
 func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	planCreate, ok := n.(*plan.CreateTable)
-	if !ok || planCreate.Like() == nil {
+	ct, ok := n.(*plan.CreateTable)
+	if !ok || ct.Like() == nil {
 		return n, nil
 	}
-	resolvedLikeTable, ok := planCreate.Like().(*plan.ResolvedTable)
+	resolvedLikeTable, ok := ct.Like().(*plan.ResolvedTable)
 	if !ok {
-		return nil, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", planCreate.Like())
+		return nil, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", ct.Like())
 	}
 	likeTable := resolvedLikeTable.Table
 	var idxDefs []*plan.IndexDefinition
@@ -68,7 +68,7 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	newSch := make(sql.Schema, len(origSch))
 	for i, col := range origSch {
 		tempCol := *col
-		tempCol.Source = planCreate.Name()
+		tempCol.Source = ct.Name()
 		newSch[i] = &tempCol
 	}
 
@@ -77,5 +77,5 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		IdxDefs: idxDefs,
 	}
 
-	return plan.NewCreateTable(planCreate.Database(), planCreate.Name(), planCreate.IfNotExists(), planCreate.Temporary(), tableSpec), nil
+	return plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), tableSpec), nil
 }

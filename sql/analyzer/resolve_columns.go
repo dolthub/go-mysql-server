@@ -519,7 +519,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 
 	switch node := n.(type) {
 	case *plan.CreateTable: // For this node in particular, the columns will only come into existence after the analyzer step, so we forge them here.
-		for _, col := range node.Schema() {
+		for _, col := range node.CreateSchema {
 			columns[tableCol{
 				table: "",
 				col:   strings.ToLower(col.Name),

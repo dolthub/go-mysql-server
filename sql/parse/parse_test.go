@@ -3220,19 +3220,19 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 }
 
 var fixturesErrors = map[string]*errors.Kind{
-	`SHOW METHEMONEY`:                                         ErrUnsupportedFeature,
-	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    ErrUnsupportedSyntax,
-	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
-	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: ErrUnsupportedSyntax,
+	`SHOW METHEMONEY`:                                         sql.ErrUnsupportedFeature,
+	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    sql.ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                    sql.ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: sql.ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
-	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    ErrUnknownIndexColumn,
-	`SELECT a, count(i) over (order by x) FROM foo`:           ErrUnsupportedFeature,
-	`SELECT a, count(i) over (partition by y) FROM foo`:       ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a) group by 1`:     ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a), max(b)`:        ErrUnsupportedFeature,
+	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    sql.ErrUnknownIndexColumn,
+	`SELECT a, count(i) over (order by x) FROM foo`:           sql.ErrUnsupportedFeature,
+	`SELECT a, count(i) over (partition by y) FROM foo`:       sql.ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a) group by 1`:     sql.ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a), max(b)`:        sql.ErrUnsupportedFeature,
 }
 
 func TestParseErrors(t *testing.T) {
