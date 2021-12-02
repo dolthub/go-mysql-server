@@ -58,6 +58,8 @@ var (
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
+
+	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
 )
 
 var (
@@ -1704,8 +1706,8 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 			return nil, err
 		}
 
-		if column.PrimaryKey && cd.Type.Sawnull && column.Nullable {
-			return nil, errors.NewKind("All parts of PRIMARY KEY must be NOT NULL").New()
+		if column.PrimaryKey && bool(cd.Type.Null) {
+			return nil, ErrPrimaryKeyOnNullField.New()
 		}
 
 		schema = append(schema, column)
@@ -1800,7 +1802,7 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	}
 
 	return &sql.Column{
-		Nullable:      !bool(cd.Type.NotNull),
+		Nullable:      !isPkey && !bool(cd.Type.NotNull),
 		Type:          internalTyp,
 		Name:          cd.Name.String(),
 		PrimaryKey:    isPkey,
