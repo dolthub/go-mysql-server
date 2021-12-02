@@ -169,5 +169,11 @@ func (i *FilterIter) Next2() (sql.Row2, error) {
 
 // Close implements the RowIter interface.
 func (i *FilterIter) Close(ctx *sql.Context) error {
-	return i.childIter.Close(ctx)
+	var closer sql.Closer
+	if i.childIter != nil {
+		closer = i.childIter
+	} else {
+		closer = i.iter2
+	}
+	return closer.Close(ctx)
 }

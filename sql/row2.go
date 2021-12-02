@@ -90,10 +90,11 @@ func FormatRow2(row2 Row2) string {
 
 // RowIter2 is an iterator that produces row2s.
 type RowIter2 interface {
+	RowIter
+
 	// Next retrieves the next row2. It will return io.EOF if it's the last row2.
 	// After retrieving the last row2, Close will be automatically closed.
 	Next2() (Row2, error)
-	Closer
 }
 
 // Row2IterToRow2s converts a row2 iterator to a slice of row2s.
@@ -144,6 +145,10 @@ func (i *sliceRow2Iter) Next2() (Row2, error) {
 	r := i.row2s[i.idx]
 	i.idx++
 	return r.Copy(), nil
+}
+
+func (i *sliceRow2Iter) Next() (Row, error) {
+	panic("unimplemented")
 }
 
 func (i *sliceRow2Iter) Close(*Context) error {

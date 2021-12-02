@@ -238,6 +238,9 @@ type ProcessTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
+var _ sql.Table = &ProcessTable{}
+var _ sql.Table2 = &ProcessTable{}
+
 // NewProcessTable returns a new ProcessTable.
 func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
 	return &ProcessTable{t, onPartitionDone, onPartitionStart, OnRowNext}
@@ -275,6 +278,40 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 	}
 
 	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+}
+
+// PartitionRows implements the sql.Table interface.
+func (t *ProcessTable) PartitionRows2(ctx *sql.Context, p sql.Partition) (sql.RowIter2, error) {
+	table2, ok := t.Table.(sql.Table2)
+	if !ok {
+		panic("not a table2")
+	}
+
+	iter2, err := table2.PartitionRows2(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	partitionName := partitionName(p)
+	if t.OnPartitionStart != nil {
+		t.OnPartitionStart(partitionName)
+	}
+
+	var onDone NotifyFunc
+	if t.OnPartitionDone != nil {
+		onDone = func() {
+			t.OnPartitionDone(partitionName)
+		}
+	}
+
+	var onNext NotifyFunc
+	if t.OnRowNext != nil {
+		onNext = func() {
+			t.OnRowNext(partitionName)
+		}
+	}
+
+	return &trackedRowIter{iter2: iter2, onNext: onNext, onDone: onDone}, nil
 }
 
 type queryType byte
@@ -357,8 +394,15 @@ func (i *trackedRowIter) Next2() (sql.Row2, error) {
 	return row, nil
 }
 
-func (i *trackedRowIter) Close(ctx *sql.Context) error {
-	err := i.iter.Close(ctx)
+func (i *trackedRowIter) Close(ctx *sql.Context) (err error) {
+	var closer sql.Closer
+	if i.iter != nil {
+		closer = i.iter
+	} else {
+		closer = i.iter2
+	}
+
+	err = closer.Close(ctx)
 
 	i.updateSessionVars(ctx)
 

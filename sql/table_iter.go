@@ -22,7 +22,6 @@ import (
 type TableRowIter struct {
 	ctx        *Context
 	table      Table
-	table2     Table2
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
@@ -100,8 +99,10 @@ func (i *TableRowIter) Next2() (Row2, error) {
 		i.partition = partition
 	}
 
+	table2 := i.table.(Table2)
+
 	if i.rows2 == nil {
-		rows2, err := i.table2.PartitionRows2(i.ctx, i.partition)
+		rows2, err := table2.PartitionRows2(i.ctx, i.partition)
 		if err != nil {
 			return nil, err
 		}
