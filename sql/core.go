@@ -358,8 +358,11 @@ type PrimaryKeyAlterableTable interface {
 	CreatePrimaryKey(ctx *Context, columns []IndexColumn) error
 	// DropPrimaryKey drops a primary key on a table. Returns an error if that table does not have a key.
 	DropPrimaryKey(ctx *Context) error
-	// Pks returns a list of ordered primary key columns
-	Pks() []IndexColumn
+}
+
+type PrimaryKeyTable interface {
+	// PrimaryKeys returns a list of ordered primary key columns
+	PrimaryKeys() []IndexColumn
 	// PrimaryKeySchema returns this table's PrimaryKeySchema
 	PrimaryKeySchema() PrimaryKeySchema
 }

@@ -145,12 +145,12 @@ func TestReorderProjectionWithSubqueries(t *testing.T) {
 	onepk := memory.NewTable("one_pk", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "pk", Source: "one_pk", Type: sql.Int64, PrimaryKey: true},
 		{Name: "c1", Source: "one_pk", Type: sql.Int64},
-	}, []int{}))
+	}, []int{0}))
 	twopk := memory.NewTable("two_pk", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "pk1", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
 		{Name: "pk2", Source: "two_pk", Type: sql.Int64, PrimaryKey: true},
 		{Name: "c1", Source: "two_pk", Type: sql.Int64},
-	}, []int{}))
+	}, []int{0, 1}))
 
 	testCases := []analyzerFnTestCase{
 		{

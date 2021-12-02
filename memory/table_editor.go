@@ -302,13 +302,13 @@ func (pke *pkTableEditAccumulator) Clear() {
 
 // pkColumnIndexes returns the indexes of the primary partitionKeys in the initialized table.
 func (pke *pkTableEditAccumulator) pkColumnIndexes() []int {
-	return pke.table.schema.PkOrdinals()
+	return pke.table.schema.PkOrdinals
 }
 
 // getRowKey returns a sql.Row of the primary partitionKeys a row in relation with the initialized table.
 func (pke *pkTableEditAccumulator) getRowKey(r sql.Row) string {
 	var rowKey strings.Builder
-	for _, i := range pke.table.schema.PkOrdinals() {
+	for _, i := range pke.table.schema.PkOrdinals {
 		rowKey.WriteString(fmt.Sprintf("%v", r[i]))
 	}
 	return rowKey.String()

@@ -1790,19 +1790,12 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 
-	TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-
-	db, err := e.Analyzer.Catalog.Database("testdb")
-	require.NoError(t, err)
-
-	TestQuery(t, harness, e, "USE testdb", []sql.Row(nil), nil, nil)
-
-	require.Equal(t, ctx.GetCurrentDatabase(), "testdb")
-
+	var err error
+	var db sql.Database
 	t.Run("CREATE table out of order PKs", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE a (x int, y int, primary key (y,x))", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE a (x int, y int, primary key (y,x))")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "a")
@@ -1810,18 +1803,18 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, pkOrds, []int{1, 0})
 	})
 
 	t.Run("Drop column shifts PK ordinals", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE b (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
-		TestQuery(t, harness, e, "ALTER TABLE b DROP COLUMN w", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE b (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
+		RunQuery(t, e, harness, "ALTER TABLE b DROP COLUMN w")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "b")
@@ -1829,18 +1822,18 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, []int{3, 1}, pkOrds)
 	})
 
 	t.Run("Add column shifts PK ordinals", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE c (u int, v int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
-		TestQuery(t, harness, e, "ALTER TABLE c ADD COLUMN w int AFTER v", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE c (u int, v int, x int, y int, z int, PRIMARY KEY (y,v))")
+		RunQuery(t, e, harness, "ALTER TABLE c ADD COLUMN w int AFTER v")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "c")
@@ -1848,18 +1841,18 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, []int{4, 1}, pkOrds)
 	})
 
 	t.Run("Modify column shifts PK ordinals", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE d (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
-		TestQuery(t, harness, e, "ALTER TABLE d MODIFY COLUMN w int AFTER y", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE d (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
+		RunQuery(t, e, harness, "ALTER TABLE d MODIFY COLUMN w int AFTER y")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "d")
@@ -1867,17 +1860,17 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, []int{3, 1}, pkOrds)
 	})
 
 	t.Run("Keyless table has no PK ordinals", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE e (u int, v int, w int, x int, y int, z int)", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE e (u int, v int, w int, x int, y int, z int)")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "e")
@@ -1885,18 +1878,18 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, []int{}, pkOrds)
 	})
 
 	t.Run("Delete PRIMARY KEY leaves no PK ordinals", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE f (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
-		TestQuery(t, harness, e, "ALTER TABLE f DROP PRIMARY KEY", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE f (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
+		RunQuery(t, e, harness, "ALTER TABLE f DROP PRIMARY KEY")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "f")
@@ -1904,18 +1897,18 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, []int{}, pkOrds)
 	})
 
 	t.Run("Add primary key to table creates PK ordinals", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE g (u int, v int, w int, x int, y int, z int)", []sql.Row(nil), nil, nil)
-		TestQuery(t, harness, e, "ALTER TABLE g ADD PRIMARY KEY (y,v)", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE g (u int, v int, w int, x int, y int, z int)")
+		RunQuery(t, e, harness, "ALTER TABLE g ADD PRIMARY KEY (y,v)")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "g")
@@ -1923,18 +1916,18 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, []int{4, 1}, pkOrds)
 	})
 
 	t.Run("Modify column transpose PK", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE h (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))", []sql.Row(nil), nil, nil)
-		TestQuery(t, harness, e, "ALTER TABLE h MODIFY COLUMN y int AFTER u", []sql.Row(nil), nil, nil)
+		RunQuery(t, e, harness, "CREATE TABLE h (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
+		RunQuery(t, e, harness, "ALTER TABLE h MODIFY COLUMN y int AFTER u")
 
-		db, err = e.Analyzer.Catalog.Database("testdb")
+		db, err = e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
 
 		table, ok, err := db.GetTableInsensitive(ctx, "h")
@@ -1942,10 +1935,10 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyAlterableTable)
+		pkTable, ok := table.(sql.PrimaryKeyTable)
 		require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals()
+		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 		require.Equal(t, []int{1, 2}, pkOrds)
 	})
 }

@@ -104,20 +104,12 @@ func IsKeyless(s Schema) bool {
 	return true
 }
 
+// PrimaryKeySchema defines table metadata for columns and primary key ordering
 type PrimaryKeySchema struct {
 	Schema
-	pkOrdinals []int
+	PkOrdinals []int
 }
 
 func NewPrimaryKeySchema(s Schema, pkOrds []int) PrimaryKeySchema {
-	return PrimaryKeySchema{Schema: s, pkOrdinals: pkOrds}
-}
-
-func (pks PrimaryKeySchema) WithOrdinals(o []int) PrimaryKeySchema {
-	pks.pkOrdinals = o
-	return pks
-}
-
-func (pks PrimaryKeySchema) PkOrdinals() []int {
-	return pks.pkOrdinals
+	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds}
 }

@@ -28,7 +28,6 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		newSch[i] = &tempCol
 	}
 
-	// TODO : if the select projection node only has one child, find it and use it's primary key ordering
 	pkOrdinals := make([]int, 0)
 	for i, col := range newSch {
 		if col.PrimaryKey {

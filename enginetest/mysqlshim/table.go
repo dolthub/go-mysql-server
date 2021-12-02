@@ -74,8 +74,8 @@ func (t Table) Pks() []sql.IndexColumn {
 	}
 
 	pkSch := createTable.PkSchema()
-	pkCols := make([]sql.IndexColumn, len(pkSch.PkOrdinals()))
-	for i, j := range pkSch.PkOrdinals() {
+	pkCols := make([]sql.IndexColumn, len(pkSch.PkOrdinals))
+	for i, j := range pkSch.PkOrdinals {
 		col := pkSch.Schema[j]
 		pkCols[i] = sql.IndexColumn{Name: col.Name}
 	}

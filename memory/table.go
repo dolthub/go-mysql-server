@@ -78,6 +78,7 @@ var _ sql.AutoIncrementTable = (*Table)(nil)
 var _ sql.StatisticsTable = (*Table)(nil)
 var _ sql.ProjectedTable = (*Table)(nil)
 var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
+var _ sql.PrimaryKeyTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
 func NewTable(name string, schema sql.PrimaryKeySchema) *Table {
@@ -531,7 +532,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		newSchCol.Default = newDefault.(*sql.ColumnDefaultValue)
 	}
 
-	newPkOrds := t.schema.PkOrdinals()
+	newPkOrds := t.schema.PkOrdinals
 	for i := 0; i < len(newPkOrds); i++ {
 		// added column shifts the index of every column after
 		// all ordinals above addIdx will be bumped
@@ -598,7 +599,7 @@ func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 		}
 	}
 
-	newPkOrds := t.schema.PkOrdinals()
+	newPkOrds := t.schema.PkOrdinals
 	for i := 0; i < len(newPkOrds); i++ {
 		// deleting a column will shift subsequent column indices left
 		// PK ordinals after dropIdx bumped down
@@ -660,14 +661,14 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 	}
 
 	pkNameToOrdIdx := make(map[string]int)
-	for i, ord := range t.schema.PkOrdinals() {
+	for i, ord := range t.schema.PkOrdinals {
 		pkNameToOrdIdx[t.schema.Schema[ord].Name] = i
 	}
 
 	_ = t.dropColumnFromSchema(ctx, columnName)
 	t.addColumnToSchema(ctx, column, order)
 
-	newPkOrds := make([]int, len(t.schema.PkOrdinals()))
+	newPkOrds := make([]int, len(t.schema.PkOrdinals))
 	for ord, col := range t.schema.Schema {
 		if col.PrimaryKey {
 			i := pkNameToOrdIdx[col.Name]
@@ -675,15 +676,15 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 
-	t.schema = t.schema.WithOrdinals(newPkOrds)
+	t.schema.PkOrdinals = newPkOrds
 
 	return nil
 }
 
-// Pks implements sql.PrimaryKeyAlterableTable
-func (t *Table) Pks() []sql.IndexColumn {
-	pkCols := make([]sql.IndexColumn, len(t.schema.PkOrdinals()))
-	for i, j := range t.schema.PkOrdinals() {
+// PrimaryKeys implements sql.PrimaryKeyAlterableTable
+func (t *Table) PrimaryKeys() []sql.IndexColumn {
+	pkCols := make([]sql.IndexColumn, len(t.schema.PkOrdinals))
+	for i, j := range t.schema.PkOrdinals {
 		col := t.schema.Schema[j]
 		pkCols[i] = sql.IndexColumn{Name: col.Name}
 	}
@@ -1207,7 +1208,7 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 		c.PrimaryKey = false
 	}
 
-	t.schema = t.schema.WithOrdinals([]int{})
+	t.schema.PkOrdinals = []int{}
 
 	return nil
 }

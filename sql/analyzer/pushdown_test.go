@@ -562,7 +562,7 @@ func TestPushdownIndex(t *testing.T) {
 		mytable2I,
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	}, []int{}))
+	}, []int{0}))
 
 	table2.EnablePrimaryKeyIndexes()
 	table2Idxes, err := table2.GetIndexes(ctx)

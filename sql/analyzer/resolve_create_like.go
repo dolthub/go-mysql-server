@@ -73,8 +73,8 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	}
 
 	var pkOrdinals []int
-	if pkAlterable, ok := likeTable.(sql.PrimaryKeyAlterableTable); ok {
-		pkOrdinals = pkAlterable.PrimaryKeySchema().PkOrdinals()
+	if pkTable, ok := likeTable.(sql.PrimaryKeyTable); ok {
+		pkOrdinals = pkTable.PrimaryKeySchema().PkOrdinals
 	}
 
 	tableSpec := &plan.TableSpec{
