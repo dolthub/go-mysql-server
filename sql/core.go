@@ -361,8 +361,6 @@ type PrimaryKeyAlterableTable interface {
 }
 
 type PrimaryKeyTable interface {
-	// PrimaryKeys returns a list of ordered primary key columns
-	PrimaryKeys() []IndexColumn
 	// PrimaryKeySchema returns this table's PrimaryKeySchema
 	PrimaryKeySchema() PrimaryKeySchema
 }

@@ -681,16 +681,6 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 	return nil
 }
 
-// PrimaryKeys implements sql.PrimaryKeyAlterableTable
-func (t *Table) PrimaryKeys() []sql.IndexColumn {
-	pkCols := make([]sql.IndexColumn, len(t.schema.PkOrdinals))
-	for i, j := range t.schema.PkOrdinals {
-		col := t.schema.Schema[j]
-		pkCols[i] = sql.IndexColumn{Name: col.Name}
-	}
-	return pkCols
-}
-
 // PrimaryKeySchema implements sql.PrimaryKeyAlterableTable
 func (t *Table) PrimaryKeySchema() sql.PrimaryKeySchema {
 	return t.schema
