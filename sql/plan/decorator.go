@@ -27,9 +27,19 @@ type DecoratedNode struct {
 }
 
 var _ sql.Node = (*DecoratedNode)(nil)
+var _ sql.Node2 = &DecoratedNode{}
 
 func (n *DecoratedNode) RowIter(context *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return n.Child.RowIter(context, row)
+}
+
+func (n *DecoratedNode) RowIter2(context *sql.Context, row sql.Row2) (sql.RowIter2, error) {
+	child2, ok := n.Child.(sql.Node2)
+	if !ok {
+		panic("nope")
+	}
+
+	return child2.RowIter2(context, row)
 }
 
 func (n *DecoratedNode) WithChildren(children ...sql.Node) (sql.Node, error) {

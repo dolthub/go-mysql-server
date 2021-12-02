@@ -27,6 +27,9 @@ type QueryProcess struct {
 	Notify NotifyFunc
 }
 
+var _ sql.Node = &QueryProcess{}
+var _ sql.Node2 = &QueryProcess{}
+
 // NotifyFunc is a function to notify about some event.
 type NotifyFunc func()
 
@@ -56,6 +59,29 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	return &trackedRowIter{
 		node:               p.Child,
 		iter:               iter,
+		onDone:             p.Notify,
+		queryType:          qType,
+		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
+	}, nil
+}
+
+// RowIter implements the sql.Node interface.
+func (p *QueryProcess) RowIter2(ctx *sql.Context, row2 sql.Row2) (sql.RowIter2, error) {
+	child2, ok := p.Child.(sql.Node2)
+	if !ok {
+		panic("nope")
+	}
+
+	iter2, err := child2.RowIter2(ctx, row2)
+	if err != nil {
+		return nil, err
+	}
+
+	qType := getQueryType(p.Child)
+
+	return &trackedRowIter{
+		node:               p.Child,
+		iter2:              iter2,
 		onDone:             p.Notify,
 		queryType:          qType,
 		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
@@ -262,12 +288,16 @@ const (
 type trackedRowIter struct {
 	node               sql.Node
 	iter               sql.RowIter
+	iter2              sql.RowIter2
 	numRows            int64
 	queryType          queryType
 	shouldSetFoundRows bool
 	onDone             NotifyFunc
 	onNext             NotifyFunc
 }
+
+var _ sql.RowIter = &trackedRowIter{}
+var _ sql.RowIter2 = &trackedRowIter{}
 
 func (i *trackedRowIter) done() {
 	if i.onDone != nil {
@@ -299,6 +329,21 @@ func (i *trackedRowIter) Dispose() {
 
 func (i *trackedRowIter) Next() (sql.Row, error) {
 	row, err := i.iter.Next()
+	if err != nil {
+		return nil, err
+	}
+
+	i.numRows++
+
+	if i.onNext != nil {
+		i.onNext()
+	}
+
+	return row, nil
+}
+
+func (i *trackedRowIter) Next2() (sql.Row2, error) {
+	row, err := i.iter2.Next2()
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Nameable is something that has a name.
@@ -219,6 +221,12 @@ type Table interface {
 	Schema() Schema
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
+}
+
+type Table2 interface {
+	Table
+
+	PartitionRows2(*Context, Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {
@@ -877,6 +885,12 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, err
 	default:
 		return false, nil
 	}
+}
+
+// EvaluateCondition evaluates a condition, which is an expression whose value
+// will be nil or coerced boolean.
+func EvaluateCondition2(ctx *Context, cond Expression, row Row2) (val sqltypes.Value, err error) {
+	panic("unimplemented")
 }
 
 // IsFalse coerces EvaluateCondition interface{} response to boolean

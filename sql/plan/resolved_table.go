@@ -28,6 +28,7 @@ type ResolvedTable struct {
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
+var _ sql.Node2 = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
@@ -61,6 +62,21 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	}
 
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)), nil
+}
+
+// RowIter implements the RowIter interface.
+func (t *ResolvedTable) RowIter2(ctx *sql.Context, row sql.Row2) (sql.RowIter2, error) {
+	table2, ok := t.Table.(sql.Table2)
+	if !ok {
+		panic("nope")
+	}
+
+	partitions, err := table2.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewTableRowIter(ctx, t.Table, partitions), nil
 }
 
 // WithChildren implements the Node interface.

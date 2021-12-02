@@ -16,9 +16,10 @@ package sql
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"io"
 	"strings"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Row2 is a tuple of values.
@@ -91,7 +92,7 @@ func FormatRow2(row2 Row2) string {
 type RowIter2 interface {
 	// Next retrieves the next row2. It will return io.EOF if it's the last row2.
 	// After retrieving the last row2, Close will be automatically closed.
-	Next() (Row2, error)
+	Next2() (Row2, error)
 	Closer
 }
 
@@ -99,7 +100,7 @@ type RowIter2 interface {
 func RowIter2ToRow2s(ctx *Context, i RowIter2) ([]Row2, error) {
 	var row2s []Row2
 	for {
-		row2, err := i.Next()
+		row2, err := i.Next2()
 		if err == io.EOF {
 			break
 		}
@@ -132,10 +133,10 @@ func Row2sToRow2Iter(row2s ...Row2) RowIter2 {
 
 type sliceRow2Iter struct {
 	row2s []Row2
-	idx  int
+	idx   int
 }
 
-func (i *sliceRow2Iter) Next() (Row2, error) {
+func (i *sliceRow2Iter) Next2() (Row2, error) {
 	if i.idx >= len(i.row2s) {
 		return nil, io.EOF
 	}
