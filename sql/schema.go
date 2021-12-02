@@ -112,6 +112,7 @@ type PrimaryKeySchema struct {
 
 func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 	if len(pkOrds) == 0 {
+		pkOrds = make([]int, 0)
 		for i, c := range s {
 			if c.PrimaryKey {
 				pkOrds = append(pkOrds, i)

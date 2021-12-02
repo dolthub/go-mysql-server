@@ -1739,7 +1739,7 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Pr
 		return sql.PrimaryKeySchema{}, err
 	}
 
-	return sql.NewPrimaryKeySchema(schema), nil
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), nil
 }
 
 func validateIndexes(tableSpec *sqlparser.TableSpec) error {

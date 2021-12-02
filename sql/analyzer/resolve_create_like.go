@@ -78,7 +78,7 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	}
 
 	tableSpec := &plan.TableSpec{
-		Schema:  sql.NewPrimaryKeySchema(newSch),
+		Schema:  sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
 		IdxDefs: idxDefs,
 	}
 

@@ -541,7 +541,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		}
 	}
 
-	t.schema = sql.NewPrimaryKeySchema(newSch)
+	t.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
 
 	return newColIdx
 }
@@ -608,7 +608,7 @@ func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 		}
 	}
 
-	t.schema = sql.NewPrimaryKeySchema(newSch)
+	t.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
 	return droppedCol
 }
 
@@ -1122,7 +1122,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		}
 	}
 
-	pkSchema := sql.NewPrimaryKeySchema(potentialSchema)
+	pkSchema := sql.NewPrimaryKeySchema(potentialSchema, pkOrdinals...)
 	newTable, err := copyTable(t, pkSchema)
 	if err != nil {
 		return err
