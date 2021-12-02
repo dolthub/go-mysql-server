@@ -119,7 +119,8 @@ func (e *Engine) QueryWithBindings(
 	query string,
 	bindings map[string]sql.Expression,
 ) (sql.Schema, sql.RowIter, error) {
-	return e.QueryNodeWithBindings(ctx, query, nil, bindings)
+	s, i, _, err := e.QueryNodeWithBindings(ctx, query, nil, bindings)
+	return s, i, err
 }
 
 // QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
@@ -129,7 +130,7 @@ func (e *Engine) QueryNodeWithBindings(
 	query string,
 	parsed sql.Node,
 	bindings map[string]sql.Expression,
-) (sql.Schema, sql.RowIter, error) {
+) (sql.Schema, sql.RowIter, bool, error) {
 	var (
 		analyzed sql.Node
 		iter     sql.RowIter
@@ -139,62 +140,64 @@ func (e *Engine) QueryNodeWithBindings(
 	if parsed == nil {
 		parsed, err = parse.Parse(ctx, query)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
 	}
 
 	err = e.authCheck(ctx, parsed)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	transactionDatabase, err := e.beginTransaction(ctx, parsed)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	if len(bindings) > 0 {
 		parsed, err = plan.ApplyBindings(ctx, parsed, bindings)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
 	}
 
 	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
+
+	var isRowIter2 bool
 
 	// try to create a RowIter2
 	if n2, ok := analyzed.(sql.Node2); ok {
 		iter, err = n2.RowIter2(ctx, nil)
 		if sql.ErrImpossibleIter2.Is(err) {
 			iter, err = nil, nil
-			_ = ctx.Session.SetUserVariable(ctx, sql.IsRowIter2, false)
+			isRowIter2 = false
 		} else {
-			_ = ctx.Session.SetUserVariable(ctx, sql.IsRowIter2, true)
+			isRowIter2 = true
 		}
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
 	}
 	if iter == nil {
 		iter, err = analyzed.RowIter(ctx, nil)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, false, err
 		}
 	}
 
 	autoCommit, err := isSessionAutocommit(ctx)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	if autoCommit {
 		iter = transactionCommittingIter{iter, transactionDatabase}
 	}
 
-	return analyzed.Schema(), iter, nil
+	return analyzed.Schema(), iter, isRowIter2, nil
 }
 
 const (

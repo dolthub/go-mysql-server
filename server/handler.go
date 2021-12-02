@@ -301,18 +301,13 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
+	schema, rows, rowIter2, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return err
 	}
 
-	_, val, err := ctx.GetUserVariable(ctx, sql.IsRowIter2)
-	if err != nil {
-		return err
-	}
-
-	if val.(bool) {
+	if rowIter2 {
 		rows2 := rows.(sql.RowIter2)
 		return h.sendRows2(ctx, c, start, parsed, schema, rows2, callback)
 	} else {
