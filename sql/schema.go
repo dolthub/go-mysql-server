@@ -110,6 +110,8 @@ type PrimaryKeySchema struct {
 	PkOrdinals []int
 }
 
+// NewPrimaryKeySchema constructs a new PrimaryKeySchema. PK ordinals
+// default to the in-order set read from the Schema.
 func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
 	if len(pkOrds) == 0 {
 		pkOrds = make([]int, 0)
