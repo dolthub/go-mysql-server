@@ -59,24 +59,27 @@ const tcpCheckerSleepTime = 1
 
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
-	mu          sync.Mutex
-	e           *sqle.Engine
-	sm          *SessionManager
-	readTimeout time.Duration
+	mu                sync.Mutex
+	e                 *sqle.Engine
+	sm                *SessionManager
+	readTimeout       time.Duration
+	disableMultiStmts bool
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration) *Handler {
+func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool) *Handler {
 	return &Handler{
-		e:           e,
-		sm:          sm,
-		readTimeout: rt,
+		e:                 e,
+		sm:                sm,
+		readTimeout:       rt,
+		disableMultiStmts: disableMultiStmts,
 	}
 }
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
-	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("NewConnection")
+	c.DisableClientMultiStatements = h.disableMultiStmts
+	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
