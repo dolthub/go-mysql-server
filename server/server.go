@@ -56,7 +56,8 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 			e.MemoryManager,
 			e.ProcessList,
 			cfg.Address),
-		cfg.ConnReadTimeout)
+		cfg.ConnReadTimeout,
+		cfg.DisableClientMultiStatements)
 	a := cfg.Auth.Mysql()
 	l, err := NewListener(cfg.Protocol, cfg.Address, handler)
 	if err != nil {

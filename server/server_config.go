@@ -54,6 +54,14 @@ type Config struct {
 	TLSConfig *tls.Config
 	// RequestSecureTransport will require incoming connections to be TLS. Requires non-|nil| TLSConfig.
 	RequireSecureTransport bool
+	// DisableClientMultiStatements will prevent processing of incoming
+	// queries as if they contain more than one query. This processing
+	// currently works in some simple cases, but breaks in the presence of
+	// statements (such as in CREATE TRIGGER queries). Configuring the
+	// server to disable processing these is one option for users to get
+	// support back for single queries that contain statements, at the cost
+	// of not supporting the CLIENT_MULTI_STATEMENTS option on the server.
+	DisableClientMultiStatements bool
 	// NoDefaults prevents using persisted configuration for new server sessions
 	NoDefaults bool
 }
