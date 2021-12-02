@@ -307,6 +307,28 @@ func (h *Handler) doQuery(
 		return err
 	}
 
+	_, val, err := ctx.GetUserVariable(ctx, sql.IsRowIter2)
+	if err != nil {
+		return err
+	}
+
+	if val.(bool) {
+		rows2 := rows.(sql.RowIter2)
+		return h.sendRows2(ctx, c, start, parsed, schema, rows2, callback)
+	} else {
+		return h.sendRows(ctx, c, start, parsed, schema, rows, callback)
+	}
+}
+
+func (h *Handler) sendRows(
+	ctx *sql.Context,
+	c *mysql.Conn,
+	start time.Time,
+	parsed sql.Node,
+	schema sql.Schema,
+	rows sql.RowIter,
+	callback func(*sqltypes.Result) error,
+) (err error) {
 	var r *sqltypes.Result
 	var proccesedAtLeastOneBatch bool
 
@@ -391,6 +413,147 @@ rowLoop:
 
 			ctx.GetLogger().Tracef("spooling result row %s", outputRow)
 			r.Rows = append(r.Rows, outputRow)
+			r.RowsAffected++
+		case <-timer.C:
+			if h.readTimeout != 0 {
+				// Cancel and return so Vitess can call the CloseConnection callback
+				ctx.GetLogger().Tracef("connection timeout")
+				close(quit)
+				return ErrRowTimeout.New()
+			}
+		}
+		timer.Reset(waitTime)
+	}
+	close(quit)
+
+	err = rows.Close(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err = setConnStatusFlags(ctx, c); err != nil {
+		return err
+	}
+	if err = setResultInfo(ctx, c, r, parsed); err != nil {
+		return err
+	}
+
+	switch len(r.Rows) {
+	case 0:
+		if len(r.Info) > 0 {
+			ctx.GetLogger().Debugf("returning result %s", r.Info)
+		} else {
+			ctx.GetLogger().Debugf("returning empty result")
+		}
+	case 1:
+		ctx.GetLogger().Debugf("returning result %v", r)
+	}
+
+	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
+
+	// TODO(andy): logic doesn't match comment?
+	// Even if r.RowsAffected = 0, the callback must be
+	// called to update the state in the go-vitess' listener
+	// and avoid returning errors when the query doesn't
+	// produce any results.
+	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
+		return nil
+	}
+
+	return callback(r)
+}
+
+func (h *Handler) sendRows2(
+	ctx *sql.Context,
+	c *mysql.Conn,
+	start time.Time,
+	parsed sql.Node,
+	schema sql.Schema,
+	rows sql.RowIter2,
+	callback func(*sqltypes.Result) error,
+) (err error) {
+	var r *sqltypes.Result
+	var proccesedAtLeastOneBatch bool
+
+	// Reads rows from the row reading goroutine
+	rowChan := make(chan sql.Row2)
+	// To send errors from the two goroutines to the main one
+	errChan := make(chan error)
+	// To close the goroutines
+	quit := make(chan struct{})
+
+	// Default waitTime is one minute if there is no timeout configured, in which case
+	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
+	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
+	// call Handler.CloseConnection()
+	waitTime := 1 * time.Minute
+
+	if h.readTimeout > 0 {
+		waitTime = h.readTimeout
+	}
+	timer := time.NewTimer(waitTime)
+	defer timer.Stop()
+
+	// Read rows off the row iterator and send them to the row channel.
+	go func() {
+		for {
+			select {
+			case <-quit:
+				return
+			default:
+				row, err := rows.Next2()
+				if err != nil {
+					errChan <- err
+					return
+				}
+				rowChan <- row
+			}
+		}
+	}()
+
+	go h.pollForClosedConnection(ctx, c, errChan, quit)
+
+rowLoop:
+	for {
+		if r == nil {
+			r = &sqltypes.Result{Fields: schemaToFields(schema)}
+		}
+
+		if r.RowsAffected == rowsBatch {
+			if err := callback(r); err != nil {
+				close(quit)
+				return err
+			}
+
+			r = nil
+			proccesedAtLeastOneBatch = true
+			continue
+		}
+
+		select {
+		case err = <-errChan:
+			if err == io.EOF {
+				break rowLoop
+			}
+
+			ctx.GetLogger().WithError(err).Warn("error running query")
+			close(quit)
+			return err
+		case row := <-rowChan:
+			if sql.IsOkResult2(row) {
+				if len(r.Rows) > 0 {
+					panic("Got OkResult mixed with RowResult")
+				}
+				r = &sqltypes.Result{
+					RowsAffected: 1234,
+					InsertID:     1234,
+					Info:         "fake.horse",
+				}
+				break rowLoop
+			}
+
+			ctx.GetLogger().Tracef("spooling result row %s", row)
+			r.Rows = append(r.Rows, row)
 			r.RowsAffected++
 		case <-timer.C:
 			if h.readTimeout != 0 {

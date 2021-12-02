@@ -68,7 +68,7 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 func (t *ResolvedTable) RowIter2(ctx *sql.Context, row sql.Row2) (sql.RowIter2, error) {
 	table2, ok := t.Table.(sql.Table2)
 	if !ok {
-		panic("nope")
+		return nil, sql.ErrImpossibleIter2.New()
 	}
 
 	partitions, err := table2.Partitions(ctx)

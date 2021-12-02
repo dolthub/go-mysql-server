@@ -59,7 +59,7 @@ func (f *Filter) RowIter2(ctx *sql.Context, row sql.Row2) (sql.RowIter2, error) 
 
 	child, ok := f.Child.(sql.Node2)
 	if !ok {
-		panic("nope")
+		return nil, sql.ErrImpossibleIter2.New()
 	}
 
 	iter2, err := child.RowIter2(ctx, row)
@@ -161,7 +161,7 @@ func (i *FilterIter) Next2() (sql.Row2, error) {
 			return nil, err
 		}
 
-		if sql.IsTrue(res) {
+		if sql.IsTrue2(res) {
 			return row, nil
 		}
 	}

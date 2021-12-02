@@ -165,9 +165,24 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
-	iter, err = analyzed.RowIter(ctx, nil)
-	if err != nil {
-		return nil, nil, err
+	// try to create a RowIter2
+	if n2, ok := analyzed.(sql.Node2); ok {
+		iter, err = n2.RowIter2(ctx, nil)
+		if sql.ErrImpossibleIter2.Is(err) {
+			iter, err = nil, nil
+			_ = ctx.Session.SetUserVariable(ctx, sql.IsRowIter2, false)
+		} else {
+			_ = ctx.Session.SetUserVariable(ctx, sql.IsRowIter2, true)
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	if iter == nil {
+		iter, err = analyzed.RowIter(ctx, nil)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	autoCommit, err := isSessionAutocommit(ctx)
@@ -255,8 +270,15 @@ type transactionCommittingIter struct {
 	transactionDatabase string
 }
 
+var _ sql.RowIter = transactionCommittingIter{}
+var _ sql.RowIter2 = transactionCommittingIter{}
+
 func (t transactionCommittingIter) Next() (sql.Row, error) {
 	return t.childIter.Next()
+}
+
+func (t transactionCommittingIter) Next2() (sql.Row2, error) {
+	return t.childIter.(sql.RowIter2).Next2()
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {

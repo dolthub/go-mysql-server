@@ -19,8 +19,14 @@ import (
 	"io"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 )
+
+var ErrImpossibleIter2 = errors.NewKind("cannot create RowIter2")
+
+const IsRowIter2 = "is_row_iter2"
 
 // Row2 is a tuple of values.
 type Row2 []sqltypes.Value

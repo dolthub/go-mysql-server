@@ -69,7 +69,7 @@ func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 func (p *QueryProcess) RowIter2(ctx *sql.Context, row2 sql.Row2) (sql.RowIter2, error) {
 	child2, ok := p.Child.(sql.Node2)
 	if !ok {
-		panic("nope")
+		return nil, sql.ErrImpossibleIter2.New()
 	}
 
 	iter2, err := child2.RowIter2(ctx, row2)
@@ -284,7 +284,7 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 func (t *ProcessTable) PartitionRows2(ctx *sql.Context, p sql.Partition) (sql.RowIter2, error) {
 	table2, ok := t.Table.(sql.Table2)
 	if !ok {
-		panic("not a table2")
+		return nil, sql.ErrImpossibleIter2.New()
 	}
 
 	iter2, err := table2.PartitionRows2(ctx, p)

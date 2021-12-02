@@ -239,7 +239,7 @@ func (e *Exchange) getRowIterFunc2(row sql.Row2) func(*sql.Context, sql.Partitio
 
 		node2, ok := node.(sql.Node2)
 		if !ok {
-			panic("nope")
+			return nil, sql.ErrImpossibleIter2.New()
 		}
 		return node2.RowIter2(ctx, row)
 	}

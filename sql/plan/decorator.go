@@ -36,7 +36,7 @@ func (n *DecoratedNode) RowIter(context *sql.Context, row sql.Row) (sql.RowIter,
 func (n *DecoratedNode) RowIter2(context *sql.Context, row sql.Row2) (sql.RowIter2, error) {
 	child2, ok := n.Child.(sql.Node2)
 	if !ok {
-		panic("nope")
+		return nil, sql.ErrImpossibleIter2.New()
 	}
 
 	return child2.RowIter2(context, row)

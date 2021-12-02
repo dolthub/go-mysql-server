@@ -890,7 +890,8 @@ func EvaluateCondition(ctx *Context, cond Expression, row Row) (interface{}, err
 // EvaluateCondition evaluates a condition, which is an expression whose value
 // will be nil or coerced boolean.
 func EvaluateCondition2(ctx *Context, cond Expression, row Row2) (val sqltypes.Value, err error) {
-	panic("unimplemented")
+	// todo(andy)
+	return sqltypes.MakeTrusted(sqltypes.Bit, []byte{byte(0)}), nil
 }
 
 // IsFalse coerces EvaluateCondition interface{} response to boolean
@@ -903,6 +904,10 @@ func IsFalse(val interface{}) bool {
 func IsTrue(val interface{}) bool {
 	res, ok := val.(bool)
 	return ok && res
+}
+
+func IsTrue2(val sqltypes.Value) bool {
+	return true
 }
 
 // TypesEqual compares two Types and returns whether they are equivalent.

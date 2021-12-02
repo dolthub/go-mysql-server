@@ -14,7 +14,11 @@
 
 package sql
 
-import "fmt"
+import (
+	"fmt"
+
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+)
 
 // OkResult is a representation of the OK packet MySQL sends for non-select queries such as UPDATE, INSERT, etc. It
 // can be returned as the only element in the row for a Node that doesn't select anything.
@@ -56,6 +60,13 @@ func IsOkResult(row Row) bool {
 		}
 	}
 	return false
+}
+
+const OkResultType querypb.Type = 98765
+
+// IsOkResult returns whether the given row represents an OkResult.
+func IsOkResult2(row Row2) bool {
+	return row[0].Type() == OkResultType
 }
 
 // GetOkResult extracts the OkResult from the row given
