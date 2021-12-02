@@ -1340,13 +1340,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
-		if idxDef.Info.Primary {
-			continue
-		}
-
 		//TODO: add vitess support for FULLTEXT
 		constraint := sql.IndexConstraint_None
-		if idxDef.Info.Unique {
+		if idxDef.Info.Primary {
+			constraint = sql.IndexConstraint_Primary
+		} else if idxDef.Info.Unique {
 			constraint = sql.IndexConstraint_Unique
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial

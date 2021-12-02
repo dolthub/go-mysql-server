@@ -35,6 +35,9 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	}
 
 	err = validateIndexes(ct.TableSpec())
+	if err != nil {
+		return nil, err
+	}
 
 	return n, nil
 }

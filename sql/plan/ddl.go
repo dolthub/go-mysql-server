@@ -49,6 +49,7 @@ const (
 	IfNotExistsAbsent IfNotExistsOption = false
 )
 
+
 type TempTableOption bool
 
 const (
@@ -250,8 +251,15 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
 	}
 
-	if len(c.idxDefs) > 0 {
-		err = c.createIndexes(ctx, tableNode)
+	var nonPrimaryIdxes []*IndexDefinition
+	for _, def := range c.idxDefs {
+		if def.Constraint != sql.IndexConstraint_Primary {
+			nonPrimaryIdxes = append(nonPrimaryIdxes, def)
+		}
+	}
+
+	if len(nonPrimaryIdxes) > 0 {
+		err = c.createIndexes(ctx, tableNode, nonPrimaryIdxes)
 		if err != nil {
 			return sql.RowsToRowIter(), err
 		}
@@ -274,13 +282,13 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	return sql.RowsToRowIter(), nil
 }
 
-func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table) error {
+func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return ErrNotIndexable.New()
 	}
 
-	for _, idxDef := range c.idxDefs {
+	for _, idxDef := range idxes {
 		err := idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
 		if err != nil {
 			return err
@@ -488,9 +496,9 @@ func (c *CreateTable) TableSpec() *TableSpec {
 	tableSpec := TableSpec{}
 
 	ret := tableSpec.WithSchema(c.CreateSchema)
-	ret = tableSpec.WithForeignKeys(c.fkDefs)
-	ret = tableSpec.WithIndices(c.idxDefs)
-	ret = tableSpec.WithCheckConstraints(c.chDefs)
+	ret = ret.WithForeignKeys(c.fkDefs)
+	ret = ret.WithIndices(c.idxDefs)
+	ret = ret.WithCheckConstraints(c.chDefs)
 
 	return ret
 }

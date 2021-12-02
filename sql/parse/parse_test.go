@@ -3228,7 +3228,6 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  sql.ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: sql.ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
-	`CREATE TABLE test (pk int, primary key(pk, noexist))`:    sql.ErrUnknownIndexColumn,
 	`SELECT a, count(i) over (order by x) FROM foo`:           sql.ErrUnsupportedFeature,
 	`SELECT a, count(i) over (partition by y) FROM foo`:       sql.ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a) group by 1`:     sql.ErrUnsupportedFeature,
