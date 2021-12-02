@@ -1734,7 +1734,7 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Pr
 		}
 
 		if column.PrimaryKey && bool(cd.Type.Null) {
-			return nil, ErrPrimaryKeyOnNullField.New()
+			return sql.PrimaryKeySchema{}, ErrPrimaryKeyOnNullField.New()
 		}
 
 		schema = append(schema, column)
