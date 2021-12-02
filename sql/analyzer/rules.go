@@ -22,6 +22,7 @@ import (
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{"validate_offset_and_limit", validateLimitAndOffset},
+	{"validate_create_table", validateCreateTable},
 	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_variables", resolveVariables},
 	{"resolve_set_variables", resolveSetVariables},

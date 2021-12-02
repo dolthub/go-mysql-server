@@ -15,17 +15,26 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
+// at execution time, and should be moved here over time.
 func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
 		return n, nil
 	}
 
-	ct.
+	err := validateAutoIncrement(ct.CreateSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validateIndexes(ct.TableSpec())
 
 	return n, nil
 }
@@ -49,5 +58,22 @@ func validateAutoIncrement(schema sql.Schema) error {
 			seen = true
 		}
 	}
+	return nil
+}
+
+func validateIndexes(tableSpec *plan.TableSpec) error {
+	lwrNames := make(map[string]bool)
+	for _, col := range tableSpec.Schema {
+		lwrNames[strings.ToLower(col.Name)] = true
+	}
+
+	for _, idx := range tableSpec.IdxDefs {
+		for _, col := range idx.Columns {
+			if !lwrNames[strings.ToLower(col.Name)] {
+				return sql.ErrUnknownIndexColumn.New(col.Name, idx.IndexName)
+			}
+		}
+	}
+
 	return nil
 }

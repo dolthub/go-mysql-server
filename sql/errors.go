@@ -363,7 +363,7 @@ var (
 	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
 
 	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
-	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in %s index '%s'")
+	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in index '%s'")
 
 	// ErrInvalidAutoIncCols is returned when an auto_increment column cannot be applied
 	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")

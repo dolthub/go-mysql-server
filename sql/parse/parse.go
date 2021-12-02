@@ -1670,12 +1670,6 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
 func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
-	err := validateIndexes(tableSpec)
-
-	if err != nil {
-		return nil, err
-	}
-
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
@@ -1686,52 +1680,7 @@ func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Sc
 		schema = append(schema, column)
 	}
 
-	err = validateAutoIncrement(schema)
-
-	if err != nil {
-		return nil, err
-	}
-
 	return schema, nil
-}
-
-func validateIndexes(tableSpec *sqlparser.TableSpec) error {
-	lwrNames := make(map[string]bool)
-	for _, col := range tableSpec.Columns {
-		lwrNames[col.Name.Lowered()] = true
-	}
-
-	for _, idx := range tableSpec.Indexes {
-		for _, col := range idx.Columns {
-			if !lwrNames[col.Column.Lowered()] {
-				return sql.ErrUnknownIndexColumn.New(col.Column.String(), idx.Info.Type, idx.Info.Name.String())
-			}
-		}
-	}
-
-	return nil
-}
-
-func validateAutoIncrement(schema sql.Schema) error {
-	seen := false
-	for _, col := range schema {
-		if col.AutoIncrement {
-			if !col.PrimaryKey {
-				// AUTO_INCREMENT col must be a pk
-				return sql.ErrInvalidAutoIncCols.New()
-			}
-			if col.Default != nil {
-				// AUTO_INCREMENT col cannot have default
-				return sql.ErrInvalidAutoIncCols.New()
-			}
-			if seen {
-				// there can be at most one AUTO_INCREMENT col
-				return sql.ErrInvalidAutoIncCols.New()
-			}
-			seen = true
-		}
-	}
-	return nil
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
