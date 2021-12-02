@@ -69,7 +69,7 @@ var tpchTableMetadata = []tableMetadata{{
 			Nullable: true,
 			Type:     sql.Text,
 		},
-	}, []int{}),
+	}),
 },
 	{
 		name: "supplier",
@@ -109,7 +109,7 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		}, []int{}),
+		}),
 	},
 	{
 		name: "partsupp",
@@ -139,7 +139,7 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		}, []int{}),
+		}),
 	},
 	{
 		name: "customer",
@@ -184,7 +184,7 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		}, []int{}),
+		}),
 	},
 	{
 		name: "orders",
@@ -236,7 +236,7 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		}, []int{}),
+		}),
 	},
 	{
 		name: "lineitem",
@@ -327,7 +327,7 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		}, []int{}),
+		}),
 	},
 	{
 		name: "nation",
@@ -352,7 +352,7 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		}, []int{}),
+		}),
 	},
 	{
 		name: "region",
@@ -372,6 +372,6 @@ var tpchTableMetadata = []tableMetadata{{
 				Nullable: true,
 				Type:     sql.Text,
 			},
-		}, []int{}),
+		}),
 	},
 }

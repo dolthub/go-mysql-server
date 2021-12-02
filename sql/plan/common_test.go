@@ -34,7 +34,7 @@ var benchtable = func() *memory.Table {
 		{Name: "intfield", Type: sql.Int32, Nullable: false},
 		{Name: "bigintfield", Type: sql.Int64, Nullable: false},
 		{Name: "blobfield", Type: sql.Blob, Nullable: false},
-	}, []int{})
+	})
 	t := memory.NewTable("test", schema)
 
 	for i := 0; i < 100; i++ {

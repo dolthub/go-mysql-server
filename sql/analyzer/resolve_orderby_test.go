@@ -33,7 +33,7 @@ func TestPushdownSortProject(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
-	}, []int{}))
+	}))
 
 	tests := []analyzerFnTestCase{
 		{
@@ -112,7 +112,7 @@ func TestPushdownSortGroupby(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
-	}, []int{}))
+	}))
 
 	tests := []analyzerFnTestCase{
 		{
@@ -214,7 +214,7 @@ func TestPushdownSortWindow(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
-	}, []int{}))
+	}))
 
 	tests := []analyzerFnTestCase{
 		{
@@ -353,7 +353,7 @@ func TestResolveOrderByLiterals(t *testing.T) {
 	table := memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.Int64, Source: "t"},
-	}, []int{}))
+	}))
 
 	node := plan.NewSort(
 		[]sql.SortField{

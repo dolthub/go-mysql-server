@@ -39,7 +39,7 @@ func TestTableName(t *testing.T) {
 	require := require.New(t)
 	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
-	}, []int{})
+	})
 
 	table := memory.NewTable("test", s)
 	require.Equal("test", table.Name())
@@ -50,7 +50,7 @@ func TestTableString(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int64, Nullable: false},
-	}, []int{}))
+	}))
 	require.Equal("foo", table.String())
 }
 
@@ -135,7 +135,7 @@ var tests = []struct {
 			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false)},
 			&sql.Column{Name: "col2", Source: "test", Type: sql.Int32, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int32, false)},
 			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false)},
-		}, []int{}),
+		}),
 		numPartitions: 2,
 		rows: []sql.Row{
 			sql.NewRow("a", int32(10), int64(100)),

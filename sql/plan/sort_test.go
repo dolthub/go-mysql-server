@@ -30,7 +30,7 @@ func TestSort(t *testing.T) {
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int32, Nullable: true},
 		{Name: "col3", Type: sql.Float64, Nullable: true},
-	}, []int{})
+	})
 
 	type sortTest struct {
 		rows       []sql.Row
@@ -229,7 +229,7 @@ func TestSortAscending(t *testing.T) {
 
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
-	}, []int{})
+	})
 
 	child := memory.NewTable("test", schema)
 	for _, row := range data {
@@ -269,7 +269,7 @@ func TestSortDescending(t *testing.T) {
 
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
-	}, []int{})
+	})
 
 	child := memory.NewTable("test", schema)
 	for _, row := range data {

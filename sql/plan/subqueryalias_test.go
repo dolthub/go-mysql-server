@@ -30,12 +30,12 @@ func TestSubqueryAliasSchema(t *testing.T) {
 	tableSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: false, Source: "bar"},
 		{Name: "baz", Type: sql.Text, Nullable: false, Source: "bar"},
-	}, []int{})
+	})
 
 	subquerySchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: false, Source: "alias"},
 		{Name: "baz", Type: sql.Text, Nullable: false, Source: "alias"},
-	}, []int{})
+	})
 
 	table := memory.NewTable("bar", tableSchema)
 

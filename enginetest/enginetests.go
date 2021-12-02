@@ -222,7 +222,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		table, err := harness.NewTable(db, "members", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
 			{Name: "team", Type: sql.Text, Source: "members"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(
@@ -283,7 +283,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 		_, err := harness.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "mytable"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 	})
 
@@ -315,7 +315,7 @@ func TestExplode(t *testing.T, harness Harness) {
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.CreateArray(sql.Text), Source: "t"},
 		{Name: "c", Type: sql.Text, Source: "t"},
-	}, []int{}))
+	}))
 	require.NoError(t, err)
 
 	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
@@ -440,7 +440,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 		table, err := harness.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "foo"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
@@ -448,7 +448,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 		table2, err := harness.NewTable(db, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
 			{Name: "c", Type: sql.Int64, Source: "bar"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
@@ -2652,7 +2652,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t1"},
 			{Name: "c", Type: sql.Text, Source: "t1"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2664,7 +2664,7 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t2"},
 			{Name: "d", Type: sql.Text, Source: "t2"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
@@ -2691,7 +2691,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t1"},
 			{Name: "c", Type: sql.Text, Source: "t1"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2703,7 +2703,7 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t2"},
 			{Name: "c", Type: sql.Text, Source: "t2"},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
@@ -2728,7 +2728,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 	wrapInTransaction(t, db, harness, func() {
 		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2738,7 +2738,7 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 
 		t2, err := harness.NewTable(db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
-		}, []int{0}))
+		}))
 		require.NoError(err)
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
 			sql.NewRow("b1"),
@@ -2770,7 +2770,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 			{Name: "i", Type: sql.Int32, Source: "table1"},
 			{Name: "f", Type: sql.Float64, Source: "table1"},
 			{Name: "t", Type: sql.Text, Source: "table1"},
-		}, []int{}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
@@ -2783,7 +2783,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 			{Name: "i2", Type: sql.Int32, Source: "table2"},
 			{Name: "f2", Type: sql.Float64, Source: "table2"},
 			{Name: "t2", Type: sql.Text, Source: "table2"},
-		}, []int{}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
@@ -2796,7 +2796,7 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 			{Name: "i", Type: sql.Int32, Source: "table3"},
 			{Name: "f2", Type: sql.Float64, Source: "table3"},
 			{Name: "t3", Type: sql.Text, Source: "table3"},
-		}, []int{}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
@@ -3178,7 +3178,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "pk", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "v", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		}, []int{0, 1}))
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),

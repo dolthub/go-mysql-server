@@ -59,7 +59,7 @@ func personMemTable(database, table string) (*memTable, Records) {
 			{Name: "email", Type: sql.Text, Nullable: false, Source: table},
 			{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: table},
 			{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: table},
-		}, []int{}),
+		}),
 		Records: records,
 	}
 

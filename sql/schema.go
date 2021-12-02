@@ -110,6 +110,13 @@ type PrimaryKeySchema struct {
 	PkOrdinals []int
 }
 
-func NewPrimaryKeySchema(s Schema, pkOrds []int) PrimaryKeySchema {
+func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
+	if len(pkOrds) == 0 {
+		for i, c := range s {
+			if c.PrimaryKey {
+				pkOrds = append(pkOrds, i)
+			}
+		}
+	}
 	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds}
 }

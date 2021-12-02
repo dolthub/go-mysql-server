@@ -34,7 +34,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Text, Source: "foo"},
 		{Name: "b", Type: sql.Text, Source: "foo"},
-	}, []int{}))
+	}))
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -75,7 +75,7 @@ func TestMisusedAlias(t *testing.T) {
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32},
-	}, []int{}))
+	}))
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -94,8 +94,8 @@ func TestQualifyVariables(t *testing.T) {
 	assert := assert.New(t)
 	f := getRule("qualify_columns")
 
-	sessionTable := memory.NewTable("@@session", sql.NewPrimaryKeySchema(sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}}, []int{}))
-	globalTable := memory.NewTable("@@global", sql.NewPrimaryKeySchema(sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}}, []int{}))
+	sessionTable := memory.NewTable("@@session", sql.NewPrimaryKeySchema(sql.Schema{{Name: "autocommit", Type: sql.Int64, Source: "@@session"}}))
+	globalTable := memory.NewTable("@@global", sql.NewPrimaryKeySchema(sql.Schema{{Name: "max_allowed_packet", Type: sql.Int64, Source: "@@global"}}))
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -147,11 +147,11 @@ func TestQualifyColumns(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "x", Type: sql.Int32, Source: "mytable"},
-	}, []int{}))
+	}))
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable2"},
 		{Name: "y", Type: sql.Int32, Source: "mytable2"},
-	}, []int{}))
+	}))
 
 	testCases := []analyzerFnTestCase{
 		{
@@ -390,7 +390,7 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 	require := require.New(t)
 	f := getRule("qualify_columns")
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}, []int{}))
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -426,11 +426,11 @@ func TestResolveColumns(t *testing.T) {
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "t1"},
 		{Name: "x", Type: sql.Int64, Source: "t1"},
-	}, []int{}))
+	}))
 	t2 := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "t2"},
 		{Name: "y", Type: sql.Int64, Source: "t2"},
-	}, []int{}))
+	}))
 
 	testCases := []analyzerFnTestCase{
 		{

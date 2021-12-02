@@ -65,7 +65,7 @@ func TestGroupByRowIter(t *testing.T) {
 		{Name: "col1", Type: sql.LongText},
 		{Name: "col2", Type: sql.Int64},
 	}
-	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema, []int{}))
+	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema))
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -131,7 +131,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	}
 
-	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema, []int{}))
+	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema))
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -229,7 +229,7 @@ func benchmarkTable(t testing.TB) sql.Table {
 	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64},
 		{Name: "b", Type: sql.Int64},
-	}, []int{}))
+	}))
 
 	for i := int64(0); i < 50; i++ {
 		for j := int64(200); j > 0; j-- {

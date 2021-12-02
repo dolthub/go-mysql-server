@@ -38,7 +38,7 @@ func authEngine(au auth.Auth) (*sqle.Engine, error) {
 	table := memory.NewTable(tblName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "id", Type: sql.Text, Nullable: false, Source: tblName},
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tblName},
-	}, []int{}))
+	}))
 
 	db := memory.NewDatabase("test")
 	db.AddTable(tblName, table)

@@ -31,7 +31,7 @@ func TestUnion(t *testing.T) {
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
-	}, []int{})
+	})
 	child := memory.NewTable("test", childSchema)
 	empty := memory.NewTable("empty", childSchema)
 

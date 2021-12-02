@@ -31,7 +31,7 @@ func TestProject(t *testing.T) {
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Text, Nullable: true},
-	}, []int{})
+	})
 	child := memory.NewTable("test", childSchema)
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_1", "col2_1"))
 	child.Insert(sql.NewEmptyContext(), sql.NewRow("col1_2", "col2_2"))
@@ -42,7 +42,7 @@ func TestProject(t *testing.T) {
 	require.Equal(1, len(p.Children()))
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col2", Type: sql.Text, Nullable: true},
-	}, []int{})
+	})
 	require.Equal(schema.Schema, p.Schema())
 	iter, err := p.RowIter(ctx, nil)
 	require.NoError(err)
@@ -69,7 +69,7 @@ func TestProject(t *testing.T) {
 	}, NewResolvedTable(child, nil, nil))
 	schema = sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: true},
-	}, []int{})
+	})
 	require.Equal(schema.Schema, p.Schema())
 }
 

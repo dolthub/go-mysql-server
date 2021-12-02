@@ -24,12 +24,9 @@ import (
 const dualTableName = "dual"
 
 var dualTable = func() sql.Table {
-	t := memory.NewTable(dualTableName, sql.NewPrimaryKeySchema(
-		sql.Schema{
-			{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
-		},
-		[]int{},
-	))
+	t := memory.NewTable(dualTableName, sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
+	}))
 
 	ctx := sql.NewEmptyContext()
 

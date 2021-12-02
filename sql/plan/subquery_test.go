@@ -65,7 +65,7 @@ func TestSubqueryMultipleRows(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: sql.Text},
-	}, []int{}))
+	}))
 
 	require.NoError(table.Insert(ctx, sql.Row{"one"}))
 	require.NoError(table.Insert(ctx, sql.Row{"two"}))

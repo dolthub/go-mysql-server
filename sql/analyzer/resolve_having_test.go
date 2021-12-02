@@ -142,7 +142,7 @@ func TestResolveHaving(t *testing.T) {
 					plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
 						{Type: sql.Int64, Name: "i", Source: "t"},
 						{Type: sql.Int64, Name: "foo", Source: "t"},
-					}, []int{})), nil, nil),
+					})), nil, nil),
 				),
 			),
 			expected: plan.NewProject(
@@ -163,7 +163,7 @@ func TestResolveHaving(t *testing.T) {
 						plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
 							{Type: sql.Int64, Name: "i", Source: "t"},
 							{Type: sql.Int64, Name: "foo", Source: "t"},
-						}, []int{})), nil, nil),
+						})), nil, nil),
 					),
 				),
 			),
@@ -187,7 +187,7 @@ func TestResolveHaving(t *testing.T) {
 						plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
 							{Type: sql.Int64, Name: "i", Source: "t"},
 							{Type: sql.Int64, Name: "foo", Source: "t"},
-						}, []int{})), nil, nil),
+						})), nil, nil),
 					),
 				),
 			),
@@ -214,7 +214,7 @@ func TestResolveHaving(t *testing.T) {
 							plan.NewResolvedTable(memory.NewTable("t", sql.NewPrimaryKeySchema(sql.Schema{
 								{Type: sql.Int64, Name: "i", Source: "t"},
 								{Type: sql.Int64, Name: "foo", Source: "t"},
-							}, []int{})), nil, nil),
+							})), nil, nil),
 						),
 					),
 				),
