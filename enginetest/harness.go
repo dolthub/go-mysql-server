@@ -29,7 +29,7 @@ type Harness interface {
 	// NewDatabaseProvider returns a sql.MutableDatabaseProvider to use for a test.
 	NewDatabaseProvider(dbs ...sql.Database) sql.MutableDatabaseProvider
 	// NewTable takes a database previously created by NewDatabase and returns a table created with the given schema.
-	NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error)
+	NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error)
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
 	// their engine implementation. Every harnessed engine test uses the context created by this method, with some
 	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
@@ -79,7 +79,7 @@ type VersionedDBHarness interface {
 	// identifier. NewTableAsOf must ignore tables that already exist in the database. Tables returned by this method do
 	// not need to have any previously created data in them, but they can. This behavior is implementation specific, and
 	// the harness works either way.
-	NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table
+	NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table
 	// SnapshotTable creates a snapshot of the table named with the given asOf label. Depending on the implementation,
 	// NewTableAsOf might do all the necessary work to create such snapshots, so this could be a no-op.
 	SnapshotTable(db sql.VersionedDatabase, name string, asOf interface{}) error

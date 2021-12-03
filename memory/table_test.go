@@ -29,7 +29,7 @@ import (
 
 func TestTablePartitionsCount(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewPartitionedTable("foo", nil, 5)
+	table := memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, 5)
 	count, err := table.PartitionCount(sql.NewEmptyContext())
 	require.NoError(err)
 	require.Equal(int64(5), count)
@@ -37,9 +37,9 @@ func TestTablePartitionsCount(t *testing.T) {
 
 func TestTableName(t *testing.T) {
 	require := require.New(t)
-	s := sql.Schema{
+	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
-	}
+	})
 
 	table := memory.NewTable("test", s)
 	require.Equal("test", table.Name())
@@ -47,10 +47,10 @@ func TestTableName(t *testing.T) {
 
 func TestTableString(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int64, Nullable: false},
-	})
+	}))
 	require.Equal("foo", table.String())
 }
 
@@ -110,7 +110,7 @@ func (i *dummyLookupIter) Close(_ *sql.Context) error { return nil }
 
 var tests = []struct {
 	name          string
-	schema        sql.Schema
+	schema        sql.PrimaryKeySchema
 	numPartitions int
 	rows          []sql.Row
 
@@ -131,11 +131,11 @@ var tests = []struct {
 }{
 	{
 		name: "test",
-		schema: sql.Schema{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false)},
 			&sql.Column{Name: "col2", Source: "test", Type: sql.Int32, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int32, false)},
 			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false)},
-		},
+		}),
 		numPartitions: 2,
 		rows: []sql.Row{
 			sql.NewRow("a", int32(10), int64(100)),
@@ -375,7 +375,7 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 
 			pIter, err := table.IndexKeyValues(
 				sql.NewEmptyContext(),
-				[]string{test.schema[0].Name, test.schema[2].Name},
+				[]string{test.schema.Schema[0].Name, test.schema.Schema[2].Name},
 			)
 			require.NoError(err)
 

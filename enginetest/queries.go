@@ -5945,6 +5945,40 @@ var QueryTests = []QueryTest{
 			{3, "third row"},
 		},
 	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
+		Expected: []sql.Row{
+			{1, 1, 0},
+			{2, 0, 1},
+			{0, 2, 2},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
+		Expected: []sql.Row{
+			{0, 2, 2},
+		},
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y = 0`,
+		Expected: []sql.Row{
+			{2, 0, 1},
+		},
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
+		Expected: []sql.Row{
+			{2, 0, 1},
+			{0, 2, 2},
+			{1, 1, 0},
+		},
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
+		Expected: []sql.Row{
+			{1, 1, 0},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -6395,6 +6429,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"tabletest"},
 			{"people"},
 			{"datetime_table"},
+			{"invert_pk"},
 		},
 	},
 	{
@@ -6414,6 +6449,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"tabletest", "BASE TABLE"},
 			{"people", "BASE TABLE"},
 			{"datetime_table", "BASE TABLE"},
+			{"invert_pk", "BASE TABLE"},
 		},
 	},
 	{
@@ -6533,6 +6569,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"datetime_table"},
 			{"fk_tbl"},
 			{"floattable"},
+			{"invert_pk"},
 			{"mytable"},
 			{"myview"},
 			{"newlinetable"},
@@ -6680,6 +6717,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"datetime_table", nil},
 			{"fk_tbl", nil},
 			{"floattable", nil},
+			{"invert_pk", nil},
 			{"mytable", nil},
 			{"newlinetable", nil},
 			{"niltable", nil},
@@ -6705,6 +6743,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "invert_pk", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
@@ -6732,6 +6771,9 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "floattable", "i", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "y", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "z", 2, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "x", 3, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "mytable_s", "def", "mydb", "mytable", "s", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "newlinetable", "i", 1, nil, nil, nil, nil},
@@ -7432,6 +7474,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
@@ -7474,6 +7517,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{

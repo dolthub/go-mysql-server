@@ -66,10 +66,10 @@ func TestValidateGroupBy(t *testing.T) {
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil)
 	require.NoError(err)
 
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text},
 		{Name: "col2", Type: sql.Int64},
-	}
+	})
 
 	child := memory.NewTable("test", childSchema)
 
@@ -111,10 +111,10 @@ func TestValidateGroupByErr(t *testing.T) {
 	_, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil)
 	require.NoError(err)
 
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text},
 		{Name: "col2", Type: sql.Int64},
-	}
+	})
 
 	child := memory.NewTable("test", childSchema)
 
@@ -160,10 +160,10 @@ func TestValidateSchemaSource(t *testing.T) {
 			"table with valid schema",
 			plan.NewResolvedTable(memory.NewTable(
 				"mytable",
-				sql.Schema{
+				sql.NewPrimaryKeySchema(sql.Schema{
 					{Name: "foo", Source: "mytable"},
 					{Name: "bar", Source: "mytable"},
-				},
+				}),
 			), nil, nil),
 			true,
 		},
@@ -171,18 +171,18 @@ func TestValidateSchemaSource(t *testing.T) {
 			"table with invalid schema",
 			plan.NewResolvedTable(memory.NewTable(
 				"mytable",
-				sql.Schema{
+				sql.NewPrimaryKeySchema(sql.Schema{
 					{Name: "foo", Source: ""},
 					{Name: "bar", Source: "something"},
-				},
+				}),
 			), nil, nil),
 			false,
 		},
 		{
 			"table alias with table",
-			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable("mytable", sql.Schema{
+			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
-			}), nil, nil)),
+			})), nil, nil)),
 			true,
 		},
 		{
@@ -219,13 +219,13 @@ func TestValidateSchemaSource(t *testing.T) {
 func TestValidateUnionSchemasMatch(t *testing.T) {
 	table := plan.NewResolvedTable(memory.NewTable(
 		"mytable",
-		sql.Schema{
+		sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "foo", Source: "mytable", Type: sql.Text},
 			{Name: "bar", Source: "mytable", Type: sql.Int64},
 			{Name: "rab", Source: "mytable", Type: sql.Text},
 			{Name: "zab", Source: "mytable", Type: sql.Int64},
 			{Name: "quuz", Source: "mytable", Type: sql.Boolean},
-		},
+		}),
 	), nil, nil)
 	testCases := []struct {
 		name string
@@ -478,10 +478,10 @@ func TestValidateOperands(t *testing.T) {
 }
 
 func TestValidateIndexCreation(t *testing.T) {
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
-	})
+	}))
 
 	testCases := []struct {
 		name string
@@ -846,12 +846,12 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable("test", sql.Schema{
+	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text},
-	})
-	subTable := memory.NewTable("subtest", sql.Schema{
+	}))
+	subTable := memory.NewTable("subtest", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "bar", Type: sql.Text},
-	})
+	}))
 
 	var node sql.Node
 	node = plan.NewProject([]sql.Expression{

@@ -92,13 +92,13 @@ func (i *IndexDefinition) String() string {
 
 // TableSpec is a node describing the schema of a table.
 type TableSpec struct {
-	Schema  sql.Schema
+	Schema  sql.PrimaryKeySchema
 	FkDefs  []*sql.ForeignKeyConstraint
 	ChDefs  []*sql.CheckConstraint
 	IdxDefs []*IndexDefinition
 }
 
-func (c *TableSpec) WithSchema(schema sql.Schema) *TableSpec {
+func (c *TableSpec) WithSchema(schema sql.PrimaryKeySchema) *TableSpec {
 	nc := *c
 	nc.Schema = schema
 	return &nc
@@ -126,7 +126,7 @@ func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) *TableSpec {
 type CreateTable struct {
 	ddlNode
 	name        string
-	schema      sql.Schema
+	schema      sql.PrimaryKeySchema
 	ifNotExists IfNotExistsOption
 	fkDefs      []*sql.ForeignKeyConstraint
 	chDefs      []*sql.CheckConstraint
@@ -142,7 +142,7 @@ var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
-	for _, s := range tableSpec.Schema {
+	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
 	}
 
@@ -171,7 +171,7 @@ func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn If
 
 // NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
 func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
-	for _, s := range tableSpec.Schema {
+	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
 	}
 
@@ -197,13 +197,17 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 
 // Schema implements the sql.Node interface.
 func (c *CreateTable) Schema() sql.Schema {
+	return c.schema.Schema
+}
+
+func (c *CreateTable) PkSchema() sql.PrimaryKeySchema {
 	return c.schema
 }
 
 // Resolved implements the Resolvable interface.
 func (c *CreateTable) Resolved() bool {
 	resolved := c.ddlNode.Resolved()
-	for _, col := range c.schema {
+	for _, col := range c.schema.Schema {
 		resolved = resolved && col.Default.Resolved()
 	}
 	return resolved
@@ -455,7 +459,7 @@ func (c *CreateTable) schemaDebugString() string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("Columns")
 	var children []string
-	for _, col := range c.schema {
+	for _, col := range c.schema.Schema {
 		children = append(children, sql.DebugString(col))
 	}
 	p.WriteChildren(children...)
@@ -463,9 +467,9 @@ func (c *CreateTable) schemaDebugString() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.schema)+len(c.chDefs))
+	exprs := make([]sql.Expression, len(c.schema.Schema)+len(c.chDefs))
 	i := 0
-	for _, col := range c.schema {
+	for _, col := range c.schema.Schema {
 		exprs[i] = expression.WrapExpression(col.Default)
 		i++
 	}
@@ -508,24 +512,24 @@ func (c *CreateTable) Temporary() TempTableOption {
 }
 
 func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(c.schema)+len(c.chDefs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema)+len(c.chDefs))
+	if len(exprs) != len(c.schema.Schema)+len(c.chDefs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema.Schema)+len(c.chDefs))
 	}
 
 	nc := *c
 
 	i := 0
-	for ; i < len(c.schema); i++ {
+	for ; i < len(c.schema.Schema); i++ {
 		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 		if ok {
-			nc.schema[i].Default = unwrappedColDefVal
+			nc.schema.Schema[i].Default = unwrappedColDefVal
 		} else { // nil fails type check
-			nc.schema[i].Default = nil
+			nc.schema.Schema[i].Default = nil
 		}
 	}
 
-	for ; i < len(c.chDefs)+len(c.schema); i++ {
-		nc.chDefs[i-len(c.schema)].Expr = exprs[i]
+	for ; i < len(c.chDefs)+len(c.schema.Schema); i++ {
+		nc.chDefs[i-len(c.schema.Schema)].Expr = exprs[i]
 	}
 
 	return &nc, nil
@@ -533,8 +537,8 @@ func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 
 func (c *CreateTable) validateDefaultPosition() error {
 	colsAfterThis := make(map[string]*sql.Column)
-	for i := len(c.schema) - 1; i >= 0; i-- {
-		col := c.schema[i]
+	for i := len(c.schema.Schema) - 1; i >= 0; i-- {
+		col := c.schema.Schema[i]
 		colsAfterThis[col.Name] = col
 		if err := inspectDefaultForInvalidColumns(col, colsAfterThis); err != nil {
 			return err

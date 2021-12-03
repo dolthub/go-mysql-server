@@ -28,17 +28,17 @@ import (
 func TestPruneColumns(t *testing.T) {
 	rule := getRuleFrom(OnceAfterDefault, "prune_columns")
 
-	t1 := plan.NewResolvedTable(memory.NewTable("t1", sql.Schema{
+	t1 := plan.NewResolvedTable(memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
 		{Name: "bar", Type: sql.Int64, Source: "t1"},
 		{Name: "bax", Type: sql.Int64, Source: "t1"},
-	}), nil, nil)
+	})), nil, nil)
 
-	t2 := plan.NewResolvedTable(memory.NewTable("t2", sql.Schema{
+	t2 := plan.NewResolvedTable(memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t2"},
 		{Name: "baz", Type: sql.Int64, Source: "t2"},
 		{Name: "bux", Type: sql.Int64, Source: "t2"},
-	}), nil, nil)
+	})), nil, nil)
 
 	testCases := []analyzerFnTestCase{
 		{
