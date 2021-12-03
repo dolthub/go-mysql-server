@@ -1788,160 +1788,119 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 }
 
 func TestPkOrdinals(t *testing.T, harness Harness) {
+	tests := []struct {
+		name        string
+		create      string
+		alter       string
+		expOrdinals []int
+	}{
+		{
+			name:        "CREATE table out of order PKs",
+			create:      "CREATE TABLE a (x int, y int, primary key (y,x))",
+			expOrdinals: []int{1, 0},
+		},
+		{
+			name:        "CREATE table out of order PKs",
+			create:      "CREATE TABLE a (x int, y int, primary key (y,x))",
+			expOrdinals: []int{1, 0},
+		},
+		{
+			name:        "Drop column shifts PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a DROP COLUMN w",
+			expOrdinals: []int{3, 1},
+		},
+		{
+			name:        "Add column shifts PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a ADD COLUMN ww int AFTER v",
+			expOrdinals: []int{5, 1},
+		},
+		{
+			name:        "Modify column shifts PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a MODIFY COLUMN w int AFTER y",
+			expOrdinals: []int{3, 1},
+		},
+		{
+			name:        "Keyless table has no PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int)",
+			expOrdinals: []int{},
+		},
+		{
+			name:        "Delete PRIMARY KEY leaves no PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a DROP PRIMARY KEY",
+			expOrdinals: []int{},
+		},
+		{
+			name:        "Add primary key to table creates PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int)",
+			alter:       "ALTER TABLE a ADD PRIMARY KEY (y,v)",
+			expOrdinals: []int{4, 1},
+		},
+		{
+			name:        "Transpose PK column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a MODIFY COLUMN y int AFTER u",
+			expOrdinals: []int{1, 2},
+		},
+		{
+			name:        "Rename PK column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a RENAME COLUMN y to yy",
+			expOrdinals: []int{4, 1},
+		},
+		{
+			name:        "Complicated table ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			expOrdinals: []int{4, 1, 3, 5, 0},
+		},
+		{
+			name:        "Complicated table add column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			alter:       "ALTER TABLE a ADD COLUMN ww int AFTER w",
+			expOrdinals: []int{5, 1, 4, 6, 0},
+		},
+		{
+			name:        "Complicated table drop column",
+			create:      "CREATE TABLE a (u int, v int, w int, ww int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			alter:       "ALTER TABLE a DROP COLUMN ww",
+			expOrdinals: []int{4, 1, 3, 5, 0},
+		},
+		{
+			name:        "Complicated table transpose column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			alter:       "ALTER TABLE a MODIFY COLUMN y int AFTER u",
+			expOrdinals: []int{1, 2, 4, 5, 0},
+		},
+	}
 	e := NewEngine(t, harness)
 	ctx := NewContext(harness)
 
 	var err error
 	var db sql.Database
-	t.Run("CREATE table out of order PKs", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE a (x int, y int, primary key (y,x))")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer RunQuery(t, e, harness, "DROP TABLE IF EXISTS a")
+			RunQuery(t, e, harness, tt.create)
+			RunQuery(t, e, harness, tt.alter)
 
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
+			db, err = e.Analyzer.Catalog.Database("mydb")
+			require.NoError(t, err)
 
-		table, ok, err := db.GetTableInsensitive(ctx, "a")
+			table, ok, err := db.GetTableInsensitive(ctx, "a")
 
-		require.NoError(t, err)
-		require.True(t, ok)
+			require.NoError(t, err)
+			require.True(t, ok)
 
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
+			pkTable, ok := table.(sql.PrimaryKeyTable)
+			require.True(t, ok)
 
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, pkOrds, []int{1, 0})
-	})
-
-	t.Run("Drop column shifts PK ordinals", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE b (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
-		RunQuery(t, e, harness, "ALTER TABLE b DROP COLUMN w")
-
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
-
-		table, ok, err := db.GetTableInsensitive(ctx, "b")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
-
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, []int{3, 1}, pkOrds)
-	})
-
-	t.Run("Add column shifts PK ordinals", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE c (u int, v int, x int, y int, z int, PRIMARY KEY (y,v))")
-		RunQuery(t, e, harness, "ALTER TABLE c ADD COLUMN w int AFTER v")
-
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
-
-		table, ok, err := db.GetTableInsensitive(ctx, "c")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
-
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, []int{4, 1}, pkOrds)
-	})
-
-	t.Run("Modify column shifts PK ordinals", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE d (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
-		RunQuery(t, e, harness, "ALTER TABLE d MODIFY COLUMN w int AFTER y")
-
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
-
-		table, ok, err := db.GetTableInsensitive(ctx, "d")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
-
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, []int{3, 1}, pkOrds)
-	})
-
-	t.Run("Keyless table has no PK ordinals", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE e (u int, v int, w int, x int, y int, z int)")
-
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
-
-		table, ok, err := db.GetTableInsensitive(ctx, "e")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
-
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, []int{}, pkOrds)
-	})
-
-	t.Run("Delete PRIMARY KEY leaves no PK ordinals", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE f (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
-		RunQuery(t, e, harness, "ALTER TABLE f DROP PRIMARY KEY")
-
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
-
-		table, ok, err := db.GetTableInsensitive(ctx, "f")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
-
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, []int{}, pkOrds)
-	})
-
-	t.Run("Add primary key to table creates PK ordinals", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE g (u int, v int, w int, x int, y int, z int)")
-		RunQuery(t, e, harness, "ALTER TABLE g ADD PRIMARY KEY (y,v)")
-
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
-
-		table, ok, err := db.GetTableInsensitive(ctx, "g")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
-
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, []int{4, 1}, pkOrds)
-	})
-
-	t.Run("Modify column transpose PK", func(t *testing.T) {
-		RunQuery(t, e, harness, "CREATE TABLE h (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))")
-		RunQuery(t, e, harness, "ALTER TABLE h MODIFY COLUMN y int AFTER u")
-
-		db, err = e.Analyzer.Catalog.Database("mydb")
-		require.NoError(t, err)
-
-		table, ok, err := db.GetTableInsensitive(ctx, "h")
-
-		require.NoError(t, err)
-		require.True(t, ok)
-
-		pkTable, ok := table.(sql.PrimaryKeyTable)
-		require.True(t, ok)
-
-		pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
-		require.Equal(t, []int{1, 2}, pkOrds)
-	})
+			pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
+			require.Equal(t, tt.expOrdinals, pkOrds)
+		})
+	}
 }
 
 func TestDropDatabase(t *testing.T, harness Harness) {
