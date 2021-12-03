@@ -138,7 +138,7 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 		return nil, fmt.Errorf("expected translation from type string to sql type has returned an unexpected result")
 	}
 	// If we successfully created a CreateTable plan with an empty schema then something has gone horribly wrong, so we'll panic
-	return ddl.Schema()[0].Type, nil
+	return ddl.CreateSchema[0].Type, nil
 }
 
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {

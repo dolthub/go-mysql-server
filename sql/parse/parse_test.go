@@ -144,6 +144,15 @@ var fixtures = map[string]sql.Node{
 				Nullable:   true,
 				PrimaryKey: false,
 			}},
+			IdxDefs: []*plan.IndexDefinition {
+				{
+					IndexName:  "PRIMARY",
+					Columns:    []sql.IndexColumn{
+						{Name:   "a"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+			},
 		},
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
@@ -163,6 +172,80 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}},
+			IdxDefs: []*plan.IndexDefinition {
+				{
+					IndexName:  "PRIMARY",
+					Columns:    []sql.IndexColumn{
+						{Name:   "a"},
+						{Name:   "b"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+			},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (b, a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Text,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			IdxDefs: []*plan.IndexDefinition {
+				{
+					IndexName:  "PRIMARY",
+					Columns:    []sql.IndexColumn{
+						{Name:   "b"},
+						{Name:   "a"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+			},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER, b int, CONSTRAINT pk PRIMARY KEY (b, a), CONSTRAINT UNIQUE KEY (a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
+		&plan.TableSpec{
+			Schema: sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}},
+			IdxDefs: []*plan.IndexDefinition {
+				{
+					IndexName:  "pk",
+					Columns:    []sql.IndexColumn{
+						{Name:   "b"},
+						{Name:   "a"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+				{
+					Columns:    []sql.IndexColumn{
+						{Name:   "a"},
+					},
+					Constraint: sql.IndexConstraint_Unique,
+				},
+			},
 		},
 	),
 	`CREATE TABLE IF NOT EXISTS t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
@@ -182,6 +265,16 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}},
+			IdxDefs: []*plan.IndexDefinition {
+				{
+					IndexName:  "PRIMARY",
+					Constraint: sql.IndexConstraint_Primary,
+					Columns:    []sql.IndexColumn{
+						{Name:   "a"},
+						{Name:   "b"},
+					},
+				},
+			},
 		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b))`: plan.NewCreateTable(
@@ -201,13 +294,15 @@ var fixtures = map[string]sql.Node{
 				Nullable:   true,
 				PrimaryKey: false,
 			}},
-			IdxDefs: []*plan.IndexDefinition{{
-				IndexName:  "",
-				Using:      sql.IndexUsing_Default,
-				Constraint: sql.IndexConstraint_None,
-				Columns:    []sql.IndexColumn{{"b", 0}},
-				Comment:    "",
-			}},
+			IdxDefs: []*plan.IndexDefinition{
+				{
+					IndexName:  "",
+					Using:      sql.IndexUsing_Default,
+					Constraint: sql.IndexConstraint_None,
+					Columns:    []sql.IndexColumn{{"b", 0}},
+					Comment:    "",
+				},
+			},
 		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b))`: plan.NewCreateTable(
