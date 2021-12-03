@@ -98,14 +98,15 @@ type RowIter2 interface {
 
 	// Next retrieves the next row2. It will return io.EOF if it's the last row2.
 	// After retrieving the last row2, Close will be automatically closed.
-	Next2() (Row2, error)
+	Next2(space Row2) (Row2, error)
 }
 
 // Row2IterToRow2s converts a row2 iterator to a slice of row2s.
 func RowIter2ToRow2s(ctx *Context, i RowIter2) ([]Row2, error) {
 	var row2s []Row2
+	space := make(Row2, 100)
 	for {
-		row2, err := i.Next2()
+		row2, err := i.Next2(space)
 		if err == io.EOF {
 			break
 		}
@@ -141,7 +142,7 @@ type sliceRow2Iter struct {
 	idx   int
 }
 
-func (i *sliceRow2Iter) Next2() (Row2, error) {
+func (i *sliceRow2Iter) Next2(Row2) (Row2, error) {
 	if i.idx >= len(i.row2s) {
 		return nil, io.EOF
 	}

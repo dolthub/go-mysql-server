@@ -79,7 +79,7 @@ func (i *TableRowIter) Next() (Row, error) {
 	return row, err
 }
 
-func (i *TableRowIter) Next2() (Row2, error) {
+func (i *TableRowIter) Next2(space Row2) (Row2, error) {
 	if i.ctx.Err() != nil {
 		return nil, i.ctx.Err()
 	}
@@ -110,7 +110,7 @@ func (i *TableRowIter) Next2() (Row2, error) {
 		i.rows2 = rows2
 	}
 
-	row2, err := i.rows2.Next2()
+	row2, err := i.rows2.Next2(space)
 	if err != nil && err == io.EOF {
 		if err = i.rows2.Close(i.ctx); err != nil {
 			return nil, err
@@ -118,7 +118,7 @@ func (i *TableRowIter) Next2() (Row2, error) {
 
 		i.partition = nil
 		i.rows2 = nil
-		return i.Next2()
+		return i.Next2(space)
 	}
 
 	return row2, err

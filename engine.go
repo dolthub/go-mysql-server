@@ -280,8 +280,8 @@ func (t transactionCommittingIter) Next() (sql.Row, error) {
 	return t.childIter.Next()
 }
 
-func (t transactionCommittingIter) Next2() (sql.Row2, error) {
-	return t.childIter.(sql.RowIter2).Next2()
+func (t transactionCommittingIter) Next2(space sql.Row2) (sql.Row2, error) {
+	return t.childIter.(sql.RowIter2).Next2(space)
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {

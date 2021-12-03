@@ -289,7 +289,7 @@ func (i *exchangeRowIter2) Next() (sql.Row, error) {
 	panic("unimplemented")
 }
 
-func (i *exchangeRowIter2) Next2() (sql.Row2, error) {
+func (i *exchangeRowIter2) Next2(sql.Row2) (sql.Row2, error) {
 	r, ok := <-i.rows
 	if !ok {
 		return nil, i.waiter()
@@ -380,7 +380,7 @@ func sendAllRows2(ctx *sql.Context, iter sql.RowIter2, rows chan<- sql.Row2) (ro
 		}
 	}()
 	for {
-		r, err := iter.Next2()
+		r, err := iter.Next2(nil)
 		if err == io.EOF {
 			return rowCount, nil
 		}

@@ -30,13 +30,14 @@ var (
 )
 
 func shouldParallelize(node sql.Node, scope *Scope) bool {
-	// Don't parallelize subqueries, this can blow up the execution graph quickly
-	if len(scope.Schema()) > 0 {
-		return false
-	}
-
-	// Do not try to parallelize DDL or descriptive operations
-	return !plan.IsNoRowNode(node)
+	return false
+	//// Don't parallelize subqueries, this can blow up the execution graph quickly
+	//if len(scope.Schema()) > 0 {
+	//	return false
+	//}
+	//
+	//// Do not try to parallelize DDL or descriptive operations
+	//return !plan.IsNoRowNode(node)
 }
 
 func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {

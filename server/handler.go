@@ -496,7 +496,7 @@ func (h *Handler) sendRows2(
 			case <-quit:
 				return
 			default:
-				row, err := rows.Next2()
+				row, err := rows.Next2(nil)
 				if err != nil {
 					errChan <- err
 					return

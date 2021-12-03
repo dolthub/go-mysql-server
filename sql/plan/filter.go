@@ -149,9 +149,9 @@ func (i *FilterIter) Next() (sql.Row, error) {
 }
 
 // Next implements the RowIter interface.
-func (i *FilterIter) Next2() (sql.Row2, error) {
+func (i *FilterIter) Next2(space sql.Row2) (sql.Row2, error) {
 	for {
-		row, err := i.iter2.Next2()
+		row, err := i.iter2.Next2(space)
 		if err != nil {
 			return nil, err
 		}

@@ -379,8 +379,8 @@ func (i *trackedRowIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *trackedRowIter) Next2() (sql.Row2, error) {
-	row, err := i.iter2.Next2()
+func (i *trackedRowIter) Next2(space sql.Row2) (sql.Row2, error) {
+	row, err := i.iter2.Next2(space)
 	if err != nil {
 		return nil, err
 	}
