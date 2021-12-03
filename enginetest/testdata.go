@@ -175,11 +175,11 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 	if includeTable(includedTables, "one_pk_two_idx") {
 		wrapInTransaction(t, myDb, harness, func() {
-			table, err = harness.NewTable(myDb, "one_pk_two_idx", sql.Schema{
+			table, err = harness.NewTable(myDb, "one_pk_two_idx", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "pk", Type: sql.Int64, Source: "one_pk_two_idx", PrimaryKey: true},
 				{Name: "v1", Type: sql.Int64, Source: "one_pk_two_idx"},
 				{Name: "v2", Type: sql.Int64, Source: "one_pk_two_idx"},
-			})
+			}))
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
