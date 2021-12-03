@@ -3239,6 +3239,64 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT i, row_number() over (order by a), max(b)`:          ErrUnsupportedFeature,
 }
 
+func TestParseOne(t *testing.T) {
+	type testCase struct {
+		input string
+		parts []string
+	}
+
+	cases := []testCase{
+		{
+			"SELECT 1",
+			[]string{"SELECT 1"},
+		},
+		{
+			"SELECT 1;",
+			[]string{"SELECT 1"},
+		},
+		{
+			"SELECT 1; SELECT 2",
+			[]string{"SELECT 1", "SELECT 2"},
+		},
+		{
+			"SELECT 1 /* testing */ ;",
+			[]string{"SELECT 1 /* testing */ "},
+		},
+		{
+			"SELECT 1 -- this is a test",
+			[]string{"SELECT 1 -- this is a test"},
+		},
+		{
+			"-- empty statement with comment\n; SELECT 1; SELECT 2",
+			[]string{"-- empty statement with comment\n", "SELECT 1", "SELECT 2"},
+		},
+		{
+			"SELECT 1; -- empty statement with comment\n; SELECT 2",
+			[]string{"SELECT 1", "-- empty statement with comment\n", "SELECT 2"},
+		},
+		{
+			"SELECT 1; SELECT 2; -- empty statement with comment\n",
+			[]string{"SELECT 1", "SELECT 2", "-- empty statement with comment"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			q := tc.input
+			for i := 0; i < len(tc.parts); i++ {
+				tree, p, r, err := ParseOne(ctx, q)
+				require.NoError(t, err)
+				require.NotNil(t, tree)
+				require.Equal(t, tc.parts[i], p)
+				if i == len(tc.parts) - 1 {
+				require.Empty(t, r)
+				}
+				q = r
+			}
+		});
+	}
+}
+
 func TestParseErrors(t *testing.T) {
 	for query, expectedError := range fixturesErrors {
 		t.Run(query, func(t *testing.T) {
