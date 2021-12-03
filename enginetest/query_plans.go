@@ -47,6 +47,20 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM one_pk_two_idx WHERE v1 < 2 AND v2 IS NOT NULL`,
+		ExpectedPlan: "Filter((one_pk_two_idx.v1 < 2) AND (NOT(one_pk_two_idx.v2 IS NULL)))\n" +
+			" └─ Projected table access on [pk v1 v2]\n" +
+			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk_two_idx WHERE v1 IN (1, 2) AND v2 <= 2`,
+		ExpectedPlan: "Filter((one_pk_two_idx.v1 HASH IN (1, 2)) AND (one_pk_two_idx.v2 <= 2))\n" +
+			" └─ Projected table access on [pk v1 v2]\n" +
+			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT * FROM one_pk_three_idx WHERE v1 > 2 AND v2 = 3`,
 		ExpectedPlan: "Filter((one_pk_three_idx.v1 > 2) AND (one_pk_three_idx.v2 = 3))\n" +
 			" └─ Projected table access on [pk v1 v2 v3]\n" +
