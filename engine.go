@@ -434,5 +434,5 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
 	}
 
-	return analyzedCreateTable.Schema(), nil
+	return analyzedCreateTable.CreateSchema, nil
 }

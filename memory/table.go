@@ -531,6 +531,23 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		newSchCol.Default = newDefault.(*sql.ColumnDefaultValue)
 	}
 
+	if newCol.AutoIncrement {
+		t.autoColIdx = newColIdx
+		t.autoIncVal = 0
+		for _, p := range t.partitions {
+			for _, row := range p {
+				cmp, err := newCol.Type.Compare(row[newColIdx], t.autoIncVal)
+				if err != nil {
+					panic(err)
+				}
+
+				if cmp > 0 {
+					t.autoIncVal = row[newColIdx]
+				}
+			}
+		}
+	}
+
 	t.schema = newSch
 	return newColIdx
 }

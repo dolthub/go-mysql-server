@@ -382,7 +382,7 @@ func (m *ModifyColumn) Order() *sql.ColumnOrder {
 
 // Schema implements the sql.Node interface.
 func (m *ModifyColumn) Schema() sql.Schema {
-	return sql.Schema{m.column}
+	return sql.Schema{}
 }
 
 func (m *ModifyColumn) String() string {

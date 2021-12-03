@@ -1624,18 +1624,16 @@ func TestAddColumn(t *testing.T, harness Harness) {
 }
 
 func TestModifyColumn(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	e := NewEngine(t, harness)
 	db, err := e.Analyzer.Catalog.Database("mydb")
-	require.NoError(err)
+	require.NoError(t, err)
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
@@ -1643,9 +1641,9 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", PrimaryKey: true},
 	}, tbl.Schema())
@@ -1653,9 +1651,9 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
@@ -1663,24 +1661,39 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
 	}, tbl.Schema())
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
+	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'", sql.ErrTableNotFound)
+	
+	t.Run("auto increment attribute", func(t *testing.T) {
+		TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY i BIGINT auto_increment", []sql.Row(nil), nil, nil)
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+		}, tbl.Schema())
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
+		RunQuery(t, e, harness, "insert into mytable (s) values ('new row')")
+		TestQuery(t, harness, e, "select i from mytable where s = 'new row'", []sql.Row{{4}}, nil, nil)
+
+		// tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		// require.NoError(t, err)
+		// require.True(t, ok)
+		// assert.Equal(t, sql.Schema{
+		// 	{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
+		// 	{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+		// }, tbl.Schema())
+	})
 }
 
 func TestDropColumn(t *testing.T, harness Harness) {
