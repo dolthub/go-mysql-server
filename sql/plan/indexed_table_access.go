@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -37,6 +38,8 @@ type IndexedTableAccess struct {
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
+
+var _ sql.Node2 = (*IndexedTableAccess)(nil)
 
 // NewIndexedTableAccess returns a new IndexedTableAccess node with the index and key expressions given. An index
 // lookup will be calculated and applied for the row given in RowIter().
@@ -67,6 +70,26 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	}
 
 	lookup, err := i.getLookup(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	indexedTable := resolvedTable.WithIndexLookup(lookup)
+	partIter, err := indexedTable.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
+}
+
+func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, row2 sql.Row2) (sql.RowIter2, error) {
+	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
+	}
+
+	lookup, err := i.getLookup2(ctx, row2)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +138,35 @@ func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	for i, keyExpr := range i.keyExprs {
 		var err error
 		key[i], err = keyExpr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	idxExpressions := i.index.Expressions()
+	idxBuilder := sql.NewIndexBuilder(ctx, i.index)
+	for keyIndex := 0; keyIndex < len(key); keyIndex++ {
+		idxBuilder = idxBuilder.Equals(ctx, idxExpressions[keyIndex], key[keyIndex])
+	}
+	lookup, err := idxBuilder.Build(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return lookup, nil
+}
+
+func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row2 sql.Row2) (sql.IndexLookup, error) {
+	// if the lookup was provided at analysis time (static evaluation), use it.
+	if i.lookup != nil {
+		return i.lookup, nil
+	}
+
+	// otherwise, evaluate the key expressions against the row given to obtain the key for an index lookup
+	key := make([]sqltypes.Value, len(i.keyExprs))
+	for idx, keyExpr := range i.keyExprs {
+		var err error
+		key[idx], err = keyExpr.(sql.Expression2).Eval2(ctx, row2)
 		if err != nil {
 			return nil, err
 		}

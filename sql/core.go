@@ -69,6 +69,13 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+type Expression2 interface {
+	Expression
+
+	// Eval evaluates the given row and returns a result.
+	Eval2(ctx *Context, row Row2) (sqltypes.Value, error)
+}
+
 // FunctionExpression is an Expression that represents a function.
 type FunctionExpression interface {
 	Expression

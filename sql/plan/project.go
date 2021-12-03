@@ -30,6 +30,9 @@ type Project struct {
 	Projections []sql.Expression
 }
 
+var _ sql.Node = &Project{}
+var _ sql.Node2 = &Project{}
+
 // NewProject creates a new projection.
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
@@ -62,7 +65,6 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	i, err := p.Child.RowIter(ctx, row)
 	if err != nil {
-		span.Finish()
 		return nil, err
 	}
 
@@ -72,6 +74,31 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		ctx:       ctx,
 		row:       row,
 	}), nil
+}
+
+// RowIter implements the Node interface.
+func (p *Project) RowIter2(ctx *sql.Context, row2 sql.Row2) (sql.RowIter2, error) {
+	child2, ok := p.Child.(sql.Node2)
+	if !ok {
+		return nil, sql.ErrImpossibleIter2.New()
+	}
+
+	for _, proj := range p.Projections {
+		if _, ok := proj.(sql.Expression2); !ok {
+			return nil, sql.ErrImpossibleIter2.New()
+		}
+	}
+
+	i, err := child2.RowIter2(ctx, row2)
+	if err != nil {
+		return nil, err
+	}
+
+	return &iter{
+		p:         p,
+		childIter: i,
+		ctx:       ctx,
+	}, nil
 }
 
 func (p *Project) String() string {
@@ -126,6 +153,9 @@ type iter struct {
 	ctx       *sql.Context
 }
 
+var _ sql.RowIter = &iter{}
+var _ sql.RowIter2 = &iter{}
+
 func (i *iter) Next() (sql.Row, error) {
 	childRow, err := i.childIter.Next()
 	if err != nil {
@@ -133,6 +163,15 @@ func (i *iter) Next() (sql.Row, error) {
 	}
 
 	return ProjectRow(i.ctx, i.p.Projections, childRow)
+}
+
+func (i *iter) Next2() (sql.Row2, error) {
+	childRow, err := i.childIter.(sql.RowIter2).Next2()
+	if err != nil {
+		return nil, err
+	}
+
+	return ProjectRow2(i.ctx, i.p.Projections, childRow)
 }
 
 func (i *iter) Close(ctx *sql.Context) error {
@@ -173,4 +212,21 @@ func ProjectRow(
 		}
 	}
 	return sql.NewRow(fields...), nil
+}
+
+// ProjectRow evaluates a set of projections.
+func ProjectRow2(
+	s *sql.Context,
+	projections []sql.Expression,
+	row2 sql.Row2,
+) (fields sql.Row2, err error) {
+	// todo(andy): reuse row?
+	fields = make(sql.Row2, len(projections))
+	for i, expr := range projections {
+		fields[i], err = expr.(sql.Expression2).Eval2(s, row2)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return
 }
