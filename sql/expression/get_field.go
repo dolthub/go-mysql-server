@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -31,6 +32,9 @@ type GetField struct {
 	fieldType  sql.Type
 	nullable   bool
 }
+
+var _ sql.Expression = &GetField{}
+var _ sql.Expression2 = &GetField{}
 
 // NewGetField creates a GetField expression.
 func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool) *GetField {
@@ -100,6 +104,14 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
 	return row[p.fieldIndex], nil
+}
+
+// Eval implements the Expression interface.
+func (p *GetField) Eval2(ctx *sql.Context, row2 sql.Row2) (sqltypes.Value, error) {
+	if p.fieldIndex < 0 || p.fieldIndex >= len(row2) {
+		return sqltypes.NULL, ErrIndexOutOfBounds.New(p.fieldIndex, len(row2))
+	}
+	return row2[p.fieldIndex], nil
 }
 
 // WithChildren implements the Expression interface.
