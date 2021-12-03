@@ -359,9 +359,9 @@ func disposeNode(n sql.Node) {
 }
 
 func (i *trackedRowIter) Dispose() {
-	if i.node != nil {
-		disposeNode(i.node)
-	}
+	//if i.node != nil {
+	//	disposeNode(i.node)
+	//}
 }
 
 func (i *trackedRowIter) Next() (sql.Row, error) {

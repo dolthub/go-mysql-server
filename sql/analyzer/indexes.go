@@ -175,7 +175,7 @@ func getIndexes(
 			colExprs := normalizeExpressions(ctx, tableAliases, cmp.Left())
 			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), colExprs...)
 			if idx != nil {
-				value, err := cmp.Right().Eval(sql.NewEmptyContext(), nil)
+				value, err := cmp.Right().Eval(ctx, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -254,12 +254,12 @@ func getIndexes(
 			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
 			if idx != nil {
 
-				upper, err := e.Upper.Eval(sql.NewEmptyContext(), nil)
+				upper, err := e.Upper.Eval(ctx, nil)
 				if err != nil {
 					return nil, err
 				}
 
-				lower, err := e.Lower.Eval(sql.NewEmptyContext(), nil)
+				lower, err := e.Lower.Eval(ctx, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -365,7 +365,7 @@ func getComparisonIndexLookup(
 		normalizedExpressions := normalizeExpressions(ctx, tableAliases, left)
 		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
 		if idx != nil {
-			value, err := right.Eval(sql.NewEmptyContext(), nil)
+			value, err := right.Eval(ctx, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -452,7 +452,7 @@ func getNegatedIndexes(
 			return nil, nil
 		}
 
-		value, err := right.Eval(sql.NewEmptyContext(), nil)
+		value, err := right.Eval(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -490,7 +490,7 @@ func getNegatedIndexes(
 			normalizedExpressions := normalizeExpressions(ctx, tableAliases, cmp.Left())
 			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
 			if idx != nil {
-				value, err := cmp.Right().Eval(sql.NewEmptyContext(), nil)
+				value, err := cmp.Right().Eval(ctx, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -707,7 +707,7 @@ func getMultiColumnIndexForExpressions(
 				if !isEvaluable(expr.comparand) {
 					return nil, nil
 				}
-				val, err := expr.comparand.Eval(sql.NewEmptyContext(), nil)
+				val, err := expr.comparand.Eval(ctx, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -732,11 +732,11 @@ func getMultiColumnIndexForExpressions(
 				if !ok {
 					return nil, nil
 				}
-				lower, err := between.Lower.Eval(sql.NewEmptyContext(), nil)
+				lower, err := between.Lower.Eval(ctx, nil)
 				if err != nil {
 					return nil, err
 				}
-				upper, err := between.Upper.Eval(sql.NewEmptyContext(), nil)
+				upper, err := between.Upper.Eval(ctx, nil)
 				if err != nil {
 					return nil, err
 				}

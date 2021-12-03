@@ -121,6 +121,8 @@ func (e *Engine) QueryWithBindings(
 	return s, i, err
 }
 
+var planCache sql.Node
+
 // QueryNodeWithBindings executes the query given with the bindings provided. If parsed is non-nil, it will be used
 // instead of parsing the query from text.
 func (e *Engine) QueryNodeWithBindings(
@@ -159,9 +161,27 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 	}
 
-	analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
-	if err != nil {
-		return nil, nil, false, err
+	if planCache != nil {
+		analyzed = planCache
+	} else {
+		analyzed, err = e.Analyzer.Analyze(ctx, parsed, nil)
+		if err != nil {
+			return nil, nil, false, err
+		}
+
+		save := true
+		plan.Inspect(analyzed, func(node sql.Node) bool {
+			if _, ok := node.(*plan.InsertInto); ok {
+				save = false
+			}
+			if plan.IsDDLNode(node) {
+				save = false
+			}
+			return save
+		})
+		if save {
+			planCache = analyzed
+		}
 	}
 
 	var isRowIter2 bool

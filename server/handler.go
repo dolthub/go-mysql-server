@@ -458,6 +458,10 @@ rowLoop:
 	return callback(r)
 }
 
+var spacePool = sync.Pool{New: func() interface{} {
+	return make(sql.Row2, 8)
+}}
+
 func (h *Handler) sendRows2(
 	ctx *sql.Context,
 	c *mysql.Conn,
@@ -496,7 +500,8 @@ func (h *Handler) sendRows2(
 			case <-quit:
 				return
 			default:
-				row, err := rows.Next2(nil)
+				space := spacePool.Get().(sql.Row2)
+				row, err := rows.Next2(space)
 				if err != nil {
 					errChan <- err
 					return
@@ -596,7 +601,15 @@ rowLoop:
 		return nil
 	}
 
-	return callback(r)
+	if err = callback(r); err != nil {
+		return err
+	}
+
+	for _, space := range r.Rows {
+		spacePool.Put(sql.Row2(space))
+	}
+
+	return nil
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html

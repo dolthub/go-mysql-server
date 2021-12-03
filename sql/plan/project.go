@@ -89,16 +89,18 @@ func (p *Project) RowIter2(ctx *sql.Context, row2 sql.Row2) (sql.RowIter2, error
 		}
 	}
 
-	i, err := child2.RowIter2(ctx, row2)
-	if err != nil {
-		return nil, err
-	}
+	return child2.RowIter2(ctx, row2)
 
-	return &iter{
-		p:         p,
-		childIter: i,
-		ctx:       ctx,
-	}, nil
+	//i, err := child2.RowIter2(ctx, row2)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//return &iter{
+	//	p:         p,
+	//	childIter: i,
+	//	ctx:       ctx,
+	//}, nil
 }
 
 func (p *Project) String() string {
