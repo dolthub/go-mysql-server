@@ -165,8 +165,8 @@ func (i *iter) Next() (sql.Row, error) {
 	return ProjectRow(i.ctx, i.p.Projections, childRow)
 }
 
-func (i *iter) Next2() (sql.Row2, error) {
-	childRow, err := i.childIter.(sql.RowIter2).Next2()
+func (i *iter) Next2(row2 sql.Row2) (sql.Row2, error) {
+	childRow, err := i.childIter.(sql.RowIter2).Next2(row2)
 	if err != nil {
 		return nil, err
 	}

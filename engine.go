@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dolthub/go-mysql-server/memory"
-
 	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -419,45 +417,9 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 // ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
 // with the default values parsed and resolved.
 func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
-	ctx := sql.NewEmptyContext()
-	db := plan.NewDummyResolvedDB("temporary")
-	e := NewDefault(memory.NewMemoryDBProvider(db))
-
-	unresolvedSchema := make(sql.Schema, len(schema))
-	defaultCount := 0
-	for i, col := range schema {
-		unresolvedSchema[i] = col.SqlColumn
-		if col.Default != "" {
-			var err error
-			unresolvedSchema[i].Default, err = parse.StringToColumnDefaultValue(ctx, col.Default)
-			if err != nil {
-				return nil, err
-			}
-			defaultCount++
-		}
+	sch := make(sql.Schema, len(schema))
+	for i := range sch {
+		sch[i] = schema[i].SqlColumn
 	}
-	// if all defaults are nil, we can skip the rest of this
-	if defaultCount == 0 {
-		return unresolvedSchema, nil
-	}
-
-	// *plan.CreateTable properly handles resolving default values, so we hijack it
-	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: unresolvedSchema})
-
-	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	analyzedQueryProcess, ok := analyzed.(*plan.QueryProcess)
-	if !ok {
-		return nil, fmt.Errorf("internal error: unknown analyzed result type `%T`", analyzed)
-	}
-
-	analyzedCreateTable, ok := analyzedQueryProcess.Child.(*plan.CreateTable)
-	if !ok {
-		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
-	}
-
-	return analyzedCreateTable.Schema(), nil
+	return sch, nil
 }
