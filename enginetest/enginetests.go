@@ -84,6 +84,7 @@ var infoSchemaTables = []string{
 	"auto_increment_tbl",
 	"people",
 	"datetime_table",
+	"one_pk_two_idx",
 	"one_pk_three_idx",
 }
 
