@@ -1686,13 +1686,15 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "insert into mytable (s) values ('new row')")
 		TestQuery(t, harness, e, "select i from mytable where s = 'new row'", []sql.Row{{4}}, nil, nil)
 
-		// tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-		// require.NoError(t, err)
-		// require.True(t, ok)
-		// assert.Equal(t, sql.Schema{
-		// 	{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
-		// 	{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
-		// }, tbl.Schema())
+		AssertErr(t, e, harness, "ALTER TABLE mytable add column i2 bigint auto_increment", nil)
+
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+		}, tbl.Schema())
 	})
 }
 

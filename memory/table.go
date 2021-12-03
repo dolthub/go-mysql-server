@@ -501,6 +501,11 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 	newCol.Source = t.Name()
 	newSch := make(sql.Schema, len(t.schema)+1)
 
+	// TODO: need to fix this in the engine itself
+	if newCol.PrimaryKey {
+		newCol.Nullable = false
+	}
+
 	newColIdx := 0
 	var i int
 	if order != nil && order.First {
@@ -534,18 +539,25 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 	if newCol.AutoIncrement {
 		t.autoColIdx = newColIdx
 		t.autoIncVal = 0
-		for _, p := range t.partitions {
-			for _, row := range p {
-				cmp, err := newCol.Type.Compare(row[newColIdx], t.autoIncVal)
-				if err != nil {
-					panic(err)
-				}
 
-				if cmp > 0 {
-					t.autoIncVal = row[newColIdx]
+		if newColIdx < len(t.schema) {
+			for _, p := range t.partitions {
+				for _, row := range p {
+					cmp, err := newCol.Type.Compare(row[newColIdx], t.autoIncVal)
+					if err != nil {
+						panic(err)
+					}
+
+					if cmp > 0 {
+						t.autoIncVal = row[newColIdx]
+					}
 				}
 			}
+		} else {
+			t.autoIncVal = 0
 		}
+
+		t.autoIncVal = increment(t.autoIncVal)
 	}
 
 	t.schema = newSch
