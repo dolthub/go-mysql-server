@@ -1813,6 +1813,48 @@ var PlanTests = []QueryPlanTest{
 			"                 └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
+		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+			" └─ IndexedJoin(a.y = b.z)\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table(invert_pk)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
+		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+			" └─ IndexedJoin(a.y = b.z)\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table(invert_pk)\n" +
+			"     └─ Filter(a.z = 2)\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y = 0`,
+		ExpectedPlan: "Filter(invert_pk.y = 0)\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
+		ExpectedPlan: "Filter(invert_pk.y >= 0)\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
+		ExpectedPlan: "Filter((invert_pk.y >= 0) AND (invert_pk.z < 1))\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
 }
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.

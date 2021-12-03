@@ -844,16 +844,10 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	indexes := make([]sql.Index, 0)
 
 	if t.pkIndexesEnabled {
-		var pkCols []*sql.Column
-		for _, col := range t.schema.Schema {
-			if col.PrimaryKey {
-				pkCols = append(pkCols, col)
-			}
-		}
-
-		if len(pkCols) > 0 {
-			exprs := make([]sql.Expression, len(pkCols))
-			for i, column := range pkCols {
+		if len(t.schema.PkOrdinals) > 0 {
+			exprs := make([]sql.Expression, len(t.schema.PkOrdinals))
+			for i, ord := range t.schema.PkOrdinals {
+				column := t.schema.Schema[ord]
 				idx, field := t.getField(column.Name)
 				exprs[i] = expression.NewGetFieldWithTable(idx, field.Type, t.name, field.Name, field.Nullable)
 			}

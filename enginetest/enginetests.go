@@ -85,6 +85,7 @@ var infoSchemaTables = []string{
 	"people",
 	"datetime_table",
 	"one_pk_three_idx",
+	"invert_pk",
 }
 
 // TestInfoSchema runs tests of the information_schema database

@@ -538,6 +538,28 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
+	if includeTable(includedTables, "invert_pk") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "invert_pk", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "x", Type: sql.Int64, Source: "invert_pk", PrimaryKey: true},
+				{Name: "y", Type: sql.Int64, Source: "invert_pk", PrimaryKey: true},
+				{Name: "z", Type: sql.Int64, Source: "invert_pk", PrimaryKey: true},
+			}, 1, 2, 0))
+
+			autoTbl, ok := table.(sql.AutoIncrementTable)
+
+			if err == nil && ok {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
+					sql.NewRow(0, 2, 2),
+					sql.NewRow(1, 1, 0),
+					sql.NewRow(2, 0, 1),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
+			}
+		})
+	}
+
 	if versionedHarness, ok := harness.(VersionedDBHarness); ok &&
 		includeTable(includedTables, "myhistorytable") {
 		versionedDb, ok := myDb.(sql.VersionedDatabase)
