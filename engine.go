@@ -394,6 +394,7 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 // ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
 // with the default values parsed and resolved.
 func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
+	// todo: change this function or thread a context
 	ctx := sql.NewEmptyContext()
 	db := plan.NewDummyResolvedDB("temporary")
 	e := NewDefault(memory.NewMemoryDBProvider(db))
