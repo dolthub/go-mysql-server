@@ -31,11 +31,11 @@ import (
 func TestDeleteIndex(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})
+	}))
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -77,11 +77,11 @@ func TestDeleteIndex(t *testing.T) {
 func TestDeleteIndexNotReady(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})
+	}))
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -125,11 +125,11 @@ func TestDeleteIndexNotReady(t *testing.T) {
 func TestDeleteIndexOutdated(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	})
+	}))
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()

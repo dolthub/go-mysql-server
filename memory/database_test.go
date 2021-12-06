@@ -35,7 +35,7 @@ func TestDatabase_AddTable(t *testing.T) {
 	tables := db.Tables()
 	require.Equal(0, len(tables))
 
-	err := db.CreateTable(sql.NewEmptyContext(), "test_table", nil)
+	err := db.CreateTable(sql.NewEmptyContext(), "test_table", sql.PrimaryKeySchema{})
 	require.NoError(err)
 
 	tables = db.Tables()
@@ -44,6 +44,6 @@ func TestDatabase_AddTable(t *testing.T) {
 	require.True(ok)
 	require.NotNil(tt)
 
-	err = db.CreateTable(sql.NewEmptyContext(), "test_table", nil)
+	err = db.CreateTable(sql.NewEmptyContext(), "test_table", sql.PrimaryKeySchema{})
 	require.Error(err)
 }

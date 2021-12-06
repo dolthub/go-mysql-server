@@ -185,20 +185,7 @@ func getIndexes(
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				var toUnion sql.RangeCollection
-				for _, val := range values {
-					ranges := sql.NewIndexBuilder(ctx, idx).Equals(ctx, colExprs[0].String(), val).Ranges()
-					if len(ranges) == 0 {
-						return nil, nil
-					}
-					toUnion = append(toUnion, ranges...)
-				}
-				allRanges, err := sql.RemoveOverlappingRanges(toUnion...)
-				if err != nil {
-					return nil, err
-				}
-
-				lookup, err := idx.NewLookup(ctx, allRanges...)
+				lookup, err := sql.NewIndexBuilder(ctx, idx).Equals(ctx, colExprs[0].String(), values...).Build(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -316,27 +303,6 @@ func getIndexes(
 	}
 
 	return result, nil
-}
-
-// Returns whether the given index contains the given expression as one of its terms. The expression should be
-// normalized (table names unaliased) to ensure matching the index's declaration.
-func indexHasExpression(indexLookups indexLookupsByTable, expr sql.Expression) bool {
-	getField := expression.ExtractGetField(expr)
-	if getField == nil {
-		return false
-	}
-
-	for _, indexLookup := range indexLookups {
-		for _, idx := range indexLookup.indexes {
-			for _, exprStr := range idx.Expressions() {
-				if exprStr == getField.String() {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
 }
 
 // getComparisonIndexLookup returns the index and index lookup for the given
@@ -500,19 +466,11 @@ func getNegatedIndexes(
 					return nil, errInvalidInRightEvaluation.New(value)
 				}
 
-				var toIntersect sql.RangeCollection
+				idxBuilder := sql.NewIndexBuilder(ctx, idx)
 				for _, val := range values {
-					ranges := sql.NewIndexBuilder(ctx, idx).NotEquals(ctx, normalizedExpressions[0].String(), val).Ranges()
-					if len(ranges) == 0 {
-						return nil, nil
-					}
-					toIntersect = append(toIntersect, ranges...)
+					idxBuilder = idxBuilder.NotEquals(ctx, normalizedExpressions[0].String(), val)
 				}
-				allRanges := sql.IntersectRanges(toIntersect...)
-				if allRanges == nil {
-					return nil, nil
-				}
-				lookup, err := idx.NewLookup(ctx, allRanges)
+				lookup, err := idxBuilder.Build(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -743,6 +701,34 @@ func getMultiColumnIndexForExpressions(
 				expressions = append(expressions, expression.ExtractGetField(between))
 				indexBuilder = indexBuilder.GreaterOrEqual(ctx, expr.col.String(), lower)
 				indexBuilder = indexBuilder.LessOrEqual(ctx, expr.col.String(), upper)
+			case *expression.InTuple:
+				cmp := expr.comparison.(expression.Comparer)
+				if !isEvaluable(cmp.Left()) && isEvaluable(cmp.Right()) {
+					value, err := cmp.Right().Eval(ctx, nil)
+					if err != nil {
+						return nil, err
+					}
+					values, ok := value.([]interface{})
+					if !ok {
+						return nil, errInvalidInRightEvaluation.New(value)
+					}
+					indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), values...)
+				} else {
+					return nil, nil
+				}
+			case *expression.Not:
+				switch expr.comparison.(*expression.Not).Child.(type) {
+				//TODO: We should transform NOT nodes for comparisons at some other analyzer step, e.g. (NOT <) becomes (>=)
+				case *expression.Equals:
+					val, err := expr.comparand.Eval(ctx, nil)
+					if err != nil {
+						return nil, err
+					}
+					expressions = append(expressions, selectedExpr)
+					indexBuilder = indexBuilder.NotEquals(ctx, expr.col.String(), val)
+				default:
+					return nil, nil
+				}
 			default:
 				return nil, nil
 			}
@@ -885,6 +871,12 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 		}
 
 		// TODO: handle this better
+		return col.Table(), &joinColExpr{col: col, comparison: e}
+	case *expression.InTuple:
+		col := expression.ExtractGetField(e)
+		if col == nil {
+			return "", nil
+		}
 		return col.Table(), &joinColExpr{col: col, comparison: e}
 	default:
 		return "", nil

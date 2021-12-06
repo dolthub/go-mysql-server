@@ -27,17 +27,17 @@ import (
 )
 
 func TestPushdownProjectionToTables(t *testing.T) {
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	})
+	}))
 
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	})
+	}))
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -96,17 +96,17 @@ func TestPushdownProjectionToTables(t *testing.T) {
 }
 
 func TestPushdownFilterToTables(t *testing.T) {
-	table := memory.NewFilteredTable("mytable", sql.Schema{
+	table := memory.NewFilteredTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	})
+	}))
 
-	table2 := memory.NewFilteredTable("mytable2", sql.Schema{
+	table2 := memory.NewFilteredTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	})
+	}))
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -210,17 +210,17 @@ func TestPushdownFilterToTables(t *testing.T) {
 }
 
 func TestPushdownFiltersAboveTables(t *testing.T) {
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	})
+	}))
 
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	})
+	}))
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -536,11 +536,11 @@ func TestPushdownIndex(t *testing.T) {
 
 	myTableF := &sql.Column{Name: "f", Type: sql.Float64, Source: "mytable"}
 	myTableI := &sql.Column{Name: "i", Type: sql.Int32, Source: "mytable", PrimaryKey: true}
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		myTableI,
 		myTableF,
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	})
+	}))
 
 	table.EnablePrimaryKeyIndexes()
 	err := table.CreateIndex(ctx, "f", sql.IndexUsing_BTree, sql.IndexConstraint_None, []sql.IndexColumn{
@@ -558,11 +558,11 @@ func TestPushdownIndex(t *testing.T) {
 	idxTable1F := table1Idxes[1]
 
 	mytable2I := &sql.Column{Name: "i2", Type: sql.Int32, Source: "mytable2", PrimaryKey: true}
-	table2 := memory.NewTable("mytable2", sql.Schema{
+	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		mytable2I,
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	})
+	}))
 
 	table2.EnablePrimaryKeyIndexes()
 	table2Idxes, err := table2.GetIndexes(ctx)

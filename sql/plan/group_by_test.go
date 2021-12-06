@@ -28,7 +28,7 @@ import (
 func TestGroupBySchema(t *testing.T) {
 	require := require.New(t)
 
-	child := memory.NewTable("test", nil)
+	child := memory.NewTable("test", sql.PrimaryKeySchema{})
 	agg := []sql.Expression{
 		expression.NewAlias("c1", expression.NewLiteral("s", sql.LongText)),
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
@@ -43,7 +43,7 @@ func TestGroupBySchema(t *testing.T) {
 func TestGroupByResolved(t *testing.T) {
 	require := require.New(t)
 
-	child := memory.NewTable("test", nil)
+	child := memory.NewTable("test", sql.PrimaryKeySchema{})
 	agg := []sql.Expression{
 		expression.NewAlias("c2", aggregation.NewCount(expression.NewStar())),
 	}
@@ -65,7 +65,7 @@ func TestGroupByRowIter(t *testing.T) {
 		{Name: "col1", Type: sql.LongText},
 		{Name: "col2", Type: sql.Int64},
 	}
-	child := memory.NewTable("test", childSchema)
+	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema))
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -131,7 +131,7 @@ func TestGroupByAggregationGrouping(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	}
 
-	child := memory.NewTable("test", childSchema)
+	child := memory.NewTable("test", sql.NewPrimaryKeySchema(childSchema))
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -226,10 +226,10 @@ func benchmarkTable(t testing.TB) sql.Table {
 	t.Helper()
 	require := require.New(t)
 
-	table := memory.NewTable("test", sql.Schema{
+	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64},
 		{Name: "b", Type: sql.Int64},
-	})
+	}))
 
 	for i := int64(0); i < 50; i++ {
 		for j := int64(200); j > 0; j-- {

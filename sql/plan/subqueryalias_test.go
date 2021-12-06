@@ -27,15 +27,15 @@ import (
 func TestSubqueryAliasSchema(t *testing.T) {
 	require := require.New(t)
 
-	tableSchema := sql.Schema{
+	tableSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: false, Source: "bar"},
 		{Name: "baz", Type: sql.Text, Nullable: false, Source: "bar"},
-	}
+	})
 
-	subquerySchema := sql.Schema{
+	subquerySchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text, Nullable: false, Source: "alias"},
 		{Name: "baz", Type: sql.Text, Nullable: false, Source: "alias"},
-	}
+	})
 
 	table := memory.NewTable("bar", tableSchema)
 
@@ -48,7 +48,7 @@ func TestSubqueryAliasSchema(t *testing.T) {
 	)
 
 	require.Equal(
-		subquerySchema,
+		subquerySchema.Schema,
 		NewSubqueryAlias("alias", "", subquery).Schema(),
 	)
 }

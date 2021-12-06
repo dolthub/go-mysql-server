@@ -47,6 +47,20 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM one_pk_two_idx WHERE v1 < 2 AND v2 IS NOT NULL`,
+		ExpectedPlan: "Filter((one_pk_two_idx.v1 < 2) AND (NOT(one_pk_two_idx.v2 IS NULL)))\n" +
+			" └─ Projected table access on [pk v1 v2]\n" +
+			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk_two_idx WHERE v1 IN (1, 2) AND v2 <= 2`,
+		ExpectedPlan: "Filter((one_pk_two_idx.v1 HASH IN (1, 2)) AND (one_pk_two_idx.v2 <= 2))\n" +
+			" └─ Projected table access on [pk v1 v2]\n" +
+			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT * FROM one_pk_three_idx WHERE v1 > 2 AND v2 = 3`,
 		ExpectedPlan: "Filter((one_pk_three_idx.v1 > 2) AND (one_pk_three_idx.v2 = 3))\n" +
 			" └─ Projected table access on [pk v1 v2 v3]\n" +
@@ -1811,6 +1825,48 @@ var PlanTests = []QueryPlanTest{
 			"                 │   └─ Projected table access on [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"                 │       └─ Table(two_pk)\n" +
 			"                 └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
+		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+			" └─ IndexedJoin(a.y = b.z)\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table(invert_pk)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
+		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+			" └─ IndexedJoin(a.y = b.z)\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table(invert_pk)\n" +
+			"     └─ Filter(a.z = 2)\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y = 0`,
+		ExpectedPlan: "Filter(invert_pk.y = 0)\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
+		ExpectedPlan: "Filter(invert_pk.y >= 0)\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
+		ExpectedPlan: "Filter((invert_pk.y >= 0) AND (invert_pk.z < 1))\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
 			"",
 	},
 }
