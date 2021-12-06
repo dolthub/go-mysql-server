@@ -3288,12 +3288,12 @@ func TestParseOne(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, tree)
 				require.Equal(t, tc.parts[i], p)
-				if i == len(tc.parts) - 1 {
-				require.Empty(t, r)
+				if i == len(tc.parts)-1 {
+					require.Empty(t, r)
 				}
 				q = r
 			}
-		});
+		})
 	}
 }
 
