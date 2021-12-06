@@ -352,6 +352,9 @@ var (
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
+
+	// ErrDuplicateColumn is thrown when a schema has > 2 columns with the same name.
+	ErrDuplicateColumn = errors.NewKind("Duplicate column name '%s'")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
@@ -406,6 +409,8 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = 1792 // TODO: Needs to be added to vitess
 	case ErrCantDropIndex.Is(err):
 		code = 1553 // TODO: Needs to be added to vitess
+	case ErrDuplicateColumn.Is(err):
+		code = mysql.ERDupFieldName
 	default:
 		code = mysql.ERUnknownError
 	}

@@ -103,3 +103,18 @@ func IsKeyless(s Schema) bool {
 
 	return true
 }
+
+func ValidateSchema(s Schema) error {
+	colNames := make(map[string]bool)
+
+	for _, col := range s {
+		lower := strings.ToLower(col.Name)
+		if colNames[lower] {
+			return ErrDuplicateColumn.New(col.Name)
+		} else {
+			colNames[lower] = true
+		}
+	}
+
+	return nil
+}

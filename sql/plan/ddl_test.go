@@ -18,6 +18,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -52,6 +53,23 @@ func TestCreateTable(t *testing.T) {
 
 	require.Error(createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent))
 	require.NoError(createTable(t, db, "testTable", s, IfNotExists, IsTempTableAbsent))
+}
+
+func TestCreateTableDuplicateSchema(t *testing.T) {
+	require := require.New(t)
+
+	db := memory.NewDatabase("test")
+	tables := db.Tables()
+	_, ok := tables["testTable"]
+	require.False(ok)
+
+	s := sql.Schema{
+		{Name: "c1", Type: sql.Text},
+		{Name: "c1", Type: sql.Int32},
+	}
+
+	err := createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent)
+	assert.True(t, sql.ErrDuplicateColumn.Is(err))
 }
 
 func TestDropTable(t *testing.T) {

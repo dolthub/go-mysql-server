@@ -53,6 +53,7 @@ var (
 	Blob       = MustCreateBinary(sqltypes.Blob, textBlobMax)
 	MediumBlob = MustCreateBinary(sqltypes.Blob, mediumTextBlobMax)
 	LongBlob   = MustCreateBinary(sqltypes.Blob, longTextBlobMax)
+	UUID       = MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 )
 
 // StringType represents all string types, including VARCHAR and BLOB.

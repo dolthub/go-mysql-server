@@ -64,7 +64,7 @@ func (u UUIDFunc) String() string {
 }
 
 func (u UUIDFunc) Type() sql.Type {
-	return sql.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
+	return sql.UUID
 }
 
 func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

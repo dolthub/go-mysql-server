@@ -211,7 +211,11 @@ func (c *CreateTable) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var err error
+	err := sql.ValidateSchema(c.schema)
+	if err != nil {
+		return nil, err
+	}
+
 	if c.temporary == IsTempTable {
 		creatable, ok := c.db.(sql.TemporaryTableCreator)
 		if !ok {
