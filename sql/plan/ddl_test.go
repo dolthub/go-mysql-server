@@ -63,10 +63,10 @@ func TestCreateTableDuplicateSchema(t *testing.T) {
 	_, ok := tables["testTable"]
 	require.False(ok)
 
-	s := sql.Schema{
+	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: sql.Text},
 		{Name: "c1", Type: sql.Int32},
-	}
+	})
 
 	err := createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent)
 	assert.True(t, sql.ErrDuplicateColumn.Is(err))

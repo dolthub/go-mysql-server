@@ -215,7 +215,7 @@ func (c *CreateTable) Resolved() bool {
 
 // RowIter implements the Node interface.
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	err := sql.ValidateSchema(c.schema)
+	err := sql.ValidateSchema(c.schema.Schema)
 	if err != nil {
 		return nil, err
 	}
