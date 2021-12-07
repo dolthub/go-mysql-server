@@ -39,6 +39,11 @@ func (t *AbsVal) FunctionName() string {
 	return "abs"
 }
 
+// Description implements sql.FunctionExpression
+func (t *AbsVal) Description() string {
+	return "returns the absolute value of an expression."
+}
+
 // Eval implements the Expression interface.
 func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := t.Child.Eval(ctx, row)

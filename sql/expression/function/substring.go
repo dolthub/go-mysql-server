@@ -59,6 +59,11 @@ func (s *Substring) FunctionName() string {
 	return "substring"
 }
 
+// Description implements sql.FunctionExpression
+func (s *Substring) Description() string {
+	return "returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken."
+}
+
 // Children implements the Expression interface.
 func (s *Substring) Children() []sql.Expression {
 	if s.len == nil {
@@ -190,6 +195,11 @@ func (s *SubstringIndex) FunctionName() string {
 	return "substring_index"
 }
 
+// Description implements sql.FunctionExpression
+func (s *SubstringIndex) Description() string {
+	return "returns a substring after count appearances of delim. If count is negative, counts from the right side of the string."
+}
+
 // Children implements the Expression interface.
 func (s *SubstringIndex) Children() []sql.Expression {
 	return []sql.Expression{s.str, s.delim, s.count}
@@ -304,6 +314,11 @@ func (l Left) FunctionName() string {
 	return "left"
 }
 
+// Description implements sql.FunctionExpression
+func (l Left) Description() string {
+	return "returns the first N characters in the string given."
+}
+
 // Children implements the Expression interface.
 func (l Left) Children() []sql.Expression {
 	return []sql.Expression{l.str, l.len}
@@ -399,6 +414,11 @@ func (r Right) FunctionName() string {
 	return "right"
 }
 
+// Description implements sql.FunctionExpression
+func (r Right) Description() string {
+	return "return the specified rightmost number of characters."
+}
+
 // Children implements the Expression interface.
 func (r Right) Children() []sql.Expression {
 	return []sql.Expression{r.str, r.len}
@@ -491,6 +511,11 @@ func NewInstr(str, substr sql.Expression) sql.Expression {
 // FunctionName implements sql.FunctionExpression
 func (i Instr) FunctionName() string {
 	return "instr"
+}
+
+// Description implements sql.FunctionExpression
+func (i Instr) Description() string {
+	return "returns the 1-based index of the first occurence of str2 in str1, or 0 if it does not occur."
 }
 
 // Children implements the Expression interface.

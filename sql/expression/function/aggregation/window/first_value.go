@@ -37,6 +37,11 @@ func NewFirstValue(e sql.Expression) sql.Expression {
 	return &FirstValue{nil, expression.UnaryExpression{Child: e}, 0}
 }
 
+// Description implements sql.FunctionExpression
+func (f * FirstValue) Description() string {
+	return "value of argument from first row of window frame."
+}
+
 // Window implements sql.WindowExpression
 func (f *FirstValue) Window() *sql.Window {
 	return f.window

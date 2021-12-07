@@ -37,6 +37,11 @@ type GroupConcat struct {
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
 
+// Description implements sql.FunctionExpression
+func (g *GroupConcat) Description() string {
+	return "return a concatenated string."
+}
+
 func NewEmptyGroupConcat() sql.Expression {
 	return &GroupConcat{}
 }

@@ -60,6 +60,11 @@ func (c *Concat) FunctionName() string {
 	return "concat"
 }
 
+// Description implements sql.FunctionExpression
+func (c *Concat) Description() string {
+	return "concatenates any group of fields into a single string."
+}
+
 // Type implements the Expression interface.
 func (f *Concat) Type() sql.Type { return sql.LongText }
 

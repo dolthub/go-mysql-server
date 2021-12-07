@@ -41,6 +41,11 @@ func NewMD5(arg sql.Expression) sql.Expression {
 	return &MD5{NewUnaryFunc(arg, "MD5", sql.LongText)}
 }
 
+// Description implements sql.FunctionExpression
+func (f *MD5) Description() string {
+	return "calculate MD5 checksum."
+}
+
 // Eval implements sql.Expression
 func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	arg, err := f.EvalChild(ctx, row)
@@ -85,6 +90,11 @@ func NewSHA1(arg sql.Expression) sql.Expression {
 	return &SHA1{NewUnaryFunc(arg, "SHA1", sql.LongText)}
 }
 
+// Description implements sql.FunctionExpression
+func (f *SHA1) Description() string {
+	return "calculate an SHA-1 160-bit checksum."
+}
+
 // Eval implements sql.Expression
 func (f *SHA1) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	arg, err := f.EvalChild(ctx, row)
@@ -123,6 +133,11 @@ type SHA2 struct {
 }
 
 var _ sql.FunctionExpression = (*SHA2)(nil)
+
+// Description implements sql.FunctionExpression
+func (f *SHA2) Description() string {
+	return "calculate an SHA-2 checksum."
+}
 
 // NewSHA2 returns a new SHA2 function expression
 func NewSHA2(arg, count sql.Expression) sql.Expression {

@@ -42,6 +42,11 @@ func NewConvertTz(dt, fromTz, toTz sql.Expression) sql.Expression {
 	}
 }
 
+// Description implements the sql.FunctionExpression interface.
+func (c *ConvertTz) Description() string {
+	return "converts a datetime value dt from the time zone given by from_tz to the time zone given by to_tz and returns the resulting value."
+}
+
 // Resolved implements the sql.Expression interface.
 func (c *ConvertTz) Resolved() bool {
 	return c.dt.Resolved() && c.fromTz.Resolved() && c.toTz.Resolved()

@@ -55,6 +55,11 @@ func (r *Rand) FunctionName() string {
 	return "rand"
 }
 
+// Description implements sql.FunctionExpression
+func (r *Rand) Description() string {
+	return "returns a random number in the range 0 <= x < 1. If an argument is given, it is used to seed the random number generator."
+}
+
 // Type implements sql.Expression.
 func (r *Rand) Type() sql.Type {
 	return sql.Float64
@@ -139,6 +144,11 @@ func NewSin(arg sql.Expression) sql.Expression {
 	return &Sin{NewUnaryFunc(arg, "SIN", sql.Float64)}
 }
 
+// Description implements sql.FunctionExpression
+func (s *Sin) Description() string {
+	return "returns the sine of the expression given."
+}
+
 // Eval implements sql.Expression
 func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := s.EvalChild(ctx, row)
@@ -175,6 +185,11 @@ var _ sql.FunctionExpression = (*Cos)(nil)
 // NewCos returns a new COS function expression
 func NewCos(arg sql.Expression) sql.Expression {
 	return &Cos{NewUnaryFunc(arg, "COS", sql.Float64)}
+}
+
+// Description implements sql.FunctionExpression
+func (s *Cos) Description() string {
+	return "returns the cosine of an expression."
 }
 
 // Eval implements sql.Expression
@@ -215,6 +230,11 @@ func NewTan(arg sql.Expression) sql.Expression {
 	return &Tan{NewUnaryFunc(arg, "TAN", sql.Float64)}
 }
 
+// Description implements sql.FunctionExpression
+func (t *Tan) Description() string {
+	return "returns the tangent of the expression given."
+}
+
 // Eval implements sql.Expression
 func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := t.EvalChild(ctx, row)
@@ -247,6 +267,11 @@ type Asin struct {
 }
 
 var _ sql.FunctionExpression = (*Asin)(nil)
+
+// Description implements sql.FunctionExpression
+func (a *Asin) Description() string {
+	return "returns the arcsin of an expression."
+}
 
 // NewAsin returns a new ASIN function expression
 func NewAsin(arg sql.Expression) sql.Expression {
@@ -285,6 +310,11 @@ type Acos struct {
 }
 
 var _ sql.FunctionExpression = (*Acos)(nil)
+
+// Description implements sql.FunctionExpression
+func (a *Acos) Description() string {
+	return "returns the arccos of an expression."
+}
 
 // NewAcos returns a new ACOS function expression
 func NewAcos(arg sql.Expression) sql.Expression {
@@ -329,6 +359,11 @@ func NewAtan(arg sql.Expression) sql.Expression {
 	return &Atan{NewUnaryFunc(arg, "ATAN", sql.Float64)}
 }
 
+// Description implements sql.FunctionExpression
+func (a *Atan) Description() string {
+	return "returs the arctan of an expression."
+}
+
 // Eval implements sql.Expression
 func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := a.EvalChild(ctx, row)
@@ -361,6 +396,11 @@ type Cot struct {
 }
 
 var _ sql.FunctionExpression = (*Cot)(nil)
+
+// Description implements sql.FunctionExpression
+func (c *Cot) Description() string {
+	return "returns the arctangent of an expression."
+}
 
 // NewCot returns a new COT function expression
 func NewCot(arg sql.Expression) sql.Expression {
@@ -399,6 +439,11 @@ type Degrees struct {
 }
 
 var _ sql.FunctionExpression = (*Degrees)(nil)
+
+// Description implements sql.FunctionExpression
+func (d *Degrees) Description() string {
+	return "returns the number of degrees in the radian expression given."
+}
 
 // NewDegrees returns a new DEGREES function expression
 func NewDegrees(arg sql.Expression) sql.Expression {
@@ -443,6 +488,11 @@ func NewRadians(arg sql.Expression) sql.Expression {
 	return &Radians{NewUnaryFunc(arg, "RADIANS", sql.Float64)}
 }
 
+// Description implements sql.FunctionExpression
+func (r *Radians) Description() string {
+	return "returns the radian value of the degrees argument given."
+}
+
 // Eval implements sql.Expression
 func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := r.EvalChild(ctx, row)
@@ -475,6 +525,11 @@ type Crc32 struct {
 }
 
 var _ sql.FunctionExpression = (*Crc32)(nil)
+
+// Description implements sql.FunctionExpression
+func (c *Crc32) Description() string {
+	return "returns the cyclic redundancy check value of a given string as a 32-bit unsigned value."
+}
 
 // NewCrc32 returns a new CRC32 function expression
 func NewCrc32(arg sql.Expression) sql.Expression {
@@ -563,6 +618,11 @@ func NewSign(arg sql.Expression) sql.Expression {
 
 var negativeSignRegex = regexp.MustCompile(`^-[0-9]*\.?[0-9]*[1-9]`)
 var positiveSignRegex = regexp.MustCompile(`^+?[0-9]*\.?[0-9]*[1-9]`)
+
+// Description implements sql.FunctionExpression
+func (s *Sign) Description() string {
+	return "return the sign of the argument."
+}
 
 // Eval implements sql.Expression
 func (s *Sign) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

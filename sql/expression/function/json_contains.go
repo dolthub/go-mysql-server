@@ -71,6 +71,11 @@ func (j *JSONContains) FunctionName() string {
 	return "json_contains"
 }
 
+// Description implements sql.FunctionExpression
+func (j *JSONContains) Description() string {
+	return "return whether JSON document contains specific object at path."
+}
+
 func (j *JSONContains) Resolved() bool {
 	for _, child := range j.Children() {
 		if child != nil && !child.Resolved() {

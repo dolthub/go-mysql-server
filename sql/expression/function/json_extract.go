@@ -46,6 +46,11 @@ func (j *JSONExtract) FunctionName() string {
 	return "json_extract"
 }
 
+// Description implements sql.FunctionExpression
+func (j *JSONExtract) Description() string {
+	return "return data from JSON document"
+}
+
 // Resolved implements the sql.Expression interface.
 func (j *JSONExtract) Resolved() bool {
 	for _, p := range j.Paths {

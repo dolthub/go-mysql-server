@@ -216,6 +216,11 @@ func (f *Greatest) FunctionName() string {
 	return "greatest"
 }
 
+// Description implements sql.FunctionExpression
+func (f *Greatest) Description() string {
+	return "returns the greatest numeric or string value."
+}
+
 // Type implements the Expression interface.
 func (f *Greatest) Type() sql.Type {
 	if f.returnType != nil {
@@ -319,6 +324,11 @@ func NewLeast(args ...sql.Expression) (sql.Expression, error) {
 // FunctionName implements sql.FunctionExpression
 func (f *Least) FunctionName() string {
 	return "least"
+}
+
+// Description implements sql.FunctionExpression
+func (f *Least) Description() string {
+	return "returns the smaller numeric or string value."
 }
 
 // Type implements the Expression interface.

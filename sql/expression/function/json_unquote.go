@@ -42,6 +42,11 @@ func (js *JSONUnquote) FunctionName() string {
 	return "json_unquote"
 }
 
+// Description implements sql.FunctionExpression
+func (js *JSONUnquote) Description() string {
+	return "unquotes JSON value and returns the result as a utf8mb4 string."
+}
+
 func (js *JSONUnquote) String() string {
 	return fmt.Sprintf("JSON_UNQUOTE(%s)", js.Child)
 }

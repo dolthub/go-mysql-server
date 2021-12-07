@@ -34,6 +34,11 @@ type Ascii struct {
 
 var _ sql.FunctionExpression = (*Ascii)(nil)
 
+// Description implements sql.FunctionExpression
+func (a *Ascii) Description() string {
+	return "returns the numeric value of the leftmost character."
+}
+
 func NewAscii(arg sql.Expression) sql.Expression {
 	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
 }
@@ -85,6 +90,11 @@ type Hex struct {
 }
 
 var _ sql.FunctionExpression = (*Hex)(nil)
+
+// Description implements sql.FunctionExpression
+func (h *Hex) Description() string {
+	return "returns the hexadecimal representation of the string or numeric value."
+}
 
 func NewHex(arg sql.Expression) sql.Expression {
 	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
@@ -226,6 +236,11 @@ func NewUnhex(arg sql.Expression) sql.Expression {
 	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.LongBlob)}
 }
 
+// Description implements sql.FunctionExpression
+func (h *Unhex) Description() string {
+	return "return a string containing hex representation of a number."
+}
+
 // Eval implements the sql.Expression interface
 func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	arg, err := h.EvalChild(ctx, row)
@@ -295,6 +310,11 @@ type Bin struct {
 
 var _ sql.FunctionExpression = (*Bin)(nil)
 
+// Description implements sql.FunctionExpression
+func (b *Bin) Description() string {
+	return "returns the binary representation of a number."
+}
+
 func NewBin(arg sql.Expression) sql.Expression {
 	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
 }
@@ -345,6 +365,11 @@ type Bitlength struct {
 }
 
 var _ sql.FunctionExpression = (*Bitlength)(nil)
+
+// Description implements sql.FunctionExpression
+func (b *Bitlength) Description() string {
+	return "returns the data length of the argument in bits."
+}
 
 func NewBitlength(arg sql.Expression) sql.Expression {
 	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}

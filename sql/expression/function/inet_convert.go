@@ -36,8 +36,14 @@ func NewInetAton(val sql.Expression) sql.Expression {
 	return &InetAton{expression.UnaryExpression{Child: val}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (i *InetAton) FunctionName() string {
 	return "inet_aton"
+}
+
+// Description implements sql.FunctionExpression
+func (i *InetAton) Description() string {
+	return "return the numeric value of an IP address."
 }
 
 func (i *InetAton) String() string {
@@ -104,9 +110,14 @@ var _ sql.FunctionExpression = (*Inet6Aton)(nil)
 func NewInet6Aton(val sql.Expression) sql.Expression {
 	return &Inet6Aton{expression.UnaryExpression{Child: val}}
 }
-
+// FunctionName implements sql.FunctionExpression
 func (i *Inet6Aton) FunctionName() string {
 	return "inet6_aton"
+}
+
+// Description implements sql.FunctionExpression
+func (i *Inet6Aton) Description() string {
+	return "return the numeric value of an IPv6 address."
 }
 
 func (i *Inet6Aton) String() string {
@@ -173,8 +184,14 @@ func NewInetNtoa(val sql.Expression) sql.Expression {
 	return &InetNtoa{expression.UnaryExpression{Child: val}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (i *InetNtoa) FunctionName() string {
 	return "inet_ntoa"
+}
+
+// Description implements sql.FunctionExpression
+func (i *InetNtoa) Description() string {
+	return "return the IP address from a numeric value."
 }
 
 func (i *InetNtoa) String() string {
@@ -234,8 +251,14 @@ func NewInet6Ntoa(val sql.Expression) sql.Expression {
 	return &Inet6Ntoa{expression.UnaryExpression{Child: val}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (i *Inet6Ntoa) FunctionName() string {
 	return "inet6_ntoa"
+}
+
+// Description implements sql.FunctionExpression
+func (i *Inet6Ntoa) Description() string {
+	return "return the IPv6 address from a numeric value."
 }
 
 func (i *Inet6Ntoa) String() string {

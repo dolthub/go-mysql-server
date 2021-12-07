@@ -71,6 +71,8 @@ type Expression interface {
 type FunctionExpression interface {
 	Expression
 	FunctionName() string
+	Description() string
+	// TODO: add Example() function
 }
 
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will

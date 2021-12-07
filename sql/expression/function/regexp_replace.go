@@ -45,6 +45,11 @@ func (r *RegexpReplace) FunctionName() string {
 	return "regexp_replace"
 }
 
+// Description implements sql.FunctionExpression
+func (r *RegexpReplace) Description() string {
+	return "replace substrings matching regular expression."
+}
+
 // Type implements the sql.Expression interface.
 func (r *RegexpReplace) Type() sql.Type { return sql.LongText }
 

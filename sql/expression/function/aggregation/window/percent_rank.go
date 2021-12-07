@@ -35,6 +35,11 @@ func NewPercentRank() sql.Expression {
 	return &PercentRank{}
 }
 
+// Description implements sql.FunctionExpression
+func (p *PercentRank) Description() string {
+	return "percentage rank value."
+}
+
 // Window implements sql.WindowExpression
 func (p *PercentRank) Window() *sql.Window {
 	return p.window

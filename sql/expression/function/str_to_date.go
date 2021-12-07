@@ -26,6 +26,12 @@ type StringToDatetime struct {
 
 var _ sql.FunctionExpression = (*StringToDatetime)(nil)
 
+// Description implements sql.FunctionExpression
+func (s StringToDatetime) Description() string {
+	return "parses the date/datetime/timestamp expression according to the format specifier."
+}
+
+
 // Resolved returns whether the node is resolved.
 func (s StringToDatetime) Resolved() bool {
 	dateResolved := s.Date == nil || s.Date.Resolved()
