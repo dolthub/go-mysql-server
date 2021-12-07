@@ -15,8 +15,8 @@
 package parse
 
 import (
-	"fmt"
 	goerrors "errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
