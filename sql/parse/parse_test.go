@@ -3309,22 +3309,6 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
-func TestFixSetQuery(t *testing.T) {
-	testCases := []struct {
-		in, out string
-	}{
-		{"set session foo = 1, session bar = 2", "set @@session.foo = 1, @@session.bar = 2"},
-		{"set global foo = 1, session bar = 2", "set @@global.foo = 1, @@session.bar = 2"},
-		{"set SESSION foo = 1, GLOBAL bar = 2", "set @@session.foo = 1, @@global.bar = 2"},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.in, func(t *testing.T) {
-			require.Equal(t, tt.out, fixSetQuery(tt.in))
-		})
-	}
-}
-
 func TestPrintTree(t *testing.T) {
 	require := require.New(t)
 	node, err := Parse(sql.NewEmptyContext(), `

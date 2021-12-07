@@ -65,8 +65,6 @@ var (
 var (
 	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
-	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
-	setRegex             = regexp.MustCompile(`^set\s+`)
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -136,10 +134,6 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 	case showWarningsRegex.MatchString(lowerQuery):
 		n, err := parseShowWarnings(ctx, s)
 		return n, s, "", err
-	case fullProcessListRegex.MatchString(lowerQuery):
-		return plan.NewShowProcessList(), s, "", nil
-	case setRegex.MatchString(lowerQuery):
-		s = fixSetQuery(s)
 	}
 
 	var stmt sqlparser.Statement
@@ -443,6 +437,8 @@ func isCharset(exprs sqlparser.SetVarExprs) bool {
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
 	showType := strings.ToLower(s.Type)
 	switch showType {
+	case "processlist":
+		return plan.NewShowProcessList(), nil
 	case "create table", "create view":
 		return plan.NewShowCreateTable(
 			tableNameToUnresolvedTable(s.Table),
@@ -3099,13 +3095,4 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 	}
 
 	return node, nil
-}
-
-var fixSessionRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(SESSION|session)\s+([a-zA-Z0-9_]+)\s*=`)
-var fixGlobalRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(GLOBAL|global)\s+([a-zA-Z0-9_]+)\s*=`)
-
-func fixSetQuery(s string) string {
-	s = fixSessionRegex.ReplaceAllString(s, `$1@@session.$4 =`)
-	s = fixGlobalRegex.ReplaceAllString(s, `$1@@global.$4 =`)
-	return s
 }
