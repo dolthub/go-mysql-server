@@ -16,6 +16,7 @@ package parse
 
 import (
 	"fmt"
+	goerrors "errors"
 	"strconv"
 	"strings"
 	"time"
@@ -140,7 +141,7 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 	}
 
 	if err != nil {
-		if err.Error() == "empty statement" {
+		if goerrors.Is(err, sqlparser.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 			return plan.Nothing, parsed, remainder, nil
 		}
