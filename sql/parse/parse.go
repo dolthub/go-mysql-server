@@ -496,6 +496,10 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
 		var likepattern string
 		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				unsupportedShow := fmt.Sprintf("SHOW VARIABLES WHERE ...")
+				return nil, ErrUnsupportedFeature.New(unsupportedShow)
+			}
 			likepattern = s.Filter.Like
 		}
 		return plan.NewShowVariables(likepattern), nil
@@ -575,6 +579,10 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		return node, nil
 	case sqlparser.KeywordString(sqlparser.WARNINGS):
+		if s.CountStar {
+			unsupportedShow := fmt.Sprintf("SHOW COUNT(*) WARNINGS")
+			return nil, ErrUnsupportedFeature.New(unsupportedShow)
+		}
 		var node sql.Node
 		var err error
 		node = plan.ShowWarnings(ctx.Session.Warnings())

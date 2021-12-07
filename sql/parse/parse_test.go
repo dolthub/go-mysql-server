@@ -3237,6 +3237,10 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT a, count(i) over (partition by y) FROM foo`:         ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a) group by 1`:       ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a), max(b)`:          ErrUnsupportedFeature,
+	`SHOW COUNT(*) WARNINGS`:                                    ErrUnsupportedFeature,
+	`SHOW ERRORS`:                                               ErrUnsupportedFeature,
+	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         ErrUnsupportedFeature,
+	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {
