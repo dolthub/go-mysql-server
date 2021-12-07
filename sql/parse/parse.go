@@ -109,6 +109,15 @@ func mustCastNumToInt64(x interface{}) int64 {
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, query string) (sql.Node, error) {
+	n, _, _, err := parse(ctx, query, false)
+	return n, err
+}
+
+func ParseOne(ctx *sql.Context, query string) (sql.Node, string, string, error) {
+	return parse(ctx, query, true)
+}
+
+func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
 
@@ -122,25 +131,49 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 	// TODO: get rid of all these custom parser options
 	switch true {
 	case showVariablesRegex.MatchString(lowerQuery):
-		return parseShowVariables(ctx, s)
+		n, err := parseShowVariables(ctx, s)
+		return n, s, "", err
 	case showWarningsRegex.MatchString(lowerQuery):
-		return parseShowWarnings(ctx, s)
+		n, err := parseShowWarnings(ctx, s)
+		return n, s, "", err
 	case fullProcessListRegex.MatchString(lowerQuery):
-		return plan.NewShowProcessList(), nil
+		return plan.NewShowProcessList(), s, "", nil
 	case setRegex.MatchString(lowerQuery):
 		s = fixSetQuery(s)
 	}
 
-	stmt, err := sqlparser.Parse(s)
+	var stmt sqlparser.Statement
+	var err error
+	var parsed string
+	var remainder string
+
+	parsed = s
+	if !multi {
+		stmt, err = sqlparser.Parse(s)
+	} else {
+		var ri int
+		stmt, ri, err = sqlparser.ParseOne(s)
+		if ri != 0 && ri < len(s) {
+			parsed = s[:ri]
+			parsed = strings.TrimSpace(parsed)
+			if strings.HasSuffix(parsed, ";") {
+				parsed = parsed[:len(parsed)-1]
+			}
+			remainder = s[ri:]
+		}
+	}
+
 	if err != nil {
 		if err.Error() == "empty statement" {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-			return plan.Nothing, nil
+			return plan.Nothing, parsed, remainder, nil
 		}
-		return nil, sql.ErrSyntaxError.New(err.Error())
+		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
 	}
 
-	return convert(ctx, stmt, s)
+	node, err := convert(ctx, stmt, s)
+
+	return node, parsed, remainder, err
 }
 
 // ParseColumnTypeString will return a SQL type for the given string that represents a column type.

@@ -127,7 +127,7 @@ func TestHandlerOutput(t *testing.T) {
 			var lenLastBatch int
 			var lastRowsAffected uint64
 			handler.ComInitDB(test.conn, "test")
-			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
+			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result, more bool) error {
 				callsToCallback++
 				lenLastBatch = len(res.Rows)
 				lastRowsAffected = res.RowsAffected
@@ -229,7 +229,7 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.sm.sessions, 0)
 
 	handler.ComInitDB(conn2, "test")
-	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result) error {
+	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 
@@ -245,7 +245,7 @@ func TestHandlerKill(t *testing.T) {
 	ctx1, err = handler.e.ProcessList.AddProcess(ctx1, "SELECT 1")
 	require.NoError(err)
 
-	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result) error {
+	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -320,18 +320,18 @@ func TestHandlerTimeout(t *testing.T) {
 	noTimeOutHandler.NewConnection(connNoTimeout)
 
 	timeOutHandler.ComInitDB(connTimeout, "test")
-	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
+	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.EqualError(err, "row read wait bigger than connection timeout (errno 1105) (sqlstate HY000)")
 
-	err = timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result) error {
+	err = timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
 
 	noTimeOutHandler.ComInitDB(connNoTimeout, "test")
-	err = noTimeOutHandler.ComQuery(connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
+	err = noTimeOutHandler.ComQuery(connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -370,7 +370,7 @@ func TestOkClosedConnection(t *testing.T) {
 
 	q := fmt.Sprintf("SELECT SLEEP(%d)", tcpCheckerSleepTime*4)
 	h.ComInitDB(c, "test")
-	err = h.ComQuery(c, q, func(res *sqltypes.Result) error {
+	err = h.ComQuery(c, q, func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -560,7 +560,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(test.conn, "test")
 			var rowsAffected uint64
-			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
+			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result, more bool) error {
 				rowsAffected = uint64(res.RowsAffected)
 				return nil
 			})
