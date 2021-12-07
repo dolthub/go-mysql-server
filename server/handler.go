@@ -57,6 +57,13 @@ var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 const rowsBatch = 100
 const tcpCheckerSleepTime = 1
 
+type MultiStmtMode int
+
+const (
+	MultiStmtModeOff MultiStmtMode = 0
+	MultiStmtModeOn  MultiStmtMode = 1
+)
+
 // Handler is a connection handler for a SQLe engine.
 type Handler struct {
 	mu                sync.Mutex
@@ -102,7 +109,10 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	return h.errorWrappedDoQuery(c, prepare.PrepareStmt, prepare.BindVars, callback)
+	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
+		return callback(res)
+	})
+	return err
 }
 
 func (h *Handler) ComResetConnection(c *mysql.Conn) {
@@ -123,13 +133,22 @@ func (h *Handler) ConnectionClosed(c *mysql.Conn) {
 	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).Infof("ConnectionClosed")
 }
 
+func (h *Handler) ComMultiQuery(
+	c *mysql.Conn,
+	query string,
+	callback func(*sqltypes.Result, bool) error,
+) (string, error) {
+	return h.errorWrappedDoQuery(c, query, MultiStmtModeOn, nil, callback)
+}
+
 // ComQuery executes a SQL query on the SQLe engine.
 func (h *Handler) ComQuery(
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result) error,
+	callback func(*sqltypes.Result, bool) error,
 ) error {
-	return h.errorWrappedDoQuery(c, query, nil, callback)
+	_, err := h.errorWrappedDoQuery(c, query, MultiStmtModeOff, nil, callback)
+	return err
 }
 
 func bindingsToExprs(bindings map[string]*query.BindVariable) (map[string]sql.Expression, error) {
@@ -244,21 +263,35 @@ var queryLoggingRegex = regexp.MustCompile(`[\r\n\t ]+`)
 func (h *Handler) doQuery(
 	c *mysql.Conn,
 	query string,
+	mode MultiStmtMode,
 	bindings map[string]*query.BindVariable,
-	callback func(*sqltypes.Result) error,
-) error {
-	ctx, err := h.sm.NewContextWithQuery(c, query)
+	callback func(*sqltypes.Result, bool) error,
+) (string, error) {
+	ctx, err := h.sm.NewContext(c)
 	if err != nil {
-		return err
+		return "", err
 	}
+
+	var remainder string
+	var parsed sql.Node
+	if mode == MultiStmtModeOn {
+		var prequery string
+		parsed, prequery, remainder, _ = parse.ParseOne(ctx, query)
+		if prequery != "" {
+			query = prequery
+		}
+	}
+
+	ctx = ctx.WithQuery(query)
+	more := remainder != ""
 
 	handled, err := h.handleKill(ctx, c, query)
 	if err != nil {
-		return err
+		return remainder, err
 	}
 
 	if handled {
-		return callback(&sqltypes.Result{})
+		return remainder, callback(&sqltypes.Result{}, more)
 	}
 
 	ctx.SetLogger(ctx.GetLogger().
@@ -279,10 +312,12 @@ func (h *Handler) doQuery(
 
 	start := time.Now()
 
-	parsed, _ := parse.Parse(ctx, query)
+	if parsed == nil {
+		parsed, err = parse.Parse(ctx, query)
+	}
 	err = handleLoadData(c, ctx, parsed)
 	if err != nil {
-		return err
+		return remainder, err
 	}
 
 	ctx.GetLogger().Tracef("beginning execution")
@@ -292,7 +327,7 @@ func (h *Handler) doQuery(
 		sqlBindings, err = bindingsToExprs(bindings)
 		if err != nil {
 			ctx.GetLogger().WithError(err).Errorf("Error processing bindings")
-			return err
+			return remainder, err
 		}
 	}
 
@@ -307,7 +342,7 @@ func (h *Handler) doQuery(
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
-		return err
+		return remainder, err
 	}
 
 	var r *sqltypes.Result
@@ -358,9 +393,9 @@ rowLoop:
 		}
 
 		if r.RowsAffected == rowsBatch {
-			if err := callback(r); err != nil {
+			if err := callback(r, more); err != nil {
 				close(quit)
-				return err
+				return remainder, err
 			}
 
 			r = nil
@@ -376,7 +411,7 @@ rowLoop:
 
 			ctx.GetLogger().WithError(err).Warn("error running query")
 			close(quit)
-			return err
+			return remainder, err
 		case row := <-rowChan:
 			if sql.IsOkResult(row) {
 				if len(r.Rows) > 0 {
@@ -389,7 +424,7 @@ rowLoop:
 			outputRow, err := rowToSQL(schema, row)
 			if err != nil {
 				close(quit)
-				return err
+				return remainder, err
 			}
 
 			ctx.GetLogger().Tracef("spooling result row %s", outputRow)
@@ -400,7 +435,7 @@ rowLoop:
 				// Cancel and return so Vitess can call the CloseConnection callback
 				ctx.GetLogger().Tracef("connection timeout")
 				close(quit)
-				return ErrRowTimeout.New()
+				return remainder, ErrRowTimeout.New()
 			}
 		}
 		timer.Reset(waitTime)
@@ -409,14 +444,14 @@ rowLoop:
 
 	err = rows.Close(ctx)
 	if err != nil {
-		return err
+		return remainder, err
 	}
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
-		return err
+		return remainder, err
 	}
 	if err = setResultInfo(ctx, c, r, parsed); err != nil {
-		return err
+		return remainder, err
 	}
 
 	switch len(r.Rows) {
@@ -438,10 +473,10 @@ rowLoop:
 	// and avoid returning errors when the query doesn't
 	// produce any results.
 	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
-		return nil
+		return remainder, nil
 	}
 
-	return callback(r)
+	return remainder, callback(r, more)
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
@@ -506,15 +541,16 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 func (h *Handler) errorWrappedDoQuery(
 	c *mysql.Conn,
 	query string,
+	mode MultiStmtMode,
 	bindings map[string]*query.BindVariable,
-	callback func(*sqltypes.Result) error,
-) error {
-	err := h.doQuery(c, query, bindings, callback)
+	callback func(*sqltypes.Result, bool) error,
+) (string, error) {
+	remainder, err := h.doQuery(c, query, mode, bindings, callback)
 	err, _, ok := sql.CastSQLError(err)
 	if ok {
-		return nil
+		return remainder, nil
 	} else {
-		return err
+		return remainder, err
 	}
 }
 
