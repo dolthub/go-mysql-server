@@ -63,7 +63,6 @@ var (
 )
 
 var (
-	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
 	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
 )
 
@@ -128,9 +127,6 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 
 	// TODO: get rid of all these custom parser options
 	switch true {
-	case showVariablesRegex.MatchString(lowerQuery):
-		n, err := parseShowVariables(ctx, s)
-		return n, s, "", err
 	case showWarningsRegex.MatchString(lowerQuery):
 		n, err := parseShowWarnings(ctx, s)
 		return n, s, "", err
@@ -511,6 +507,12 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
+	case sqlparser.KeywordString(sqlparser.VARIABLES):
+		var likepattern string
+		if s.Filter != nil {
+			likepattern = s.Filter.Like
+		}
+		return plan.NewShowVariables(likepattern), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression
