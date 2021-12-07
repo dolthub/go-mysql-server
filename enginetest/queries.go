@@ -1225,6 +1225,70 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
+		Expected: []sql.Row{{3, "third row"}, {2, "second row"}},
+	},
+	{
+		Query:    `SELECT * FROM mytable WHERE i in (1+2)`,
+		Expected: []sql.Row{{3, "third row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where cast(i as CHAR) IN ('a', 'b')",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * from mytable where cast(i as CHAR) IN ('1', '2')",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i > 2) IN (true)",
+		Expected: []sql.Row{{3, "third row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i + 6) IN (7, 8)",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i + 40) IN (7, 8)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * from mytable where (i = 1 | false) IN (true)",
+		Expected: []sql.Row{{1, "first row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i = 1 & false) IN (true)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM mytable WHERE i in (2*i)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM mytable WHERE i in (i)`,
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
+	},
+	{
+		Query:    "SELECT * from mytable WHERE 4 IN (i + 2)",
+		Expected: []sql.Row{{2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
+		Expected: []sql.Row{{1, "first row"}},
+	},
+	{
+		Query:    "SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')",
+		Expected: []sql.Row{{2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where true IN (i > 2)",
+		Expected: []sql.Row{{3, "third row"}},
+	},
+	{
 		Query:    "SELECT (1,2) in ((0,1), (1,0), (1,2))",
 		Expected: []sql.Row{{true}},
 	},

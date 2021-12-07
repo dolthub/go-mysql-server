@@ -8,6 +8,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -200,10 +201,37 @@ func TestApplyHashIn(t *testing.T) {
 				),
 				child,
 			),
-			err: expression.ErrCantHashNestedExpression,
+			expected: plan.NewFilter(
+				mustNewHashInTuple(
+					expression.NewTuple(
+						expression.NewTuple(
+							expression.NewGetField(0, sql.Int64, "a", false),
+							expression.NewGetField(1, sql.Int64, "b", false),
+						),
+						expression.NewGetField(1, sql.Int64, "b", false),
+					),
+					expression.NewTuple(
+						expression.NewTuple(
+							expression.NewTuple(
+								expression.NewLiteral(int64(2), sql.Int64),
+								expression.NewLiteral(int64(1), sql.Int64),
+							),
+							expression.NewLiteral(int64(1), sql.Int64),
+						),
+						expression.NewTuple(
+							expression.NewTuple(
+								expression.NewLiteral(int64(2), sql.Int64),
+								expression.NewLiteral(int64(1), sql.Int64),
+							),
+							expression.NewLiteral(int64(0), sql.Int64),
+						),
+					),
+				),
+				child,
+			),
 		},
 		{
-			name: "filter with binding expression not selected",
+			name: "skip filter with binding",
 			node: plan.NewFilter(
 				expression.NewInTuple(
 					expression.NewGetField(0, sql.Int64, "foo", false),
@@ -226,9 +254,295 @@ func TestApplyHashIn(t *testing.T) {
 				),
 				child,
 			),
-			err: expression.ErrUnsupportedHashInSubexpression,
+		},
+		{
+			name: "filter with arithmetic on left",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewPlus(
+						expression.NewLiteral(4, sql.Int64),
+						expression.NewGetField(0, sql.Int64, "foo", false),
+					),
+					expression.NewTuple(
+						expression.NewLiteral(6, sql.Int64),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				mustNewHashInTuple(
+					expression.NewPlus(
+						expression.NewLiteral(4, sql.Int64),
+						expression.NewGetField(0, sql.Int64, "foo", false),
+					),
+					expression.NewTuple(
+						expression.NewLiteral(6, sql.Int64),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "skip filter with arithmetic on right",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(6, sql.Int64),
+					expression.NewTuple(
+						expression.NewPlus(
+							expression.NewLiteral(4, sql.Int64),
+							expression.NewGetField(0, sql.Int64, "foo", false),
+						),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(6, sql.Int64),
+					expression.NewTuple(
+						expression.NewPlus(
+							expression.NewLiteral(4, sql.Int64),
+							expression.NewGetField(0, sql.Int64, "foo", false),
+						),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "function on left",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					function.NewLower(
+						expression.NewLiteral("hi", sql.TinyText),
+					),
+					expression.NewTuple(
+						expression.NewLiteral("hi", sql.TinyText),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				mustNewHashInTuple(
+					function.NewLower(
+						expression.NewLiteral("hi", sql.TinyText),
+					),
+					expression.NewTuple(
+						expression.NewLiteral("hi", sql.TinyText),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "skip filter with function on right",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral("hi", sql.TinyText),
+					expression.NewTuple(
+						function.NewLower(
+							expression.NewLiteral("hi", sql.TinyText),
+						),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral("hi", sql.TinyText),
+					expression.NewTuple(
+						function.NewLower(
+							expression.NewLiteral("hi", sql.TinyText),
+						),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "is null on left",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewIsNull(
+						expression.NewLiteral(int64(0), sql.Null),
+					),
+					expression.NewTuple(
+						expression.NewLiteral(int64(0), sql.Int64),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				mustNewHashInTuple(
+					expression.NewIsNull(
+						expression.NewLiteral(int64(0), sql.Null),
+					),
+					expression.NewTuple(
+						expression.NewLiteral(int64(0), sql.Int64),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "skip filter with is null on right",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewIsNull(
+							expression.NewLiteral(int64(0), sql.Null),
+						),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewIsNull(
+							expression.NewLiteral(int64(0), sql.Null),
+						),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "is true on left",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewIsTrue(
+						expression.NewLiteral(int64(0), sql.Null),
+					),
+					expression.NewTuple(
+						expression.NewLiteral(int64(0), sql.Int64),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				mustNewHashInTuple(
+					expression.NewIsTrue(
+						expression.NewLiteral(int64(0), sql.Null),
+					),
+					expression.NewTuple(
+						expression.NewLiteral(int64(0), sql.Int64),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "skip filter with is true on right",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewIsTrue(
+							expression.NewLiteral(int64(0), sql.Null),
+						),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewIsTrue(
+							expression.NewLiteral(int64(0), sql.Null),
+						),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "cast on left",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewConvert(
+						expression.NewGetField(0, sql.Int64, "foo", false),
+						"char",
+					),
+					expression.NewTuple(
+						expression.NewLiteral(int64(0), sql.Int64),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				mustNewHashInTuple(
+					expression.NewConvert(
+						expression.NewGetField(0, sql.Int64, "foo", false),
+						"char",
+					),
+					expression.NewTuple(
+						expression.NewLiteral(int64(0), sql.Int64),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "skip filter with cast on right",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewConvert(
+							expression.NewGetField(0, sql.Int64, "foo", false),
+							"char",
+						),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewConvert(
+							expression.NewGetField(0, sql.Int64, "foo", false),
+							"char",
+						),
+					),
+				),
+				child,
+			),
+		},
+		{
+			name: "skip filter with get field on right",
+			node: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewGetField(0, sql.Int64, "foo", false),
+					),
+				),
+				child,
+			),
+			expected: plan.NewFilter(
+				expression.NewInTuple(
+					expression.NewLiteral(int64(0), sql.Int64),
+					expression.NewTuple(
+						expression.NewGetField(0, sql.Int64, "foo", false),
+					),
+				),
+				child,
+			),
 		},
 	}
 
 	runTestCases(t, sql.NewEmptyContext(), tests, NewDefault(sql.NewDatabaseProvider()), getRule("apply_hash_in"))
+}
+
+func mustNewHashInTuple(left, right sql.Expression) *expression.HashInTuple {
+	hin, err := expression.NewHashInTuple(left, right)
+	if err != nil {
+		panic(err)
+	}
+	return hin
 }

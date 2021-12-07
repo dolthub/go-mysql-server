@@ -485,6 +485,126 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
+		ExpectedPlan: "Filter(mytable.i HASH IN (NULL, 2, 3, 4))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: `SELECT * FROM mytable WHERE i in (1+2)`,
+		ExpectedPlan: "Filter(mytable.i HASH IN (3))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')",
+		ExpectedPlan: "Filter(UPPER(mytable.s) HASH IN (\"FIRST ROW\", \"SECOND ROW\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where cast(i as CHAR) IN ('a', 'b')",
+		ExpectedPlan: "Filter(convert(mytable.i, char) HASH IN (\"a\", \"b\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where cast(i as CHAR) IN ('1', '2')",
+		ExpectedPlan: "Filter(convert(mytable.i, char) HASH IN (\"1\", \"2\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i > 2) IN (true)",
+		ExpectedPlan: "Filter((mytable.i > 2) HASH IN (true))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i + 6) IN (7, 8)",
+		ExpectedPlan: "Filter((mytable.i + 6) HASH IN (7, 8))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i + 40) IN (7, 8)",
+		ExpectedPlan: "Filter((mytable.i + 40) HASH IN (7, 8))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i = 1 | false) IN (true)",
+		ExpectedPlan: "Filter((mytable.i = 1) HASH IN (true))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable where (i = 1 & false) IN (true)",
+		ExpectedPlan: "Filter((mytable.i = 0) HASH IN (true))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (2*i)`,
+		ExpectedPlan: "Filter(mytable.i IN ((2 * mytable.i)))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (i)`,
+		ExpectedPlan: "Filter(mytable.i IN (mytable.i))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable WHERE 4 IN (i + 2)",
+		ExpectedPlan: "Filter(4 IN ((mytable.i + 2)))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
+		ExpectedPlan: "Filter(mytable.s HASH IN (\"first row\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')",
+		ExpectedPlan: "Filter(mytable.s HASH IN (\"second row\", \"FIRST ROW\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable where true IN (i > 3)",
+		ExpectedPlan: "Filter(true IN ((mytable.i > 3)))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
