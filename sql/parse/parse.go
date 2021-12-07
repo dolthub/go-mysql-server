@@ -16,7 +16,6 @@ package parse
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -60,10 +59,6 @@ var (
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
-)
-
-var (
-	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -121,15 +116,6 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 	s := strings.TrimSpace(query)
 	if strings.HasSuffix(s, ";") {
 		s = s[:len(s)-1]
-	}
-
-	lowerQuery := strings.ToLower(s)
-
-	// TODO: get rid of all these custom parser options
-	switch true {
-	case showWarningsRegex.MatchString(lowerQuery):
-		n, err := parseShowWarnings(ctx, s)
-		return n, s, "", err
 	}
 
 	var stmt sqlparser.Statement
@@ -587,6 +573,24 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 		}
 
+		return node, nil
+	case sqlparser.KeywordString(sqlparser.WARNINGS):
+		var node sql.Node
+		var err error
+		node = plan.ShowWarnings(ctx.Session.Warnings())
+		if s.Limit != nil {
+			if s.Limit.Offset != nil {
+				node, err = offsetToOffset(ctx, s.Limit.Offset, node)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return node, nil
 	case "table status":
 		return convertShowTableStatus(ctx, s)
