@@ -141,7 +141,7 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	db, ok := d.dbs[server]
 	if !ok {
 		anlz := analyzer.NewDefault(pro)
-		engine := sqle.New(anlz, nil)
+		engine := sqle.New(anlz, nil, sql.NewBackgroundThreads())
 		db = &dbConn{engine: engine}
 		d.dbs[server] = db
 	}

@@ -38,11 +38,12 @@ type Config struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Analyzer      *analyzer.Analyzer
-	Auth          auth.Auth
-	LS            *sql.LockSubsystem
-	ProcessList   sql.ProcessList
-	MemoryManager *sql.MemoryManager
+	Analyzer          *analyzer.Analyzer
+	Auth              auth.Auth
+	LS                *sql.LockSubsystem
+	ProcessList       sql.ProcessList
+	MemoryManager     *sql.MemoryManager
+	BackgroundThreads *sql.BackgroundThreads
 }
 
 type ColumnWithRawDefault struct {
@@ -52,7 +53,7 @@ type ColumnWithRawDefault struct {
 
 // New creates a new Engine with custom configuration. To create an Engine with
 // the default settings use `NewDefault`.
-func New(a *analyzer.Analyzer, cfg *Config) *Engine {
+func New(a *analyzer.Analyzer, cfg *Config, bThreads *sql.BackgroundThreads) *Engine {
 	var versionPostfix string
 	if cfg != nil {
 		versionPostfix = cfg.VersionPostfix
@@ -76,18 +77,19 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	}
 
 	return &Engine{
-		Analyzer:      a,
-		MemoryManager: sql.NewMemoryManager(sql.ProcessMemory),
-		ProcessList:   NewProcessList(),
-		Auth:          au,
-		LS:            ls,
+		Analyzer:          a,
+		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
+		ProcessList:       NewProcessList(),
+		Auth:              au,
+		LS:                ls,
+		BackgroundThreads: bThreads,
 	}
 }
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
 	a := analyzer.NewDefault(pro)
-	return New(a, nil)
+	return New(a, nil, sql.NewBackgroundThreads())
 }
 
 // AnalyzeQuery analyzes a query and returns its Schema.
@@ -225,6 +227,13 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	}
 
 	return transactionDatabase, nil
+}
+
+func (e *Engine) Close() error {
+	for _, p := range e.ProcessList.Processes() {
+		e.ProcessList.Kill(p.Connection)
+	}
+	return e.BackgroundThreads.Close()
 }
 
 // Returns whether this session has a transaction isolation level of READ COMMITTED.

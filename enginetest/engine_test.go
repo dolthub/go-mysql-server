@@ -101,7 +101,7 @@ func TestLocks(t *testing.T) {
 	pro := sql.NewDatabaseProvider(db)
 
 	analyzer := analyzer.NewDefault(pro)
-	engine := sqle.New(analyzer, new(sqle.Config))
+	engine := sqle.New(analyzer, new(sqle.Config), sql.NewBackgroundThreads())
 
 	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
 	_, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
