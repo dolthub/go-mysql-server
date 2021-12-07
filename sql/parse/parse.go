@@ -512,7 +512,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		if s.ShowTablesOpt != nil {
 			dbName = s.ShowTablesOpt.DbName
-			full = s.ShowTablesOpt.Full != ""
+			full = s.Full
 
 			if s.ShowTablesOpt.Filter != nil {
 				if s.ShowTablesOpt.Filter.Filter != nil {
@@ -550,7 +550,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
 		table := tableNameToUnresolvedTable(s.OnTable)
-		full := s.ShowTablesOpt != nil && s.ShowTablesOpt.Full != ""
+		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
 
