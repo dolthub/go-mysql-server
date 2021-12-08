@@ -42,25 +42,52 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return n, nil
 }
 
-func validateModifyColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if !n.Resolved() {
 		return n, nil
 	}
 
-	mc, ok := n.(*plan.ModifyColumn)
-	if !ok {
+	switch n := n.(type) {
+	case *plan.ModifyColumn:
+		err := validateModifyColumn(n)
+		if err != nil {
+			return nil, err
+		}
+	case *plan.AddColumn:
+		err := validateAddColumn(n)
+		if err != nil {
+			return nil, err
+		}
+	default:
 		return n, nil
 	}
 
+	return n, nil
+}
+
+func validateAddColumn(ac *plan.AddColumn) error {
+	table := ac.Child
+	newSch := append(table.Schema(), ac.Column())
+
+	// TODO: more validation possible to do here
+	err := validateAutoIncrement(newSch)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateModifyColumn(mc *plan.ModifyColumn) error {
 	table := mc.Child
 	newSch := replaceInSchema(table.Schema(), mc.NewColumn())
 
 	err := validateAutoIncrement(newSch)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return n, nil
+	return nil
 }
 
 func replaceInSchema(sch sql.Schema, col *sql.Column) sql.Schema {

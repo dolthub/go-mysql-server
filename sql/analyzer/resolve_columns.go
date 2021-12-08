@@ -531,9 +531,8 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 			idx++
 		}
 	case *plan.AddColumn: // Add/Modify need to have the full column set in order to resolve a default expression.
-		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
-			indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
-		}
+		tbl := node.Child
+		indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
 	case *plan.ModifyColumn:
 		tbl := node.Child
 		if n, ok := tbl.(sql.Nameable); ok {

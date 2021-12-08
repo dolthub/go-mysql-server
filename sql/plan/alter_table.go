@@ -84,7 +84,7 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 type AddColumn struct {
 	ddlNode
-	tableName string
+	UnaryNode
 	column    *sql.Column
 	order     *sql.ColumnOrder
 }
@@ -93,17 +93,13 @@ var _ sql.Node = (*AddColumn)(nil)
 var _ sql.Databaser = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
-func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+func NewAddColumn(db sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	return &AddColumn{
 		ddlNode:   ddlNode{db},
-		tableName: tableName,
+		UnaryNode: UnaryNode{Child: table},
 		column:    column,
 		order:     order,
 	}
-}
-
-func (a *AddColumn) TableName() string {
-	return a.tableName
 }
 
 func (a *AddColumn) Column() *sql.Column {
@@ -130,7 +126,7 @@ func (a *AddColumn) String() string {
 }
 
 func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(a.db, ctx, a.tableName)
+	alterable, err := getAlterable(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -202,8 +198,16 @@ func (a *AddColumn) validateDefaultPosition(tblSch sql.Schema) error {
 	return nil
 }
 
-func (a *AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(a, children...)
+func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+	}
+	a.UnaryNode = UnaryNode{Child: children[0]}
+	return &a, nil
+}
+
+func (a *AddColumn) Children() []sql.Node {
+	return a.UnaryNode.Children()
 }
 
 type DropColumn struct {

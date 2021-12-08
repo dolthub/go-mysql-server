@@ -81,7 +81,7 @@ var OnceAfterDefault = []Rule{
 	{"load_triggers", loadTriggers},
 	{"process_truncate", processTruncate},
 	{"resolve_column_defaults", resolveColumnDefaults},
-	{"validate_modify_column", validateModifyColumn},
+	{"validate_modify_column", validateAlterColumn},
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
 	{"assign_catalog", assignCatalog},
