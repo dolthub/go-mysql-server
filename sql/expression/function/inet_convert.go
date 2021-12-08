@@ -110,6 +110,7 @@ var _ sql.FunctionExpression = (*Inet6Aton)(nil)
 func NewInet6Aton(val sql.Expression) sql.Expression {
 	return &Inet6Aton{expression.UnaryExpression{Child: val}}
 }
+
 // FunctionName implements sql.FunctionExpression
 func (i *Inet6Aton) FunctionName() string {
 	return "inet6_aton"

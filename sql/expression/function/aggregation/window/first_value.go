@@ -38,7 +38,7 @@ func NewFirstValue(e sql.Expression) sql.Expression {
 }
 
 // Description implements sql.FunctionExpression
-func (f * FirstValue) Description() string {
+func (f *FirstValue) Description() string {
 	return "value of argument from first row of window frame."
 }
 

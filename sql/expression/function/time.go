@@ -1340,7 +1340,7 @@ type CurrTimestamp struct {
 var _ sql.FunctionExpression = (*CurrTimestamp)(nil)
 
 // Description implements sql.FunctionExpression
-func (c * CurrTimestamp) Description() string {
+func (c *CurrTimestamp) Description() string {
 	return "return the current date and time."
 }
 

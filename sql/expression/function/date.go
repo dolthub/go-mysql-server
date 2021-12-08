@@ -417,10 +417,9 @@ func NewFromUnixtime(arg sql.Expression) sql.Expression {
 }
 
 // Description implements sql.FunctionExpression
-func (r * FromUnixtime) Description() string {
+func (r *FromUnixtime) Description() string {
 	return "format Unix timestamp as a date."
 }
-
 
 func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := r.EvalChild(ctx, row)

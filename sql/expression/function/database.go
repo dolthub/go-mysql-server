@@ -34,7 +34,7 @@ func (db *Database) FunctionName() string {
 }
 
 // Description implements sql.FunctionExpression
-func (db * Database) Description() string {
+func (db *Database) Description() string {
 	return "return the default (current) database name."
 }
 
