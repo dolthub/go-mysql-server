@@ -42,6 +42,41 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	return n, nil
 }
 
+func validateModifyColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	if !n.Resolved() {
+		return n, nil
+	}
+
+	mc, ok := n.(*plan.ModifyColumn)
+	if !ok {
+		return n, nil
+	}
+
+	table := mc.Child
+	newSch := replaceInSchema(table.Schema(), mc.NewColumn())
+
+	err := validateAutoIncrement(newSch)
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
+}
+
+func replaceInSchema(sch sql.Schema, col *sql.Column) sql.Schema {
+	idx := sch.IndexOf(col.Name, col.Source)
+	schCopy := make(sql.Schema, len(sch))
+	for i := range sch {
+		if i == idx {
+			schCopy[i] = col
+		} else {
+			cc := *sch[i]
+			schCopy[i] = &cc
+		}
+	}
+	return schCopy
+}
+
 func validateAutoIncrement(schema sql.Schema) error {
 	seen := false
 	for _, col := range schema {

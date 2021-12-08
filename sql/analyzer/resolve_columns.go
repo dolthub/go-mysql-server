@@ -535,10 +535,11 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 			indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
 		}
 	case *plan.ModifyColumn:
-		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
-			colIdx := tbl.Schema().IndexOf(node.Column(), node.TableName())
+		tbl := node.Child
+		if n, ok := tbl.(sql.Nameable); ok {
+			colIdx := tbl.Schema().IndexOf(node.Column(), n.Name())
 			if colIdx < 0 {
-				return nil, sql.ErrTableColumnNotFound.New(node.TableName(), node.Column())
+				return nil, sql.ErrTableColumnNotFound.New(n.Name(), node.Column())
 			}
 
 			var newSch sql.Schema

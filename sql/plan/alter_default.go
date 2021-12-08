@@ -52,12 +52,13 @@ func getAlterable(node sql.Node) (sql.AlterableTable, error) {
 		return getAlterableTableUnderlying(node.Underlying())
 	}
 	for _, child := range node.Children() {
-		deleter, _ := getAlterable(child)
-		if deleter != nil {
-			return deleter, nil
+		alterableChild, _ := getAlterable(child)
+		if alterableChild != nil {
+			return alterableChild, nil
 		}
 	}
-	return nil, sql.ErrAlterTableNotSupported.New()
+
+	return nil, sql.ErrAlterTableNotSupported.New(node.String())
 }
 
 func getAlterableTableUnderlying(t sql.Table) (sql.AlterableTable, error) {

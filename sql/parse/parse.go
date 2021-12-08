@@ -1115,7 +1115,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewModifyColumn(sql.UnresolvedDatabase(""), ddl.Table.Name.String(), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewModifyColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		}
 	}
 	if ddl.AutoIncSpec != nil {

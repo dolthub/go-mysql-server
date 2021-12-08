@@ -338,7 +338,7 @@ func (r *RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 type ModifyColumn struct {
 	ddlNode
-	tableName  string
+	UnaryNode
 	columnName string
 	column     *sql.Column
 	order      *sql.ColumnOrder
@@ -348,10 +348,12 @@ var _ sql.Node = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
 var _ sql.Expressioner = (*ModifyColumn)(nil)
 
-func NewModifyColumn(db sql.Database, tableName string, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+func NewModifyColumn(db sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	return &ModifyColumn{
 		ddlNode:    ddlNode{db},
-		tableName:  tableName,
+		UnaryNode: UnaryNode{
+			table,
+		},
 		columnName: columnName,
 		column:     column,
 		order:      order,
@@ -362,10 +364,6 @@ func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	nm := *m
 	nm.db = db
 	return &nm, nil
-}
-
-func (m *ModifyColumn) TableName() string {
-	return m.tableName
 }
 
 func (m *ModifyColumn) Column() string {
@@ -390,7 +388,7 @@ func (m *ModifyColumn) String() string {
 }
 
 func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(m.db, ctx, m.tableName)
+	alterable, err := getAlterable(m.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -419,8 +417,16 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
 }
 
-func (m *ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(m, children...)
+func (m *ModifyColumn) Children() []sql.Node {
+	return m.UnaryNode.Children()
+}
+
+func (m ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
+	}
+	m.UnaryNode.Child = children[0]
+	return &m, nil
 }
 
 func (m *ModifyColumn) Expressions() []sql.Expression {
@@ -443,7 +449,7 @@ func (m *ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error
 
 // Resolved implements the Resolvable interface.
 func (m *ModifyColumn) Resolved() bool {
-	return m.ddlNode.Resolved() && m.column.Default.Resolved()
+	return m.ddlNode.Resolved() && m.UnaryNode.Resolved() && m.column.Default.Resolved()
 }
 
 // Gets an AlterableTable with the name given from the database, or an error if it cannot.
