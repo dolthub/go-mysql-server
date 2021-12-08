@@ -48,7 +48,7 @@ func (j *JSONExtract) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j *JSONExtract) Description() string {
-	return "return data from JSON document"
+	return "returns data from JSON document"
 }
 
 // Resolved implements the sql.Expression interface.

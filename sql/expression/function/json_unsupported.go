@@ -236,7 +236,7 @@ func (j JSONArray) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONArray) Description() string {
-	return "create JSON array."
+	return "creates JSON array."
 }
 
 // JSON_QUOTE(string)
@@ -302,7 +302,7 @@ func (j JSONArrayAppend) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONArrayAppend) Description() string {
-	return "append data to JSON document."
+	return "appends data to JSON document."
 }
 
 // JSON_ARRAY_INSERT(json_doc, path, val[, path, val] ...)
@@ -335,7 +335,7 @@ func (j JSONArrayInsert) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONArrayInsert) Description() string {
-	return "insert into JSON array."
+	return "inserts into JSON array."
 }
 
 // JSON_INSERT(json_doc, path, val[, path, val] ...)
@@ -370,7 +370,7 @@ func (j JSONInsert) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONInsert) Description() string {
-	return "insert data into JSON document"
+	return "inserts data into JSON document"
 }
 
 // JSON_MERGE_PATCH(json_doc, json_doc[, json_doc] ...)
@@ -416,7 +416,7 @@ func (j JSONMergePatch) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONMergePatch) Description() string {
-	return "Merge JSON documents, replacing values of duplicate keys"
+	return "merges JSON documents, replacing values of duplicate keys"
 }
 
 // JSON_MERGE(json_doc, json_doc[, json_doc] ...)
@@ -468,7 +468,7 @@ func (j JSONMergePreserve) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONMergePreserve) Description() string {
-	return "merge JSON documents, preserving duplicate keys."
+	return "merges JSON documents, preserving duplicate keys."
 }
 
 // JSON_REMOVE(json_doc, path[, path] ...)
@@ -498,7 +498,7 @@ func (j JSONRemove) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONRemove) Description() string {
-	return "remove data from JSON document."
+	return "removes data from JSON document."
 }
 
 // JSON_REPLACE(json_doc, path, val[, path, val] ...)
@@ -529,7 +529,7 @@ func (j JSONReplace) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONReplace) Description() string {
-	return "replace values in JSON document."
+	return "replaces values in JSON document."
 }
 
 // JSON_SET(json_doc, path, val[, path, val] ...)
@@ -565,7 +565,7 @@ func (j JSONSet) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONSet) Description() string {
-	return "insert data into JSON document."
+	return "inserts data into JSON document."
 }
 
 //////////////////////////////
@@ -598,7 +598,7 @@ func (j JSONDepth) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONDepth) Description() string {
-	return "maximum depth of JSON document."
+	return "returns maximum depth of JSON document."
 }
 
 // JSON_LENGTH(json_doc[, path])
@@ -631,7 +631,7 @@ func (j JSONLength) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONLength) Description() string {
-	return "number of elements in JSON document"
+	return "returns number of elements in JSON document."
 }
 
 // JSON_TYPE(json_val)
@@ -658,7 +658,7 @@ func (j JSONType) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONType) Description() string {
-	return "type of JSON value."
+	return "returns type of JSON value."
 }
 
 // JSON_VALID(val)
@@ -684,7 +684,7 @@ func (j JSONValid) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONValid) Description() string {
-	return "whether JSON value is valid."
+	return "returns whether JSON value is valid."
 }
 
 //////////////////////////
@@ -715,7 +715,7 @@ func (j JSONTable) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONTable) Description() string {
-	return "return data from a JSON expression as a relational table."
+	return "returns data from a JSON expression as a relational table."
 }
 
 ///////////////////////////////
@@ -746,7 +746,7 @@ func (j JSONSchemaValid) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONSchemaValid) Description() string {
-	return "validate JSON document against JSON schema; returns TRUE/1 if document validates against schema, or FALSE/0 if it does not."
+	return "validates JSON document against JSON schema; returns TRUE/1 if document validates against schema, or FALSE/0 if it does not."
 }
 
 // JSON_SCHEMA_VALIDATION_REPORT(schema,document)
@@ -785,7 +785,7 @@ func (j JSONSchemaValidationReport) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONSchemaValidationReport) Description() string {
-	return "validate JSON document against JSON schema; returns report in JSON format on outcome on validation including success or failure and reasons for failure."
+	return "validates JSON document against JSON schema; returns report in JSON format on outcome on validation including success or failure and reasons for failure."
 }
 
 ////////////////////////////
@@ -827,7 +827,7 @@ func (j JSONPretty) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONPretty) Description() string {
-	return "print a JSON document in human-readable format."
+	return "prints a JSON document in human-readable format."
 }
 
 // JSON_STORAGE_FREE(json_val)
@@ -861,7 +861,7 @@ func (j JSONStorageFree) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONStorageFree) Description() string {
-	return "freed space within binary representation of JSON column value following partial update."
+	return "returns freed space within binary representation of JSON column value following partial update."
 }
 
 // JSON_STORAGE_SIZE(json_val)
@@ -893,5 +893,5 @@ func (j JSONStorageSize) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONStorageSize) Description() string {
-	return "space used for storage of binary representation of a JSON document."
+	return "returns space used for storage of binary representation of a JSON document."
 }

@@ -43,7 +43,7 @@ func (i *InetAton) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (i *InetAton) Description() string {
-	return "return the numeric value of an IP address."
+	return "returns the numeric value of an IP address."
 }
 
 func (i *InetAton) String() string {
@@ -118,7 +118,7 @@ func (i *Inet6Aton) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (i *Inet6Aton) Description() string {
-	return "return the numeric value of an IPv6 address."
+	return "returns the numeric value of an IPv6 address."
 }
 
 func (i *Inet6Aton) String() string {
@@ -192,7 +192,7 @@ func (i *InetNtoa) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (i *InetNtoa) Description() string {
-	return "return the IP address from a numeric value."
+	return "returns the IP address from a numeric value."
 }
 
 func (i *InetNtoa) String() string {
@@ -259,7 +259,7 @@ func (i *Inet6Ntoa) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (i *Inet6Ntoa) Description() string {
-	return "return the IPv6 address from a numeric value."
+	return "returns the IPv6 address from a numeric value."
 }
 
 func (i *Inet6Ntoa) String() string {

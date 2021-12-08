@@ -416,7 +416,7 @@ func (r Right) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (r Right) Description() string {
-	return "return the specified rightmost number of characters."
+	return "returns the specified rightmost number of characters."
 }
 
 // Children implements the Expression interface.

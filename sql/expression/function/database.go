@@ -35,7 +35,7 @@ func (db *Database) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (db *Database) Description() string {
-	return "return the default (current) database name."
+	return "returns the default (current) database name."
 }
 
 // Type implements the sql.Expression (sql.LongText)

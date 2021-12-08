@@ -28,7 +28,7 @@ var _ sql.FunctionExpression = ConnectionID{}
 
 // Description implements sql.FunctionExpression
 func (c ConnectionID) Description() string {
-	return "return returns the current connection ID."
+	return "returns the current connection ID."
 }
 
 func NewConnectionID() sql.Expression {

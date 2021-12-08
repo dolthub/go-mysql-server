@@ -61,7 +61,7 @@ func (f *Format) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (f *Format) Description() string {
-	return "return a number formatted to specified number of decimal places."
+	return "returns a number formatted to specified number of decimal places."
 }
 
 // Type implements the Expression interface.

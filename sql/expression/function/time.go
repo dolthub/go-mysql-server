@@ -572,7 +572,7 @@ func (d *Week) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (d *Week) Description() string {
-	return "return the week number."
+	return "returns the week number."
 }
 
 func (d *Week) String() string { return fmt.Sprintf("WEEK(%s, %d)", d.date, d.mode) }
@@ -1054,7 +1054,7 @@ var _ sql.FunctionExpression = (*DayName)(nil)
 
 // Description implements sql.FunctionExpression
 func (d *DayName) Description() string {
-	return "return the name of the weekday."
+	return "returns the name of the weekday."
 }
 
 func NewDayName(arg sql.Expression) sql.Expression {
@@ -1087,7 +1087,7 @@ var _ sql.FunctionExpression = (*Microsecond)(nil)
 
 // Description implements sql.FunctionExpression
 func (m *Microsecond) Description() string {
-	return "return the microseconds from argument."
+	return "returns the microseconds from argument."
 }
 
 func NewMicrosecond(arg sql.Expression) sql.Expression {
@@ -1124,7 +1124,7 @@ func NewMonthName(arg sql.Expression) sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (d *MonthName) Description() string {
-	return "return the name of the month."
+	return "returns the name of the month."
 }
 
 func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -1157,7 +1157,7 @@ func NewTimeToSec(arg sql.Expression) sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (m *TimeToSec) Description() string {
-	return "return the argument converted to seconds."
+	return "returns the argument converted to seconds."
 }
 
 func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -1190,7 +1190,7 @@ func NewWeekOfYear(arg sql.Expression) sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (m *WeekOfYear) Description() string {
-	return "return the calendar week of the date (1-53)."
+	return "returns the calendar week of the date (1-53)."
 }
 
 func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -1303,7 +1303,7 @@ var _ sql.FunctionExpression = CurrTime{}
 
 // Description implements sql.FunctionExpression
 func (c CurrTime) Description() string {
-	return "return the current time."
+	return "returns the current time."
 }
 
 func NewCurrTime() sql.Expression {
@@ -1343,7 +1343,7 @@ var _ sql.FunctionExpression = (*CurrTimestamp)(nil)
 
 // Description implements sql.FunctionExpression
 func (c *CurrTimestamp) Description() string {
-	return "return the current date and time."
+	return "returns the current date and time."
 }
 
 func NewCurrTimestamp(args ...sql.Expression) (sql.Expression, error) {

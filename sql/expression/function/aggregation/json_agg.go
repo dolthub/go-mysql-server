@@ -54,7 +54,7 @@ func (j *JSONArrayAgg) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j *JSONArrayAgg) Description() string {
-	return "return result set as a single JSON array."
+	return "returns result set as a single JSON array."
 }
 
 // NewBuffer creates a new buffer for the aggregation.
@@ -163,7 +163,7 @@ func (j JSONObjectAgg) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONObjectAgg) Description() string {
-	return "return result set as a single JSON object."
+	return "returns result set as a single JSON object."
 }
 
 // Resolved implements the Expression interface.

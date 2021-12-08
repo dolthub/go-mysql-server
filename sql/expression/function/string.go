@@ -238,7 +238,7 @@ func NewUnhex(arg sql.Expression) sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (h *Unhex) Description() string {
-	return "return a string containing hex representation of a number."
+	return "returns a string containing hex representation of a number."
 }
 
 // Eval implements the sql.Expression interface

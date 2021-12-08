@@ -41,7 +41,7 @@ func (f Version) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (f Version) Description() string {
-	return "return a string that indicates the SQL server version."
+	return "returns a string that indicates the SQL server version."
 }
 
 // Type implements the Expression interface.

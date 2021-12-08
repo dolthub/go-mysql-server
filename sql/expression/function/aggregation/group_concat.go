@@ -39,7 +39,7 @@ var _ sql.Aggregation = &GroupConcat{}
 
 // Description implements sql.FunctionExpression
 func (g *GroupConcat) Description() string {
-	return "return a concatenated string."
+	return "returns a string result with the concatenated non-NULL values from a group."
 }
 
 func NewEmptyGroupConcat() sql.Expression {

@@ -61,7 +61,7 @@ func NewUUIDFunc() sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (u UUIDFunc) Description() string {
-	return "return a Universal Unique Identifier (UUID)."
+	return "returns a Universal Unique Identifier (UUID)."
 }
 
 func (u UUIDFunc) String() string {

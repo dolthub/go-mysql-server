@@ -106,7 +106,7 @@ func NewCountDistinct(e sql.Expression) *CountDistinct {
 
 // Description implements sql.FunctionExpression
 func (c *CountDistinct) Description() string {
-	return "return the count of a number of different values."
+	return "returns the count of a number of different values."
 }
 
 // NewBuffer creates a new buffer for the aggregation.

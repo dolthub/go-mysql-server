@@ -361,7 +361,7 @@ func NewAtan(arg sql.Expression) sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (a *Atan) Description() string {
-	return "returs the arctan of an expression."
+	return "returns the arctan of an expression."
 }
 
 // Eval implements sql.Expression
@@ -621,7 +621,7 @@ var positiveSignRegex = regexp.MustCompile(`^+?[0-9]*\.?[0-9]*[1-9]`)
 
 // Description implements sql.FunctionExpression
 func (s *Sign) Description() string {
-	return "return the sign of the argument."
+	return "returns the sign of the argument."
 }
 
 // Eval implements sql.Expression

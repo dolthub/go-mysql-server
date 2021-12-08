@@ -10,8 +10,8 @@ few interfaces.
 with the MySQL wire protocol. That means it is compatible with MySQL
 ODBC, JDBC, or the default MySQL client shell interface.
 
-[Dolt](https://www.doltdb.com), a SQL database with Git-style 
-versioning, is the main database implementation of this package. 
+[Dolt](https://www.doltdb.com), a SQL database with Git-style
+versioning, is the main database implementation of this package.
 Check out that project for reference implementations. Or, hop into the Dolt discord [here](https://discord.com/invite/RFwfYpu)
 if you want to talk to the core developers behind GMS.
 
@@ -84,39 +84,16 @@ examples on how to connect to go-mysql-server using them.
 <!-- BEGIN FUNCTIONS -->
 |     Name     |                                               Description                                                                      |
 |:-------------|:-------------------------------------------------------------------------------------------------------------------------------|
+|`ABS`| returns the absolute value of an expression.|
 |`ACOS`| returns the arccos of an expression.|
+|`ARRAY_LENGTH`| if the json representation is an array, this function returns its size.|
 |`ASCII`| returns the numeric value of the leftmost character.|
 |`ASIN`| returns the arcsin of an expression.|
 |`ATAN`| returs the arctan of an expression.|
-|`BIN`| returns the binary representation of a number.|
-|`BIT_LENGTH`| returns the data length of the argument in bits.|
-|`COS`| returns the cosine of an expression.|
-|`COT`| returns the arctangent of an expression.|
-|`CRC32`| returns the cyclic redundancy check value of a given string as a 32-bit unsigned value.|
-|`DAYNAME`| return the name of the weekday.|
-|`DEGREES`| returns the number of degrees in the radian expression given.|
-|`FIRST_VALUE`| value of argument from first row of window frame.|
-|`FROM_UNIXTIME`| format Unix timestamp as a date.|
-|`HEX`| returns the hexadecimal representation of the string or numeric value.|
-|`MD5`| calculate MD5 checksum.|
-|`MICROSECOND`| return the microseconds from argument.|
-|`MONTHNAME`| return the name of the month.|
-|`PERCENT_RANK`| percentage rank value.|
-|`RADIANS`| returns the radian value of the degrees argument given.|
-|`ROW_NUMBER`| the number of rows updated.|
-|`SHA1`| calculate an SHA-1 160-bit checksum.|
-|`SHA1`| calculate an SHA-1 160-bit checksum.|
-|`SHA2`| calculate an SHA-2 checksum.|
-|`SIGN`| return the sign of the argument.|
-|`SIN`| returns the sine of the expression given.|
-|`TAN`| returns the tangent of the expression given.|
-|`TIME_TO_SEC`| return the argument converted to seconds.|
-|`UNHEX`| return a string containing hex representation of a number.|
-|`WEEKOFYEAR`| return the calendar week of the date (1-53).|
-|`ABS`| returns the absolute value of an expression.|
-|`ARRAY_LENGTH`| if the json representation is an array, this function returns its size.|
 |`AVG`| returns the average value of expr in all rows.|
+|`BIN`| returns the binary representation of a number.|
 |`BIN_TO_UUID`| converts a binary UUID to a string UUID and returns the result. The one-argument form takes a binary UUID value. The UUID value is assumed not to have its time-low and time-high parts swapped. The string result is in the same order as the binary argument. The two-argument form takes a binary UUID value and a swap-flag value: If swap_flag is 0, the two-argument form is equivalent to the one-argument form. The string result is in the same order as the binary argument. If swap_flag is 1, the UUID value is assumed to have its time-low and time-high parts swapped. These parts are swapped back to their original position in the result value.|
+|`BIT_LENGTH`| returns the data length of the argument in bits.|
 |`CEIL`| returns the smallest integer value that is greater than or equal to number.|
 |`CEIL`| returns the smallest integer value that is greater than or equal to number.|
 |`CHARACTER_LENGTH`| returns the length of the string in characters.|
@@ -126,7 +103,10 @@ examples on how to connect to go-mysql-server using them.
 |`CONCAT_WS`| concatenates any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.|
 |`CONNECTION_ID`| return returns the current connection ID.|
 |`CONVERT_TZ`| converts a datetime value dt from the time zone given by from_tz to the time zone given by to_tz and returns the resulting value.|
+|`COS`| returns the cosine of an expression.|
+|`COT`| returns the arctangent of an expression.|
 |`COUNT`| returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
+|`CRC32`| returns the cyclic redundancy check value of a given string as a 32-bit unsigned value.|
 |`CURDATE`| return the current date.|
 |`CURRENT_DATE`| return the current date.|
 |`CURRENT_TIME`| return the current time.|
@@ -142,17 +122,22 @@ examples on how to connect to go-mysql-server using them.
 |`DATETIME`| returns a DATETIME value for the expression given (e.g. the string '2020-01-02').|
 |`DAY`| returns the day of the month (0-31).|
 |`DAY`| returns the day of the month (0-31).|
+|`DAYNAME`| return the name of the weekday.|
 |`DAYOFWEEK`| returns the day of the week of the given date.|
 |`DAYOFYEAR`| returns the day of the year of the given date.|
+|`DEGREES`| returns the number of degrees in the radian expression given.|
 |`EXPLODE`| generates a new row in the result set for each element in the expressions provided.|
 |`FIRST`| returns the first value in a sequence of elements of an aggregation.|
+|`FIRST_VALUE`| value of argument from first row of window frame.|
 |`FLOOR`| returns the largest integer value that is less than or equal to number.|
 |`FORMAT`| return a number formatted to specified number of decimal places.|
 |`FOUND_ROWS`| for a SELECT with a LIMIT clause, the number of rows that would be returned were there no LIMIT clause.|
 |`FROM_BASE64`| decodes the base64-encoded string str.|
+|`FROM_UNIXTIME`| format Unix timestamp as a date.|
 |`GET_LOCK`| get a named lock.|
 |`GREATEST`| returns the greatest numeric or string value.|
 |`GROUP_CONCAT`| return a concatenated string.|
+|`HEX`| returns the hexadecimal representation of the string or numeric value.|
 |`HOUR`| returns the hours of the given date.|
 |`IF`| if expr1 evaluates to true, retuns expr2. Otherwise returns expr3.|
 |`IFNULL`| if expr1 is not NULL, it returns expr1; otherwise it returns expr2.|
@@ -191,13 +176,18 @@ examples on how to connect to go-mysql-server using them.
 |`LPAD`| returns the string str, left-padded with the string padstr to a length of len characters.|
 |`LTRIM`| returns the string str with leading space characters removed.|
 |`MAX`| returns the maximum value of expr in all rows.|
+|`MD5`| calculate MD5 checksum.|
+|`MICROSECOND`| return the microseconds from argument.|
 |`MIN`| returns the minimum value of expr in all rows.|
 |`MINUTE`| returns the minutes of the given date.|
 |`MONTH`| returns the month of the given date.|
+|`MONTHNAME`| return the name of the month.|
 |`NOW`| returns the current timestamp.|
 |`NULLIF`| returns NULL if expr1 = expr2 is true, otherwise returns expr1.|
+|`PERCENT_RANK`| percentage rank value.|
 |`POWER`| returns the value of X raised to the power of Y.|
 |`POWER`| returns the value of X raised to the power of Y.|
+|`RADIANS`| returns the radian value of the degrees argument given.|
 |`RAND`| returns a random number in the range 0 <= x < 1. If an argument is given, it is used to seed the random number generator.|
 |`REGEXP_LIKE`| whether string matches regular expression.|
 |`REGEXP_REPLACE`| replace substrings matching regular expression.|
@@ -209,9 +199,15 @@ examples on how to connect to go-mysql-server using them.
 |`RIGHT`| return the specified rightmost number of characters.|
 |`ROUND`| rounds the number to decimals decimal places.|
 |`ROW_COUNT`| the number of rows updated.|
+|`ROW_NUMBER`| the number of rows updated.|
 |`RPAD`| returns the string str, right-padded with the string padstr to a length of len characters.|
 |`RTRIM`| returns the string str with trailing space characters removed.|
 |`SECOND`| returns the seconds of the given date.|
+|`SHA1`| calculate an SHA-1 160-bit checksum.|
+|`SHA1`| calculate an SHA-1 160-bit checksum.|
+|`SHA2`| calculate an SHA-2 checksum.|
+|`SIGN`| return the sign of the argument.|
+|`SIN`| returns the sine of the expression given.|
 |`SLEEP`| waits for the specified number of seconds (can be fractional).|
 |`SOUNDEX`| returns the soundex of a string.|
 |`SPLIT`| returns the parts of the string str split by the separator sep as a JSON array of strings.|
@@ -222,9 +218,12 @@ examples on how to connect to go-mysql-server using them.
 |`SUBSTRING`| returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken.|
 |`SUBSTRING_INDEX`| returns a substring after count appearances of delim. If count is negative, counts from the right side of the string.|
 |`SUM`| returns the sum of expr in all rows.|
+|`TAN`| returns the tangent of the expression given.|
+|`TIME_TO_SEC`| return the argument converted to seconds.|
 |`TIMEDIFF`| returns expr1 − expr2 expressed as a time value. expr1 and expr2 are time or date-and-time expressions, but both must be of the same type.|
 |`TIMESTAMP`| returns a timestamp value for the expression given (e.g. the string '2020-01-02').|
 |`TO_BASE64`| encodes the string str in base64 format.|
+|`UNHEX`| return a string containing hex representation of a number.|
 |`UNIX_TIMESTAMP`| returns the datetime argument to the number of seconds since the Unix epoch. With nor argument, returns the number of execonds since the Unix epoch for the current time.|
 |`UPPER`| convert to uppercase.|
 |`UPPER`| convert to uppercase.|
@@ -235,6 +234,7 @@ examples on how to connect to go-mysql-server using them.
 |`VALUES`| define the values to be used during an INSERT.|
 |`WEEK`| return the week number.|
 |`WEEKDAY`| returns the weekday of the given date.|
+|`WEEKOFYEAR`| return the calendar week of the date (1-53).|
 |`YEAR`| returns the year of the given date.|
 |`YEARWEEK`| returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year.|
 <!-- END FUNCTIONS -->
@@ -286,7 +286,7 @@ import (
 // Example of how to implement a MySQL server based on a Engine:
 //
 // ```
-// > mysql --host=127.0.0.1 --port=3306 -u root mydb -e "SELECT * FROM mytable"
+// > mysql --host=127.0.0.1 --port=5123 -u user -ppass db -e "SELECT * FROM mytable"
 // +----------+-------------------+-------------------------------+---------------------+
 // | name     | email             | phone_numbers                 | created_at          |
 // +----------+-------------------+-------------------------------+---------------------+
@@ -345,7 +345,7 @@ func createTestDatabase() *memory.Database {
 Then, you can connect to the server with any MySQL client:
 
 ```bash
-> mysql --host=127.0.0.1 --port=3306 -u root mydb -e "SELECT * FROM mytable"
+> mysql --host=127.0.0.1 --port=3306 -u user -ppass test -e "SELECT * FROM mytable"
 +----------+-------------------+-------------------------------+---------------------+
 | name     | email             | phone_numbers                 | created_at          |
 +----------+-------------------+-------------------------------+---------------------+
@@ -406,9 +406,9 @@ the following interfaces:
   - `sql.InsertableTable` to allow your data source to be updated with
     `INSERT` statements.
   - `sql.UpdateableTable` to allow your data source to be updated with
-    `UPDATE` statements. 
+    `UPDATE` statements.
   - `sql.DeletableTable` to allow your data source to be updated with
-    `DELETE` statements. 
+    `DELETE` statements.
   - `sql.ReplaceableTable` to allow your data source to be updated with
     `REPLACE` statements.
   - `sql.AlterableTable` to allow your data source to have its schema
@@ -542,63 +542,63 @@ variables:
 ```go
 
 import(
-    "github.com/go-kit/kit/metrics/prometheus"
-    promopts "github.com/prometheus/client_golang/prometheus"
-    "github.com/prometheus/client_golang/prometheus/promhttp"
+"github.com/go-kit/kit/metrics/prometheus"
+promopts "github.com/prometheus/client_golang/prometheus"
+"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 //....
 
 // engine metrics
 sqle.QueryCounter = prometheus.NewCounterFrom(promopts.CounterOpts{
-		Namespace: "go_mysql_server",
-		Subsystem: "engine",
-		Name:      "query_counter",
-	}, []string{
-		"query",
-	})
-sqle.QueryErrorCounter = prometheus.NewCounterFrom(promopts.CounterOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "engine",
-    Name:      "query_error_counter",
+Namespace: "go_mysql_server",
+Subsystem: "engine",
+Name:      "query_counter",
 }, []string{
-    "query",
-    "error",
+"query",
+})
+sqle.QueryErrorCounter = prometheus.NewCounterFrom(promopts.CounterOpts{
+Namespace: "go_mysql_server",
+Subsystem: "engine",
+Name:      "query_error_counter",
+}, []string{
+"query",
+"error",
 })
 sqle.QueryHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "engine",
-    Name:      "query_histogram",
+Namespace: "go_mysql_server",
+Subsystem: "engine",
+Name:      "query_histogram",
 }, []string{
-    "query",
-    "duration",
+"query",
+"duration",
 })
 
 // analyzer metrics
 analyzer.ParallelQueryCounter = prometheus.NewCounterFrom(promopts.CounterOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "analyzer",
-    Name:      "parallel_query_counter",
+Namespace: "go_mysql_server",
+Subsystem: "analyzer",
+Name:      "parallel_query_counter",
 }, []string{
-    "parallelism",
+"parallelism",
 })
 
 // regex metrics
 regex.CompileHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "regex",
-    Name:      "compile_histogram",
+Namespace: "go_mysql_server",
+Subsystem: "regex",
+Name:      "compile_histogram",
 }, []string{
-    "regex",
-    "duration",
+"regex",
+"duration",
 })
 regex.MatchHistogram = prometheus.NewHistogramFrom(promopts.HistogramOpts{
-    Namespace: "go_mysql_server",
-    Subsystem: "regex",
-    Name:      "match_histogram",
+Namespace: "go_mysql_server",
+Subsystem: "regex",
+Name:      "match_histogram",
 }, []string{
-    "string",
-    "duration",
+"string",
+"duration",
 })
 ```
 

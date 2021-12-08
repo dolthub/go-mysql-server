@@ -454,7 +454,7 @@ var _ sql.FunctionExpression = CurrDate{}
 
 // Description implements sql.FunctionExpression
 func (c CurrDate) Description() string {
-	return "return the current date."
+	return "returns the current date."
 }
 
 func NewCurrDate() sql.Expression {
