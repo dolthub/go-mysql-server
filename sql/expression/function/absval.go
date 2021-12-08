@@ -35,6 +35,7 @@ func NewAbsVal(e sql.Expression) sql.Expression {
 	return &AbsVal{expression.UnaryExpression{Child: e}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (t *AbsVal) FunctionName() string {
 	return "abs"
 }

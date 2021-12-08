@@ -379,11 +379,6 @@ type BinToUUID struct {
 
 var _ sql.FunctionExpression = (*BinToUUID)(nil)
 
-// Description implements sql.FunctionExpression
-func (b * BinToUUID) Description() string {
-	return "converts a binary UUID to a string UUID and returns the result. The one-argument form takes a binary UUID value. The UUID value is assumed not to have its time-low and time-high parts swapped. The string result is in the same order as the binary argument. The two-argument form takes a binary UUID value and a swap-flag value: If swap_flag is 0, the two-argument form is equivalent to the one-argument form. The string result is in the same order as the binary argument. If swap_flag is 1, the UUID value is assumed to have its time-low and time-high parts swapped. These parts are swapped back to their original position in the result value."
-}
-
 func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
@@ -393,6 +388,11 @@ func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("BIN_TO_UUID", "1 or 2", len(args))
 	}
+}
+
+// Description implements sql.FunctionExpression
+func (bu BinToUUID) Description() string {
+	return "converts a binary UUID to a string UUID and returns the result. The one-argument form takes a binary UUID value. The UUID value is assumed not to have its time-low and time-high parts swapped. The string result is in the same order as the binary argument. The two-argument form takes a binary UUID value and a swap-flag value: If swap_flag is 0, the two-argument form is equivalent to the one-argument form. The string result is in the same order as the binary argument. If swap_flag is 1, the UUID value is assumed to have its time-low and time-high parts swapped. These parts are swapped back to their original position in the result value."
 }
 
 func (bu BinToUUID) String() string {
