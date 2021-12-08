@@ -342,7 +342,7 @@ func (ut *UnixTimestamp) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (ut *UnixTimestamp) Description() string {
-	return "returns the datetime argument to the number of seconds since the Unix epoch. With nor argument, returns the number of execonds since the Unix epoch for the current time."
+	return "returns the datetime argument to the number of seconds since the Unix epoch. With no argument, returns the number of seconds since the Unix epoch for the current time."
 }
 
 func (ut *UnixTimestamp) Children() []sql.Expression {
