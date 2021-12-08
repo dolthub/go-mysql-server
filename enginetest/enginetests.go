@@ -2871,15 +2871,11 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Query: `
 			SHOW WARNINGS LIMIT 0
 			`,
-			Expected: []sql.Row{
-				{"", 3, ""},
-				{"", 2, ""},
-				{"", 1, ""},
-			},
+			Expected: nil,
 		},
 		{
 			Query: `
-			SHOW WARNINGS LIMIT 2,0
+			SHOW WARNINGS LIMIT 2,1
 			`,
 			Expected: []sql.Row{
 				{"", 1, ""},

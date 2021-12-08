@@ -15,8 +15,8 @@
 package parse
 
 import (
+	goerrors "errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -60,13 +60,6 @@ var (
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
-)
-
-var (
-	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
-	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
-	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
-	setRegex             = regexp.MustCompile(`^set\s+`)
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -126,22 +119,6 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 		s = s[:len(s)-1]
 	}
 
-	lowerQuery := strings.ToLower(s)
-
-	// TODO: get rid of all these custom parser options
-	switch true {
-	case showVariablesRegex.MatchString(lowerQuery):
-		n, err := parseShowVariables(ctx, s)
-		return n, s, "", err
-	case showWarningsRegex.MatchString(lowerQuery):
-		n, err := parseShowWarnings(ctx, s)
-		return n, s, "", err
-	case fullProcessListRegex.MatchString(lowerQuery):
-		return plan.NewShowProcessList(), s, "", nil
-	case setRegex.MatchString(lowerQuery):
-		s = fixSetQuery(s)
-	}
-
 	var stmt sqlparser.Statement
 	var err error
 	var parsed string
@@ -164,7 +141,7 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 	}
 
 	if err != nil {
-		if err.Error() == "empty statement" {
+		if goerrors.Is(err, sqlparser.ErrEmpty) {
 			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
 			return plan.Nothing, parsed, remainder, nil
 		}
@@ -230,6 +207,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDBDDL(n)
 	case *sqlparser.Explain:
 		return convertExplain(ctx, n)
+	case *sqlparser.ShowGrants:
+		return plan.NewShowGrants(), nil
 	case *sqlparser.Insert:
 		return convertInsert(ctx, n)
 	case *sqlparser.Delete:
@@ -443,6 +422,8 @@ func isCharset(exprs sqlparser.SetVarExprs) bool {
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
 	showType := strings.ToLower(s.Type)
 	switch showType {
+	case "processlist":
+		return plan.NewShowProcessList(), nil
 	case "create table", "create view":
 		return plan.NewShowCreateTable(
 			tableNameToUnresolvedTable(s.Table),
@@ -458,8 +439,6 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
 			s.Table.Name.String(),
 		), nil
-	case "grants":
-		return plan.NewShowGrants(), nil
 	case "triggers":
 		var dbName string
 		var filter sql.Expression
@@ -515,6 +494,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
+	case sqlparser.KeywordString(sqlparser.VARIABLES):
+		var likepattern string
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				unsupportedShow := fmt.Sprintf("SHOW VARIABLES WHERE ...")
+				return nil, ErrUnsupportedFeature.New(unsupportedShow)
+			}
+			likepattern = s.Filter.Like
+		}
+		return plan.NewShowVariables(likepattern), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression
@@ -523,7 +512,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		if s.ShowTablesOpt != nil {
 			dbName = s.ShowTablesOpt.DbName
-			full = s.ShowTablesOpt.Full != ""
+			full = s.Full
 
 			if s.ShowTablesOpt.Filter != nil {
 				if s.ShowTablesOpt.Filter.Filter != nil {
@@ -561,7 +550,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
 		table := tableNameToUnresolvedTable(s.OnTable)
-		full := s.ShowTablesOpt != nil && s.ShowTablesOpt.Full != ""
+		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
 
@@ -589,6 +578,28 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 		}
 
+		return node, nil
+	case sqlparser.KeywordString(sqlparser.WARNINGS):
+		if s.CountStar {
+			unsupportedShow := fmt.Sprintf("SHOW COUNT(*) WARNINGS")
+			return nil, ErrUnsupportedFeature.New(unsupportedShow)
+		}
+		var node sql.Node
+		var err error
+		node = plan.ShowWarnings(ctx.Session.Warnings())
+		if s.Limit != nil {
+			if s.Limit.Offset != nil {
+				node, err = offsetToOffset(ctx, s.Limit.Offset, node)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return node, nil
 	case "table status":
 		return convertShowTableStatus(ctx, s)
@@ -3099,13 +3110,4 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 	}
 
 	return node, nil
-}
-
-var fixSessionRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(SESSION|session)\s+([a-zA-Z0-9_]+)\s*=`)
-var fixGlobalRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(GLOBAL|global)\s+([a-zA-Z0-9_]+)\s*=`)
-
-func fixSetQuery(s string) string {
-	s = fixSessionRegex.ReplaceAllString(s, `$1@@session.$4 =`)
-	s = fixGlobalRegex.ReplaceAllString(s, `$1@@global.$4 =`)
-	return s
 }
