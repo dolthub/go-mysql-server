@@ -207,6 +207,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDBDDL(n)
 	case *sqlparser.Explain:
 		return convertExplain(ctx, n)
+	case *sqlparser.ShowGrants:
+		return plan.NewShowGrants(), nil
 	case *sqlparser.Insert:
 		return convertInsert(ctx, n)
 	case *sqlparser.Delete:
@@ -437,8 +439,6 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
 			s.Table.Name.String(),
 		), nil
-	case "grants":
-		return plan.NewShowGrants(), nil
 	case "triggers":
 		var dbName string
 		var filter sql.Expression
