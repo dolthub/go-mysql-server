@@ -18,22 +18,25 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBackgroundThreads(t *testing.T) {
-
 	var bThreads *BackgroundThreads
-	var b []int
 	var err error
 
+	var b []int
+	mu := &sync.Mutex{}
 	f := func(i int) func(ctx context.Context) {
 		return func(ctx context.Context) {
 			for {
 				select {
 				case <-ctx.Done():
+					mu.Lock()
+					defer mu.Unlock()
 					b = append(b, i)
 					return
 				}
