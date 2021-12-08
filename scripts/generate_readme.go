@@ -65,6 +65,7 @@ func main() {
 		_f, err := f.NewInstance(args)
 		if err != nil {
 			if strings.Contains(err.Error(), "unsupported") {
+				fmt.Println("detected unsupported: ")
 				continue
 			}
 			panic(err)
