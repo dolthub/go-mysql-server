@@ -24,7 +24,9 @@ import (
 )
 
 func main() {
-	sql.Register("sqle", driver.New(factory{}, nil))
+	driver := driver.New(factory{}, nil)
+	sql.Register("sqle", driver)
+	defer driver.Close()
 
 	db, err := sql.Open("sqle", "")
 	must(err)

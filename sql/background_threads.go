@@ -16,8 +16,11 @@ package sql
 
 import (
 	"context"
+	"errors"
 	"sync"
 )
+
+var ErrCannotAddToClosedBackgroundThreads = errors.New("cannot add to a close background threads instance")
 
 type BackgroundThreads struct {
 	wg           *sync.WaitGroup
@@ -40,7 +43,13 @@ func NewBackgroundThreads() *BackgroundThreads {
 	}
 }
 
-func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) {
+func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) error {
+	select {
+	case <-bt.parentCtx.Done():
+		return ErrCannotAddToClosedBackgroundThreads
+	default:
+	}
+
 	threadCtx, threadCancel := context.WithCancel(bt.parentCtx)
 
 	bt.mu.Lock()
@@ -54,18 +63,8 @@ func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) {
 		defer bt.wg.Done()
 		f(threadCtx)
 	}()
-	return
-}
 
-func (bt *BackgroundThreads) Cancel(name string) error {
-	bt.mu.Lock()
-	defer bt.mu.Unlock()
-	select {
-	case <-bt.nameToCtx[name].Done():
-	default:
-		bt.nameToCancel[name]()
-	}
-	return bt.nameToCtx[name].Err()
+	return nil
 }
 
 func (bt *BackgroundThreads) Close() error {

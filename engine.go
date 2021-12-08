@@ -52,7 +52,8 @@ type ColumnWithRawDefault struct {
 }
 
 // New creates a new Engine with custom configuration. To create an Engine with
-// the default settings use `NewDefault`.
+// the default settings use `NewDefault`. Should call Engine.Close() to finalize
+// dependency lifecycles.
 func New(a *analyzer.Analyzer, cfg *Config, bThreads *sql.BackgroundThreads) *Engine {
 	var versionPostfix string
 	if cfg != nil {
@@ -407,6 +408,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	ctx := sql.NewEmptyContext()
 	db := plan.NewDummyResolvedDB("temporary")
 	e := NewDefault(memory.NewMemoryDBProvider(db))
+	defer e.Close()
 
 	unresolvedSchema := make(sql.Schema, len(schema))
 	defaultCount := 0
