@@ -134,7 +134,7 @@ func NewIsFreeLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 
 // Description implements sql.FunctionExpression
 func (i *IsFreeLock) Description() string {
-	return "whether the named lock is free."
+	return "returns whether the named lock is free."
 }
 
 func (i *IsFreeLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -170,7 +170,7 @@ func NewIsUsedLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 
 // Description implements sql.FunctionExpression
 func (i *IsUsedLock) Description() string {
-	return "whether the named lock is in use; return connection identifier if true."
+	return "returns whether the named lock is in use; return connection identifier if true."
 }
 
 func (i *IsUsedLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -267,7 +267,7 @@ func (gl *GetLock) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (gl *GetLock) Description() string {
-	return "get a named lock."
+	return "gets a named lock."
 }
 
 // Eval implements the Expression interface.

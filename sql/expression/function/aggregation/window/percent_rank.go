@@ -37,7 +37,7 @@ func NewPercentRank() sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (p *PercentRank) Description() string {
-	return "percentage rank value."
+	return "returns percentage rank value."
 }
 
 // Window implements sql.WindowExpression

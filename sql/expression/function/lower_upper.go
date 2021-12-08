@@ -102,7 +102,7 @@ func (u *Upper) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (u *Upper) Description() string {
-	return "convert to uppercase."
+	return "converts string to uppercase."
 }
 
 // Eval implements the Expression interface.

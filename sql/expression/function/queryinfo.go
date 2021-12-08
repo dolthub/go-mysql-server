@@ -13,7 +13,7 @@ var _ sql.FunctionExpression = RowCount{}
 
 // Description implements sql.FunctionExpression
 func (r RowCount) Description() string {
-	return "the number of rows updated."
+	return "returns the number of rows updated."
 }
 
 // Resolved implements sql.Expression
@@ -67,7 +67,7 @@ var _ sql.FunctionExpression = LastInsertId{}
 
 // Description implements sql.FunctionExpression
 func (r LastInsertId) Description() string {
-	return "value of the AUTOINCREMENT column for the last INSERT."
+	return "returns value of the AUTOINCREMENT column for the last INSERT."
 }
 
 // Resolved implements sql.Expression
@@ -121,7 +121,7 @@ var _ sql.FunctionExpression = FoundRows{}
 
 // Description implements sql.Expression
 func (r FoundRows) Description() string {
-	return "for a SELECT with a LIMIT clause, the number of rows that would be returned were there no LIMIT clause."
+	return "for a SELECT with a LIMIT clause, returns the number of rows that would be returned were there no LIMIT clause."
 }
 
 // Resolved implements sql.Expression

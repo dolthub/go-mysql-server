@@ -237,7 +237,7 @@ func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 
 // Description implements sql.FunctionExpression
 func (ub UUIDToBin) Description() string {
-	return "convert string UUID to binary."
+	return "converts string UUID to binary."
 }
 
 func (ub UUIDToBin) String() string {

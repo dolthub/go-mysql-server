@@ -37,7 +37,7 @@ func NewRowNumber() sql.Expression {
 
 // Description implements sql.FunctionExpression
 func (r *RowNumber) Description() string {
-	return "the number of rows updated."
+	return "returns the number of rows updated."
 }
 
 // Window implements sql.WindowExpression

@@ -54,7 +54,7 @@ func (v *Values) FunctionName() string {
 
 // Description implements sql.FunctionExpression.
 func (v *Values) Description() string {
-	return "define the values to be used during an INSERT."
+	return "defines the values to be used during an INSERT."
 }
 
 // String implements sql.FunctionExpression.

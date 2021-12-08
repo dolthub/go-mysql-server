@@ -49,7 +49,7 @@ func (j JSONObject) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (j JSONObject) Description() string {
-	return "create JSON object."
+	return "creates JSON object."
 }
 
 func (j JSONObject) Resolved() bool {
