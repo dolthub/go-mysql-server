@@ -264,12 +264,12 @@ func createTestDatabase() *memory.Database {
 	)
 
 	db := memory.NewDatabase(dbName)
-	table := memory.NewTable(tableName, sql.Schema{
+	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
 		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
-	})
+	}))
 
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
