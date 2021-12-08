@@ -771,6 +771,7 @@ func NewNow(args ...sql.Expression) (sql.Expression, error) {
 		if argType != sql.Int64 && argType != sql.Uint64 {
 			return nil, sql.ErrInvalidType.New(args[0].Type().String())
 		}
+		// todo: making a context here is expensive
 		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
 			return nil, err
@@ -891,6 +892,7 @@ func NewUTCTimestamp(args ...sql.Expression) (sql.Expression, error) {
 		if argType != sql.Int64 && argType != sql.Uint64 {
 			return nil, sql.ErrInvalidType.New(args[0].Type().String())
 		}
+		// todo: making a context here is expensive
 		val, err := args[0].Eval(sql.NewEmptyContext(), nil)
 		if err != nil {
 			return nil, err
