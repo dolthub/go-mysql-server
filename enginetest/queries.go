@@ -3309,13 +3309,13 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW VARIABLES LIKE 'gtid_mode`,
+		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
 		Expected: []sql.Row{
 			{"gtid_mode", "OFF"},
 		},
 	},
 	{
-		Query: `SHOW VARIABLES LIKE 'gtid%`,
+		Query: `SHOW VARIABLES LIKE 'gtid%'`,
 		Expected: []sql.Row{
 			{"gtid_executed", ""},
 			{"gtid_executed_compression_period", int64(0)},
@@ -3326,7 +3326,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW GLOBAL VARIABLES LIKE '%mode`,
+		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
 		Expected: []sql.Row{
 			{"block_encryption_mode", "aes-128-ecb"},
 			{"gtid_mode", "OFF"},

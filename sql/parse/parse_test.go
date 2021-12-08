@@ -2340,9 +2340,9 @@ CREATE TABLE t2
 	`SHOW CREATE SCHEMA foo`:                   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	`SHOW CREATE DATABASE IF NOT EXISTS foo`:   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	`SHOW CREATE SCHEMA IF NOT EXISTS foo`:     plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
-	`SHOW WARNINGS`:                            plan.NewOffset(expression.NewLiteral(0, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
-	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(expression.NewLiteral(10, sql.Int64), plan.NewOffset(expression.NewLiteral(0, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
-	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(expression.NewLiteral(10, sql.Int64), plan.NewOffset(expression.NewLiteral(5, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+	`SHOW WARNINGS`:                            plan.ShowWarnings(sql.NewEmptyContext().Warnings()),
+	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
+	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 	"SHOW CREATE DATABASE `foo`":               plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	"SHOW CREATE SCHEMA `foo`":                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	"SHOW CREATE DATABASE IF NOT EXISTS `foo`": plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
@@ -3237,6 +3237,10 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT a, count(i) over (partition by y) FROM foo`:         ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a) group by 1`:       ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a), max(b)`:          ErrUnsupportedFeature,
+	`SHOW COUNT(*) WARNINGS`:                                    ErrUnsupportedFeature,
+	`SHOW ERRORS`:                                               ErrUnsupportedFeature,
+	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         ErrUnsupportedFeature,
+	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {
@@ -3305,22 +3309,6 @@ func TestParseErrors(t *testing.T) {
 			_, err := Parse(ctx, query)
 			require.Error(err)
 			require.True(expectedError.Is(err), "Expected %T but got %T", expectedError, err)
-		})
-	}
-}
-
-func TestFixSetQuery(t *testing.T) {
-	testCases := []struct {
-		in, out string
-	}{
-		{"set session foo = 1, session bar = 2", "set @@session.foo = 1, @@session.bar = 2"},
-		{"set global foo = 1, session bar = 2", "set @@global.foo = 1, @@session.bar = 2"},
-		{"set SESSION foo = 1, GLOBAL bar = 2", "set @@session.foo = 1, @@global.bar = 2"},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.in, func(t *testing.T) {
-			require.Equal(t, tt.out, fixSetQuery(tt.in))
 		})
 	}
 }
