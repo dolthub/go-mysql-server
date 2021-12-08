@@ -102,7 +102,6 @@ func main() {
 	const tableHeader = "|     Name     |                                               Description                                                                      |\n|:-------------|:-------------------------------------------------------------------------------------------------------------------------------|\n"
 	const endFuncsTag = "<!-- END FUNCTIONS -->"
 
-
 	// Extract portions of README
 	preTableString := contents[:strings.Index(contents, beginFuncsTag)]
 	postTableString := contents[strings.Index(contents, endFuncsTag):]
