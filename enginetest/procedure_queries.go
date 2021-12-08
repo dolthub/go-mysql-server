@@ -950,7 +950,7 @@ var ProcedureShowStatus = []ScriptTest{
 		Name: "SHOW procedures",
 		SetUpScript: []string{
 			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
-			"CREATE definer=user PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
+			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
 			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
 		},
 		Assertions: []ScriptTestAssertion{

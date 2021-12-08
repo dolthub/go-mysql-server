@@ -80,6 +80,16 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set system variable ON / OFF",
+		SetUpScript: []string{
+			"set @@autocommit = ON, session sql_mode = \"\"",
+		},
+		Query: "SELECT @@autocommit, @@session.sql_mode",
+		Expected: []sql.Row{
+			{1, ""},
+		},
+	},
+	{
 		Name: "set system variable true / false quoted",
 		SetUpScript: []string{
 			`set @@autocommit = "true", default_table_encryption = "false"`,
