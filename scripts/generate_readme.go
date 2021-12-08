@@ -62,16 +62,15 @@ func main() {
 		}
 
 		// Create new instance
-		f, err := f.NewInstance(args)
+		_f, err := f.NewInstance(args)
 		if err != nil {
 			if strings.Contains(err.Error(), "unsupported") {
 				continue
 			}
 			panic(err)
 		}
-		fn := f.(sql.FunctionExpression)
-		//fmt.Println(fn.FunctionName(), fn.Description())
-		entries = append(entries, Entry{fn.FunctionName(), fn.Description()})
+		fn := _f.(sql.FunctionExpression)
+		entries = append(entries, Entry{f.FunctionName(), fn.Description()})
 		numSupported++
 	}
 
