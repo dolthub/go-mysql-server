@@ -317,6 +317,7 @@ func createTestDatabase() *memory.Database {
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
 		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
 	}))
+	
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
 	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
