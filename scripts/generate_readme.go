@@ -3,13 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"sort"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"os"
+	"sort"
+	"strings"
 )
 
 type Entry struct {
@@ -140,7 +139,7 @@ func main() {
 			}
 			args += ")"
 		}
-		file.WriteString("|`" + strings.ToUpper(e.Name) + args + "`| " + e.Desc + "|\n")
+		file.WriteString("|`" + strings.ToUpper(e.Name) + args + "`| " + strings.ToUpper(string(e.Desc[0])) + e.Desc[1:] + "|\n")
 	}
 	file.WriteString(postTableString)
 
