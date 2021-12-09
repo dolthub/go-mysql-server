@@ -476,9 +476,17 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	indexSchema(scope.Schema())
 
 	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
-	// itself.
-	for _, child := range n.Children() {
-		indexChildNode(child)
+	// itself. Skip this for DDL nodes that handle indexing separately.
+	shouldIndexChildNode := true
+	switch n.(type) {
+	case *plan.AddColumn, *plan.ModifyColumn:
+		shouldIndexChildNode = false
+	}
+
+	if shouldIndexChildNode {
+		for _, child := range n.Children() {
+			indexChildNode(child)
+		}
 	}
 
 	// For certain DDL nodes, we have to do more work
