@@ -968,6 +968,12 @@ CREATE TABLE t2
 	`ALTER TABLE foo RENAME COLUMN bar TO baz`: plan.NewRenameColumn(
 		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "bar", "baz",
 	),
+	`ALTER TABLE foo RENAME COLUMN bar TO baz, rename column abc to xyz`: plan.NewBlock(
+		[]sql.Node{
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "bar", "baz"),
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "abc", "xyz"),
+		},
+	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
 		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
