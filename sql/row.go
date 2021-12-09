@@ -89,6 +89,16 @@ type RowIter interface {
 	Closer
 }
 
+// RowIter2 is an iterator that produces row2s.
+type RowIter2 interface {
+	RowIter
+
+	// Next2 produces the next row, and stores it in the RowFrame provided.
+	// It will return io.EOF if it's the last row. After retrieving the
+	// last row, Close will be automatically called.
+	Next2(*RowFrame) error
+}
+
 // RowIterToRows converts a row iterator to a slice of rows.
 func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	var rows []Row
