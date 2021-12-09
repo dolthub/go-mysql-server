@@ -200,7 +200,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Text,
 				Nullable:   false,
 				PrimaryKey: true,
-			}}),
+			}}, 1, 0),
 			IdxDefs: []*plan.IndexDefinition {
 				{
 					IndexName:  "PRIMARY",
@@ -229,7 +229,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   false,
 				PrimaryKey: true,
-			}}),
+			}}, 1, 0),
 			IdxDefs: []*plan.IndexDefinition {
 				{
 					IndexName:  "pk",
@@ -3323,7 +3323,6 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                    sql.ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`:   sql.ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                  errInvalidDescribeFormat,
-	`CREATE TABLE test (pk int, primary key(pk, noexist))`:      sql.ErrUnknownIndexColumn,
 	`CREATE TABLE test (pk int null primary key)`:               ErrPrimaryKeyOnNullField,
 	`CREATE TABLE test (pk int not null null primary key)`:      ErrPrimaryKeyOnNullField,
 	`CREATE TABLE test (pk int null, primary key(pk))`:          ErrPrimaryKeyOnNullField,
