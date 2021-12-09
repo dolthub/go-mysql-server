@@ -64,12 +64,19 @@ func main() {
 		// Create new instance
 		_f, err := f.NewInstance(args)
 		if err != nil {
+			// Ignore unsupported functions that throw error at New
 			if strings.Contains(err.Error(), "unsupported") {
-				fmt.Println("detected unsupported: ")
 				continue
 			}
 			panic(err)
 		}
+
+		// Ignore unsupported functions that throw error at Eval
+		_, ok := _f.(sql.UnsupportedFunctionStub)
+		if ok {
+			continue
+		}
+
 		fn := _f.(sql.FunctionExpression)
 		entries = append(entries, Entry{f.FunctionName(), fn.Description()})
 		numSupported++
