@@ -136,7 +136,7 @@ func main() {
 			args = "(expr1"
 			for i := 1; i < e.NumArgs; i++ {
 				args += ", "
-				args += "expr" + string('0'+(i+1))
+				args += "expr" + fmt.Sprintf("%d", i+1)
 			}
 			args += ")"
 		}
