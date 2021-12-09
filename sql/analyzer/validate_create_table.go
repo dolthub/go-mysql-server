@@ -80,7 +80,8 @@ func validateAddColumn(ac *plan.AddColumn) error {
 
 func validateModifyColumn(mc *plan.ModifyColumn) error {
 	table := mc.Child
-	newSch := replaceInSchema(table.Schema(), mc.NewColumn())
+	nameable := table.(sql.Nameable)
+	newSch := replaceInSchema(table.Schema(), mc.NewColumn(), nameable.Name())
 
 	err := validateAutoIncrement(newSch)
 	if err != nil {
@@ -90,12 +91,16 @@ func validateModifyColumn(mc *plan.ModifyColumn) error {
 	return nil
 }
 
-func replaceInSchema(sch sql.Schema, col *sql.Column) sql.Schema {
-	idx := sch.IndexOf(col.Name, col.Source)
+func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {
+	idx := sch.IndexOf(col.Name, tableName)
 	schCopy := make(sql.Schema, len(sch))
 	for i := range sch {
 		if i == idx {
-			schCopy[i] = col
+			cc := *col
+			// Some information about the column is not specified in a MODIFY COLUMN statement, such as being a key
+			cc.PrimaryKey = sch[i].PrimaryKey
+			cc.Source = sch[i].Source
+			schCopy[i] = &cc
 		} else {
 			cc := *sch[i]
 			schCopy[i] = &cc
