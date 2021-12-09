@@ -5922,6 +5922,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{2, "second row"},
+			{2, "second row"},
+		},
+	},
+	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
 		Expected: []sql.Row{
 			{2, "second row"},

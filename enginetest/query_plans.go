@@ -689,6 +689,18 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ Filter(a.i HASH IN (2, 432, 7))\n" +
+			"     │   └─ Projected table access on [i s]\n" +
+			"     │       └─ TableAlias(a)\n" +
+			"     │           └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +

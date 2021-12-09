@@ -38,6 +38,11 @@ func (f *ArrayLength) FunctionName() string {
 	return "array_length"
 }
 
+// Description implements sql.FunctionExpression
+func (f *ArrayLength) Description() string {
+	return "if the json representation is an array, this function returns its size."
+}
+
 // Type implements the Expression interface.
 func (*ArrayLength) Type() sql.Type {
 	return sql.Int32

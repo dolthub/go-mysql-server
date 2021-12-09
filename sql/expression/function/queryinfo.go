@@ -11,6 +11,11 @@ func NewRowCount() sql.Expression {
 
 var _ sql.FunctionExpression = RowCount{}
 
+// Description implements sql.FunctionExpression
+func (r RowCount) Description() string {
+	return "returns the number of rows updated."
+}
+
 // Resolved implements sql.Expression
 func (r RowCount) Resolved() bool {
 	return true
@@ -59,6 +64,11 @@ func NewLastInsertId() sql.Expression {
 }
 
 var _ sql.FunctionExpression = LastInsertId{}
+
+// Description implements sql.FunctionExpression
+func (r LastInsertId) Description() string {
+	return "returns value of the AUTOINCREMENT column for the last INSERT."
+}
 
 // Resolved implements sql.Expression
 func (r LastInsertId) Resolved() bool {
@@ -109,6 +119,16 @@ func NewFoundRows() sql.Expression {
 
 var _ sql.FunctionExpression = FoundRows{}
 
+// FunctionName implements sql.FunctionExpression
+func (r FoundRows) FunctionName() string {
+	return "found_rows"
+}
+
+// Description implements sql.Expression
+func (r FoundRows) Description() string {
+	return "for a SELECT with a LIMIT clause, returns the number of rows that would be returned were there no LIMIT clause."
+}
+
 // Resolved implements sql.Expression
 func (r FoundRows) Resolved() bool {
 	return true
@@ -142,9 +162,4 @@ func (r FoundRows) Children() []sql.Expression {
 // WithChildren implements sql.Expression
 func (r FoundRows) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return sql.NillaryWithChildren(r, children...)
-}
-
-// FunctionName implements sql.FunctionExpression
-func (r FoundRows) FunctionName() string {
-	return "found_rows"
 }

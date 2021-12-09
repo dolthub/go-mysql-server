@@ -67,10 +67,17 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+// UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
+type UnsupportedFunctionStub interface {
+	IsUnsupported() bool
+}
+
 // FunctionExpression is an Expression that represents a function.
 type FunctionExpression interface {
 	Expression
 	FunctionName() string
+	Description() string
+	// TODO: add Example() function
 }
 
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will

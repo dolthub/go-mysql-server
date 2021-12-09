@@ -38,6 +38,11 @@ func (e *Explode) FunctionName() string {
 	return "explode"
 }
 
+// Description implements sql.FunctionExpression
+func (e *Explode) Description() string {
+	return "generates a new row in the result set for each element in the expressions provided."
+}
+
 // Resolved implements the sql.Expression interface.
 func (e *Explode) Resolved() bool { return e.Child.Resolved() }
 

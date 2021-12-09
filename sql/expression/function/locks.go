@@ -132,6 +132,11 @@ func NewIsFreeLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	}
 }
 
+// Description implements sql.FunctionExpression
+func (i *IsFreeLock) Description() string {
+	return "returns whether the named lock is free."
+}
+
 func (i *IsFreeLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return i.evalLockLogic(ctx, IsFreeLockFunc, row)
 }
@@ -163,6 +168,11 @@ func NewIsUsedLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	}
 }
 
+// Description implements sql.FunctionExpression
+func (i *IsUsedLock) Description() string {
+	return "returns whether the named lock is in use; return connection identifier if true."
+}
+
 func (i *IsUsedLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return i.evalLockLogic(ctx, IsUsedLockFunc, row)
 }
@@ -192,6 +202,11 @@ func NewReleaseLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 			},
 		}
 	}
+}
+
+// Description implements sql.FunctionExpression
+func (i *ReleaseLock) Description() string {
+	return "release the named lock."
 }
 
 func (i *ReleaseLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -248,6 +263,11 @@ func CreateNewGetLock(ls *sql.LockSubsystem) func(e1, e2 sql.Expression) sql.Exp
 // FunctionName implements sql.FunctionExpression
 func (gl *GetLock) FunctionName() string {
 	return "get_lock"
+}
+
+// Description implements sql.FunctionExpression
+func (gl *GetLock) Description() string {
+	return "gets a named lock."
 }
 
 // Eval implements the Expression interface.
@@ -343,6 +363,11 @@ func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
 			ls:        ls,
 		}
 	}
+}
+
+// Description implements sql.FunctionExpression
+func (r ReleaseAllLocks) Description() string {
+	return "release all current named locks."
 }
 
 func (r ReleaseAllLocks) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
