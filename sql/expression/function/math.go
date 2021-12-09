@@ -397,7 +397,6 @@ type Cot struct {
 
 var _ sql.FunctionExpression = (*Cot)(nil)
 
-
 // NewCot returns a new COT function expression
 func NewCot(arg sql.Expression) sql.Expression {
 	return &Cot{NewUnaryFunc(arg, "COT", sql.Float64)}

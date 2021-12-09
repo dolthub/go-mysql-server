@@ -13,8 +13,8 @@ import (
 )
 
 type Entry struct {
-	Name string
-	Desc string
+	Name    string
+	Desc    string
 	NumArgs int
 	IsFuncN bool
 }
@@ -136,7 +136,7 @@ func main() {
 			args = "(expr1"
 			for i := 1; i < e.NumArgs; i++ {
 				args += ", "
-				args += "expr" + string((i + 1) + '0')
+				args += "expr" + string((i+1)+'0')
 			}
 			args += ")"
 		}
