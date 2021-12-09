@@ -84,153 +84,153 @@ examples on how to connect to go-mysql-server using them.
 <!-- BEGIN FUNCTIONS -->
 |     Name     |                                               Description                                                                      |
 |:-------------|:-------------------------------------------------------------------------------------------------------------------------------|
-|`ABS`| returns the absolute value of an expression.|
-|`ACOS`| returns the arccos of an expression.|
-|`ARRAY_LENGTH`| if the json representation is an array, this function returns its size.|
-|`ASCII`| returns the numeric value of the leftmost character.|
-|`ASIN`| returns the arcsin of an expression.|
-|`ATAN`| returns the arctan of an expression.|
-|`AVG`| returns the average value of expr in all rows.|
-|`BIN`| returns the binary representation of a number.|
-|`BIN_TO_UUID`| converts a binary UUID to a string UUID and returns the result.|
-|`BIT_LENGTH`| returns the data length of the argument in bits.|
-|`CEIL`| returns the smallest integer value that is greater than or equal to number.|
-|`CEILING`| returns the smallest integer value that is greater than or equal to number.|
-|`CHAR_LENGTH`| returns the length of the string in characters.|
-|`CHARACTER_LENGTH`| returns the length of the string in characters.|
-|`COALESCE`| returns the first non-null value in a list.|
-|`CONCAT`| concatenates any group of fields into a single string.|
-|`CONCAT_WS`| concatenates any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.|
-|`CONNECTION_ID`| returns the current connection ID.|
-|`CONVERT_TZ`| converts a datetime value dt from the time zone given by from_tz to the time zone given by to_tz and returns the resulting value.|
-|`COS`| returns the cosine of an expression.|
-|`COT`| returns the arctangent of an expression.|
-|`COUNT`| returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
-|`CRC32`| returns the cyclic redundancy check value of a given string as a 32-bit unsigned value.|
-|`CURDATE`| returns the current date.|
-|`CURRENT_DATE`| returns the current date.|
-|`CURRENT_TIME`| returns the current time.|
-|`CURRENT_TIMESTAMP`| returns the current date and time.|
-|`CURRENT_USER`| returns the authenticated user name and host name.|
-|`CURTIME`| returns the current time.|
-|`DATABASE`| returns the default (current) database name.|
-|`DATE`| returns the date part of the given date.|
-|`DATE_ADD`| adds the interval to the given date.|
-|`DATE_FORMAT`| format date as specified.|
-|`DATE_SUB`| subtracts the interval from the given date.|
-|`DATETIME`| returns a DATETIME value for the expression given (e.g. the string '2020-01-02').|
-|`DAY`| returns the day of the month (0-31).|
-|`DAYNAME`| returns the name of the weekday.|
-|`DAYOFMONTH`| returns the day of the month (0-31).|
-|`DAYOFWEEK`| returns the day of the week of the given date.|
-|`DAYOFYEAR`| returns the day of the year of the given date.|
-|`DEGREES`| returns the number of degrees in the radian expression given.|
-|`EXPLODE`| generates a new row in the result set for each element in the expressions provided.|
-|`FIRST`| returns the first value in a sequence of elements of an aggregation.|
-|`FIRST_VALUE`| returns value of argument from first row of window frame.|
-|`FLOOR`| returns the largest integer value that is less than or equal to number.|
-|`FORMAT`| returns a number formatted to specified number of decimal places.|
-|`FOUND_ROWS`| for a SELECT with a LIMIT clause, returns the number of rows that would be returned were there no LIMIT clause.|
-|`FROM_BASE64`| decodes the base64-encoded string str.|
-|`FROM_UNIXTIME`| formats Unix timestamp as a date.|
-|`GET_LOCK`| gets a named lock.|
-|`GREATEST`| returns the greatest numeric or string value.|
-|`GROUP_CONCAT`| returns a string result with the concatenated non-NULL values from a group.|
-|`HEX`| returns the hexadecimal representation of the string or numeric value.|
-|`HOUR`| returns the hours of the given date.|
-|`IF`| if expr1 evaluates to true, retuns expr2. Otherwise returns expr3.|
-|`IFNULL`| if expr1 is not NULL, it returns expr1; otherwise it returns expr2.|
-|`INET6_ATON`| returns the numeric value of an IPv6 address.|
-|`INET6_NTOA`| returns the IPv6 address from a numeric value.|
-|`INET_ATON`| returns the numeric value of an IP address.|
-|`INET_NTOA`| returns the IP address from a numeric value.|
-|`INSTR`| returns the 1-based index of the first occurence of str2 in str1, or 0 if it does not occur.|
-|`IS_BINARY`| returns whether a blob is a binary file or not.|
-|`IS_FREE_LOCK`| returns whether the named lock is free.|
-|`IS_IPV4`| returns whether argument is an IPv4 address.|
-|`IS_IPV4_COMPAT`| returns whether argument is an IPv4-compatible address.|
-|`IS_IPV4_MAPPED`| returns whether argument is an IPv4-mapped address.|
-|`IS_IPV6`| returns whether argument is an IPv6 address.|
-|`IS_USED_LOCK`| returns whether the named lock is in use; return connection identifier if true.|
-|`IS_UUID`| returns whether argument is a valid UUID.|
-|`ISNULL`| returns whether a expr is null or not.|
-|`LAST`| returns the last value in a sequence of elements of an aggregation.|
-|`LAST_INSERT_ID`| returns value of the AUTOINCREMENT column for the last INSERT.|
-|`LCASE`| returns the string str with all characters in lower case.|
-|`LEAST`| returns the smaller numeric or string value.|
-|`LEFT`| returns the first N characters in the string given.|
-|`LENGTH`| returns the length of the string in bytes.|
-|`LN`| returns the natural logarithm of X.|
-|`LOAD_FILE`| returns a LoadFile object.|
-|`LOG`| if called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned.|
-|`LOG10`| returns the base-10 logarithm of X.|
-|`LOG2`| returns the base-2 logarithm of X.|
-|`LOWER`| returns the string str with all characters in lower case.|
-|`LPAD`| returns the string str, left-padded with the string padstr to a length of len characters.|
-|`LTRIM`| returns the string str with leading space characters removed.|
-|`MAX`| returns the maximum value of expr in all rows.|
-|`MD5`| calculates MD5 checksum.|
-|`MICROSECOND`| returns the microseconds from argument.|
-|`MID`| returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken.|
-|`MIN`| returns the minimum value of expr in all rows.|
-|`MINUTE`| returns the minutes of the given date.|
-|`MONTH`| returns the month of the given date.|
-|`MONTHNAME`| returns the name of the month.|
-|`NOW`| returns the current timestamp.|
-|`NULLIF`| returns NULL if expr1 = expr2 is true, otherwise returns expr1.|
-|`PERCENT_RANK`| returns percentage rank value.|
-|`POW`| returns the value of X raised to the power of Y.|
-|`POWER`| returns the value of X raised to the power of Y.|
-|`RADIANS`| returns the radian value of the degrees argument given.|
-|`RAND`| returns a random number in the range 0 <= x < 1. If an argument is given, it is used to seed the random number generator.|
-|`REGEXP_LIKE`| returns whether string matches regular expression.|
-|`REGEXP_REPLACE`| replaces substrings matching regular expression.|
-|`RELEASE_ALL_LOCKS`| release all current named locks.|
-|`RELEASE_LOCK`| release the named lock.|
-|`REPEAT`| returns a string consisting of the string str repeated count times.|
-|`REPLACE`| returns the string str with all occurrences of the string from_str replaced by the string to_str.|
-|`REVERSE`| returns the string str with the order of the characters reversed.|
-|`RIGHT`| returns the specified rightmost number of characters.|
-|`ROUND`| rounds the number to decimals decimal places.|
-|`ROW_COUNT`| returns the number of rows updated.|
-|`ROW_NUMBER`| returns the number of rows updated.|
-|`RPAD`| returns the string str, right-padded with the string padstr to a length of len characters.|
-|`RTRIM`| returns the string str with trailing space characters removed.|
-|`SCHEMA`| returns the default (current) database name.|
-|`SECOND`| returns the seconds of the given date.|
-|`SHA`| calculates an SHA-1 160-bit checksum.|
-|`SHA1`| calculates an SHA-1 160-bit checksum.|
-|`SHA2`| calculates an SHA-2 checksum.|
-|`SIGN`| returns the sign of the argument.|
-|`SIN`| returns the sine of the expression given.|
-|`SLEEP`| waits for the specified number of seconds (can be fractional).|
-|`SOUNDEX`| returns the soundex of a string.|
-|`SPLIT`| returns the parts of the string str split by the separator sep as a JSON array of strings.|
-|`SQRT`| returns the square root of a nonnegative number X.|
-|`STR_TO_DATE`| parses the date/datetime/timestamp expression according to the format specifier.|
-|`SUBSTR`| returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken.|
-|`SUBSTRING`| returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken.|
-|`SUBSTRING_INDEX`| returns a substring after count appearances of delim. If count is negative, counts from the right side of the string.|
-|`SUM`| returns the sum of expr in all rows.|
-|`TAN`| returns the tangent of the expression given.|
-|`TIME_TO_SEC`| returns the argument converted to seconds.|
-|`TIMEDIFF`| returns expr1 − expr2 expressed as a time value. expr1 and expr2 are time or date-and-time expressions, but both must be of the same type.|
-|`TIMESTAMP`| returns a timestamp value for the expression given (e.g. the string '2020-01-02').|
-|`TO_BASE64`| encodes the string str in base64 format.|
-|`UCASE`| converts string to uppercase.|
-|`UNHEX`| returns a string containing hex representation of a number.|
-|`UNIX_TIMESTAMP`| returns the datetime argument to the number of seconds since the Unix epoch. With no argument, returns the number of seconds since the Unix epoch for the current time.|
-|`UPPER`| converts string to uppercase.|
-|`USER`| returns the authenticated user name and host name.|
-|`UTC_TIMESTAMP`| returns the current UTC timestamp.|
-|`UUID`| returns a Universal Unique Identifier (UUID).|
-|`UUID_TO_BIN`| converts string UUID to binary.|
-|`VALUES`| defines the values to be used during an INSERT.|
-|`WEEK`| returns the week number.|
-|`WEEKDAY`| returns the weekday of the given date.|
-|`WEEKOFYEAR`| returns the calendar week of the date (1-53).|
-|`YEAR`| returns the year of the given date.|
-|`YEARWEEK`| returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year.|
+|`ABS(expr)`| returns the absolute value of an expression.|
+|`ACOS(expr)`| returns the arccos of an expression.|
+|`ARRAY_LENGTH(expr)`| if the json representation is an array, this function returns its size.|
+|`ASCII(expr)`| returns the numeric value of the leftmost character.|
+|`ASIN(expr)`| returns the arcsin of an expression.|
+|`ATAN(expr)`| returns the arctan of an expression.|
+|`AVG(expr)`| returns the average value of expr in all rows.|
+|`BIN(expr)`| returns the binary representation of a number.|
+|`BIN_TO_UUID(...)`| converts a binary UUID to a string UUID and returns the result.|
+|`BIT_LENGTH(expr)`| returns the data length of the argument in bits.|
+|`CEIL(expr)`| returns the smallest integer value that is greater than or equal to number.|
+|`CEILING(expr)`| returns the smallest integer value that is greater than or equal to number.|
+|`CHAR_LENGTH(expr)`| returns the length of the string in characters.|
+|`CHARACTER_LENGTH(expr)`| returns the length of the string in characters.|
+|`COALESCE(...)`| returns the first non-null value in a list.|
+|`CONCAT(...)`| concatenates any group of fields into a single string.|
+|`CONCAT_WS(...)`| concatenates any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL.|
+|`CONNECTION_ID()`| returns the current connection ID.|
+|`CONVERT_TZ(expr1, expr2, expr3)`| converts a datetime value dt from the time zone given by from_tz to the time zone given by to_tz and returns the resulting value.|
+|`COS(expr)`| returns the cosine of an expression.|
+|`COT(expr)`| returns the arctangent of an expression.|
+|`COUNT(expr)`| returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.|
+|`CRC32(expr)`| returns the cyclic redundancy check value of a given string as a 32-bit unsigned value.|
+|`CURDATE()`| returns the current date.|
+|`CURRENT_DATE()`| returns the current date.|
+|`CURRENT_TIME()`| returns the current time.|
+|`CURRENT_TIMESTAMP(...)`| returns the current date and time.|
+|`CURRENT_USER()`| returns the authenticated user name and host name.|
+|`CURTIME()`| returns the current time.|
+|`DATABASE()`| returns the default (current) database name.|
+|`DATE(expr)`| returns the date part of the given date.|
+|`DATE_ADD(...)`| adds the interval to the given date.|
+|`DATE_FORMAT(expr1, expr2)`| format date as specified.|
+|`DATE_SUB(...)`| subtracts the interval from the given date.|
+|`DATETIME(...)`| returns a DATETIME value for the expression given (e.g. the string '2020-01-02').|
+|`DAY(expr)`| returns the day of the month (0-31).|
+|`DAYNAME(expr)`| returns the name of the weekday.|
+|`DAYOFMONTH(expr)`| returns the day of the month (0-31).|
+|`DAYOFWEEK(expr)`| returns the day of the week of the given date.|
+|`DAYOFYEAR(expr)`| returns the day of the year of the given date.|
+|`DEGREES(expr)`| returns the number of degrees in the radian expression given.|
+|`EXPLODE(expr)`| generates a new row in the result set for each element in the expressions provided.|
+|`FIRST(expr)`| returns the first value in a sequence of elements of an aggregation.|
+|`FIRST_VALUE(expr)`| returns value of argument from first row of window frame.|
+|`FLOOR(expr)`| returns the largest integer value that is less than or equal to number.|
+|`FORMAT(...)`| returns a number formatted to specified number of decimal places.|
+|`FOUND_ROWS()`| for a SELECT with a LIMIT clause, returns the number of rows that would be returned were there no LIMIT clause.|
+|`FROM_BASE64(expr)`| decodes the base64-encoded string str.|
+|`FROM_UNIXTIME(expr)`| formats Unix timestamp as a date.|
+|`GET_LOCK(expr1, expr2)`| gets a named lock.|
+|`GREATEST(...)`| returns the greatest numeric or string value.|
+|`GROUP_CONCAT()`| returns a string result with the concatenated non-NULL values from a group.|
+|`HEX(expr)`| returns the hexadecimal representation of the string or numeric value.|
+|`HOUR(expr)`| returns the hours of the given date.|
+|`IF(expr1, expr2, expr3)`| if expr1 evaluates to true, retuns expr2. Otherwise returns expr3.|
+|`IFNULL(expr1, expr2)`| if expr1 is not NULL, it returns expr1; otherwise it returns expr2.|
+|`INET6_ATON(expr)`| returns the numeric value of an IPv6 address.|
+|`INET6_NTOA(expr)`| returns the IPv6 address from a numeric value.|
+|`INET_ATON(expr)`| returns the numeric value of an IP address.|
+|`INET_NTOA(expr)`| returns the IP address from a numeric value.|
+|`INSTR(expr1, expr2)`| returns the 1-based index of the first occurence of str2 in str1, or 0 if it does not occur.|
+|`IS_BINARY(expr)`| returns whether a blob is a binary file or not.|
+|`IS_FREE_LOCK(expr)`| returns whether the named lock is free.|
+|`IS_IPV4(expr)`| returns whether argument is an IPv4 address.|
+|`IS_IPV4_COMPAT(expr)`| returns whether argument is an IPv4-compatible address.|
+|`IS_IPV4_MAPPED(expr)`| returns whether argument is an IPv4-mapped address.|
+|`IS_IPV6(expr)`| returns whether argument is an IPv6 address.|
+|`IS_USED_LOCK(expr)`| returns whether the named lock is in use; return connection identifier if true.|
+|`IS_UUID(expr)`| returns whether argument is a valid UUID.|
+|`ISNULL(expr)`| returns whether a expr is null or not.|
+|`LAST(expr)`| returns the last value in a sequence of elements of an aggregation.|
+|`LAST_INSERT_ID()`| returns value of the AUTOINCREMENT column for the last INSERT.|
+|`LCASE(expr)`| returns the string str with all characters in lower case.|
+|`LEAST(...)`| returns the smaller numeric or string value.|
+|`LEFT(expr1, expr2)`| returns the first N characters in the string given.|
+|`LENGTH(expr)`| returns the length of the string in bytes.|
+|`LN(expr)`| returns the natural logarithm of X.|
+|`LOAD_FILE(expr)`| returns a LoadFile object.|
+|`LOG(...)`| if called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned.|
+|`LOG10(expr)`| returns the base-10 logarithm of X.|
+|`LOG2(expr)`| returns the base-2 logarithm of X.|
+|`LOWER(expr)`| returns the string str with all characters in lower case.|
+|`LPAD(...)`| returns the string str, left-padded with the string padstr to a length of len characters.|
+|`LTRIM(expr)`| returns the string str with leading space characters removed.|
+|`MAX(expr)`| returns the maximum value of expr in all rows.|
+|`MD5(expr)`| calculates MD5 checksum.|
+|`MICROSECOND(expr)`| returns the microseconds from argument.|
+|`MID(...)`| returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken.|
+|`MIN(expr)`| returns the minimum value of expr in all rows.|
+|`MINUTE(expr)`| returns the minutes of the given date.|
+|`MONTH(expr)`| returns the month of the given date.|
+|`MONTHNAME(expr)`| returns the name of the month.|
+|`NOW(...)`| returns the current timestamp.|
+|`NULLIF(expr1, expr2)`| returns NULL if expr1 = expr2 is true, otherwise returns expr1.|
+|`PERCENT_RANK()`| returns percentage rank value.|
+|`POW(expr1, expr2)`| returns the value of X raised to the power of Y.|
+|`POWER(expr1, expr2)`| returns the value of X raised to the power of Y.|
+|`RADIANS(expr)`| returns the radian value of the degrees argument given.|
+|`RAND(...)`| returns a random number in the range 0 <= x < 1. If an argument is given, it is used to seed the random number generator.|
+|`REGEXP_LIKE(...)`| returns whether string matches regular expression.|
+|`REGEXP_REPLACE(...)`| replaces substrings matching regular expression.|
+|`RELEASE_ALL_LOCKS()`| release all current named locks.|
+|`RELEASE_LOCK(expr)`| release the named lock.|
+|`REPEAT(expr1, expr2)`| returns a string consisting of the string str repeated count times.|
+|`REPLACE(expr1, expr2, expr3)`| returns the string str with all occurrences of the string from_str replaced by the string to_str.|
+|`REVERSE(expr)`| returns the string str with the order of the characters reversed.|
+|`RIGHT(expr1, expr2)`| returns the specified rightmost number of characters.|
+|`ROUND(...)`| rounds the number to decimals decimal places.|
+|`ROW_COUNT()`| returns the number of rows updated.|
+|`ROW_NUMBER()`| returns the number of rows updated.|
+|`RPAD(...)`| returns the string str, right-padded with the string padstr to a length of len characters.|
+|`RTRIM(expr)`| returns the string str with trailing space characters removed.|
+|`SCHEMA()`| returns the default (current) database name.|
+|`SECOND(expr)`| returns the seconds of the given date.|
+|`SHA(expr)`| calculates an SHA-1 160-bit checksum.|
+|`SHA1(expr)`| calculates an SHA-1 160-bit checksum.|
+|`SHA2(expr1, expr2)`| calculates an SHA-2 checksum.|
+|`SIGN(expr)`| returns the sign of the argument.|
+|`SIN(expr)`| returns the sine of the expression given.|
+|`SLEEP(expr)`| waits for the specified number of seconds (can be fractional).|
+|`SOUNDEX(expr)`| returns the soundex of a string.|
+|`SPLIT(expr1, expr2)`| returns the parts of the string str split by the separator sep as a JSON array of strings.|
+|`SQRT(expr)`| returns the square root of a nonnegative number X.|
+|`STR_TO_DATE(...)`| parses the date/datetime/timestamp expression according to the format specifier.|
+|`SUBSTR(...)`| returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken.|
+|`SUBSTRING(...)`| returns a substring from the provided string starting at pos with a length of len characters. If no len is provided, all characters from pos until the end will be taken.|
+|`SUBSTRING_INDEX(expr1, expr2, expr3)`| returns a substring after count appearances of delim. If count is negative, counts from the right side of the string.|
+|`SUM(expr)`| returns the sum of expr in all rows.|
+|`TAN(expr)`| returns the tangent of the expression given.|
+|`TIME_TO_SEC(expr)`| returns the argument converted to seconds.|
+|`TIMEDIFF(expr1, expr2)`| returns expr1 − expr2 expressed as a time value. expr1 and expr2 are time or date-and-time expressions, but both must be of the same type.|
+|`TIMESTAMP(...)`| returns a timestamp value for the expression given (e.g. the string '2020-01-02').|
+|`TO_BASE64(expr)`| encodes the string str in base64 format.|
+|`UCASE(expr)`| converts string to uppercase.|
+|`UNHEX(expr)`| returns a string containing hex representation of a number.|
+|`UNIX_TIMESTAMP(...)`| returns the datetime argument to the number of seconds since the Unix epoch. With no argument, returns the number of seconds since the Unix epoch for the current time.|
+|`UPPER(expr)`| converts string to uppercase.|
+|`USER()`| returns the authenticated user name and host name.|
+|`UTC_TIMESTAMP(...)`| returns the current UTC timestamp.|
+|`UUID()`| returns a Universal Unique Identifier (UUID).|
+|`UUID_TO_BIN(...)`| converts string UUID to binary.|
+|`VALUES(expr)`| defines the values to be used during an INSERT.|
+|`WEEK(...)`| returns the week number.|
+|`WEEKDAY(expr)`| returns the weekday of the given date.|
+|`WEEKOFYEAR(expr)`| returns the calendar week of the date (1-53).|
+|`YEAR(expr)`| returns the year of the given date.|
+|`YEARWEEK(...)`| returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year.|
 <!-- END FUNCTIONS -->
 
 ## Configuration
