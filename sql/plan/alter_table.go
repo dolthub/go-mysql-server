@@ -212,7 +212,7 @@ func (a *AddColumn) Children() []sql.Node {
 
 type DropColumn struct {
 	ddlNode
-	tableName string
+	UnaryNode
 	column    string
 	order     *sql.ColumnOrder
 }
@@ -220,10 +220,10 @@ type DropColumn struct {
 var _ sql.Node = (*DropColumn)(nil)
 var _ sql.Databaser = (*DropColumn)(nil)
 
-func NewDropColumn(db sql.Database, tableName string, column string) *DropColumn {
+func NewDropColumn(db sql.Database, table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
 		ddlNode:   ddlNode{db},
-		tableName: tableName,
+		UnaryNode: UnaryNode{Child: table},
 		column:    column,
 	}
 }
@@ -239,7 +239,7 @@ func (d *DropColumn) String() string {
 }
 
 func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(d.db, ctx, d.tableName)
+	alterable, err := getAlterable(d.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -280,13 +280,29 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
 }
 
-func (d *DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(d, children...)
+func (d *DropColumn) Schema() sql.Schema {
+	return nil
+}
+
+func (d *DropColumn) Resolved() bool {
+	return d.UnaryNode.Resolved() && d.ddlNode.Resolved()
+}
+
+func (d *DropColumn) Children() []sql.Node {
+	return d.UnaryNode.Children()
+}
+
+func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+	d.UnaryNode.Child = children[0]
+	return &d, nil
 }
 
 type RenameColumn struct {
 	ddlNode
-	tableName     string
+	UnaryNode
 	columnName    string
 	newColumnName string
 }
@@ -294,10 +310,10 @@ type RenameColumn struct {
 var _ sql.Node = (*RenameColumn)(nil)
 var _ sql.Databaser = (*RenameColumn)(nil)
 
-func NewRenameColumn(db sql.Database, tableName string, columnName string, newColumnName string) *RenameColumn {
+func NewRenameColumn(db sql.Database, table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
 		ddlNode:       ddlNode{db},
-		tableName:     tableName,
+		UnaryNode:     UnaryNode{Child: table},
 		columnName:    columnName,
 		newColumnName: newColumnName,
 	}
@@ -313,8 +329,16 @@ func (r *RenameColumn) String() string {
 	return fmt.Sprintf("rename column %s to %s", r.columnName, r.newColumnName)
 }
 
+func (r *RenameColumn) Resolved() bool {
+	return r.UnaryNode.Resolved() && r.ddlNode.Resolved()
+}
+
+func (r *RenameColumn) Schema() sql.Schema {
+	return nil
+}
+
 func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(r.db, ctx, r.tableName)
+	alterable, err := getAlterable(r.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -336,8 +360,16 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.columnName, col, nil)
 }
 
-func (r *RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(r, children...)
+func (r *RenameColumn) Children() []sql.Node {
+	return r.UnaryNode.Children()
+}
+
+func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
+	}
+	r.UnaryNode.Child = children[0]
+	return &r, nil
 }
 
 type ModifyColumn struct {
