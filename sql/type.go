@@ -427,6 +427,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "json":
 		return JSON, nil
 	case "geometry":
+		return Geometry, nil
 	case "geometrycollection":
 	case "linestring":
 	case "multilinestring":
