@@ -67,7 +67,7 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
-// UnsupportedFunctionStub is something that is unsupported or not
+// UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
 type UnsupportedFunctionStub interface {
 	IsUnsupported() bool
 }
