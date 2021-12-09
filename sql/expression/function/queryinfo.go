@@ -121,7 +121,7 @@ var _ sql.FunctionExpression = FoundRows{}
 
 // FunctionName implements sql.FunctionExpression
 func (r FoundRows) FunctionName() string {
-	return "found_rows()"
+	return "found_rows"
 }
 
 // Description implements sql.Expression

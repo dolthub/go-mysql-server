@@ -39,7 +39,7 @@ func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (c *Coalesce) FunctionName() string {
-	return "coalesce(...)"
+	return "coalesce"
 }
 
 // Description implements sql.FunctionExpression

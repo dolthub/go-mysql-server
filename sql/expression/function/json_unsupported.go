@@ -53,7 +53,7 @@ func NewJSONContainsPath(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONContainsPath) FunctionName() string {
-	return "json_contains_path(json_doc, one_or_all, path[, path] ...)"
+	return "json_contains_path"
 }
 
 // Description implements sql.FunctionExpression
@@ -89,7 +89,7 @@ func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONKeys) FunctionName() string {
-	return "json_keys(json_doc[, path])"
+	return "json_keys"
 }
 
 // Description implements sql.FunctionExpression
@@ -128,7 +128,7 @@ func NewJSONOverlaps(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONOverlaps) FunctionName() string {
-	return "json_overlaps(json_doc1, json_doc2)"
+	return "json_overlaps"
 }
 
 // Description implements sql.FunctionExpression
@@ -179,7 +179,7 @@ func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSearch) FunctionName() string {
-	return "json_search(json_doc, one_or_all, search_str[, escape_char[, path] ...])"
+	return "json_search"
 }
 
 // Description implements sql.FunctionExpression
@@ -211,7 +211,7 @@ func NewJSONValue(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONValue) FunctionName() string {
-	return "json_value(json_doc, path)"
+	return "json_value"
 }
 
 // Description implements sql.FunctionExpression
@@ -256,7 +256,7 @@ func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONArray) FunctionName() string {
-	return "json_array(val [, val] ...)"
+	return "json_array"
 }
 
 // Description implements sql.FunctionExpression
@@ -292,7 +292,7 @@ func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONQuote) FunctionName() string {
-	return "json_quote(str)"
+	return "json_quote"
 }
 
 // Description implements sql.FunctionExpression
@@ -332,7 +332,7 @@ func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONArrayAppend) FunctionName() string {
-	return "json_array_append(json_doc, path, val[, path, val] ...)"
+	return "json_array_append"
 }
 
 // Description implements sql.FunctionExpression
@@ -370,7 +370,7 @@ func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONArrayInsert) FunctionName() string {
-	return "json_array_insert(json_doc, path, val[, path, val] ...)"
+	return "json_array_insert"
 }
 
 // Description implements sql.FunctionExpression
@@ -410,7 +410,7 @@ func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONInsert) FunctionName() string {
-	return "json_insert(json_doc, path, val[, path, val] ...)"
+	return "json_insert"
 }
 
 // Description implements sql.FunctionExpression
@@ -461,7 +461,7 @@ func NewJSONMergePatch(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONMergePatch) FunctionName() string {
-	return "json_merge_patch(json_doc, json_doc[, json_doc] ...)"
+	return "json_merge_patch"
 }
 
 // Description implements sql.FunctionExpression
@@ -518,7 +518,7 @@ func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONMergePreserve) FunctionName() string {
-	return "json_merge_preserve(json_doc, json_doc[, json_doc] ...)"
+	return "json_merge_preserve"
 }
 
 // Description implements sql.FunctionExpression
@@ -553,7 +553,7 @@ func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONRemove) FunctionName() string {
-	return "json_remove(json_doc, path[, path] ...)"
+	return "json_remove"
 }
 
 // Description implements sql.FunctionExpression
@@ -589,7 +589,7 @@ func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONReplace) FunctionName() string {
-	return "json_replace(json_doc, path, val[, path, val] ...)"
+	return "json_replace"
 }
 
 // Description implements sql.FunctionExpression
@@ -630,7 +630,7 @@ func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSet) FunctionName() string {
-	return "json_set(json_doc, path, val[, path, val] ...)"
+	return "json_set"
 }
 
 // Description implements sql.FunctionExpression
@@ -668,7 +668,7 @@ func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONDepth) FunctionName() string {
-	return "json_depth(json_doc)"
+	return "json_depth"
 }
 
 // Description implements sql.FunctionExpression
@@ -706,7 +706,7 @@ func NewJSONLength(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONLength) FunctionName() string {
-	return "json_length(json_doc[, path])"
+	return "json_length("
 }
 
 // Description implements sql.FunctionExpression
@@ -738,7 +738,7 @@ func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONType) FunctionName() string {
-	return "json_type(type_val)"
+	return "json_type"
 }
 
 // Description implements sql.FunctionExpression
@@ -769,7 +769,7 @@ func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONValid) FunctionName() string {
-	return "json_valid(val)"
+	return "json_valid"
 }
 
 // Description implements sql.FunctionExpression
@@ -805,7 +805,7 @@ func NewJSONTable(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONTable) FunctionName() string {
-	return "json_table(expr, path COLUMNS (column_list) [AS] alias)"
+	return "json_table"
 }
 
 // Description implements sql.FunctionExpression
@@ -841,7 +841,7 @@ func NewJSONSchemaValid(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSchemaValid) FunctionName() string {
-	return "json_schema_valid(schema, document)"
+	return "json_schema_valid"
 }
 
 // Description implements sql.FunctionExpression
@@ -885,7 +885,7 @@ func NewJSONSchemaValidationReport(args ...sql.Expression) (sql.Expression, erro
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSchemaValidationReport) FunctionName() string {
-	return "json_schema_validation_report(schema, document)"
+	return "json_schema_validation_report"
 }
 
 // Description implements sql.FunctionExpression
@@ -932,7 +932,7 @@ func NewJSONPretty(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONPretty) FunctionName() string {
-	return "json_pretty(jsoN_val)"
+	return "json_pretty"
 }
 
 // Description implements sql.FunctionExpression
@@ -971,7 +971,7 @@ func NewJSONStorageFree(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONStorageFree) FunctionName() string {
-	return "json_storage_free(json_val)"
+	return "json_storage_free"
 }
 
 // Description implements sql.FunctionExpression
@@ -1008,7 +1008,7 @@ func NewJSONStorageSize(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONStorageSize) FunctionName() string {
-	return "json_storage_size(json_val)"
+	return "json_storage_size"
 }
 
 // Description implements sql.FunctionExpression

@@ -44,7 +44,7 @@ func NewJSONObject(exprs ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONObject) FunctionName() string {
-	return "json_object([key, val[, key, val] ...])"
+	return "json_object"
 }
 
 // Description implements sql.FunctionExpression

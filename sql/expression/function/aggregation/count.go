@@ -41,7 +41,7 @@ func NewCount(e sql.Expression) *Count {
 
 // FunctionName implements sql.FunctionExpression
 func (c *Count) FunctionName() string {
-	return "count(expr)"
+	return "count"
 }
 
 // Description implements sql.FunctionExpression

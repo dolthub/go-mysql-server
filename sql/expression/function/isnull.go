@@ -35,7 +35,7 @@ func NewIsNull(e sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (ib *IsNull) FunctionName() string {
-	return "isnull(expr)"
+	return "isnull"
 }
 
 // Description implements sql.FunctionExpression

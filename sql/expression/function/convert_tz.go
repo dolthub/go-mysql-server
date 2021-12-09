@@ -44,7 +44,7 @@ func NewConvertTz(dt, fromTz, toTz sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (c *ConvertTz) FunctionName() string {
-	return "convert_tz(datetime, from_timezone, to_timezone)"
+	return "convert_tz"
 }
 
 // Description implements the sql.FunctionExpression interface.

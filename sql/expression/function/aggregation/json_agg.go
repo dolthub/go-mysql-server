@@ -49,7 +49,7 @@ func NewJSONArrayAgg(arg sql.Expression) *JSONArrayAgg {
 
 // FunctionName implements sql.FunctionExpression
 func (j *JSONArrayAgg) FunctionName() string {
-	return "json_arrayagg(col_or_expr)"
+	return "json_arrayagg"
 }
 
 // Description implements sql.FunctionExpression
@@ -163,7 +163,7 @@ func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONObjectAgg) FunctionName() string {
-	return "json_objectagg(key, value)"
+	return "json_objectagg"
 }
 
 // Description implements sql.FunctionExpression

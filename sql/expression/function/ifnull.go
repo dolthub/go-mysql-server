@@ -40,7 +40,7 @@ func NewIfNull(ex, value sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (f *IfNull) FunctionName() string {
-	return "ifnull(expr1, expr2)"
+	return "ifnull"
 }
 
 // Description implements sql.FunctionExpression

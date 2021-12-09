@@ -35,7 +35,7 @@ func NewExplode(child sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (e *Explode) FunctionName() string {
-	return "explode(...)"
+	return "explode"
 }
 
 // Description implements sql.FunctionExpression

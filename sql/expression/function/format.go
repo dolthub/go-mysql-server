@@ -56,7 +56,7 @@ func NewFormat(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (f *Format) FunctionName() string {
-	return "format(expr, num_decimal_places [, locale])"
+	return "format"
 }
 
 // Description implements sql.FunctionExpression

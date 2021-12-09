@@ -35,7 +35,7 @@ func NewArrayLength(array sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (f *ArrayLength) FunctionName() string {
-	return "array_length(json)"
+	return "array_length"
 }
 
 // Description implements sql.FunctionExpression

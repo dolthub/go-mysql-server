@@ -38,7 +38,7 @@ func NewInetAton(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *InetAton) FunctionName() string {
-	return "inet_aton(expr)"
+	return "inet_aton"
 }
 
 // Description implements sql.FunctionExpression
@@ -113,7 +113,7 @@ func NewInet6Aton(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *Inet6Aton) FunctionName() string {
-	return "inet6_aton(expr)"
+	return "inet6_aton"
 }
 
 // Description implements sql.FunctionExpression
@@ -187,7 +187,7 @@ func NewInetNtoa(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *InetNtoa) FunctionName() string {
-	return "inet_ntoa(expr)"
+	return "inet_ntoa"
 }
 
 // Description implements sql.FunctionExpression
@@ -254,7 +254,7 @@ func NewInet6Ntoa(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *Inet6Ntoa) FunctionName() string {
-	return "inet6_ntoa(expr)"
+	return "inet6_ntoa"
 }
 
 // Description implements sql.FunctionExpression

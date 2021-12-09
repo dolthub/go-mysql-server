@@ -36,7 +36,7 @@ func NewIsIPv4(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *IsIPv4) FunctionName() string {
-	return "is_ipv4(expr)"
+	return "is_ipv4"
 }
 
 // Description implements sql.FunctionExpression
@@ -98,7 +98,7 @@ func NewIsIPv6(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *IsIPv6) FunctionName() string {
-	return "is_ipv6(expr)"
+	return "is_ipv6"
 }
 
 // Description implements sql.FunctionExpression
@@ -160,7 +160,7 @@ func NewIsIPv4Compat(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *IsIPv4Compat) FunctionName() string {
-	return "is_ipv4_compat(expr)"
+	return "is_ipv4_compat"
 }
 
 // Description implements sql.FunctionExpression
@@ -226,7 +226,7 @@ func NewIsIPv4Mapped(val sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i *IsIPv4Mapped) FunctionName() string {
-	return "is_ipv4_mapped(expr)"
+	return "is_ipv4_mapped"
 }
 
 // Description implements sql.FunctionExpression

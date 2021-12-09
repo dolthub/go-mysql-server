@@ -257,7 +257,7 @@ var _ sql.FunctionExpression = (*DateFormat)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (f *DateFormat) FunctionName() string {
-	return "date_format(date, format)"
+	return "date_format"
 }
 
 // Description implements sql.FunctionExpression

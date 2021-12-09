@@ -68,7 +68,7 @@ func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j *JSONContains) FunctionName() string {
-	return "json_contains(target, candidate[, path])"
+	return "json_contains"
 }
 
 // Description implements sql.FunctionExpression

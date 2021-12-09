@@ -166,7 +166,7 @@ func NewDay(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (d *Day) FunctionName() string {
-	return "day(date)"
+	return "day"
 }
 
 // Description implements sql.FunctionExpression
@@ -247,7 +247,7 @@ func NewHour(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (h *Hour) FunctionName() string {
-	return "hour(date)"
+	return "hour"
 }
 
 // Description implements sql.FunctionExpression
@@ -368,7 +368,7 @@ func NewDayOfWeek(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (d *DayOfWeek) FunctionName() string {
-	return "dayofweek(date)"
+	return "dayofweek"
 }
 
 // Description implements sql.FunctionExpression
@@ -408,7 +408,7 @@ func NewDayOfYear(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (d *DayOfYear) FunctionName() string {
-	return "dayofyear(date)"
+	return "dayofyear"
 }
 
 // Description implements sql.FunctionExpression
@@ -966,7 +966,7 @@ var _ sql.FunctionExpression = (*Date)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (d *Date) FunctionName() string {
-	return "date(date)"
+	return "date"
 }
 
 // Description implements sql.FunctionExpression
@@ -1058,7 +1058,7 @@ func NewDayName(arg sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (d *DayName) FunctionName() string {
-	return "dayname(date)"
+	return "dayname"
 }
 
 // Description implements sql.FunctionExpression
@@ -1306,11 +1306,6 @@ type CurrTime struct {
 
 var _ sql.FunctionExpression = CurrTime{}
 
-// FunctionName implements sql.FunctionExpression
-func (c CurrTime) FunctionName() string {
-	return "current_time()"
-}
-
 // Description implements sql.FunctionExpression
 func (c CurrTime) Description() string {
 	return "returns the current time."
@@ -1353,7 +1348,7 @@ var _ sql.FunctionExpression = (*CurrTimestamp)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (c *CurrTimestamp) FunctionName() string {
-	return "current_timestamp([fsp])"
+	return "current_timestamp"
 }
 
 // Description implements sql.FunctionExpression

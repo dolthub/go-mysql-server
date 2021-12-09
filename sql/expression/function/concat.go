@@ -57,7 +57,7 @@ func NewConcat(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (c *Concat) FunctionName() string {
-	return "concat(...)"
+	return "concat"
 }
 
 // Description implements sql.FunctionExpression

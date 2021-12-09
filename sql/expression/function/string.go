@@ -38,11 +38,6 @@ func NewAscii(arg sql.Expression) sql.Expression {
 	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
 }
 
-// FunctionName implements sql.FunctionExpression
-func (a *Ascii) FunctionName() string {
-	return "ascii(str)"
-}
-
 // Description implements sql.FunctionExpression
 func (a *Ascii) Description() string {
 	return "returns the numeric value of the leftmost character."
@@ -98,11 +93,6 @@ var _ sql.FunctionExpression = (*Hex)(nil)
 
 func NewHex(arg sql.Expression) sql.Expression {
 	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (h *Hex) FunctionName() string {
-	return "hex(expr)"
 }
 
 // Description implements sql.FunctionExpression
@@ -326,7 +316,7 @@ func NewBin(arg sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (b *Bin) FunctionName() string {
-	return "bin(int)"
+	return "bin"
 }
 
 // Description implements sql.FunctionExpression
@@ -387,7 +377,7 @@ func NewBitlength(arg sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (b *Bitlength) FunctionName() string {
-	return "bit_length(str)"
+	return "bit_length"
 }
 
 // Description implements sql.FunctionExpression

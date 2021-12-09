@@ -37,7 +37,7 @@ func NewFirst(e sql.Expression) *First {
 
 // FunctionName implements sql.FunctionExpression
 func (f *First) FunctionName() string {
-	return "first(expr)"
+	return "first"
 }
 
 // Description implements sql.FunctionExpression

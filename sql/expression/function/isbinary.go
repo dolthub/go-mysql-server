@@ -36,7 +36,7 @@ func NewIsBinary(e sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (ib *IsBinary) FunctionName() string {
-	return "is_binary(blob)"
+	return "is_binary"
 }
 
 // Description implements sql.FunctionExpression

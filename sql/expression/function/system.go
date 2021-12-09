@@ -34,7 +34,7 @@ func NewConnectionID() sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (c ConnectionID) FunctionName() string {
-	return "connection_id()"
+	return "connection_id"
 }
 
 // Description implements sql.FunctionExpression
@@ -65,11 +65,6 @@ func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 }
 
 var _ sql.FunctionExpression = User{}
-
-// FunctionName implements sql.FunctionExpression
-func (c User) FunctionName() string {
-	return "current_user()"
-}
 
 // Description implements sql.FunctionExpression
 func (c User) Description() string {

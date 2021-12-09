@@ -43,7 +43,7 @@ func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j *JSONExtract) FunctionName() string {
-	return "json_extract(json_doc, path, ...)"
+	return "json_extract"
 }
 
 // Description implements sql.FunctionExpression

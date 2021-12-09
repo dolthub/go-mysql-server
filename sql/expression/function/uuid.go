@@ -127,7 +127,7 @@ func NewIsUUID(arg sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (u IsUUID) FunctionName() string {
-	return "is_uuid(string_uuid)"
+	return "is_uuid"
 }
 
 // Description implements sql.FunctionExpression
@@ -393,7 +393,7 @@ func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (bu BinToUUID) FunctionName() string {
-	return "bin_to_uuid(binary_uuid [, swap_flag])"
+	return "bin_to_uuid"
 }
 
 // Description implements sql.FunctionExpression

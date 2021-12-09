@@ -43,7 +43,7 @@ func NewEmptyGroupConcat() sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (g *GroupConcat) FunctionName() string {
-	return "group_concat(expr)"
+	return "group_concat"
 }
 
 // Description implements sql.FunctionExpression
