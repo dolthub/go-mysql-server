@@ -15,6 +15,8 @@ import (
 type Entry struct {
 	Name string
 	Desc string
+	NumArgs int
+	IsFuncN bool
 }
 
 func main() {
@@ -27,6 +29,7 @@ func main() {
 	funcs = append(function.BuiltIns, function.GetLockingFuncs(nil)...)
 	for _, f := range funcs {
 		var numArgs int
+		isFunctionN := false
 		switch f.(type) {
 		case sql.Function0:
 			numArgs = 0
@@ -38,6 +41,8 @@ func main() {
 			numArgs = 3
 		// TODO: there are no sql.Function 4,5,6,7 yet
 		case sql.FunctionN:
+			// Mark as FunctionN
+			isFunctionN = true
 			// try with no args to get error
 			_, err := f.NewInstance([]sql.Expression{})
 			// use error to get correct arg number
@@ -78,7 +83,7 @@ func main() {
 		}
 
 		fn := _f.(sql.FunctionExpression)
-		entries = append(entries, Entry{f.FunctionName(), fn.Description()})
+		entries = append(entries, Entry{f.FunctionName(), fn.Description(), numArgs, isFunctionN})
 		numSupported++
 	}
 
@@ -120,7 +125,22 @@ func main() {
 	file.WriteString(tableHeader)
 	for _, e := range entries {
 		// TODO: need to include argument types somehow
-		file.WriteString("|`" + strings.ToUpper(e.Name) + "`| " + e.Desc + "|\n")
+		var args string
+		if e.IsFuncN {
+			args = "(...)"
+		} else if e.NumArgs == 0 {
+			args = "()"
+		} else if e.NumArgs == 1 {
+			args = "(expr)"
+		} else {
+			args = "(expr1"
+			for i := 1; i < e.NumArgs; i++ {
+				args += ", "
+				args += "expr" + string((i + 1) + '0')
+			}
+			args += ")"
+		}
+		file.WriteString("|`" + strings.ToUpper(e.Name) + args + "`| " + e.Desc + "|\n")
 	}
 	file.WriteString(postTableString)
 
