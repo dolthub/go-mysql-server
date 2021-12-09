@@ -39,6 +39,11 @@ func (s *Sqrt) FunctionName() string {
 	return "sqrt"
 }
 
+// Description implements sql.FunctionExpression
+func (s *Sqrt) Description() string {
+	return "returns the square root of a nonnegative number X."
+}
+
 func (s *Sqrt) String() string {
 	return fmt.Sprintf("sqrt(%s)", s.Child.String())
 }
@@ -101,6 +106,11 @@ func NewPower(e1, e2 sql.Expression) sql.Expression {
 // FunctionName implements sql.FunctionExpression
 func (p *Power) FunctionName() string {
 	return "power"
+}
+
+// Description implements sql.FunctionExpression
+func (p *Power) Description() string {
+	return "returns the value of X raised to the power of Y."
 }
 
 // Type implements the Expression interface.

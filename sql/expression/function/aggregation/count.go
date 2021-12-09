@@ -44,6 +44,11 @@ func (c *Count) FunctionName() string {
 	return "count"
 }
 
+// Description implements sql.FunctionExpression
+func (c *Count) Description() string {
+	return "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement."
+}
+
 // NewBuffer creates a new buffer for the aggregation.
 func (c *Count) NewBuffer() (sql.AggregationBuffer, error) {
 	bufferChild, err := expression.Clone(c.UnaryExpression.Child)
@@ -143,6 +148,11 @@ func (c *CountDistinct) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 // FunctionName implements sql.FunctionExpression
 func (c *CountDistinct) FunctionName() string {
 	return "count distinct"
+}
+
+// Description implements sql.FunctionExpression
+func (c *CountDistinct) Description() string {
+	return "returns the number of distinct values in a result set."
 }
 
 type countDistinctBuffer struct {

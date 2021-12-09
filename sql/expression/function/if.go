@@ -34,6 +34,11 @@ func (f *If) FunctionName() string {
 	return "if"
 }
 
+// Description implements sql.FunctionExpression
+func (f *If) Description() string {
+	return "if expr1 evaluates to true, retuns expr2. Otherwise returns expr3."
+}
+
 func (f *If) Resolved() bool {
 	return f.expr.Resolved() && f.ifTrue.Resolved() && f.ifFalse.Resolved()
 }

@@ -40,6 +40,11 @@ func (m *Sum) FunctionName() string {
 	return "sum"
 }
 
+// Description implements sql.FunctionExpression
+func (m *Sum) Description() string {
+	return "returns the sum of expr in all rows."
+}
+
 // Type returns the resultant type of the aggregation.
 func (m *Sum) Type() sql.Type {
 	return sql.Float64

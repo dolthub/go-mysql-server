@@ -49,6 +49,11 @@ func (d *DateAdd) FunctionName() string {
 	return "date_add"
 }
 
+// Description implements sql.FunctionExpression
+func (d *DateAdd) Description() string {
+	return "adds the interval to the given date."
+}
+
 // Children implements the sql.Expression interface.
 func (d *DateAdd) Children() []sql.Expression {
 	return []sql.Expression{d.Date, d.Interval}
@@ -131,6 +136,11 @@ func (d *DateSub) FunctionName() string {
 	return "date_sub"
 }
 
+// Description implements sql.FunctionExpression
+func (d *DateSub) Description() string {
+	return "subtracts the interval from the given date."
+}
+
 // Children implements the sql.Expression interface.
 func (d *DateSub) Children() []sql.Expression {
 	return []sql.Expression{d.Date, d.Interval}
@@ -198,6 +208,11 @@ func (t *TimestampConversion) FunctionName() string {
 	return "timestamp"
 }
 
+// Description implements sql.FunctionExpression
+func (t *TimestampConversion) Description() string {
+	return "returns a timestamp value for the expression given (e.g. the string '2020-01-02')."
+}
+
 func (t *TimestampConversion) Resolved() bool {
 	return t.Date == nil || t.Date.Resolved()
 }
@@ -250,6 +265,11 @@ var _ sql.FunctionExpression = (*DatetimeConversion)(nil)
 // FunctionName implements sql.FunctionExpression
 func (t *DatetimeConversion) FunctionName() string {
 	return "datetime"
+}
+
+// Description implements sql.FunctionExpression
+func (t *DatetimeConversion) Description() string {
+	return "returns a DATETIME value for the expression given (e.g. the string '2020-01-02')."
 }
 
 func (t *DatetimeConversion) Resolved() bool {
@@ -318,6 +338,11 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 // FunctionName implements sql.FunctionExpression
 func (ut *UnixTimestamp) FunctionName() string {
 	return "unix_timestamp"
+}
+
+// Description implements sql.FunctionExpression
+func (ut *UnixTimestamp) Description() string {
+	return "returns the datetime argument to the number of seconds since the Unix epoch. With no argument, returns the number of seconds since the Unix epoch for the current time."
 }
 
 func (ut *UnixTimestamp) Children() []sql.Expression {
@@ -391,6 +416,11 @@ func NewFromUnixtime(arg sql.Expression) sql.Expression {
 	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", sql.Datetime)}
 }
 
+// Description implements sql.FunctionExpression
+func (r *FromUnixtime) Description() string {
+	return "formats Unix timestamp as a date."
+}
+
 func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := r.EvalChild(ctx, row)
 	if err != nil {
@@ -421,6 +451,11 @@ type CurrDate struct {
 }
 
 var _ sql.FunctionExpression = CurrDate{}
+
+// Description implements sql.FunctionExpression
+func (c CurrDate) Description() string {
+	return "returns the current date."
+}
 
 func NewCurrDate() sql.Expression {
 	return CurrDate{

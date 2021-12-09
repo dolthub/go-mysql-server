@@ -43,6 +43,11 @@ func (s *Soundex) FunctionName() string {
 	return "soundex"
 }
 
+// Description implements sql.FunctionExpression
+func (s *Soundex) Description() string {
+	return "returns the soundex of a string."
+}
+
 // Eval implements the Expression interface.
 func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	v, err := s.Child.Eval(ctx, row)

@@ -43,6 +43,11 @@ func (f *Split) FunctionName() string {
 	return "split"
 }
 
+// Description implements sql.FunctionExpression
+func (f *Split) Description() string {
+	return "returns the parts of the string str split by the separator sep as a JSON array of strings."
+}
+
 // Eval implements the Expression interface.
 func (f *Split) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	left, err := f.Left.Eval(ctx, row)

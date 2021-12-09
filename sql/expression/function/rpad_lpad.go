@@ -72,6 +72,17 @@ func (p *Pad) FunctionName() string {
 	}
 }
 
+// Description implements sql.FunctionExpression
+func (p *Pad) Description() string {
+	if p.padType == lPadType {
+		return "returns the string str, left-padded with the string padstr to a length of len characters."
+	} else if p.padType == rPadType {
+		return "returns the string str, right-padded with the string padstr to a length of len characters."
+	} else {
+		panic("unknown description for pad type")
+	}
+}
+
 // Children implements the Expression interface.
 func (p *Pad) Children() []sql.Expression {
 	return []sql.Expression{p.str, p.length, p.padStr}
