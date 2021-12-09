@@ -510,7 +510,7 @@ func NewInstr(str, substr sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (i Instr) FunctionName() string {
-	return "instr"
+	return "instr(str, substr)"
 }
 
 // Description implements sql.FunctionExpression

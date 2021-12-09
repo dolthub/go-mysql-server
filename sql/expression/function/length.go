@@ -54,7 +54,7 @@ func NewCharLength(e sql.Expression) sql.Expression {
 // FunctionName implements sql.FunctionExpression
 func (l *Length) FunctionName() string {
 	if l.CountType == NumChars {
-		return "character_length"
+		return "character_length(str)"
 	} else if l.CountType == NumBytes {
 		return "length"
 	} else {

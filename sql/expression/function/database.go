@@ -30,7 +30,7 @@ func NewDatabase() sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (db *Database) FunctionName() string {
-	return "database"
+	return "database()"
 }
 
 // Description implements sql.FunctionExpression

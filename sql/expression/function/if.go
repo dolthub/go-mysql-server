@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*If)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (f *If) FunctionName() string {
-	return "if"
+	return "if(expr1, expr2, expr3)"
 }
 
 // Description implements sql.FunctionExpression

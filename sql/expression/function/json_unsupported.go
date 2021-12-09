@@ -53,12 +53,17 @@ func NewJSONContainsPath(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONContainsPath) FunctionName() string {
-	return "json_contains_path"
+	return "json_contains_path(json_doc, one_or_all, path[, path] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONContainsPath) Description() string {
 	return "returns whether JSON document contains any data at path."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONContainsPath) IsUnsupported() bool {
+	return true
 }
 
 // JSON_KEYS(json_doc[, path])
@@ -84,12 +89,17 @@ func NewJSONKeys(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONKeys) FunctionName() string {
-	return "json_keys"
+	return "json_keys(json_doc[, path])"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONKeys) Description() string {
 	return "array of keys from JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONKeys) IsUnsupported() bool {
+	return true
 }
 
 // JSON_OVERLAPS(json_doc1, json_doc2)
@@ -118,12 +128,17 @@ func NewJSONOverlaps(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONOverlaps) FunctionName() string {
-	return "json_overlaps"
+	return "json_overlaps(json_doc1, json_doc2)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONOverlaps) Description() string {
 	return "compares two JSON documents, returns TRUE (1) if these have any key-value pairs or array elements in common, otherwise FALSE (0)."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONOverlaps) IsUnsupported() bool {
+	return true
 }
 
 // JSON_SEARCH(json_doc, one_or_all, search_str[, escape_char[, path] ...])
@@ -164,12 +179,17 @@ func NewJSONSearch(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSearch) FunctionName() string {
-	return "json_search"
+	return "json_search(json_doc, one_or_all, search_str[, escape_char[, path] ...])"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONSearch) Description() string {
 	return "path to value within JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONSearch) IsUnsupported() bool {
+	return true
 }
 
 // JSON_VALUE(json_doc, path)
@@ -191,12 +211,17 @@ func NewJSONValue(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONValue) FunctionName() string {
-	return "json_value"
+	return "json_value(json_doc, path)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONValue) Description() string {
 	return "extract value from JSON document at location pointed to by path provided; return this value as VARCHAR(512) or specified type."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONValue) IsUnsupported() bool {
+	return true
 }
 
 // value MEMBER OF(json_array)
@@ -231,12 +256,17 @@ func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONArray) FunctionName() string {
-	return "json_array"
+	return "json_array(val [, val] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONArray) Description() string {
 	return "creates JSON array."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONArray) IsUnsupported() bool {
+	return true
 }
 
 // JSON_QUOTE(string)
@@ -262,12 +292,17 @@ func NewJSONQuote(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONQuote) FunctionName() string {
-	return "json_quote"
+	return "json_quote(str)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONQuote) Description() string {
 	return "extracts data from a json document using json paths. Extracting a string will result in that string being quoted. To avoid this, use JSON_UNQUOTE(JSON_EXTRACT(json_doc, path, ...))."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONQuote) IsUnsupported() bool {
+	return true
 }
 
 /////////////////////////////////
@@ -297,12 +332,17 @@ func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONArrayAppend) FunctionName() string {
-	return "json_array_append"
+	return "json_array_append(json_doc, path, val[, path, val] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONArrayAppend) Description() string {
 	return "appends data to JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONArrayAppend) IsUnsupported() bool {
+	return true
 }
 
 // JSON_ARRAY_INSERT(json_doc, path, val[, path, val] ...)
@@ -330,12 +370,17 @@ func NewJSONArrayInsert(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONArrayInsert) FunctionName() string {
-	return "json_array_insert"
+	return "json_array_insert(json_doc, path, val[, path, val] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONArrayInsert) Description() string {
 	return "inserts into JSON array."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONArrayInsert) IsUnsupported() bool {
+	return true
 }
 
 // JSON_INSERT(json_doc, path, val[, path, val] ...)
@@ -365,12 +410,17 @@ func NewJSONInsert(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONInsert) FunctionName() string {
-	return "json_insert"
+	return "json_insert(json_doc, path, val[, path, val] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONInsert) Description() string {
 	return "inserts data into JSON document"
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONInsert) IsUnsupported() bool {
+	return true
 }
 
 // JSON_MERGE_PATCH(json_doc, json_doc[, json_doc] ...)
@@ -411,12 +461,17 @@ func NewJSONMergePatch(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONMergePatch) FunctionName() string {
-	return "json_merge_patch"
+	return "json_merge_patch(json_doc, json_doc[, json_doc] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONMergePatch) Description() string {
 	return "merges JSON documents, replacing values of duplicate keys"
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONMergePatch) IsUnsupported() bool {
+	return true
 }
 
 // JSON_MERGE(json_doc, json_doc[, json_doc] ...)
@@ -463,12 +518,17 @@ func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONMergePreserve) FunctionName() string {
-	return "json_merge_preserve"
+	return "json_merge_preserve(json_doc, json_doc[, json_doc] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONMergePreserve) Description() string {
 	return "merges JSON documents, preserving duplicate keys."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONMergePreserve) IsUnsupported() bool {
+	return true
 }
 
 // JSON_REMOVE(json_doc, path[, path] ...)
@@ -493,12 +553,17 @@ func NewJSONRemove(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONRemove) FunctionName() string {
-	return "json_remove"
+	return "json_remove(json_doc, path[, path] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONRemove) Description() string {
 	return "removes data from JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONRemove) IsUnsupported() bool {
+	return true
 }
 
 // JSON_REPLACE(json_doc, path, val[, path, val] ...)
@@ -524,12 +589,17 @@ func NewJSONReplace(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONReplace) FunctionName() string {
-	return "json_replace"
+	return "json_replace(json_doc, path, val[, path, val] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONReplace) Description() string {
 	return "replaces values in JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONReplace) IsUnsupported() bool {
+	return true
 }
 
 // JSON_SET(json_doc, path, val[, path, val] ...)
@@ -560,12 +630,17 @@ func NewJSONSet(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSet) FunctionName() string {
-	return "json_set"
+	return "json_set(json_doc, path, val[, path, val] ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONSet) Description() string {
 	return "inserts data into JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONSet) IsUnsupported() bool {
+	return true
 }
 
 //////////////////////////////
@@ -593,12 +668,17 @@ func NewJSONDepth(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONDepth) FunctionName() string {
-	return "json_depth"
+	return "json_depth(json_doc)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONDepth) Description() string {
 	return "returns maximum depth of JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONDepth) IsUnsupported() bool {
+	return true
 }
 
 // JSON_LENGTH(json_doc[, path])
@@ -626,12 +706,17 @@ func NewJSONLength(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONLength) FunctionName() string {
-	return "json_length"
+	return "json_length(json_doc[, path])"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONLength) Description() string {
 	return "returns number of elements in JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONLength) IsUnsupported() bool {
+	return true
 }
 
 // JSON_TYPE(json_val)
@@ -653,12 +738,17 @@ func NewJSONType(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONType) FunctionName() string {
-	return "json_type"
+	return "json_type(type_val)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONType) Description() string {
 	return "returns type of JSON value."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONType) IsUnsupported() bool {
+	return true
 }
 
 // JSON_VALID(val)
@@ -679,12 +769,17 @@ func NewJSONValid(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONValid) FunctionName() string {
-	return "json_valid"
+	return "json_valid(val)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONValid) Description() string {
 	return "returns whether JSON value is valid."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONValid) IsUnsupported() bool {
+	return true
 }
 
 //////////////////////////
@@ -710,12 +805,17 @@ func NewJSONTable(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONTable) FunctionName() string {
-	return "json_table"
+	return "json_table(expr, path COLUMNS (column_list) [AS] alias)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONTable) Description() string {
 	return "returns data from a JSON expression as a relational table."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONTable) IsUnsupported() bool {
+	return true
 }
 
 ///////////////////////////////
@@ -741,12 +841,17 @@ func NewJSONSchemaValid(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSchemaValid) FunctionName() string {
-	return "json_schema_valid"
+	return "json_schema_valid(schema, document)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONSchemaValid) Description() string {
 	return "validates JSON document against JSON schema; returns TRUE/1 if document validates against schema, or FALSE/0 if it does not."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONSchemaValid) IsUnsupported() bool {
+	return true
 }
 
 // JSON_SCHEMA_VALIDATION_REPORT(schema,document)
@@ -780,12 +885,17 @@ func NewJSONSchemaValidationReport(args ...sql.Expression) (sql.Expression, erro
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONSchemaValidationReport) FunctionName() string {
-	return "json_schema_validation_report"
+	return "json_schema_validation_report(schema, document)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONSchemaValidationReport) Description() string {
 	return "validates JSON document against JSON schema; returns report in JSON format on outcome on validation including success or failure and reasons for failure."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONSchemaValidationReport) IsUnsupported() bool {
+	return true
 }
 
 ////////////////////////////
@@ -822,12 +932,17 @@ func NewJSONPretty(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONPretty) FunctionName() string {
-	return "json_pretty"
+	return "json_pretty(jsoN_val)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONPretty) Description() string {
 	return "prints a JSON document in human-readable format."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONPretty) IsUnsupported() bool {
+	return true
 }
 
 // JSON_STORAGE_FREE(json_val)
@@ -856,12 +971,17 @@ func NewJSONStorageFree(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONStorageFree) FunctionName() string {
-	return "json_storage_free"
+	return "json_storage_free(json_val)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONStorageFree) Description() string {
 	return "returns freed space within binary representation of JSON column value following partial update."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONStorageFree) IsUnsupported() bool {
+	return true
 }
 
 // JSON_STORAGE_SIZE(json_val)
@@ -888,10 +1008,15 @@ func NewJSONStorageSize(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONStorageSize) FunctionName() string {
-	return "json_storage_size"
+	return "json_storage_size(json_val)"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONStorageSize) Description() string {
 	return "returns space used for storage of binary representation of a JSON document."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONStorageSize) IsUnsupported() bool {
+	return true
 }

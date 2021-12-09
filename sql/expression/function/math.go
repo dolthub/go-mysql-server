@@ -187,6 +187,11 @@ func NewCos(arg sql.Expression) sql.Expression {
 	return &Cos{NewUnaryFunc(arg, "COS", sql.Float64)}
 }
 
+// FunctionName implements sql.FunctionExpression
+func (s *Cos) FunctionName() string {
+	return "expr"
+}
+
 // Description implements sql.FunctionExpression
 func (s *Cos) Description() string {
 	return "returns the cosine of an expression."
@@ -268,14 +273,19 @@ type Asin struct {
 
 var _ sql.FunctionExpression = (*Asin)(nil)
 
-// Description implements sql.FunctionExpression
-func (a *Asin) Description() string {
-	return "returns the arcsin of an expression."
-}
-
 // NewAsin returns a new ASIN function expression
 func NewAsin(arg sql.Expression) sql.Expression {
 	return &Asin{NewUnaryFunc(arg, "ASIN", sql.Float64)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (a *Asin) FunctionName() string {
+	return "asin(expr)"
+}
+
+// Description implements sql.FunctionExpression
+func (a *Asin) Description() string {
+	return "returns the arcsin of an expression."
 }
 
 // Eval implements sql.Expression
@@ -311,14 +321,19 @@ type Acos struct {
 
 var _ sql.FunctionExpression = (*Acos)(nil)
 
-// Description implements sql.FunctionExpression
-func (a *Acos) Description() string {
-	return "returns the arccos of an expression."
-}
-
 // NewAcos returns a new ACOS function expression
 func NewAcos(arg sql.Expression) sql.Expression {
 	return &Acos{NewUnaryFunc(arg, "ACOS", sql.Float64)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (a *Acos) FunctionName() string {
+	return "acos(expr)"
+}
+
+// Description implements sql.FunctionExpression
+func (a *Acos) Description() string {
+	return "returns the arccos of an expression."
 }
 
 // Eval implements sql.Expression
@@ -359,6 +374,11 @@ func NewAtan(arg sql.Expression) sql.Expression {
 	return &Atan{NewUnaryFunc(arg, "ATAN", sql.Float64)}
 }
 
+// FunctionName implements sql.FunctionExpression
+func (a *Atan) FunctionName() string {
+	return "atan(expr)"
+}
+
 // Description implements sql.FunctionExpression
 func (a *Atan) Description() string {
 	return "returns the arctan of an expression."
@@ -397,14 +417,20 @@ type Cot struct {
 
 var _ sql.FunctionExpression = (*Cot)(nil)
 
-// Description implements sql.FunctionExpression
-func (c *Cot) Description() string {
-	return "returns the arctangent of an expression."
-}
 
 // NewCot returns a new COT function expression
 func NewCot(arg sql.Expression) sql.Expression {
 	return &Cot{NewUnaryFunc(arg, "COT", sql.Float64)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *Cot) FunctionName() string {
+	return "cot(expr)"
+}
+
+// Description implements sql.FunctionExpression
+func (c *Cot) Description() string {
+	return "returns the arctangent of an expression."
 }
 
 // Eval implements sql.Expression
@@ -440,14 +466,19 @@ type Degrees struct {
 
 var _ sql.FunctionExpression = (*Degrees)(nil)
 
-// Description implements sql.FunctionExpression
-func (d *Degrees) Description() string {
-	return "returns the number of degrees in the radian expression given."
-}
-
 // NewDegrees returns a new DEGREES function expression
 func NewDegrees(arg sql.Expression) sql.Expression {
 	return &Degrees{NewUnaryFunc(arg, "DEGREES", sql.Float64)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (d *Degrees) FunctionName() string {
+	return "degrees(expr)"
+}
+
+// Description implements sql.FunctionExpression
+func (d *Degrees) Description() string {
+	return "returns the number of degrees in the radian expression given."
 }
 
 // Eval implements sql.Expression
@@ -526,14 +557,19 @@ type Crc32 struct {
 
 var _ sql.FunctionExpression = (*Crc32)(nil)
 
-// Description implements sql.FunctionExpression
-func (c *Crc32) Description() string {
-	return "returns the cyclic redundancy check value of a given string as a 32-bit unsigned value."
-}
-
 // NewCrc32 returns a new CRC32 function expression
 func NewCrc32(arg sql.Expression) sql.Expression {
 	return &Crc32{NewUnaryFunc(arg, "CRC32", sql.Uint32)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c *Crc32) FunctionName() string {
+	return "crc32(expr)"
+}
+
+// Description implements sql.FunctionExpression
+func (c *Crc32) Description() string {
+	return "returns the cyclic redundancy check value of a given string as a 32-bit unsigned value."
 }
 
 // Eval implements sql.Expression

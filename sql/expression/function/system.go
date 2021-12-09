@@ -26,15 +26,20 @@ func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 var _ sql.FunctionExpression = ConnectionID{}
 
-// Description implements sql.FunctionExpression
-func (c ConnectionID) Description() string {
-	return "returns the current connection ID."
-}
-
 func NewConnectionID() sql.Expression {
 	return ConnectionID{
 		NoArgFunc: NoArgFunc{"connection_id", sql.Uint32},
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (c ConnectionID) FunctionName() string {
+	return "connection_id()"
+}
+
+// Description implements sql.FunctionExpression
+func (c ConnectionID) Description() string {
+	return "returns the current connection ID."
 }
 
 // Eval implements sql.Expression
@@ -60,6 +65,11 @@ func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 }
 
 var _ sql.FunctionExpression = User{}
+
+// FunctionName implements sql.FunctionExpression
+func (c User) FunctionName() string {
+	return "current_user()"
+}
 
 // Description implements sql.FunctionExpression
 func (c User) Description() string {

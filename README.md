@@ -92,7 +92,7 @@ examples on how to connect to go-mysql-server using them.
 |`ATAN`| returns the arctan of an expression.|
 |`AVG`| returns the average value of expr in all rows.|
 |`BIN`| returns the binary representation of a number.|
-|`BIN_TO_UUID`| converts a binary UUID to a string UUID and returns the result. The one-argument form takes a binary UUID value. The UUID value is assumed not to have its time-low and time-high parts swapped. The string result is in the same order as the binary argument. The two-argument form takes a binary UUID value and a swap-flag value: If swap_flag is 0, the two-argument form is equivalent to the one-argument form. The string result is in the same order as the binary argument. If swap_flag is 1, the UUID value is assumed to have its time-low and time-high parts swapped. These parts are swapped back to their original position in the result value.|
+|`BIN_TO_UUID`| converts a binary UUID to a string UUID and returns the result.|
 |`BIT_LENGTH`| returns the data length of the argument in bits.|
 |`CEIL`| returns the smallest integer value that is greater than or equal to number.|
 |`CEILING`| returns the smallest integer value that is greater than or equal to number.|
@@ -154,12 +154,6 @@ examples on how to connect to go-mysql-server using them.
 |`IS_USED_LOCK`| returns whether the named lock is in use; return connection identifier if true.|
 |`IS_UUID`| returns whether argument is a valid UUID.|
 |`ISNULL`| returns whether a expr is null or not.|
-|`JSON_ARRAYAGG`| returns result set as a single JSON array.|
-|`JSON_CONTAINS`| returns whether JSON document contains specific object at path.|
-|`JSON_EXTRACT`| returns data from JSON document|
-|`JSON_OBJECT`| creates JSON object.|
-|`JSON_OBJECTAGG`| returns result set as a single JSON object.|
-|`JSON_UNQUOTE`| unquotes JSON value and returns the result as a utf8mb4 string.|
 |`LAST`| returns the last value in a sequence of elements of an aggregation.|
 |`LAST_INSERT_ID`| returns value of the AUTOINCREMENT column for the last INSERT.|
 |`LCASE`| returns the string str with all characters in lower case.|
@@ -225,7 +219,7 @@ examples on how to connect to go-mysql-server using them.
 |`TO_BASE64`| encodes the string str in base64 format.|
 |`UCASE`| converts string to uppercase.|
 |`UNHEX`| returns a string containing hex representation of a number.|
-|`UNIX_TIMESTAMP`| returns the datetime argument to the number of seconds since the Unix epoch. With nor argument, returns the number of execonds since the Unix epoch for the current time.|
+|`UNIX_TIMESTAMP`| returns the datetime argument to the number of seconds since the Unix epoch. With no argument, returns the number of seconds since the Unix epoch for the current time.|
 |`UPPER`| converts string to uppercase.|
 |`USER`| returns the authenticated user name and host name.|
 |`UTC_TIMESTAMP`| returns the current UTC timestamp.|

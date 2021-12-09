@@ -68,12 +68,17 @@ func NewJSONContains(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j *JSONContains) FunctionName() string {
-	return "json_contains"
+	return "json_contains(target, candidate[, path])"
 }
 
 // Description implements sql.FunctionExpression
 func (j *JSONContains) Description() string {
 	return "returns whether JSON document contains specific object at path."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONContains) IsUnsupported() bool {
+	return true
 }
 
 func (j *JSONContains) Resolved() bool {

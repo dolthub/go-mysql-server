@@ -213,7 +213,7 @@ func NewGreatest(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (f *Greatest) FunctionName() string {
-	return "greatest"
+	return "greatest(...)"
 }
 
 // Description implements sql.FunctionExpression

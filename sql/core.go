@@ -67,6 +67,11 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+// UnsupportedFunctionStub is something that is unsupported or not
+type UnsupportedFunctionStub interface {
+	IsUnsupported() bool
+}
+
 // FunctionExpression is an Expression that represents a function.
 type FunctionExpression interface {
 	Expression

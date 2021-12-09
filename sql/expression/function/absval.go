@@ -37,7 +37,7 @@ func NewAbsVal(e sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (t *AbsVal) FunctionName() string {
-	return "abs"
+	return "abs(expr)"
 }
 
 // Description implements sql.FunctionExpression

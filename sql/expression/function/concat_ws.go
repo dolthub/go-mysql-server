@@ -58,7 +58,7 @@ func NewConcatWithSeparator(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (f *ConcatWithSeparator) FunctionName() string {
-	return "concat_ws"
+	return "concat_ws(sep, ...)"
 }
 
 // Description implements sql.FunctionExpression

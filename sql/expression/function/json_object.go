@@ -44,12 +44,17 @@ func NewJSONObject(exprs ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j JSONObject) FunctionName() string {
-	return "json_object"
+	return "json_object([key, val[, key, val] ...])"
 }
 
 // Description implements sql.FunctionExpression
 func (j JSONObject) Description() string {
 	return "creates JSON object."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONObject) IsUnsupported() bool {
+	return true
 }
 
 func (j JSONObject) Resolved() bool {

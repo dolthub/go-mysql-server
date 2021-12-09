@@ -39,12 +39,17 @@ func NewJSONUnquote(json sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (js *JSONUnquote) FunctionName() string {
-	return "json_unquote"
+	return "json_unquote(json_val)"
 }
 
 // Description implements sql.FunctionExpression
 func (js *JSONUnquote) Description() string {
 	return "unquotes JSON value and returns the result as a utf8mb4 string."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (js *JSONUnquote) IsUnsupported() bool {
+	return true
 }
 
 func (js *JSONUnquote) String() string {

@@ -166,7 +166,7 @@ func NewDay(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (d *Day) FunctionName() string {
-	return "day"
+	return "day(date)"
 }
 
 // Description implements sql.FunctionExpression
@@ -247,7 +247,7 @@ func NewHour(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (h *Hour) FunctionName() string {
-	return "hour"
+	return "hour(date)"
 }
 
 // Description implements sql.FunctionExpression
@@ -368,7 +368,7 @@ func NewDayOfWeek(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (d *DayOfWeek) FunctionName() string {
-	return "dayofweek"
+	return "dayofweek(date)"
 }
 
 // Description implements sql.FunctionExpression
@@ -408,7 +408,7 @@ func NewDayOfYear(date sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (d *DayOfYear) FunctionName() string {
-	return "dayofyear"
+	return "dayofyear(date)"
 }
 
 // Description implements sql.FunctionExpression
@@ -964,6 +964,11 @@ type Date struct {
 
 var _ sql.FunctionExpression = (*Date)(nil)
 
+// FunctionName implements sql.FunctionExpression
+func (d *Date) FunctionName() string {
+	return "date(date)"
+}
+
 // Description implements sql.FunctionExpression
 func (d *Date) Description() string {
 	return "returns the date part of the given date."
@@ -972,11 +977,6 @@ func (d *Date) Description() string {
 // NewDate returns a new Date node.
 func NewDate(date sql.Expression) sql.Expression {
 	return &Date{expression.UnaryExpression{Child: date}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (d *Date) FunctionName() string {
-	return "date"
 }
 
 func (d *Date) String() string { return fmt.Sprintf("DATE(%s)", d.Child) }
@@ -1052,13 +1052,18 @@ type DayName struct {
 
 var _ sql.FunctionExpression = (*DayName)(nil)
 
+func NewDayName(arg sql.Expression) sql.Expression {
+	return &DayName{NewUnaryDatetimeFunc(arg, "DAYNAME", sql.Text)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (d *DayName) FunctionName() string {
+	return "dayname(date)"
+}
+
 // Description implements sql.FunctionExpression
 func (d *DayName) Description() string {
 	return "returns the name of the weekday."
-}
-
-func NewDayName(arg sql.Expression) sql.Expression {
-	return &DayName{NewUnaryDatetimeFunc(arg, "DAYNAME", sql.Text)}
 }
 
 func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -1301,6 +1306,11 @@ type CurrTime struct {
 
 var _ sql.FunctionExpression = CurrTime{}
 
+// FunctionName implements sql.FunctionExpression
+func (c CurrTime) FunctionName() string {
+	return "current_time()"
+}
+
 // Description implements sql.FunctionExpression
 func (c CurrTime) Description() string {
 	return "returns the current time."
@@ -1341,6 +1351,11 @@ type CurrTimestamp struct {
 
 var _ sql.FunctionExpression = (*CurrTimestamp)(nil)
 
+// FunctionName implements sql.FunctionExpression
+func (c *CurrTimestamp) FunctionName() string {
+	return "current_timestamp([fsp])"
+}
+
 // Description implements sql.FunctionExpression
 func (c *CurrTimestamp) Description() string {
 	return "returns the current date and time."
@@ -1352,10 +1367,6 @@ func NewCurrTimestamp(args ...sql.Expression) (sql.Expression, error) {
 
 func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	return ctx.QueryTime(), nil
-}
-
-func (c *CurrTimestamp) FunctionName() string {
-	return "current_timestamp"
 }
 
 func (c *CurrTimestamp) String() string {

@@ -43,12 +43,17 @@ func NewJSONExtract(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (j *JSONExtract) FunctionName() string {
-	return "json_extract"
+	return "json_extract(json_doc, path, ...)"
 }
 
 // Description implements sql.FunctionExpression
 func (j *JSONExtract) Description() string {
 	return "returns data from JSON document"
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONExtract) IsUnsupported() bool {
+	return true
 }
 
 // Resolved implements the sql.Expression interface.

@@ -126,7 +126,7 @@ func NewFromBase64(e sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (t *FromBase64) FunctionName() string {
-	return "from_base64"
+	return "from_base64(str)"
 }
 
 // Description implements sql.FunctionExpression

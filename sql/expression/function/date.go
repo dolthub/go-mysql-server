@@ -30,11 +30,6 @@ type DateAdd struct {
 
 var _ sql.FunctionExpression = (*DateAdd)(nil)
 
-// Description implements sql.FunctionExpression
-func (d *DateAdd) Description() string {
-	return "adds the interval to the given date."
-}
-
 // NewDateAdd creates a new date add function.
 func NewDateAdd(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
@@ -51,7 +46,12 @@ func NewDateAdd(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (d *DateAdd) FunctionName() string {
-	return "date_add"
+	return "date_add(date, interval)"
+}
+
+// Description implements sql.FunctionExpression
+func (d *DateAdd) Description() string {
+	return "adds the interval to the given date."
 }
 
 // Children implements the sql.Expression interface.
@@ -117,11 +117,6 @@ type DateSub struct {
 
 var _ sql.FunctionExpression = (*DateSub)(nil)
 
-// Description implements sql.FunctionExpression
-func (d *DateSub) Description() string {
-	return "subtracts the interval from the given date."
-}
-
 // NewDateSub creates a new date add function.
 func NewDateSub(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
@@ -138,7 +133,12 @@ func NewDateSub(args ...sql.Expression) (sql.Expression, error) {
 
 // FunctionName implements sql.FunctionExpression
 func (d *DateSub) FunctionName() string {
-	return "date_sub"
+	return "date_sub(date, interval)"
+}
+
+// Description implements sql.FunctionExpression
+func (d *DateSub) Description() string {
+	return "subtracts the interval from the given date."
 }
 
 // Children implements the sql.Expression interface.
@@ -264,7 +264,7 @@ var _ sql.FunctionExpression = (*DatetimeConversion)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (t *DatetimeConversion) FunctionName() string {
-	return "datetime"
+	return "datetime(expr)"
 }
 
 // Description implements sql.FunctionExpression
@@ -416,6 +416,11 @@ func NewFromUnixtime(arg sql.Expression) sql.Expression {
 	return &FromUnixtime{NewUnaryFunc(arg, "FROM_UNIXTIME", sql.Datetime)}
 }
 
+// FunctionName implements sql.FunctionExpression
+func (r *FromUnixtime) FunctionName() string {
+	return "from_unixtime(unix_timestamp [, format])"
+}
+
 // Description implements sql.FunctionExpression
 func (r *FromUnixtime) Description() string {
 	return "formats Unix timestamp as a date."
@@ -451,6 +456,11 @@ type CurrDate struct {
 }
 
 var _ sql.FunctionExpression = CurrDate{}
+
+// FunctionName implements sql.FunctionExpression
+func (c CurrDate) FunctionName() string {
+	return "curdate()"
+}
 
 // Description implements sql.FunctionExpression
 func (c CurrDate) Description() string {

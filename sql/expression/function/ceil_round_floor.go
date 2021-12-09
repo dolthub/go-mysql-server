@@ -37,7 +37,7 @@ func NewCeil(num sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (c *Ceil) FunctionName() string {
-	return "ceil"
+	return "ceil(number)"
 }
 
 // Description implements sql.FunctionExpression
@@ -115,7 +115,7 @@ func NewFloor(num sql.Expression) sql.Expression {
 
 // FunctionName implements sql.FunctionExpression
 func (f *Floor) FunctionName() string {
-	return "floor"
+	return "floor(number)"
 }
 
 // Description implements sql.FunctionExpression

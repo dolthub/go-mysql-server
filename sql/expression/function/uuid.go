@@ -125,6 +125,11 @@ func NewIsUUID(arg sql.Expression) sql.Expression {
 	return IsUUID{child: arg}
 }
 
+// FunctionName implements sql.FunctionExpression
+func (u IsUUID) FunctionName() string {
+	return "is_uuid(string_uuid)"
+}
+
 // Description implements sql.FunctionExpression
 func (u IsUUID) Description() string {
 	return "returns whether argument is a valid UUID."
@@ -174,10 +179,6 @@ func (u IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	}
 
 	return IsUUID{child: children[0]}, nil
-}
-
-func (u IsUUID) FunctionName() string {
-	return "is_uuid"
 }
 
 func (u IsUUID) Resolved() bool {
@@ -390,6 +391,11 @@ func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	}
 }
 
+// FunctionName implements sql.FunctionExpression
+func (bu BinToUUID) FunctionName() string {
+	return "bin_to_uuid(binary_uuid [, swap_flag])"
+}
+
 // Description implements sql.FunctionExpression
 func (bu BinToUUID) Description() string {
 	return "converts a binary UUID to a string UUID and returns the result."
@@ -481,10 +487,6 @@ func unswapUUIDBytes(cur uuid.UUID) []byte {
 
 func (bu BinToUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewBinToUUID(children...)
-}
-
-func (bu BinToUUID) FunctionName() string {
-	return "bin_to_uuid"
 }
 
 func (bu BinToUUID) Resolved() bool {

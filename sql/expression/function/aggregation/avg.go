@@ -36,7 +36,7 @@ func NewAvg(e sql.Expression) *Avg {
 
 // FunctionName implements sql.FunctionExpression
 func (a *Avg) FunctionName() string {
-	return "avg"
+	return "avg(expr)"
 }
 
 // Description implements sql.FunctionExpression

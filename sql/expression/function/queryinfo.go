@@ -119,6 +119,11 @@ func NewFoundRows() sql.Expression {
 
 var _ sql.FunctionExpression = FoundRows{}
 
+// FunctionName implements sql.FunctionExpression
+func (r FoundRows) FunctionName() string {
+	return "found_rows()"
+}
+
 // Description implements sql.Expression
 func (r FoundRows) Description() string {
 	return "for a SELECT with a LIMIT clause, returns the number of rows that would be returned were there no LIMIT clause."
@@ -157,9 +162,4 @@ func (r FoundRows) Children() []sql.Expression {
 // WithChildren implements sql.Expression
 func (r FoundRows) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return sql.NillaryWithChildren(r, children...)
-}
-
-// FunctionName implements sql.FunctionExpression
-func (r FoundRows) FunctionName() string {
-	return "found_rows"
 }

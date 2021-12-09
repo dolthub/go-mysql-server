@@ -34,13 +34,18 @@ type Ascii struct {
 
 var _ sql.FunctionExpression = (*Ascii)(nil)
 
+func NewAscii(arg sql.Expression) sql.Expression {
+	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (a *Ascii) FunctionName() string {
+	return "ascii(str)"
+}
+
 // Description implements sql.FunctionExpression
 func (a *Ascii) Description() string {
 	return "returns the numeric value of the leftmost character."
-}
-
-func NewAscii(arg sql.Expression) sql.Expression {
-	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
 }
 
 // Eval implements the sql.Expression interface
@@ -91,13 +96,18 @@ type Hex struct {
 
 var _ sql.FunctionExpression = (*Hex)(nil)
 
+func NewHex(arg sql.Expression) sql.Expression {
+	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (h *Hex) FunctionName() string {
+	return "hex(expr)"
+}
+
 // Description implements sql.FunctionExpression
 func (h *Hex) Description() string {
 	return "returns the hexadecimal representation of the string or numeric value."
-}
-
-func NewHex(arg sql.Expression) sql.Expression {
-	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
 }
 
 // Eval implements the sql.Expression interface
@@ -310,13 +320,18 @@ type Bin struct {
 
 var _ sql.FunctionExpression = (*Bin)(nil)
 
+func NewBin(arg sql.Expression) sql.Expression {
+	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (b *Bin) FunctionName() string {
+	return "bin(int)"
+}
+
 // Description implements sql.FunctionExpression
 func (b *Bin) Description() string {
 	return "returns the binary representation of a number."
-}
-
-func NewBin(arg sql.Expression) sql.Expression {
-	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
 }
 
 // Eval implements the sql.Expression interface
@@ -366,13 +381,18 @@ type Bitlength struct {
 
 var _ sql.FunctionExpression = (*Bitlength)(nil)
 
+func NewBitlength(arg sql.Expression) sql.Expression {
+	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (b *Bitlength) FunctionName() string {
+	return "bit_length(str)"
+}
+
 // Description implements sql.FunctionExpression
 func (b *Bitlength) Description() string {
 	return "returns the data length of the argument in bits."
-}
-
-func NewBitlength(arg sql.Expression) sql.Expression {
-	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}
 }
 
 // Eval implements the sql.Expression interface
