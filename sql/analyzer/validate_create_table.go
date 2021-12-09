@@ -29,7 +29,7 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	err := validateAutoIncrement(ct.CreateSchema)
+	err := validateAutoIncrement(ct.CreateSchema.Schema)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func validateAutoIncrement(schema sql.Schema) error {
 
 func validateIndexes(tableSpec *plan.TableSpec) error {
 	lwrNames := make(map[string]bool)
-	for _, col := range tableSpec.Schema {
+	for _, col := range tableSpec.Schema.Schema {
 		lwrNames[strings.ToLower(col.Name)] = true
 	}
 

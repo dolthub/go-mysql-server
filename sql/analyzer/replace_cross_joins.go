@@ -45,6 +45,8 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 		if !ok {
 			return false
 		}
+	default:
+		return false
 	}
 
 	return lCols.Contains(le.Name(), le.Table()) && rCols.Contains(re.Name(), re.Table()) ||

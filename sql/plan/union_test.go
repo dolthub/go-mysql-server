@@ -28,10 +28,10 @@ import (
 func TestUnion(t *testing.T) {
 	require := require.New(t)
 
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
-	}
+	})
 	child := memory.NewTable("test", childSchema)
 	empty := memory.NewTable("empty", childSchema)
 

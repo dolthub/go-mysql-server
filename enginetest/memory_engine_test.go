@@ -438,6 +438,10 @@ func TestCreateDatabase(t *testing.T) {
 	enginetest.TestCreateDatabase(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestPkOrdinals(t *testing.T) {
+	enginetest.TestPkOrdinals(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestDropDatabase(t *testing.T) {
 	enginetest.TestDropDatabase(t, enginetest.NewDefaultMemoryHarness())
 }

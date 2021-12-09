@@ -19,7 +19,7 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	// Get the correct schema of the CREATE TABLE based on the select query
 	inputSpec := ct.TableSpec()
 	selectSchema := analyzedSelect.Schema()
-	mergedSchema := mergeSchemas(inputSpec.Schema, selectSchema)
+	mergedSchema := mergeSchemas(inputSpec.Schema.Schema, selectSchema)
 	newSch := make(sql.Schema, len(mergedSchema))
 
 	for i, col := range mergedSchema {
@@ -28,7 +28,14 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		newSch[i] = &tempCol
 	}
 
-	newSpec := inputSpec.WithSchema(newSch)
+	pkOrdinals := make([]int, 0)
+	for i, col := range newSch {
+		if col.PrimaryKey {
+			pkOrdinals = append(pkOrdinals, i)
+		}
+	}
+
+	newSpec := inputSpec.WithSchema(sql.NewPrimaryKeySchema(newSch, pkOrdinals...))
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
 	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)

@@ -11,16 +11,16 @@ import (
 )
 
 func TestConvertCrossJoin(t *testing.T) {
-	tableA := memory.NewTable("a", sql.Schema{
+	tableA := memory.NewTable("a", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: sql.Int64, Source: "a"},
 		{Name: "y", Type: sql.Int64, Source: "a"},
 		{Name: "z", Type: sql.Int64, Source: "a"},
-	})
-	tableB := memory.NewTable("b", sql.Schema{
+	}))
+	tableB := memory.NewTable("b", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: sql.Int64, Source: "b"},
 		{Name: "y", Type: sql.Int64, Source: "b"},
 		{Name: "z", Type: sql.Int64, Source: "b"},
-	})
+	}))
 
 	fieldAx := expression.NewGetFieldWithTable(0, sql.Int64, "a", "x", false)
 	fieldBy := expression.NewGetFieldWithTable(0, sql.Int64, "b", "y", false)

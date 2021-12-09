@@ -654,6 +654,11 @@ func (c *Context) Pid() uint64 { return c.pid }
 // Query returns the query string associated with this context.
 func (c *Context) Query() string { return c.query }
 
+func (c Context) WithQuery(q string) *Context {
+	c.query = q
+	return &c
+}
+
 // QueryTime returns the time.Time when the context associated with this query was created
 func (c *Context) QueryTime() time.Time {
 	return c.queryTime

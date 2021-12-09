@@ -29,7 +29,7 @@ func TestResolveTables(t *testing.T) {
 	require := require.New(t)
 	f := getRule("resolve_tables")
 
-	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewHistoryDatabase("mydb")
 	db.AddTableAsOf("mytable", table, "2019-01-01")
 
@@ -79,7 +79,7 @@ func TestResolveTablesNoCurrentDB(t *testing.T) {
 	require := require.New(t)
 	f := getRule("resolve_tables")
 
-	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 
@@ -107,8 +107,8 @@ func TestResolveTablesNested(t *testing.T) {
 
 	f := getRule("resolve_tables")
 
-	table := memory.NewTable("mytable", sql.Schema{{Name: "i", Type: sql.Int32}})
-	table2 := memory.NewTable("my_other_table", sql.Schema{{Name: "i", Type: sql.Int32}})
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
+	table2 := memory.NewTable("my_other_table", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
 

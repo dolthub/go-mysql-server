@@ -61,10 +61,10 @@ func checkIfError(err error) {
 
 func createTestDatabase() sql.Database {
 	db := memory.NewDatabase("test")
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Source: "mytable"},
 		{Name: "email", Type: sql.Text, Source: "mytable"},
-	})
+	}))
 	db.AddTable("mytable", table)
 	ctx := sql.NewEmptyContext()
 

@@ -15,8 +15,8 @@
 package parse
 
 import (
+	goerrors "errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -37,13 +37,8 @@ var (
 	errInvalidDescribeFormat = errors.NewKind("invalid format %q for DESCRIBE, supported formats: %s")
 
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
-)
 
-var (
-	showVariablesRegex   = regexp.MustCompile(`^show\s+(.*)?variables\s*`)
-	showWarningsRegex    = regexp.MustCompile(`^show\s+warnings\s*`)
-	fullProcessListRegex = regexp.MustCompile(`^show\s+(full\s+)?processlist$`)
-	setRegex             = regexp.MustCompile(`^set\s+`)
+	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -86,6 +81,15 @@ func mustCastNumToInt64(x interface{}) int64 {
 
 // Parse parses the given SQL sentence and returns the corresponding node.
 func Parse(ctx *sql.Context, query string) (sql.Node, error) {
+	n, _, _, err := parse(ctx, query, false)
+	return n, err
+}
+
+func ParseOne(ctx *sql.Context, query string) (sql.Node, string, string, error) {
+	return parse(ctx, query, true)
+}
+
+func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string, error) {
 	span, ctx := ctx.Span("parse", opentracing.Tag{Key: "query", Value: query})
 	defer span.Finish()
 
@@ -94,30 +98,38 @@ func Parse(ctx *sql.Context, query string) (sql.Node, error) {
 		s = s[:len(s)-1]
 	}
 
-	lowerQuery := strings.ToLower(s)
+	var stmt sqlparser.Statement
+	var err error
+	var parsed string
+	var remainder string
 
-	// TODO: get rid of all these custom parser options
-	switch true {
-	case showVariablesRegex.MatchString(lowerQuery):
-		return parseShowVariables(ctx, s)
-	case showWarningsRegex.MatchString(lowerQuery):
-		return parseShowWarnings(ctx, s)
-	case fullProcessListRegex.MatchString(lowerQuery):
-		return plan.NewShowProcessList(), nil
-	case setRegex.MatchString(lowerQuery):
-		s = fixSetQuery(s)
-	}
-
-	stmt, err := sqlparser.Parse(s)
-	if err != nil {
-		if err.Error() == "empty statement" {
-			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-			return plan.Nothing, nil
+	parsed = s
+	if !multi {
+		stmt, err = sqlparser.Parse(s)
+	} else {
+		var ri int
+		stmt, ri, err = sqlparser.ParseOne(s)
+		if ri != 0 && ri < len(s) {
+			parsed = s[:ri]
+			parsed = strings.TrimSpace(parsed)
+			if strings.HasSuffix(parsed, ";") {
+				parsed = parsed[:len(parsed)-1]
+			}
+			remainder = s[ri:]
 		}
-		return nil, sql.ErrSyntaxError.New(err.Error())
 	}
 
-	return convert(ctx, stmt, s)
+	if err != nil {
+		if goerrors.Is(err, sqlparser.ErrEmpty) {
+			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
+			return plan.Nothing, parsed, remainder, nil
+		}
+		return nil, parsed, remainder, sql.ErrSyntaxError.New(err.Error())
+	}
+
+	node, err := convert(ctx, stmt, s)
+
+	return node, parsed, remainder, err
 }
 
 // ParseColumnTypeString will return a SQL type for the given string that represents a column type.
@@ -138,7 +150,7 @@ func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error
 		return nil, fmt.Errorf("expected translation from type string to sql type has returned an unexpected result")
 	}
 	// If we successfully created a CreateTable plan with an empty schema then something has gone horribly wrong, so we'll panic
-	return ddl.CreateSchema[0].Type, nil
+	return ddl.CreateSchema.Schema[0].Type, nil
 }
 
 func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node, error) {
@@ -174,6 +186,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDBDDL(n)
 	case *sqlparser.Explain:
 		return convertExplain(ctx, n)
+	case *sqlparser.ShowGrants:
+		return plan.NewShowGrants(), nil
 	case *sqlparser.Insert:
 		return convertInsert(ctx, n)
 	case *sqlparser.Delete:
@@ -387,6 +401,8 @@ func isCharset(exprs sqlparser.SetVarExprs) bool {
 func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, error) {
 	showType := strings.ToLower(s.Type)
 	switch showType {
+	case "processlist":
+		return plan.NewShowProcessList(), nil
 	case "create table", "create view":
 		return plan.NewShowCreateTable(
 			tableNameToUnresolvedTable(s.Table),
@@ -402,8 +418,6 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
 			s.Table.Name.String(),
 		), nil
-	case "grants":
-		return plan.NewShowGrants(), nil
 	case "triggers":
 		var dbName string
 		var filter sql.Expression
@@ -459,6 +473,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
+	case sqlparser.KeywordString(sqlparser.VARIABLES):
+		var likepattern string
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				unsupportedShow := fmt.Sprintf("SHOW VARIABLES WHERE ...")
+				return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
+			}
+			likepattern = s.Filter.Like
+		}
+		return plan.NewShowVariables(likepattern), nil
 	case sqlparser.KeywordString(sqlparser.TABLES):
 		var dbName string
 		var filter sql.Expression
@@ -467,7 +491,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		if s.ShowTablesOpt != nil {
 			dbName = s.ShowTablesOpt.DbName
-			full = s.ShowTablesOpt.Full != ""
+			full = s.Full
 
 			if s.ShowTablesOpt.Filter != nil {
 				if s.ShowTablesOpt.Filter.Filter != nil {
@@ -505,7 +529,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
 		table := tableNameToUnresolvedTable(s.OnTable)
-		full := s.ShowTablesOpt != nil && s.ShowTablesOpt.Full != ""
+		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
 
@@ -533,6 +557,28 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 		}
 
+		return node, nil
+	case sqlparser.KeywordString(sqlparser.WARNINGS):
+		if s.CountStar {
+			unsupportedShow := fmt.Sprintf("SHOW COUNT(*) WARNINGS")
+			return nil, sql.ErrUnsupportedFeature.New(unsupportedShow)
+		}
+		var node sql.Node
+		var err error
+		node = plan.ShowWarnings(ctx.Session.Warnings())
+		if s.Limit != nil {
+			if s.Limit.Offset != nil {
+				node, err = offsetToOffset(ctx, s.Limit.Offset, node)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			node, err = limitToLimit(ctx, s.Limit.Rowcount, node)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return node, nil
 	case "table status":
 		return convertShowTableStatus(ctx, s)
@@ -1105,7 +1151,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewAddColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewAddColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		case sqlparser.DropStr:
 			return plan.NewDropColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
 		case sqlparser.RenameStr:
@@ -1115,7 +1161,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewModifyColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewModifyColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		}
 	}
 	if ddl.AutoIncSpec != nil {
@@ -1316,11 +1362,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		return plan.NewCreateTableSelect(sql.UnresolvedDatabase(c.Table.Qualifier.String()), c.Table.Name.String(), selectNode, tableSpec, plan.IfNotExistsOption(c.IfNotExists), plan.TempTableOption(c.Temporary)), nil
 	}
 
-	schema, err := TableSpecToSchema(nil, c.TableSpec)
-	if err != nil {
-		return nil, err
-	}
-
 	var fkDefs []*sql.ForeignKeyConstraint
 	var chDefs []*sql.CheckConstraint
 	for _, unknownConstraint := range c.TableSpec.Constraints {
@@ -1400,6 +1441,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	qualifier := c.Table.Qualifier.String()
+
+	schema, err := TableSpecToSchema(nil, c.TableSpec)
+	if err != nil {
+		return nil, err
+	}
 
 	tableSpec := &plan.TableSpec{
 		Schema:  schema,
@@ -1666,19 +1712,51 @@ func convertLoad(ctx *sql.Context, d *sqlparser.Load) (sql.Node, error) {
 	return plan.NewInsertInto(sql.UnresolvedDatabase(d.Table.Qualifier.String()), tableNameToUnresolvedTable(d.Table), ld, false, ld.ColumnNames, nil, false), nil
 }
 
+func getPkOrdinals(ts *sqlparser.TableSpec) []int {
+	for _, idxDef := range ts.Indexes {
+		if idxDef.Info.Primary {
+
+			pkOrdinals := make([]int, 0)
+			colIdx := make(map[string]int)
+			for i := 0; i < len(ts.Columns); i++ {
+				colIdx[ts.Columns[i].Name.Lowered()] = i
+			}
+
+			for _, i := range idxDef.Columns {
+				pkOrdinals = append(pkOrdinals, colIdx[i.Column.Lowered()])
+			}
+
+			return pkOrdinals
+		}
+	}
+
+	// no primary key expression, check for inline PK column
+	for i, col := range ts.Columns {
+		if col.Type.KeyOpt == colKeyPrimary {
+			return []int{i}
+		}
+	}
+
+	return []int{}
+}
+
 // TableSpecToSchema creates a sql.Schema from a parsed TableSpec
-func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.Schema, error) {
+func TableSpecToSchema(ctx *sql.Context, tableSpec *sqlparser.TableSpec) (sql.PrimaryKeySchema, error) {
 	var schema sql.Schema
 	for _, cd := range tableSpec.Columns {
 		column, err := columnDefinitionToColumn(ctx, cd, tableSpec.Indexes)
 		if err != nil {
-			return nil, err
+			return sql.PrimaryKeySchema{}, err
+		}
+
+		if column.PrimaryKey && bool(cd.Type.Null) {
+			return sql.PrimaryKeySchema{}, ErrPrimaryKeyOnNullField.New()
 		}
 
 		schema = append(schema, column)
 	}
 
-	return schema, nil
+	return sql.NewPrimaryKeySchema(schema, getPkOrdinals(tableSpec)...), nil
 }
 
 // columnDefinitionToColumn returns the sql.Column for the column definition given, as part of a create table statement.
@@ -2960,13 +3038,4 @@ func convertShowTableStatus(ctx *sql.Context, s *sqlparser.Show) (sql.Node, erro
 	}
 
 	return node, nil
-}
-
-var fixSessionRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(SESSION|session)\s+([a-zA-Z0-9_]+)\s*=`)
-var fixGlobalRegex = regexp.MustCompile(`(,\s*|(set|SET)\s+)(GLOBAL|global)\s+([a-zA-Z0-9_]+)\s*=`)
-
-func fixSetQuery(s string) string {
-	s = fixSessionRegex.ReplaceAllString(s, `$1@@session.$4 =`)
-	s = fixGlobalRegex.ReplaceAllString(s, `$1@@global.$4 =`)
-	return s
 }

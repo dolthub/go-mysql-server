@@ -394,6 +394,7 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 // ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema
 // with the default values parsed and resolved.
 func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Schema, error) {
+	// todo: change this function or thread a context
 	ctx := sql.NewEmptyContext()
 	db := plan.NewDummyResolvedDB("temporary")
 	e := NewDefault(memory.NewMemoryDBProvider(db))
@@ -417,7 +418,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	}
 
 	// *plan.CreateTable properly handles resolving default values, so we hijack it
-	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: unresolvedSchema})
+	createTable := plan.NewCreateTable(db, tableName, false, false, &plan.TableSpec{Schema: sql.NewPrimaryKeySchema(unresolvedSchema)})
 
 	analyzed, err := e.Analyzer.Analyze(ctx, createTable, nil)
 	if err != nil {
@@ -434,5 +435,5 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
 	}
 
-	return analyzedCreateTable.CreateSchema, nil
+	return analyzedCreateTable.CreateSchema.Schema, nil
 }

@@ -47,6 +47,20 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM one_pk_two_idx WHERE v1 < 2 AND v2 IS NOT NULL`,
+		ExpectedPlan: "Filter((one_pk_two_idx.v1 < 2) AND (NOT(one_pk_two_idx.v2 IS NULL)))\n" +
+			" └─ Projected table access on [pk v1 v2]\n" +
+			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk_two_idx WHERE v1 IN (1, 2) AND v2 <= 2`,
+		ExpectedPlan: "Filter((one_pk_two_idx.v1 HASH IN (1, 2)) AND (one_pk_two_idx.v2 <= 2))\n" +
+			" └─ Projected table access on [pk v1 v2]\n" +
+			"     └─ IndexedTableAccess(one_pk_two_idx on [one_pk_two_idx.v1,one_pk_two_idx.v2])\n" +
+			"",
+	},
+	{
 		Query: `SELECT * FROM one_pk_three_idx WHERE v1 > 2 AND v2 = 3`,
 		ExpectedPlan: "Filter((one_pk_three_idx.v1 > 2) AND (one_pk_three_idx.v2 = 3))\n" +
 			" └─ Projected table access on [pk v1 v2 v3]\n" +
@@ -485,6 +499,126 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
+		ExpectedPlan: "Filter(mytable.i HASH IN (NULL, 2, 3, 4))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: `SELECT * FROM mytable WHERE i in (1+2)`,
+		ExpectedPlan: "Filter(mytable.i HASH IN (3))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')",
+		ExpectedPlan: "Filter(UPPER(mytable.s) HASH IN (\"FIRST ROW\", \"SECOND ROW\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where cast(i as CHAR) IN ('a', 'b')",
+		ExpectedPlan: "Filter(convert(mytable.i, char) HASH IN (\"a\", \"b\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where cast(i as CHAR) IN ('1', '2')",
+		ExpectedPlan: "Filter(convert(mytable.i, char) HASH IN (\"1\", \"2\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i > 2) IN (true)",
+		ExpectedPlan: "Filter((mytable.i > 2) HASH IN (true))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i + 6) IN (7, 8)",
+		ExpectedPlan: "Filter((mytable.i + 6) HASH IN (7, 8))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i + 40) IN (7, 8)",
+		ExpectedPlan: "Filter((mytable.i + 40) HASH IN (7, 8))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		// TODO: indexed access
+		Query: "SELECT * from mytable where (i = 1 | false) IN (true)",
+		ExpectedPlan: "Filter((mytable.i = 1) HASH IN (true))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable where (i = 1 & false) IN (true)",
+		ExpectedPlan: "Filter((mytable.i = 0) HASH IN (true))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (2*i)`,
+		ExpectedPlan: "Filter(mytable.i IN ((2 * mytable.i)))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM mytable WHERE i in (i)`,
+		ExpectedPlan: "Filter(mytable.i IN (mytable.i))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable WHERE 4 IN (i + 2)",
+		ExpectedPlan: "Filter(4 IN ((mytable.i + 2)))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
+		ExpectedPlan: "Filter(mytable.s HASH IN (\"first row\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')",
+		ExpectedPlan: "Filter(mytable.s HASH IN (\"second row\", \"FIRST ROW\"))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.s])\n" +
+			"",
+	},
+	{
+		Query: "SELECT * from mytable where true IN (i > 3)",
+		ExpectedPlan: "Filter(true IN ((mytable.i > 3)))\n" +
+			" └─ Projected table access on [i s]\n" +
+			"     └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
 		ExpectedPlan: "Project(a.i, a.s)\n" +
 			" └─ IndexedJoin(a.i = b.i)\n" +
@@ -550,6 +684,18 @@ var PlanTests = []QueryPlanTest{
 			"     │   └─ Projected table access on [i s]\n" +
 			"     │       └─ TableAlias(a)\n" +
 			"     │           └─ Table(mytable)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
+		ExpectedPlan: "Project(a.i, a.s)\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ Filter(a.i HASH IN (2, 432, 7))\n" +
+			"     │   └─ Projected table access on [i s]\n" +
+			"     │       └─ TableAlias(a)\n" +
+			"     │           └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ Table(mytable)\n" +
 			"",
@@ -1811,6 +1957,48 @@ var PlanTests = []QueryPlanTest{
 			"                 │   └─ Projected table access on [pk1 pk2 c1 c2 c3 c4 c5]\n" +
 			"                 │       └─ Table(two_pk)\n" +
 			"                 └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
+		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+			" └─ IndexedJoin(a.y = b.z)\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table(invert_pk)\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
+		ExpectedPlan: "Project(a.x, a.y, a.z)\n" +
+			" └─ IndexedJoin(a.y = b.z)\n" +
+			"     ├─ TableAlias(b)\n" +
+			"     │   └─ Table(invert_pk)\n" +
+			"     └─ Filter(a.z = 2)\n" +
+			"         └─ TableAlias(a)\n" +
+			"             └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y = 0`,
+		ExpectedPlan: "Filter(invert_pk.y = 0)\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
+		ExpectedPlan: "Filter(invert_pk.y >= 0)\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
+		ExpectedPlan: "Filter((invert_pk.y >= 0) AND (invert_pk.z < 1))\n" +
+			" └─ Projected table access on [x y z]\n" +
+			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
 			"",
 	},
 }

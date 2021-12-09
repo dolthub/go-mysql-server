@@ -153,7 +153,7 @@ func (d *BaseDatabase) AddTable(name string, t sql.Table) {
 }
 
 // CreateTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Schema) error {
+func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema) error {
 	_, ok := d.tables[name]
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)

@@ -1225,6 +1225,70 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{false}},
 	},
 	{
+		Query:    `SELECT * FROM mytable WHERE i in (CAST(NULL AS SIGNED), 2, 3, 4)`,
+		Expected: []sql.Row{{3, "third row"}, {2, "second row"}},
+	},
+	{
+		Query:    `SELECT * FROM mytable WHERE i in (1+2)`,
+		Expected: []sql.Row{{3, "third row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where cast(i as CHAR) IN ('a', 'b')",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * from mytable where cast(i as CHAR) IN ('1', '2')",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i > 2) IN (true)",
+		Expected: []sql.Row{{3, "third row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i + 6) IN (7, 8)",
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i + 40) IN (7, 8)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT * from mytable where (i = 1 | false) IN (true)",
+		Expected: []sql.Row{{1, "first row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where (i = 1 & false) IN (true)",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM mytable WHERE i in (2*i)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM mytable WHERE i in (i)`,
+		Expected: []sql.Row{{1, "first row"}, {2, "second row"}, {3, "third row"}},
+	},
+	{
+		Query:    "SELECT * from mytable WHERE 4 IN (i + 2)",
+		Expected: []sql.Row{{2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
+		Expected: []sql.Row{{1, "first row"}},
+	},
+	{
+		Query:    "SELECT * from mytable WHERE s IN (lower('SECOND ROW'), 'FIRST ROW')",
+		Expected: []sql.Row{{2, "second row"}},
+	},
+	{
+		Query:    "SELECT * from mytable where true IN (i > 2)",
+		Expected: []sql.Row{{3, "third row"}},
+	},
+	{
 		Query:    "SELECT (1,2) in ((0,1), (1,0), (1,2))",
 		Expected: []sql.Row{{true}},
 	},
@@ -3245,13 +3309,13 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW VARIABLES LIKE 'gtid_mode`,
+		Query: `SHOW VARIABLES LIKE 'gtid_mode'`,
 		Expected: []sql.Row{
 			{"gtid_mode", "OFF"},
 		},
 	},
 	{
-		Query: `SHOW VARIABLES LIKE 'gtid%`,
+		Query: `SHOW VARIABLES LIKE 'gtid%'`,
 		Expected: []sql.Row{
 			{"gtid_executed", ""},
 			{"gtid_executed_compression_period", int64(0)},
@@ -3262,7 +3326,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SHOW GLOBAL VARIABLES LIKE '%mode`,
+		Query: `SHOW GLOBAL VARIABLES LIKE '%mode'`,
 		Expected: []sql.Row{
 			{"block_encryption_mode", "aes-128-ecb"},
 			{"gtid_mode", "OFF"},
@@ -5858,6 +5922,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query: `SELECT a.* FROM mytable a, mytable b where a.i in (2, 432, 7)`,
+		Expected: []sql.Row{
+			{2, "second row"},
+			{2, "second row"},
+			{2, "second row"},
+		},
+	},
+	{
 		Query: `SELECT a.* FROM mytable a, mytable b, mytable c, mytable d where a.i = b.i AND b.i = c.i AND c.i = d.i AND c.i = 2`,
 		Expected: []sql.Row{
 			{2, "second row"},
@@ -5943,6 +6015,40 @@ var QueryTests = []QueryTest{
 			{1, "first row"},
 			{2, "second row"},
 			{3, "third row"},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z`,
+		Expected: []sql.Row{
+			{1, 1, 0},
+			{2, 0, 1},
+			{0, 2, 2},
+		},
+	},
+	{
+		Query: `SELECT a.* FROM invert_pk as a, invert_pk as b WHERE a.y = b.z AND a.z = 2`,
+		Expected: []sql.Row{
+			{0, 2, 2},
+		},
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y = 0`,
+		Expected: []sql.Row{
+			{2, 0, 1},
+		},
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0`,
+		Expected: []sql.Row{
+			{2, 0, 1},
+			{0, 2, 2},
+			{1, 1, 0},
+		},
+	},
+	{
+		Query: `SELECT * FROM invert_pk WHERE y >= 0 AND z < 1`,
+		Expected: []sql.Row{
+			{1, 1, 0},
 		},
 	},
 }
@@ -6390,10 +6496,12 @@ var InfoSchemaQueries = []QueryTest{
 			{"newlinetable"},
 			{"niltable"},
 			{"one_pk_three_idx"},
+			{"one_pk_two_idx"},
 			{"othertable"},
 			{"tabletest"},
 			{"people"},
 			{"datetime_table"},
+			{"invert_pk"},
 		},
 	},
 	{
@@ -6408,10 +6516,12 @@ var InfoSchemaQueries = []QueryTest{
 			{"newlinetable", "BASE TABLE"},
 			{"niltable", "BASE TABLE"},
 			{"one_pk_three_idx", "BASE TABLE"},
+			{"one_pk_two_idx", "BASE TABLE"},
 			{"othertable", "BASE TABLE"},
 			{"tabletest", "BASE TABLE"},
 			{"people", "BASE TABLE"},
 			{"datetime_table", "BASE TABLE"},
+			{"invert_pk", "BASE TABLE"},
 		},
 	},
 	{
@@ -6531,11 +6641,13 @@ var InfoSchemaQueries = []QueryTest{
 			{"datetime_table"},
 			{"fk_tbl"},
 			{"floattable"},
+			{"invert_pk"},
 			{"mytable"},
 			{"myview"},
 			{"newlinetable"},
 			{"niltable"},
 			{"one_pk_three_idx"},
+			{"one_pk_two_idx"},
 			{"othertable"},
 			{"people"},
 			{"tabletest"},
@@ -6677,10 +6789,12 @@ var InfoSchemaQueries = []QueryTest{
 			{"datetime_table", nil},
 			{"fk_tbl", nil},
 			{"floattable", nil},
+			{"invert_pk", nil},
 			{"mytable", nil},
 			{"newlinetable", nil},
 			{"niltable", nil},
 			{"one_pk_three_idx", nil},
+			{"one_pk_two_idx", nil},
 			{"othertable", nil},
 			{"people", nil},
 			{"tabletest", nil},
@@ -6701,11 +6815,13 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "fk1", "mydb", "fk_tbl", "FOREIGN KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "floattable", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "invert_pk", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "one_pk_three_idx", "PRIMARY KEY", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "one_pk_two_idx", "PRIMARY KEY", "YES"},
 			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "othertable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "people", "PRIMARY KEY", "YES"},
@@ -6727,11 +6843,15 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "floattable", "i", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "y", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "z", 2, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "x", 3, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "mytable_s", "def", "mydb", "mytable", "s", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "newlinetable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "niltable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "one_pk_three_idx", "pk", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "one_pk_two_idx", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "othertable", "i2", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "dob", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "people", "first_name", 2, nil, nil, nil, nil},
@@ -7432,6 +7552,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"one_pk_two_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(24), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
@@ -7441,6 +7562,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
@@ -7473,6 +7595,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"one_pk_two_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(24), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"tabletest", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"bigtable", "InnoDB", "10", "Fixed", uint64(14), uint64(65540), uint64(917560), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
@@ -7482,6 +7605,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{

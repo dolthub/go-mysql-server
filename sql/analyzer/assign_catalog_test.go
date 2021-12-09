@@ -35,7 +35,7 @@ func TestAssignCatalog(t *testing.T) {
 	a := NewDefault(provider)
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("foo")
 
-	tbl := memory.NewTable("foo", nil)
+	tbl := memory.NewTable("foo", sql.PrimaryKeySchema{})
 
 	node, err := f.Apply(ctx, a,
 		plan.NewCreateIndex("", plan.NewResolvedTable(tbl, nil, nil), nil, "", make(map[string]string)), nil)

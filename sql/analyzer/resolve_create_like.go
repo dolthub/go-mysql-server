@@ -72,8 +72,13 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		newSch[i] = &tempCol
 	}
 
+	var pkOrdinals []int
+	if pkTable, ok := likeTable.(sql.PrimaryKeyTable); ok {
+		pkOrdinals = pkTable.PrimaryKeySchema().PkOrdinals
+	}
+
 	tableSpec := &plan.TableSpec{
-		Schema:  newSch,
+		Schema:  sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
 		IdxDefs: idxDefs,
 	}
 

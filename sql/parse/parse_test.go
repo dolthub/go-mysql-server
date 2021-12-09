@@ -52,7 +52,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:     "a",
 				Type:     sql.Int32,
 				Nullable: true,
@@ -84,7 +84,7 @@ var fixtures = map[string]sql.Node{
 				Name:     "h",
 				Type:     sql.MustCreateStringWithDefaults(sqltypes.Char, 40),
 				Nullable: true,
-			}},
+			}}),
 		},
 	),
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY, b TEXT)`: plan.NewCreateTable(
@@ -93,7 +93,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -103,7 +103,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Text,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 		},
 	),
 	`CREATE TABLE t1(a INTEGER NOT NULL PRIMARY KEY COMMENT "hello", b TEXT COMMENT "goodbye")`: plan.NewCreateTable(
@@ -112,7 +112,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -124,7 +124,7 @@ var fixtures = map[string]sql.Node{
 				Nullable:   true,
 				PrimaryKey: false,
 				Comment:    "goodbye",
-			}},
+			}}),
 		},
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a))`: plan.NewCreateTable(
@@ -133,7 +133,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -143,7 +143,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Text,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition {
 				{
 					IndexName:  "PRIMARY",
@@ -161,7 +161,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -171,7 +171,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Text,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition {
 				{
 					IndexName:  "PRIMARY",
@@ -190,7 +190,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -200,7 +200,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Text,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition {
 				{
 					IndexName:  "PRIMARY",
@@ -219,7 +219,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -229,7 +229,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition {
 				{
 					IndexName:  "pk",
@@ -254,7 +254,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExists,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -264,7 +264,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Text,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition {
 				{
 					IndexName:  "PRIMARY",
@@ -283,7 +283,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -293,7 +293,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition{
 				{
 					IndexName:  "",
@@ -311,7 +311,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -321,7 +321,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition{{
 				IndexName:  "idx_name",
 				Using:      sql.IndexUsing_Default,
@@ -337,7 +337,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -347,7 +347,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition{{
 				IndexName:  "idx_name",
 				Using:      sql.IndexUsing_Default,
@@ -363,7 +363,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -373,7 +373,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition{{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -389,7 +389,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -399,7 +399,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition{{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -415,7 +415,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -425,7 +425,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition{{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -441,7 +441,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -451,7 +451,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			IdxDefs: []*plan.IndexDefinition{{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -473,7 +473,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -483,7 +483,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			FkDefs: []*sql.ForeignKeyConstraint{{
 				Name:              "",
 				Columns:           []string{"b_id"},
@@ -500,7 +500,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -510,7 +510,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			FkDefs: []*sql.ForeignKeyConstraint{{
 				Name:              "fk_name",
 				Columns:           []string{"b_id"},
@@ -527,7 +527,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -537,7 +537,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			FkDefs: []*sql.ForeignKeyConstraint{{
 				Name:              "",
 				Columns:           []string{"b_id"},
@@ -554,7 +554,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -564,7 +564,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			FkDefs: []*sql.ForeignKeyConstraint{{
 				Name:              "",
 				Columns:           []string{"b_id"},
@@ -581,7 +581,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -591,7 +591,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int32,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 
 			FkDefs: []*sql.ForeignKeyConstraint{{
 				Name:              "",
@@ -609,7 +609,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -624,7 +624,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int64,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			FkDefs: []*sql.ForeignKeyConstraint{{
 				Name:              "",
 				Columns:           []string{"b_id", "c_id"},
@@ -641,7 +641,7 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
@@ -656,7 +656,7 @@ var fixtures = map[string]sql.Node{
 				Type:       sql.Int64,
 				Nullable:   true,
 				PrimaryKey: false,
-			}},
+			}}),
 			FkDefs: []*sql.ForeignKeyConstraint{{
 				Name:              "fk_name",
 				Columns:           []string{"b_id", "c_id"},
@@ -673,12 +673,12 @@ var fixtures = map[string]sql.Node{
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			ChDefs: []*sql.CheckConstraint{{
 				Name: "",
 				Expr: expression.NewGreaterThan(
@@ -702,7 +702,7 @@ CREATE TABLE t4
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{
 				{
 					Name:     "c1",
 					Source:   "t4",
@@ -715,7 +715,7 @@ CREATE TABLE t4
 					Type:     sql.Int32,
 					Nullable: true,
 				},
-			},
+			}),
 			ChDefs: []*sql.CheckConstraint{
 				{
 					Expr: expression.NewEquals(
@@ -764,7 +764,7 @@ CREATE TABLE t2
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{
 				{
 					Name:     "c1",
 					Source:   "t2",
@@ -783,7 +783,7 @@ CREATE TABLE t2
 					Type:     sql.Int32,
 					Nullable: true,
 				},
-			},
+			}),
 			ChDefs: []*sql.CheckConstraint{
 				{
 					Expr: expression.NewEquals(
@@ -838,12 +838,12 @@ CREATE TABLE t2
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			ChDefs: []*sql.CheckConstraint{{
 				Name: "",
 				Expr: expression.NewGreaterThan(
@@ -860,12 +860,12 @@ CREATE TABLE t2
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			ChDefs: []*sql.CheckConstraint{{
 				Name: "ch1",
 				Expr: expression.NewGreaterThan(
@@ -882,12 +882,12 @@ CREATE TABLE t2
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			ChDefs: []*sql.CheckConstraint{{
 				Name: "",
 				Expr: expression.NewGreaterThan(
@@ -904,12 +904,12 @@ CREATE TABLE t2
 		plan.IfNotExistsAbsent,
 		plan.IsTempTableAbsent,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:       "a",
 				Type:       sql.Int32,
 				Nullable:   false,
 				PrimaryKey: true,
-			}},
+			}}),
 			ChDefs: []*sql.CheckConstraint{{
 				Name: "",
 				Expr: expression.NewGreaterThan(
@@ -926,7 +926,7 @@ CREATE TABLE t2
 		plan.IfNotExistsAbsent,
 		plan.IsTempTable,
 		&plan.TableSpec{
-			Schema: sql.Schema{{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
 				Name:     "a",
 				Type:     sql.Int32,
 				Nullable: true,
@@ -934,7 +934,7 @@ CREATE TABLE t2
 				Name:     "b",
 				Type:     sql.Text,
 				Nullable: true,
-			}},
+			}}),
 		},
 	),
 	`CREATE TEMPORARY TABLE mytable AS SELECT * from othertable`: plan.NewCreateTableSelect(
@@ -2435,9 +2435,9 @@ CREATE TABLE t2
 	`SHOW CREATE SCHEMA foo`:                   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	`SHOW CREATE DATABASE IF NOT EXISTS foo`:   plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
 	`SHOW CREATE SCHEMA IF NOT EXISTS foo`:     plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
-	`SHOW WARNINGS`:                            plan.NewOffset(expression.NewLiteral(0, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
-	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(expression.NewLiteral(10, sql.Int64), plan.NewOffset(expression.NewLiteral(0, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
-	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(expression.NewLiteral(10, sql.Int64), plan.NewOffset(expression.NewLiteral(5, sql.Int64), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
+	`SHOW WARNINGS`:                            plan.ShowWarnings(sql.NewEmptyContext().Warnings()),
+	`SHOW WARNINGS LIMIT 10`:                   plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings())),
+	`SHOW WARNINGS LIMIT 5,10`:                 plan.NewLimit(expression.NewLiteral(int8(10), sql.Int8), plan.NewOffset(expression.NewLiteral(int8(5), sql.Int8), plan.ShowWarnings(sql.NewEmptyContext().Warnings()))),
 	"SHOW CREATE DATABASE `foo`":               plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	"SHOW CREATE SCHEMA `foo`":                 plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), false),
 	"SHOW CREATE DATABASE IF NOT EXISTS `foo`": plan.NewShowCreateDatabase(sql.UnresolvedDatabase("foo"), true),
@@ -3315,18 +3315,85 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 }
 
 var fixturesErrors = map[string]*errors.Kind{
-	`SHOW METHEMONEY`:                                         sql.ErrUnsupportedFeature,
-	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                    sql.ErrUnsupportedSyntax,
-	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                    sql.ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                    sql.ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                    sql.ErrUnsupportedSyntax,
-	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                  sql.ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`: sql.ErrUnsupportedSyntax,
-	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                errInvalidDescribeFormat,
-	`SELECT a, count(i) over (order by x) FROM foo`:           sql.ErrUnsupportedFeature,
-	`SELECT a, count(i) over (partition by y) FROM foo`:       sql.ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a) group by 1`:     sql.ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a), max(b)`:        sql.ErrUnsupportedFeature,
+	`SHOW METHEMONEY`:                                           sql.ErrUnsupportedFeature,
+	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                      sql.ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                      sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                      sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                      sql.ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                    sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`:   sql.ErrUnsupportedSyntax,
+	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                  errInvalidDescribeFormat,
+	`CREATE TABLE test (pk int, primary key(pk, noexist))`:      sql.ErrUnknownIndexColumn,
+	`CREATE TABLE test (pk int null primary key)`:               ErrPrimaryKeyOnNullField,
+	`CREATE TABLE test (pk int not null null primary key)`:      ErrPrimaryKeyOnNullField,
+	`CREATE TABLE test (pk int null, primary key(pk))`:          ErrPrimaryKeyOnNullField,
+	`CREATE TABLE test (pk int not null null, primary key(pk))`: ErrPrimaryKeyOnNullField,
+	`SELECT a, count(i) over (order by x) FROM foo`:             sql.ErrUnsupportedFeature,
+	`SELECT a, count(i) over (partition by y) FROM foo`:         sql.ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a) group by 1`:       sql.ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a), max(b)`:          sql.ErrUnsupportedFeature,
+	`SHOW COUNT(*) WARNINGS`:                                    sql.ErrUnsupportedFeature,
+	`SHOW ERRORS`:                                               sql.ErrUnsupportedFeature,
+	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
+	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
+}
+
+func TestParseOne(t *testing.T) {
+	type testCase struct {
+		input string
+		parts []string
+	}
+
+	cases := []testCase{
+		{
+			"SELECT 1",
+			[]string{"SELECT 1"},
+		},
+		{
+			"SELECT 1;",
+			[]string{"SELECT 1"},
+		},
+		{
+			"SELECT 1; SELECT 2",
+			[]string{"SELECT 1", "SELECT 2"},
+		},
+		{
+			"SELECT 1 /* testing */ ;",
+			[]string{"SELECT 1 /* testing */ "},
+		},
+		{
+			"SELECT 1 -- this is a test",
+			[]string{"SELECT 1 -- this is a test"},
+		},
+		{
+			"-- empty statement with comment\n; SELECT 1; SELECT 2",
+			[]string{"-- empty statement with comment\n", "SELECT 1", "SELECT 2"},
+		},
+		{
+			"SELECT 1; -- empty statement with comment\n; SELECT 2",
+			[]string{"SELECT 1", "-- empty statement with comment\n", "SELECT 2"},
+		},
+		{
+			"SELECT 1; SELECT 2; -- empty statement with comment\n",
+			[]string{"SELECT 1", "SELECT 2", "-- empty statement with comment"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			q := tc.input
+			for i := 0; i < len(tc.parts); i++ {
+				tree, p, r, err := ParseOne(ctx, q)
+				require.NoError(t, err)
+				require.NotNil(t, tree)
+				require.Equal(t, tc.parts[i], p)
+				if i == len(tc.parts)-1 {
+					require.Empty(t, r)
+				}
+				q = r
+			}
+		})
+	}
 }
 
 func TestParseErrors(t *testing.T) {
@@ -3337,22 +3404,6 @@ func TestParseErrors(t *testing.T) {
 			_, err := Parse(ctx, query)
 			require.Error(err)
 			require.True(expectedError.Is(err), "Expected %T but got %T", expectedError, err)
-		})
-	}
-}
-
-func TestFixSetQuery(t *testing.T) {
-	testCases := []struct {
-		in, out string
-	}{
-		{"set session foo = 1, session bar = 2", "set @@session.foo = 1, @@session.bar = 2"},
-		{"set global foo = 1, session bar = 2", "set @@global.foo = 1, @@session.bar = 2"},
-		{"set SESSION foo = 1, GLOBAL bar = 2", "set @@session.foo = 1, @@global.bar = 2"},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.in, func(t *testing.T) {
-			require.Equal(t, tt.out, fixSetQuery(tt.in))
 		})
 	}
 }

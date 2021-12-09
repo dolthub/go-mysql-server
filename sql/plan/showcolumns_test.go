@@ -30,11 +30,11 @@ func TestShowColumns(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
+	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
-	}), nil, nil)
+	})), nil, nil)
 
 	iter, err := NewShowColumns(false, table).RowIter(ctx, nil)
 	require.NoError(err)
@@ -55,13 +55,13 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
+	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
 		{Name: "d", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "e", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
-	}), nil, nil)
+	})), nil, nil)
 
 	showColumns := NewShowColumns(false, table)
 
@@ -142,11 +142,11 @@ func TestShowColumnsFull(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := NewResolvedTable(memory.NewTable("foo", sql.Schema{
+	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Type: sql.Int64, Nullable: true},
 		{Name: "c", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false), Comment: "a comment"},
-	}), nil, nil)
+	})), nil, nil)
 
 	iter, err := NewShowColumns(true, table).RowIter(ctx, nil)
 	require.NoError(err)
