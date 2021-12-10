@@ -21,8 +21,9 @@ import (
 )
 
 type KillType int
+
 const (
-	KillType_Query KillType = 0
+	KillType_Query      KillType = 0
 	KillType_Connection KillType = 1
 )
 
@@ -38,7 +39,7 @@ func (kt KillType) String() string {
 }
 
 type Kill struct {
-	kt KillType
+	kt     KillType
 	connID uint32
 }
 
