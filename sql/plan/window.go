@@ -182,19 +182,20 @@ func (i *windowIter) compute() error {
 
 		outRow := make(sql.Row, len(i.selectExprs))
 		for j, expr := range i.selectExprs {
+			rowCopy := sql.NewRow(row...)
 			switch expr := expr.(type) {
 			case sql.WindowAggregation:
-				err := expr.Add(i.ctx, i.buffers[j], row)
+				err := expr.Add(i.ctx, i.buffers[j], rowCopy)
 				if err != nil {
 					return err
 				}
 			case sql.Aggregation:
-				err = i.buffers[j][0].(sql.AggregationBuffer).Update(i.ctx, row)
+				err = i.buffers[j][0].(sql.AggregationBuffer).Update(i.ctx, rowCopy)
 				if err != nil {
 					return err
 				}
 			default:
-				outRow[j], err = expr.Eval(i.ctx, row)
+				outRow[j], err = expr.Eval(i.ctx, rowCopy)
 				if err != nil {
 					return err
 				}
