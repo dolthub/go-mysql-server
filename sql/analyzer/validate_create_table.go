@@ -47,48 +47,99 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	switch n := n.(type) {
-	case *plan.ModifyColumn:
-		err := validateModifyColumn(n)
-		if err != nil {
-			return nil, err
+	var sch sql.Schema
+	plan.Inspect(n, func(node sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.ModifyColumn:
+			sch = n.Child.Schema()
+			return false
+		case *plan.RenameColumn:
+			sch = n.Child.Schema()
+			return false
+		case *plan.AddColumn:
+			sch = n.Child.Schema()
+			return false
 		}
-	case *plan.AddColumn:
-		err := validateAddColumn(n)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return n, nil
-	}
+		return true
+	})
 
-	return n, nil
+	initialSch := sch
+	var err error
+
+	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
+	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
+	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+		switch n := n.(type) {
+		case *plan.ModifyColumn:
+			sch, err = validateModifyColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, err
+			}
+		case *plan.RenameColumn:
+			sch, err = validateRenameColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, err
+			}
+		case *plan.AddColumn:
+			sch, err = validateAddColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return n, nil
+	})
 }
 
-func validateAddColumn(ac *plan.AddColumn) error {
+func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sql.Schema, error) {
+	table := rc.Child
+	nameable := table.(sql.Nameable)
+
+	// Check for column name collisions
+	if initialSch.Contains(rc.NewColumnName, nameable.Name()) ||
+		sch.Contains(rc.NewColumnName, nameable.Name()) {
+		return nil, sql.ErrColumnExists.New(rc.NewColumnName)
+	}
+
+	if !initialSch.Contains(rc.ColumnName, nameable.Name()) {
+		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
+	}
+
+	return renameInSchema(sch, rc.ColumnName, rc.NewColumnName, nameable.Name()), nil
+}
+
+func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
 	table := ac.Child
+	nameable := table.(sql.Nameable)
+
+	// Name collisions
+	if initialSch.Contains(ac.Column().Name, nameable.Name()) ||
+		schema.Contains(ac.Column().Name, nameable.Name()) {
+		return nil, sql.ErrColumnExists.New(ac.Column().Name)
+	}
+
+	// None of the checks we do concern ordering, so we don't need to worry about it here
 	newSch := append(table.Schema(), ac.Column())
 
 	// TODO: more validation possible to do here
 	err := validateAutoIncrement(newSch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return newSch, nil
 }
 
-func validateModifyColumn(mc *plan.ModifyColumn) error {
+func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn) (sql.Schema, error) {
 	table := mc.Child
 	nameable := table.(sql.Nameable)
 	newSch := replaceInSchema(table.Schema(), mc.NewColumn(), nameable.Name())
 
 	err := validateAutoIncrement(newSch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return newSch, nil
 }
 
 func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {
@@ -100,6 +151,22 @@ func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Sche
 			// Some information about the column is not specified in a MODIFY COLUMN statement, such as being a key
 			cc.PrimaryKey = sch[i].PrimaryKey
 			cc.Source = sch[i].Source
+			schCopy[i] = &cc
+		} else {
+			cc := *sch[i]
+			schCopy[i] = &cc
+		}
+	}
+	return schCopy
+}
+
+func renameInSchema(sch sql.Schema, oldColName, newColName, tableName string) sql.Schema {
+	idx := sch.IndexOf(oldColName, tableName)
+	schCopy := make(sql.Schema, len(sch))
+	for i := range sch {
+		if i == idx {
+			cc := *sch[i]
+			cc.Name = newColName
 			schCopy[i] = &cc
 		} else {
 			cc := *sch[i]

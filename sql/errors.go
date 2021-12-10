@@ -60,6 +60,9 @@ var (
 	// ErrAmbiguousColumnInOrderBy is returned when an order by column is ambiguous
 	ErrAmbiguousColumnInOrderBy = errors.NewKind("Column %q in order clause is ambiguous")
 
+	// ErrColumnExists is returned when an ALTER TABLE statement would create a duplicate column
+	ErrColumnExists = errors.NewKind("Column %q already exists")
+
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 

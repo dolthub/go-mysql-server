@@ -303,8 +303,8 @@ func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 type RenameColumn struct {
 	ddlNode
 	UnaryNode
-	columnName    string
-	newColumnName string
+	ColumnName    string
+	NewColumnName string
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
@@ -314,8 +314,8 @@ func NewRenameColumn(db sql.Database, table *UnresolvedTable, columnName string,
 	return &RenameColumn{
 		ddlNode:       ddlNode{db},
 		UnaryNode:     UnaryNode{Child: table},
-		columnName:    columnName,
-		newColumnName: newColumnName,
+		ColumnName:    columnName,
+		NewColumnName: newColumnName,
 	}
 }
 
@@ -326,7 +326,7 @@ func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 func (r *RenameColumn) String() string {
-	return fmt.Sprintf("rename column %s to %s", r.columnName, r.newColumnName)
+	return fmt.Sprintf("rename column %s to %s", r.ColumnName, r.NewColumnName)
 }
 
 func (r *RenameColumn) Resolved() bool {
@@ -344,20 +344,20 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	}
 
 	tbl := alterable.(sql.Table)
-	idx := tbl.Schema().IndexOf(r.columnName, tbl.Name())
+	idx := tbl.Schema().IndexOf(r.ColumnName, tbl.Name())
 	if idx < 0 {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), r.columnName)
+		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), r.ColumnName)
 	}
 
 	nc := *tbl.Schema()[idx]
-	nc.Name = r.newColumnName
+	nc.Name = r.NewColumnName
 	col := &nc
 
-	if err := updateDefaultsOnColumnRename(ctx, alterable, strings.ToLower(r.columnName), r.newColumnName); err != nil {
+	if err := updateDefaultsOnColumnRename(ctx, alterable, strings.ToLower(r.ColumnName), r.NewColumnName); err != nil {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.columnName, col, nil)
+	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
 }
 
 func (r *RenameColumn) Children() []sql.Node {
@@ -486,25 +486,6 @@ func (m *ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error
 // Resolved implements the Resolvable interface.
 func (m *ModifyColumn) Resolved() bool {
 	return m.ddlNode.Resolved() && m.UnaryNode.Resolved() && m.column.Default.Resolved()
-}
-
-// Gets an AlterableTable with the name given from the database, or an error if it cannot.
-func getAlterableTable(db sql.Database, ctx *sql.Context, tableName string) (sql.AlterableTable, error) {
-	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(tableName)
-	}
-
-	alterable, ok := tbl.(sql.AlterableTable)
-	if !ok {
-		return nil, ErrAlterTableNotSupported.New(tableName, db.Name())
-	}
-
-	return alterable, nil
 }
 
 func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
