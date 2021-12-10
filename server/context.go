@@ -40,6 +40,11 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 	return sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
 }
 
+type Entry struct {
+	session sql.Session
+	conn *mysql.Conn
+}
+
 // SessionManager is in charge of creating new sessions for the given
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
@@ -51,7 +56,7 @@ type SessionManager struct {
 	processlist sql.ProcessList
 	mu          *sync.Mutex
 	builder     SessionBuilder
-	sessions    map[uint32]sql.Session
+	sessions    map[uint32]*Entry
 	pid         uint64
 }
 
@@ -72,7 +77,7 @@ func NewSessionManager(
 		processlist: processlist,
 		mu:          new(sync.Mutex),
 		builder:     builder,
-		sessions:    make(map[uint32]sql.Session),
+		sessions:    make(map[uint32]*Entry),
 	}
 }
 
@@ -85,23 +90,23 @@ func (s *SessionManager) nextPid() uint64 {
 
 // NewSession creates a Session for the given connection and saves it to the session pool.
 func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error {
-	var err error
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.sessions[conn.ConnectionID], err = s.builder(ctx, conn, s.addr)
-
+	session, err := s.builder(ctx, conn, s.addr)
 	if err != nil {
 		return err
 	}
 
-	logger := s.sessions[conn.ConnectionID].GetLogger()
+	s.sessions[conn.ConnectionID] = &Entry{session, conn}
+
+
+	logger := s.sessions[conn.ConnectionID].session.GetLogger()
 	if logger == nil {
 		log := logrus.StandardLogger()
 		logger = logrus.NewEntry(log)
 	}
 
-	s.sessions[conn.ConnectionID].SetLogger(
+	s.sessions[conn.ConnectionID].session.SetLogger(
 		logger.WithField(sqle.ConnectionIdLogField, conn.ConnectionID).
 			WithField(sqle.ConnectTimeLogKey, time.Now()),
 	)
@@ -126,7 +131,7 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.sessions[conn.ConnectionID]
+	return s.sessions[conn.ConnectionID].session
 }
 
 // NewContext creates a new context for the session at the given conn.
@@ -149,7 +154,7 @@ func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Con
 		sess = s.sessions[conn.ConnectionID]
 	}
 
-	return sess, nil
+	return sess.session, nil
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
@@ -170,13 +175,25 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		sql.WithMemoryManager(s.memory),
 		sql.WithProcessList(s.processlist),
 		sql.WithRootSpan(s.tracer.StartSpan("query")),
+		sql.WithServices(sql.Services{
+			KillConnection: s.killConnection,
+		}),
 	)
 
 	return context, nil
 }
 
-// CloseConn closes the connection in the session manager and all its
-// associated contexts, which are cancelled.
+func (s *SessionManager) killConnection(connID uint32) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if entry, ok := s.sessions[connID]; ok {
+		delete(s.sessions, connID)
+		entry.conn.Close()
+	}
+	return nil
+}
+
+// Remove the session assosiated with |conn| from the session manager.
 func (s *SessionManager) CloseConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

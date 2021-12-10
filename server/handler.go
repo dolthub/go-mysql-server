@@ -19,7 +19,6 @@ import (
 	"net"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -40,8 +39,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
-
-var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)
 
 var errConnectionNotFound = errors.NewKind("connection not found: %c")
 
@@ -284,15 +281,6 @@ func (h *Handler) doQuery(
 
 	ctx = ctx.WithQuery(query)
 	more := remainder != ""
-
-	handled, err := h.handleKill(ctx, c, query)
-	if err != nil {
-		return remainder, err
-	}
-
-	if handled {
-		return remainder, callback(&sqltypes.Result{}, more)
-	}
 
 	ctx.SetLogger(ctx.GetLogger().
 		WithField("query", string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
@@ -639,44 +627,6 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	}
 
 	return 0
-}
-
-func (h *Handler) handleKill(ctx *sql.Context, conn *mysql.Conn, query string) (bool, error) {
-	q := strings.ToLower(query)
-	// TODO: move this to parser, normal execution path
-	s := regKillCmd.FindStringSubmatch(q)
-	if s == nil {
-		return false, nil
-	}
-
-	ctx.GetLogger().Info("killing query")
-
-	id, err := strconv.ParseUint(s[2], 10, 32)
-	if err != nil {
-		return false, err
-	}
-
-	// KILL CONNECTION and KILL should close the connection. KILL QUERY only
-	// cancels the query.
-	//
-	// https://dev.mysql.com/doc/refman/8.0/en/kill.html
-	//
-	// KILL [CONNECTION | QUERY] processlist_id
-	// - KILL QUERY terminates the statement the connection is currently executing,
-	// but leaves the connection itself intact.
-
-	// - KILL CONNECTION is the same as KILL with no modifier:
-	// It terminates the connection associated with the given processlist_id,
-	// after terminating any statement the connection is executing.
-	connID := uint32(id)
-	ctx.ProcessList.Kill(connID)
-	if s[1] != "query" {
-		ctx.GetLogger().Info("kill connection")
-		h.sm.CloseConn(conn)
-		conn.Close()
-	}
-
-	return true, nil
 }
 
 func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
