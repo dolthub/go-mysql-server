@@ -42,7 +42,7 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 
 type Entry struct {
 	session sql.Session
-	conn *mysql.Conn
+	conn    *mysql.Conn
 }
 
 // SessionManager is in charge of creating new sessions for the given
@@ -98,7 +98,6 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	}
 
 	s.sessions[conn.ConnectionID] = &Entry{session, conn}
-
 
 	logger := s.sessions[conn.ConnectionID].session.GetLogger()
 	if logger == nil {
