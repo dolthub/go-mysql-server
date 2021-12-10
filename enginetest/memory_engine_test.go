@@ -96,7 +96,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY strpk`,
+		Query: `show create table two_pk`,
 		Expected: []sql.Row{
 			{1, "00"},
 			{2, "11"},

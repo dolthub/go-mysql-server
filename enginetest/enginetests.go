@@ -1516,23 +1516,35 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
+	// Error cases
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i2 TO iX", sql.ErrTableColumnNotFound)
 	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN i TO i2", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO S", sql.ErrColumnExists)
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO n, RENAME COLUMN s TO N", sql.ErrColumnExists)
 
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
+	RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2")
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s2", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+	}, tbl.Schema())
+
+	TestQuery(t, harness, e, "select * from mytable order by i2 limit 1",
+		[]sql.Row{
+			{1, "first row"},
+		}, nil, nil)
 }
 
 func TestAddColumn(t *testing.T, harness Harness) {

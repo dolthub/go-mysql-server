@@ -48,7 +48,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	}
 
 	var sch sql.Schema
-	plan.Inspect(n, func(node sql.Node) bool {
+	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch = n.Child.Schema()
@@ -62,6 +62,11 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		}
 		return true
 	})
+
+	// Skip this validation if we didn't find one or more of the above node types
+	if len(sch) == 0 {
+		return n, nil
+	}
 
 	initialSch := sch
 	var err error
@@ -100,7 +105,9 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 		return nil, sql.ErrColumnExists.New(rc.NewColumnName)
 	}
 
-	if !initialSch.Contains(rc.ColumnName, nameable.Name()) {
+	// Make sure this column exists and hasn't already been renamed to something else
+	if !initialSch.Contains(rc.ColumnName, nameable.Name()) ||
+		!sch.Contains(rc.ColumnName, nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
 	}
 
