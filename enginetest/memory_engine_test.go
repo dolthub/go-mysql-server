@@ -518,6 +518,10 @@ func TestColumnDefaults(t *testing.T) {
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestAlterTable(t *testing.T) {
+	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestDateParse(t *testing.T) {
 	enginetest.TestDateParse(t, enginetest.NewDefaultMemoryHarness())
 }
