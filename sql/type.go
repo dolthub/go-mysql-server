@@ -66,6 +66,17 @@ type Type interface {
 	fmt.Stringer
 }
 
+type Type2 interface {
+	Type
+
+	// Compare2 returns an integer comparing two Values.
+	Compare2(Value, Value) (int, error)
+	// Convert2 converts a value of a compatible type.
+	Convert2(Value) (Value, error)
+	// Zero2 returns the zero Value for this type.
+	Zero2() Value
+}
+
 type LikeMatcher interface {
 	CreateMatcher(likeStr string) (regex.DisposableMatcher, error)
 }
