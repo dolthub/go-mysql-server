@@ -29,7 +29,6 @@ import (
 	"github.com/go-kit/kit/metrics/discard"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sync/errgroup"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -328,8 +327,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
-	eg, egCtx := errgroup.WithContext(ctx)
-	ctx = ctx.WithContext(egCtx)
+	eg, ctx := ctx.NewErrgroup()
 
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
@@ -365,8 +363,10 @@ func (h *Handler) doQuery(
 			}
 		}
 	})
+
+	pollCtx, cancelF := ctx.NewSubContext()
 	eg.Go(func() error {
-		return h.pollForClosedConnection(ctx, c)
+		return h.pollForClosedConnection(pollCtx, c)
 	})
 
 	// Default waitTime is one minute if there is no timeout configured, in which case
@@ -382,6 +382,7 @@ func (h *Handler) doQuery(
 	defer timer.Stop()
 
 	eg.Go(func() error {
+		defer cancelF()
 		for {
 			if r == nil {
 				r = &sqltypes.Result{Fields: schemaToFields(schema)}
