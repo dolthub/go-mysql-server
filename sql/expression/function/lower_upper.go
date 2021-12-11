@@ -39,6 +39,11 @@ func (l *Lower) FunctionName() string {
 	return "lower"
 }
 
+// Description implements sql.FunctionExpression
+func (l *Lower) Description() string {
+	return "returns the string str with all characters in lower case."
+}
+
 // Eval implements the Expression interface.
 func (l *Lower) Eval(
 	ctx *sql.Context,
@@ -85,14 +90,19 @@ type Upper struct {
 
 var _ sql.FunctionExpression = (*Upper)(nil)
 
+// NewUpper creates a new Lower expression.
+func NewUpper(e sql.Expression) sql.Expression {
+	return &Upper{expression.UnaryExpression{Child: e}}
+}
+
 // FunctionName implements sql.FunctionExpression
 func (u *Upper) FunctionName() string {
 	return "upper"
 }
 
-// NewUpper creates a new Lower expression.
-func NewUpper(e sql.Expression) sql.Expression {
-	return &Upper{expression.UnaryExpression{Child: e}}
+// Description implements sql.FunctionExpression
+func (u *Upper) Description() string {
+	return "converts string to uppercase."
 }
 
 // Eval implements the Expression interface.

@@ -43,6 +43,11 @@ func (f *NullIf) FunctionName() string {
 	return "nullif"
 }
 
+// Description implements sql.FunctionExpression
+func (f *NullIf) Description() string {
+	return "returns NULL if expr1 = expr2 is true, otherwise returns expr1."
+}
+
 // Eval implements the Expression interface.
 func (f *NullIf) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if sql.IsNull(f.Left) && sql.IsNull(f.Right) {

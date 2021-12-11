@@ -42,6 +42,11 @@ func (s *Sleep) FunctionName() string {
 	return "sleep"
 }
 
+// Description implements sql.FunctionExpression
+func (s *Sleep) Description() string {
+	return "waits for the specified number of seconds (can be fractional)."
+}
+
 // Eval implements the Expression interface.
 func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	child, err := s.Child.Eval(ctx, row)

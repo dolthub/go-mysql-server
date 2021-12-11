@@ -67,10 +67,23 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+type Expression2 interface {
+	Expression
+	// Eval2 evaluates the given row frame and returns a result.
+	Eval2(ctx *Context, f *RowFrame) (Value, error)
+}
+
+// UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
+type UnsupportedFunctionStub interface {
+	IsUnsupported() bool
+}
+
 // FunctionExpression is an Expression that represents a function.
 type FunctionExpression interface {
 	Expression
 	FunctionName() string
+	Description() string
+	// TODO: add Example() function
 }
 
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will
@@ -140,6 +153,14 @@ type Node interface {
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
 	WithChildren(...Node) (Node, error)
+}
+
+type Node2 interface {
+	Node
+
+	// RowIter2 produces a row iterator from this node. The current row frame being
+	// evaluated is provided, as well the context of the query.
+	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
 
 // CommentedNode allows comments to be set and retrieved on it
@@ -213,6 +234,12 @@ type Table interface {
 	Schema() Schema
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
+}
+
+type Table2 interface {
+	Table
+
+	PartitionRows2(*Context, Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {

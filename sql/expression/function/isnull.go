@@ -38,6 +38,11 @@ func (ib *IsNull) FunctionName() string {
 	return "isnull"
 }
 
+// Description implements sql.FunctionExpression
+func (ib *IsNull) Description() string {
+	return "returns whether a expr is null or not."
+}
+
 // Eval implements the Expression interface.
 func (ib *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	v, err := ib.Child.Eval(ctx, row)

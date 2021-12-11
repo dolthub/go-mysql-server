@@ -41,6 +41,11 @@ func (m *Max) FunctionName() string {
 	return "max"
 }
 
+// Description implements sql.FunctionExpression
+func (m *Max) Description() string {
+	return "returns the maximum value of expr in all rows."
+}
+
 // Type returns the resultant type of the aggregation.
 func (m *Max) Type() sql.Type {
 	return m.Child.Type()

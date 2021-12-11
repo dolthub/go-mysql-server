@@ -38,6 +38,11 @@ func NewAscii(arg sql.Expression) sql.Expression {
 	return &Ascii{NewUnaryFunc(arg, "ASCII", sql.Uint8)}
 }
 
+// Description implements sql.FunctionExpression
+func (a *Ascii) Description() string {
+	return "returns the numeric value of the leftmost character."
+}
+
 // Eval implements the sql.Expression interface
 func (a *Ascii) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := a.EvalChild(ctx, row)
@@ -88,6 +93,11 @@ var _ sql.FunctionExpression = (*Hex)(nil)
 
 func NewHex(arg sql.Expression) sql.Expression {
 	return &Hex{NewUnaryFunc(arg, "HEX", sql.Text)}
+}
+
+// Description implements sql.FunctionExpression
+func (h *Hex) Description() string {
+	return "returns the hexadecimal representation of the string or numeric value."
 }
 
 // Eval implements the sql.Expression interface
@@ -226,6 +236,11 @@ func NewUnhex(arg sql.Expression) sql.Expression {
 	return &Unhex{NewUnaryFunc(arg, "UNHEX", sql.LongBlob)}
 }
 
+// Description implements sql.FunctionExpression
+func (h *Unhex) Description() string {
+	return "returns a string containing hex representation of a number."
+}
+
 // Eval implements the sql.Expression interface
 func (h *Unhex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	arg, err := h.EvalChild(ctx, row)
@@ -299,6 +314,16 @@ func NewBin(arg sql.Expression) sql.Expression {
 	return &Bin{NewUnaryFunc(arg, "BIN", sql.Text)}
 }
 
+// FunctionName implements sql.FunctionExpression
+func (b *Bin) FunctionName() string {
+	return "bin"
+}
+
+// Description implements sql.FunctionExpression
+func (b *Bin) Description() string {
+	return "returns the binary representation of a number."
+}
+
 // Eval implements the sql.Expression interface
 func (h *Bin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	arg, err := h.EvalChild(ctx, row)
@@ -348,6 +373,16 @@ var _ sql.FunctionExpression = (*Bitlength)(nil)
 
 func NewBitlength(arg sql.Expression) sql.Expression {
 	return &Bitlength{NewUnaryFunc(arg, "BIT_LENGTH", sql.Int32)}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (b *Bitlength) FunctionName() string {
+	return "bit_length"
+}
+
+// Description implements sql.FunctionExpression
+func (b *Bitlength) Description() string {
+	return "returns the data length of the argument in bits."
 }
 
 // Eval implements the sql.Expression interface
