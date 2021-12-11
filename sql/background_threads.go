@@ -43,6 +43,9 @@ func NewBackgroundThreads() *BackgroundThreads {
 	}
 }
 
+// Add starts a background goroutine wrapped by a top-level sync.WaitGroup.
+// [f] must return when its [ctx] argument is cancelled, otherwise
+// Shutdown will hang.
 func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) error {
 	select {
 	case <-bt.parentCtx.Done():
@@ -67,6 +70,8 @@ func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) error
 	return nil
 }
 
+// Shutdown cancels the parent context for every async thread,
+// and waits for each goroutine to drain and return before exiting.
 func (bt *BackgroundThreads) Shutdown() error {
 	bt.parentCancel()
 	bt.wg.Wait()
