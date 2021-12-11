@@ -155,6 +155,18 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	}, nil
 }
 
+func (d *Driver) Close() error {
+	var firstErr error
+	for _, conn := range d.dbs {
+		if firstErr == nil {
+			firstErr = conn.close()
+		} else {
+			conn.close()
+		}
+	}
+	return firstErr
+}
+
 type dbConn struct {
 	engine *sqle.Engine
 
@@ -175,6 +187,10 @@ func (c *dbConn) nextProcessID() uint64 {
 	defer c.mu.Unlock()
 	c.procID++
 	return c.procID
+}
+
+func (c *dbConn) close() error {
+	return c.engine.Close()
 }
 
 // A Connector represents a driver in a fixed configuration
