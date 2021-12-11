@@ -302,7 +302,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
 	cfg := &sqle.Config{Auth: au}
 	a := analyzer.NewBuilder(pro).Build()
-	e := sqle.New(a, cfg, sql.NewBackgroundThreads())
+	e := sqle.New(a, cfg)
 	defer e.Close()
 
 	RunQuery(t, e, harness, `SELECT i FROM mytable`)
@@ -331,7 +331,7 @@ func TestExplode(t *testing.T, harness Harness) {
 
 	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
 
-	e := sqle.New(analyzer.NewDefault(harness.NewDatabaseProvider(db)), new(sqle.Config), sql.NewBackgroundThreads())
+	e := sqle.New(analyzer.NewDefault(harness.NewDatabaseProvider(db)), new(sqle.Config))
 	defer e.Close()
 
 	for _, q := range ExplodeQueries {
@@ -3885,7 +3885,7 @@ func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database) *
 		a = analyzer.NewDefault(provider)
 	}
 
-	engine := sqle.New(a, new(sqle.Config), sql.NewBackgroundThreads())
+	engine := sqle.New(a, new(sqle.Config))
 
 	if idh, ok := harness.(IndexDriverHarness); ok {
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases())

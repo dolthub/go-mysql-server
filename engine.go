@@ -54,7 +54,7 @@ type ColumnWithRawDefault struct {
 // New creates a new Engine with custom configuration. To create an Engine with
 // the default settings use `NewDefault`. Should call Engine.Close() to finalize
 // dependency lifecycles.
-func New(a *analyzer.Analyzer, cfg *Config, bThreads *sql.BackgroundThreads) *Engine {
+func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	var versionPostfix string
 	if cfg != nil {
 		versionPostfix = cfg.VersionPostfix
@@ -83,14 +83,14 @@ func New(a *analyzer.Analyzer, cfg *Config, bThreads *sql.BackgroundThreads) *En
 		ProcessList:       NewProcessList(),
 		Auth:              au,
 		LS:                ls,
-		BackgroundThreads: bThreads,
+		BackgroundThreads: sql.NewBackgroundThreads(),
 	}
 }
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
 	a := analyzer.NewDefault(pro)
-	return New(a, nil, sql.NewBackgroundThreads())
+	return New(a, nil)
 }
 
 // AnalyzeQuery analyzes a query and returns its Schema.
@@ -234,7 +234,12 @@ func (e *Engine) Close() error {
 	for _, p := range e.ProcessList.Processes() {
 		e.ProcessList.Kill(p.Connection)
 	}
-	return e.BackgroundThreads.Close()
+	return e.BackgroundThreads.Shutdown()
+}
+
+func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
+	e.BackgroundThreads = b
+	return e
 }
 
 // Returns whether this session has a transaction isolation level of READ COMMITTED.

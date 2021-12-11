@@ -48,7 +48,7 @@ func authEngine(au auth.Auth) (*sqle.Engine, error) {
 	a := analyzer.NewBuilder(pro).Build()
 	config := &sqle.Config{Auth: au}
 
-	return sqle.New(a, config, sql.NewBackgroundThreads()), nil
+	return sqle.New(a, config), nil
 }
 
 func authServer(a auth.Auth) (*server.Server, error) {

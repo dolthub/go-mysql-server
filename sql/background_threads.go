@@ -67,7 +67,7 @@ func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) error
 	return nil
 }
 
-func (bt *BackgroundThreads) Close() error {
+func (bt *BackgroundThreads) Shutdown() error {
 	bt.parentCancel()
 	bt.wg.Wait()
 	return bt.parentCtx.Err()

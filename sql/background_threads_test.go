@@ -47,7 +47,7 @@ func TestBackgroundThreads(t *testing.T) {
 	t.Run("add, close", func(t *testing.T) {
 		b = make([]int, 0)
 		bThreads = NewBackgroundThreads()
-		defer bThreads.Close()
+		defer bThreads.Shutdown()
 
 		err = bThreads.Add("first", f(1))
 		assert.NoError(t, err)
@@ -58,7 +58,7 @@ func TestBackgroundThreads(t *testing.T) {
 		// wait until close to flush
 		assert.Equal(t, []int{}, b)
 
-		err = bThreads.Close()
+		err = bThreads.Shutdown()
 		assert.True(t, errors.Is(err, context.Canceled))
 
 		sort.Ints(b)
@@ -68,14 +68,14 @@ func TestBackgroundThreads(t *testing.T) {
 	t.Run("close is idempotent", func(t *testing.T) {
 		b = make([]int, 0)
 		bThreads = NewBackgroundThreads()
-		defer bThreads.Close()
+		defer bThreads.Shutdown()
 
 		err = bThreads.Add("first", f(1))
 		assert.NoError(t, err)
 
-		err = bThreads.Close()
+		err = bThreads.Shutdown()
 		assert.True(t, errors.Is(err, context.Canceled))
-		err = bThreads.Close()
+		err = bThreads.Shutdown()
 		assert.True(t, errors.Is(err, context.Canceled))
 
 		sort.Ints(b)
@@ -85,9 +85,9 @@ func TestBackgroundThreads(t *testing.T) {
 	t.Run("can't add after closed", func(t *testing.T) {
 		b = make([]int, 0)
 		bThreads = NewBackgroundThreads()
-		defer bThreads.Close()
+		defer bThreads.Shutdown()
 
-		err = bThreads.Close()
+		err = bThreads.Shutdown()
 		assert.True(t, errors.Is(err, context.Canceled))
 
 		err = bThreads.Add("first", f(1))
