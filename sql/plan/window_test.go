@@ -69,9 +69,9 @@ type dummyIter struct {
 
 func newDummyIter() *dummyIter {
 	rows := []sql.Row{
-		newCappedRow(2, "a"),
-		newCappedRow(1, "b"),
-		newCappedRow(3, "c"),
+		newRowWithExtraCap(2, "a"),
+		newRowWithExtraCap(1, "b"),
+		newRowWithExtraCap(3, "c"),
 	}
 	return &dummyIter{
 		rows: rows,
@@ -99,7 +99,7 @@ func mustExpr(e sql.Expression, err error) sql.Expression {
 }
 
 // sql.NewRow, but the slice's underlying array is not filled
-func newCappedRow(values ...interface{}) sql.Row {
+func newRowWithExtraCap(values ...interface{}) sql.Row {
 	row := make([]interface{}, 0, len(values)+2)
 	for _, v := range values {
 		row = append(row, v)
