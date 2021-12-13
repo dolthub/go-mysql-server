@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -67,14 +68,36 @@ func (k *Kill) Schema() sql.Schema {
 }
 
 func (k *Kill) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// TODO: Maybe don't do this kill until Next() is called.
-	ctx.ProcessList.Kill(k.connID)
-	if k.kt == KillType_Connection {
-		ctx.KillConnection(k.connID)
-	}
-	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(0))), nil
+	return &lazyRowIter{
+		func() (sql.Row, error) {
+			ctx.ProcessList.Kill(k.connID)
+			if k.kt == KillType_Connection {
+				ctx.KillConnection(k.connID)
+			}
+			return sql.NewRow(sql.NewOkResult(0)), nil
+		},
+	}, nil
 }
 
 func (k *Kill) String() string {
 	return fmt.Sprintf("KILL %s %d", k.kt.String(), k.connID)
+}
+
+type rowFunc func() (sql.Row, error)
+
+type lazyRowIter struct {
+	next rowFunc
+}
+
+func (i *lazyRowIter) Next() (sql.Row, error) {
+	if i.next != nil {
+		res, err := i.next()
+		i.next = nil
+		return res, err
+	}
+	return nil, io.EOF
+}
+
+func (i *lazyRowIter) Close(ctx *sql.Context) error {
+	return nil
 }

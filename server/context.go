@@ -40,7 +40,7 @@ func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql
 	return sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
 }
 
-type Entry struct {
+type managedSession struct {
 	session sql.Session
 	conn    *mysql.Conn
 }
@@ -56,7 +56,7 @@ type SessionManager struct {
 	processlist sql.ProcessList
 	mu          *sync.Mutex
 	builder     SessionBuilder
-	sessions    map[uint32]*Entry
+	sessions    map[uint32]*managedSession
 	pid         uint64
 }
 
@@ -77,7 +77,7 @@ func NewSessionManager(
 		processlist: processlist,
 		mu:          new(sync.Mutex),
 		builder:     builder,
-		sessions:    make(map[uint32]*Entry),
+		sessions:    make(map[uint32]*managedSession),
 	}
 }
 
@@ -97,7 +97,7 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 		return err
 	}
 
-	s.sessions[conn.ConnectionID] = &Entry{session, conn}
+	s.sessions[conn.ConnectionID] = &managedSession{session, conn}
 
 	logger := s.sessions[conn.ConnectionID].session.GetLogger()
 	if logger == nil {
@@ -182,6 +182,9 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 	return context, nil
 }
 
+// Exposed through sql.Services.KillConnection. At the time that this is
+// called, any outstanding process has been killed through ProcessList.Kill()
+// as well.
 func (s *SessionManager) killConnection(connID uint32) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
