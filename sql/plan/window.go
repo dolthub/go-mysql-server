@@ -182,6 +182,9 @@ func (i *windowIter) compute() error {
 
 		outRow := make(sql.Row, len(i.selectExprs))
 		for j, expr := range i.selectExprs {
+			// Window aggregations share row slices to avoid copying,
+			// but buffer appending bleeds if a row slice's underlying
+			// array is unfilled. The current sql.NewRow impl trims excess cap.
 			rowCopy := sql.NewRow(row...)
 			switch expr := expr.(type) {
 			case sql.WindowAggregation:
