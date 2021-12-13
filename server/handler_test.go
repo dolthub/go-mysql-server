@@ -368,7 +368,7 @@ func TestOkClosedConnection(t *testing.T) {
 	c := newConn(1)
 	h.NewConnection(c)
 
-	q := fmt.Sprintf("SELECT SLEEP(%d)", tcpCheckerSleepTime*4)
+	q := fmt.Sprintf("SELECT SLEEP(%d)", (tcpCheckerSleepDuration*4/time.Second))
 	h.ComInitDB(c, "test")
 	err = h.ComQuery(c, q, func(res *sqltypes.Result, more bool) error {
 		return nil

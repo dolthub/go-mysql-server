@@ -55,7 +55,7 @@ var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
 // TODO parametrize
 const rowsBatch = 100
-const tcpCheckerSleepTime = 1
+var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
 type MultiStmtMode int
 
@@ -584,11 +584,14 @@ func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error
 		return nil
 	}
 
+	timer := time.NewTimer(tcpCheckerSleepDuration)
+	defer timer.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
+		case <-timer.C:
 		}
 
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
@@ -602,7 +605,7 @@ func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
 			// thus the small wait between checks
-			time.Sleep(tcpCheckerSleepTime * time.Second)
+			timer.Reset(tcpCheckerSleepDuration)
 		}
 	}
 }
