@@ -340,6 +340,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
+	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
@@ -441,11 +442,15 @@ func (h *Handler) doQuery(
 					return ErrRowTimeout.New()
 				}
 			}
+			if !timer.Stop() {
+				<-timer.C
+			}
 			timer.Reset(waitTime)
 		}
 	})
 
 	err = eg.Wait()
+	ctx = oCtx
 	if err != nil {
 		rows.Close(ctx)
 		ctx.GetLogger().WithError(err).Warn("error running query")
