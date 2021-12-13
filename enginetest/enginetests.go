@@ -3474,7 +3474,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 
 	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
 		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
-		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk, 
+		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk,
 			drop column v2, modify v1 varchar(100) not null,
 			alter column v3 set default 100, rename column toRename to newName`)
 
