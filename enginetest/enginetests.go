@@ -3407,6 +3407,64 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE TABLE t30(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')")
 		AssertErr(t, e, harness, "ALTER TABLE t30 ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2", sql.ErrTableColumnNotFound)
 	})
+
+	t.Run("modify column added in same statement", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t31(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')")
+		AssertErr(t, e, harness, "ALTER TABLE t31 ADD COLUMN v3 BIGINT DEFAULT 5, modify column v3 bigint default null", sql.ErrTableColumnNotFound)
+	})
+
+	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk, 
+			drop column v2, modify v1 varchar(100) not null,
+			alter column v3 set default 100, rename column toRename to newName`)
+
+		ctx := NewContext(harness)
+		t32, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32")
+		require.NoError(t, err)
+		assert.Equal(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32", PrimaryKey: true},
+			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t32"},
+			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, true)},
+			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
+		}, t32.Schema())
+	})
+
+	t.Run("mix of alter column, add and drop constraints in one statement", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t33(pk BIGINT PRIMARY KEY, v1 int, v2 int)")
+		RunQuery(t, e, harness, `alter table t33 add column v4 int after pk, 
+			drop column v2, add constraint v1gt0 check (v1 > 0)`)
+
+		ctx := NewContext(harness)
+		t33, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t33")
+		require.NoError(t, err)
+		assert.Equal(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t33", PrimaryKey: true},
+			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t33"},
+			{Name: "v1", Type: sql.Int32, Nullable: true, Source: "t33"},
+		}, t33.Schema())
+
+		ct, ok := t33.(sql.CheckTable)
+		require.True(t, ok, "CheckTable required for this test")
+		checks, err := ct.GetChecks(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []sql.CheckDefinition{
+			{
+				Name: "v1gt0",
+				CheckExpression: "(v1 > 0)",
+				Enforced:        true,
+			},
+		}, checks)
+	})
+}
+
+func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
+	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+	if err != nil {
+		panic(err)
+	}
+	return cdv
 }
 
 func TestColumnDefaults(t *testing.T, harness Harness) {
