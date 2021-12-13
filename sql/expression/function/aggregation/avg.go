@@ -39,6 +39,11 @@ func (a *Avg) FunctionName() string {
 	return "avg"
 }
 
+// Description implements sql.FunctionExpression
+func (a *Avg) Description() string {
+	return "returns the average value of expr in all rows."
+}
+
 func (a *Avg) String() string {
 	return fmt.Sprintf("AVG(%s)", a.Child)
 }

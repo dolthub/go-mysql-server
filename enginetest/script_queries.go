@@ -1548,4 +1548,17 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "multi column index, lower()",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 varchar(100), v2 varchar(100), INDEX (v1,v2));",
+			"INSERT INTO test VALUES (1,'happy','birthday'), (2,'HAPPY','BIRTHDAY'), (3,'hello','sailor');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM test where lower(v1) = 'happy' and lower(v2) = 'birthday' order by 1",
+				Expected: []sql.Row{{1}, {2}},
+			},
+		},
+	},
 }

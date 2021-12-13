@@ -40,6 +40,11 @@ func (f *First) FunctionName() string {
 	return "first"
 }
 
+// Description implements sql.FunctionExpression
+func (f *First) Description() string {
+	return "returns the first value in a sequence of elements of an aggregation."
+}
+
 // Type returns the resultant type of the aggregation.
 func (f *First) Type() sql.Type {
 	return f.Child.Type()

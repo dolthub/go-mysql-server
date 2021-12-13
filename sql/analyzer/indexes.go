@@ -580,12 +580,22 @@ func getMultiColumnIndexes(
 	usedExprs := make(map[sql.Expression]struct{})
 	columnExprs := columnExprsByTable(exprs)
 	for table, exps := range columnExprs {
-		cols := make([]sql.Expression, len(exps))
+		colExprs := make([]sql.Expression, len(exps))
+
+		nilColExpr := false
 		for i, e := range exps {
-			cols[i] = e.col
+			if e.colExpr == nil {
+				nilColExpr = true
+			}
+			colExprs[i] = e.colExpr
 		}
 
-		exprList := ia.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), cols...)
+		// Further analysis requires that we have a col expr for every expression, and it's possible we don't
+		if nilColExpr {
+			continue
+		}
+
+		exprList := ia.ExpressionsWithIndexes(ctx.GetCurrentDatabase(), colExprs...)
 		if len(exprList) == 0 {
 			continue
 		}
@@ -823,9 +833,9 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 	case *expression.Not:
 		table, colExpr := extractColumnExpr(e.Child)
 		if colExpr != nil {
-			// TODO: handle this better
 			colExpr = &joinColExpr{
 				col:        colExpr.col,
+				colExpr:    colExpr.colExpr,
 				comparand:  colExpr.comparand,
 				comparison: expression.NewNot(colExpr.comparison),
 			}
@@ -837,7 +847,8 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 		*expression.GreaterThan,
 		*expression.LessThan,
 		*expression.GreaterThanOrEqual,
-		*expression.LessThanOrEqual:
+		*expression.LessThanOrEqual,
+		*expression.IsNull:
 		cmp := e.(expression.Comparer)
 		left, right := cmp.Left(), cmp.Right()
 		if !isEvaluable(right) {
@@ -870,14 +881,25 @@ func extractColumnExpr(e sql.Expression) (string, *joinColExpr) {
 			return "", nil
 		}
 
-		// TODO: handle this better
-		return col.Table(), &joinColExpr{col: col, comparison: e}
+		return col.Table(), &joinColExpr{
+			col:          col,
+			colExpr:      e.Val,
+			comparand:    nil,
+			comparandCol: nil,
+			comparison:   e,
+		}
 	case *expression.InTuple:
-		col := expression.ExtractGetField(e)
+		col := expression.ExtractGetField(e.Left())
 		if col == nil {
 			return "", nil
 		}
-		return col.Table(), &joinColExpr{col: col, comparison: e}
+		return col.Table(), &joinColExpr{
+			col:          col,
+			colExpr:      e.Left(),
+			comparand:    e.Right(),
+			comparandCol: nil,
+			comparison:   e,
+		}
 	default:
 		return "", nil
 	}

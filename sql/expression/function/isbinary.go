@@ -39,6 +39,11 @@ func (ib *IsBinary) FunctionName() string {
 	return "is_binary"
 }
 
+// Description implements sql.FunctionExpression
+func (ib *IsBinary) Description() string {
+	return "returns whether a blob is a binary file or not."
+}
+
 // Eval implements the Expression interface.
 func (ib *IsBinary) Eval(
 	ctx *sql.Context,

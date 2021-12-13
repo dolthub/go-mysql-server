@@ -52,6 +52,16 @@ func (j *JSONArrayAgg) FunctionName() string {
 	return "json_arrayagg"
 }
 
+// Description implements sql.FunctionExpression
+func (j *JSONArrayAgg) Description() string {
+	return "returns result set as a single JSON array."
+}
+
+// IsUnsupported implements sql.FunctionExpression
+func (j *JSONArrayAgg) IsUnsupported() bool {
+	return true
+}
+
 // NewBuffer creates a new buffer for the aggregation.
 func (j *JSONArrayAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	var row []interface{}
@@ -154,6 +164,16 @@ func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
 // FunctionName implements sql.FunctionExpression
 func (j JSONObjectAgg) FunctionName() string {
 	return "json_objectagg"
+}
+
+// Description implements sql.FunctionExpression
+func (j JSONObjectAgg) Description() string {
+	return "returns result set as a single JSON object."
+}
+
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONObjectAgg) IsUnsupported() bool {
+	return true
 }
 
 // Resolved implements the Expression interface.

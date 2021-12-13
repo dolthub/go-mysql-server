@@ -260,6 +260,11 @@ func (f *DateFormat) FunctionName() string {
 	return "date_format"
 }
 
+// Description implements sql.FunctionExpression
+func (f *DateFormat) Description() string {
+	return "format date as specified."
+}
+
 // NewDateFormat returns a new DateFormat UDF
 func NewDateFormat(ex, value sql.Expression) sql.Expression {
 	return &DateFormat{

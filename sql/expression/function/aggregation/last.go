@@ -40,6 +40,11 @@ func (l *Last) FunctionName() string {
 	return "last"
 }
 
+// Description implements sql.FunctionExpression
+func (l *Last) Description() string {
+	return "returns the last value in a sequence of elements of an aggregation."
+}
+
 // Type returns the resultant type of the aggregation.
 func (l *Last) Type() sql.Type {
 	return l.Child.Type()

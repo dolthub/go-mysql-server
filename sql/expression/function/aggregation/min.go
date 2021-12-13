@@ -41,6 +41,11 @@ func (m *Min) FunctionName() string {
 	return "min"
 }
 
+// Description implements sql.FunctionExpression
+func (m *Min) Description() string {
+	return "returns the minimum value of expr in all rows."
+}
+
 // Type returns the resultant type of the aggregation.
 func (m *Min) Type() sql.Type {
 	return m.Child.Type()

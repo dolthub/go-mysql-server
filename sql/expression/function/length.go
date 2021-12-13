@@ -62,6 +62,17 @@ func (l *Length) FunctionName() string {
 	}
 }
 
+// Description implements sql.FunctionExpression
+func (l *Length) Description() string {
+	if l.CountType == NumChars {
+		return "returns the length of the string in characters."
+	} else if l.CountType == NumBytes {
+		return "returns the length of the string in bytes."
+	} else {
+		panic("unknown description for length count type")
+	}
+}
+
 // WithChildren implements the Expression interface.
 func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {

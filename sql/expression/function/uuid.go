@@ -59,6 +59,11 @@ func NewUUIDFunc() sql.Expression {
 	return UUIDFunc{}
 }
 
+// Description implements sql.FunctionExpression
+func (u UUIDFunc) Description() string {
+	return "returns a Universal Unique Identifier (UUID)."
+}
+
 func (u UUIDFunc) String() string {
 	return "UUID()"
 }
@@ -120,6 +125,16 @@ func NewIsUUID(arg sql.Expression) sql.Expression {
 	return IsUUID{child: arg}
 }
 
+// FunctionName implements sql.FunctionExpression
+func (u IsUUID) FunctionName() string {
+	return "is_uuid"
+}
+
+// Description implements sql.FunctionExpression
+func (u IsUUID) Description() string {
+	return "returns whether argument is a valid UUID."
+}
+
 func (u IsUUID) String() string {
 	return fmt.Sprintf("IS_UUID(%s)", u.child)
 }
@@ -164,10 +179,6 @@ func (u IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	}
 
 	return IsUUID{child: children[0]}, nil
-}
-
-func (u IsUUID) FunctionName() string {
-	return "is_uuid"
 }
 
 func (u IsUUID) Resolved() bool {
@@ -223,6 +234,11 @@ func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("UUID_TO_BIN", "1 or 2", len(args))
 	}
+}
+
+// Description implements sql.FunctionExpression
+func (ub UUIDToBin) Description() string {
+	return "converts string UUID to binary."
 }
 
 func (ub UUIDToBin) String() string {
@@ -349,13 +365,13 @@ func (ub UUIDToBin) IsNullable() bool {
 // The one-argument form takes a binary UUID value. The UUID value is assumed not to have its time-low and time-high
 // parts swapped. The string result is in the same order as the binary argument.
 
-// The two-argument form takes a binary UUID value and a swap-flag value:
-
-// If swap_flag is 0, the two-argument form is equivalent to the one-argument form. The string result is in the same
-// order as the binary argument.
-
-// If swap_flag is 1, the UUID value is assumed to have its time-low and time-high parts swapped. These parts are
-// swapped back to their original position in the result value.
+//The two-argument form takes a binary UUID value and a swap-flag value:
+//
+//If swap_flag is 0, the two-argument form is equivalent to the one-argument form. The string result is in the same
+//order as the binary argument.
+//
+//If swap_flag is 1, the UUID value is assumed to have its time-low and time-high parts swapped. These parts are
+//swapped back to their original position in the result value.
 
 type BinToUUID struct {
 	inputBinary sql.Expression
@@ -373,6 +389,16 @@ func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("BIN_TO_UUID", "1 or 2", len(args))
 	}
+}
+
+// FunctionName implements sql.FunctionExpression
+func (bu BinToUUID) FunctionName() string {
+	return "bin_to_uuid"
+}
+
+// Description implements sql.FunctionExpression
+func (bu BinToUUID) Description() string {
+	return "converts a binary UUID to a string UUID and returns the result."
 }
 
 func (bu BinToUUID) String() string {
@@ -461,10 +487,6 @@ func unswapUUIDBytes(cur uuid.UUID) []byte {
 
 func (bu BinToUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewBinToUUID(children...)
-}
-
-func (bu BinToUUID) FunctionName() string {
-	return "bin_to_uuid"
 }
 
 func (bu BinToUUID) Resolved() bool {

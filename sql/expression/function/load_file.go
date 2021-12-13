@@ -35,6 +35,11 @@ func NewLoadFile(fileName sql.Expression) sql.Expression {
 	}
 }
 
+// Description implements sql.FunctionExpression
+func (l *LoadFile) Description() string {
+	return "returns a LoadFile object."
+}
+
 // Resolved implements sql.Expression.
 func (l *LoadFile) Resolved() bool {
 	return l.fileName.Resolved()

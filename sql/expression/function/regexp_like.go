@@ -68,6 +68,11 @@ func (r *RegexpLike) FunctionName() string {
 	return "regexp_like"
 }
 
+// Description implements sql.FunctionExpression
+func (r *RegexpLike) Description() string {
+	return "returns whether string matches regular expression."
+}
+
 // Type implements the sql.Expression interface.
 func (r *RegexpLike) Type() sql.Type { return sql.Int8 }
 

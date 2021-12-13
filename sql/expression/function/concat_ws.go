@@ -61,6 +61,11 @@ func (f *ConcatWithSeparator) FunctionName() string {
 	return "concat_ws"
 }
 
+// Description implements sql.FunctionExpression
+func (f *ConcatWithSeparator) Description() string {
+	return "concatenates any group of fields into a single string. The first argument is the separator for the rest of the arguments. The separator is added between the strings to be concatenated. The separator can be a string, as can the rest of the arguments. If the separator is NULL, the result is NULL."
+}
+
 // Type implements the Expression interface.
 func (f *ConcatWithSeparator) Type() sql.Type { return sql.LongText }
 

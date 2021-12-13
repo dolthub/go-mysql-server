@@ -63,6 +63,20 @@ func (l *LogBase) FunctionName() string {
 	}
 }
 
+// Description implements sql.FunctionExpression
+func (l *LogBase) Description() string {
+	switch l.base {
+	case float64(math.E):
+		return "returns the natural logarithm of X."
+	case float64(10):
+		return "returns the base-10 logarithm of X."
+	case float64(2):
+		return "returns the base-2 logarithm of X."
+	default:
+		return "if called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned."
+	}
+}
+
 func (l *LogBase) String() string {
 	switch l.base {
 	case float64(math.E):
@@ -139,6 +153,11 @@ func NewLog(args ...sql.Expression) (sql.Expression, error) {
 // FunctionName implements sql.FunctionExpression
 func (l *Log) FunctionName() string {
 	return "log"
+}
+
+// Description implements sql.FunctionExpression
+func (l *Log) Description() string {
+	return "if called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned."
 }
 
 func (l *Log) String() string {
