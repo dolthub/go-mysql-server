@@ -52,7 +52,8 @@ var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
 // TODO parametrize
 const rowsBatch = 100
-const tcpCheckerSleepTime = 1
+
+var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
 type MultiStmtMode int
 
@@ -327,6 +328,7 @@ func (h *Handler) doQuery(
 		}
 	}()
 
+	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
@@ -381,6 +383,7 @@ func (h *Handler) doQuery(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
+	// Read rows off the row iterator and send them to the row channel.
 	eg.Go(func() error {
 		defer cancelF()
 		for {
@@ -427,12 +430,17 @@ func (h *Handler) doQuery(
 					return ErrRowTimeout.New()
 				}
 			}
+			if !timer.Stop() {
+				<-timer.C
+			}
 			timer.Reset(waitTime)
 		}
 	})
 
 	err = eg.Wait()
+	ctx = oCtx
 	if err != nil {
+		rows.Close(ctx)
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
@@ -462,7 +470,7 @@ func (h *Handler) doQuery(
 
 	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
 
-	// processAtLeastOneBatch means we already called callback() at least
+	// processedAtLeastOneBatch means we already called callback() at least
 	// once, so no need to call it if RowsAffected == 0.
 	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
 		return remainder, nil
@@ -546,10 +554,9 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 }
 
-// Periodically polls the connection socket to determine if it is has been
-// closed by the client, returning an error on if it has been. Meant to be run
-// in errgroup.Go() from the query handler routine.  Returns immediately on
-// platforms that can't support TCP socket checks.
+// Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
+// if it has been. Meant to be run in an errgroup from the query handler routine. Returns immediately with no error
+// on platforms that can't support TCP socket checks.
 func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error {
 	tcpConn, ok := maybeGetTCPConn(c.Conn)
 	if !ok {
@@ -571,11 +578,14 @@ func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error
 		return nil
 	}
 
+	timer := time.NewTimer(tcpCheckerSleepDuration)
+	defer timer.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
+		case <-timer.C:
 		}
 
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
@@ -589,7 +599,7 @@ func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
 			// thus the small wait between checks
-			time.Sleep(tcpCheckerSleepTime * time.Second)
+			timer.Reset(tcpCheckerSleepDuration)
 		}
 	}
 }
