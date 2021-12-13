@@ -49,7 +49,6 @@ const (
 	IfNotExistsAbsent IfNotExistsOption = false
 )
 
-
 type TempTableOption bool
 
 const (
@@ -129,12 +128,12 @@ type CreateTable struct {
 	name         string
 	CreateSchema sql.PrimaryKeySchema
 	ifNotExists  IfNotExistsOption
-	fkDefs      []*sql.ForeignKeyConstraint
-	chDefs      []*sql.CheckConstraint
-	idxDefs     []*IndexDefinition
-	like        sql.Node
-	temporary   TempTableOption
-	selectNode  sql.Node
+	fkDefs       []*sql.ForeignKeyConstraint
+	chDefs       []*sql.CheckConstraint
+	idxDefs      []*IndexDefinition
+	like         sql.Node
+	temporary    TempTableOption
+	selectNode   sql.Node
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)

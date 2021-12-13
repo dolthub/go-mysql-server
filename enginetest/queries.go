@@ -7322,19 +7322,19 @@ var errorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrColumnNotFound,
 	},
 	{
-		Query: 	`CREATE TABLE test (pk int, primary key(pk, noexist))`,
+		Query:       `CREATE TABLE test (pk int, primary key(pk, noexist))`,
 		ExpectedErr: sql.ErrUnknownIndexColumn,
 	},
 	{
-		Query: 	`CREATE TABLE test (pk int auto_increment, pk2 int auto_increment, primary key (pk))`,
+		Query:       `CREATE TABLE test (pk int auto_increment, pk2 int auto_increment, primary key (pk))`,
 		ExpectedErr: sql.ErrInvalidAutoIncCols,
 	},
 	{
-		Query: 	`CREATE TABLE test (pk int auto_increment)`,
+		Query:       `CREATE TABLE test (pk int auto_increment)`,
 		ExpectedErr: sql.ErrInvalidAutoIncCols,
 	},
 	{
-		Query: 	`CREATE TABLE test (pk int primary key auto_increment default 100, col int)`,
+		Query:       `CREATE TABLE test (pk int primary key auto_increment default 100, col int)`,
 		ExpectedErr: sql.ErrInvalidAutoIncCols,
 	},
 }
