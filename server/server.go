@@ -17,6 +17,7 @@ package server
 import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
+	"time"
 
 	sqle "github.com/dolthub/go-mysql-server"
 )
@@ -25,7 +26,7 @@ type ServerEventListener interface {
 	ClientConnected()
 	ClientDisconnected()
 	QueryStarted()
-	QueryCompleted(success bool)
+	QueryCompleted(success bool, duration time.Duration)
 }
 
 // NewDefaultServer creates a Server with the default session builder.

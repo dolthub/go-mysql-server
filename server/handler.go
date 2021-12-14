@@ -559,6 +559,7 @@ func (h *Handler) errorWrappedDoQuery(
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
+	start := time.Now()
 	if h.sel != nil {
 		h.sel.QueryStarted()
 	}
@@ -572,7 +573,7 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 
 	if h.sel != nil {
-		h.sel.QueryCompleted(retErr == nil)
+		h.sel.QueryCompleted(retErr == nil, time.Since(start))
 	}
 
 	return remainder, retErr
