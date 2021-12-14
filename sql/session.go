@@ -764,7 +764,7 @@ func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 // *Context, such as |KillConnection|.
 type Services struct {
 	KillConnection func(connID uint32) error
-	LoadInfile func(filename string) (io.ReadCloser, error)
+	LoadInfile     func(filename string) (io.ReadCloser, error)
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
