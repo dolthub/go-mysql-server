@@ -246,6 +246,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertCall(ctx, n)
 	case *sqlparser.Declare:
 		return convertDeclare(ctx, n)
+	case *sqlparser.Kill:
+		return convertKill(ctx, n)
 	case *sqlparser.Signal:
 		return convertSignal(ctx, n)
 	case *sqlparser.LockTables:
@@ -253,6 +255,21 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.UnlockTables:
 		return convertUnlockTables(ctx, n)
 	}
+}
+
+func convertKill(ctx *sql.Context, kill *sqlparser.Kill) (*plan.Kill, error) {
+	connID64, err := getInt64Value(ctx, kill.ConnID, "Error parsing KILL, expected int literal")
+	if err != nil {
+		return nil, err
+	}
+	connID32 := uint32(connID64)
+	if int64(connID32) != connID64 {
+		return nil, ErrUnsupportedFeature.New("int literal is not unsigned 32-bit.")
+	}
+	if kill.Connection {
+		return plan.NewKill(plan.KillType_Connection, connID32), nil
+	}
+	return plan.NewKill(plan.KillType_Query, connID32), nil
 }
 
 func convertBlock(ctx *sql.Context, parserStatements sqlparser.Statements, query string) (*plan.Block, error) {
