@@ -202,6 +202,106 @@ func TestHandlerComPrepare(t *testing.T) {
 	}
 }
 
+type TestListener struct {
+	Connections int
+	Queries int
+	Disconnects int
+	Successes int
+	Failures int
+}
+
+func (tl *TestListener) ClientConnected() {
+	tl.Connections++
+}
+
+func (tl *TestListener) ClientDisconnected() {
+	tl.Disconnects++
+}
+
+func (tl *TestListener) QueryStarted() {
+	tl.Queries++
+}
+
+func (tl *TestListener) QueryCompleted(success bool) {
+	if success {
+		tl.Successes++
+	} else {
+		tl.Failures++
+	}
+}
+
+func TestServerEventListener(t *testing.T) {
+	require := require.New(t)
+	e := setupMemDB(require)
+	listener := &TestListener{}
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
+			},
+			opentracing.NoopTracer{},
+			func(db string) bool { return db == "test" },
+			e.MemoryManager,
+			e.ProcessList,
+			"foo",
+		),
+		0,
+		false,
+		listener,
+	)
+
+	cb := func(res *sqltypes.Result, more bool) error {
+		return nil
+	}
+
+	require.Equal(listener.Connections, 0)
+	require.Equal(listener.Disconnects, 0)
+	require.Equal(listener.Queries, 0)
+	require.Equal(listener.Successes, 0)
+	require.Equal(listener.Failures, 0)
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	require.Equal(listener.Connections, 1)
+	require.Equal(listener.Disconnects, 0)
+
+	err := handler.sm.SetDB(conn1, "test")
+	require.NoError(err)
+
+	err = handler.ComQuery(conn1, "SELECT 1", cb)
+	require.NoError(err)
+	require.Equal(listener.Queries, 1)
+	require.Equal(listener.Successes, 1)
+	require.Equal(listener.Failures, 0)
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	require.Equal(listener.Connections, 2)
+	require.Equal(listener.Disconnects, 0)
+
+	handler.ComInitDB(conn2, "test")
+	err = handler.ComQuery(conn2, "select 1", cb)
+	require.NoError(err)
+	require.Equal(listener.Queries, 2)
+	require.Equal(listener.Successes, 2)
+	require.Equal(listener.Failures, 0)
+
+	err = handler.ComQuery(conn1, "select bad_col from bad_table with illegal syntax", cb)
+	require.Error(err)
+	require.Equal(listener.Queries, 3)
+	require.Equal(listener.Successes, 2)
+	require.Equal(listener.Failures, 1)
+
+	handler.ConnectionClosed(conn1)
+	require.Equal(listener.Connections, 2)
+	require.Equal(listener.Disconnects, 1)
+
+	handler.ConnectionClosed(conn2)
+	require.Equal(listener.Connections, 2)
+	require.Equal(listener.Disconnects, 2)
+}
+
 func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)

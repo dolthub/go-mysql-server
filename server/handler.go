@@ -113,18 +113,10 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
-	if h.sel != nil {
-		h.sel.QueryStarted()
-	}
+
 
 	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
-		err := callback(res)
-
-		if h.sel != nil {
-			h.sel.QueryCompleted(err == nil)
-		}
-
-		return err
+		return callback(res)
 	})
 	return err
 }
@@ -567,13 +559,23 @@ func (h *Handler) errorWrappedDoQuery(
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
+	if h.sel != nil {
+		h.sel.QueryStarted()
+	}
+
 	remainder, err := h.doQuery(c, query, mode, bindings, callback)
 	err, _, ok := sql.CastSQLError(err)
-	if ok {
-		return remainder, nil
-	} else {
-		return remainder, err
+
+	var retErr error
+	if !ok {
+		retErr = err
 	}
+
+	if h.sel != nil {
+		h.sel.QueryCompleted(retErr == nil)
+	}
+
+	return remainder, retErr
 }
 
 // Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
