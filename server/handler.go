@@ -69,20 +69,26 @@ type Handler struct {
 	sm                *SessionManager
 	readTimeout       time.Duration
 	disableMultiStmts bool
+	sel               ServerEventListener
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool) *Handler {
+func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, listener ServerEventListener) *Handler {
 	return &Handler{
 		e:                 e,
 		sm:                sm,
 		readTimeout:       rt,
 		disableMultiStmts: disableMultiStmts,
+		sel:               listener,
 	}
 }
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
+	if h.sel != nil {
+		h.sel.ClientConnected()
+	}
+
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
@@ -107,8 +113,18 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+	if h.sel != nil {
+		h.sel.QueryStarted()
+	}
+
 	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
-		return callback(res)
+		err := callback(res)
+
+		if h.sel != nil {
+			h.sel.QueryCompleted(err == nil)
+		}
+
+		return err
 	})
 	return err
 }
@@ -119,6 +135,12 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) {
 
 // ConnectionClosed reports that a connection has been closed.
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
+	defer func() {
+		if h.sel != nil {
+			h.sel.ClientDisconnected()
+		}
+	}()
+
 	ctx, _ := h.sm.NewContextWithQuery(c, "")
 	h.sm.CloseConn(c)
 

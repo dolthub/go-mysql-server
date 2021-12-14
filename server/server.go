@@ -21,14 +21,21 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 )
 
+type ServerEventListener interface {
+	ClientConnected()
+	ClientDisconnected()
+	QueryStarted()
+	QueryCompleted(success bool)
+}
+
 // NewDefaultServer creates a Server with the default session builder.
 func NewDefaultServer(cfg Config, e *sqle.Engine) (*Server, error) {
-	return NewServer(cfg, e, DefaultSessionBuilder)
+	return NewServer(cfg, e, DefaultSessionBuilder, nil)
 }
 
 // NewServer creates a server with the given protocol, address, authentication
 // details given a SQLe engine and a session builder.
-func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
+func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEventListener) (*Server, error) {
 	var tracer opentracing.Tracer
 	if cfg.Tracer != nil {
 		tracer = cfg.Tracer
@@ -57,7 +64,9 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder) (*Server, error) {
 			e.ProcessList,
 			cfg.Address),
 		cfg.ConnReadTimeout,
-		cfg.DisableClientMultiStatements)
+		cfg.DisableClientMultiStatements,
+		listener,
+	)
 	a := cfg.Auth.Mysql()
 	l, err := NewListener(cfg.Protocol, cfg.Address, handler)
 	if err != nil {
