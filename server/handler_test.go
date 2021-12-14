@@ -204,10 +204,10 @@ func TestHandlerComPrepare(t *testing.T) {
 
 type TestListener struct {
 	Connections int
-	Queries int
+	Queries     int
 	Disconnects int
-	Successes int
-	Failures int
+	Successes   int
+	Failures    int
 }
 
 func (tl *TestListener) ClientConnected() {
