@@ -59,8 +59,19 @@ func GetRangeCutKey(c RangeCut) interface{} {
 
 // GetRangeCutMax returns the RangeCut with the highest value.
 func GetRangeCutMax(typ Type, cuts ...RangeCut) (RangeCut, error) {
-	maxCut := cuts[0]
-	for i := 1; i < len(cuts); i++ {
+	i := 0
+	var maxCut RangeCut
+	for ; i < len(cuts); i++ {
+		if cuts[i] != nil {
+			maxCut = cuts[i]
+			i++
+			break
+		}
+	}
+	for ; i < len(cuts); i++ {
+		if cuts[i] == nil {
+			continue
+		}
 		comp, err := maxCut.Compare(cuts[i], typ)
 		if err != nil {
 			return maxCut, err
@@ -74,8 +85,19 @@ func GetRangeCutMax(typ Type, cuts ...RangeCut) (RangeCut, error) {
 
 // GetRangeCutMin returns the RangeCut with the lowest value.
 func GetRangeCutMin(typ Type, cuts ...RangeCut) (RangeCut, error) {
-	minCut := cuts[0]
-	for i := 1; i < len(cuts); i++ {
+	i := 0
+	var minCut RangeCut
+	for ; i < len(cuts); i++ {
+		if cuts[i] != nil {
+			minCut = cuts[i]
+			i++
+			break
+		}
+	}
+	for ; i < len(cuts); i++ {
+		if cuts[i] == nil {
+			continue
+		}
 		comp, err := minCut.Compare(cuts[i], typ)
 		if err != nil {
 			return minCut, err
