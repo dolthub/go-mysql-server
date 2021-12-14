@@ -285,13 +285,15 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		for {
 			if err := i.replacer.Insert(i.ctx, row); err != nil {
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
-					_ = i.rowSource.Close(i.ctx)
+					i.rowSource.Close(i.ctx)
+					i.rowSource = nil
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
 				if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
-					_ = i.rowSource.Close(i.ctx)
+					i.rowSource.Close(i.ctx)
+					i.rowSource = nil
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
@@ -366,28 +368,32 @@ func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 func (i *insertIter) Close(ctx *sql.Context) error {
 	if !i.closed {
 		i.closed = true
+		var rsErr, iErr, rErr, uErr error
+		if i.rowSource != nil {
+			rsErr = i.rowSource.Close(ctx)
+		}
 		if i.inserter != nil {
-			if err := i.inserter.Close(ctx); err != nil {
-				return err
-			}
+			iErr = i.inserter.Close(ctx)
 		}
 		if i.replacer != nil {
-			if err := i.replacer.Close(ctx); err != nil {
-				return err
-			}
+			rErr = i.replacer.Close(ctx)
 		}
 		if i.updater != nil {
-			if err := i.updater.Close(ctx); err != nil {
-				return err
-			}
+			uErr = i.updater.Close(ctx)
 		}
-		if i.rowSource != nil {
-			if err := i.rowSource.Close(ctx); err != nil {
-				return err
-			}
+		if rsErr != nil {
+			return rsErr
+		}
+		if iErr != nil {
+			return iErr
+		}
+		if rErr != nil {
+			return rErr
+		}
+		if uErr != nil {
+			return uErr
 		}
 	}
-
 	return nil
 }
 
@@ -420,7 +426,8 @@ func (i *insertIter) ignoreOrClose(row sql.Row, err error) (sql.Row, error) {
 		}
 		return nil, nil
 	} else {
-		_ = i.rowSource.Close(i.ctx)
+		i.rowSource.Close(i.ctx)
+		i.rowSource = nil
 		return nil, sql.NewWrappedInsertError(row, err)
 	}
 }

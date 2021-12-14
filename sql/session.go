@@ -732,11 +732,22 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
+// Terminate the connection associated with |connID|.
 func (c *Context) KillConnection(connID uint32) error {
 	if c.services.KillConnection != nil {
 		return c.services.KillConnection(connID)
 	}
 	return nil
+}
+
+// Load the remote file |filename| from the client. Returns a |ReadCloser| for
+// the file's contents. Returns an error if this functionality is not
+// supported.
+func (c *Context) LoadInfile(filename string) (io.ReadCloser, error) {
+	if c.services.LoadInfile != nil {
+		return c.services.LoadInfile(filename)
+	}
+	return nil, ErrUnsupportedFeature.New("LOAD DATA LOCAL INFILE ...")
 }
 
 func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
@@ -753,6 +764,7 @@ func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 // *Context, such as |KillConnection|.
 type Services struct {
 	KillConnection func(connID uint32) error
+	LoadInfile func(filename string) (io.ReadCloser, error)
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
