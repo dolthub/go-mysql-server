@@ -144,11 +144,11 @@ var fixtures = map[string]sql.Node{
 				Nullable:   true,
 				PrimaryKey: false,
 			}}),
-			IdxDefs: []*plan.IndexDefinition {
+			IdxDefs: []*plan.IndexDefinition{
 				{
-					IndexName:  "PRIMARY",
-					Columns:    []sql.IndexColumn{
-						{Name:   "a"},
+					IndexName: "PRIMARY",
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
 					},
 					Constraint: sql.IndexConstraint_Primary,
 				},
@@ -172,12 +172,12 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}}),
-			IdxDefs: []*plan.IndexDefinition {
+			IdxDefs: []*plan.IndexDefinition{
 				{
-					IndexName:  "PRIMARY",
-					Columns:    []sql.IndexColumn{
-						{Name:   "a"},
-						{Name:   "b"},
+					IndexName: "PRIMARY",
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
+						{Name: "b"},
 					},
 					Constraint: sql.IndexConstraint_Primary,
 				},
@@ -201,12 +201,12 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}}, 1, 0),
-			IdxDefs: []*plan.IndexDefinition {
+			IdxDefs: []*plan.IndexDefinition{
 				{
-					IndexName:  "PRIMARY",
-					Columns:    []sql.IndexColumn{
-						{Name:   "b"},
-						{Name:   "a"},
+					IndexName: "PRIMARY",
+					Columns: []sql.IndexColumn{
+						{Name: "b"},
+						{Name: "a"},
 					},
 					Constraint: sql.IndexConstraint_Primary,
 				},
@@ -230,18 +230,18 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}}, 1, 0),
-			IdxDefs: []*plan.IndexDefinition {
+			IdxDefs: []*plan.IndexDefinition{
 				{
-					IndexName:  "pk",
-					Columns:    []sql.IndexColumn{
-						{Name:   "b"},
-						{Name:   "a"},
+					IndexName: "pk",
+					Columns: []sql.IndexColumn{
+						{Name: "b"},
+						{Name: "a"},
 					},
 					Constraint: sql.IndexConstraint_Primary,
 				},
 				{
-					Columns:    []sql.IndexColumn{
-						{Name:   "a"},
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
 					},
 					Constraint: sql.IndexConstraint_Unique,
 				},
@@ -265,13 +265,13 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}}),
-			IdxDefs: []*plan.IndexDefinition {
+			IdxDefs: []*plan.IndexDefinition{
 				{
 					IndexName:  "PRIMARY",
 					Constraint: sql.IndexConstraint_Primary,
-					Columns:    []sql.IndexColumn{
-						{Name:   "a"},
-						{Name:   "b"},
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
+						{Name: "b"},
 					},
 				},
 			},

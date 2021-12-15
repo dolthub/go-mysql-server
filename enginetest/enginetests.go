@@ -1717,7 +1717,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST", sql.ErrTableColumnNotFound)
 	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
 	AssertErr(t, e, harness, "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'", sql.ErrTableNotFound)
-	
+
 	t.Run("auto increment attribute", func(t *testing.T) {
 		TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY i BIGINT auto_increment", []sql.Row(nil), nil, nil)
 
@@ -3510,7 +3510,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		require.NoError(t, err)
 		assert.Equal(t, []sql.CheckDefinition{
 			{
-				Name: "v1gt0",
+				Name:            "v1gt0",
 				CheckExpression: "(v1 > 0)",
 				Enforced:        true,
 			},

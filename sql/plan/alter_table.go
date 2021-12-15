@@ -85,8 +85,8 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 type AddColumn struct {
 	ddlNode
 	UnaryNode
-	column    *sql.Column
-	order     *sql.ColumnOrder
+	column *sql.Column
+	order  *sql.ColumnOrder
 }
 
 var _ sql.Node = (*AddColumn)(nil)
@@ -213,8 +213,8 @@ func (a *AddColumn) Children() []sql.Node {
 type DropColumn struct {
 	ddlNode
 	UnaryNode
-	column    string
-	order     *sql.ColumnOrder
+	column string
+	order  *sql.ColumnOrder
 }
 
 var _ sql.Node = (*DropColumn)(nil)
@@ -386,7 +386,7 @@ var _ sql.Expressioner = (*ModifyColumn)(nil)
 
 func NewModifyColumn(db sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	return &ModifyColumn{
-		ddlNode:    ddlNode{db},
+		ddlNode: ddlNode{db},
 		UnaryNode: UnaryNode{
 			table,
 		},
