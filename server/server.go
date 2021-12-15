@@ -15,9 +15,10 @@
 package server
 
 import (
+	"time"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
-	"time"
 
 	sqle "github.com/dolthub/go-mysql-server"
 )
