@@ -316,11 +316,7 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	if parsed == nil {
-		parsed, err = parse.Parse(ctx, query)
-	}
-	err = handleLoadData(c, ctx, parsed)
-	if err != nil {
-		return remainder, err
+		parsed, _ = parse.Parse(ctx, query)
 	}
 
 	ctx.GetLogger().Tracef("beginning execution")
@@ -728,25 +724,5 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 		}
 
 		span.Finish()
-	}
-}
-
-// handleLoadData triggers a connection response in the case that a LOAD DATA LOCAL command is sent.
-func handleLoadData(c *mysql.Conn, ctx *sql.Context, parsed sql.Node) error {
-	switch n := parsed.(type) {
-	case *plan.InsertInto:
-		if ld, ok := n.Source.(*plan.LoadData); ok {
-			tmpdir, err := ctx.GetSessionVariable(ctx, "tmpdir")
-			if err != nil {
-				return err
-			}
-			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, ld.File)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	default:
-		return nil
 	}
 }

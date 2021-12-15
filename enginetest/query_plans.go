@@ -506,11 +506,10 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		// TODO: indexed access
 		Query: `SELECT * FROM mytable WHERE i in (1+2)`,
 		ExpectedPlan: "Filter(mytable.i HASH IN (3))\n" +
 			" └─ Projected table access on [i s]\n" +
-			"     └─ Table(mytable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
 	{
@@ -601,7 +600,7 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
 		ExpectedPlan: "Filter(mytable.s HASH IN (\"first row\"))\n" +
 			" └─ Projected table access on [i s]\n" +
-			"     └─ Table(mytable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
 	},
 	{
@@ -1999,6 +1998,13 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter((invert_pk.y >= 0) AND (invert_pk.z < 1))\n" +
 			" └─ Projected table access on [x y z]\n" +
 			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk WHERE pk IN (1)`,
+		ExpectedPlan: "Filter(one_pk.pk HASH IN (1))\n" +
+			" └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 }

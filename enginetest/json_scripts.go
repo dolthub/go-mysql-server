@@ -42,7 +42,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT JSON_ARRAYAGG(o_id), JSON_ARRAYAGG(attribute) FROM t",
+				Query: "SELECT JSON_ARRAYAGG(o_id), JSON_ARRAYAGG(`attribute`) FROM t",
 				Expected: []sql.Row{
 					{
 						sql.MustJSON(`[2,2]`),
@@ -60,7 +60,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT o_id, JSON_ARRAYAGG(attribute) FROM t GROUP BY o_id",
+				Query: "SELECT o_id, JSON_ARRAYAGG(`attribute`) FROM t GROUP BY o_id",
 				Expected: []sql.Row{
 					{
 						2,
@@ -234,7 +234,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT o_id, JSON_OBJECTAGG(attribute, value) FROM t GROUP BY o_id`,
+				Query: "SELECT o_id, JSON_OBJECTAGG(`attribute`, value) FROM t GROUP BY o_id",
 				Expected: []sql.Row{
 					{
 						2, sql.MustJSON(`{"color": "red", "fabric": "silk"}`),
@@ -274,7 +274,7 @@ var JsonScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: `select JSON_OBJECTAGG(attribute, value) from t`,
+				Query: "select JSON_OBJECTAGG(`attribute`, value) from t",
 				Expected: []sql.Row{
 					{
 						sql.MustJSON(`{"color": "green", "fabric": "silk", "shape": "square"}`),

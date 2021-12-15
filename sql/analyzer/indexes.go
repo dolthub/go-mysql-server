@@ -180,14 +180,22 @@ func getIndexes(
 					return nil, err
 				}
 
+				var lookup sql.IndexLookup
 				values, ok := value.([]interface{})
-				if !ok {
-					return nil, errInvalidInRightEvaluation.New(value)
+				if ok {
+					lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, colExprs[0].String(), values...).Build(ctx)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					// For single length tuples, we don't return []interface{}, just the first element
+					lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, colExprs[0].String(), value).Build(ctx)
+					if err != nil {
+						return nil, err
+					}
 				}
-
-				lookup, err := sql.NewIndexBuilder(ctx, idx).Equals(ctx, colExprs[0].String(), values...).Build(ctx)
-				if err != nil {
-					return nil, err
+				if lookup == nil {
+					return nil, nil
 				}
 
 				getField := expression.ExtractGetField(cmp.Left())
