@@ -257,12 +257,13 @@ func (u *deleteRowHandler) okResult() sql.OkResult {
 }
 
 type accumulatorIter struct {
+	ctx              *sql.Context
 	iter             sql.RowIter
 	once             sync.Once
 	updateRowHandler accumulatorRowHandler
 }
 
-func (a *accumulatorIter) Next() (sql.Row, error) {
+func (a *accumulatorIter) Next() (r sql.Row, err error) {
 	run := false
 	a.once.Do(func() {
 		run = true
@@ -271,6 +272,27 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 	if !run {
 		return nil, io.EOF
 	}
+
+	// We close our child iterator before returning any results. In
+	// particular, the LOAD DATA source iterator needs to be closed before
+	// results are returned.
+	defer func() {
+		cerr := a.iter.Close(a.ctx)
+		if err == nil {
+			err = cerr
+		}
+
+		if err == nil {
+			result := a.updateRowHandler.okResult()
+			a.ctx.SetLastQueryInfo(sql.RowCount, int64(result.RowsAffected))
+
+			// For UPDATE, the affected-rows value is the number of rows “found”; that is, matched by the WHERE clause for FOUND_ROWS
+			// cc. https://dev.mysql.com/doc/c-api/8.0/en/mysql-affected-rows.html
+			if au, ok := a.updateRowHandler.(*updateRowHandler); ok {
+				a.ctx.SetLastQueryInfo(sql.FoundRows, int64(au.rowsMatched))
+			}
+		}
+	}()
 
 	for {
 		row, err := a.iter.Next()
@@ -292,20 +314,6 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 }
 
 func (a *accumulatorIter) Close(ctx *sql.Context) error {
-	err := a.iter.Close(ctx)
-	if err != nil {
-		return err
-	}
-
-	result := a.updateRowHandler.okResult()
-	ctx.SetLastQueryInfo(sql.RowCount, int64(result.RowsAffected))
-
-	// For UPDATE, the affected-rows value is the number of rows “found”; that is, matched by the WHERE clause for FOUND_ROWS
-	// cc. https://dev.mysql.com/doc/c-api/8.0/en/mysql-affected-rows.html
-	if au, ok := a.updateRowHandler.(*updateRowHandler); ok {
-		ctx.SetLastQueryInfo(sql.FoundRows, int64(au.rowsMatched))
-	}
-
 	return nil
 }
 
@@ -357,6 +365,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	}
 
 	return &accumulatorIter{
+		ctx:              ctx,
 		iter:             rowIter,
 		updateRowHandler: rowHandler,
 	}, nil
