@@ -515,7 +515,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44)",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -526,7 +526,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl (c0) values (44),(55)",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -538,7 +538,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (NULL, 44)",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -549,7 +549,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (0, 44)",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -560,7 +560,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "INSERT INTO auto_increment_tbl values (5, 44)",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 5}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -572,7 +572,7 @@ var InsertQueries = []WriteQueryTest{
 	{
 		WriteQuery: "INSERT INTO auto_increment_tbl values " +
 			"(NULL, 44), (NULL, 55), (9, 99), (NULL, 110), (NULL, 121)",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(5)}},
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 5, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl ORDER BY pk",
 		ExpectedSelect: []sql.Row{
 			{1, 11},
@@ -587,7 +587,7 @@ var InsertQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          `INSERT INTO auto_increment_tbl (c0) SELECT 44 FROM dual`,
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 4}}},
 		SelectQuery:         "SELECT * FROM auto_increment_tbl",
 		ExpectedSelect: []sql.Row{
 			{1, 11},

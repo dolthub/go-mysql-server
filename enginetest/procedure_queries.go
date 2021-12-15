@@ -423,7 +423,7 @@ INSERT INTO items (item) VALUES (txt)`,
 			{
 				Query: "CALL add_item('A test item');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{sql.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
 			},
 			{
