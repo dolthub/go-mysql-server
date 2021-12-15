@@ -17,6 +17,7 @@ package sql
 import (
 	"errors"
 	"fmt"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )

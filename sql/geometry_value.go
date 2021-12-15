@@ -35,7 +35,7 @@ func (g GeometryObject) Unmarshall(ctx *Context) (GeometryObject, error) {
 	return g, nil
 }
 
-func compareGeometry(a,b interface{}) (int, error) {
+func compareGeometry(a, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
