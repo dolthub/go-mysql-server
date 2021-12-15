@@ -276,7 +276,7 @@ type accumulatorIter struct {
 	updateRowHandler accumulatorRowHandler
 }
 
-func (a *accumulatorIter) Next() (sql.Row, error) {
+func (a *accumulatorIter) Next() (r sql.Row, err error) {
 	run := false
 	a.once.Do(func() {
 		run = true
@@ -290,6 +290,16 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 	if oldLastInsertId != 0 {
 		a.ctx.Session.SetLastQueryInfo(sql.LastInsertId, -1)
 	}
+
+	// We close our child iterator before returning any results. In
+	// particular, the LOAD DATA source iterator needs to be closed before
+	// results are returned.
+	defer func() {
+		cerr := a.iter.Close(a.ctx)
+		if err == nil {
+			err = cerr
+		}
+	}()
 
 	for {
 		row, err := a.iter.Next()
@@ -334,7 +344,7 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 }
 
 func (a *accumulatorIter) Close(ctx *sql.Context) error {
-	return a.iter.Close(ctx)
+	return nil
 }
 
 type matchingAccumulator interface {

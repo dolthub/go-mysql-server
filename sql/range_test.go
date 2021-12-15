@@ -117,18 +117,85 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 				r(req(8), req(8)),
 			},
 		},
+		{
+			or(
+				and(gt(x, 2), gt(y, 2)),
+				and(eq(x, 4), eq(y, 4)),
+				and(lt(x, 9), lt(y, 9)),
+				and(eq(x, 6), eq(y, 6)),
+				and(eq(x, 8), eq(y, 8)),
+			),
+			sql.RangeCollection{
+				r(rgt(2), rgt(2)),
+				r(req(4), req(4)),
+				r(rlt(9), rlt(9)),
+				r(req(6), req(6)),
+				r(req(8), req(8)),
+			},
+		},
+		{
+			or(
+				and(cc(x, 2, 6), cc(y, 5, 10)),
+				and(cc(x, 3, 7), cc(y, 1, 4)),
+				and(oo(x, 4, 8), oo(y, 2, 5)),
+				and(oc(x, 5, 10), oc(y, 4, 7)),
+			),
+			sql.RangeCollection{
+				r(rcc(2, 6), rcc(5, 10)),
+				r(rcc(3, 7), rcc(1, 4)),
+				r(roo(4, 8), roo(2, 5)),
+				r(roc(5, 10), roc(4, 7)),
+			},
+		},
+		{
+			or(
+				and(cc(x, 1, 6), cc(y, 1, 3)),
+				and(cc(x, 1, 2), cc(y, 1, 3)),
+				and(cc(x, 3, 4), cc(y, 1, 3)),
+				and(cc(x, 5, 6), cc(y, 1, 3)),
+				and(cc(x, 2, 3), cc(y, 1, 2)),
+			),
+			sql.RangeCollection{
+				r(rcc(1, 6), rcc(1, 3)),
+				r(rcc(1, 2), rcc(1, 3)),
+				r(rcc(3, 4), rcc(1, 3)),
+				r(rcc(5, 6), rcc(1, 3)),
+			},
+		},
+		{
+			or(
+				and(cc(x, 1, 6), cc(y, 4, 7)),
+				and(cc(x, 4, 5), cc(y, 3, 8)),
+				and(cc(x, 3, 8), cc(y, 1, 6)),
+			),
+			sql.RangeCollection{
+				r(rcc(1, 6), rcc(4, 7)),
+				r(rcc(4, 5), rcc(3, 8)),
+				r(rcc(3, 8), rcc(1, 6)),
+			},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
 			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
 			require.NoError(t, err)
+			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			require.NoError(t, err)
 			for _, row := range values2 {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+
 			}
+			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			require.NoError(t, err)
+			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			require.NoError(t, err)
+			ok, err := discreteRanges.Equals(verificationRanges)
+			require.NoError(t, err)
+			assert.True(t, ok)
 		})
 	}
 }
@@ -229,12 +296,21 @@ func TestRangeOverlapThreeColumns(t *testing.T) {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
 			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
 			require.NoError(t, err)
+			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			require.NoError(t, err)
 			for _, row := range values3 {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
 			}
+			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			require.NoError(t, err)
+			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			require.NoError(t, err)
+			ok, err := discreteRanges.Equals(verificationRanges)
+			require.NoError(t, err)
+			assert.True(t, ok)
 		})
 	}
 }
@@ -280,6 +356,36 @@ func evalRange(t *testing.T, rang sql.Range, row []interface{}) bool {
 	return ok
 }
 
+func removeOverlappingRangesVerification(ranges ...sql.Range) (sql.RangeCollection, error) {
+	if len(ranges) == 0 {
+		return nil, nil
+	}
+
+	var newRanges sql.RangeCollection
+	for i := 0; i < len(ranges); i++ {
+		hadOverlap := false
+		for nri := 0; nri < len(newRanges); nri++ {
+			if resultingRanges, ok, err := ranges[i].RemoveOverlap(newRanges[nri]); err != nil {
+				return nil, err
+			} else if ok {
+				hadOverlap = true
+				// Remove the overlapping Range from newRanges
+				nrLast := len(newRanges) - 1
+				newRanges[nri], newRanges[nrLast] = newRanges[nrLast], newRanges[nri]
+				newRanges = newRanges[:nrLast]
+				// Add the new ranges to the end of the given slice allowing us to compare those against everything else.
+				ranges = append(ranges, resultingRanges...)
+				break
+			}
+		}
+		if !hadOverlap {
+			newRanges = append(newRanges, ranges[i])
+		}
+	}
+
+	return newRanges, nil
+}
+
 func eq(field sql.Expression, val uint8) sql.Expression {
 	return expression.NewNullSafeEquals(field, expression.NewLiteral(val, rangeType))
 }
@@ -298,6 +404,34 @@ func gt(field sql.Expression, val uint8) sql.Expression {
 
 func gte(field sql.Expression, val uint8) sql.Expression {
 	return expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(val, rangeType))
+}
+
+func cc(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
+	return and(
+		expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
+	)
+}
+
+func co(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
+	return and(
+		expression.NewNullSafeGreaterThanOrEqual(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewNullSafeLessThan(field, expression.NewLiteral(upperbound, rangeType)),
+	)
+}
+
+func oc(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
+	return and(
+		expression.NewNullSafeGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewNullSafeLessThanOrEqual(field, expression.NewLiteral(upperbound, rangeType)),
+	)
+}
+
+func oo(field sql.Expression, lowerbound, upperbound uint8) sql.Expression {
+	return and(
+		expression.NewNullSafeGreaterThan(field, expression.NewLiteral(lowerbound, rangeType)),
+		expression.NewNullSafeLessThan(field, expression.NewLiteral(upperbound, rangeType)),
+	)
 }
 
 func not(field sql.Expression, val uint8) sql.Expression {

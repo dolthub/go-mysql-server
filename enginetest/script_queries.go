@@ -803,19 +803,19 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"1-2-3-4"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute`) FROM t",
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t`,
+				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t",
 				Expected: []sql.Row{{"color,color,fabric,shape"}},
 			},
 			{
@@ -827,11 +827,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"2"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute ASC) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` ASC) FROM t",
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute DESC) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` DESC) FROM t",
 				Expected: []sql.Row{{"shape,fabric,color"}},
 			},
 			{
@@ -847,15 +847,15 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    `SELECT group_concat(attribute) FROM t where o_id=2`,
+				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2",
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    `SELECT group_concat(o_id) FROM t WHERE attribute='color'`,
+				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color'",
 				Expected: []sql.Row{{"2,3"}},
 			},
 		},

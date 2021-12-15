@@ -176,6 +176,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 		sql.WithRootSpan(s.tracer.StartSpan("query")),
 		sql.WithServices(sql.Services{
 			KillConnection: s.killConnection,
+			LoadInfile:     conn.LoadInfile,
 		}),
 	)
 
