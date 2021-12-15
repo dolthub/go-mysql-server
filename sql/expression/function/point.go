@@ -61,7 +61,9 @@ func (p *Point) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (p *Point) Type() sql.Type { return sql.Geometry } // TODO: should be sql.Point
+func (p *Point) Type() sql.Type {
+	return sql.Point
+}
 
 func (p *Point) String() string {
 	return fmt.Sprintf("POINT(%d, %d)", p.X, p.Y)
@@ -138,5 +140,5 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return sql.PointObject{X: _x, Y: _y}, nil
+	return sql.PointValue{X: _x, Y: _y}, nil
 }

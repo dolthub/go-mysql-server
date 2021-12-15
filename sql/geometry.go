@@ -14,7 +14,7 @@
 
 package sql
 
-import (
+/*import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -59,6 +59,8 @@ func (t geometryType) Convert(v interface{}) (doc interface{}, err error) {
 	switch v := v.(type) {
 	case GeometryValue: // TODO: should be impossible
 		return v, nil
+	case PointValue:
+		return GeometryObject{Val: v}, nil
 	default:
 		// TODO: write custom marshal function
 	}
@@ -153,4 +155,4 @@ func (t geometryType) IsEmpty() bool{
 // Dimension implements GeometryType interface.
 func (t geometryType) Dimension() int {
 	return -1
-}
+}*/

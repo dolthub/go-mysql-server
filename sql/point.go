@@ -15,131 +15,109 @@
 package sql
 
 import (
+	"errors"
+	"fmt"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-var Point PointType = pointType{}
-
 // Represents the Point type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
 type PointType interface {
-	GeometryType
+	Type
 }
 
-type pointType struct {}
+type PointValue struct {
+	X float64
+	Y float64
+}
+
+var Point PointType = PointValue{}
 
 // Compare implements Type interface.
-func (t pointType) Compare(a interface{}, b interface{}) (int, error) {
-	var err error
-	if a, err = t.Convert(a); err != nil {
+func (t PointValue) Compare(a interface{}, b interface{}) (int, error) {
+	// Compare nulls
+	if hasNulls, res := compareNulls(a, b); hasNulls {
+		return res, nil
+	}
+
+	// Cast to pointValue
+	_a, err := t.convertToPointValue(a)
+	if err != nil {
 		return 0, err
 	}
-	if b, err = t.Convert(b); err != nil {
+	_b, err := t.convertToPointValue(b)
+	if err != nil {
 		return 0, err
 	}
-	return a.(PointValue).Compare(NewEmptyContext(), b.(PointValue))
+
+	// Compare X values
+	if _a.X > _b.X {
+		return 1, nil
+	}
+	if _a.X < _b.X {
+		return -1, nil
+	}
+	return 0, nil
+}
+
+func (t PointValue) convertToPointValue(v interface{}) (PointValue, error) {
+	switch v := v.(type) {
+	case PointValue:
+		return v, nil
+	default:
+		return PointValue{}, errors.New("can't convert to pointValue")
+	}
 }
 
 // Convert implements Type interface.
-func (t pointType) Convert(v interface{}) (interface{}, error) {
-	return v.(PointValue), nil
-}
-
-// MustConvert implements the Type interface.
-func (t pointType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
+func (t PointValue) Convert(v interface{}) (interface{}, error) {
+	// Convert to string
+	switch v := v.(type) {
+	case PointValue:
+		return fmt.Sprintf("(%f,%f)", v.X, v.Y), nil
+	case string:
+		return v, nil
+	default:
+		return nil, errors.New("Cannot convert to PointValue")
 	}
-	return value
 }
 
 // Promote implements the Type interface.
-func (t pointType) Promote() Type {
+func (t PointValue) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t pointType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t PointValue) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	pv, ok := v.(PointValue)
-	if !ok {
-		return sqltypes.NULL, nil
-	}
-
-	s, err := pv.ToString(NewEmptyContext())
+	pv, err := t.Convert(v)
 	if err != nil {
-		return sqltypes.NULL, err
+		return sqltypes.Value{}, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(s)), nil
+	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(pv.(string))), nil
+}
+
+// ToString implements Type interface.
+func (t PointValue) ToString() (string, error) {
+	return fmt.Sprintf("POINT(%f, %f)", t.X, t.Y), nil
 }
 
 // String implements Type interface.
-func (t pointType) String() string {
+func (t PointValue) String() string {
 	return "POINT"
 }
 
 // Type implements Type interface.
-func (t pointType) Type() query.Type {
+func (t PointValue) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // Zero implements Type interface.
-func (t pointType) Zero() interface{} {
+func (t PointValue) Zero() interface{} {
 	return nil
-}
-
-// SRID implements GeometryType interface.
-func (t pointType) SRID() uint32 {
-	return 0
-}
-
-// Coordinates implements GeometryType interface.
-func (t pointType) Coordinates() []float64 {
-	return []float64{0}
-}
-
-// Interior implements GeometryType interface.
-func (t pointType) Interior() []GeometryType {
-	return nil
-}
-
-// Boundary implements GeometryType interface.
-func (t pointType) Boundary() []GeometryType {
-	return nil
-}
-
-// Exterior implements GeometryType interface.
-func (t pointType) Exterior() []GeometryType {
-	return nil
-}
-
-// MBR implements GeometryType interface.
-func (t pointType) MBR() (float64, float64, float64, float64, float64, float64, float64, float64) {
-	return 0,1,2,3,4,5,6,7
-}
-
-// IsSimple implements GeometryType interface.
-func (t pointType) IsSimple() bool {
-	return false
-}
-
-// IsClosed implements GeometryType interface.
-func (t pointType) IsClosed() bool {
-	return false
-}
-
-// IsEmpty implements GeometryType interface.
-func (t pointType) IsEmpty() bool{
-	return false
-}
-
-// Dimension implements GeometryType interface.
-func (t pointType) Dimension() int {
-	return 0
 }
