@@ -15,6 +15,7 @@
 package function
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -74,6 +75,37 @@ func (p *Point) WithChildren(children ...sql.Expression) (sql.Expression, error)
 	return NewPoint(children[0], children[1]), nil
 }
 
+func convertToFloat64(x interface{}) (float64, error) {
+	switch x.(type) {
+	case int:
+		return float64(x.(int)), nil
+	case int8:
+		return float64(x.(int8)), nil
+	case int16:
+		return float64(x.(int16)), nil
+	case int32:
+		return float64(x.(int32)), nil
+	case int64:
+		return float64(x.(int64)), nil
+	case uint:
+		return float64(x.(uint)), nil
+	case uint8:
+		return float64(x.(uint8)), nil
+	case uint16:
+		return float64(x.(uint16)), nil
+	case uint32:
+		return float64(x.(uint32)), nil
+	case uint64:
+		return float64(x.(uint64)), nil
+	case float32:
+		return float64(x.(float32)), nil
+	case float64:
+		return x.(float64), nil
+	default:
+		return 0, errors.New("point: wrong type")
+	}
+}
+
 // Eval implements the sql.Expression interface.
 func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate X
@@ -85,6 +117,12 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// Convert to float64
+	_x, err := convertToFloat64(x)
+	if err != nil {
+		return nil, err
+	}
+
 	// Evaluate Y
 	y, err := p.Y.Eval(ctx, row)
 	if err != nil {
@@ -94,6 +132,11 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// TODO: figure out return
-	return nil, nil
+	// Convert to float64
+	_y, err := convertToFloat64(y)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.PointObject{X: _x, Y: _y}, nil
 }

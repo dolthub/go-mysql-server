@@ -432,6 +432,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "linestring":
 	case "multilinestring":
 	case "point":
+		return Point, nil
 	case "multipoint":
 	case "polygon":
 	case "multipolygon":

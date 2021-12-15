@@ -15,17 +15,15 @@
 package sql
 
 import (
-	"errors"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
-var (
-	Geometry GeometryType = geometryType{}
-)
+var ErrConvertingToGeometry = errors.NewKind("value %v is not valid Geometry")
 
-// Represents the GEOMETRY type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-geometry.html
+var Geometry GeometryType = geometryType{}
+
 type GeometryType interface {
 	Type
 	SRID() uint32
@@ -41,25 +39,30 @@ type GeometryType interface {
 	Dimension() int // TODO: only valid return values are -1, 0, 1, 2
 }
 
-type geometryType struct {}
+type geometryType struct{}
 
 // Compare implements Type interface.
 func (t geometryType) Compare(a interface{}, b interface{}) (int, error) {
-	return 0, errors.New("Geometry Compare not implemented yet")
+	var err error
+	if a, err = t.Convert(a); err != nil {
+		return 0, err
+	}
+	if b, err = t.Convert(b); err != nil {
+		return 0, err
+	}
+	// todo: making a context here is expensive
+	return a.(GeometryValue).Compare(NewEmptyContext(), b.(GeometryValue))
 }
 
 // Convert implements Type interface.
-func (t geometryType) Convert(v interface{}) (interface{}, error) {
-	return nil, errors.New("Geometry Convert not implemented yet")
-}
-
-// MustConvert implements the Type interface.
-func (t geometryType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
+func (t geometryType) Convert(v interface{}) (doc interface{}, err error) {
+	switch v := v.(type) {
+	case GeometryValue: // TODO: should be impossible
+		return v, nil
+	default:
+		// TODO: write custom marshal function
 	}
-	return value
+	return GeometryObject{Val: doc}, nil
 }
 
 // Promote implements the Type interface.
@@ -73,17 +76,23 @@ func (t geometryType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
-	if err != nil {
-		return sqltypes.Value{}, err
+	gs, ok := v.(GeometryValue)
+	if !ok {
+		return sqltypes.NULL, nil
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.Geometry, nil), nil
+	// todo: making a context here is expensive
+	s, err := gs.ToString(NewEmptyContext())
+	if err != nil {
+		return sqltypes.NULL, err
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(s)), nil
 }
 
 // String implements Type interface.
 func (t geometryType) String() string {
-	return "GEOMETRY"
+	return "Geometry"
 }
 
 // Type implements Type interface.
