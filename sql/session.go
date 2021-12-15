@@ -532,6 +532,7 @@ type Context struct {
 	Session
 	Memory      *MemoryManager
 	ProcessList ProcessList
+	services    Services
 	pid         uint64
 	query       string
 	queryTime   time.Time
@@ -587,6 +588,13 @@ func WithRootSpan(s opentracing.Span) ContextOption {
 func WithProcessList(p ProcessList) ContextOption {
 	return func(ctx *Context) {
 		ctx.ProcessList = p
+	}
+}
+
+// WithServices sets the services for the Context
+func WithServices(services Services) ContextOption {
+	return func(ctx *Context) {
+		ctx.services = services
 	}
 }
 
@@ -724,9 +732,39 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
+// Terminate the connection associated with |connID|.
+func (c *Context) KillConnection(connID uint32) error {
+	if c.services.KillConnection != nil {
+		return c.services.KillConnection(connID)
+	}
+	return nil
+}
+
+// Load the remote file |filename| from the client. Returns a |ReadCloser| for
+// the file's contents. Returns an error if this functionality is not
+// supported.
+func (c *Context) LoadInfile(filename string) (io.ReadCloser, error) {
+	if c.services.LoadInfile != nil {
+		return c.services.LoadInfile(filename)
+	}
+	return nil, ErrUnsupportedFeature.New("LOAD DATA LOCAL INFILE ...")
+}
+
 func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 	eg, egCtx := errgroup.WithContext(c.Context)
 	return eg, c.WithContext(egCtx)
+}
+
+// Services are handles to optional or plugin functionality that can be
+// used by the SQL implementation in certain situations. An integrator can set
+// methods on Services for a given *Context and different parts of go-mysql-server
+// will inspect it in order to fulfill their implementations. Currently, the
+// KillConnection service is available. Set these with |WithServices|; the
+// implementation will access them through the corresponding methods on
+// *Context, such as |KillConnection|.
+type Services struct {
+	KillConnection func(connID uint32) error
+	LoadInfile     func(filename string) (io.ReadCloser, error)
 }
 
 // NewSpanIter creates a RowIter executed in the given span.

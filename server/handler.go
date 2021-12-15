@@ -19,7 +19,6 @@ import (
 	"net"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -41,8 +40,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-var regKillCmd = regexp.MustCompile(`^kill (?:(query|connection) )?(\d+)$`)
-
 var errConnectionNotFound = errors.NewKind("connection not found: %c")
 
 // ErrRowTimeout will be returned if the wait for the row is longer than the connection timeout
@@ -55,7 +52,8 @@ var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
 // TODO parametrize
 const rowsBatch = 100
-const tcpCheckerSleepTime = 1
+
+var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
 type MultiStmtMode int
 
@@ -285,15 +283,6 @@ func (h *Handler) doQuery(
 	ctx = ctx.WithQuery(query)
 	more := remainder != ""
 
-	handled, err := h.handleKill(ctx, c, query)
-	if err != nil {
-		return remainder, err
-	}
-
-	if handled {
-		return remainder, callback(&sqltypes.Result{}, more)
-	}
-
 	ctx.SetLogger(ctx.GetLogger().
 		WithField("query", string(queryLoggingRegex.ReplaceAll([]byte(query), []byte(" ")))))
 	ctx.GetLogger().Debugf("Starting query")
@@ -313,11 +302,7 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	if parsed == nil {
-		parsed, err = parse.Parse(ctx, query)
-	}
-	err = handleLoadData(c, ctx, parsed)
-	if err != nil {
-		return remainder, err
+		parsed, _ = parse.Parse(ctx, query)
 	}
 
 	ctx.GetLogger().Tracef("beginning execution")
@@ -339,6 +324,9 @@ func (h *Handler) doQuery(
 		}
 	}()
 
+	oCtx := ctx
+	eg, ctx := ctx.NewErrgroup()
+
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
@@ -350,10 +338,34 @@ func (h *Handler) doQuery(
 
 	// Reads rows from the row reading goroutine
 	rowChan := make(chan sql.Row)
-	// To send errors from the two goroutines to the main one
-	errChan := make(chan error)
-	// To close the goroutines
-	quit := make(chan struct{})
+
+	eg.Go(func() error {
+		defer close(rowChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				row, err := rows.Next()
+				if err != nil {
+					if err == io.EOF {
+						return nil
+					}
+					return err
+				}
+				select {
+				case rowChan <- row:
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		}
+	})
+
+	pollCtx, cancelF := ctx.NewSubContext()
+	eg.Go(func() error {
+		return h.pollForClosedConnection(pollCtx, c)
+	})
 
 	// Default waitTime is one minute if there is no timeout configured, in which case
 	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
@@ -368,79 +380,66 @@ func (h *Handler) doQuery(
 	defer timer.Stop()
 
 	// Read rows off the row iterator and send them to the row channel.
-	go func() {
+	eg.Go(func() error {
+		defer cancelF()
 		for {
+			if r == nil {
+				r = &sqltypes.Result{Fields: schemaToFields(schema)}
+			}
+
+			if r.RowsAffected == rowsBatch {
+				if err := callback(r, more); err != nil {
+					return err
+				}
+				r = nil
+				proccesedAtLeastOneBatch = true
+				continue
+			}
+
 			select {
-			case <-quit:
-				return
-			default:
-				row, err := rows.Next()
+			case <-ctx.Done():
+				return nil
+			case row, ok := <-rowChan:
+				if !ok {
+					return nil
+				}
+				if sql.IsOkResult(row) {
+					if len(r.Rows) > 0 {
+						panic("Got OkResult mixed with RowResult")
+					}
+					r = resultFromOkResult(row[0].(sql.OkResult))
+					continue
+				}
+
+				outputRow, err := rowToSQL(schema, row)
 				if err != nil {
-					errChan <- err
-					return
+					return err
 				}
-				rowChan <- row
-			}
-		}
-	}()
 
-	go h.pollForClosedConnection(ctx, c, errChan, quit)
-
-rowLoop:
-	for {
-		if r == nil {
-			r = &sqltypes.Result{Fields: schemaToFields(schema)}
-		}
-
-		if r.RowsAffected == rowsBatch {
-			if err := callback(r, more); err != nil {
-				close(quit)
-				return remainder, err
-			}
-
-			r = nil
-			proccesedAtLeastOneBatch = true
-			continue
-		}
-
-		select {
-		case err = <-errChan:
-			if err == io.EOF {
-				break rowLoop
-			}
-
-			ctx.GetLogger().WithError(err).Warn("error running query")
-			close(quit)
-			return remainder, err
-		case row := <-rowChan:
-			if sql.IsOkResult(row) {
-				if len(r.Rows) > 0 {
-					panic("Got OkResult mixed with RowResult")
+				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+				r.Rows = append(r.Rows, outputRow)
+				r.RowsAffected++
+			case <-timer.C:
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
 				}
-				r = resultFromOkResult(row[0].(sql.OkResult))
-				break rowLoop
 			}
-
-			outputRow, err := rowToSQL(schema, row)
-			if err != nil {
-				close(quit)
-				return remainder, err
+			if !timer.Stop() {
+				<-timer.C
 			}
-
-			ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-			r.Rows = append(r.Rows, outputRow)
-			r.RowsAffected++
-		case <-timer.C:
-			if h.readTimeout != 0 {
-				// Cancel and return so Vitess can call the CloseConnection callback
-				ctx.GetLogger().Tracef("connection timeout")
-				close(quit)
-				return remainder, ErrRowTimeout.New()
-			}
+			timer.Reset(waitTime)
 		}
-		timer.Reset(waitTime)
+	})
+
+	err = eg.Wait()
+	ctx = oCtx
+	if err != nil {
+		rows.Close(ctx)
+		ctx.GetLogger().WithError(err).Warn("error running query")
+		return remainder, err
 	}
-	close(quit)
 
 	err = rows.Close(ctx)
 	if err != nil {
@@ -467,11 +466,8 @@ rowLoop:
 
 	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
 
-	// TODO(andy): logic doesn't match comment?
-	// Even if r.RowsAffected = 0, the callback must be
-	// called to update the state in the go-vitess' listener
-	// and avoid returning errors when the query doesn't
-	// produce any results.
+	// processedAtLeastOneBatch means we already called callback() at least
+	// once, so no need to call it if RowsAffected == 0.
 	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
 		return remainder, nil
 	}
@@ -554,14 +550,14 @@ func (h *Handler) errorWrappedDoQuery(
 	}
 }
 
-// Periodically polls the connection socket to determine if it is has been closed by the client, sending an error on
-// the supplied error channel if it has. Meant to be run in a separate goroutine from the query handler routine.
-// Returns immediately on platforms that can't support TCP socket checks.
-func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn, errChan chan error, quit chan struct{}) {
+// Periodically polls the connection socket to determine if it is has been closed by the client, returning an error
+// if it has been. Meant to be run in an errgroup from the query handler routine. Returns immediately with no error
+// on platforms that can't support TCP socket checks.
+func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn) error {
 	tcpConn, ok := maybeGetTCPConn(c.Conn)
 	if !ok {
 		ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
-		return
+		return nil
 	}
 
 	inode, err := sockstate.GetConnInode(tcpConn)
@@ -569,35 +565,37 @@ func (h *Handler) pollForClosedConnection(ctx *sql.Context, c *mysql.Conn, errCh
 		if !sockstate.ErrSocketCheckNotImplemented.Is(err) {
 			ctx.GetLogger().Trace("Connection checker exiting, connection isn't TCP")
 		}
-		return
+		return nil
 	}
 
 	t, ok := tcpConn.LocalAddr().(*net.TCPAddr)
 	if !ok {
 		ctx.GetLogger().Trace("Connection checker exiting, could not get local port")
-		return
+		return nil
 	}
+
+	timer := time.NewTimer(tcpCheckerSleepDuration)
+	defer timer.Stop()
 
 	for {
 		select {
-		case <-quit:
-			return
-		default:
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
 		}
 
 		st, err := sockstate.GetInodeSockState(t.Port, inode)
 		switch st {
 		case sockstate.Broken:
 			ctx.GetLogger().Warn("socket state is broken, returning error")
-			errChan <- ErrConnectionWasClosed.New()
-			return
+			return ErrConnectionWasClosed.New()
 		case sockstate.Error:
 			ctx.GetLogger().WithError(err).Warn("Connection checker exiting, got err checking sockstate")
-			return
+			return nil
 		default: // Established
 			// (juanjux) this check is not free, each iteration takes about 9 milliseconds to run on my machine
 			// thus the small wait between checks
-			time.Sleep(tcpCheckerSleepTime * time.Second)
+			timer.Reset(tcpCheckerSleepDuration)
 		}
 	}
 }
@@ -639,44 +637,6 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	}
 
 	return 0
-}
-
-func (h *Handler) handleKill(ctx *sql.Context, conn *mysql.Conn, query string) (bool, error) {
-	q := strings.ToLower(query)
-	// TODO: move this to parser, normal execution path
-	s := regKillCmd.FindStringSubmatch(q)
-	if s == nil {
-		return false, nil
-	}
-
-	ctx.GetLogger().Info("killing query")
-
-	id, err := strconv.ParseUint(s[2], 10, 32)
-	if err != nil {
-		return false, err
-	}
-
-	// KILL CONNECTION and KILL should close the connection. KILL QUERY only
-	// cancels the query.
-	//
-	// https://dev.mysql.com/doc/refman/8.0/en/kill.html
-	//
-	// KILL [CONNECTION | QUERY] processlist_id
-	// - KILL QUERY terminates the statement the connection is currently executing,
-	// but leaves the connection itself intact.
-
-	// - KILL CONNECTION is the same as KILL with no modifier:
-	// It terminates the connection associated with the given processlist_id,
-	// after terminating any statement the connection is executing.
-	connID := uint32(id)
-	ctx.ProcessList.Kill(connID)
-	if s[1] != "query" {
-		ctx.GetLogger().Info("kill connection")
-		h.sm.CloseConn(conn)
-		conn.Close()
-	}
-
-	return true, nil
 }
 
 func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
@@ -739,25 +699,5 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 		}
 
 		span.Finish()
-	}
-}
-
-// handleLoadData triggers a connection response in the case that a LOAD DATA LOCAL command is sent.
-func handleLoadData(c *mysql.Conn, ctx *sql.Context, parsed sql.Node) error {
-	switch n := parsed.(type) {
-	case *plan.InsertInto:
-		if ld, ok := n.Source.(*plan.LoadData); ok {
-			tmpdir, err := ctx.GetSessionVariable(ctx, "tmpdir")
-			if err != nil {
-				return err
-			}
-			err = c.HandleLoadDataLocalQuery(tmpdir.(string), plan.TmpfileName, ld.File)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	default:
-		return nil
 	}
 }

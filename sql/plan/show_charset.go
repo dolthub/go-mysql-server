@@ -54,7 +54,7 @@ func (sc *ShowCharset) Schema() sql.Schema {
 		{Name: "Charset", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Description", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
 		{Name: "Default collation", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Maxlen", Type: sql.Uint8, Default: nil, Nullable: false},
+		{Name: "Maxlen", Type: sql.Uint64, Default: nil, Nullable: false},
 	}
 }
 

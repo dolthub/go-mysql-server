@@ -3256,6 +3256,8 @@ CREATE TABLE t2
 	`CREATE DATABASE IF NOT EXISTS test`: plan.NewCreateDatabase("test", true),
 	`DROP DATABASE test`:                 plan.NewDropDatabase("test", false),
 	`DROP DATABASE IF EXISTS test`:       plan.NewDropDatabase("test", true),
+	`KILL QUERY 1`:                       plan.NewKill(plan.KillType_Query, 1),
+	`KILL CONNECTION 1`:                  plan.NewKill(plan.KillType_Connection, 1),
 }
 
 func TestParse(t *testing.T) {
@@ -3341,6 +3343,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SHOW ERRORS`:                                               sql.ErrUnsupportedFeature,
 	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
 	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
+	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {
@@ -3408,7 +3411,7 @@ func TestParseErrors(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			_, err := Parse(ctx, query)
 			require.Error(err)
-			require.True(expectedError.Is(err), "Expected %T but got %T", expectedError, err)
+			require.True(expectedError.Is(err), "Expected %T but got %T (%v)", expectedError, err, err)
 		})
 	}
 }
