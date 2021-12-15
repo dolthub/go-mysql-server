@@ -183,3 +183,9 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 		lookup:        i.lookup,
 	}, nil
 }
+
+// GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.
+// This method is exported for use in integration tests.
+func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
+	return ita.lookup
+}
