@@ -17,10 +17,11 @@ package sql
 import (
 	"errors"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
 	"strconv"
 	"strings"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // Represents the Point type.
@@ -71,7 +72,7 @@ func (t PointValue) convertToPointValue(v interface{}) (PointValue, error) {
 	case string:
 		// TODO: janky parsing
 		// get everything between parentheses
-		v = v[6:len(v)-1]
+		v = v[6 : len(v)-1]
 		s := strings.Split(v, ",")
 		x, err := strconv.ParseFloat(s[0], 64)
 		if err != nil {
