@@ -24,8 +24,8 @@ import (
 // TODO: consider using a binary expression
 // Point is a function that returns a point type containing values Y and Y.
 type Point struct {
-	X	sql.Expression
-	Y	sql.Expression
+	X sql.Expression
+	Y sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Point)(nil)
