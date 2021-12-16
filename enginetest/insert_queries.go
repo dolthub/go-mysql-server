@@ -26,6 +26,12 @@ import (
 
 var InsertQueries = []WriteQueryTest{
 	{
+		WriteQuery:          "INSERT INTO point_table VALUES (1, POINT(1,1));",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM point_table;",
+		ExpectedSelect:      []sql.Row{{5, "point(1,2)"}, {1, "point(1.000000,1.000000)"}},
+	},
+	{
 		WriteQuery:          "INSERT INTO keyless VALUES ();",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",

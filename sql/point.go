@@ -17,9 +17,10 @@ package sql
 import (
 	"errors"
 	"fmt"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"strconv"
+	"strings"
 )
 
 // Represents the Point type.
@@ -63,9 +64,24 @@ func (t PointValue) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 func (t PointValue) convertToPointValue(v interface{}) (PointValue, error) {
+	// TODO: this is what is called running UPDATE
 	switch v := v.(type) {
 	case PointValue:
 		return v, nil
+	case string:
+		// TODO: janky parsing
+		// get everything between parentheses
+		v = v[6:len(v)-1]
+		s := strings.Split(v, ",")
+		x, err := strconv.ParseFloat(s[0], 64)
+		if err != nil {
+			return PointValue{}, err
+		}
+		y, err := strconv.ParseFloat(s[1], 64)
+		if err != nil {
+			return PointValue{}, err
+		}
+		return PointValue{X: x, Y: y}, nil
 	default:
 		return PointValue{}, errors.New("can't convert to pointValue")
 	}

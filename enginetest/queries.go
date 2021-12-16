@@ -3397,7 +3397,9 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{
 			"point_table",
 			"CREATE TABLE `point_table` (\n" +
-				"  `p` point NOT NULL\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` point NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		}},
 	},

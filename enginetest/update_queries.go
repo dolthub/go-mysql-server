@@ -22,6 +22,18 @@ import (
 
 var UpdateTests = []WriteQueryTest{
 	{
+		WriteQuery:          "UPDATE point_table SET p = point(123.456,789);",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM point_table;",
+		ExpectedSelect:      []sql.Row{{int64(5), "point(123.456000,789.000000)"}},
+	},
+	{
+		WriteQuery:          "UPDATE mytable SET s = 'updated';",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
+		SelectQuery:         "SELECT * FROM mytable;",
+		ExpectedSelect:      []sql.Row{{int64(1), "updated"}, {int64(2), "updated"}, {int64(3), "updated"}},
+	},
+	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",

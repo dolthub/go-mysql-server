@@ -21,6 +21,12 @@ import (
 
 var DeleteTests = []WriteQueryTest{
 	{
+		WriteQuery:          "DELETE FROM point_table;",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM point_table;",
+		ExpectedSelect:      nil,
+	},
+	{
 		WriteQuery:          "DELETE FROM mytable;",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
