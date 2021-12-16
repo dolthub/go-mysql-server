@@ -162,7 +162,7 @@ func (c *CreateProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			CreatedAt:       c.CreatedAt,
 			ModifiedAt:      c.ModifiedAt,
 		},
-		db:  c.Db,
+		db: c.Db,
 	}, nil
 }
 
