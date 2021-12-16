@@ -432,7 +432,8 @@ func IsDDLNode(node sql.Node) bool {
 		*CreateProcedure, *DropProcedure,
 		*CreateForeignKey, *DropForeignKey,
 		*CreateCheck, *DropCheck,
-		*CreateTrigger, *DropTrigger, *AlterPK:
+		*CreateTrigger, *DropTrigger, *AlterPK,
+		*Block: // Block as a top level node wraps a set of ALTER TABLE statements
 		return true
 	default:
 		return false

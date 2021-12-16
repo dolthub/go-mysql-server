@@ -84,26 +84,22 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 type AddColumn struct {
 	ddlNode
-	tableName string
-	column    *sql.Column
-	order     *sql.ColumnOrder
+	UnaryNode
+	column *sql.Column
+	order  *sql.ColumnOrder
 }
 
 var _ sql.Node = (*AddColumn)(nil)
 var _ sql.Databaser = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
-func NewAddColumn(db sql.Database, tableName string, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+func NewAddColumn(db sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	return &AddColumn{
 		ddlNode:   ddlNode{db},
-		tableName: tableName,
+		UnaryNode: UnaryNode{Child: table},
 		column:    column,
 		order:     order,
 	}
-}
-
-func (a *AddColumn) TableName() string {
-	return a.tableName
 }
 
 func (a *AddColumn) Column() *sql.Column {
@@ -130,7 +126,7 @@ func (a *AddColumn) String() string {
 }
 
 func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(a.db, ctx, a.tableName)
+	alterable, err := getAlterable(a.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -202,24 +198,32 @@ func (a *AddColumn) validateDefaultPosition(tblSch sql.Schema) error {
 	return nil
 }
 
-func (a *AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(a, children...)
+func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+	}
+	a.UnaryNode = UnaryNode{Child: children[0]}
+	return &a, nil
+}
+
+func (a *AddColumn) Children() []sql.Node {
+	return a.UnaryNode.Children()
 }
 
 type DropColumn struct {
 	ddlNode
-	tableName string
-	column    string
-	order     *sql.ColumnOrder
+	UnaryNode
+	column string
+	order  *sql.ColumnOrder
 }
 
 var _ sql.Node = (*DropColumn)(nil)
 var _ sql.Databaser = (*DropColumn)(nil)
 
-func NewDropColumn(db sql.Database, tableName string, column string) *DropColumn {
+func NewDropColumn(db sql.Database, table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
 		ddlNode:   ddlNode{db},
-		tableName: tableName,
+		UnaryNode: UnaryNode{Child: table},
 		column:    column,
 	}
 }
@@ -235,7 +239,7 @@ func (d *DropColumn) String() string {
 }
 
 func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(d.db, ctx, d.tableName)
+	alterable, err := getAlterable(d.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -276,26 +280,42 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
 }
 
-func (d *DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(d, children...)
+func (d *DropColumn) Schema() sql.Schema {
+	return nil
+}
+
+func (d *DropColumn) Resolved() bool {
+	return d.UnaryNode.Resolved() && d.ddlNode.Resolved()
+}
+
+func (d *DropColumn) Children() []sql.Node {
+	return d.UnaryNode.Children()
+}
+
+func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+	d.UnaryNode.Child = children[0]
+	return &d, nil
 }
 
 type RenameColumn struct {
 	ddlNode
-	tableName     string
-	columnName    string
-	newColumnName string
+	UnaryNode
+	ColumnName    string
+	NewColumnName string
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
 var _ sql.Databaser = (*RenameColumn)(nil)
 
-func NewRenameColumn(db sql.Database, tableName string, columnName string, newColumnName string) *RenameColumn {
+func NewRenameColumn(db sql.Database, table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
 		ddlNode:       ddlNode{db},
-		tableName:     tableName,
-		columnName:    columnName,
-		newColumnName: newColumnName,
+		UnaryNode:     UnaryNode{Child: table},
+		ColumnName:    columnName,
+		NewColumnName: newColumnName,
 	}
 }
 
@@ -306,39 +326,55 @@ func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 func (r *RenameColumn) String() string {
-	return fmt.Sprintf("rename column %s to %s", r.columnName, r.newColumnName)
+	return fmt.Sprintf("rename column %s to %s", r.ColumnName, r.NewColumnName)
+}
+
+func (r *RenameColumn) Resolved() bool {
+	return r.UnaryNode.Resolved() && r.ddlNode.Resolved()
+}
+
+func (r *RenameColumn) Schema() sql.Schema {
+	return nil
 }
 
 func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(r.db, ctx, r.tableName)
+	alterable, err := getAlterable(r.Child)
 	if err != nil {
 		return nil, err
 	}
 
 	tbl := alterable.(sql.Table)
-	idx := tbl.Schema().IndexOf(r.columnName, tbl.Name())
+	idx := tbl.Schema().IndexOf(r.ColumnName, tbl.Name())
 	if idx < 0 {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), r.columnName)
+		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), r.ColumnName)
 	}
 
 	nc := *tbl.Schema()[idx]
-	nc.Name = r.newColumnName
+	nc.Name = r.NewColumnName
 	col := &nc
 
-	if err := updateDefaultsOnColumnRename(ctx, alterable, strings.ToLower(r.columnName), r.newColumnName); err != nil {
+	if err := updateDefaultsOnColumnRename(ctx, alterable, strings.ToLower(r.ColumnName), r.NewColumnName); err != nil {
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.columnName, col, nil)
+	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
 }
 
-func (r *RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(r, children...)
+func (r *RenameColumn) Children() []sql.Node {
+	return r.UnaryNode.Children()
+}
+
+func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
+	}
+	r.UnaryNode.Child = children[0]
+	return &r, nil
 }
 
 type ModifyColumn struct {
 	ddlNode
-	tableName  string
+	UnaryNode
 	columnName string
 	column     *sql.Column
 	order      *sql.ColumnOrder
@@ -348,10 +384,12 @@ var _ sql.Node = (*ModifyColumn)(nil)
 var _ sql.Databaser = (*ModifyColumn)(nil)
 var _ sql.Expressioner = (*ModifyColumn)(nil)
 
-func NewModifyColumn(db sql.Database, tableName string, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+func NewModifyColumn(db sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	return &ModifyColumn{
-		ddlNode:    ddlNode{db},
-		tableName:  tableName,
+		ddlNode: ddlNode{db},
+		UnaryNode: UnaryNode{
+			table,
+		},
 		columnName: columnName,
 		column:     column,
 		order:      order,
@@ -362,10 +400,6 @@ func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	nm := *m
 	nm.db = db
 	return &nm, nil
-}
-
-func (m *ModifyColumn) TableName() string {
-	return m.tableName
 }
 
 func (m *ModifyColumn) Column() string {
@@ -382,7 +416,7 @@ func (m *ModifyColumn) Order() *sql.ColumnOrder {
 
 // Schema implements the sql.Node interface.
 func (m *ModifyColumn) Schema() sql.Schema {
-	return sql.Schema{m.column}
+	return sql.Schema{}
 }
 
 func (m *ModifyColumn) String() string {
@@ -390,7 +424,7 @@ func (m *ModifyColumn) String() string {
 }
 
 func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	alterable, err := getAlterableTable(m.db, ctx, m.tableName)
+	alterable, err := getAlterable(m.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -419,8 +453,16 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
 }
 
-func (m *ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(m, children...)
+func (m *ModifyColumn) Children() []sql.Node {
+	return m.UnaryNode.Children()
+}
+
+func (m ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
+	}
+	m.UnaryNode.Child = children[0]
+	return &m, nil
 }
 
 func (m *ModifyColumn) Expressions() []sql.Expression {
@@ -443,26 +485,7 @@ func (m *ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error
 
 // Resolved implements the Resolvable interface.
 func (m *ModifyColumn) Resolved() bool {
-	return m.ddlNode.Resolved() && m.column.Default.Resolved()
-}
-
-// Gets an AlterableTable with the name given from the database, or an error if it cannot.
-func getAlterableTable(db sql.Database, ctx *sql.Context, tableName string) (sql.AlterableTable, error) {
-	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(tableName)
-	}
-
-	alterable, ok := tbl.(sql.AlterableTable)
-	if !ok {
-		return nil, ErrAlterTableNotSupported.New(tableName, db.Name())
-	}
-
-	return alterable, nil
+	return m.ddlNode.Resolved() && m.UnaryNode.Resolved() && m.column.Default.Resolved()
 }
 
 func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
