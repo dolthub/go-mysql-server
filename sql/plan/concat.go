@@ -92,7 +92,6 @@ func (c Concat) DebugString() string {
 }
 
 type concatIter struct {
-	ctx      *sql.Context
 	cur      sql.RowIter
 	inLeft   sql.KeyValueCache
 	dispose  sql.DisposeFunc
@@ -102,7 +101,6 @@ type concatIter struct {
 func newConcatIter(ctx *sql.Context, cur sql.RowIter, nextIter func() (sql.RowIter, error)) *concatIter {
 	seen, dispose := ctx.Memory.NewHistoryCache()
 	return &concatIter{
-		ctx,
 		cur,
 		seen,
 		dispose,
@@ -113,14 +111,14 @@ func newConcatIter(ctx *sql.Context, cur sql.RowIter, nextIter func() (sql.RowIt
 var _ sql.Disposable = (*concatIter)(nil)
 var _ sql.RowIter = (*concatIter)(nil)
 
-func (ci *concatIter) Next() (sql.Row, error) {
+func (ci *concatIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		res, err := ci.cur.Next()
+		res, err := ci.cur.Next(ctx)
 		if err == io.EOF {
 			if ci.nextIter == nil {
 				return nil, io.EOF
 			}
-			err = ci.cur.Close(ci.ctx)
+			err = ci.cur.Close(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -129,7 +127,7 @@ func (ci *concatIter) Next() (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			res, err = ci.cur.Next()
+			res, err = ci.cur.Next(ctx)
 		}
 		if err != nil {
 			return nil, err

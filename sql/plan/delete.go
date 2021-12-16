@@ -113,19 +113,18 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 	deleter := deletable.Deleter(ctx)
 
-	return newDeleteIter(iter, deleter, deletable.Schema(), ctx), nil
+	return newDeleteIter(iter, deleter, deletable.Schema()), nil
 }
 
 type deleteIter struct {
 	deleter   sql.RowDeleter
 	schema    sql.Schema
 	childIter sql.RowIter
-	ctx       *sql.Context
 	closed    bool
 }
 
-func (d *deleteIter) Next() (sql.Row, error) {
-	row, err := d.childIter.Next()
+func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := d.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +136,7 @@ func (d *deleteIter) Next() (sql.Row, error) {
 		row = row[len(row)-len(d.schema):]
 	}
 
-	return row, d.deleter.Delete(d.ctx, row)
+	return row, d.deleter.Delete(ctx, row)
 }
 
 func (d *deleteIter) Close(ctx *sql.Context) error {
@@ -151,12 +150,11 @@ func (d *deleteIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema, ctx *sql.Context) sql.RowIter {
-	return NewTableEditorIter(ctx, deleter, &deleteIter{
+func newDeleteIter(childIter sql.RowIter, deleter sql.RowDeleter, schema sql.Schema) sql.RowIter {
+	return NewTableEditorIter(deleter, &deleteIter{
 		deleter:   deleter,
 		childIter: childIter,
 		schema:    schema,
-		ctx:       ctx,
 	})
 }
 

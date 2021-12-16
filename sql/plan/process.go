@@ -297,8 +297,8 @@ func (i *trackedRowIter) Dispose() {
 	}
 }
 
-func (i *trackedRowIter) Next() (sql.Row, error) {
-	row, err := i.iter.Next()
+func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -345,8 +345,8 @@ type trackedPartitionIndexKeyValueIter struct {
 	OnRowNext        NamedNotifyFunc
 }
 
-func (i *trackedPartitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, iter, err := i.PartitionIndexKeyValueIter.Next()
+func (i *trackedPartitionIndexKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, iter, err := i.PartitionIndexKeyValueIter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -395,8 +395,8 @@ func (i *trackedIndexKeyValueIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-func (i *trackedIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
-	v, k, err := i.iter.Next()
+func (i *trackedIndexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
+	v, k, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -82,24 +82,22 @@ func (*testNode) Children() []Node {
 }
 
 func (*testNode) RowIter(ctx *Context) (RowIter, error) {
-	return newTestNodeIterator(ctx), nil
+	return newTestNodeIterator(), nil
 }
 
 type testNodeIterator struct {
-	ctx     context.Context
 	Counter int
 }
 
-func newTestNodeIterator(ctx *Context) RowIter {
+func newTestNodeIterator() RowIter {
 	return &testNodeIterator{
-		ctx:     ctx,
 		Counter: 0,
 	}
 }
 
-func (t *testNodeIterator) Next() (Row, error) {
+func (t *testNodeIterator) Next(ctx *Context) (Row, error) {
 	select {
-	case <-t.ctx.Done():
+	case <-ctx.Done():
 		return nil, io.EOF
 
 	default:
@@ -114,10 +112,12 @@ func (t *testNodeIterator) Close(*Context) error {
 
 func TestSessionIterator(t *testing.T) {
 	require := require.New(t)
-	ctx, cancelFunc := context.WithCancel(context.TODO())
+	octx, cancelFunc := context.WithCancel(context.TODO())
+	defer cancelFunc()
+	ctx := NewContext(octx)
 
 	node := &testNode{}
-	iter, err := node.RowIter(NewContext(ctx))
+	iter, err := node.RowIter(ctx)
 	require.NoError(err)
 
 	counter := 0
@@ -126,7 +126,7 @@ func TestSessionIterator(t *testing.T) {
 			cancelFunc()
 		}
 
-		_, err := iter.Next()
+		_, err := iter.Next(ctx)
 
 		if counter > 5 {
 			require.Equal(io.EOF, err)
@@ -139,6 +139,4 @@ func TestSessionIterator(t *testing.T) {
 
 		counter++
 	}
-
-	cancelFunc()
 }

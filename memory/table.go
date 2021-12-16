@@ -245,7 +245,7 @@ type partitionIter struct {
 	pos  int
 }
 
-func (p *partitionIter) Next() (sql.Partition, error) {
+func (p *partitionIter) Next(*sql.Context) (sql.Partition, error) {
 	if p.pos >= len(p.keys) {
 		return nil, io.EOF
 	}
@@ -255,7 +255,7 @@ func (p *partitionIter) Next() (sql.Partition, error) {
 	return &Partition{key}, nil
 }
 
-func (p *partitionIter) Close(_ *sql.Context) error { return nil }
+func (p *partitionIter) Close(*sql.Context) error { return nil }
 
 type tableIter struct {
 	columns []int
@@ -268,20 +268,20 @@ type tableIter struct {
 
 var _ sql.RowIter = (*tableIter)(nil)
 
-func (i *tableIter) Next() (sql.Row, error) {
-	row, err := i.getRow()
+func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.getRow(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, f := range i.filters {
-		result, err := f.Eval(sql.NewEmptyContext(), row)
+		result, err := f.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		result, _ = sql.ConvertToBool(result)
 		if result != true {
-			return i.Next()
+			return i.Next(ctx)
 		}
 	}
 
@@ -312,9 +312,9 @@ func (i *tableIter) Close(ctx *sql.Context) error {
 	return i.indexValues.Close(ctx)
 }
 
-func (i *tableIter) getRow() (sql.Row, error) {
+func (i *tableIter) getRow(ctx *sql.Context) (sql.Row, error) {
 	if i.indexValues != nil {
-		return i.getFromIndex()
+		return i.getFromIndex(ctx)
 	}
 
 	if i.pos >= len(i.rows) {
@@ -339,8 +339,8 @@ func projectOnRow(columns []int, row sql.Row) sql.Row {
 	return projected
 }
 
-func (i *tableIter) getFromIndex() (sql.Row, error) {
-	data, err := i.indexValues.Next()
+func (i *tableIter) getFromIndex(ctx *sql.Context) (sql.Row, error) {
+	data, err := i.indexValues.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1093,7 +1093,6 @@ func (t *Table) IndexKeyValues(
 		table:   t,
 		iter:    iter,
 		columns: columns,
-		ctx:     ctx,
 	}, nil
 }
 
@@ -1242,16 +1241,15 @@ type partitionIndexKeyValueIter struct {
 	table   *Table
 	iter    sql.PartitionIter
 	columns []int
-	ctx     *sql.Context
 }
 
-func (i *partitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, err := i.iter.Next()
+func (i *partitionIndexKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	iter, err := i.table.PartitionRows(i.ctx, p)
+	iter, err := i.table.PartitionRows(ctx, p)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1276,8 +1274,8 @@ type indexKeyValueIter struct {
 	pos     int
 }
 
-func (i *indexKeyValueIter) Next() ([]interface{}, []byte, error) {
-	row, err := i.iter.Next()
+func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
+	row, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

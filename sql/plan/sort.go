@@ -122,7 +122,6 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type sortIter struct {
-	ctx        *sql.Context
 	s          *Sort
 	childIter  sql.RowIter
 	sortedRows []sql.Row
@@ -131,16 +130,15 @@ type sortIter struct {
 
 func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
 	return &sortIter{
-		ctx:       ctx,
 		s:         s,
 		childIter: child,
 		idx:       -1,
 	}
 }
 
-func (i *sortIter) Next() (sql.Row, error) {
+func (i *sortIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.idx == -1 {
-		err := i.computeSortedRows()
+		err := i.computeSortedRows(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -160,12 +158,12 @@ func (i *sortIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 
-func (i *sortIter) computeSortedRows() error {
-	cache, dispose := i.ctx.Memory.NewRowsCache()
+func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
+	cache, dispose := ctx.Memory.NewRowsCache()
 	defer dispose()
 
 	for {
-		row, err := i.childIter.Next()
+		row, err := i.childIter.Next(ctx)
 
 		if err == io.EOF {
 			break
@@ -184,7 +182,7 @@ func (i *sortIter) computeSortedRows() error {
 		SortFields: i.s.SortFields,
 		Rows:       rows,
 		LastError:  nil,
-		Ctx:        i.ctx,
+		Ctx:        ctx,
 	}
 	sort.Stable(sorter)
 	if sorter.LastError != nil {
@@ -242,7 +240,7 @@ func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewSpanIter(span, newTopRowsIter(ctx, n, limit, i)), nil
+	return sql.NewSpanIter(span, newTopRowsIter(n, limit, i)), nil
 }
 
 func (n *TopN) String() string {
@@ -297,7 +295,6 @@ func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type topRowsIter struct {
-	ctx          *sql.Context
 	n            *TopN
 	childIter    sql.RowIter
 	limit        int64
@@ -306,9 +303,8 @@ type topRowsIter struct {
 	idx          int
 }
 
-func newTopRowsIter(ctx *sql.Context, n *TopN, limit int64, child sql.RowIter) *topRowsIter {
+func newTopRowsIter(n *TopN, limit int64, child sql.RowIter) *topRowsIter {
 	return &topRowsIter{
-		ctx:       ctx,
 		n:         n,
 		limit:     limit,
 		childIter: child,
@@ -316,9 +312,9 @@ func newTopRowsIter(ctx *sql.Context, n *TopN, limit int64, child sql.RowIter) *
 	}
 }
 
-func (i *topRowsIter) Next() (sql.Row, error) {
+func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.idx == -1 {
-		err := i.computeTopRows()
+		err := i.computeTopRows(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -343,17 +339,17 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 	return i.childIter.Close(ctx)
 }
 
-func (i *topRowsIter) computeTopRows() error {
+func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	topRowsHeap := &expression.TopRowsHeap{
 		expression.Sorter{
 			SortFields: i.n.Fields,
 			Rows:       []sql.Row{},
 			LastError:  nil,
-			Ctx:        i.ctx,
+			Ctx:        ctx,
 		},
 	}
 	for {
-		row, err := i.childIter.Next()
+		row, err := i.childIter.Next(ctx)
 		if err == io.EOF {
 			break
 		}

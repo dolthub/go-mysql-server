@@ -145,8 +145,8 @@ type callIter struct {
 }
 
 // Next implements the sql.RowIter interface.
-func (iter *callIter) Next() (sql.Row, error) {
-	return iter.innerIter.Next()
+func (iter *callIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return iter.innerIter.Next(ctx)
 }
 
 // Close implements the sql.RowIter interface.

@@ -92,16 +92,15 @@ type updateSourceIter struct {
 	childIter   sql.RowIter
 	updateExprs []sql.Expression
 	tableSchema sql.Schema
-	ctx         *sql.Context
 }
 
-func (u *updateSourceIter) Next() (sql.Row, error) {
-	oldRow, err := u.childIter.Next()
+func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
+	oldRow, err := u.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressions(u.ctx, u.updateExprs, oldRow)
+	newRow, err := applyUpdateExpressions(ctx, u.updateExprs, oldRow)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +149,6 @@ func (u *UpdateSource) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		childIter:   rowIter,
 		updateExprs: u.UpdateExprs,
 		tableSchema: schema,
-		ctx:         ctx,
 	}, nil
 }
 

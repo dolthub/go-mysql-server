@@ -151,13 +151,13 @@ type limitIter struct {
 	limit      int64
 }
 
-func (li *limitIter) Next() (sql.Row, error) {
+func (li *limitIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if li.currentPos >= li.limit {
 		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
 		// result set to count it
 		if li.l.CalcFoundRows {
 			for {
-				_, err := li.childIter.Next()
+				_, err := li.childIter.Next(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -168,7 +168,7 @@ func (li *limitIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
-	childRow, err := li.childIter.Next()
+	childRow, err := li.childIter.Next(ctx)
 	li.currentPos++
 	if err != nil {
 		return nil, err

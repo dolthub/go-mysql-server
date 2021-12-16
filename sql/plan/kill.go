@@ -69,7 +69,7 @@ func (k *Kill) Schema() sql.Schema {
 
 func (k *Kill) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &lazyRowIter{
-		func() (sql.Row, error) {
+		func(ctx *sql.Context) (sql.Row, error) {
 			ctx.ProcessList.Kill(k.connID)
 			if k.kt == KillType_Connection {
 				ctx.KillConnection(k.connID)
@@ -83,15 +83,15 @@ func (k *Kill) String() string {
 	return fmt.Sprintf("KILL %s %d", k.kt.String(), k.connID)
 }
 
-type rowFunc func() (sql.Row, error)
+type rowFunc func(ctx *sql.Context) (sql.Row, error)
 
 type lazyRowIter struct {
 	next rowFunc
 }
 
-func (i *lazyRowIter) Next() (sql.Row, error) {
+func (i *lazyRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.next != nil {
-		res, err := i.next()
+		res, err := i.next(ctx)
 		i.next = nil
 		return res, err
 	}

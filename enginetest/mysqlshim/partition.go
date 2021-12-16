@@ -33,7 +33,7 @@ var _ sql.PartitionIter = (*tablePartitionIter)(nil)
 var _ sql.Partition = tablePartition{}
 
 // Next implements the interface sql.PartitionIter.
-func (t *tablePartitionIter) Next() (sql.Partition, error) {
+func (t *tablePartitionIter) Next(*sql.Context) (sql.Partition, error) {
 	if t.returned {
 		return nil, io.EOF
 	}

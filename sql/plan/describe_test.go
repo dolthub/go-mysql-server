@@ -39,15 +39,15 @@ func TestDescribe(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	n, err := iter.Next()
+	n, err := iter.Next(ctx)
 	require.NoError(err)
 	require.Equal(sql.NewRow("c1", "TEXT"), n)
 
-	n, err = iter.Next()
+	n, err = iter.Next(ctx)
 	require.NoError(err)
 	require.Equal(sql.NewRow("c2", "INT"), n)
 
-	n, err = iter.Next()
+	n, err = iter.Next(ctx)
 	require.Equal(io.EOF, err)
 	require.Nil(n)
 }
@@ -62,7 +62,7 @@ func TestDescribe_Empty(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	n, err := iter.Next()
+	n, err := iter.Next(ctx)
 	require.Equal(io.EOF, err)
 	require.Nil(n)
 }

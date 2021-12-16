@@ -83,13 +83,13 @@ func repeatStr(str string, n int) string {
 	return buf.String()
 }
 
-func assertRows(t *testing.T, iter sql.RowIter, expected int64) {
+func assertRows(t *testing.T, ctx *sql.Context, iter sql.RowIter, expected int64) {
 	t.Helper()
 	require := require.New(t)
 
 	var rows int64
 	for {
-		_, err := iter.Next()
+		_, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -113,7 +113,7 @@ func collectRows(t *testing.T, node sql.Node) []sql.Row {
 
 	var rows []sql.Row
 	for {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		if err == io.EOF {
 			return rows
 		}

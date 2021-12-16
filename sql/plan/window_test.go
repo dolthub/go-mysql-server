@@ -38,7 +38,6 @@ func TestWindow(t *testing.T) {
 			},
 		)
 		wIter := &windowIter{
-			ctx: sql.NewEmptyContext(),
 			selectExprs: []sql.Expression{
 				mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(w)),
 				mustExpr(window.NewFirstValue(
@@ -49,9 +48,11 @@ func TestWindow(t *testing.T) {
 			childIter: newDummyIter(),
 		}
 
+		ctx := sql.NewEmptyContext()
+
 		res := make([]sql.Row, 0)
 		for {
-			r, err := wIter.Next()
+			r, err := wIter.Next(ctx)
 			if err == io.EOF {
 				break
 			}
@@ -78,7 +79,7 @@ func newDummyIter() *dummyIter {
 	}
 }
 
-func (i *dummyIter) Next() (sql.Row, error) {
+func (i *dummyIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.pos >= len(i.rows) {
 		return nil, io.EOF
 	}

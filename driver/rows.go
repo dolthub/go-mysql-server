@@ -59,7 +59,7 @@ func (r *Rows) Close() error {
 // a buffer held in dest.
 func (r *Rows) Next(dest []driver.Value) error {
 again:
-	row, err := r.rows.Next()
+	row, err := r.rows.Next(r.ctx)
 	if err != nil {
 		return err
 	}

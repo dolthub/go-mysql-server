@@ -25,7 +25,7 @@ func getOKResult(ctx *sql.Context, rows sql.RowIter) (sql.OkResult, bool, error)
 	var okr sql.OkResult
 	var found bool
 	for !found {
-		row, err := rows.Next()
+		row, err := rows.Next(ctx)
 		if errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {

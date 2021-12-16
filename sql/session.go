@@ -805,10 +805,10 @@ func (i *spanIter) updateTimings(start time.Time) {
 	i.total += elapsed
 }
 
-func (i *spanIter) Next() (Row, error) {
+func (i *spanIter) Next(ctx *Context) (Row, error) {
 	start := time.Now()
 
-	row, err := i.iter.Next()
+	row, err := i.iter.Next(ctx)
 	if err == io.EOF {
 		i.finish()
 		return nil, err

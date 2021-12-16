@@ -59,14 +59,14 @@ func TestHaving(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	row, err := iter.Next()
+	row, err := iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 
 	require.Equal("col1_1", row[0])
 	require.Equal("col2_1", row[1])
 
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.NotNil(err)
 	require.Nil(row)
 
@@ -82,7 +82,7 @@ func TestHaving(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 
@@ -101,7 +101,7 @@ func TestHaving(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 

@@ -346,7 +346,7 @@ func (h *Handler) doQuery(
 			case <-ctx.Done():
 				return nil
 			default:
-				row, err := rows.Next()
+				row, err := rows.Next(ctx)
 				if err != nil {
 					if err == io.EOF {
 						return nil

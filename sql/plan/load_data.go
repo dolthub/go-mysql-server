@@ -198,7 +198,6 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	return &loadDataIter{
 		destination:             l.Destination,
-		ctx:                     ctx,
 		reader:                  reader,
 		scanner:                 scanner,
 		fieldsTerminatedByDelim: l.fieldsTerminatedByDelim,
@@ -213,7 +212,6 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 type loadDataIter struct {
 	scanner                 *bufio.Scanner
 	destination             sql.Node
-	ctx                     *sql.Context
 	reader                  io.ReadCloser
 	fieldsTerminatedByDelim string
 	fieldsEnclosedByDelim   string
@@ -223,7 +221,7 @@ type loadDataIter struct {
 	linesStartingByDelim    string
 }
 
-func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
+func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
 	keepGoing := l.scanner.Scan()
 	if !keepGoing {
 		if l.scanner.Err() != nil {
@@ -262,7 +260,7 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 	vals := make([]interface{}, len(exprs))
 	for i, expr := range exprs {
 		if expr != nil {
-			vals[i], err = expr.Eval(l.ctx, returnRow)
+			vals[i], err = expr.Eval(ctx, returnRow)
 			if err != nil {
 				return nil, err
 			}

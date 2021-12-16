@@ -79,7 +79,7 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 				}
 
 				for {
-					_, err = iter.Next()
+					_, err = iter.Next(ctx)
 					if err == io.EOF {
 						break
 					}
