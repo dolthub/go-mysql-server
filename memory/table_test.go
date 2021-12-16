@@ -96,7 +96,7 @@ type dummyLookupIter struct {
 
 var _ sql.IndexValueIter = (*dummyLookupIter)(nil)
 
-func (i *dummyLookupIter) Next() ([]byte, error) {
+func (i *dummyLookupIter) Next(*sql.Context) ([]byte, error) {
 	if i.pos >= len(i.values) {
 		return nil, io.EOF
 	}
@@ -212,12 +212,13 @@ func TestTable(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			pIter, err := table.Partitions(sql.NewEmptyContext())
+			ctx := sql.NewEmptyContext()
+			pIter, err := table.Partitions(ctx)
 			require.NoError(err)
 
 			for i := 0; i < test.numPartitions; i++ {
 				var p sql.Partition
-				p, err = pIter.Next()
+				p, err = pIter.Next(ctx)
 				require.NoError(err)
 
 				var iter sql.RowIter
@@ -237,7 +238,7 @@ func TestTable(t *testing.T) {
 				}
 			}
 
-			_, err = pIter.Next()
+			_, err = pIter.Next(ctx)
 			require.EqualError(err, io.EOF.Error())
 
 		})
@@ -337,11 +338,12 @@ func TestIndexed(t *testing.T) {
 func getAllRows(t *testing.T, table sql.Table) []sql.Row {
 	var require = require.New(t)
 
-	pIter, err := table.Partitions(sql.NewEmptyContext())
+	ctx := sql.NewEmptyContext()
+	pIter, err := table.Partitions(ctx)
 	require.NoError(err)
 	allRows := []sql.Row{}
 	for {
-		p, err := pIter.Next()
+		p, err := pIter.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -350,7 +352,6 @@ func getAllRows(t *testing.T, table sql.Table) []sql.Row {
 			require.NoError(err)
 		}
 
-		ctx := sql.NewEmptyContext()
 		iter, err := table.PartitionRows(ctx, p)
 		require.NoError(err)
 
@@ -379,11 +380,13 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 			)
 			require.NoError(err)
 
+			ctx := sql.NewEmptyContext()
+
 			var iter sql.IndexKeyValueIter
 			idxKVs := []*indexKeyValue{}
 			for {
 				if iter == nil {
-					_, iter, err = pIter.Next()
+					_, iter, err = pIter.Next(ctx)
 					if err != nil {
 						if err == io.EOF {
 							iter = nil
@@ -394,7 +397,7 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 					}
 				}
 
-				row, data, err := iter.Next()
+				row, data, err := iter.Next(ctx)
 				if err != nil {
 					if err == io.EOF {
 						iter = nil

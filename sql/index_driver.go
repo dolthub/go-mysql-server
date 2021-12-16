@@ -81,7 +81,7 @@ type Checksumable interface {
 type PartitionIndexKeyValueIter interface {
 	// Next returns the next partition and the IndexKeyValueIter for that
 	// partition.
-	Next() (Partition, IndexKeyValueIter, error)
+	Next(*Context) (Partition, IndexKeyValueIter, error)
 	Closer
 }
 
@@ -91,14 +91,14 @@ type IndexKeyValueIter interface {
 	// Next returns the next tuple of index key values. The length of the
 	// returned slice will be the same as the number of columns used to
 	// create this iterator. The second returned parameter is a repo's location.
-	Next() ([]interface{}, []byte, error)
+	Next(*Context) ([]interface{}, []byte, error)
 	Closer
 }
 
 // IndexValueIter is an iterator of index values.
 type IndexValueIter interface {
 	// Next returns the next value (repo's location) - see IndexKeyValueIter.
-	Next() ([]byte, error)
+	Next(*Context) ([]byte, error)
 	Closer
 }
 

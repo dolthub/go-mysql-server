@@ -38,7 +38,7 @@ func Example() {
 
 	// Iterate results and print them.
 	for {
-		row, err := r.Next()
+		row, err := r.Next(ctx)
 		if err == io.EOF {
 			break
 		}

@@ -1178,7 +1178,7 @@ func (t *informationSchemaTable) String() string {
 func (p *informationSchemaPartition) Key() []byte { return p.key }
 
 // Next implements single PartitionIter interface
-func (pit *informationSchemaPartitionIter) Next() (Partition, error) {
+func (pit *informationSchemaPartitionIter) Next(ctx *Context) (Partition, error) {
 	if pit.pos == 0 {
 		pit.pos++
 		return pit, nil

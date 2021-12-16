@@ -127,7 +127,7 @@ func TestInnerJoinEmpty(t *testing.T) {
 	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
 
-	assertRows(t, iter, 0)
+	assertRows(t, ctx, iter, 0)
 }
 
 func BenchmarkInnerJoin(b *testing.B) {

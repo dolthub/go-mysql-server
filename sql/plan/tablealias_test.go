@@ -53,7 +53,7 @@ func TestTableAlias(t *testing.T) {
 
 	var i int
 	for {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}

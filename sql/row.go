@@ -85,7 +85,7 @@ func FormatRow(row Row) string {
 type RowIter interface {
 	// Next retrieves the next row. It will return io.EOF if it's the last row.
 	// After retrieving the last row, Close will be automatically closed.
-	Next() (Row, error)
+	Next(*Context) (Row, error)
 	Closer
 }
 
@@ -96,14 +96,14 @@ type RowIter2 interface {
 	// Next2 produces the next row, and stores it in the RowFrame provided.
 	// It will return io.EOF if it's the last row. After retrieving the
 	// last row, Close will be automatically called.
-	Next2(*RowFrame) error
+	Next2(*Context, *RowFrame) error
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.
 func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	var rows []Row
 	for {
-		row, err := i.Next()
+		row, err := i.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -139,7 +139,7 @@ type sliceRowIter struct {
 	idx  int
 }
 
-func (i *sliceRowIter) Next() (Row, error) {
+func (i *sliceRowIter) Next(*Context) (Row, error) {
 	if i.idx >= len(i.rows) {
 		return nil, io.EOF
 	}

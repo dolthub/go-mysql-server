@@ -45,5 +45,5 @@ func TestOffset(t *testing.T) {
 
 	iter, err := offset.RowIter(ctx, nil)
 	require.NoError(err)
-	assertRows(t, iter, int64(n-1))
+	assertRows(t, ctx, iter, int64(n-1))
 }

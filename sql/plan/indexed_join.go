@@ -130,7 +130,6 @@ func indexedJoinRowIter(
 		parentRow:         parentRow,
 		primary:           l,
 		secondaryProvider: right,
-		ctx:               ctx,
 		cond:              cond,
 		joinType:          joinType,
 		rowSize:           len(parentRow) + len(left.Schema()) + len(right.Schema()),
@@ -149,15 +148,14 @@ type indexedJoinIter struct {
 	cond              sql.Expression
 	joinType          JoinType
 
-	ctx        *sql.Context
 	foundMatch bool
 	rowSize    int
 	scopeLen   int
 }
 
-func (i *indexedJoinIter) loadPrimary() error {
+func (i *indexedJoinIter) loadPrimary(ctx *sql.Context) error {
 	if i.primaryRow == nil {
-		r, err := i.primary.Next()
+		r, err := i.primary.Next(ctx)
 		if err != nil {
 			return err
 		}
@@ -169,9 +167,9 @@ func (i *indexedJoinIter) loadPrimary() error {
 	return nil
 }
 
-func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
+func (i *indexedJoinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) {
 	if i.secondary == nil {
-		rowIter, err := i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
+		rowIter, err := i.secondaryProvider.RowIter(ctx, i.primaryRow)
 		if err != nil {
 			return nil, err
 		}
@@ -179,10 +177,10 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 		i.secondary = rowIter
 	}
 
-	secondaryRow, err := i.secondary.Next()
+	secondaryRow, err := i.secondary.Next(ctx)
 	if err != nil {
 		if err == io.EOF {
-			err = i.secondary.Close(i.ctx)
+			err = i.secondary.Close(ctx)
 			i.secondary = nil
 			if err != nil {
 				return nil, err
@@ -196,14 +194,14 @@ func (i *indexedJoinIter) loadSecondary() (sql.Row, error) {
 	return secondaryRow, nil
 }
 
-func (i *indexedJoinIter) Next() (sql.Row, error) {
+func (i *indexedJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		if err := i.loadPrimary(); err != nil {
+		if err := i.loadPrimary(ctx); err != nil {
 			return nil, err
 		}
 
 		primary := i.primaryRow
-		secondary, err := i.loadSecondary()
+		secondary, err := i.loadSecondary(ctx)
 		if err != nil {
 			if err == io.EOF {
 				if !i.foundMatch && (i.joinType == JoinTypeLeft || i.joinType == JoinTypeRight) {
@@ -216,7 +214,7 @@ func (i *indexedJoinIter) Next() (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		matches, err := conditionIsTrue(i.ctx, row, i.cond)
+		matches, err := conditionIsTrue(ctx, row, i.cond)
 		if err != nil {
 			return nil, err
 		}

@@ -77,7 +77,6 @@ func (p *CrossJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	return sql.NewSpanIter(span, &crossJoinIterator{
 		l:  li,
 		rp: p.right,
-		s:  ctx,
 	}), nil
 }
 
@@ -112,15 +111,14 @@ type crossJoinIterator struct {
 	l  sql.RowIter
 	rp rowIterProvider
 	r  sql.RowIter
-	s  *sql.Context
 
 	leftRow sql.Row
 }
 
-func (i *crossJoinIterator) Next() (sql.Row, error) {
+func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
 		if i.leftRow == nil {
-			r, err := i.l.Next()
+			r, err := i.l.Next(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -129,7 +127,7 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 		}
 
 		if i.r == nil {
-			iter, err := i.rp.RowIter(i.s, i.leftRow)
+			iter, err := i.rp.RowIter(ctx, i.leftRow)
 			if err != nil {
 				return nil, err
 			}
@@ -137,7 +135,7 @@ func (i *crossJoinIterator) Next() (sql.Row, error) {
 			i.r = iter
 		}
 
-		rightRow, err := i.r.Next()
+		rightRow, err := i.r.Next(ctx)
 		if err == io.EOF {
 			i.r = nil
 			i.leftRow = nil

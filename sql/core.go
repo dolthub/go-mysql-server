@@ -224,7 +224,7 @@ type Partition interface {
 // PartitionIter is an iterator that retrieves partitions.
 type PartitionIter interface {
 	Closer
-	Next() (Partition, error)
+	Next(*Context) (Partition, error)
 }
 
 // Table represents the backend of a SQL table.

@@ -47,7 +47,7 @@ func (f *Filter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, NewFilterIter(ctx, f.Expression, i)), nil
+	return sql.NewSpanIter(span, NewFilterIter(f.Expression, i)), nil
 }
 
 // WithChildren implements the Node interface.
@@ -92,27 +92,25 @@ func (f *Filter) Expressions() []sql.Expression {
 type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
-	ctx       *sql.Context
 }
 
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
-	ctx *sql.Context,
 	cond sql.Expression,
 	child sql.RowIter,
 ) *FilterIter {
-	return &FilterIter{cond: cond, childIter: child, ctx: ctx}
+	return &FilterIter{cond: cond, childIter: child}
 }
 
 // Next implements the RowIter interface.
-func (i *FilterIter) Next() (sql.Row, error) {
+func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		row, err := i.childIter.Next()
+		row, err := i.childIter.Next(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		res, err := sql.EvaluateCondition(i.ctx, i.cond, row)
+		res, err := sql.EvaluateCondition(ctx, i.cond, row)
 		if err != nil {
 			return nil, err
 		}

@@ -108,7 +108,7 @@ type createTriggerIter struct {
 	ctx        *sql.Context
 }
 
-func (c *createTriggerIter) Next() (sql.Row, error) {
+func (c *createTriggerIter) Next(ctx *sql.Context) (sql.Row, error) {
 	run := false
 	c.once.Do(func() {
 		run = true
@@ -123,7 +123,7 @@ func (c *createTriggerIter) Next() (sql.Row, error) {
 		return nil, sql.ErrTriggersNotSupported.New(c.db.Name())
 	}
 
-	err := tdb.CreateTrigger(c.ctx, c.definition)
+	err := tdb.CreateTrigger(ctx, c.definition)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,6 @@ func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 			Name:            c.TriggerName,
 			CreateStatement: c.CreateTriggerString,
 		},
-		db:  c.CreateDatabase,
-		ctx: ctx,
+		db: c.CreateDatabase,
 	}, nil
 }

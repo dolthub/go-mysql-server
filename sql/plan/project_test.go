@@ -47,17 +47,17 @@ func TestProject(t *testing.T) {
 	iter, err := p.RowIter(ctx, nil)
 	require.NoError(err)
 	require.NotNil(iter)
-	row, err := iter.Next()
+	row, err := iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 	require.Equal(1, len(row))
 	require.Equal("col2_1", row[0])
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 	require.Equal(1, len(row))
 	require.Equal("col2_2", row[0])
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
@@ -92,7 +92,7 @@ func BenchmarkProject(b *testing.B) {
 		require.NotNil(iter)
 
 		for {
-			_, err := iter.Next()
+			_, err := iter.Next(ctx)
 			if err == io.EOF {
 				break
 			}

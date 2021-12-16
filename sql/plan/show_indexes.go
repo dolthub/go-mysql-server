@@ -84,7 +84,6 @@ func (n *ShowIndexes) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	return &showIndexesIter{
 		table: table,
 		idxs:  newIndexesToShow(n.IndexesToShow),
-		ctx:   ctx,
 	}, nil
 }
 
@@ -97,10 +96,9 @@ func newIndexesToShow(indexes []sql.Index) *indexesToShow {
 type showIndexesIter struct {
 	table *ResolvedTable
 	idxs  *indexesToShow
-	ctx   *sql.Context
 }
 
-func (i *showIndexesIter) Next() (sql.Row, error) {
+func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	show, err := i.idxs.next()
 	if err != nil {
 		return nil, err
@@ -124,7 +122,7 @@ func (i *showIndexesIter) Next() (sql.Row, error) {
 
 	visible := "YES"
 	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0 {
-		if !i.ctx.GetIndexRegistry().CanUseIndex(x) {
+		if !ctx.GetIndexRegistry().CanUseIndex(x) {
 			visible = "NO"
 		}
 	}

@@ -47,7 +47,6 @@ func (b *TriggerBeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIt
 	return &triggerBlockIter{
 		statements: b.statements,
 		row:        row,
-		ctx:        ctx,
 		once:       &sync.Once{},
 	}, nil
 }
@@ -55,7 +54,6 @@ func (b *TriggerBeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIt
 // triggerBlockIter is the sql.RowIter for TRIGGER BEGIN/END blocks, which operate differently than normal blocks.
 type triggerBlockIter struct {
 	statements []sql.Node
-	ctx        *sql.Context
 	row        sql.Row
 	once       *sync.Once
 }
@@ -63,7 +61,7 @@ type triggerBlockIter struct {
 var _ sql.RowIter = (*triggerBlockIter)(nil)
 
 // Next implements the sql.RowIter interface.
-func (i *triggerBlockIter) Next() (sql.Row, error) {
+func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 	run := false
 	i.once.Do(func() {
 		run = true
@@ -75,15 +73,15 @@ func (i *triggerBlockIter) Next() (sql.Row, error) {
 
 	row := i.row
 	for _, s := range i.statements {
-		subIter, err := s.RowIter(i.ctx, row)
+		subIter, err := s.RowIter(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 
 		for {
-			newRow, err := subIter.Next()
+			newRow, err := subIter.Next(ctx)
 			if err == io.EOF {
-				err := subIter.Close(i.ctx)
+				err := subIter.Close(ctx)
 				if err != nil {
 					return nil, err
 				}

@@ -116,7 +116,7 @@ func (c *CreateCheck) Execute(ctx *sql.Context) error {
 	}
 
 	for {
-		row, err := rowIter.Next()
+		row, err := rowIter.Next(ctx)
 		if row == nil || err != io.EOF {
 			break
 		}

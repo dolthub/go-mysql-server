@@ -270,8 +270,8 @@ type transactionCommittingIter struct {
 	transactionDatabase string
 }
 
-func (t transactionCommittingIter) Next() (sql.Row, error) {
-	return t.childIter.Next()
+func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return t.childIter.Next(ctx)
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {

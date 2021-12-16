@@ -324,7 +324,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	iter, err := foo.IndexKeyValues(ctx, columns)
 	require.NoError(err)
 
-	iter = NewEvalPartitionKeyValueIter(ctx, iter, columns, exprs)
+	iter = NewEvalPartitionKeyValueIter(iter, columns, exprs)
 
 	var (
 		vals [][]interface{}
@@ -332,7 +332,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	)
 
 	for {
-		_, kviter, err := iter.Next()
+		_, kviter, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -341,7 +341,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 		vals = append(vals, nil)
 
 		for {
-			values, _, err := kviter.Next()
+			values, _, err := kviter.Next(ctx)
 			if err == io.EOF {
 				break
 			}
