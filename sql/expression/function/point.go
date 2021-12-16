@@ -78,31 +78,31 @@ func (p *Point) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 func convertToFloat64(x interface{}) (float64, error) {
-	switch x.(type) {
+	switch x := x.(type) {
 	case int:
-		return float64(x.(int)), nil
+		return float64(x), nil
 	case int8:
-		return float64(x.(int8)), nil
+		return float64(x), nil
 	case int16:
-		return float64(x.(int16)), nil
+		return float64(x), nil
 	case int32:
-		return float64(x.(int32)), nil
+		return float64(x), nil
 	case int64:
-		return float64(x.(int64)), nil
+		return float64(x), nil
 	case uint:
-		return float64(x.(uint)), nil
+		return float64(x), nil
 	case uint8:
-		return float64(x.(uint8)), nil
+		return float64(x), nil
 	case uint16:
-		return float64(x.(uint16)), nil
+		return float64(x), nil
 	case uint32:
-		return float64(x.(uint32)), nil
+		return float64(x), nil
 	case uint64:
-		return float64(x.(uint64)), nil
+		return float64(x), nil
 	case float32:
-		return float64(x.(float32)), nil
+		return float64(x), nil
 	case float64:
-		return x.(float64), nil
+		return x, nil
 	default:
 		return 0, errors.New("point: wrong type")
 	}

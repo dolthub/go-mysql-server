@@ -3393,6 +3393,15 @@ var QueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `SHOW CREATE TABLE point_table`,
+		Expected: []sql.Row{{
+			"point_table",
+			"CREATE TABLE `point_table` (\n" +
+				"  `p` point NOT NULL\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
 		Query: `SHOW CREATE TABLE two_pk`,
 		Expected: []sql.Row{{
 			"two_pk",

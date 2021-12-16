@@ -75,8 +75,10 @@ func (t PointValue) Convert(v interface{}) (interface{}, error) {
 	// Convert to string
 	switch v := v.(type) {
 	case PointValue:
-		return fmt.Sprintf("(%f,%f)", v.X, v.Y), nil
+		// TODO: this is what comes from displaying table
+		return fmt.Sprintf("point(%f,%f)", v.X, v.Y), nil
 	case string:
+		// TODO: figure out why usually this is the statement that runs
 		return v, nil
 	default:
 		return nil, errors.New("Cannot convert to PointValue")
@@ -104,11 +106,13 @@ func (t PointValue) SQL(v interface{}) (sqltypes.Value, error) {
 
 // ToString implements Type interface.
 func (t PointValue) ToString() (string, error) {
-	return fmt.Sprintf("POINT(%f, %f)", t.X, t.Y), nil
+	// TODO: this is what comes from point constructor
+	return fmt.Sprintf("POINT(%f,%f)", t.X, t.Y), nil
 }
 
 // String implements Type interface.
 func (t PointValue) String() string {
+	// TODO: this is what prints on describe table
 	return "POINT"
 }
 

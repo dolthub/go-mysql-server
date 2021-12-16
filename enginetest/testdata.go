@@ -78,6 +78,18 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	var table sql.Table
 	var err error
 
+	if includeTable(includedTables, "point_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "point_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "p", Type: sql.Point, Source: "point_table"},
+			}))
+
+			if err != nil {
+				t.Logf("Warning: could not create table %s: %s", "point_table", err)
+			}
+		})
+	}
+
 	if includeTable(includedTables, "specialtable") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "specialtable", sql.NewPrimaryKeySchema(sql.Schema{
