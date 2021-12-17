@@ -22,38 +22,38 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// LineString is a function that returns a point type containing values Y and Y.
-type LineString struct {
+// Polygon is a function that returns a point type containing values Y and Y.
+type Polygon struct {
 	args []sql.Expression
 }
 
-var _ sql.FunctionExpression = (*LineString)(nil)
+var _ sql.FunctionExpression = (*Polygon)(nil)
 
-// NewLineString creates a new point expression.
-func NewLineString(args ...sql.Expression) (sql.Expression, error) {
+// NewPolygon creates a new point expression.
+func NewPolygon(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "1 or more", len(args))
 	}
-	return &LineString{args}, nil
+	return &Polygon{args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
-func (l *LineString) FunctionName() string {
-	return "linestring"
+func (l *Polygon) FunctionName() string {
+	return "polygon"
 }
 
 // Description implements sql.FunctionExpression
-func (l *LineString) Description() string {
-	return "returns a new linestring."
+func (l *Polygon) Description() string {
+	return "returns a new polygon."
 }
 
 // Children implements the sql.Expression interface.
-func (l *LineString) Children() []sql.Expression {
+func (l *Polygon) Children() []sql.Expression {
 	return l.args
 }
 
 // Resolved implements the sql.Expression interface.
-func (l *LineString) Resolved() bool {
+func (l *Polygon) Resolved() bool {
 	for _, arg := range l.args {
 		if !arg.Resolved() {
 			return false
@@ -63,7 +63,7 @@ func (l *LineString) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (l *LineString) IsNullable() bool {
+func (l *Polygon) IsNullable() bool {
 	for _, arg := range l.args {
 		if arg.IsNullable() {
 			return true
@@ -73,26 +73,26 @@ func (l *LineString) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (l *LineString) Type() sql.Type {
-	return sql.LineString
+func (l *Polygon) Type() sql.Type {
+	return sql.Polygon
 }
 
-func (l *LineString) String() string {
+func (l *Polygon) String() string {
 	var args = make([]string, len(l.args))
 	for i, arg := range l.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("LINESTRING(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("POLYGON(%s)", strings.Join(args, ", "))
 }
 
 // WithChildren implements the Expression interface.
-func (l *LineString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLineString(children...)
+func (l *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewPolygon(children...)
 }
 
 // Eval implements the sql.Expression interface.
-func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var points []sql.PointValue
+func (l *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	var lines []sql.LineStringValue
 
 	for _, arg := range l.args {
 		val, err := arg.Eval(ctx, row)
@@ -100,12 +100,12 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		switch v := val.(type) {
-		case sql.PointValue:
-			points = append(points, v)
+		case sql.LineStringValue:
+			lines = append(lines, v)
 		default:
 			return nil, errors.New("LineString constructor encountered a non-point")
 		}
 	}
 
-	return sql.LineStringValue{Points: points}, nil
+	return sql.PolygonValue{Lines: lines}, nil
 }
