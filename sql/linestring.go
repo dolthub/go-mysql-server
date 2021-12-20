@@ -22,20 +22,20 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// Represents the Point type.
+// Represents the Linestring type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
-type LineStringType interface {
+type LinestringType interface {
 	Type
 }
 
-type LineStringValue struct {
+type LinestringValue struct {
 	Points []PointValue
 }
 
-var LineString LineStringType = LineStringValue{}
+var Linestring LinestringType = LinestringValue{}
 
 // Compare implements Type interface.
-func (t LineStringValue) Compare(a interface{}, b interface{}) (int, error) {
+func (t LinestringValue) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
@@ -45,35 +45,57 @@ func (t LineStringValue) Compare(a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 
-// Convert implements Type interface.
-func (t LineStringValue) Convert(v interface{}) (interface{}, error) {
+func convertLinestringToString(v LinestringValue) (string, error) {
 	// Initialize array to accumulate arguments
 	var parts []string
-
-	// Convert each point into a string
-	switch v := v.(type) {
-	case LineStringValue:
-		// TODO: this is what comes from displaying table
-		for _, p := range v.Points {
-			s, err := p.Convert(p) // TODO: this can't be right
-			if err != nil {
-				return nil, errors.New("cannot convert to linestringvalue")
-			}
-			parts = append(parts, s.(string))
+	for _, p := range v.Points {
+		s, err := p.Convert(p) // TODO: this can't be right
+		if err != nil {
+			return "", err
 		}
-		return strings.Join(parts, ","), nil
+		parts = append(parts, s.(string))
+	}
+	return "linestring(" + strings.Join(parts, ",") + ")", nil
+}
+
+// Convert implements Type interface.
+func (t LinestringValue) Convert(v interface{}) (interface{}, error) {
+	switch v := v.(type) {
+	// Already a LinestringValue do nothing
+	case LinestringValue:
+		// TODO: this is what comes from displaying table
+		return v, nil
+	// TODO: this is used for insert?
+	// Decode string to linestring
+	case string:
+		val := v[len("linestring")+1:len(v)-1]
+		pStrings := strings.Split(val, "),")
+		var points []PointValue
+		for i, p := range pStrings {
+			if i != len(pStrings) - 1 {
+				p = p + ")"
+			}
+			tmp := PointValue{}
+			pv, err := tmp.Convert(p)
+			if err != nil {
+				return nil, err
+			}
+
+			points = append(points, pv.(PointValue))
+		}
+		return LinestringValue{points}, nil
 	default:
-		return nil, errors.New("Cannot convert to PointValue")
+		return nil, errors.New("Cannot convert to LinestringValue")
 	}
 }
 
 // Promote implements the Type interface.
-func (t LineStringValue) Promote() Type {
+func (t LinestringValue) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t LineStringValue) SQL(v interface{}) (sqltypes.Value, error) {
+func (t LinestringValue) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -87,32 +109,23 @@ func (t LineStringValue) SQL(v interface{}) (sqltypes.Value, error) {
 }
 
 // ToString implements Type interface.
-func (t LineStringValue) ToString() (string, error) {
+func (t LinestringValue) ToString() (string, error) {
 	// TODO: this is what comes from LineString constructor
-	// TODO: use helper func
-	var parts []string
-	for _, p := range t.Points {
-		s, err := p.Convert(p) // TODO: this can't be right
-		if err != nil {
-			return "", errors.New("cannot convert to linestringvalue")
-		}
-		parts = append(parts, s.(string))
-	}
-	return strings.Join(parts, ","), nil
+	return convertLinestringToString(t)
 }
 
 // String implements Type interface.
-func (t LineStringValue) String() string {
+func (t LinestringValue) String() string {
 	// TODO: this is what prints on describe table
 	return "LINESTRING"
 }
 
 // Type implements Type interface.
-func (t LineStringValue) Type() query.Type {
+func (t LinestringValue) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // Zero implements Type interface.
-func (t LineStringValue) Zero() interface{} {
+func (t LinestringValue) Zero() interface{} {
 	return nil
 }

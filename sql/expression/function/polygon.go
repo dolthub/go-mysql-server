@@ -92,7 +92,7 @@ func (l *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, erro
 
 // Eval implements the sql.Expression interface.
 func (l *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var lines []sql.LineStringValue
+	var lines []sql.LinestringValue
 
 	for _, arg := range l.args {
 		val, err := arg.Eval(ctx, row)
@@ -100,7 +100,7 @@ func (l *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		switch v := val.(type) {
-		case sql.LineStringValue:
+		case sql.LinestringValue:
 			lines = append(lines, v)
 		default:
 			return nil, errors.New("LineString constructor encountered a non-point")

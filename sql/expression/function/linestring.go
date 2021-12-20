@@ -74,7 +74,7 @@ func (l *LineString) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (l *LineString) Type() sql.Type {
-	return sql.LineString
+	return sql.Linestring
 }
 
 func (l *LineString) String() string {
@@ -107,5 +107,5 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	return sql.LineStringValue{Points: points}, nil
+	return sql.LinestringValue{Points: points}, nil
 }

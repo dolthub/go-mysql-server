@@ -29,7 +29,7 @@ type PolygonType interface {
 }
 
 type PolygonValue struct {
-	Lines []LineStringValue
+	Lines []LinestringValue
 }
 
 var Polygon PolygonType = PolygonValue{}
@@ -45,26 +45,33 @@ func (t PolygonValue) Compare(a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 
-func convertToString(v PolygonValue) (string, error) {
+func convertPolygonToString(v PolygonValue) (string, error) {
 	// Initialize array to accumulate arguments
 	var parts []string
-	for _, p := range v.Lines {
-		s, err := p.Convert(p) // TODO: this can't be right
+	for _, l := range v.Lines {
+		s, err := l.Convert(l) // TODO: this can't be right
 		if err != nil {
-			return "", errors.New("cannot convert to linestringvalue")
+			return "", err
 		}
 		parts = append(parts, s.(string))
 	}
-	return strings.Join(parts, ","), nil
+	return "polygon(" + strings.Join(parts, ",") + ")", nil
 }
 
 // Convert implements Type interface.
 func (t PolygonValue) Convert(v interface{}) (interface{}, error) {
+	// Convert each line into a string and join
+	switch v := v.(type) {
 	// TODO: this is what comes from displaying table
-	if val, ok := v.(PolygonValue); ok {
-		return convertToString(val)
+	case PolygonValue:
+		return convertPolygonToString(v)
+	// TODO: this is used for insert?
+	case string:
+		return v, nil
+	default:
+		return nil, errors.New("Cannot convert to PolygonValue")
 	}
-	return nil, errors.New("Cannot convert to PolygonValue")
+
 }
 
 // Promote implements the Type interface.
@@ -90,7 +97,7 @@ func (t PolygonValue) SQL(v interface{}) (sqltypes.Value, error) {
 func (t PolygonValue) ToString() (string, error) {
 	// TODO: this is what comes from Polygon constructor
 	// TODO: use helper func
-	return convertToString(t)
+	return convertPolygonToString(t)
 }
 
 // String implements Type interface.
