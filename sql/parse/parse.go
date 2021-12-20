@@ -186,8 +186,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertDBDDL(n)
 	case *sqlparser.Explain:
 		return convertExplain(ctx, n)
-	case *sqlparser.ShowGrants:
-		return plan.NewShowGrants(), nil
 	case *sqlparser.Insert:
 		return convertInsert(ctx, n)
 	case *sqlparser.Delete:
@@ -233,6 +231,48 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertLockTables(ctx, n)
 	case *sqlparser.UnlockTables:
 		return convertUnlockTables(ctx, n)
+
+	case *sqlparser.CreateUser:
+		return convertCreateUser(ctx, n)
+	case *sqlparser.RenameUser:
+		return convertRenameUser(ctx, n)
+	case *sqlparser.DropUser:
+		return plan.NewDropUser(n.IfExists, convertAccountName(n.AccountNames...)), nil
+	case *sqlparser.CreateRole:
+		return plan.NewCreateRole(n.IfNotExists, convertAccountName(n.Roles...)), nil
+	case *sqlparser.DropRole:
+		return plan.NewDropRole(n.IfExists, convertAccountName(n.Roles...)), nil
+	case *sqlparser.GrantPrivilege:
+		return convertGrantPrivilege(ctx, n)
+	case *sqlparser.GrantRole:
+		return plan.NewGrantRole(
+			convertAccountName(n.Roles...),
+			convertAccountName(n.To...),
+			n.WithAdminOption,
+		), nil
+	case *sqlparser.GrantProxy:
+		return plan.NewGrantProxy(
+			convertAccountName(n.On)[0],
+			convertAccountName(n.To...),
+			n.WithGrantOption,
+		), nil
+	case *sqlparser.RevokePrivilege:
+		return plan.NewRevoke(
+			convertPrivilege(n.Privileges...),
+			convertObjectType(n.ObjectType),
+			convertPrivilegeLevel(n.PrivilegeLevel),
+			convertAccountName(n.From...),
+		), nil
+	case *sqlparser.RevokeAllPrivileges:
+		return plan.NewRevokeAll(convertAccountName(n.From...)), nil
+	case *sqlparser.RevokeRole:
+		return plan.NewRevokeRole(convertAccountName(n.Roles...), convertAccountName(n.From...)), nil
+	case *sqlparser.RevokeProxy:
+		return plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...)), nil
+	case *sqlparser.ShowGrants:
+		return convertShowGrants(ctx, n)
+	case *sqlparser.ShowPrivileges:
+		return plan.NewShowPrivileges(), nil
 	}
 }
 
@@ -1841,6 +1881,238 @@ func convertDefaultExpression(ctx *sql.Context, defaultExpr sqlparser.Expr) (*sq
 	// A literal will never have children, thus we can also check for that.
 	isExpr = isExpr || len(parsedExpr.Children()) != 0
 	return ExpressionToColumnDefaultValue(ctx, parsedExpr, !isExpr)
+}
+
+func convertAccountName(names ...sqlparser.AccountName) []plan.UserName {
+	userNames := make([]plan.UserName, len(names))
+	for i, name := range names {
+		userNames[i] = plan.UserName{
+			Name:    name.Name,
+			Host:    name.Host,
+			AnyHost: name.AnyHost,
+		}
+	}
+	return userNames
+}
+
+func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
+	planPrivs := make([]plan.Privilege, len(privileges))
+	for i, privilege := range privileges {
+		var privType plan.PrivilegeType
+		switch privilege.Type {
+		case sqlparser.PrivilegeType_All:
+			privType = plan.PrivilegeType_All
+		case sqlparser.PrivilegeType_Insert:
+			privType = plan.PrivilegeType_Insert
+		case sqlparser.PrivilegeType_References:
+			privType = plan.PrivilegeType_References
+		case sqlparser.PrivilegeType_Select:
+			privType = plan.PrivilegeType_Select
+		case sqlparser.PrivilegeType_Update:
+			privType = plan.PrivilegeType_Update
+		default:
+			// Temporary until everything is added in vitess
+			panic("have yet to implement all privilege types")
+		}
+		planPrivs[i] = plan.Privilege{
+			Type:    privType,
+			Columns: privilege.Columns,
+		}
+	}
+	return planPrivs
+}
+
+func convertObjectType(objType sqlparser.GrantObjectType) plan.ObjectType {
+	switch objType {
+	case sqlparser.GrantObjectType_Any:
+		return plan.ObjectType_Any
+	case sqlparser.GrantObjectType_Table:
+		return plan.ObjectType_Table
+	case sqlparser.GrantObjectType_Function:
+		return plan.ObjectType_Function
+	case sqlparser.GrantObjectType_Procedure:
+		return plan.ObjectType_Procedure
+	default:
+		panic("no other grant object types exist")
+	}
+}
+
+func convertPrivilegeLevel(privLevel sqlparser.PrivilegeLevel) plan.PrivilegeLevel {
+	return plan.PrivilegeLevel{
+		Database:     privLevel.Database,
+		TableRoutine: privLevel.TableRoutine,
+	}
+}
+
+func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateUser, error) {
+	authUsers := make([]plan.AuthenticatedUser, len(n.Users))
+	for i, user := range n.Users {
+		authUser := plan.AuthenticatedUser{
+			UserName: convertAccountName(user.AccountName)[0],
+		}
+		//TODO: figure out how to represent authentication
+		authUsers[i] = authUser
+	}
+	var tlsOptions *plan.TLSOptions
+	if n.TLSOptions != nil {
+		tlsOptions = &plan.TLSOptions{
+			SSL:     n.TLSOptions.SSL,
+			X509:    n.TLSOptions.X509,
+			Cipher:  n.TLSOptions.Cipher,
+			Issuer:  n.TLSOptions.Issuer,
+			Subject: n.TLSOptions.Subject,
+		}
+	}
+	var accountLimits *plan.AccountLimits
+	if n.AccountLimits != nil {
+		var maxQueries *int64
+		if n.AccountLimits.MaxQueriesPerHour != nil {
+			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxQueriesPerHour.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				maxQueries = &val
+			}
+		}
+		var maxUpdates *int64
+		if n.AccountLimits.MaxUpdatesPerHour != nil {
+			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxUpdatesPerHour.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				maxUpdates = &val
+			}
+		}
+		var maxConnections *int64
+		if n.AccountLimits.MaxConnectionsPerHour != nil {
+			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxConnectionsPerHour.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				maxConnections = &val
+			}
+		}
+		var maxUserConnections *int64
+		if n.AccountLimits.MaxUserConnections != nil {
+			if val, err := strconv.ParseInt(string(n.AccountLimits.MaxUserConnections.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				maxUserConnections = &val
+			}
+		}
+		accountLimits = &plan.AccountLimits{
+			MaxQueriesPerHour:     maxQueries,
+			MaxUpdatesPerHour:     maxUpdates,
+			MaxConnectionsPerHour: maxConnections,
+			MaxUserConnections:    maxUserConnections,
+		}
+	}
+	var passwordOptions *plan.PasswordOptions
+	if n.PasswordOptions != nil {
+		var expirationTime *int64
+		if n.PasswordOptions.ExpirationTime != nil {
+			if val, err := strconv.ParseInt(string(n.PasswordOptions.ExpirationTime.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				expirationTime = &val
+			}
+		}
+		var history *int64
+		if n.PasswordOptions.History != nil {
+			if val, err := strconv.ParseInt(string(n.PasswordOptions.History.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				history = &val
+			}
+		}
+		var reuseInterval *int64
+		if n.PasswordOptions.ReuseInterval != nil {
+			if val, err := strconv.ParseInt(string(n.PasswordOptions.ReuseInterval.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				reuseInterval = &val
+			}
+		}
+		var failedAttempts *int64
+		if n.PasswordOptions.FailedAttempts != nil {
+			if val, err := strconv.ParseInt(string(n.PasswordOptions.FailedAttempts.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				failedAttempts = &val
+			}
+		}
+		var lockTime *int64
+		if n.PasswordOptions.LockTime != nil {
+			if val, err := strconv.ParseInt(string(n.PasswordOptions.LockTime.Val), 10, 64); err != nil {
+				return nil, err
+			} else {
+				lockTime = &val
+			}
+		}
+		passwordOptions = &plan.PasswordOptions{
+			RequireCurrentOptional: n.PasswordOptions.RequireCurrentOptional,
+			ExpirationTime:         expirationTime,
+			History:                history,
+			ReuseInterval:          reuseInterval,
+			FailedAttempts:         failedAttempts,
+			LockTime:               lockTime,
+		}
+	}
+	return &plan.CreateUser{
+		IfNotExists:     n.IfNotExists,
+		Users:           authUsers,
+		DefaultRoles:    convertAccountName(n.DefaultRoles...),
+		TLSOptions:      tlsOptions,
+		AccountLimits:   accountLimits,
+		PasswordOptions: passwordOptions,
+		Locked:          n.Locked,
+		Attribute:       n.Attribute,
+	}, nil
+}
+
+func convertRenameUser(ctx *sql.Context, n *sqlparser.RenameUser) (*plan.RenameUser, error) {
+	oldNames := make([]plan.UserName, len(n.Accounts))
+	newNames := make([]plan.UserName, len(n.Accounts))
+	for i, account := range n.Accounts {
+		oldNames[i] = convertAccountName(account.From)[0]
+		newNames[i] = convertAccountName(account.To)[0]
+	}
+	return plan.NewRenameUser(oldNames, newNames), nil
+}
+
+func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan.Grant, error) {
+	var gau *plan.GrantUserAssumption
+	if n.As != nil {
+		gauType := plan.GrantUserAssumptionType_Default
+		switch n.As.Type {
+		case sqlparser.GrantUserAssumptionType_None:
+			gauType = plan.GrantUserAssumptionType_None
+		case sqlparser.GrantUserAssumptionType_All:
+			gauType = plan.GrantUserAssumptionType_All
+		case sqlparser.GrantUserAssumptionType_AllExcept:
+			gauType = plan.GrantUserAssumptionType_AllExcept
+		case sqlparser.GrantUserAssumptionType_Roles:
+			gauType = plan.GrantUserAssumptionType_Roles
+		}
+		gau = &plan.GrantUserAssumption{
+			Type:  gauType,
+			User:  convertAccountName(n.As.User)[0],
+			Roles: convertAccountName(n.As.Roles...),
+		}
+	}
+	return plan.NewGrant(
+		convertPrivilege(n.Privileges...),
+		convertObjectType(n.ObjectType),
+		convertPrivilegeLevel(n.PrivilegeLevel),
+		convertAccountName(n.To...),
+		n.WithGrantOption,
+		gau,
+	), nil
+}
+
+func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGrants, error) {
+	var user *plan.UserName
+	if n.For != nil {
+		user = &convertAccountName(*n.For)[0]
+	}
+	return plan.NewShowGrants(n.CurrentUser, user, convertAccountName(n.Using...)), nil
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {
