@@ -68,11 +68,11 @@ func (t LinestringValue) Convert(v interface{}) (interface{}, error) {
 	// TODO: this is used for insert?
 	// Decode string to linestring
 	case string:
-		val := v[len("linestring")+1:len(v)-1]
+		val := v[len("linestring")+1 : len(v)-1]
 		pStrings := strings.Split(val, "),")
 		var points []PointValue
 		for i, p := range pStrings {
-			if i != len(pStrings) - 1 {
+			if i != len(pStrings)-1 {
 				p = p + ")"
 			}
 			tmp := PointValue{}
