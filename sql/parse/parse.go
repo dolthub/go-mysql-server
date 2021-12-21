@@ -137,7 +137,7 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 // and the length set to 255 with the default collation.
 func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error) {
 	createStmt := fmt.Sprintf("CREATE TABLE a(b %s)", columnType)
-	parseResult, err := sqlparser.ParseStrictDDL(createStmt)
+	parseResult, err := sqlparser.Parse(createStmt)
 	if err != nil {
 		return nil, err
 	}
@@ -169,19 +169,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		}
 		return convertShow(ctx, n, query)
 	case *sqlparser.DDL:
-		// unlike other statements, DDL statements have loose parsing by default
-		// TODO: fix this
-		ddl, err := sqlparser.ParseStrictDDL(query)
-		if err != nil {
-			return nil, err
-		}
-		return convertDDL(ctx, query, ddl.(*sqlparser.DDL))
+		return convertDDL(ctx, query, n)
 	case *sqlparser.MultiAlterDDL:
-		multiAlterDdl, err := sqlparser.ParseStrictDDL(query)
-		if err != nil {
-			return nil, err
-		}
-		return convertMultiAlterDDL(ctx, query, multiAlterDdl.(*sqlparser.MultiAlterDDL))
+		return convertMultiAlterDDL(ctx, query, n)
 	case *sqlparser.DBDDL:
 		return convertDBDDL(n)
 	case *sqlparser.Explain:
