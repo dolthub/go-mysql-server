@@ -64,7 +64,7 @@ func (t PolygonValue) Convert(v interface{}) (interface{}, error) {
 	switch v := v.(type) {
 	// TODO: this is what comes from displaying table
 	case PolygonValue:
-		return convertPolygonToString(v)
+		return v, nil
 	// TODO: this is used for insert?
 	case string:
 		return v, nil

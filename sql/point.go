@@ -35,7 +35,9 @@ type PointValue struct {
 	Y float64
 }
 
-var Point PointType = PointValue{}
+//type pointTypeImpl struct{}
+
+var Point PointType = &PointValue{}
 
 // Compare implements Type interface.
 func (t PointValue) Compare(a interface{}, b interface{}) (int, error) {
@@ -96,7 +98,7 @@ func (t PointValue) Convert(v interface{}) (interface{}, error) {
 		// TODO: this is what comes from displaying table
 		return fmt.Sprintf("point(%f,%f)", v.X, v.Y), nil
 	case string:
-		// TODO: figure out why usually this is the statement that runs
+		// TODO: figure out why this statement also runs
 		return v, nil
 	default:
 		return nil, errors.New("Cannot convert to PointValue")
