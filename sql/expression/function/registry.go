@@ -136,6 +136,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "length", Fn: NewLength},
 	sql.Function1{Name: "ln", Fn: NewLogBaseFunc(float64(math.E))},
 	sql.Function1{Name: "load_file", Fn: NewLoadFile},
+	sql.FunctionN{Name: "locate", Fn: NewLocate},
 	sql.FunctionN{Name: "log", Fn: NewLog},
 	sql.Function1{Name: "log10", Fn: NewLogBaseFunc(float64(10))},
 	sql.Function1{Name: "log2", Fn: NewLogBaseFunc(float64(2))},
