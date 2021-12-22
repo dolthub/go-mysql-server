@@ -60,30 +60,14 @@ func convertLinestringToString(v LinestringValue) (string, error) {
 
 // Convert implements Type interface.
 func (t LinestringValue) Convert(v interface{}) (interface{}, error) {
+	// Convert to string
 	switch v := v.(type) {
-	// Already a LinestringValue do nothing
 	case LinestringValue:
 		// TODO: this is what comes from displaying table
-		return v, nil
+		return convertLinestringToString(v)
 	// TODO: this is used for insert?
-	// Decode string to linestring
 	case string:
-		val := v[len("linestring")+1 : len(v)-1]
-		pStrings := strings.Split(val, "),")
-		var points []PointValue
-		for i, p := range pStrings {
-			if i != len(pStrings)-1 {
-				p = p + ")"
-			}
-			tmp := PointValue{}
-			pv, err := tmp.Convert(p)
-			if err != nil {
-				return nil, err
-			}
-
-			points = append(points, pv.(PointValue))
-		}
-		return LinestringValue{points}, nil
+		return v, nil
 	default:
 		return nil, errors.New("Cannot convert to LinestringValue")
 	}
