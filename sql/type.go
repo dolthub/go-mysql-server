@@ -418,6 +418,20 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (Type, error) {
 	case "date":
 		return Date, nil
 	case "time":
+		if ct.Length != nil {
+			length, err := strconv.ParseInt(string(ct.Length.Val), 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			switch length {
+			case 0, 1, 2, 3, 4, 5:
+				return nil, fmt.Errorf("TIME length not yet supported")
+			case 6:
+				return Time, nil
+			default:
+				return nil, fmt.Errorf("TIME only supports a length from 0 to 6")
+			}
+		}
 		return Time, nil
 	case "timestamp":
 		return Timestamp, nil

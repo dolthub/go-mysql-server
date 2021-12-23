@@ -468,13 +468,14 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				{Name: "date_col", Type: sql.Date, Source: "datetime_table", Nullable: true},
 				{Name: "datetime_col", Type: sql.Datetime, Source: "datetime_table", Nullable: true},
 				{Name: "timestamp_col", Type: sql.Timestamp, Source: "datetime_table", Nullable: true},
+				{Name: "time_col", Type: sql.Time, Source: "datetime_table", Nullable: true},
 			}))
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, mustParseDate("2019-12-31T12:00:00Z"), mustParseTime("2020-01-01T12:00:00Z"), mustParseTime("2020-01-02T12:00:00Z")),
-					sql.NewRow(2, mustParseDate("2020-01-03T12:00:00Z"), mustParseTime("2020-01-04T12:00:00Z"), mustParseTime("2020-01-05T12:00:00Z")),
-					sql.NewRow(3, mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z")),
+					sql.NewRow(1, mustParseDate("2019-12-31T12:00:00Z"), mustParseTime("2020-01-01T12:00:00Z"), mustParseTime("2020-01-02T12:00:00Z"), mustSQLTime(3*time.Hour+10*time.Minute)),
+					sql.NewRow(2, mustParseDate("2020-01-03T12:00:00Z"), mustParseTime("2020-01-04T12:00:00Z"), mustParseTime("2020-01-05T12:00:00Z"), mustSQLTime(4*time.Hour+44*time.Second)),
+					sql.NewRow(3, mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z"), mustSQLTime(15*time.Hour+5*time.Millisecond)),
 				)
 			}
 		})
@@ -659,6 +660,14 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	}
 
 	return []sql.Database{myDb, foo}
+}
+
+func mustSQLTime(d time.Duration) interface{} {
+	val, err := sql.Time.Convert(d)
+	if err != nil {
+		panic(err)
+	}
+	return val
 }
 
 func mustParseTime(datestring string) time.Time {
