@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*LineString)(nil)
 
 // NewLineString creates a new point expression.
 func NewLineString(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 2 {
+	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "1 or more", len(args))
 	}
 	return &LineString{args}, nil
