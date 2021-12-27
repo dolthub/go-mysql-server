@@ -3404,6 +3404,28 @@ var QueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `SHOW CREATE TABLE line_table`,
+		Expected: []sql.Row{{
+			"line_table",
+			"CREATE TABLE `line_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `l` linestring NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
+		Query: `SHOW CREATE TABLE polygon_table`,
+		Expected: []sql.Row{{
+			"polygon_table",
+			"CREATE TABLE `polygon_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` polygon NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
 		Query: `SHOW CREATE TABLE two_pk`,
 		Expected: []sql.Row{{
 			"two_pk",

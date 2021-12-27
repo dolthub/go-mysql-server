@@ -90,7 +90,42 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					sql.NewRow(5, "point(1,2)"),
 				)
 			} else {
-				t.Logf("Warning: could not create table %s: %s", "specialtable", err)
+				t.Logf("Warning: could not create table %s: %s", "point_table", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "line_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "line_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "line_table", PrimaryKey: true},
+				{Name: "l", Type: sql.Linestring, Source: "line_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(0, "linestring(point(1,2))"),
+					sql.NewRow(1, "linestring(point(1,2),point(3,4),point(5,6))"),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "line_table", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "polygon_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "polygon_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "polygon_table", PrimaryKey: true},
+				{Name: "p", Type: sql.Polygon, Source: "polygon_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(0, "polygon(linestring(point(0,0), point(0,1), point(1,1), point(0,0)))"),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)
 			}
 		})
 	}

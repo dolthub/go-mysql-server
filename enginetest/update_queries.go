@@ -28,6 +28,18 @@ var UpdateTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(5), "point(123.456000,789.000000)"}},
 	},
 	{
+		WriteQuery:          "UPDATE line_table SET l = linestring(point(123.456,789));",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "SELECT * FROM line_table;",
+		ExpectedSelect:      []sql.Row{{int64(0), "linestring(point(123.456000,789.000000))"}, {int64(1), "linestring(point(123.456000,789.000000))"}},
+	},
+	{
+		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM polygon_table;",
+		ExpectedSelect:      []sql.Row{{int64(0), "polygon(linestring(point(1.000000,1.000000),point(1.000000,-1.000000),point(-1.000000,-1.000000),point(-1.000000,1.000000),point(1.000000,1.000000)))"}},
+	},
+	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(3, 3)}},
 		SelectQuery:         "SELECT * FROM mytable;",

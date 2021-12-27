@@ -32,6 +32,18 @@ var InsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{5, "point(1,2)"}, {1, "point(1.000000,1.000000)"}},
 	},
 	{
+		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,1)));",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM line_table;",
+		ExpectedSelect:      []sql.Row{{0, "linestring(point(1,2))"}, {1, "linestring(point(1,2),point(3,4),point(5,6))"}, {2, "linestring(point(1.000000,1.000000))"}},
+	},
+	{
+		WriteQuery:          "INSERT INTO polygon_table VALUES (1, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM polygon_table;",
+		ExpectedSelect:      []sql.Row{{0, "polygon(linestring(point(0,0), point(0,1), point(1,1), point(0,0)))"}, {1, "polygon(linestring(point(1.000000,1.000000),point(1.000000,-1.000000),point(-1.000000,-1.000000),point(-1.000000,1.000000),point(1.000000,1.000000)))"}},
+	},
+	{
 		WriteQuery:          "INSERT INTO keyless VALUES ();",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM keyless WHERE c0 IS NULL;",
