@@ -94,7 +94,7 @@ func (l *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, erro
 // TODO: https://www.geeksforgeeks.org/orientation-3-ordered-points/
 func pointOrientation(p1, p2, p3 sql.PointValue) int {
 	// compare slopes of line(p1, p2) and line(p2, p3)
-	val := (p2.Y - p1.Y) * (p3.X - p2.X) - (p3.Y - p2.Y) * (p2.X - p1.X)
+	val := (p2.Y-p1.Y)*(p3.X-p2.X) - (p3.Y-p2.Y)*(p2.X-p1.X)
 	// check orientation
 	if val == 0 {
 		return 0 // collinear or both on axis and perpendicular
@@ -156,7 +156,7 @@ func isLinearRing(line sql.LinestringValue) bool {
 	// TODO: how to deal with same point?
 	// TODO: easy, but slow O(n^2) solution; apparently O(nlogn) exists
 	// Check each segment for intersections
-	for i := 0; i < numPoints - 1; i++ {
+	for i := 0; i < numPoints-1; i++ {
 		for j := i + 1; j < numPoints; j++ {
 			if lineSegmentsIntersect(line.Points[i], line.Points[i+1], line.Points[j], line.Points[j+1]) {
 				return false
