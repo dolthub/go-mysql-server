@@ -103,7 +103,7 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		case sql.PointValue:
 			points = append(points, v)
 		default:
-			return nil, errors.New("LineString constructor encountered a non-point")
+			return nil, errors.New("Linestring constructor encountered a non-point")
 		}
 	}
 

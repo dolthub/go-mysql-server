@@ -49,7 +49,7 @@ func convertPolygonToString(v PolygonValue) (string, error) {
 	// Initialize array to accumulate arguments
 	var parts []string
 	for _, l := range v.Lines {
-		s, err := l.Convert(l) // TODO: this can't be right
+		s, err := l.Convert(l)
 		if err != nil {
 			return "", err
 		}
@@ -62,10 +62,8 @@ func convertPolygonToString(v PolygonValue) (string, error) {
 func (t PolygonValue) Convert(v interface{}) (interface{}, error) {
 	// Convert each line into a string and join
 	switch v := v.(type) {
-	// TODO: this is what comes from displaying table
 	case PolygonValue:
-		return v, nil
-	// TODO: this is used for insert?
+		return convertPolygonToString(v)
 	case string:
 		return v, nil
 	default:

@@ -49,7 +49,7 @@ func convertLinestringToString(v LinestringValue) (string, error) {
 	// Initialize array to accumulate arguments
 	var parts []string
 	for _, p := range v.Points {
-		s, err := p.Convert(p) // TODO: this can't be right
+		s, err := p.Convert(p)
 		if err != nil {
 			return "", err
 		}
