@@ -63,6 +63,16 @@ func (t PointValue) Compare(a interface{}, b interface{}) (int, error) {
 	if _a.X < _b.X {
 		return -1, nil
 	}
+
+	// Compare Y values
+	if _a.Y > _b.Y {
+		return 1, nil
+	}
+	if _a.Y < _b.Y {
+		return -1, nil
+	}
+
+	// Points must be the same
 	return 0, nil
 }
 
@@ -86,7 +96,7 @@ func (t PointValue) convertToPointValue(v interface{}) (PointValue, error) {
 		}
 		return PointValue{X: x, Y: y}, nil
 	default:
-		return PointValue{}, errors.New("can't convert to pointValue")
+		return PointValue{}, errors.New("can't convert to PointValue")
 	}
 }
 

@@ -122,7 +122,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, "polygon(linestring(point(0,0), point(0,1), point(1,1), point(0,0)))"),
+					sql.NewRow(0, "polygon(linestring(point(0,0),point(0,1),point(1,1),point(0,0)))"),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)

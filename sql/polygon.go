@@ -41,8 +41,74 @@ func (t PolygonValue) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	// TODO: how to compare?
+	// Cast to linestring
+	_a, err := t.convertToPolygonValue(a)
+	if err != nil {
+		return 0, err
+	}
+	_b, err := t.convertToPolygonValue(b)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get shorter length
+	var n int
+	lenA := len(_a.Lines)
+	lenB := len(_b.Lines)
+	if lenA < lenB {
+		n = lenA
+	} else {
+		n = lenB
+	}
+
+	// Compare each line until there's a difference
+	for i := 0; i < n; i++ {
+		diff, err := LinestringValue{}.Compare(_a.Lines[i], _b.Lines[i])
+		if err != nil {
+			return 0, err
+		}
+		if diff != 0 {
+			return diff, nil
+		}
+	}
+
+	// Determine based off length
+	if lenA > lenB {
+		return 1, nil
+	}
+	if lenA < lenB {
+		return -1, nil
+	}
+
 	return 0, nil
+}
+
+func (t PolygonValue) convertToPolygonValue(v interface{}) (PolygonValue, error) {
+	switch v := v.(type) {
+	case PolygonValue:
+		return v, nil
+	case string:
+		// TODO: janky parsing
+		// get everything between parentheses
+		v = v[len("polygon(") : len(v)-1]
+		lineStrs := strings.Split(v, ",linestring")
+		// convert into PointValues and append to array
+		var lines []LinestringValue
+		for i, s := range lineStrs {
+			// Add back delimiter, except for first one
+			if i != 0 {
+				s = "linestring" + s
+			}
+			res, err := LinestringValue{}.convertToLinestringValue(s)
+			if err != nil {
+				return PolygonValue{}, err
+			}
+			lines = append(lines, res)
+		}
+		return PolygonValue{Lines: lines}, nil
+	default:
+		return PolygonValue{}, errors.New("can't convert to PolygonValue")
+	}
 }
 
 func convertPolygonToString(v PolygonValue) (string, error) {

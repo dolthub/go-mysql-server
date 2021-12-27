@@ -41,8 +41,74 @@ func (t LinestringValue) Compare(a interface{}, b interface{}) (int, error) {
 		return res, nil
 	}
 
-	// TODO: how to compare?
+	// Cast to linestring
+	_a, err := t.convertToLinestringValue(a)
+	if err != nil {
+		return 0, err
+	}
+	_b, err := t.convertToLinestringValue(b)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get shorter length
+	var n int
+	lenA := len(_a.Points)
+	lenB := len(_b.Points)
+	if lenA < lenB {
+		n = lenA
+	} else {
+		n = lenB
+	}
+
+	// Compare each point until there's a difference
+	for i := 0; i < n; i++ {
+		diff, err := PointValue{}.Compare(_a.Points[i], _b.Points[i])
+		if err != nil {
+			return 0, err
+		}
+		if diff != 0 {
+			return diff, nil
+		}
+	}
+
+	// Determine based off length
+	if lenA > lenB {
+		return 1, nil
+	}
+	if lenA < lenB {
+		return -1, nil
+	}
+
 	return 0, nil
+}
+
+func (t LinestringValue) convertToLinestringValue(v interface{}) (LinestringValue, error) {
+	switch v := v.(type) {
+	case LinestringValue:
+		return v, nil
+	case string:
+		// TODO: janky parsing
+		// get everything between parentheses
+		v = v[len("linestring("):len(v)-1]
+		pointStrs := strings.Split(v, ",point")
+		// convert into PointValues and append to array
+		var points []PointValue
+		for i, s := range pointStrs {
+			// Add back delimiter, except for first one
+			if i != 0 {
+				s = "point" + s
+			}
+			res, err := PointValue{}.convertToPointValue(s)
+			if err != nil {
+				return LinestringValue{}, err
+			}
+			points = append(points, res)
+		}
+		return LinestringValue{Points: points}, nil
+	default:
+		return LinestringValue{}, errors.New("can't convert to LinestringValue")
+	}
 }
 
 func convertLinestringToString(v LinestringValue) (string, error) {
