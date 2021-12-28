@@ -26,18 +26,17 @@ import (
 func TestLinestring(t *testing.T) {
 	t.Run("create valid linestring with points", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewLinestring(expression.NewLiteral(sql.PointValue{X:1,Y:2}, sql.Point),
-			expression.NewLiteral(sql.PointValue{X:3,Y:4}, sql.Point),
-			expression.NewLiteral(sql.PointValue{X:5,Y:6}, sql.Point),
+		f, err := NewLinestring(expression.NewLiteral(sql.PointValue{X: 1, Y: 2}, sql.Point),
+			expression.NewLiteral(sql.PointValue{X: 3, Y: 4}, sql.Point),
+			expression.NewLiteral(sql.PointValue{X: 5, Y: 6}, sql.Point),
 		)
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.LinestringValue{Points:[]sql.PointValue{{1,2},{3,4},{5,6}}}, v)
+		require.Equal(sql.LinestringValue{Points: []sql.PointValue{{1, 2}, {3, 4}, {5, 6}}}, v)
 	})
 }
-
 
 func TestNewLinestring(t *testing.T) {
 	require := require.New(t)
