@@ -29,8 +29,8 @@ type LineString struct {
 
 var _ sql.FunctionExpression = (*LineString)(nil)
 
-// NewLineString creates a new point expression.
-func NewLineString(args ...sql.Expression) (sql.Expression, error) {
+// NewLinestring creates a new point expression.
+func NewLinestring(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("LineString", "1 or more", len(args))
 	}
@@ -87,7 +87,7 @@ func (l *LineString) String() string {
 
 // WithChildren implements the Expression interface.
 func (l *LineString) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLineString(children...)
+	return NewLinestring(children...)
 }
 
 // Eval implements the sql.Expression interface.

@@ -24,33 +24,58 @@ import (
 )
 
 func TestPoint(t *testing.T) {
-	testCases := []struct {
-		ex1      interface{}
-		ex2      interface{}
-		expected interface{}
-	}{
-		{1, 2, sql.PointValue{X: 1, Y: 2}},
-		{nil, 2, nil},
-		{1, nil, nil},
-		{nil, nil, nil},
-	}
+	t.Run("create valid point with integers", func(t *testing.T) {
+		require := require.New(t)
+		f := NewPoint(expression.NewLiteral(1, sql.Int64),
+			expression.NewLiteral(2, sql.Int64),
+		)
 
-	f := NewPoint(
-		expression.NewGetField(0, sql.LongText, "ex1", true),
-		expression.NewGetField(1, sql.LongText, "ex2", true),
-	)
-	require.Equal(t, sql.PointValue{}, f.Type())
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.PointValue{X: 1, Y: 2}, v)
+	})
 
-	var3 := sql.PointValue{}
-	f = NewPoint(
-		expression.NewGetField(0, var3, "ex1", true),
-		expression.NewGetField(1, var3, "ex2", true),
-	)
-	require.Equal(t, var3, f.Type())
+	t.Run("create valid point with floats", func(t *testing.T) {
+		require := require.New(t)
+		f := NewPoint(expression.NewLiteral(123.456, sql.Float64),
+			expression.NewLiteral(789.000, sql.Float64),
+		)
 
-	for _, tc := range testCases {
-		v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tc.ex1, tc.ex2))
-		require.NoError(t, err)
-		require.Equal(t, tc.expected, v)
-	}
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.PointValue{X: 123.456, Y: 789}, v)
+	})
+
+	t.Run("create valid point with null x", func(t *testing.T) {
+		require := require.New(t)
+		f := NewPoint(expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(2, sql.Int32),
+		)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("create valid point with null y", func(t *testing.T) {
+		require := require.New(t)
+		f := NewPoint(expression.NewLiteral(1, sql.Int32),
+			expression.NewLiteral(nil, sql.Null),
+		)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("create valid point with nulls", func(t *testing.T) {
+		require := require.New(t)
+		f := NewPoint(expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(nil, sql.Null),
+		)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
 }
