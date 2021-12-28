@@ -90,7 +90,7 @@ func (t LinestringValue) convertToLinestringValue(v interface{}) (LinestringValu
 	case string:
 		// TODO: janky parsing
 		// get everything between parentheses
-		v = v[len("linestring("):len(v)-1]
+		v = v[len("linestring(") : len(v)-1]
 		pointStrs := strings.Split(v, ",point")
 		// convert into PointValues and append to array
 		var points []PointValue
