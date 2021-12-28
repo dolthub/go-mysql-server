@@ -362,7 +362,11 @@ func (h *Handler) doQuery(
 				row, err := rows.Next(ctx)
 				if err != nil {
 					if err == io.EOF {
-						return nil
+						return rows.Close(ctx)
+					}
+					cerr := rows.Close(ctx)
+					if cerr != nil {
+						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
 					}
 					return err
 				}
@@ -447,17 +451,11 @@ func (h *Handler) doQuery(
 	})
 
 	err = eg.Wait()
-	ctx = oCtx
 	if err != nil {
-		rows.Close(ctx)
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
-
-	err = rows.Close(ctx)
-	if err != nil {
-		return remainder, err
-	}
+	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
 		return remainder, err
