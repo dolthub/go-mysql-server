@@ -16,39 +16,35 @@ package sql
 
 import (
 	"errors"
-	"strings"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // Represents the Linestring type.
-// https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
-type LinestringType interface {
-	Type
+// https://dev.mysql.com/doc/refman/8.0/en/gis-class-linestring.html
+type Linestring struct {
+	Points []Point
 }
 
-type LinestringValue struct {
-	Points []PointValue
-}
+type LinestringType struct {}
 
-var Linestring LinestringType = LinestringValue{}
+var _ Type = LinestringType{}
 
 // Compare implements Type interface.
-func (t LinestringValue) Compare(a interface{}, b interface{}) (int, error) {
+func (t LinestringType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// Cast to linestring
-	_a, err := t.convertToLinestringValue(a)
-	if err != nil {
-		return 0, err
+	// Expect to receive a Linestring, throw error otherwise
+	_a, ok := a.(Linestring)
+	if !ok {
+		return 0, errors.New("received a non-Linestring type") // TODO: turn this into a const error
 	}
-	_b, err := t.convertToLinestringValue(b)
-	if err != nil {
-		return 0, err
+	_b, ok := b.(Linestring)
+	if !ok {
+		return 0, errors.New("received a non-Linestring type")
 	}
 
 	// Get shorter length
@@ -63,7 +59,7 @@ func (t LinestringValue) Compare(a interface{}, b interface{}) (int, error) {
 
 	// Compare each point until there's a difference
 	for i := 0; i < n; i++ {
-		diff, err := PointValue{}.Compare(_a.Points[i], _b.Points[i])
+		diff, err := PointType{}.Compare(_a.Points[i], _b.Points[i])
 		if err != nil {
 			return 0, err
 		}
@@ -80,72 +76,27 @@ func (t LinestringValue) Compare(a interface{}, b interface{}) (int, error) {
 		return -1, nil
 	}
 
+	// Lines must be the same
 	return 0, nil
 }
 
-func (t LinestringValue) convertToLinestringValue(v interface{}) (LinestringValue, error) {
-	switch v := v.(type) {
-	case LinestringValue:
-		return v, nil
-	case string:
-		// TODO: janky parsing
-		// get everything between parentheses
-		v = v[len("linestring(") : len(v)-1]
-		pointStrs := strings.Split(v, ",point")
-		// convert into PointValues and append to array
-		var points []PointValue
-		for i, s := range pointStrs {
-			// Add back delimiter, except for first one
-			if i != 0 {
-				s = "point" + s
-			}
-			res, err := PointValue{}.convertToPointValue(s)
-			if err != nil {
-				return LinestringValue{}, err
-			}
-			points = append(points, res)
-		}
-		return LinestringValue{Points: points}, nil
-	default:
-		return LinestringValue{}, errors.New("can't convert to LinestringValue")
-	}
-}
-
-func convertLinestringToString(v LinestringValue) (string, error) {
-	// Initialize array to accumulate arguments
-	var parts []string
-	for _, p := range v.Points {
-		s, err := p.Convert(p)
-		if err != nil {
-			return "", err
-		}
-		parts = append(parts, s.(string))
-	}
-	return "linestring(" + strings.Join(parts, ",") + ")", nil
-}
-
 // Convert implements Type interface.
-func (t LinestringValue) Convert(v interface{}) (interface{}, error) {
-	// Convert to string
-	switch v := v.(type) {
-	case LinestringValue:
-		// TODO: this is what comes from displaying table
-		return convertLinestringToString(v)
-	// TODO: this is used for insert?
-	case string:
+func (t LinestringType) Convert(v interface{}) (interface{}, error) {
+	// Must be a Linestring, fail otherwise
+	if v, ok := v.(Linestring); ok {
 		return v, nil
-	default:
-		return nil, errors.New("Cannot convert to LinestringValue")
 	}
+
+	return nil, errors.New("can't convert to Linestring")
 }
 
 // Promote implements the Type interface.
-func (t LinestringValue) Promote() Type {
+func (t LinestringType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t LinestringValue) SQL(v interface{}) (sqltypes.Value, error) {
+func (t LinestringType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -158,24 +109,17 @@ func (t LinestringValue) SQL(v interface{}) (sqltypes.Value, error) {
 	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(pv.(string))), nil
 }
 
-// ToString implements Type interface.
-func (t LinestringValue) ToString() (string, error) {
-	// TODO: this is what comes from LineString constructor
-	return convertLinestringToString(t)
-}
-
 // String implements Type interface.
-func (t LinestringValue) String() string {
-	// TODO: this is what prints on describe table
+func (t LinestringType) String() string {
 	return "LINESTRING"
 }
 
 // Type implements Type interface.
-func (t LinestringValue) Type() query.Type {
+func (t LinestringType) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // Zero implements Type interface.
-func (t LinestringValue) Zero() interface{} {
+func (t LinestringType) Zero() interface{} {
 	return nil
 }

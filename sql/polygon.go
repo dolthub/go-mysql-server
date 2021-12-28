@@ -16,39 +16,35 @@ package sql
 
 import (
 	"errors"
-	"strings"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // Represents the Point type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
-type PolygonType interface {
-	Type
+type Polygon struct {
+	Lines []Linestring
 }
 
-type PolygonValue struct {
-	Lines []LinestringValue
-}
+type PolygonType struct {}
 
-var Polygon PolygonType = PolygonValue{}
+var _ Type = PolygonType{}
 
 // Compare implements Type interface.
-func (t PolygonValue) Compare(a interface{}, b interface{}) (int, error) {
+func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// Cast to linestring
-	_a, err := t.convertToPolygonValue(a)
-	if err != nil {
-		return 0, err
+	// Expect to receive a Polygon, throw error otherwise
+	_a, ok := a.(Polygon)
+	if !ok {
+		return 0, errors.New("received a non-Polygon type") // TODO: turn this into a const error
 	}
-	_b, err := t.convertToPolygonValue(b)
-	if err != nil {
-		return 0, err
+	_b, ok := b.(Polygon)
+	if !ok {
+		return 0, errors.New("received a non-Polygon type")
 	}
 
 	// Get shorter length
@@ -63,7 +59,7 @@ func (t PolygonValue) Compare(a interface{}, b interface{}) (int, error) {
 
 	// Compare each line until there's a difference
 	for i := 0; i < n; i++ {
-		diff, err := LinestringValue{}.Compare(_a.Lines[i], _b.Lines[i])
+		diff, err := LinestringType{}.Compare(_a.Lines[i], _b.Lines[i])
 		if err != nil {
 			return 0, err
 		}
@@ -80,71 +76,27 @@ func (t PolygonValue) Compare(a interface{}, b interface{}) (int, error) {
 		return -1, nil
 	}
 
+	// Polygons must be the same
 	return 0, nil
 }
 
-func (t PolygonValue) convertToPolygonValue(v interface{}) (PolygonValue, error) {
-	switch v := v.(type) {
-	case PolygonValue:
-		return v, nil
-	case string:
-		// TODO: janky parsing
-		// get everything between parentheses
-		v = v[len("polygon(") : len(v)-1]
-		lineStrs := strings.Split(v, ",linestring")
-		// convert into PointValues and append to array
-		var lines []LinestringValue
-		for i, s := range lineStrs {
-			// Add back delimiter, except for first one
-			if i != 0 {
-				s = "linestring" + s
-			}
-			res, err := LinestringValue{}.convertToLinestringValue(s)
-			if err != nil {
-				return PolygonValue{}, err
-			}
-			lines = append(lines, res)
-		}
-		return PolygonValue{Lines: lines}, nil
-	default:
-		return PolygonValue{}, errors.New("can't convert to PolygonValue")
-	}
-}
-
-func convertPolygonToString(v PolygonValue) (string, error) {
-	// Initialize array to accumulate arguments
-	var parts []string
-	for _, l := range v.Lines {
-		s, err := l.Convert(l)
-		if err != nil {
-			return "", err
-		}
-		parts = append(parts, s.(string))
-	}
-	return "polygon(" + strings.Join(parts, ",") + ")", nil
-}
-
 // Convert implements Type interface.
-func (t PolygonValue) Convert(v interface{}) (interface{}, error) {
-	// Convert each line into a string and join
-	switch v := v.(type) {
-	case PolygonValue:
-		return convertPolygonToString(v)
-	case string:
+func (t PolygonType) Convert(v interface{}) (interface{}, error) {
+	// Must be a Polygon, fail otherwise
+	if v, ok := v.(Polygon); ok {
 		return v, nil
-	default:
-		return nil, errors.New("Cannot convert to PolygonValue")
 	}
 
+	return nil, errors.New("can't convert to Polygon")
 }
 
 // Promote implements the Type interface.
-func (t PolygonValue) Promote() Type {
+func (t PolygonType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PolygonValue) SQL(v interface{}) (sqltypes.Value, error) {
+func (t PolygonType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -157,25 +109,17 @@ func (t PolygonValue) SQL(v interface{}) (sqltypes.Value, error) {
 	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(lv.(string))), nil
 }
 
-// ToString implements Type interface.
-func (t PolygonValue) ToString() (string, error) {
-	// TODO: this is what comes from Polygon constructor
-	// TODO: use helper func
-	return convertPolygonToString(t)
-}
-
 // String implements Type interface.
-func (t PolygonValue) String() string {
-	// TODO: this is what prints on describe table
+func (t PolygonType) String() string {
 	return "POLYGON"
 }
 
 // Type implements Type interface.
-func (t PolygonValue) Type() query.Type {
+func (t PolygonType) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // Zero implements Type interface.
-func (t PolygonValue) Zero() interface{} {
+func (t PolygonType) Zero() interface{} {
 	return nil
 }

@@ -75,7 +75,7 @@ func (l *Polygon) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (l *Polygon) Type() sql.Type {
-	return sql.Polygon
+	return sql.PolygonType{}
 }
 
 func (l *Polygon) String() string {
@@ -83,7 +83,7 @@ func (l *Polygon) String() string {
 	for i, arg := range l.args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("POLYGON(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("POLYGON(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -92,7 +92,7 @@ func (l *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, erro
 }
 
 // TODO: https://www.geeksforgeeks.org/orientation-3-ordered-points/
-func pointOrientation(p1, p2, p3 sql.PointValue) int {
+func pointOrientation(p1, p2, p3 sql.Point) int {
 	// compare slopes of line(p1, p2) and line(p2, p3)
 	val := (p2.Y-p1.Y)*(p3.X-p2.X) - (p3.Y-p2.Y)*(p2.X-p1.X)
 	// check orientation
@@ -106,12 +106,12 @@ func pointOrientation(p1, p2, p3 sql.PointValue) int {
 }
 
 // Check if point c is in line segment ab
-func onSegment(a, b, c sql.PointValue) bool {
+func onSegment(a, b, c sql.Point) bool {
 	return c.X > math.Min(a.X, b.X) && c.X < math.Max(a.X, b.X) && c.Y > math.Min(a.Y, b.Y) && c.Y < math.Max(a.Y, b.Y)
 }
 
 // TODO: https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
-func lineSegmentsIntersect(a, b, c, d sql.PointValue) bool {
+func lineSegmentsIntersect(a, b, c, d sql.Point) bool {
 	abc := pointOrientation(a, b, c)
 	abd := pointOrientation(a, b, d)
 	cda := pointOrientation(c, d, a)
@@ -141,7 +141,7 @@ func lineSegmentsIntersect(a, b, c, d sql.PointValue) bool {
 }
 
 // TODO: should go in line?
-func isLinearRing(line sql.LinestringValue) bool {
+func isLinearRing(line sql.Linestring) bool {
 	// Get number of points
 	numPoints := len(line.Points)
 	// Check length of Linestring (must be 0 or 4+) points
@@ -168,25 +168,29 @@ func isLinearRing(line sql.LinestringValue) bool {
 
 // Eval implements the sql.Expression interface.
 func (l *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var lines []sql.LinestringValue
+	// Allocate array of lines
+	var lines = make([]sql.Linestring, len(l.args))
 
-	for _, arg := range l.args {
+	// Go through each argument
+	for i, arg := range l.args {
+		// Evaluate argument
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
+		// Must be of type point, throw error otherwise
 		switch v := val.(type) {
-		case sql.LinestringValue:
+		case sql.Linestring:
 			// Check that line is a linear ring
 			if isLinearRing(v) {
-				lines = append(lines, v)
+				lines[i] = v
 			} else {
-				return nil, errors.New("Polygon constructor encountered a non-linearring")
+				return nil, errors.New("polygon constructor encountered a non-linearring")
 			}
 		default:
-			return nil, errors.New("Polygon constructor encountered a non-linestring")
+			return nil, errors.New("polygon constructor encountered a non-linestring")
 		}
 	}
 
-	return sql.PolygonValue{Lines: lines}, nil
+	return sql.Polygon{Lines: lines}, nil
 }

@@ -21,9 +21,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// TODO: consider using a binary expression
 // Point is a function that returns a point type containing values Y and Y.
 type Point struct {
+	// TODO: consider using a binary expression
 	X sql.Expression
 	Y sql.Expression
 }
@@ -62,11 +62,11 @@ func (p *Point) IsNullable() bool {
 
 // Type implements the sql.Expression interface.
 func (p *Point) Type() sql.Type {
-	return sql.Point
+	return sql.PointType{}
 }
 
 func (p *Point) String() string {
-	return fmt.Sprintf("POINT(%d, %d)", p.X, p.Y)
+	return fmt.Sprintf("POINT(%f, %f)", p.X, p.Y)
 }
 
 // WithChildren implements the Expression interface.
@@ -140,5 +140,5 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	return sql.PointValue{X: _x, Y: _y}, nil
+	return sql.Point{X: _x, Y: _y}, nil
 }

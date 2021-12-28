@@ -16,44 +16,36 @@ package sql
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // Represents the Point type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
-type PointType interface {
-	Type
-}
-
-type PointValue struct {
+type Point struct {
 	X float64
 	Y float64
 }
 
-//type pointTypeImpl struct{}
+type PointType struct {}
 
-var Point PointType = &PointValue{}
+var _ Type = PointType{}
 
 // Compare implements Type interface.
-func (t PointValue) Compare(a interface{}, b interface{}) (int, error) {
+func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	// Cast to pointValue
-	_a, err := t.convertToPointValue(a)
-	if err != nil {
-		return 0, err
+	// Expect to receive a Point, throw error otherwise
+	_a, ok := a.(Point)
+	if !ok {
+		return 0, errors.New("received a non-Point type") // TODO: turn this into a const error
 	}
-	_b, err := t.convertToPointValue(b)
-	if err != nil {
-		return 0, err
+	_b, ok := b.(Point)
+	if !ok {
+		return 0, errors.New("received a non-Point type")
 	}
 
 	// Compare X values
@@ -76,52 +68,23 @@ func (t PointValue) Compare(a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 
-func (t PointValue) convertToPointValue(v interface{}) (PointValue, error) {
-	// TODO: this is what is called running UPDATE
-	switch v := v.(type) {
-	case PointValue:
-		return v, nil
-	case string:
-		// TODO: janky parsing
-		// get everything between parentheses
-		v = v[6 : len(v)-1]
-		s := strings.Split(v, ",")
-		x, err := strconv.ParseFloat(s[0], 64)
-		if err != nil {
-			return PointValue{}, err
-		}
-		y, err := strconv.ParseFloat(s[1], 64)
-		if err != nil {
-			return PointValue{}, err
-		}
-		return PointValue{X: x, Y: y}, nil
-	default:
-		return PointValue{}, errors.New("can't convert to PointValue")
-	}
-}
-
 // Convert implements Type interface.
-func (t PointValue) Convert(v interface{}) (interface{}, error) {
-	// Convert to string
-	switch v := v.(type) {
-	case PointValue:
-		// TODO: this is what comes from displaying table
-		return fmt.Sprintf("point(%f,%f)", v.X, v.Y), nil
-	case string:
-		// TODO: figure out why this statement also runs
+func (t PointType) Convert(v interface{}) (interface{}, error) {
+	// Must be a Point, fail otherwise
+	if v, ok := v.(Point); ok {
 		return v, nil
-	default:
-		return nil, errors.New("Cannot convert to PointValue")
 	}
+
+	return nil, errors.New("can't convert to Point")
 }
 
 // Promote implements the Type interface.
-func (t PointValue) Promote() Type {
+func (t PointType) Promote() Type {
 	return t
 }
 
 // SQL implements Type interface.
-func (t PointValue) SQL(v interface{}) (sqltypes.Value, error) {
+func (t PointType) SQL(v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -134,24 +97,18 @@ func (t PointValue) SQL(v interface{}) (sqltypes.Value, error) {
 	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(pv.(string))), nil
 }
 
-// ToString implements Type interface.
-func (t PointValue) ToString() (string, error) {
-	// TODO: this is what comes from point constructor
-	return fmt.Sprintf("POINT(%f,%f)", t.X, t.Y), nil
-}
-
 // String implements Type interface.
-func (t PointValue) String() string {
+func (t PointType) String() string {
 	// TODO: this is what prints on describe table
 	return "POINT"
 }
 
 // Type implements Type interface.
-func (t PointValue) Type() query.Type {
+func (t PointType) Type() query.Type {
 	return sqltypes.Geometry
 }
 
 // Zero implements Type interface.
-func (t PointValue) Zero() interface{} {
+func (t PointType) Zero() interface{} {
 	return nil
 }
