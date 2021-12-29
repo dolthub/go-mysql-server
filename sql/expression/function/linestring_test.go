@@ -34,7 +34,7 @@ func TestLinestring(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.LinestringValue{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}, v)
+		require.Equal(sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}, v)
 	})
 }
 
