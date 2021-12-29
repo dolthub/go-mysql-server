@@ -37,7 +37,7 @@ var UpdateTests = []WriteQueryTest{
 		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      []sql.Row{{int64(0), sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1,1},{1,-1},{-1,-1},{-1,1},{1,1}}}}}}},
+		ExpectedSelect:      []sql.Row{{int64(0), sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}}}}}}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
