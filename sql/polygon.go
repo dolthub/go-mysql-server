@@ -16,6 +16,7 @@ package sql
 
 import (
 	"errors"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -26,7 +27,7 @@ type Polygon struct {
 	Lines []Linestring
 }
 
-type PolygonType struct {}
+type PolygonType struct{}
 
 var _ Type = PolygonType{}
 

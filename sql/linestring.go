@@ -16,6 +16,7 @@ package sql
 
 import (
 	"errors"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -26,7 +27,7 @@ type Linestring struct {
 	Points []Point
 }
 
-type LinestringType struct {}
+type LinestringType struct{}
 
 var _ Type = LinestringType{}
 

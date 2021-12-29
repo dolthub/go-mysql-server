@@ -16,6 +16,7 @@ package sql
 
 import (
 	"errors"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
@@ -27,7 +28,7 @@ type Point struct {
 	Y float64
 }
 
-type PointType struct {}
+type PointType struct{}
 
 var _ Type = PointType{}
 
