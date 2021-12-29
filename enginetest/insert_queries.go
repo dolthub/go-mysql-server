@@ -35,13 +35,13 @@ var InsertQueries = []WriteQueryTest{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,1)));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{1,2}}}}, {1, sql.Linestring{Points: []sql.Point{{1,2},{3,4},{5,6}}}}, {2, sql.Linestring{Points: []sql.Point{{1,1}}}}},
+		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{1, 2}}}}, {1, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}}, {2, sql.Linestring{Points: []sql.Point{{1, 1}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO polygon_table VALUES (1, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0,0},{0,1},{1,1},{0,0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1,1},{1,-1},{-1,-1},{-1,1},{1,1}}}}}}},
+		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}}}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO keyless VALUES ();",
