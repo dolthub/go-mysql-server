@@ -25,19 +25,19 @@ var UpdateTests = []WriteQueryTest{
 		WriteQuery:          "UPDATE point_table SET p = point(123.456,789);",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM point_table;",
-		ExpectedSelect:      []sql.Row{{int64(5), "point(123.456000,789.000000)"}},
+		ExpectedSelect:      []sql.Row{{int64(5), sql.Point{X: 123.456, Y: 789}}},
 	},
 	{
 		WriteQuery:          "UPDATE line_table SET l = linestring(point(123.456,789));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{int64(0), "linestring(point(123.456000,789.000000))"}, {int64(1), "linestring(point(123.456000,789.000000))"}},
+		ExpectedSelect:      []sql.Row{{int64(0), sql.Linestring{Points: []sql.Point{{123.456, 789}}}}, {int64(1), sql.Linestring{Points: []sql.Point{{123.456, 789}}}}},
 	},
 	{
 		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
 		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      []sql.Row{{int64(0), "polygon(linestring(point(1.000000,1.000000),point(1.000000,-1.000000),point(-1.000000,-1.000000),point(-1.000000,1.000000),point(1.000000,1.000000)))"}},
+		ExpectedSelect:      []sql.Row{{int64(0), sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1,1},{1,-1},{-1,-1},{-1,1},{1,1}}}}}}},
 	},
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
