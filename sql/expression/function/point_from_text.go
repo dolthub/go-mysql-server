@@ -84,6 +84,7 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	if s, ok := val.(string); ok {
 		const point = "point"
 		// TODO: possible to use a regular expression? "*point *\( *[0-9][0-9]* *[0-9][0-9]* *\) *" /gi
+		// TODO: could turn a large chunk of this into a helper function
 		// Trim excess leading and trailing whitespace
 		s = strings.TrimSpace(s)
 
@@ -92,7 +93,7 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 		// "point" prefix must be first thing
 		if s[:len(point)] != point {
-			return nil, sql.ErrInvalidGISData.New("ST_PointFromText1")
+			return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
 		}
 
 		// Remove "point" prefix
@@ -103,7 +104,7 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 		// Must be surrounded in parentheses
 		if s[0] != '(' || s[len(s)-1] != ')' {
-			return nil, sql.ErrInvalidGISData.New("ST_PointFromText2")
+			return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
 		}
 
 		// Remove parenthesis
@@ -114,24 +115,24 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 		// Check length
 		if len(args) != 2 {
-			return nil, sql.ErrInvalidGISData.New("ST_PointFromText3")
+			return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
 		}
 
 		// Parse x
 		x, err := strconv.ParseFloat(args[0], 64)
 		if err != nil {
-			return nil, sql.ErrInvalidGISData.New("ST_PointFromText4")
+			return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
 		}
 
 		// Parse y
 		y, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
-			return nil, sql.ErrInvalidGISData.New("ST_PointFromText5")
+			return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
 		}
 
 		// Create point object
 		return sql.Point{X: x, Y: y}, nil
 	}
 
-	return nil, sql.ErrInvalidGISData.New("ST_PointFromText6")
+	return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
 }
