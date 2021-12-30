@@ -402,6 +402,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT DATEDIFF(date_col, '2019-12-28') FROM datetime_table where date_col = date('2019-12-31T12:00:00');",
+		Expected: []sql.Row{
+			{3},
+		},
+	},
+	{
+		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM 
+			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31T12:00:00')) a (val)`,
+		Expected: []sql.Row{
+			{-758},
+			{5},
+			{703},
+			{369},
+		},
+	},
+	{
 		Query: `SELECT column_0, sum(column_1) FROM 
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
 			group by 1 order by 1`,
