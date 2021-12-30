@@ -352,6 +352,9 @@ var (
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
+
+	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
+	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

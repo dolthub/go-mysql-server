@@ -23,7 +23,6 @@ import (
 
 // Point is a function that returns a point type containing values Y and Y.
 type Point struct {
-	// TODO: consider using a binary expression
 	X sql.Expression
 	Y sql.Expression
 }
