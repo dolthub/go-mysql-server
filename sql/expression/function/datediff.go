@@ -16,10 +16,11 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"math"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // DateDiff returns expr1 − expr2 expressed as a value in days from one date to the other.
@@ -113,7 +114,7 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	date1 := expr1.(time.Time)
 	date2 := expr2.(time.Time)
 
-	diff := int64(math.Round(date1.Sub(date2).Hours()/24))
+	diff := int64(math.Round(date1.Sub(date2).Hours() / 24))
 
 	return diff, nil
 }

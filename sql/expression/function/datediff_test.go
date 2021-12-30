@@ -29,22 +29,22 @@ func TestDateDiff(t *testing.T) {
 	dt, _ := time.Parse("2006-Jan-02", "2019-Dec-31")
 	testCases := []struct {
 		name     string
-		e1Type    sql.Type
-		e2Type    sql.Type
+		e1Type   sql.Type
+		e2Type   sql.Type
 		row      sql.Row
 		expected interface{}
 		err      *errors.Kind
 	}{
-	    {"time and text types, ", sql.Datetime, sql.Text, sql.NewRow(dt,"2019-12-28"), int64(3), nil},
-		{"text types, diff day, less than 24 hours time diff", sql.Text, sql.Text, sql.NewRow("2007-12-31 23:58:59","2007-12-30 23:59:59"), int64(1), nil},
-		{"text types, same day, 23:59:59 time diff", sql.Text, sql.Text, sql.NewRow("2007-12-30 23:59:59","2007-12-30 00:00:00"), int64(0), nil},
-		{"text types, diff day, 1 min time diff", sql.Text, sql.Text, sql.NewRow("2007-12-31 00:00:59","2007-12-30 23:59:59"), int64(1), nil},
-		{"text types, negative result", sql.Text, sql.Text, sql.NewRow("2010-11-30 22:59:59","2010-12-31 23:59:59"), int64(-31), nil},
-		{"text types, positive result", sql.Text, sql.Text, sql.NewRow("2007-12-31 23:59:59","2007-12-30"), int64(1), nil},
-		{"text types, negative result", sql.Text, sql.Text, sql.NewRow("2010-11-30 23:59:59","2010-12-31"), int64(-31), nil},
+		{"time and text types, ", sql.Datetime, sql.Text, sql.NewRow(dt, "2019-12-28"), int64(3), nil},
+		{"text types, diff day, less than 24 hours time diff", sql.Text, sql.Text, sql.NewRow("2007-12-31 23:58:59", "2007-12-30 23:59:59"), int64(1), nil},
+		{"text types, same day, 23:59:59 time diff", sql.Text, sql.Text, sql.NewRow("2007-12-30 23:59:59", "2007-12-30 00:00:00"), int64(0), nil},
+		{"text types, diff day, 1 min time diff", sql.Text, sql.Text, sql.NewRow("2007-12-31 00:00:59", "2007-12-30 23:59:59"), int64(1), nil},
+		{"text types, negative result", sql.Text, sql.Text, sql.NewRow("2010-11-30 22:59:59", "2010-12-31 23:59:59"), int64(-31), nil},
+		{"text types, positive result", sql.Text, sql.Text, sql.NewRow("2007-12-31 23:59:59", "2007-12-30"), int64(1), nil},
+		{"text types, negative result", sql.Text, sql.Text, sql.NewRow("2010-11-30 23:59:59", "2010-12-31"), int64(-31), nil},
 		{"text types, day difference result", sql.Text, sql.Text, sql.NewRow("2017-06-25", "2017-06-15"), int64(10), nil},
 		{"text types, year difference result", sql.Text, sql.Text, sql.NewRow("2017-06-25", "2016-06-15"), int64(375), nil},
-		{"text types, format with /", sql.Text, sql.Text, sql.NewRow("2007/12/22","2007/12/20"), int64(2), nil},
+		{"text types, format with /", sql.Text, sql.Text, sql.NewRow("2007/12/22", "2007/12/20"), int64(2), nil},
 		{"text types, positive result", sql.Text, sql.Text, sql.NewRow("2007-12-31", "2007-12-29 23:59:59"), int64(2), nil},
 		{"text types, negative result", sql.Text, sql.Text, sql.NewRow("2010-11-02", "2010-11-30 23:59:59"), int64(-28), nil},
 	}
