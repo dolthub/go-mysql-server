@@ -16,7 +16,6 @@ package function
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -68,6 +67,34 @@ func (p *LinestringFromText) WithChildren(children ...sql.Expression) (sql.Expre
 	return NewLinestringFromText(children[0]), nil
 }
 
+// ParseLinestringString expects a string like "1.2 3.4, 5.6 7.8, ..."
+func ParseLinestringString(s string) (interface{}, error) {
+	// Empty string is wrong
+	if len(s) == 0 {
+		return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
+	}
+
+	// Separate by comma
+	pointStrs := strings.Split(s, ",")
+
+	// Parse each point string
+	var points = make([]sql.Point, len(pointStrs))
+	for i, ps := range pointStrs {
+		// Remove leading and trailing whitespace
+		ps = strings.TrimSpace(ps)
+
+		// Parse point
+		if p, err := ParsePointString(ps); err == nil {
+			points[i] = p.(sql.Point)
+		} else {
+			return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
+		}
+	}
+
+	// Create Linestring object
+	return sql.Linestring{Points: points}, nil
+}
+
 // Eval implements the sql.Expression interface.
 func (p *LinestringFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -82,67 +109,9 @@ func (p *LinestringFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 
 	// Expect a string, throw error otherwise
 	if s, ok := val.(string); ok {
-		const linestring = "linestring"
-		// TODO: possible to use a regular expression? "*linestring *\( *[0-9][0-9]* *[0-9][0-9]* *\) *" /gi
-		// Trim excess leading and trailing whitespace
-		s = strings.TrimSpace(s)
-
-		// Lowercase
-		s = strings.ToLower(s)
-
-		// "linestring" prefix must be first thing
-		if s[:len(linestring)] != linestring {
-			return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
+		if s, err = TrimTypePrefix(s, "linestring"); err == nil {
+			return ParseLinestringString(s)
 		}
-
-		// Remove "linestring" prefix
-		s = s[len(linestring):]
-
-		// Trim leading and trailing whitespace again
-		s = strings.TrimSpace(s)
-
-		// Must be surrounded in parentheses
-		if s[0] != '(' || s[len(s)-1] != ')' {
-			return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
-		}
-
-		// Remove parenthesis
-		s = s[1:len(s)-1]
-
-		// Separate by comma
-		pointStrs := strings.Split(s, ",")
-
-		// Parse each point string
-		var points = make([]sql.Point, len(pointStrs))
-		for i, p := range pointStrs {
-			// Remove whitespace
-			p = strings.TrimSpace(p)
-
-			// Get everything between spaces
-			coords := strings.Fields(p)
-
-			// Check length
-			if len(coords) != 2 {
-				return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
-			}
-
-			// Parse x
-			x, err := strconv.ParseFloat(coords[0], 64)
-			if err != nil {
-				return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
-			}
-
-			// Parse y
-			y, err := strconv.ParseFloat(coords[1], 64)
-			if err != nil {
-				return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
-			}
-
-			points[i] = sql.Point{X: x, Y: y}
-		}
-
-		// Create point object
-		return sql.Linestring{Points: points}, nil
 	}
 
 	return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
