@@ -21,24 +21,6 @@ import (
 
 var DeleteTests = []WriteQueryTest{
 	{
-		WriteQuery:          "DELETE FROM point_table;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT * FROM point_table;",
-		ExpectedSelect:      nil,
-	},
-	{
-		WriteQuery:          "DELETE FROM line_table;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
-		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      nil,
-	},
-	{
-		WriteQuery:          "DELETE FROM polygon_table;",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
-		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      nil,
-	},
-	{
 		WriteQuery:          "DELETE FROM mytable;",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(3)}},
 		SelectQuery:         "SELECT * FROM mytable;",
@@ -154,6 +136,27 @@ var DeleteTests = []WriteQueryTest{
 		ExpectedWriteResult: []sql.Row{{sql.OkResult{RowsAffected: 0}}},
 		SelectQuery:         "SELECT * FROM mytable;",
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
+	},
+}
+
+var SpatialDeleteTests = []WriteQueryTest{
+	{
+		WriteQuery:          "DELETE FROM point_table;",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM point_table;",
+		ExpectedSelect:      nil,
+	},
+	{
+		WriteQuery:          "DELETE FROM line_table;",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM line_table;",
+		ExpectedSelect:      nil,
+	},
+	{
+		WriteQuery:          "DELETE FROM polygon_table;",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM polygon_table;",
+		ExpectedSelect:      nil,
 	},
 }
 
