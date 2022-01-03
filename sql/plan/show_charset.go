@@ -78,8 +78,8 @@ type showCharsetIter struct {
 	originalIter sql.RowIter
 }
 
-func (sci *showCharsetIter) Next() (sql.Row, error) {
-	row, err := sci.originalIter.Next()
+func (sci *showCharsetIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := sci.originalIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}

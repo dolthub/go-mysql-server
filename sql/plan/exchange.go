@@ -162,7 +162,7 @@ type exchangeRowIter struct {
 	rows         <-chan sql.Row
 }
 
-func (i *exchangeRowIter) Next() (sql.Row, error) {
+func (i *exchangeRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	r, ok := <-i.rows
 	if !ok {
 		return nil, i.waiter()
@@ -221,7 +221,7 @@ func sendAllRows(ctx *sql.Context, iter sql.RowIter, rows chan<- sql.Row) (rowCo
 		}
 	}()
 	for {
-		r, err := iter.Next()
+		r, err := iter.Next(ctx)
 		if err == io.EOF {
 			return rowCount, nil
 		}
@@ -290,7 +290,7 @@ func iterPartitions(ctx *sql.Context, iter sql.PartitionIter, partitions chan<- 
 		}
 	}()
 	for {
-		p, err := iter.Next()
+		p, err := iter.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
 				return nil

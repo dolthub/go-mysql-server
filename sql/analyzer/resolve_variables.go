@@ -22,7 +22,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -277,7 +276,7 @@ func getSetVal(ctx *sql.Context, varName string, e sql.Expression) (sql.Expressi
 		val, ok := txt.(string)
 		if !ok {
 			// TODO: better error message
-			return nil, parse.ErrUnsupportedFeature.New("invalid set variable")
+			return nil, sql.ErrUnsupportedFeature.New("invalid set variable")
 		}
 
 		switch strings.ToLower(val) {

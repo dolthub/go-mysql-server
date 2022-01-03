@@ -20,7 +20,6 @@ import (
 
 // TableRowIter is an iterator over the partitions in a table.
 type TableRowIter struct {
-	ctx        *Context
 	table      Table
 	partitions PartitionIter
 	partition  Partition
@@ -29,19 +28,19 @@ type TableRowIter struct {
 
 // NewTableRowIter returns a new iterator over the rows in the partitions of the table given.
 func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *TableRowIter {
-	return &TableRowIter{ctx: ctx, table: table, partitions: partitions}
+	return &TableRowIter{table: table, partitions: partitions}
 }
 
-func (i *TableRowIter) Next() (Row, error) {
-	if i.ctx.Err() != nil {
-		return nil, i.ctx.Err()
+func (i *TableRowIter) Next(ctx *Context) (Row, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	if i.partition == nil {
-		partition, err := i.partitions.Next()
+		partition, err := i.partitions.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
-				if e := i.partitions.Close(i.ctx); e != nil {
+				if e := i.partitions.Close(ctx); e != nil {
 					return nil, e
 				}
 			}
@@ -53,7 +52,7 @@ func (i *TableRowIter) Next() (Row, error) {
 	}
 
 	if i.rows == nil {
-		rows, err := i.table.PartitionRows(i.ctx, i.partition)
+		rows, err := i.table.PartitionRows(ctx, i.partition)
 		if err != nil {
 			return nil, err
 		}
@@ -61,15 +60,15 @@ func (i *TableRowIter) Next() (Row, error) {
 		i.rows = rows
 	}
 
-	row, err := i.rows.Next()
+	row, err := i.rows.Next(ctx)
 	if err != nil && err == io.EOF {
-		if err = i.rows.Close(i.ctx); err != nil {
+		if err = i.rows.Close(ctx); err != nil {
 			return nil, err
 		}
 
 		i.partition = nil
 		i.rows = nil
-		return i.Next()
+		return i.Next(ctx)
 	}
 
 	return row, err

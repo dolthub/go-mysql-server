@@ -224,7 +224,7 @@ type Partition interface {
 // PartitionIter is an iterator that retrieves partitions.
 type PartitionIter interface {
 	Closer
-	Next() (Partition, error)
+	Next(*Context) (Partition, error)
 }
 
 // Table represents the backend of a SQL table.
@@ -465,7 +465,7 @@ type AutoIncrementTable interface {
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.
-	//Implementations are responsible for updating their state to provide the correct values.
+	// Implementations are responsible for updating their state to provide the correct values.
 	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (interface{}, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter

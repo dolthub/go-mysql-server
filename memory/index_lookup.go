@@ -77,7 +77,7 @@ type indexValIter struct {
 	i               int
 }
 
-func (u *indexValIter) Next() ([]byte, error) {
+func (u *indexValIter) Next(*sql.Context) ([]byte, error) {
 	err := u.initValues()
 	if err != nil {
 		return nil, err

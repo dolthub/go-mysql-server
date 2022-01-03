@@ -68,20 +68,26 @@ type Handler struct {
 	sm                *SessionManager
 	readTimeout       time.Duration
 	disableMultiStmts bool
+	sel               ServerEventListener
 }
 
 // NewHandler creates a new Handler given a SQLe engine.
-func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool) *Handler {
+func NewHandler(e *sqle.Engine, sm *SessionManager, rt time.Duration, disableMultiStmts bool, listener ServerEventListener) *Handler {
 	return &Handler{
 		e:                 e,
 		sm:                sm,
 		readTimeout:       rt,
 		disableMultiStmts: disableMultiStmts,
+		sel:               listener,
 	}
 }
 
 // NewConnection reports that a new connection has been established.
 func (h *Handler) NewConnection(c *mysql.Conn) {
+	if h.sel != nil {
+		h.sel.ClientConnected()
+	}
+
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sqle.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
@@ -106,6 +112,7 @@ func (h *Handler) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error
 }
 
 func (h *Handler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+
 	_, err := h.errorWrappedDoQuery(c, prepare.PrepareStmt, MultiStmtModeOff, prepare.BindVars, func(res *sqltypes.Result, more bool) error {
 		return callback(res)
 	})
@@ -118,6 +125,12 @@ func (h *Handler) ComResetConnection(c *mysql.Conn) {
 
 // ConnectionClosed reports that a connection has been closed.
 func (h *Handler) ConnectionClosed(c *mysql.Conn) {
+	defer func() {
+		if h.sel != nil {
+			h.sel.ClientDisconnected()
+		}
+	}()
+
 	ctx, _ := h.sm.NewContextWithQuery(c, "")
 	h.sm.CloseConn(c)
 
@@ -345,10 +358,14 @@ func (h *Handler) doQuery(
 			case <-ctx.Done():
 				return nil
 			default:
-				row, err := rows.Next()
+				row, err := rows.Next(ctx)
 				if err != nil {
 					if err == io.EOF {
-						return nil
+						return rows.Close(ctx)
+					}
+					cerr := rows.Close(ctx)
+					if cerr != nil {
+						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
 					}
 					return err
 				}
@@ -433,17 +450,11 @@ func (h *Handler) doQuery(
 	})
 
 	err = eg.Wait()
-	ctx = oCtx
 	if err != nil {
-		rows.Close(ctx)
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
-
-	err = rows.Close(ctx)
-	if err != nil {
-		return remainder, err
-	}
+	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
 		return remainder, err
@@ -508,13 +519,24 @@ func (h *Handler) errorWrappedDoQuery(
 	bindings map[string]*query.BindVariable,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
+	start := time.Now()
+	if h.sel != nil {
+		h.sel.QueryStarted()
+	}
+
 	remainder, err := h.doQuery(c, query, mode, bindings, callback)
 	err, _, ok := sql.CastSQLError(err)
-	if ok {
-		return remainder, nil
-	} else {
-		return remainder, err
+
+	var retErr error
+	if !ok {
+		retErr = err
 	}
+
+	if h.sel != nil {
+		h.sel.QueryCompleted(retErr == nil, time.Since(start))
+	}
+
+	return remainder, retErr
 }
 
 // Periodically polls the connection socket to determine if it is has been closed by the client, returning an error

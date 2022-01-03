@@ -116,7 +116,7 @@ func (b *Block) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 
 			for {
-				newRow, err := subIter.Next()
+				newRow, err := subIter.Next(ctx)
 				if err == io.EOF {
 					err := subIter.Close(ctx)
 					if err != nil {
@@ -160,8 +160,8 @@ type blockIter struct {
 var _ BlockRowIter = (*blockIter)(nil)
 
 // Next implements the sql.RowIter interface.
-func (i *blockIter) Next() (sql.Row, error) {
-	return i.internalIter.Next()
+func (i *blockIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return i.internalIter.Next(ctx)
 }
 
 // Close implements the sql.RowIter interface.

@@ -69,7 +69,6 @@ func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.NewSpanIter(span, &iter{
 		p:         p,
 		childIter: i,
-		ctx:       ctx,
 		row:       row,
 	}), nil
 }
@@ -123,16 +122,15 @@ type iter struct {
 	p         *Project
 	childIter sql.RowIter
 	row       sql.Row
-	ctx       *sql.Context
 }
 
-func (i *iter) Next() (sql.Row, error) {
-	childRow, err := i.childIter.Next()
+func (i *iter) Next(ctx *sql.Context) (sql.Row, error) {
+	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return ProjectRow(i.ctx, i.p.Projections, childRow)
+	return ProjectRow(ctx, i.p.Projections, childRow)
 }
 
 func (i *iter) Close(ctx *sql.Context) error {

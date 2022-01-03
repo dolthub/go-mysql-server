@@ -17,8 +17,6 @@ package enginetest
 import (
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/parse"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -739,7 +737,7 @@ BEGIN
 	DECLARE mysql_err_code CONDITION FOR 1000;
 	SIGNAL mysql_err_code;
 END;`,
-		ExpectedErr: parse.ErrUnsupportedSyntax,
+		ExpectedErr: sql.ErrUnsupportedSyntax,
 	},
 	{
 		Name: "SIGNAL non-existent condition name",
