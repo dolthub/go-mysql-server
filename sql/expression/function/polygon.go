@@ -23,14 +23,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Polygon is a function that returns a point type containing values Y and Y.
+// Polygon is a function that returns a polygon type containing values Y and Y.
 type Polygon struct {
 	args []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Polygon)(nil)
 
-// NewPolygon creates a new point expression.
+// NewPolygon creates a new polygon expression.
 func NewPolygon(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("Polygon", "1 or more", len(args))
