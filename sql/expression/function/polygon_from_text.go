@@ -92,8 +92,13 @@ func ParsePolygonString(s string) (interface{}, error) {
 		linestringStr = strings.TrimSpace(linestringStr)
 
 		// Parse line
-		if line, err := ParseLinestringString(linestringStr); err != nil {
-			lines = append(lines, line.(sql.Linestring))
+		if line, err := ParseLinestringString(linestringStr); err == nil {
+			// Check if line is linearring
+			if isLinearRing(line.(sql.Linestring)) {
+				lines = append(lines, line.(sql.Linestring))
+			} else {
+				return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
+			}
 		} else {
 			return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
 		}
