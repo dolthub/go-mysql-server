@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -97,6 +98,47 @@ func (s *STX) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewSTX(children...)
 }
 
+// TruncateNonFloat will attempt to convert value to a float64
+func TruncateNonFloat(v interface{}) (float64, error) {
+	// TODO: this probably already exists somewhere
+	switch v := v.(type) {
+	case string:
+		// Trim whitespace
+		v = strings.TrimSpace(v)
+		// Empty string is 0
+		if len(v) == 0 {
+			return 0.0, nil
+		}
+		// Truncate string
+		seenDot := false
+		for i, c := range v {
+			// first character can be + or -
+			if i == 0 && (c == '-' || c == '+') {
+				continue
+			}
+			// can have at most one dot
+			if c == '.' {
+				if seenDot {
+					v = v[:i]
+					break
+				}
+				seenDot = true
+				continue
+			}
+			// TODO: handle e (power of 10)
+			// if character is not a digit, break
+			if c < '0' || c > '9' {
+				v = v[:i]
+				break
+			}
+		}
+		// Parse float
+		return strconv.ParseFloat(v, 64)
+	default:
+		return convertToFloat64(v)
+	}
+}
+
 // Eval implements the sql.Expression interface.
 func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate point
@@ -116,15 +158,19 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return _p.X, nil
 	}
 
-	// TODO: truncate non number values and throw warning
 	// Evaluate second argument
 	x, err := s.args[1].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
+	// Return null if second argument is null
+	if x == nil {
+		return nil, nil
+	}
+
 	// Convert to float64
-	_x, err := convertToFloat64(x)
+	_x, err := TruncateNonFloat(x)
 	if err != nil {
 		return nil, err
 	}
@@ -230,8 +276,13 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Return null if second argument is null
+	if y == nil {
+		return nil, nil
+	}
+
 	// Convert to float64
-	_y, err := convertToFloat64(y)
+	_y, err := TruncateNonFloat(y)
 	if err != nil {
 		return nil, err
 	}
