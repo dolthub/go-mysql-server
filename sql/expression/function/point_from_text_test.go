@@ -33,7 +33,7 @@ func TestPointFromText(t *testing.T) {
 		require.Equal(sql.Point{X: 1, Y: 2}, v)
 	})
 
-	t.Run("create valid point with well float", func(t *testing.T) {
+	t.Run("create valid point with well formatted float", func(t *testing.T) {
 		require := require.New(t)
 		f := NewPointFromText(expression.NewLiteral("POINT(123.456 789.0)", sql.Blob))
 
