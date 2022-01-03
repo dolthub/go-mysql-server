@@ -26,7 +26,7 @@ import (
 
 // PointFromText is a function that returns a point type from a WKT string
 type PointFromText struct {
-	 expression.UnaryExpression
+	expression.UnaryExpression
 }
 
 var _ sql.FunctionExpression = (*PointFromText)(nil)
@@ -92,7 +92,7 @@ func TrimTypePrefix(s, typeStr string) (string, error) {
 	}
 
 	// Remove parenthesis
-	s = s[1:len(s)-1]
+	s = s[1 : len(s)-1]
 
 	// Trim leading and trailing whitespace again
 	s = strings.TrimSpace(s)

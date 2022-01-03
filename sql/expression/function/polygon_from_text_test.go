@@ -30,7 +30,7 @@ func TestPolygonFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0,0},{0,1},{1,0},{0,0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 0}, {0, 0}}}}}, v)
 	})
 
 	t.Run("create valid polygon with multiple lines", func(t *testing.T) {
@@ -39,7 +39,7 @@ func TestPolygonFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0,0},{0,1},{1,0},{0,0}}}, {Points: []sql.Point{{0,0},{1,0},{1,1},{0,1},{0,0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 0}, {0, 0}}}, {Points: []sql.Point{{0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}}}}}, v)
 	})
 
 	t.Run("create valid linestring with whitespace string", func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestPolygonFromText(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0,0},{0,1},{1,0},{0,0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 0}, {0, 0}}}}}, v)
 	})
 
 	t.Run("null string returns null", func(t *testing.T) {

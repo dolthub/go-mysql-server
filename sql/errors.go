@@ -358,7 +358,7 @@ var (
 
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
-  
+
 	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
 	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
 
