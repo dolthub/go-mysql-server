@@ -154,14 +154,14 @@ func TestProcessIndexableTable(t *testing.T) {
 
 	var values [][]interface{}
 	for {
-		_, kviter, err := iter.Next()
+		_, kviter, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
 		require.NoError(err)
 
 		for {
-			v, _, err := kviter.Next()
+			v, _, err := kviter.Next(ctx)
 			if err == io.EOF {
 				kviter.Close(ctx)
 				break

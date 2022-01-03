@@ -107,12 +107,10 @@ func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &windowIter{
 		selectExprs: w.SelectExprs,
 		childIter:   childIter,
-		ctx:         ctx,
 	}, nil
 }
 
 type windowIter struct {
-	ctx         *sql.Context
 	selectExprs []sql.Expression
 	childIter   sql.RowIter
 	rows        []sql.Row
@@ -120,9 +118,9 @@ type windowIter struct {
 	pos         int
 }
 
-func (i *windowIter) Next() (sql.Row, error) {
+func (i *windowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.buffers == nil {
-		err := i.compute()
+		err := i.compute(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +141,7 @@ func (i *windowIter) Next() (sql.Row, error) {
 				return nil, err
 			}
 		case sql.Aggregation:
-			row[j], err = i.buffers[j][0].(sql.AggregationBuffer).Eval(i.ctx)
+			row[j], err = i.buffers[j][0].(sql.AggregationBuffer).Eval(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -154,7 +152,7 @@ func (i *windowIter) Next() (sql.Row, error) {
 	return row, nil
 }
 
-func (i *windowIter) compute() error {
+func (i *windowIter) compute(ctx *sql.Context) error {
 	i.buffers = make([]sql.Row, len(i.selectExprs))
 
 	// TOOD(aaron): i.buffers is a []sql.Row, and we tuck an
@@ -172,7 +170,7 @@ func (i *windowIter) compute() error {
 	}
 
 	for {
-		row, err := i.childIter.Next()
+		row, err := i.childIter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -182,19 +180,23 @@ func (i *windowIter) compute() error {
 
 		outRow := make(sql.Row, len(i.selectExprs))
 		for j, expr := range i.selectExprs {
+			// Window aggregations share row slices to avoid copying,
+			// but buffer appending bleeds if a row slice's underlying
+			// array is unfilled. The current sql.NewRow impl trims excess cap.
+			rowCopy := sql.NewRow(row...)
 			switch expr := expr.(type) {
 			case sql.WindowAggregation:
-				err := expr.Add(i.ctx, i.buffers[j], row)
+				err := expr.Add(ctx, i.buffers[j], rowCopy)
 				if err != nil {
 					return err
 				}
 			case sql.Aggregation:
-				err = i.buffers[j][0].(sql.AggregationBuffer).Update(i.ctx, row)
+				err = i.buffers[j][0].(sql.AggregationBuffer).Update(ctx, rowCopy)
 				if err != nil {
 					return err
 				}
 			default:
-				outRow[j], err = expr.Eval(i.ctx, row)
+				outRow[j], err = expr.Eval(ctx, rowCopy)
 				if err != nil {
 					return err
 				}
@@ -206,7 +208,7 @@ func (i *windowIter) compute() error {
 
 	for j, expr := range i.selectExprs {
 		if wa, ok := expr.(sql.WindowAggregation); ok {
-			err := wa.Finish(i.ctx, i.buffers[j])
+			err := wa.Finish(ctx, i.buffers[j])
 			if err != nil {
 				return err
 			}

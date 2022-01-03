@@ -96,7 +96,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk having strpk > "0" ORDER BY strpk`,
+		Query: `show create table two_pk`,
 		Expected: []sql.Row{
 			{1, "00"},
 			{2, "11"},
@@ -119,27 +119,15 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "failed statements data validation for INSERT, UPDATE",
+			Name: "multi column index lookup with lower()",
 			SetUpScript: []string{
-				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, INDEX (v1));",
-				"INSERT INTO test VALUES (1,1), (5,5), (4,4);",
+				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 varchar(100), v2 varchar(100), INDEX (v1,v2));",
+				"INSERT INTO test VALUES (1,'happy','birthday'), (2,'HAPPY','BIRTHDAY'), (3,'hello','sailor');",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:          "INSERT INTO test VALUES (2,2), (3,3), (1,1);",
-					ExpectedErrStr: "duplicate primary key given: [1]",
-				},
-				{
-					Query:    "SELECT * FROM test;",
-					Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
-				},
-				{
-					Query:          "UPDATE test SET pk = pk + 1 ORDER BY pk;",
-					ExpectedErrStr: "duplicate primary key given: [5]",
-				},
-				{
-					Query:    "SELECT * FROM test;",
-					Expected: []sql.Row{{1, 1}, {4, 4}, {5, 5}},
+					Query:    "SELECT pk FROM test where lower(v1) = 'happy' and lower(v2) = 'birthday' order by 1",
+					Expected: []sql.Row{{1}, {2}},
 				},
 			},
 		},
@@ -516,6 +504,10 @@ func TestInnerNestedInNaturalJoins(t *testing.T) {
 
 func TestColumnDefaults(t *testing.T) {
 	enginetest.TestColumnDefaults(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAlterTable(t *testing.T) {
+	enginetest.TestAlterTable(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestDateParse(t *testing.T) {

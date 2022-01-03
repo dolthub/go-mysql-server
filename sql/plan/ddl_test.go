@@ -58,6 +58,7 @@ func TestDropTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	ctx := sql.NewEmptyContext()
 
 	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: sql.Text},
@@ -72,7 +73,7 @@ func TestDropTable(t *testing.T) {
 	rows, err := d.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
-	r, err := rows.Next()
+	r, err := rows.Next(ctx)
 	require.Equal(err, io.EOF)
 	require.Nil(r)
 
@@ -107,7 +108,8 @@ func createTable(t *testing.T, db sql.Database, name string, schema sql.PrimaryK
 		return err
 	}
 
-	r, err := rows.Next()
+	ctx := sql.NewEmptyContext()
+	r, err := rows.Next(ctx)
 	require.Nil(t, r)
 	require.Equal(t, io.EOF, err)
 	return nil

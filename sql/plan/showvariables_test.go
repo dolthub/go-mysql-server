@@ -35,7 +35,7 @@ func TestShowVariables(t *testing.T) {
 	require.NoError(err)
 
 	vars := ctx.GetAllSessionVariables()
-	for row, err := it.Next(); err == nil; row, err = it.Next() {
+	for row, err := it.Next(ctx); err == nil; row, err = it.Next(ctx) {
 		key := row[0].(string)
 		val := row[1]
 

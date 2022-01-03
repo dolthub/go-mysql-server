@@ -53,7 +53,6 @@ func (u *UpdateJoin) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	return &updateJoinIter{
-		ctx:              ctx,
 		updateSourceIter: ji,
 		joinSchema:       u.Child.(*UpdateSource).Child.Schema(),
 		updaters:         u.updaters,
@@ -83,7 +82,6 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 // updateJoinIter wraps the child UpdateSource iter and returns join row in such a way that updates per table row are
 // done once.
 type updateJoinIter struct {
-	ctx              *sql.Context
 	updateSourceIter sql.RowIter
 	joinSchema       sql.Schema
 	updaters         map[string]sql.RowUpdater
@@ -94,9 +92,9 @@ type updateJoinIter struct {
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
 
-func (u *updateJoinIter) Next() (sql.Row, error) {
+func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		oldAndNewRow, err := u.updateSourceIter.Next()
+		oldAndNewRow, err := u.updateSourceIter.Next(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +109,7 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 
 			// Handle the case of row being ignored due to it not being valid in the join row.
 			if isRightOrLeftJoin(u.joinNode) {
-				works, err := u.shouldUpdateDirectionalJoin(u.ctx, oldJoinRow, oldTableRow)
+				works, err := u.shouldUpdateDirectionalJoin(ctx, oldJoinRow, oldTableRow)
 				if err != nil {
 					return nil, err
 				}
@@ -124,7 +122,7 @@ func (u *updateJoinIter) Next() (sql.Row, error) {
 			}
 
 			// Determine whether this row in the table has already been update
-			cache := u.getOrCreateCache(u.ctx, tableName)
+			cache := u.getOrCreateCache(ctx, tableName)
 			hash, err := sql.HashOf(oldTableRow)
 			if err != nil {
 				return nil, err

@@ -66,7 +66,7 @@ func (d Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 	defer rows.Close(ctx)
 	var tableNames []string
 	var row sql.Row
-	for row, err = rows.Next(); err == nil; row, err = rows.Next() {
+	for row, err = rows.Next(ctx); err == nil; row, err = rows.Next(ctx) {
 		tableNames = append(tableNames, row[0].(string))
 	}
 	if err != io.EOF {
@@ -125,7 +125,7 @@ func (d Database) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error)
 	defer rows.Close(ctx)
 	var triggers []sql.TriggerDefinition
 	var row sql.Row
-	for row, err = rows.Next(); err == nil; row, err = rows.Next() {
+	for row, err = rows.Next(ctx); err == nil; row, err = rows.Next(ctx) {
 		// Trigger, Event, Table, Statement, Timing, Created, sql_mode, ...
 		triggers = append(triggers, sql.TriggerDefinition{
 			Name: row[0].(string),

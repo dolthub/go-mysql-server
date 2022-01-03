@@ -22,6 +22,7 @@ import (
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{"validate_offset_and_limit", validateLimitAndOffset},
+	{"validate_create_table", validateCreateTable},
 	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_variables", resolveVariables},
 	{"resolve_set_variables", resolveSetVariables},
@@ -80,6 +81,7 @@ var OnceAfterDefault = []Rule{
 	{"load_triggers", loadTriggers},
 	{"process_truncate", processTruncate},
 	{"resolve_column_defaults", resolveColumnDefaults},
+	{"validate_alter_column", validateAlterColumn},
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
 	{"assign_catalog", assignCatalog},

@@ -67,6 +67,12 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+type Expression2 interface {
+	Expression
+	// Eval2 evaluates the given row frame and returns a result.
+	Eval2(ctx *Context, f *RowFrame) (Value, error)
+}
+
 // UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
 type UnsupportedFunctionStub interface {
 	IsUnsupported() bool
@@ -149,6 +155,14 @@ type Node interface {
 	WithChildren(...Node) (Node, error)
 }
 
+type Node2 interface {
+	Node
+
+	// RowIter2 produces a row iterator from this node. The current row frame being
+	// evaluated is provided, as well the context of the query.
+	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
+}
+
 // CommentedNode allows comments to be set and retrieved on it
 type CommentedNode interface {
 	Node
@@ -210,7 +224,7 @@ type Partition interface {
 // PartitionIter is an iterator that retrieves partitions.
 type PartitionIter interface {
 	Closer
-	Next() (Partition, error)
+	Next(*Context) (Partition, error)
 }
 
 // Table represents the backend of a SQL table.
@@ -220,6 +234,12 @@ type Table interface {
 	Schema() Schema
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
+}
+
+type Table2 interface {
+	Table
+
+	PartitionRows2(*Context, Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {
@@ -445,7 +465,7 @@ type AutoIncrementTable interface {
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.
-	//Implementations are responsible for updating their state to provide the correct values.
+	// Implementations are responsible for updating their state to provide the correct values.
 	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (interface{}, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter

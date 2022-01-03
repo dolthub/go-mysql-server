@@ -141,12 +141,11 @@ type updateIter struct {
 	schema    sql.Schema
 	updater   sql.RowUpdater
 	checks    sql.CheckConstraints
-	ctx       *sql.Context
 	closed    bool
 }
 
-func (u *updateIter) Next() (sql.Row, error) {
-	oldAndNewRow, err := u.childIter.Next()
+func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
+	oldAndNewRow, err := u.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +160,7 @@ func (u *updateIter) Next() (sql.Row, error) {
 					continue
 				}
 
-				res, err := sql.EvaluateCondition(u.ctx, check.Expr, newRow)
+				res, err := sql.EvaluateCondition(ctx, check.Expr, newRow)
 				if err != nil {
 					return nil, err
 				}
@@ -171,7 +170,7 @@ func (u *updateIter) Next() (sql.Row, error) {
 				}
 			}
 
-			err = u.updater.Update(u.ctx, oldRow, newRow)
+			err = u.updater.Update(ctx, oldRow, newRow)
 			if err != nil {
 				return nil, err
 			}
@@ -213,18 +212,16 @@ func (u *updateIter) Close(ctx *sql.Context) error {
 }
 
 func newUpdateIter(
-	ctx *sql.Context,
 	childIter sql.RowIter,
 	schema sql.Schema,
 	updater sql.RowUpdater,
 	checks sql.CheckConstraints,
 ) sql.RowIter {
-	return NewTableEditorIter(ctx, updater, &updateIter{
+	return NewTableEditorIter(updater, &updateIter{
 		childIter: childIter,
 		updater:   updater,
 		schema:    schema,
 		checks:    checks,
-		ctx:       ctx,
 	})
 }
 
@@ -241,7 +238,7 @@ func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return newUpdateIter(ctx, iter, updatable.Schema(), updater, u.Checks), nil
+	return newUpdateIter(iter, updatable.Schema(), updater, u.Checks), nil
 }
 
 // WithChildren implements the Node interface.

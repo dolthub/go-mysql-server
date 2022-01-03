@@ -259,8 +259,8 @@ type ifElseIter struct {
 var _ BlockRowIter = (*ifElseIter)(nil)
 
 // Next implements the sql.RowIter interface.
-func (i *ifElseIter) Next() (sql.Row, error) {
-	return i.branchIter.Next()
+func (i *ifElseIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return i.branchIter.Next(ctx)
 }
 
 // Close implements the sql.RowIter interface.

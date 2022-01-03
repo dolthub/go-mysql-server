@@ -506,11 +506,10 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		// TODO: indexed access
 		Query: `SELECT * FROM mytable WHERE i in (1+2)`,
 		ExpectedPlan: "Filter(mytable.i HASH IN (3))\n" +
 			" └─ Projected table access on [i s]\n" +
-			"     └─ Table(mytable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
 	{
@@ -601,7 +600,7 @@ var PlanTests = []QueryPlanTest{
 		Query: "SELECT * from mytable WHERE s IN (cast('first row' AS CHAR))",
 		ExpectedPlan: "Filter(mytable.s HASH IN (\"first row\"))\n" +
 			" └─ Projected table access on [i s]\n" +
-			"     └─ Table(mytable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.s])\n" +
 			"",
 	},
 	{
@@ -1208,7 +1207,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
 	},
 	{
-		Query: `SELECT dt1.i FROM datetime_table dt1 
+		Query: `SELECT dt1.i FROM datetime_table dt1
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1`,
 		ExpectedPlan: "Sort(dt1.i ASC)\n" +
@@ -1218,6 +1217,33 @@ var PlanTests = []QueryPlanTest{
 			"         │   └─ Table(datetime_table)\n" +
 			"         └─ TableAlias(dt1)\n" +
 			"             └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
+	},
+	{
+		Query: `SELECT dt1.i FROM datetime_table dt1
+			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
+			order by 1 limit 3 offset 0`,
+		ExpectedPlan: "Limit(3)\n" +
+			" └─ Offset(0)\n" +
+			"     └─ TopN(Limit: [(3 + 0)]; dt1.i ASC)\n" +
+			"         └─ Project(dt1.i)\n" +
+			"             └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ Table(datetime_table)\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
+	},
+	{
+		Query: `SELECT dt1.i FROM datetime_table dt1
+			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
+			order by 1 limit 3`,
+		ExpectedPlan: "Limit(3)\n" +
+			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
+			"     └─ Project(dt1.i)\n" +
+			"         └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table(datetime_table)\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
 	},
 	{
 		Query: `SELECT pk FROM one_pk
@@ -1999,6 +2025,13 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Filter((invert_pk.y >= 0) AND (invert_pk.z < 1))\n" +
 			" └─ Projected table access on [x y z]\n" +
 			"     └─ IndexedTableAccess(invert_pk on [invert_pk.y,invert_pk.z,invert_pk.x])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM one_pk WHERE pk IN (1)`,
+		ExpectedPlan: "Filter(one_pk.pk HASH IN (1))\n" +
+			" └─ Projected table access on [pk c1 c2 c3 c4 c5]\n" +
+			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 }

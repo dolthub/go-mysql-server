@@ -45,10 +45,6 @@ type LoadData struct {
 	linesStartingByDelim    string
 }
 
-const (
-	TmpfileName = ".LOADFILE"
-)
-
 // Default values as defined here: https://dev.mysql.com/doc/refman/8.0/en/load-data.html
 const (
 	defaultFieldsTerminatedByDelim = "\t"
@@ -151,7 +147,8 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	var fileName string
+	var reader io.ReadCloser
+
 	if l.Local {
 		_, localInfile, ok := sql.SystemVariables.GetGlobal("local_infile")
 		if !ok {
@@ -162,12 +159,10 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			return nil, fmt.Errorf("local_infile needs to be set to 1 to use LOCAL")
 		}
 
-		_, tmpdir, ok := sql.SystemVariables.GetGlobal("tmpdir")
-		if !ok {
-			return nil, fmt.Errorf("error: tmpdir variable was not found")
+		reader, err = ctx.LoadInfile(l.File)
+		if err != nil {
+			return nil, err
 		}
-
-		fileName = tmpdir.(string) + TmpfileName
 	} else {
 		_, dir, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
 		if !ok {
@@ -177,15 +172,15 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			dir = ""
 		}
 
-		fileName = filepath.Join(dir.(string), l.File)
+		fileName := filepath.Join(dir.(string), l.File)
+		file, err := os.Open(fileName)
+		if err != nil {
+			return nil, sql.ErrLoadDataCannotOpen.New(err.Error())
+		}
+		reader = file
 	}
 
-	file, err := os.Open(fileName)
-	if err != nil {
-		return nil, sql.ErrLoadDataCannotOpen.New(err.Error())
-	}
-
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(reader)
 
 	// Set the split function for lines.
 	scanner.Split(l.splitLines)
@@ -196,12 +191,15 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		l.IgnoreNum--
 	}
 
+	if scanner.Err() != nil {
+		reader.Close()
+		return nil, scanner.Err()
+	}
+
 	return &loadDataIter{
-		scanner:                 scanner,
 		destination:             l.Destination,
-		ctx:                     ctx,
-		file:                    file,
-		local:                   l.Local,
+		reader:                  reader,
+		scanner:                 scanner,
 		fieldsTerminatedByDelim: l.fieldsTerminatedByDelim,
 		fieldsEnclosedByDelim:   l.fieldsEnclosedByDelim,
 		fieldsOptionallyDelim:   l.fieldsOptionallyDelim,
@@ -214,9 +212,7 @@ func (l *LoadData) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 type loadDataIter struct {
 	scanner                 *bufio.Scanner
 	destination             sql.Node
-	ctx                     *sql.Context
-	file                    *os.File
-	local                   bool
+	reader                  io.ReadCloser
 	fieldsTerminatedByDelim string
 	fieldsEnclosedByDelim   string
 	fieldsOptionallyDelim   bool
@@ -225,15 +221,17 @@ type loadDataIter struct {
 	linesStartingByDelim    string
 }
 
-func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
+func (l loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
 	keepGoing := l.scanner.Scan()
 	if !keepGoing {
+		if l.scanner.Err() != nil {
+			return nil, l.scanner.Err()
+		}
 		return nil, io.EOF
 	}
 
 	line := l.scanner.Text()
 	exprs, err := l.parseFields(line)
-
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +241,9 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 	for exprs == nil {
 		keepGoing = l.scanner.Scan()
 		if !keepGoing {
+			if l.scanner.Err() != nil {
+				return nil, l.scanner.Err()
+			}
 			return nil, io.EOF
 		}
 
@@ -259,7 +260,7 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 	vals := make([]interface{}, len(exprs))
 	for i, expr := range exprs {
 		if expr != nil {
-			vals[i], err = expr.Eval(l.ctx, returnRow)
+			vals[i], err = expr.Eval(ctx, returnRow)
 			if err != nil {
 				return nil, err
 			}
@@ -270,23 +271,7 @@ func (l loadDataIter) Next() (returnRow sql.Row, returnErr error) {
 }
 
 func (l loadDataIter) Close(ctx *sql.Context) error {
-	if l.local {
-		err := os.Remove(l.file.Name())
-		if err != nil {
-			return err
-		}
-	} else {
-		err := l.file.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	if err := l.scanner.Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return l.reader.Close()
 }
 
 // parseLinePrefix searches for the delim defined by linesStartingByDelim.

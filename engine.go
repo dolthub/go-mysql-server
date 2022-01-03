@@ -38,11 +38,12 @@ type Config struct {
 
 // Engine is a SQL engine.
 type Engine struct {
-	Analyzer      *analyzer.Analyzer
-	Auth          auth.Auth
-	LS            *sql.LockSubsystem
-	ProcessList   sql.ProcessList
-	MemoryManager *sql.MemoryManager
+	Analyzer          *analyzer.Analyzer
+	Auth              auth.Auth
+	LS                *sql.LockSubsystem
+	ProcessList       sql.ProcessList
+	MemoryManager     *sql.MemoryManager
+	BackgroundThreads *sql.BackgroundThreads
 }
 
 type ColumnWithRawDefault struct {
@@ -51,7 +52,8 @@ type ColumnWithRawDefault struct {
 }
 
 // New creates a new Engine with custom configuration. To create an Engine with
-// the default settings use `NewDefault`.
+// the default settings use `NewDefault`. Should call Engine.Close() to finalize
+// dependency lifecycles.
 func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	var versionPostfix string
 	if cfg != nil {
@@ -76,11 +78,12 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	}
 
 	return &Engine{
-		Analyzer:      a,
-		MemoryManager: sql.NewMemoryManager(sql.ProcessMemory),
-		ProcessList:   NewProcessList(),
-		Auth:          au,
-		LS:            ls,
+		Analyzer:          a,
+		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
+		ProcessList:       NewProcessList(),
+		Auth:              au,
+		LS:                ls,
+		BackgroundThreads: sql.NewBackgroundThreads(),
 	}
 }
 
@@ -227,6 +230,18 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	return transactionDatabase, nil
 }
 
+func (e *Engine) Close() error {
+	for _, p := range e.ProcessList.Processes() {
+		e.ProcessList.Kill(p.Connection)
+	}
+	return e.BackgroundThreads.Shutdown()
+}
+
+func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
+	e.BackgroundThreads = b
+	return e
+}
+
 // Returns whether this session has a transaction isolation level of READ COMMITTED.
 // If so, we always begin a new transaction for every statement, and commit after every statement as well.
 // This is not what the READ COMMITTED isolation level is supposed to do.
@@ -255,8 +270,8 @@ type transactionCommittingIter struct {
 	transactionDatabase string
 }
 
-func (t transactionCommittingIter) Next() (sql.Row, error) {
-	return t.childIter.Next()
+func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
+	return t.childIter.Next(ctx)
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {
@@ -398,6 +413,7 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	ctx := sql.NewEmptyContext()
 	db := plan.NewDummyResolvedDB("temporary")
 	e := NewDefault(memory.NewMemoryDBProvider(db))
+	defer e.Close()
 
 	unresolvedSchema := make(sql.Schema, len(schema))
 	defaultCount := 0
@@ -435,5 +451,5 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 		return nil, fmt.Errorf("internal error: unknown query process child type `%T`", analyzedQueryProcess)
 	}
 
-	return analyzedCreateTable.Schema(), nil
+	return analyzedCreateTable.CreateSchema.Schema, nil
 }

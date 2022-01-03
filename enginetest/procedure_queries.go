@@ -17,8 +17,6 @@ package enginetest
 import (
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/parse"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -423,7 +421,7 @@ INSERT INTO items (item) VALUES (txt)`,
 			{
 				Query: "CALL add_item('A test item');",
 				Expected: []sql.Row{
-					{sql.NewOkResult(1)},
+					{sql.OkResult{RowsAffected: 1, InsertID: 1}},
 				},
 			},
 			{
@@ -739,7 +737,7 @@ BEGIN
 	DECLARE mysql_err_code CONDITION FOR 1000;
 	SIGNAL mysql_err_code;
 END;`,
-		ExpectedErr: parse.ErrUnsupportedSyntax,
+		ExpectedErr: sql.ErrUnsupportedSyntax,
 	},
 	{
 		Name: "SIGNAL non-existent condition name",

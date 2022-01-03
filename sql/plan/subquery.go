@@ -62,8 +62,8 @@ type stripRowIter struct {
 	numCols int
 }
 
-func (sri *stripRowIter) Next() (sql.Row, error) {
-	r, err := sri.RowIter.Next()
+func (sri *stripRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	r, err := sri.RowIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +118,8 @@ type prependRowIter struct {
 	childIter sql.RowIter
 }
 
-func (p *prependRowIter) Next() (sql.Row, error) {
-	next, err := p.childIter.Next()
+func (p *prependRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	next, err := p.childIter.Next(ctx)
 	if err != nil {
 		return next, err
 	}
@@ -260,7 +260,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	col := len(row)
 	var result []interface{}
 	for {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -340,7 +340,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 	}
 
 	// Call the iterator once and see if it has a row. If io.EOF is received return false.
-	_, err = iter.Next()
+	_, err = iter.Next(ctx)
 	if err == io.EOF {
 		return false, nil
 	}

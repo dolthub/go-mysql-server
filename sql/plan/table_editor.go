@@ -34,10 +34,9 @@ var _ sql.RowIter = (*tableEditorIter)(nil)
 
 // NewTableEditorIter returns a new *tableEditorIter by wrapping the given iterator. If the
 // "statement_boundaries" session variable is set to false, then the original iterator is returned.
-func NewTableEditorIter(ctx *sql.Context, table sql.TableEditor, wrappedIter sql.RowIter) sql.RowIter {
+func NewTableEditorIter(table sql.TableEditor, wrappedIter sql.RowIter) sql.RowIter {
 	return &tableEditorIter{
 		once:             &sync.Once{},
-		onceCtx:          ctx,
 		editor:           table,
 		inner:            wrappedIter,
 		errorEncountered: nil,
@@ -45,11 +44,11 @@ func NewTableEditorIter(ctx *sql.Context, table sql.TableEditor, wrappedIter sql
 }
 
 // Next implements the interface sql.RowIter.
-func (s *tableEditorIter) Next() (sql.Row, error) {
+func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	s.once.Do(func() {
-		s.editor.StatementBegin(s.onceCtx)
+		s.editor.StatementBegin(ctx)
 	})
-	row, err := s.inner.Next()
+	row, err := s.inner.Next(ctx)
 	_, isIg := err.(sql.ErrInsertIgnore)
 	if err != nil && err != io.EOF && !isIg {
 		s.errorEncountered = err

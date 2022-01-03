@@ -60,6 +60,9 @@ var (
 	// ErrAmbiguousColumnInOrderBy is returned when an order by column is ambiguous
 	ErrAmbiguousColumnInOrderBy = errors.NewKind("Column %q in order clause is ambiguous")
 
+	// ErrColumnExists is returned when an ALTER TABLE statement would create a duplicate column
+	ErrColumnExists = errors.NewKind("Column %q already exists")
+
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 
@@ -355,6 +358,27 @@ var (
 
 	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
 	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
+  
+	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
+	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
+
+	// ErrInvalidSQLValType is returned when a SQL value is of the incorrect type during parsing
+	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
+
+	// ErrInvalidIndexPrefix is returned when an index prefix is outside the accepted range
+	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
+
+	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
+	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in index '%s'")
+
+	// ErrInvalidAutoIncCols is returned when an auto_increment column cannot be applied
+	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
+
+	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
+	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
+
+	// ErrInvalidCheckConstraint is returned when a  check constraint is defined incorrectly
+	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

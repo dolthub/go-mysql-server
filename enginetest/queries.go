@@ -3708,7 +3708,7 @@ var QueryTests = []QueryTest{
 				sql.CharacterSet_utf8mb4.String(),
 				sql.CharacterSet_utf8mb4.Description(),
 				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				sql.CharacterSet_utf8mb4.MaxLength(),
+				uint64(sql.CharacterSet_utf8mb4.MaxLength()),
 			},
 		},
 	},
@@ -3719,7 +3719,7 @@ var QueryTests = []QueryTest{
 				sql.CharacterSet_utf8mb4.String(),
 				sql.CharacterSet_utf8mb4.Description(),
 				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				sql.CharacterSet_utf8mb4.MaxLength(),
+				uint64(sql.CharacterSet_utf8mb4.MaxLength()),
 			},
 		},
 	},
@@ -3730,7 +3730,7 @@ var QueryTests = []QueryTest{
 				sql.CharacterSet_utf8mb4.String(),
 				sql.CharacterSet_utf8mb4.Description(),
 				sql.CharacterSet_utf8mb4.DefaultCollation().String(),
-				sql.CharacterSet_utf8mb4.MaxLength(),
+				uint64(sql.CharacterSet_utf8mb4.MaxLength()),
 			},
 		},
 	},
@@ -7353,6 +7353,22 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT pk, (SELECT concat(pk, pk) FROM one_pk WHERE pk < opk.pk ORDER BY 1 DESC LIMIT 1) as strpk FROM one_pk opk where strpk > "0" ORDER BY 2`,
 		ExpectedErr: sql.ErrColumnNotFound,
+	},
+	{
+		Query:       `CREATE TABLE test (pk int, primary key(pk, noexist))`,
+		ExpectedErr: sql.ErrUnknownIndexColumn,
+	},
+	{
+		Query:       `CREATE TABLE test (pk int auto_increment, pk2 int auto_increment, primary key (pk))`,
+		ExpectedErr: sql.ErrInvalidAutoIncCols,
+	},
+	{
+		Query:       `CREATE TABLE test (pk int auto_increment)`,
+		ExpectedErr: sql.ErrInvalidAutoIncCols,
+	},
+	{
+		Query:       `CREATE TABLE test (pk int primary key auto_increment default 100, col int)`,
+		ExpectedErr: sql.ErrInvalidAutoIncCols,
 	},
 }
 

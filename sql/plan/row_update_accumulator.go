@@ -155,9 +155,10 @@ func (o *onDuplicateUpdateHandler) okResult() sql.OkResult {
 }
 
 type updateRowHandler struct {
-	rowsMatched  int
-	rowsAffected int
-	schema       sql.Schema
+	rowsMatched               int
+	rowsAffected              int
+	schema                    sql.Schema
+	clientFoundRowsCapability bool
 }
 
 func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
@@ -175,14 +176,22 @@ func (u *updateRowHandler) handleRowUpdate(row sql.Row) error {
 }
 
 func (u *updateRowHandler) okResult() sql.OkResult {
+	affected := u.rowsAffected
+	if u.clientFoundRowsCapability {
+		affected = u.rowsMatched
+	}
 	return sql.OkResult{
-		RowsAffected: uint64(u.rowsAffected),
+		RowsAffected: uint64(affected),
 		Info: UpdateInfo{
 			Matched:  u.rowsMatched,
 			Updated:  u.rowsAffected,
 			Warnings: 0,
 		},
 	}
+}
+
+func (u *updateRowHandler) RowsMatched() int64 {
+	return int64(u.rowsMatched)
 }
 
 // updateJoinRowHandler handles row update count for all UPDATEs that use a JOIN.
@@ -227,6 +236,10 @@ func (u *updateJoinRowHandler) okResult() sql.OkResult {
 	}
 }
 
+func (u *updateJoinRowHandler) RowsMatched() int64 {
+	return int64(u.rowsMatched)
+}
+
 // recreateTableSchemaFromJoinSchema takes a join schema and recreates each individual tables schema.
 func recreateTableSchemaFromJoinSchema(joinSchema sql.Schema) map[string]sql.Schema {
 	ret := make(map[string]sql.Schema, 0)
@@ -262,7 +275,7 @@ type accumulatorIter struct {
 	updateRowHandler accumulatorRowHandler
 }
 
-func (a *accumulatorIter) Next() (sql.Row, error) {
+func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 	run := false
 	a.once.Do(func() {
 		run = true
@@ -272,12 +285,50 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 		return nil, io.EOF
 	}
 
+	oldLastInsertId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
+	if oldLastInsertId != 0 {
+		ctx.Session.SetLastQueryInfo(sql.LastInsertId, -1)
+	}
+
+	// We close our child iterator before returning any results. In
+	// particular, the LOAD DATA source iterator needs to be closed before
+	// results are returned.
+	defer func() {
+		cerr := a.iter.Close(ctx)
+		if err == nil {
+			err = cerr
+		}
+	}()
+
 	for {
-		row, err := a.iter.Next()
+		row, err := a.iter.Next(ctx)
 		_, isIg := err.(sql.ErrInsertIgnore)
 
 		if err == io.EOF {
-			return sql.NewRow(a.updateRowHandler.okResult()), nil
+			res := a.updateRowHandler.okResult()
+
+			// TODO: The information flow here is pretty gnarly. We
+			// set some session variables based on the result, and
+			// we actually use a session variable to set
+			// InsertID. This should be improved.
+
+			// By definition, ROW_COUNT() is equal to RowsAffected.
+			ctx.SetLastQueryInfo(sql.RowCount, int64(res.RowsAffected))
+
+			// UPDATE statements also set FoundRows to the number of rows that
+			// matched the WHERE clause, same as a SELECT.
+			if ma, ok := a.updateRowHandler.(matchingAccumulator); ok {
+				ctx.SetLastQueryInfo(sql.FoundRows, ma.RowsMatched())
+			}
+
+			newLastInsertId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
+			if newLastInsertId != -1 {
+				res.InsertID = uint64(newLastInsertId)
+			} else {
+				ctx.Session.SetLastQueryInfo(sql.LastInsertId, oldLastInsertId)
+			}
+
+			return sql.NewRow(res), nil
 		} else if isIg {
 			continue
 		} else if err != nil {
@@ -292,21 +343,11 @@ func (a *accumulatorIter) Next() (sql.Row, error) {
 }
 
 func (a *accumulatorIter) Close(ctx *sql.Context) error {
-	err := a.iter.Close(ctx)
-	if err != nil {
-		return err
-	}
-
-	result := a.updateRowHandler.okResult()
-	ctx.SetLastQueryInfo(sql.RowCount, int64(result.RowsAffected))
-
-	// For UPDATE, the affected-rows value is the number of rows “found”; that is, matched by the WHERE clause for FOUND_ROWS
-	// cc. https://dev.mysql.com/doc/c-api/8.0/en/mysql-affected-rows.html
-	if au, ok := a.updateRowHandler.(*updateRowHandler); ok {
-		ctx.SetLastQueryInfo(sql.FoundRows, int64(au.rowsMatched))
-	}
-
 	return nil
+}
+
+type matchingAccumulator interface {
+	RowsMatched() int64
 }
 
 func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -315,6 +356,8 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 		return nil, err
 	}
 
+	clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
+
 	var rowHandler accumulatorRowHandler
 	switch r.RowUpdateType {
 	case UpdateTypeInsert:
@@ -322,13 +365,12 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	case UpdateTypeReplace:
 		rowHandler = &replaceRowHandler{}
 	case UpdateTypeDuplicateKeyUpdate:
-		clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) == mysql.CapabilityClientFoundRows
 		rowHandler = &onDuplicateUpdateHandler{schema: r.Child.Schema(), clientFoundRowsCapability: clientFoundRowsToggled}
 	case UpdateTypeUpdate:
 		schema := r.Child.Schema()
 		// the schema of the update node is a self-concatenation of the underlying table's, so split it in half for new /
 		// old row comparison purposes
-		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2]}
+		rowHandler = &updateRowHandler{schema: schema[:len(schema)/2], clientFoundRowsCapability: clientFoundRowsToggled}
 	case UpdateTypeDelete:
 		rowHandler = &deleteRowHandler{}
 	case UpdateTypeJoinUpdate:

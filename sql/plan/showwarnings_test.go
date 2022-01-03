@@ -38,7 +38,7 @@ func TestShowWarnings(t *testing.T) {
 	require.NoError(err)
 
 	n := 3
-	for row, err := it.Next(); err == nil; row, err = it.Next() {
+	for row, err := it.Next(ctx); err == nil; row, err = it.Next(ctx) {
 		level := row[0].(string)
 		code := row[1].(int)
 		message := row[2].(string)
