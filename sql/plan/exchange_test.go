@@ -104,7 +104,7 @@ func TestExchangeCancelled(t *testing.T) {
 	iter, err := exchange.RowIter(ctx, nil)
 	require.NoError(err)
 
-	_, err = iter.Next()
+	_, err = iter.Next(ctx)
 	require.Equal(context.Canceled, err)
 }
 
@@ -188,7 +188,7 @@ type exchangePartitionIter struct {
 	num int32
 }
 
-func (i *exchangePartitionIter) Next() (sql.Partition, error) {
+func (i *exchangePartitionIter) Next(*sql.Context) (sql.Partition, error) {
 	new := atomic.AddInt32(&i.num, -1)
 	if new < 0 {
 		return nil, io.EOF
@@ -197,7 +197,7 @@ func (i *exchangePartitionIter) Next() (sql.Partition, error) {
 	return Partition(fmt.Sprint(new + 1)), nil
 }
 
-func (i *exchangePartitionIter) Close(_ *sql.Context) error {
+func (i *exchangePartitionIter) Close(*sql.Context) error {
 	atomic.StoreInt32(&i.num, -1)
 	return nil
 }
@@ -207,7 +207,7 @@ type partitionRows struct {
 	num int32
 }
 
-func (r *partitionRows) Next() (sql.Row, error) {
+func (r *partitionRows) Next(*sql.Context) (sql.Row, error) {
 	new := atomic.AddInt32(&r.num, -1)
 	if new < 0 {
 		return nil, io.EOF
@@ -224,7 +224,7 @@ func (r *partitionRows) Close(*sql.Context) error {
 type rowIterPanic struct {
 }
 
-func (*rowIterPanic) Next() (sql.Row, error) {
+func (*rowIterPanic) Next(*sql.Context) (sql.Row, error) {
 	panic("i panic")
 }
 
@@ -237,7 +237,7 @@ type partitionPanic struct {
 	closed bool
 }
 
-func (*partitionPanic) Next() (sql.Partition, error) {
+func (*partitionPanic) Next(*sql.Context) (sql.Partition, error) {
 	panic("partitionPanic.Next")
 }
 

@@ -99,8 +99,8 @@ type cachedResultsIter struct {
 	dispose sql.DisposeFunc
 }
 
-func (i *cachedResultsIter) Next() (sql.Row, error) {
-	r, err := i.iter.Next()
+func (i *cachedResultsIter) Next(ctx *sql.Context) (sql.Row, error) {
+	r, err := i.iter.Next(ctx)
 	if i.cache != nil {
 		if err != nil {
 			if err == io.EOF {

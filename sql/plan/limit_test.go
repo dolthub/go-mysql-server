@@ -56,34 +56,38 @@ func TestLimit0(t *testing.T) {
 	_, size := getTestingTable(t)
 	testingLimit := 0
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, size)
+	ctx := sql.NewEmptyContext()
+	testLimitOverflow(t, ctx, iterator, testingLimit, size)
 }
 
 func TestLimitLessThanTotal(t *testing.T) {
 	_, size := getTestingTable(t)
 	testingLimit := size - 1
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, size)
+	ctx := sql.NewEmptyContext()
+	testLimitOverflow(t, ctx, iterator, testingLimit, size)
 }
 
 func TestLimitEqualThanTotal(t *testing.T) {
 	_, size := getTestingTable(t)
 	testingLimit := size
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, size)
+	ctx := sql.NewEmptyContext()
+	testLimitOverflow(t, ctx, iterator, testingLimit, size)
 }
 
 func TestLimitGreaterThanTotal(t *testing.T) {
 	_, size := getTestingTable(t)
 	testingLimit := size + 1
 	iterator, _ := getLimitedIterator(t, int64(testingLimit))
-	testLimitOverflow(t, iterator, testingLimit, size)
+	ctx := sql.NewEmptyContext()
+	testLimitOverflow(t, ctx, iterator, testingLimit, size)
 }
 
-func testLimitOverflow(t *testing.T, iter sql.RowIter, limit int, dataSize int) {
+func testLimitOverflow(t *testing.T, ctx *sql.Context, iter sql.RowIter, limit int, dataSize int) {
 	require := require.New(t)
 	for i := 0; i < limit+1; i++ {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		hint := fmt.Sprintf("Iter#%d : size.%d : limit.%d", i, dataSize, limit)
 		if i >= limit || i >= dataSize {
 			require.Nil(row, hint)

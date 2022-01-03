@@ -207,9 +207,9 @@ func newInsertIter(
 	}
 
 	if replacer != nil {
-		return NewTableEditorIter(ctx, replacer, insertIter), nil
+		return NewTableEditorIter(replacer, insertIter), nil
 	} else {
-		return NewTableEditorIter(ctx, inserter, insertIter), nil
+		return NewTableEditorIter(inserter, insertIter), nil
 	}
 }
 
@@ -226,14 +226,14 @@ func getInsertExpressions(values sql.Node) []sql.Expression {
 	return exprs
 }
 
-func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
-	row, err := i.rowSource.Next()
+func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
+	row, err := i.rowSource.Next(ctx)
 	if err == io.EOF {
 		return nil, err
 	}
 
 	if err != nil {
-		return i.ignoreOrClose(row, err)
+		return i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
@@ -242,9 +242,9 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		row = row[len(row)-len(i.schema):]
 	}
 
-	err = i.validateNullability(i.schema, row)
+	err = i.validateNullability(ctx, i.schema, row)
 	if err != nil {
-		return i.ignoreOrClose(row, err)
+		return i.ignoreOrClose(ctx, row, err)
 	}
 
 	// apply check constraints
@@ -253,10 +253,10 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 			continue
 		}
 
-		res, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
+		res, err := sql.EvaluateCondition(ctx, check.Expr, row)
 
 		if err != nil {
-			return nil, i.warnOnIgnorableError(row, err)
+			return nil, i.warnOnIgnorableError(ctx, row, err)
 		}
 
 		if sql.IsFalse(res) {
@@ -283,15 +283,17 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		// May have multiple duplicate pk & unique errors due to multiple indexes
 		//TODO: how does this interact with triggers?
 		for {
-			if err := i.replacer.Insert(i.ctx, row); err != nil {
+			if err := i.replacer.Insert(ctx, row); err != nil {
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
-					_ = i.rowSource.Close(i.ctx)
+					i.rowSource.Close(ctx)
+					i.rowSource = nil
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-				if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
-					_ = i.rowSource.Close(i.ctx)
+				if err = i.replacer.Delete(ctx, ue.Existing); err != nil {
+					i.rowSource.Close(ctx)
+					i.rowSource = nil
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
@@ -304,33 +306,33 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		}
 		return toReturn, nil
 	} else {
-		if err := i.inserter.Insert(i.ctx, row); err != nil {
+		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
-				return i.ignoreOrClose(row, err)
+				return i.ignoreOrClose(ctx, row, err)
 			}
 
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-			return i.handleOnDuplicateKeyUpdate(row, ue.Existing)
+			return i.handleOnDuplicateKeyUpdate(ctx, row, ue.Existing)
 		}
 	}
 
-	i.updateLastInsertId(i.ctx, row)
+	i.updateLastInsertId(ctx, row)
 
 	return row, nil
 }
 
-func (i *insertIter) handleOnDuplicateKeyUpdate(row, rowToUpdate sql.Row) (returnRow sql.Row, returnErr error) {
-	err := i.resolveValues(i.ctx, row)
+func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpdate sql.Row) (returnRow sql.Row, returnErr error) {
+	err := i.resolveValues(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressions(i.ctx, i.updateExprs, rowToUpdate)
+	newRow, err := applyUpdateExpressions(ctx, i.updateExprs, rowToUpdate)
 	if err != nil {
 		return nil, err
 	}
 
-	err = i.updater.Update(i.ctx, rowToUpdate, newRow)
+	err = i.updater.Update(ctx, rowToUpdate, newRow)
 	if err != nil {
 		return nil, err
 	}
@@ -366,28 +368,32 @@ func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 func (i *insertIter) Close(ctx *sql.Context) error {
 	if !i.closed {
 		i.closed = true
+		var rsErr, iErr, rErr, uErr error
+		if i.rowSource != nil {
+			rsErr = i.rowSource.Close(ctx)
+		}
 		if i.inserter != nil {
-			if err := i.inserter.Close(ctx); err != nil {
-				return err
-			}
+			iErr = i.inserter.Close(ctx)
 		}
 		if i.replacer != nil {
-			if err := i.replacer.Close(ctx); err != nil {
-				return err
-			}
+			rErr = i.replacer.Close(ctx)
 		}
 		if i.updater != nil {
-			if err := i.updater.Close(ctx); err != nil {
-				return err
-			}
+			uErr = i.updater.Close(ctx)
 		}
-		if i.rowSource != nil {
-			if err := i.rowSource.Close(ctx); err != nil {
-				return err
-			}
+		if rsErr != nil {
+			return rsErr
+		}
+		if iErr != nil {
+			return iErr
+		}
+		if rErr != nil {
+			return rErr
+		}
+		if uErr != nil {
+			return uErr
 		}
 	}
-
 	return nil
 }
 
@@ -412,20 +418,21 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
-func (i *insertIter) ignoreOrClose(row sql.Row, err error) (sql.Row, error) {
+func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sql.Row, error) {
 	if i.ignore {
-		err = i.warnOnIgnorableError(row, err)
+		err = i.warnOnIgnorableError(ctx, row, err)
 		if err != nil {
 			return nil, err
 		}
 		return nil, nil
 	} else {
-		_ = i.rowSource.Close(i.ctx)
+		i.rowSource.Close(ctx)
+		i.rowSource = nil
 		return nil, sql.NewWrappedInsertError(row, err)
 	}
 }
 
-func (i *insertIter) warnOnIgnorableError(row sql.Row, err error) error {
+func (i *insertIter) warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 	if !i.ignore {
 		return err
 	}
@@ -436,7 +443,7 @@ func (i *insertIter) warnOnIgnorableError(row sql.Row, err error) error {
 			sqlerr, _, _ := sql.CastSQLError(err)
 
 			// Add a warning instead
-			i.ctx.Session.Warn(&sql.Warning{
+			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
 				Code:    sqlerr.Num,
 				Message: err.Error(),
@@ -532,13 +539,13 @@ func (ii InsertInto) DebugString() string {
 	return pr.String()
 }
 
-func (i *insertIter) validateNullability(dstSchema sql.Schema, row sql.Row) error {
+func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
 	for count, col := range dstSchema {
 		if !col.Nullable && row[count] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if i.ignore {
 				row[count] = col.Type.Zero()
-				_ = i.warnOnIgnorableError(row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+				_ = i.warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 			} else {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}

@@ -166,7 +166,6 @@ func (c *CreateIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	}
 
 	iter = &EvalPartitionKeyValueIter{
-		ctx:     ctx,
 		columns: columns,
 		exprs:   exprs,
 		iter:    iter,
@@ -211,7 +210,7 @@ func (c *CreateIndex) createIndex(
 
 	l := log.WithField("id", index.ID())
 
-	err := driver.Save(ctx, index, newLoggingPartitionKeyValueIter(ctx, l, iter))
+	err := driver.Save(ctx, index, newLoggingPartitionKeyValueIter(l, iter))
 	close(done)
 
 	if err != nil {
@@ -339,26 +338,23 @@ type EvalPartitionKeyValueIter struct {
 	iter    sql.PartitionIndexKeyValueIter
 	columns []string
 	exprs   []sql.Expression
-	ctx     *sql.Context
 }
 
-func NewEvalPartitionKeyValueIter(ctx *sql.Context, iter sql.PartitionIndexKeyValueIter, columns []string, exprs []sql.Expression) *EvalPartitionKeyValueIter {
+func NewEvalPartitionKeyValueIter(iter sql.PartitionIndexKeyValueIter, columns []string, exprs []sql.Expression) *EvalPartitionKeyValueIter {
 	return &EvalPartitionKeyValueIter{
-		ctx:     ctx,
 		iter:    iter,
 		columns: columns,
 		exprs:   exprs,
 	}
 }
 
-func (i *EvalPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, iter, err := i.iter.Next()
+func (i *EvalPartitionKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, iter, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return p, &evalKeyValueIter{
-		ctx:     i.ctx,
 		columns: i.columns,
 		exprs:   i.exprs,
 		iter:    iter,
@@ -370,14 +366,13 @@ func (i *EvalPartitionKeyValueIter) Close(ctx *sql.Context) error {
 }
 
 type evalKeyValueIter struct {
-	ctx     *sql.Context
 	iter    sql.IndexKeyValueIter
 	columns []string
 	exprs   []sql.Expression
 }
 
-func (i *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
-	vals, loc, err := i.iter.Next()
+func (i *evalKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
+	vals, loc, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -385,7 +380,7 @@ func (i *evalKeyValueIter) Next() ([]interface{}, []byte, error) {
 	row := sql.NewRow(vals...)
 	evals := make([]interface{}, len(i.exprs))
 	for j, ex := range i.exprs {
-		eval, err := ex.Eval(i.ctx, row)
+		eval, err := ex.Eval(ctx, row)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -401,31 +396,28 @@ func (i *evalKeyValueIter) Close(ctx *sql.Context) error {
 }
 
 type loggingPartitionKeyValueIter struct {
-	ctx  *sql.Context
 	log  *logrus.Entry
 	iter sql.PartitionIndexKeyValueIter
 	rows uint64
 }
 
 func newLoggingPartitionKeyValueIter(
-	ctx *sql.Context,
 	log *logrus.Entry,
 	iter sql.PartitionIndexKeyValueIter,
 ) *loggingPartitionKeyValueIter {
 	return &loggingPartitionKeyValueIter{
-		ctx:  ctx,
 		log:  log,
 		iter: iter,
 	}
 }
 
-func (i *loggingPartitionKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, iter, err := i.iter.Next()
+func (i *loggingPartitionKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, iter, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return p, newLoggingKeyValueIter(i.ctx, i.log, iter, &i.rows), nil
+	return p, newLoggingKeyValueIter(i.log, iter, &i.rows), nil
 }
 
 func (i *loggingPartitionKeyValueIter) Close(ctx *sql.Context) error {
@@ -433,7 +425,6 @@ func (i *loggingPartitionKeyValueIter) Close(ctx *sql.Context) error {
 }
 
 type loggingKeyValueIter struct {
-	ctx   *sql.Context
 	span  opentracing.Span
 	log   *logrus.Entry
 	iter  sql.IndexKeyValueIter
@@ -442,13 +433,11 @@ type loggingKeyValueIter struct {
 }
 
 func newLoggingKeyValueIter(
-	ctx *sql.Context,
 	log *logrus.Entry,
 	iter sql.IndexKeyValueIter,
 	rows *uint64,
 ) *loggingKeyValueIter {
 	return &loggingKeyValueIter{
-		ctx:   ctx,
 		log:   log,
 		iter:  iter,
 		start: time.Now(),
@@ -456,9 +445,9 @@ func newLoggingKeyValueIter(
 	}
 }
 
-func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
+func (i *loggingKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
 	if i.span == nil {
-		i.span, _ = i.ctx.Span("plan.createIndex.iterator",
+		i.span, _ = ctx.Span("plan.createIndex.iterator",
 			opentracing.Tags{
 				"start": i.rows,
 			},
@@ -483,7 +472,7 @@ func (i *loggingKeyValueIter) Next() ([]interface{}, []byte, error) {
 		i.start = time.Now()
 	}
 
-	val, loc, err := i.iter.Next()
+	val, loc, err := i.iter.Next(ctx)
 	if err != nil {
 		i.span.LogKV("error", err)
 		i.span.Finish()

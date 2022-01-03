@@ -130,7 +130,6 @@ func TestSTY(t *testing.T) {
 		require.Equal(sql.Point{X: 0, Y: 123.456}, v)
 	})
 
-
 	t.Run("replace y value with valid string", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
@@ -139,7 +138,7 @@ func TestSTY(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X:0, Y: -123.456}, v)
+		require.Equal(sql.Point{X: 0, Y: -123.456}, v)
 	})
 
 	t.Run("replace y value with empty string", func(t *testing.T) {

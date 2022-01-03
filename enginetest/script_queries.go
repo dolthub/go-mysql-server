@@ -503,7 +503,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (1)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -511,7 +511,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -803,19 +803,19 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"1-2-3-4"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute`) FROM t",
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t`,
+				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t",
 				Expected: []sql.Row{{"color,color,fabric,shape"}},
 			},
 			{
@@ -827,11 +827,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"2"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute ASC) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` ASC) FROM t",
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute DESC) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` DESC) FROM t",
 				Expected: []sql.Row{{"shape,fabric,color"}},
 			},
 			{
@@ -847,15 +847,15 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    `SELECT group_concat(attribute) FROM t where o_id=2`,
+				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2",
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    `SELECT group_concat(o_id) FROM t WHERE attribute='color'`,
+				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color'",
 				Expected: []sql.Row{{"2,3"}},
 			},
 		},
@@ -1545,6 +1545,19 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
+			},
+		},
+	},
+	{
+		Name: "multi column index, lower()",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 varchar(100), v2 varchar(100), INDEX (v1,v2));",
+			"INSERT INTO test VALUES (1,'happy','birthday'), (2,'HAPPY','BIRTHDAY'), (3,'hello','sailor');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM test where lower(v1) = 'happy' and lower(v2) = 'birthday' order by 1",
+				Expected: []sql.Row{{1}, {2}},
 			},
 		},
 	},

@@ -85,7 +85,6 @@ func (n *ShowCreateTable) Schema() sql.Schema {
 // RowIter implements the Node interface
 func (n *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		ctx:     ctx,
 		table:   n.Child,
 		isView:  n.IsView,
 		indexes: n.Indexes,
@@ -112,12 +111,11 @@ type showCreateTablesIter struct {
 	table        sql.Node
 	didIteration bool
 	isView       bool
-	ctx          *sql.Context
 	indexes      []sql.Index
 	checks       sql.CheckConstraints
 }
 
-func (i *showCreateTablesIter) Next() (sql.Row, error) {
+func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.didIteration {
 		return nil, io.EOF
 	}
@@ -136,7 +134,7 @@ func (i *showCreateTablesIter) Next() (sql.Row, error) {
 
 		tableName = table.Name()
 		var err error
-		composedCreateTableStatement, err = i.produceCreateTableStatement(table.Table)
+		composedCreateTableStatement, err = i.produceCreateTableStatement(ctx, table.Table)
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +156,7 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (string, error) {
+func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table) (string, error) {
 	schema := table.Schema()
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
@@ -228,7 +226,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(table sql.Table) (str
 
 	fkt := getForeignKeyTable(table)
 	if fkt != nil {
-		fks, err := fkt.GetForeignKeys(i.ctx)
+		fks, err := fkt.GetForeignKeys(ctx)
 		if err != nil {
 			return "", err
 		}

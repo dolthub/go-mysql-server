@@ -45,7 +45,7 @@ func TestShowCreateTable(t *testing.T) {
 
 	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
-	row, err := rowIter.Next()
+	row, err := rowIter.Next(ctx)
 
 	require.NoError(err)
 
@@ -67,7 +67,7 @@ func TestShowCreateTable(t *testing.T) {
 	ctx = sql.NewEmptyContext()
 	rowIter, _ = showCreateTable.RowIter(ctx, nil)
 
-	_, err = rowIter.Next()
+	_, err = rowIter.Next(ctx)
 	require.Error(err)
 	require.True(ErrNotView.Is(err), "wrong error kind")
 }
@@ -124,7 +124,7 @@ func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 
 	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
-	row, err := rowIter.Next()
+	row, err := rowIter.Next(ctx)
 
 	require.NoError(err)
 
@@ -169,7 +169,7 @@ func TestShowCreateView(t *testing.T) {
 
 	rowIter, _ := showCreateTable.RowIter(ctx, nil)
 
-	row, err := rowIter.Next()
+	row, err := rowIter.Next(ctx)
 
 	require.Nil(err)
 

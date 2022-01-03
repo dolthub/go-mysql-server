@@ -416,7 +416,6 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 			typ:               typ,
 			primary:           r,
 			secondaryProvider: left,
-			ctx:               ctx,
 			cond:              cond,
 			mode:              mode,
 			secondaryRows:     cache,
@@ -437,7 +436,6 @@ func joinRowIter(ctx *sql.Context, typ JoinType, left, right sql.Node, cond sql.
 		typ:               typ,
 		primary:           l,
 		secondaryProvider: right,
-		ctx:               ctx,
 		cond:              cond,
 		mode:              mode,
 		secondaryRows:     cache,
@@ -473,7 +471,6 @@ type joinIter struct {
 	primary           sql.RowIter
 	secondaryProvider rowIterProvider
 	secondary         sql.RowIter
-	ctx               *sql.Context
 	cond              sql.Expression
 
 	primaryRow sql.Row
@@ -498,9 +495,9 @@ func (i *joinIter) Dispose() {
 	}
 }
 
-func (i *joinIter) loadPrimary() error {
+func (i *joinIter) loadPrimary(ctx *sql.Context) error {
 	if i.primaryRow == nil {
-		r, err := i.primary.Next()
+		r, err := i.primary.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
 				i.Dispose()
@@ -515,29 +512,29 @@ func (i *joinIter) loadPrimary() error {
 	return nil
 }
 
-func (i *joinIter) loadSecondaryInMemory() error {
-	iter, err := i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
+func (i *joinIter) loadSecondaryInMemory(ctx *sql.Context) error {
+	iter, err := i.secondaryProvider.RowIter(ctx, i.primaryRow)
 	if err != nil {
 		return err
 	}
 
 	for {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			iter.Close(i.ctx)
+			iter.Close(ctx)
 			return err
 		}
 
 		if err := i.secondaryRows.Add(row); err != nil {
-			iter.Close(i.ctx)
+			iter.Close(ctx)
 			return err
 		}
 	}
 
-	err = iter.Close(i.ctx)
+	err = iter.Close(ctx)
 	if err != nil {
 		return err
 	}
@@ -549,10 +546,10 @@ func (i *joinIter) loadSecondaryInMemory() error {
 	return nil
 }
 
-func (i *joinIter) loadSecondary() (row sql.Row, err error) {
+func (i *joinIter) loadSecondary(ctx *sql.Context) (row sql.Row, err error) {
 	if i.mode == memoryMode {
 		if len(i.secondaryRows.Get()) == 0 {
-			if err = i.loadSecondaryInMemory(); err != nil {
+			if err = i.loadSecondaryInMemory(ctx); err != nil {
 				if err == io.EOF {
 					i.primaryRow = nil
 					i.pos = 0
@@ -574,7 +571,7 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 
 	if i.secondary == nil {
 		var iter sql.RowIter
-		iter, err = i.secondaryProvider.RowIter(i.ctx, i.primaryRow)
+		iter, err = i.secondaryProvider.RowIter(ctx, i.primaryRow)
 		if err != nil {
 			return nil, err
 		}
@@ -582,10 +579,10 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 		i.secondary = iter
 	}
 
-	rightRow, err := i.secondary.Next()
+	rightRow, err := i.secondary.Next(ctx)
 	if err != nil {
 		if err == io.EOF {
-			err = i.secondary.Close(i.ctx)
+			err = i.secondary.Close(ctx)
 			i.secondary = nil
 			if err != nil {
 				return nil, err
@@ -606,7 +603,7 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 
 	if i.mode == unknownMode {
 		var switchToMultipass bool
-		if !i.ctx.Memory.HasAvailable() {
+		if !ctx.Memory.HasAvailable() {
 			switchToMultipass = true
 		} else {
 			err := i.secondaryRows.Add(rightRow)
@@ -625,14 +622,14 @@ func (i *joinIter) loadSecondary() (row sql.Row, err error) {
 	return rightRow, nil
 }
 
-func (i *joinIter) Next() (sql.Row, error) {
+func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		if err := i.loadPrimary(); err != nil {
+		if err := i.loadPrimary(ctx); err != nil {
 			return nil, err
 		}
 
 		primary := i.primaryRow
-		secondary, err := i.loadSecondary()
+		secondary, err := i.loadSecondary(ctx)
 		if err != nil {
 			if err == io.EOF {
 				if !i.foundMatch && (i.typ == JoinTypeLeft || i.typ == JoinTypeRight) {
@@ -645,7 +642,7 @@ func (i *joinIter) Next() (sql.Row, error) {
 		}
 
 		row := i.buildRow(primary, secondary)
-		matches, err := conditionIsTrue(i.ctx, row, i.cond)
+		matches, err := conditionIsTrue(ctx, row, i.cond)
 		if err != nil {
 			return nil, err
 		}

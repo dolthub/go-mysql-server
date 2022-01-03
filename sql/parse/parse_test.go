@@ -144,6 +144,15 @@ var fixtures = map[string]sql.Node{
 				Nullable:   true,
 				PrimaryKey: false,
 			}}),
+			IdxDefs: []*plan.IndexDefinition{
+				{
+					IndexName: "PRIMARY",
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+			},
 		},
 	),
 	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
@@ -163,6 +172,80 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}}),
+			IdxDefs: []*plan.IndexDefinition{
+				{
+					IndexName: "PRIMARY",
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
+						{Name: "b"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+			},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER, b TEXT, PRIMARY KEY (b, a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
+		&plan.TableSpec{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Text,
+				Nullable:   false,
+				PrimaryKey: true,
+			}}, 1, 0),
+			IdxDefs: []*plan.IndexDefinition{
+				{
+					IndexName: "PRIMARY",
+					Columns: []sql.IndexColumn{
+						{Name: "b"},
+						{Name: "a"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+			},
+		},
+	),
+	`CREATE TABLE t1(a INTEGER, b int, CONSTRAINT pk PRIMARY KEY (b, a), CONSTRAINT UNIQUE KEY (a))`: plan.NewCreateTable(
+		sql.UnresolvedDatabase(""),
+		"t1",
+		plan.IfNotExistsAbsent,
+		plan.IsTempTableAbsent,
+		&plan.TableSpec{
+			Schema: sql.NewPrimaryKeySchema(sql.Schema{{
+				Name:       "a",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}, {
+				Name:       "b",
+				Type:       sql.Int32,
+				Nullable:   false,
+				PrimaryKey: true,
+			}}, 1, 0),
+			IdxDefs: []*plan.IndexDefinition{
+				{
+					IndexName: "pk",
+					Columns: []sql.IndexColumn{
+						{Name: "b"},
+						{Name: "a"},
+					},
+					Constraint: sql.IndexConstraint_Primary,
+				},
+				{
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
+					},
+					Constraint: sql.IndexConstraint_Unique,
+				},
+			},
 		},
 	),
 	`CREATE TABLE IF NOT EXISTS t1(a INTEGER, b TEXT, PRIMARY KEY (a, b))`: plan.NewCreateTable(
@@ -182,6 +265,16 @@ var fixtures = map[string]sql.Node{
 				Nullable:   false,
 				PrimaryKey: true,
 			}}),
+			IdxDefs: []*plan.IndexDefinition{
+				{
+					IndexName:  "PRIMARY",
+					Constraint: sql.IndexConstraint_Primary,
+					Columns: []sql.IndexColumn{
+						{Name: "a"},
+						{Name: "b"},
+					},
+				},
+			},
 		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX (b))`: plan.NewCreateTable(
@@ -201,13 +294,15 @@ var fixtures = map[string]sql.Node{
 				Nullable:   true,
 				PrimaryKey: false,
 			}}),
-			IdxDefs: []*plan.IndexDefinition{{
-				IndexName:  "",
-				Using:      sql.IndexUsing_Default,
-				Constraint: sql.IndexConstraint_None,
-				Columns:    []sql.IndexColumn{{"b", 0}},
-				Comment:    "",
-			}},
+			IdxDefs: []*plan.IndexDefinition{
+				{
+					IndexName:  "",
+					Using:      sql.IndexUsing_Default,
+					Constraint: sql.IndexConstraint_None,
+					Columns:    []sql.IndexColumn{{"b", 0}},
+					Comment:    "",
+				},
+			},
 		},
 	),
 	`CREATE TABLE t1(a INTEGER PRIMARY KEY, b INTEGER, INDEX idx_name (b))`: plan.NewCreateTable(
@@ -871,17 +966,23 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
 	),
 	`ALTER TABLE foo RENAME COLUMN bar TO baz`: plan.NewRenameColumn(
-		sql.UnresolvedDatabase(""), "foo", "bar", "baz",
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "bar", "baz",
+	),
+	`ALTER TABLE foo RENAME COLUMN bar TO baz, rename column abc to xyz`: plan.NewBlock(
+		[]sql.Node{
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "bar", "baz"),
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "abc", "xyz"),
+		},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
-		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -890,7 +991,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -899,7 +1000,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -908,7 +1009,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
-		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
@@ -917,7 +1018,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
-		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Float32,
 			Nullable: true,
@@ -926,7 +1027,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
-		sql.UnresolvedDatabase(""), "foo", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: true,
@@ -942,10 +1043,10 @@ CREATE TABLE t2
 		"",
 	),
 	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
-		sql.UnresolvedDatabase(""), "foo", "bar",
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "bar",
 	),
 	`ALTER TABLE foo MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
-		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "bar", &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
@@ -954,7 +1055,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE foo CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
-		sql.UnresolvedDatabase(""), "foo", "bar", &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), "bar", &sql.Column{
 			Name:     "baz",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
@@ -3155,6 +3256,8 @@ CREATE TABLE t2
 	`CREATE DATABASE IF NOT EXISTS test`: plan.NewCreateDatabase("test", true),
 	`DROP DATABASE test`:                 plan.NewDropDatabase("test", false),
 	`DROP DATABASE IF EXISTS test`:       plan.NewDropDatabase("test", true),
+	`KILL QUERY 1`:                       plan.NewKill(plan.KillType_Query, 1),
+	`KILL CONNECTION 1`:                  plan.NewKill(plan.KillType_Connection, 1),
 }
 
 func TestParse(t *testing.T) {
@@ -3220,27 +3323,27 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 }
 
 var fixturesErrors = map[string]*errors.Kind{
-	`SHOW METHEMONEY`:                                           ErrUnsupportedFeature,
-	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                      ErrUnsupportedSyntax,
-	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                      ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                      ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                      ErrUnsupportedSyntax,
-	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                    ErrUnsupportedSyntax,
-	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`:   ErrUnsupportedSyntax,
+	`SHOW METHEMONEY`:                                           sql.ErrUnsupportedFeature,
+	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                      sql.ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                      sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                      sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' / INTERVAL 1 DAY`:                      sql.ErrUnsupportedSyntax,
+	`SELECT INTERVAL 1 DAY + INTERVAL 1 DAY`:                    sql.ErrUnsupportedSyntax,
+	`SELECT '2018-05-01' + (INTERVAL 1 DAY + INTERVAL 1 DAY)`:   sql.ErrUnsupportedSyntax,
 	"DESCRIBE FORMAT=pretty SELECT * FROM foo":                  errInvalidDescribeFormat,
-	`CREATE TABLE test (pk int, primary key(pk, noexist))`:      ErrUnknownIndexColumn,
 	`CREATE TABLE test (pk int null primary key)`:               ErrPrimaryKeyOnNullField,
 	`CREATE TABLE test (pk int not null null primary key)`:      ErrPrimaryKeyOnNullField,
 	`CREATE TABLE test (pk int null, primary key(pk))`:          ErrPrimaryKeyOnNullField,
 	`CREATE TABLE test (pk int not null null, primary key(pk))`: ErrPrimaryKeyOnNullField,
-	`SELECT a, count(i) over (order by x) FROM foo`:             ErrUnsupportedFeature,
-	`SELECT a, count(i) over (partition by y) FROM foo`:         ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a) group by 1`:       ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a), max(b)`:          ErrUnsupportedFeature,
-	`SHOW COUNT(*) WARNINGS`:                                    ErrUnsupportedFeature,
-	`SHOW ERRORS`:                                               ErrUnsupportedFeature,
-	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         ErrUnsupportedFeature,
-	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    ErrUnsupportedFeature,
+	`SELECT a, count(i) over (order by x) FROM foo`:             sql.ErrUnsupportedFeature,
+	`SELECT a, count(i) over (partition by y) FROM foo`:         sql.ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a) group by 1`:       sql.ErrUnsupportedFeature,
+	`SELECT i, row_number() over (order by a), max(b)`:          sql.ErrUnsupportedFeature,
+	`SHOW COUNT(*) WARNINGS`:                                    sql.ErrUnsupportedFeature,
+	`SHOW ERRORS`:                                               sql.ErrUnsupportedFeature,
+	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
+	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
+	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {
@@ -3308,7 +3411,7 @@ func TestParseErrors(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			_, err := Parse(ctx, query)
 			require.Error(err)
-			require.True(expectedError.Is(err), "Expected %T but got %T", expectedError, err)
+			require.True(expectedError.Is(err), "Expected %T but got %T (%v)", expectedError, err, err)
 		})
 	}
 }

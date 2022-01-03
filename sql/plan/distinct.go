@@ -93,9 +93,9 @@ func newDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
 	}
 }
 
-func (di *distinctIter) Next() (sql.Row, error) {
+func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		row, err := di.childIter.Next()
+		row, err := di.childIter.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
 				di.Dispose()
@@ -190,9 +190,9 @@ func newOrderedDistinctIter(child sql.RowIter, schema sql.Schema) *orderedDistin
 	return &orderedDistinctIter{childIter: child, schema: schema}
 }
 
-func (di *orderedDistinctIter) Next() (sql.Row, error) {
+func (di *orderedDistinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		row, err := di.childIter.Next()
+		row, err := di.childIter.Next(ctx)
 		if err != nil {
 			return nil, err
 		}

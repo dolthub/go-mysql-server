@@ -89,10 +89,10 @@ type offsetIter struct {
 	childIter sql.RowIter
 }
 
-func (i *offsetIter) Next() (sql.Row, error) {
+func (i *offsetIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.skip > 0 {
 		for i.skip > 0 {
-			_, err := i.childIter.Next()
+			_, err := i.childIter.Next(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -100,7 +100,7 @@ func (i *offsetIter) Next() (sql.Row, error) {
 		}
 	}
 
-	row, err := i.childIter.Next()
+	row, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}

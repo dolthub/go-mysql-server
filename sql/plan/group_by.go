@@ -99,7 +99,7 @@ func (g *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	var iter sql.RowIter
 	if len(g.GroupByExprs) == 0 {
-		iter = newGroupByIter(ctx, g.SelectedExprs, i)
+		iter = newGroupByIter(g.SelectedExprs, i)
 	} else {
 		iter = newGroupByGroupingIter(ctx, g.SelectedExprs, g.GroupByExprs, i)
 	}
@@ -192,16 +192,15 @@ type groupByIter struct {
 	done          bool
 }
 
-func newGroupByIter(ctx *sql.Context, selectedExprs []sql.Expression, child sql.RowIter) *groupByIter {
+func newGroupByIter(selectedExprs []sql.Expression, child sql.RowIter) *groupByIter {
 	return &groupByIter{
 		selectedExprs: selectedExprs,
 		child:         child,
-		ctx:           ctx,
 		buf:           make([]sql.AggregationBuffer, len(selectedExprs)),
 	}
 }
 
-func (i *groupByIter) Next() (sql.Row, error) {
+func (i *groupByIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.done {
 		return nil, io.EOF
 	}
@@ -217,7 +216,7 @@ func (i *groupByIter) Next() (sql.Row, error) {
 	}
 
 	for {
-		row, err := i.child.Next()
+		row, err := i.child.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -225,12 +224,12 @@ func (i *groupByIter) Next() (sql.Row, error) {
 			return nil, err
 		}
 
-		if err := updateBuffers(i.ctx, i.buf, row); err != nil {
+		if err := updateBuffers(ctx, i.buf, row); err != nil {
 			return nil, err
 		}
 	}
 
-	return evalBuffers(i.ctx, i.buf)
+	return evalBuffers(ctx, i.buf)
 }
 
 func (i *groupByIter) Close(ctx *sql.Context) error {
@@ -252,7 +251,6 @@ type groupByGroupingIter struct {
 	keys          []uint64
 	pos           int
 	child         sql.RowIter
-	ctx           *sql.Context
 	dispose       sql.DisposeFunc
 }
 
@@ -265,14 +263,13 @@ func newGroupByGroupingIter(
 		selectedExprs: selectedExprs,
 		groupByExprs:  groupByExprs,
 		child:         child,
-		ctx:           ctx,
 	}
 }
 
-func (i *groupByGroupingIter) Next() (sql.Row, error) {
+func (i *groupByGroupingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.aggregations == nil {
-		i.aggregations, i.dispose = i.ctx.Memory.NewHistoryCache()
-		if err := i.compute(); err != nil {
+		i.aggregations, i.dispose = ctx.Memory.NewHistoryCache()
+		if err := i.compute(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -286,12 +283,12 @@ func (i *groupByGroupingIter) Next() (sql.Row, error) {
 		return nil, err
 	}
 	i.pos++
-	return evalBuffers(i.ctx, buffers)
+	return evalBuffers(ctx, buffers)
 }
 
-func (i *groupByGroupingIter) compute() error {
+func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 	for {
-		row, err := i.child.Next()
+		row, err := i.child.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -299,7 +296,7 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		key, err := groupingKey(i.ctx, i.groupByExprs, row)
+		key, err := groupingKey(ctx, i.groupByExprs, row)
 		if err != nil {
 			return err
 		}
@@ -323,7 +320,7 @@ func (i *groupByGroupingIter) compute() error {
 			return err
 		}
 
-		err = updateBuffers(i.ctx, b, row)
+		err = updateBuffers(ctx, b, row)
 		if err != nil {
 			return err
 		}

@@ -14,7 +14,11 @@
 
 package sql
 
-import "strings"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
 // RangeCollection is a collection of ranges that represent different (non-overlapping) filter expressions.
 type RangeCollection []Range
@@ -22,6 +26,20 @@ type RangeCollection []Range
 // Range is a collection of RangeColumns that are ordered by the column expressions as returned by their parent
 // index. A single range represents a set of values intended for iteration by an integrator's index.
 type Range []RangeColumnExpr
+
+// Equals returns whether the given RangeCollection matches the calling RangeCollection. The order of each Range is
+// important, therefore it is recommended to sort two collections beforehand.
+func (ranges RangeCollection) Equals(otherCollection RangeCollection) (bool, error) {
+	if len(ranges) != len(otherCollection) {
+		return false, nil
+	}
+	for i := range ranges {
+		if ok, err := ranges[i].Equals(otherCollection[i]); err != nil || !ok {
+			return ok, err
+		}
+	}
+	return true, nil
+}
 
 // Intersect attempts to intersect the given RangeCollection with the calling RangeCollection. This ensures that each
 // Range belonging to the same collection is treated as a union with respect to that same collection, rather than
@@ -120,6 +138,24 @@ func (rang Range) Equals(otherRange Range) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// Compare returns an integer stating the relative position of the calling Range to the given Range.
+func (rang Range) Compare(otherRange Range) (int, error) {
+	if len(rang) != len(otherRange) {
+		return 0, fmt.Errorf("compared ranges must have matching lengths")
+	}
+	for i := range rang {
+		cmp, err := rang[i].LowerBound.Compare(otherRange[i].LowerBound, rang[i].typ)
+		if err != nil || cmp != 0 {
+			return cmp, err
+		}
+		cmp, err = rang[i].UpperBound.Compare(otherRange[i].UpperBound, rang[i].typ)
+		if err != nil || cmp != 0 {
+			return cmp, err
+		}
+	}
+	return 0, nil
 }
 
 // Intersect intersects the given Range with the calling Range.
@@ -393,28 +429,54 @@ func RemoveOverlappingRanges(ranges ...Range) (RangeCollection, error) {
 		return nil, nil
 	}
 
-	// There are more efficient ways to do these comparisons, but this is just a simple implementation for now
-	var newRanges RangeCollection
-	for i := 0; i < len(ranges); i++ {
-		hadOverlap := false
-		for nri := 0; nri < len(newRanges); nri++ {
-			if resultingRanges, ok, err := ranges[i].RemoveOverlap(newRanges[nri]); err != nil {
-				return nil, err
-			} else if ok {
-				hadOverlap = true
-				// Remove the overlapping Range from newRanges
-				nrLast := len(newRanges) - 1
-				newRanges[nri], newRanges[nrLast] = newRanges[nrLast], newRanges[nri]
-				newRanges = newRanges[:nrLast]
-				// Add the new ranges to the end of the given slice allowing us to compare those against everything else.
-				ranges = append(ranges, resultingRanges...)
-				break
+	rangeTree := NewRangeColumnExprTree(ranges[0])
+	for i := 1; i < len(ranges); i++ {
+		rang := ranges[i]
+		connectingRanges, err := rangeTree.FindConnections(rang, 0)
+		if err != nil {
+			return nil, err
+		}
+		foundOverlap := false
+		for _, connectingRange := range connectingRanges {
+			if connectingRange != nil {
+				newRanges, ok, err := connectingRange.RemoveOverlap(rang)
+				if err != nil {
+					return nil, err
+				}
+				if ok {
+					foundOverlap = true
+					err = rangeTree.Remove(connectingRange)
+					if err != nil {
+						return nil, err
+					}
+					// Not the best idea but it works, will change to some other strategy at another time
+					ranges = append(ranges, newRanges...)
+					break
+				}
 			}
 		}
-		if !hadOverlap {
-			newRanges = append(newRanges, ranges[i])
+		if !foundOverlap {
+			err = rangeTree.Insert(rang)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	return newRanges, nil
+	return rangeTree.GetRangeCollection()
+}
+
+// SortRanges sorts the given ranges, returning a new slice of ranges.
+func SortRanges(ranges ...Range) ([]Range, error) {
+	sortedRanges := make([]Range, len(ranges))
+	copy(sortedRanges, ranges)
+	var err error
+	sort.Slice(sortedRanges, func(i, j int) bool {
+		cmp, cmpErr := sortedRanges[i].Compare(sortedRanges[j])
+		if cmpErr != nil {
+			err = cmpErr
+		}
+		return cmp == -1
+	})
+	return sortedRanges, err
 }
