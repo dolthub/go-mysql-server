@@ -28,7 +28,7 @@ func (r RowCount) String() string {
 
 // Type implements sql.Expression
 func (r RowCount) Type() sql.Type {
-	return sql.Uint64
+	return sql.Int64
 }
 
 // IsNullable implements sql.Expression
@@ -82,7 +82,7 @@ func (r LastInsertId) String() string {
 
 // Type implements sql.Expression
 func (r LastInsertId) Type() sql.Type {
-	return sql.Uint64
+	return sql.Int64
 }
 
 // IsNullable implements sql.Expression
@@ -141,7 +141,7 @@ func (r FoundRows) String() string {
 
 // Type implements sql.Expression
 func (r FoundRows) Type() sql.Type {
-	return sql.Uint64
+	return sql.Int64
 }
 
 // IsNullable implements sql.Expression

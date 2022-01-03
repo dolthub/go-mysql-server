@@ -503,7 +503,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (1)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -511,7 +511,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
