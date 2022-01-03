@@ -16,7 +16,6 @@ package function
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -96,48 +95,7 @@ func (s *STX) String() string {
 // WithChildren implements the Expression interface.
 func (s *STX) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewSTX(children...)
-}
-
-// TruncateNonFloat will attempt to convert value to a float64
-func TruncateNonFloat(v interface{}) (float64, error) {
-	// TODO: this probably already exists somewhere
-	switch v := v.(type) {
-	case string:
-		// Trim whitespace
-		v = strings.TrimSpace(v)
-		// Empty string is 0
-		if len(v) == 0 {
-			return 0.0, nil
-		}
-		// Truncate string
-		seenDot := false
-		for i, c := range v {
-			// first character can be + or -
-			if i == 0 && (c == '-' || c == '+') {
-				continue
-			}
-			// can have at most one dot
-			if c == '.' {
-				if seenDot {
-					v = v[:i]
-					break
-				}
-				seenDot = true
-				continue
-			}
-			// TODO: handle e (power of 10)
-			// if character is not a digit, break
-			if c < '0' || c > '9' {
-				v = v[:i]
-				break
-			}
-		}
-		// Parse float
-		return strconv.ParseFloat(v, 64)
-	default:
-		return convertToFloat64(v)
-	}
-}
+}s
 
 // Eval implements the sql.Expression interface.
 func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -170,13 +128,13 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := TruncateNonFloat(x)
+	_x, err := sql.Float64.Convert(x)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create point with new X and old Y
-	return sql.Point{X: _x, Y: _p.Y}, nil
+	return sql.Point{X: _x.(float64), Y: _p.Y}, nil
 }
 
 // STY is a function that the x value from a given point.
@@ -282,11 +240,11 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := TruncateNonFloat(y)
+	_y, err := sql.Float64.Convert(y)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create point with old X and new Ys
-	return sql.Point{X: _p.X, Y: _y}, nil
+	return sql.Point{X: _p.X, Y: _y.(float64)}, nil
 }
