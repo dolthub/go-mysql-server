@@ -16,12 +16,16 @@ package function
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
+
+const SecondInDay = 86400
 
 // TimeDiff subtracts the second argument from the first expressed as a time value.
 type TimeDiff struct {
@@ -205,4 +209,175 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 func (d *DateDiff) String() string {
 	return fmt.Sprintf("DATEDIFF(%s, %s)", d.Left, d.Right)
+}
+
+// TimestampDiff returns expr1 − expr2 expressed as a value in unit specified.
+type TimestampDiff struct {
+	unit  *expression.Interval
+	expr1 sql.Expression
+	expr2 sql.Expression
+}
+
+var _ sql.FunctionExpression = (*TimestampDiff)(nil)
+
+// NewTimestampDiff creates a new TIMESTAMPDIFF() function.
+func NewTimestampDiff(args... sql.Expression) (sql.Expression, error) {
+	if len(args) != 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMPDIFF", 3, len(args))
+	}
+
+	u, ok := args[0].(*expression.Interval)
+	if !ok {
+		return nil, fmt.Errorf("TIMESTAMPDIFF expects an interval as first parameter")
+	}
+
+	return &TimestampDiff{u, args[1], args[2]}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (t *TimestampDiff) FunctionName() string {
+	return "timestampdiff"
+}
+
+// Description implements sql.FunctionExpression
+func (t *TimestampDiff) Description() string {
+	return "gets difference between two dates in result of units specified."
+}
+
+// Children implements the sql.Expression interface.
+func (t *TimestampDiff) Children() []sql.Expression {
+	return []sql.Expression{t.unit, t.expr1, t.expr2}
+}
+
+// Resolved implements the sql.Expression interface.
+func (t *TimestampDiff) Resolved() bool {
+	return t.unit.Resolved() && t.expr1.Resolved() && t.expr2.Resolved()
+}
+
+// IsNullable implements the sql.Expression interface.
+func (t *TimestampDiff) IsNullable() bool {
+	return t.unit.IsNullable() && t.expr1.IsNullable() && t.expr2.IsNullable()
+}
+
+// Type implements the sql.Expression interface.
+func (t *TimestampDiff) Type() sql.Type { return sql.Int64 }
+
+// WithChildren implements the Expression interface.
+func (t *TimestampDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewTimestampDiff(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	expr1, err := t.expr1.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if expr1 == nil {
+		return nil, nil
+	}
+
+	expr2, err := t.expr2.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if expr2 == nil {
+		return nil, nil
+	}
+
+	expr1, err = sql.Datetime.Convert(expr1)
+	if err != nil {
+		return nil, err
+	}
+
+	expr2, err = sql.Datetime.Convert(expr2)
+	if err != nil {
+		return nil, err
+	}
+
+	unit, err := t.unit.EvalUnit(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if expr2 == nil {
+		return nil, nil
+	}
+
+	unit = strings.TrimPrefix(strings.ToLower(unit), "sql_tsi_")
+
+	date1 := expr1.(time.Time)
+	date2 := expr2.(time.Time)
+
+	diff := date2.Sub(date1)
+
+	var res int64
+	switch unit {
+	case "microsecond":
+		res = diff.Microseconds()
+	case "second":
+		res = int64(diff.Seconds())
+	case "minute":
+		res = int64(diff.Minutes())
+	case "hour":
+		res = int64(diff.Hours())
+	case "day":
+		res = int64(diff.Hours() / 24)
+	case "week":
+		res = int64(diff.Hours() / (24*7))
+	case "month":
+		res = int64(diff.Hours() / (24*30))
+		if res > 0 {
+			if date2.Day() - date1.Day() < 0 {
+				res -= 1
+			} else if date2.Hour() - date1.Hour() < 0 {
+				res -= 1
+			} else if date2.Minute() - date1.Minute() < 0 {
+				res -= 1
+			} else if date2.Second() - date1.Second() < 0 {
+				res -= 1
+			}
+		}
+	case "quarter":
+		monthRes := int64(diff.Hours() / (24*30))
+		if monthRes > 0 {
+			if date2.Day() - date1.Day() < 0 {
+				monthRes -= 1
+			} else if date2.Hour() - date1.Hour() < 0 {
+				monthRes -= 1
+			} else if date2.Minute() - date1.Minute() < 0 {
+				monthRes -= 1
+			} else if date2.Second() - date1.Second() < 0 {
+				monthRes -= 1
+			}
+		}
+		res = monthRes / 3
+	case "year":
+		yearRes := int64(diff.Hours() / (24*365))
+		if yearRes > 0{
+			monthRes := int64(diff.Hours() / (24*30))
+			if monthRes > 0 {
+				if date2.Day() - date1.Day() < 0 {
+					monthRes -= 1
+				} else if date2.Hour() - date1.Hour() < 0 {
+					monthRes -= 1
+				} else if date2.Minute() - date1.Minute() < 0 {
+					monthRes -= 1
+				} else if date2.Second() - date1.Second() < 0 {
+					monthRes -= 1
+				}
+			}
+			res = monthRes / 12
+		} else {
+			res = yearRes
+		}
+
+	default:
+		return nil, errors.NewKind("invalid interval unit: %s").New(t.unit)
+	}
+
+	return res, nil
+}
+
+func (t *TimestampDiff) String() string {
+	return fmt.Sprintf("TIMESTAMPDIFF(%s, %s, %s)", t.unit, t.expr1, t.expr2)
 }
