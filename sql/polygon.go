@@ -15,7 +15,7 @@
 package sql
 
 import (
-	"errors"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -31,6 +31,8 @@ type PolygonType struct{}
 
 var _ Type = PolygonType{}
 
+var ErrNotPolygon = errors.NewKind("value of type %T is not a polygon")
+
 // Compare implements Type interface.
 func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
@@ -41,11 +43,11 @@ func (t PolygonType) Compare(a interface{}, b interface{}) (int, error) {
 	// Expect to receive a Polygon, throw error otherwise
 	_a, ok := a.(Polygon)
 	if !ok {
-		return 0, errors.New("received a non-Polygon type") // TODO: turn this into a const error
+		return 0, ErrNotPolygon.New(a)
 	}
 	_b, ok := b.(Polygon)
 	if !ok {
-		return 0, errors.New("received a non-Polygon type")
+		return 0, ErrNotPolygon.New(b)
 	}
 
 	// Get shorter length
@@ -88,7 +90,7 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 		return v, nil
 	}
 
-	return nil, errors.New("can't convert to Polygon")
+	return nil, ErrNotPolygon.New(v)
 }
 
 // Promote implements the Type interface.

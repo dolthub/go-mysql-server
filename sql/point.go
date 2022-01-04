@@ -15,10 +15,9 @@
 package sql
 
 import (
-	"errors"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // Represents the Point type.
@@ -32,6 +31,8 @@ type PointType struct{}
 
 var _ Type = PointType{}
 
+var ErrNotPoint = errors.NewKind("value of type %T is not a point")
+
 // Compare implements Type interface.
 func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
@@ -42,11 +43,11 @@ func (t PointType) Compare(a interface{}, b interface{}) (int, error) {
 	// Expect to receive a Point, throw error otherwise
 	_a, ok := a.(Point)
 	if !ok {
-		return 0, errors.New("received a non-Point type") // TODO: turn this into a const error
+		return 0, ErrNotPoint.New(a)
 	}
 	_b, ok := b.(Point)
 	if !ok {
-		return 0, errors.New("received a non-Point type")
+		return 0, ErrNotPoint.New(b)
 	}
 
 	// Compare X values
@@ -76,7 +77,7 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 		return v, nil
 	}
 
-	return nil, errors.New("can't convert to Point")
+	return nil, ErrNotPoint.New(v)
 }
 
 // Promote implements the Type interface.
@@ -100,7 +101,6 @@ func (t PointType) SQL(v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t PointType) String() string {
-	// TODO: this is what prints on describe table
 	return "POINT"
 }
 

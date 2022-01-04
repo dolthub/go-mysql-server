@@ -15,7 +15,7 @@
 package sql
 
 import (
-	"errors"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -31,6 +31,8 @@ type LinestringType struct{}
 
 var _ Type = LinestringType{}
 
+var ErrNotLinestring = errors.NewKind("value of type %T is not a linestring")
+
 // Compare implements Type interface.
 func (t LinestringType) Compare(a interface{}, b interface{}) (int, error) {
 	// Compare nulls
@@ -41,11 +43,11 @@ func (t LinestringType) Compare(a interface{}, b interface{}) (int, error) {
 	// Expect to receive a Linestring, throw error otherwise
 	_a, ok := a.(Linestring)
 	if !ok {
-		return 0, errors.New("received a non-Linestring type") // TODO: turn this into a const error
+		return 0, ErrNotLinestring.New(a)
 	}
 	_b, ok := b.(Linestring)
 	if !ok {
-		return 0, errors.New("received a non-Linestring type")
+		return 0, ErrNotLinestring.New(b)
 	}
 
 	// Get shorter length
@@ -88,7 +90,7 @@ func (t LinestringType) Convert(v interface{}) (interface{}, error) {
 		return v, nil
 	}
 
-	return nil, errors.New("can't convert to Linestring")
+	return nil, ErrNotLinestring.New(v)
 }
 
 // Promote implements the Type interface.
