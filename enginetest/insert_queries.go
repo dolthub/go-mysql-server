@@ -623,10 +623,10 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{5, sql.Point{X: 1, Y: 2}}, {1, sql.Point{X: 1, Y: 1}}},
 	},
 	{
-		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,1)));",
+		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,2),POINT(3,4)));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{1, 2}}}}, {1, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}}, {2, sql.Linestring{Points: []sql.Point{{1, 1}}}}},
+		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{1, 2},{3,4}}}}, {1, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}}, {2, sql.Linestring{Points: []sql.Point{{1, 2},{3,4}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO polygon_table VALUES (1, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",

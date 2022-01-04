@@ -104,7 +104,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{1, 2}}}),
+					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}),
 					sql.NewRow(1, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}),
 				)
 			} else {
