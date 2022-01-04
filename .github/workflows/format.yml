@@ -21,6 +21,7 @@ jobs:
       - name: Install goimports
         run: |
           go mod download golang.org/x/tools
+          echo "HELLO WORLD"
           go install golang.org/x/tools/cmd/goimports
       - name: Format repo
         run: |
