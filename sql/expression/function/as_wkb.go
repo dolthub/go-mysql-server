@@ -81,8 +81,8 @@ func PointToBytes(p sql.Point) []byte {
 func LineToBytes(l sql.Linestring) []byte {
 	// Initialize line buffer
 	lineBuf := make([]byte, 4)
-	// Write length of line
-	binary.LittleEndian.PutUint32(lineBuf[0:4], uint32(len(lineBuf)))
+	// Write number of points
+	binary.LittleEndian.PutUint32(lineBuf[0:4], uint32(len(l.Points)))
 	// Append each point
 	for _, p := range l.Points {
 		pointBuf := PointToBytes(p)
@@ -95,8 +95,8 @@ func LineToBytes(l sql.Linestring) []byte {
 func PolygonToBytes(p sql.Polygon) []byte {
 	// Initialize polygon buffer
 	polygonBuf := make([]byte, 4)
-	// Write length of line
-	binary.LittleEndian.PutUint32(polygonBuf[0:4], uint32(len(polygonBuf)))
+	// Write number of lines
+	binary.LittleEndian.PutUint32(polygonBuf[0:4], uint32(len(p.Lines)))
 	// Append each point
 	for _, l := range p.Lines {
 		pointBuf := LineToBytes(l)
