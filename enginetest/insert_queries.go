@@ -1178,7 +1178,7 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: 1105,
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query: "SELECT * FROM t1",
@@ -1191,7 +1191,7 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: 1105,
+				ExpectedWarning: mysql.ERUnknownError,
 			},
 			{
 				Query: "SELECT * FROM t2",
@@ -1214,7 +1214,7 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 2}},
 				},
-				ExpectedWarning: mysql.ERUnknownError,
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
 			},
 			{
 				Query: "SELECT * FROM t1",
@@ -1227,7 +1227,7 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 1}},
 				},
-				ExpectedWarning: 1105,
+				ExpectedWarning: mysql.ERUnknownError,
 			},
 			{
 				Query: "SELECT * FROM t2",
