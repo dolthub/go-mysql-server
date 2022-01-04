@@ -184,6 +184,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
 	sql.Function2{Name: "split", Fn: NewSplit},
 	sql.Function1{Name: "sqrt", Fn: NewSqrt},
+	sql.Function1{Name: "st_aswkb", Fn: NewAsWKB},
 	sql.Function1{Name: "st_linestringfromtext", Fn: NewLinestringFromText},
 	sql.Function1{Name: "st_pointfromtext", Fn: NewPointFromText},
 	sql.Function1{Name: "st_polygonfromtext", Fn: NewPolygonFromText},
