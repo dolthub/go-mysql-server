@@ -63,6 +63,7 @@ var BuiltIns = []sql.Function{
 	sql.Function0{Name: "database", Fn: NewDatabase},
 	sql.Function1{Name: "date", Fn: NewDate},
 	sql.FunctionN{Name: "datetime", Fn: NewDatetime},
+	sql.Function2{Name: "datediff", Fn: NewDateDiff},
 	sql.FunctionN{Name: "date_add", Fn: NewDateAdd},
 	sql.Function2{Name: "date_format", Fn: NewDateFormat},
 	sql.FunctionN{Name: "date_sub", Fn: NewDateSub},
