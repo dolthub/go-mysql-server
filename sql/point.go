@@ -111,5 +111,5 @@ func (t PointType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t PointType) Zero() interface{} {
-	return nil
+	return Point{X: 0.0, Y: 0.0}
 }

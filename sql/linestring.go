@@ -124,5 +124,5 @@ func (t LinestringType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t LinestringType) Zero() interface{} {
-	return nil
+	return Linestring{Points: []Point{{0,0},{0,0}}}
 }
