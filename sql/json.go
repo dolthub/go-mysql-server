@@ -54,7 +54,8 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 		err = json.Unmarshal(v, &doc)
 	case string:
 		err = json.Unmarshal([]byte(v), &doc)
-	case []string, []int, []uint16, []uint32, []uint64, []int16, []int32, []int64, []float32, []float64, []bool:
+	case []string, []int, []uint16, []uint32, []uint64, []int16, []int32, []int64, []float32, []float64, []bool,
+		map[string]string, map[string]int, map[string]uint16, map[string]uint32, map[string]uint64, map[string]int16, map[string]int32, map[string]int64, map[string]float32, map[string]float64:
 		doc = v
 	default:
 		// if |v| can be marshalled, it contains
