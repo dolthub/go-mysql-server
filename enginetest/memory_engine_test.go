@@ -319,7 +319,6 @@ func TestInsertInto(t *testing.T) {
 }
 
 func TestInsertIgnoreInto(t *testing.T) {
-	t.Skip() // TODO: Missing index checks and FK checks on in memory table
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
