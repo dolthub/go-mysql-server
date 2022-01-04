@@ -65,6 +65,14 @@ func TestAsWKB(t *testing.T) {
 		require.Equal(res, v)
 	})
 
+	t.Run("convert null", func(t *testing.T) {
+		require := require.New(t)
+		f := NewAsWKB(expression.NewLiteral(nil, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
 	t.Run("wrong type", func(t *testing.T) {
 		require := require.New(t)
 		f := NewAsWKB(expression.NewLiteral("notageometry", sql.Blob))
