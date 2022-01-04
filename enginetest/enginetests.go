@@ -2745,7 +2745,18 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, 2},
 	}, nil, nil)
 
+	TestQuery(t, harness, e, `SELECT a, lag('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, "s"},
+		{3, "s"},
+		{4, "s"},
+		{5, "s"},
+	}, nil, nil)
+
 	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+
 }
 
 func TestNaturalJoin(t *testing.T, harness Harness) {

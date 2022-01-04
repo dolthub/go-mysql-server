@@ -214,7 +214,7 @@ func (l *Lag) Finish(ctx *sql.Context, buffer sql.Row) error {
 			return sorter.LastError
 		}
 
-		// Now that we have the rows in sorted order, set the firstValue
+		// Now that we have the rows in sorted order, set the lag expression
 		lagIdx := len(rows[0]) - 2
 		originalIdx := len(rows[0]) - 1
 		var last sql.Row
