@@ -15,7 +15,6 @@
 package function
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -106,8 +105,10 @@ func (l *Linestring) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		switch v := val.(type) {
 		case sql.Point:
 			points[i] = v
+		case sql.Linestring, sql.Polygon: // TODO: eventually add all spatial types
+			return nil, ErrInvalidArgument.New(l.FunctionName())
 		default:
-			return nil, errors.New("linestring constructor encountered a non-point")
+			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 

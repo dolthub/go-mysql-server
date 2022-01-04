@@ -39,23 +39,23 @@ func NewPolygon(args ...sql.Expression) (sql.Expression, error) {
 }
 
 // FunctionName implements sql.FunctionExpression
-func (l *Polygon) FunctionName() string {
+func (p *Polygon) FunctionName() string {
 	return "polygon"
 }
 
 // Description implements sql.FunctionExpression
-func (l *Polygon) Description() string {
+func (p *Polygon) Description() string {
 	return "returns a new polygon."
 }
 
 // Children implements the sql.Expression interface.
-func (l *Polygon) Children() []sql.Expression {
-	return l.args
+func (p *Polygon) Children() []sql.Expression {
+	return p.args
 }
 
 // Resolved implements the sql.Expression interface.
-func (l *Polygon) Resolved() bool {
-	for _, arg := range l.args {
+func (p *Polygon) Resolved() bool {
+	for _, arg := range p.args {
 		if !arg.Resolved() {
 			return false
 		}
@@ -64,8 +64,8 @@ func (l *Polygon) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (l *Polygon) IsNullable() bool {
-	for _, arg := range l.args {
+func (p *Polygon) IsNullable() bool {
+	for _, arg := range p.args {
 		if arg.IsNullable() {
 			return true
 		}
@@ -74,20 +74,20 @@ func (l *Polygon) IsNullable() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (l *Polygon) Type() sql.Type {
+func (p *Polygon) Type() sql.Type {
 	return sql.PolygonType{}
 }
 
-func (l *Polygon) String() string {
-	var args = make([]string, len(l.args))
-	for i, arg := range l.args {
+func (p *Polygon) String() string {
+	var args = make([]string, len(p.args))
+	for i, arg := range p.args {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("POLYGON(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (l *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewPolygon(children...)
 }
 
@@ -167,28 +167,30 @@ func isLinearRing(line sql.Linestring) bool {
 }
 
 // Eval implements the sql.Expression interface.
-func (l *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of lines
-	var lines = make([]sql.Linestring, len(l.args))
+	var lines = make([]sql.Linestring, len(p.args))
 
 	// Go through each argument
-	for i, arg := range l.args {
+	for i, arg := range p.args {
 		// Evaluate argument
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-		// Must be of type point, throw error otherwise
+		// Must be of type linestring, throw error otherwise
 		switch v := val.(type) {
 		case sql.Linestring:
 			// Check that line is a linear ring
 			if isLinearRing(v) {
 				lines[i] = v
 			} else {
-				return nil, errors.New("polygon constructor encountered a non-linearring")
+				return nil, errors.New("Invalid GIS data provided to function polygon.")
 			}
+		case sql.Point, sql.Polygon:
+			return nil, ErrInvalidArgument.New(p.FunctionName())
 		default:
-			return nil, errors.New("polygon constructor encountered a non-linestring")
+			return nil, sql.ErrIllegalGISValue.New(v)
 		}
 	}
 
