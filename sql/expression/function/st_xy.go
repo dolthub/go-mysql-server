@@ -95,7 +95,7 @@ func (s *STX) String() string {
 // WithChildren implements the Expression interface.
 func (s *STX) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	return NewSTX(children...)
-}s
+}
 
 // Eval implements the sql.Expression interface.
 func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
