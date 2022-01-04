@@ -32,6 +32,42 @@ type QueryTest struct {
 	Bindings        map[string]sql.Expression
 }
 
+var SpatialQueryTests = []QueryTest{
+	{
+		Query: `SHOW CREATE TABLE point_table`,
+		Expected: []sql.Row{{
+			"point_table",
+			"CREATE TABLE `point_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` point NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
+		Query: `SHOW CREATE TABLE line_table`,
+		Expected: []sql.Row{{
+			"line_table",
+			"CREATE TABLE `line_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `l` linestring NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
+		Query: `SHOW CREATE TABLE polygon_table`,
+		Expected: []sql.Row{{
+			"polygon_table",
+			"CREATE TABLE `polygon_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` polygon NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+}
+
 var QueryTests = []QueryTest{
 	{
 		Query: "SELECT * FROM mytable;",

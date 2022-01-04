@@ -58,6 +58,17 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 }
 
+// Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
+func TestSpatialQueries(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range SpatialQueryTests {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+	}
+}
+
 // Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
 // debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
@@ -536,6 +547,24 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSpatialInsertInto(t *testing.T, harness Harness) {
+	for _, insertion := range SpatialInsertQueries {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil, insertion.Bindings)
+	}
+	for _, script := range InsertScripts {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestLoadData(t *testing.T, harness Harness) {
 	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
@@ -626,6 +655,21 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSpatialUpdate(t *testing.T, harness Harness) {
+	for _, update := range SpatialUpdateTests {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil, update.Bindings)
+		// If we skipped the update, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(update.WriteQuery) {
+				t.Logf("Skipping query %s", update.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect, nil, update.Bindings)
+	}
+}
+
 func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
 		e := NewEngine(t, harness)
@@ -653,6 +697,21 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
+	}
+}
+
+func TestSpatialDelete(t *testing.T, harness Harness) {
+	for _, delete := range SpatialDeleteTests {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, delete.Bindings)
+		// If we skipped the delete, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(delete.WriteQuery) {
+				t.Logf("Skipping query %s", delete.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil, delete.Bindings)
 	}
 }
 

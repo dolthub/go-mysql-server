@@ -356,6 +356,12 @@ var (
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
 
+	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
+	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
+
+	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
+	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
+
 	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
 	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
 
