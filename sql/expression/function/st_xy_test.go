@@ -66,21 +66,10 @@ func TestSTX(t *testing.T) {
 		require.Equal(sql.Point{X: -123.456, Y: 0}, v)
 	})
 
-	t.Run("replace x value with empty string", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 9, Y: 9}, sql.PointType{}),
-			expression.NewLiteral("", sql.Blob))
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(sql.Point{X: 0, Y: 9}, v)
-	})
-
-	t.Run("replace x value with truncated string", func(t *testing.T) {
+	t.Run("replace x value with negative float", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSTX(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
-			expression.NewLiteral("    -123.456abcd", sql.Blob))
+			expression.NewLiteral("-123.456", sql.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -141,21 +130,10 @@ func TestSTY(t *testing.T) {
 		require.Equal(sql.Point{X: 0, Y: -123.456}, v)
 	})
 
-	t.Run("replace y value with empty string", func(t *testing.T) {
-		require := require.New(t)
-		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 9, Y: 9}, sql.PointType{}),
-			expression.NewLiteral("", sql.Blob))
-		require.NoError(err)
-
-		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.NoError(err)
-		require.Equal(sql.Point{X: 9, Y: 0}, v)
-	})
-
-	t.Run("replace y value with truncated string", func(t *testing.T) {
+	t.Run("replace y value with negative float", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSTY(expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
-			expression.NewLiteral("    -123.456abcd", sql.Blob))
+			expression.NewLiteral("-123.456", sql.Blob))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
