@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -23,7 +24,7 @@ import (
 
 // Linestring is a function that returns a point type containing values Y and Y.
 type Linestring struct {
-	args []sql.Expression
+	expression.NaryExpression
 }
 
 var _ sql.FunctionExpression = (*Linestring)(nil)
@@ -33,7 +34,7 @@ func NewLinestring(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("Linestring", "2 or more", len(args))
 	}
-	return &Linestring{args}, nil
+	return &Linestring{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -46,39 +47,14 @@ func (l *Linestring) Description() string {
 	return "returns a new linestring."
 }
 
-// Children implements the sql.Expression interface.
-func (l *Linestring) Children() []sql.Expression {
-	return l.args
-}
-
-// Resolved implements the sql.Expression interface.
-func (l *Linestring) Resolved() bool {
-	for _, arg := range l.args {
-		if !arg.Resolved() {
-			return false
-		}
-	}
-	return true
-}
-
-// IsNullable implements the sql.Expression interface.
-func (l *Linestring) IsNullable() bool {
-	for _, arg := range l.args {
-		if arg.IsNullable() {
-			return true
-		}
-	}
-	return false
-}
-
 // Type implements the sql.Expression interface.
 func (l *Linestring) Type() sql.Type {
 	return sql.LinestringType{}
 }
 
 func (l *Linestring) String() string {
-	var args = make([]string, len(l.args))
-	for i, arg := range l.args {
+	var args = make([]string, len(l.ChildExpressions))
+	for i, arg := range l.ChildExpressions {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("LINESTRING(%s)", strings.Join(args, ","))
@@ -92,10 +68,10 @@ func (l *Linestring) WithChildren(children ...sql.Expression) (sql.Expression, e
 // Eval implements the sql.Expression interface.
 func (l *Linestring) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of points
-	var points = make([]sql.Point, len(l.args))
+	var points = make([]sql.Point, len(l.ChildExpressions))
 
 	// Go through each argument
-	for i, arg := range l.args {
+	for i, arg := range l.ChildExpressions {
 		// Evaluate argument
 		val, err := arg.Eval(ctx, row)
 		if err != nil {

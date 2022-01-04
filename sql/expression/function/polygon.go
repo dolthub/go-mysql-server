@@ -17,6 +17,7 @@ package function
 import (
 	"errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"math"
 	"strings"
 
@@ -25,7 +26,7 @@ import (
 
 // Polygon is a function that returns a polygon type containing values Y and Y.
 type Polygon struct {
-	args []sql.Expression
+	expression.NaryExpression
 }
 
 var _ sql.FunctionExpression = (*Polygon)(nil)
@@ -35,7 +36,7 @@ func NewPolygon(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("Polygon", "1 or more", len(args))
 	}
-	return &Polygon{args}, nil
+	return &Polygon{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -48,39 +49,14 @@ func (p *Polygon) Description() string {
 	return "returns a new polygon."
 }
 
-// Children implements the sql.Expression interface.
-func (p *Polygon) Children() []sql.Expression {
-	return p.args
-}
-
-// Resolved implements the sql.Expression interface.
-func (p *Polygon) Resolved() bool {
-	for _, arg := range p.args {
-		if !arg.Resolved() {
-			return false
-		}
-	}
-	return true
-}
-
-// IsNullable implements the sql.Expression interface.
-func (p *Polygon) IsNullable() bool {
-	for _, arg := range p.args {
-		if arg.IsNullable() {
-			return true
-		}
-	}
-	return false
-}
-
 // Type implements the sql.Expression interface.
 func (p *Polygon) Type() sql.Type {
 	return sql.PolygonType{}
 }
 
 func (p *Polygon) String() string {
-	var args = make([]string, len(p.args))
-	for i, arg := range p.args {
+	var args = make([]string, len(p.ChildExpressions))
+	for i, arg := range p.ChildExpressions {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("POLYGON(%s)", strings.Join(args, ","))
@@ -169,10 +145,10 @@ func isLinearRing(line sql.Linestring) bool {
 // Eval implements the sql.Expression interface.
 func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Allocate array of lines
-	var lines = make([]sql.Linestring, len(p.args))
+	var lines = make([]sql.Linestring, len(p.ChildExpressions))
 
 	// Go through each argument
-	for i, arg := range p.args {
+	for i, arg := range p.ChildExpressions {
 		// Evaluate argument
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
