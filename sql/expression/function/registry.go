@@ -187,6 +187,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "st_aswkb", Fn: NewAsWKB},
 	sql.Function1{Name: "st_linestringfromtext", Fn: NewLinestringFromText},
 	sql.Function1{Name: "st_pointfromtext", Fn: NewPointFromText},
+	sql.Function1{Name: "st_pointfromwkb", Fn: NewPointFromWKB},
 	sql.Function1{Name: "st_polygonfromtext", Fn: NewPolygonFromText},
 	sql.FunctionN{Name: "st_x", Fn: NewSTX},
 	sql.FunctionN{Name: "st_y", Fn: NewSTY},
