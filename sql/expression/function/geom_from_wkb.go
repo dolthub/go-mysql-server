@@ -69,6 +69,7 @@ func (p *GeomFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 // Header contains endianness (1 byte) and geometry type (4 bytes)
 const WKBHeaderLength = 5
 
+// TODO: Enums instead?
 // Type IDs
 const WKBPointID = 1
 const WKBLineID = 2
@@ -125,6 +126,8 @@ func (p *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return WKBToPoint(v[WKBHeaderLength:], isBig)
 	case WKBLineID:
 		return WKBToLine(v[WKBHeaderLength:], isBig)
+	case WKBPolyID:
+		return WKBToPoly(v[WKBHeaderLength:], isBig)
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_GeomFromWKB")
 	}
