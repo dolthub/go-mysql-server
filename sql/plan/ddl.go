@@ -537,11 +537,9 @@ func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	nc := c
 
 	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
-	ns := make(sql.Schema, len(c.CreateSchema.Schema))
+	ns := c.CreateSchema.Schema.Copy()
 	i := 0
 	for ; i < len(c.CreateSchema.Schema); i++ {
-		nc := *c.CreateSchema.Schema[i]
-		ns[i] = &nc
 		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 		if ok {
 			ns[i].Default = unwrappedColDefVal
