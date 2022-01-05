@@ -136,6 +136,35 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "trigger before insert, insert into other table with different schema",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int)",
+			"create table b (z int primary key)",
+			"create trigger insert_into_b before insert on a for each row insert into b values (new.x + 1)",
+			"insert into a values (1,2), (3,4), (5,6)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{1}, {3}, {5},
+				},
+			},
+			{
+				Query: "select z from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {6},
+				},
+			},
+			{
+				Query: "insert into a values (7,8), (9,10)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+		},
+	},
+	{
 		Name: "trigger before insert, delete from other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
@@ -1849,6 +1878,21 @@ end;`,
 			"create trigger t1 before insert on a for each row begin if NEW.x in (select 2+2 from dual) then signal SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.'; end if; end;",
 		},
 		Assertions: nil,
+	},
+	{
+		Name:        "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
+		SetUpScript: []string{
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table sequence_table (max_id integer PRIMARY KEY);",
+			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
+			"insert into sequence_table values (1);",
+		},
+		Assertions:  []ScriptTestAssertion{
+			{
+				Query:           "insert into mytable () values ();",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
 	},
 }
 

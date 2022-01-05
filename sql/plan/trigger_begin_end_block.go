@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // TriggerBeginEndBlock represents a BEGIN/END block specific to TRIGGER execution, which has special considerations
@@ -87,14 +88,41 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 				break
 			} else if err != nil {
+				_ = subIter.Close(ctx)
 				return nil, err
 			}
-			row = newRow[len(newRow)/2:]
+
+			// We only return the result of a trigger block statement in certain cases, specifically when we are setting the
+			// value of new.field, so that the wrapping iterator can use it for the insert / update. Otherwise, this iterator
+			// always returns its input row.
+			if shouldUseTriggerStatementForReturnRow(s) {
+				row = newRow[len(newRow)/2:]
+			}
 		}
 	}
 
 	return row, nil
 }
+
+func shouldUseTriggerStatementForReturnRow(stmt sql.Node) bool {
+	switch logic := stmt.(type) {
+	case *Set:
+		hasSetField := false
+		for _, expr := range logic.Exprs {
+			sql.Inspect(expr.(*expression.SetField).Left, func(e sql.Expression) bool {
+				if _, ok := e.(*expression.GetField); ok {
+					hasSetField = true
+					return false
+				}
+				return true
+			})
+		}
+		return hasSetField
+	default:
+		return false
+	}
+}
+
 
 // Close implements the sql.RowIter interface.
 func (i *triggerBlockIter) Close(*sql.Context) error {
