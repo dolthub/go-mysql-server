@@ -428,6 +428,13 @@ func TestTriggers(t *testing.T) {
 	enginetest.TestTriggers(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestBrokenTriggers(t *testing.T) {
+	h := enginetest.NewSkippingMemoryHarness()
+	for _, script := range enginetest.BrokenTriggerQueries {
+		enginetest.TestScript(t, h, script)
+	}
+}
+
 func TestStoredProcedures(t *testing.T) {
 	enginetest.TestStoredProcedures(t, enginetest.NewDefaultMemoryHarness())
 }

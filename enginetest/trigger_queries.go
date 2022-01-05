@@ -1892,6 +1892,94 @@ end;`,
 				Query:           "insert into mytable () values ();",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
+			{
+				Query:           "insert into mytable (sometext) values ('hello');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:           "insert into mytable values (10, 'goodbye');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:           "select * from mytable order by id",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, "hello"},
+					{3, "goodbye"},
+				},
+			},
+		},
+	},
+	{
+		Name:        "insert into common sequence table workaround",
+		SetUpScript: []string{
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table sequence_table (max_id integer PRIMARY KEY);",
+			`create trigger update_position_id before insert on mytable for each row 
+			begin 
+				if @max_id is null then set @max_id = (select coalesce(max(max_id),1) from sequence_table);
+				end if;
+				set new.id = @max_id;
+				set @max_id = @max_id + 1;
+				update sequence_table set max_id = @max_id; 
+			end;`,
+			"insert into sequence_table values (1);",
+		},
+		Assertions:  []ScriptTestAssertion{
+			{
+				Query:           "insert into mytable () values ();",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:           "insert into mytable (sometext) values ('hello');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:           "insert into mytable values (10, 'goodbye');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:           "insert into mytable () values (), ();",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:           "select * from mytable order by id",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, "hello"},
+					{3, "goodbye"},
+					{4, nil},
+					{5, nil},
+				},
+			},
+		},
+	},
+}
+
+// BrokenTriggerQueries contains trigger queries that should work but do not yet
+var BrokenTriggerQueries = []ScriptTest{
+	{
+		Name:        "update common table multiple times in single insert",
+		SetUpScript: []string{
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table sequence_table (max_id integer PRIMARY KEY);",
+			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
+			"insert into sequence_table values (1);",
+		},
+		Assertions:  []ScriptTestAssertion{
+			// Should produce new keys 2, 3, but instead produces a duplicate key error
+			{
+				Query:           "insert into mytable () values (), ();",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query:           "select * from mytable order by id",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, nil},
+					{3, nil},
+				},
+			},
 		},
 	},
 }
