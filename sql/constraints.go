@@ -87,7 +87,8 @@ func (checks CheckConstraints) FromExpressions(exprs []Expression) (CheckConstra
 
 	newChecks := make(CheckConstraints, len(checks))
 	for i := range exprs {
-		newChecks[i] = &*checks[i]
+		nc := *checks[i]
+		newChecks[i] = &nc
 		newChecks[i].Expr = exprs[i]
 	}
 

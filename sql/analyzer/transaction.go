@@ -41,6 +41,6 @@ func beginTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			return nil, err
 		}
 
-		return resolveDatabase(ctx, a, start, scope)
+		return resolveDatabases(ctx, a, start, scope)
 	}
 }

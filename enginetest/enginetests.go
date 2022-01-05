@@ -33,6 +33,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -55,6 +56,17 @@ func TestQueries(t *testing.T, harness Harness) {
 		for _, tt := range KeylessQueries {
 			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 		}
+	}
+}
+
+// Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
+func TestSpatialQueries(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range SpatialQueryTests {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	}
 }
 
@@ -538,8 +550,23 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 	t.Skip()
-	for _, script := range InsertBrokenScripts {
+	for _, script := range InsertScripts {
 		TestScript(t, harness, script)
+	}
+}
+
+func TestSpatialInsertInto(t *testing.T, harness Harness) {
+	for _, insertion := range SpatialInsertQueries {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil, insertion.Bindings)
 	}
 }
 
@@ -633,6 +660,21 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSpatialUpdate(t *testing.T, harness Harness) {
+	for _, update := range SpatialUpdateTests {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil, update.Bindings)
+		// If we skipped the update, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(update.WriteQuery) {
+				t.Logf("Skipping query %s", update.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect, nil, update.Bindings)
+	}
+}
+
 func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
 		e := NewEngine(t, harness)
@@ -660,6 +702,21 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 			}
 			AssertErr(t, NewEngine(t, harness), harness, expectedFailure.Query, nil)
 		})
+	}
+}
+
+func TestSpatialDelete(t *testing.T, harness Harness) {
+	for _, delete := range SpatialDeleteTests {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, delete.Bindings)
+		// If we skipped the delete, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(delete.WriteQuery) {
+				t.Logf("Skipping query %s", delete.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil, delete.Bindings)
 	}
 }
 
@@ -2599,9 +2656,7 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT fk1", sql.ErrUnknownConstraint)
 }
 
-func TestWindowAgg(t *testing.T, harness Harness) {
-	//require := require.New(t)
-
+func TestWindowFunctions(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
 
@@ -2689,7 +2744,84 @@ func TestWindowAgg(t *testing.T, harness Harness) {
 		{4, 1},
 		{5, 0},
 	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 2},
+		{3, 4},
+		{4, 5},
+		{5, 6},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, 0},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, -1},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, -1},
+		{2, -1},
+		{3, -1},
+		{4, 0},
+		{5, 2},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, "s"},
+		{3, "s"},
+		{4, "s"},
+		{5, "s"},
+	}, nil, nil)
+
+	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+
 }
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -3067,6 +3199,18 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Len(rows, 0)
 
 	require.Equal("foo", ctx.GetCurrentDatabase())
+}
+
+func TestNoDatabaseSelected(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	ctx := NewContext(harness)
+	ctx.SetCurrentDatabase("")
+
+	AssertErrWithCtx(t, e, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, ctx, "show tables", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, ctx, "show triggers", sql.ErrNoDatabaseSelected)
 }
 
 func TestSessionSelectLimit(t *testing.T, harness Harness) {

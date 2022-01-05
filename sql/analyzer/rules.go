@@ -29,6 +29,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
 	{"lift_common_table_expressions", liftCommonTableExpressions},
 	{"resolve_common_table_expressions", resolveCommonTableExpressions},
+	{"resolve_databases", resolveDatabases},
 	{"resolve_tables", resolveTables},
 	{"resolve_drop_constraint", resolveDropConstraint},
 	{"validate_drop_constraint", validateDropConstraint},
@@ -45,6 +46,7 @@ var OnceBeforeDefault = []Rule{
 	{"assign_info_schema", assignInfoSchema},
 	{"validate_read_only_database", validateReadOnlyDatabase},
 	{"validate_read_only_transaction", validateReadOnlyTransaction},
+	{"validate_database_set", validateDatabaseSet},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -60,7 +62,6 @@ var DefaultRules = []Rule{
 	{"resolve_columns", resolveColumns},
 	{"validate_check_constraint", validateCreateCheck},
 	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
-	{"resolve_database", resolveDatabase},
 	{"expand_stars", expandStars},
 	{"resolve_having", resolveHaving},
 	{"merge_union_schemas", mergeUnionSchemas},

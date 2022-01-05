@@ -32,6 +32,42 @@ type QueryTest struct {
 	Bindings        map[string]sql.Expression
 }
 
+var SpatialQueryTests = []QueryTest{
+	{
+		Query: `SHOW CREATE TABLE point_table`,
+		Expected: []sql.Row{{
+			"point_table",
+			"CREATE TABLE `point_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` point NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
+		Query: `SHOW CREATE TABLE line_table`,
+		Expected: []sql.Row{{
+			"line_table",
+			"CREATE TABLE `line_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `l` linestring NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
+		Query: `SHOW CREATE TABLE polygon_table`,
+		Expected: []sql.Row{{
+			"polygon_table",
+			"CREATE TABLE `polygon_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `p` polygon NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+}
+
 var QueryTests = []QueryTest{
 	{
 		Query: "SELECT * FROM mytable;",
@@ -415,6 +451,22 @@ var QueryTests = []QueryTest{
 			{5},
 			{703},
 			{369},
+		},
+	},
+	{
+		Query: "SELECT TIMESTAMPDIFF(SECOND,'2007-12-31 23:59:58', '2007-12-31 00:00:00');",
+		Expected: []sql.Row{
+			{-86398},
+		},
+	},
+	{
+		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM 
+			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
+		Expected: []sql.Row{
+			{1090140},
+			{-7200},
+			{44},
+			{-5040},
 		},
 	},
 	{
