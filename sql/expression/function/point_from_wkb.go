@@ -42,7 +42,7 @@ func (p *PointFromWKB) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (p *PointFromWKB) Description() string {
-	return "returns a new point from a WKB string."
+	return "returns a new point from WKB format."
 }
 
 // IsNullable implements the sql.Expression interface.

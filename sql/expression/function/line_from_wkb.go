@@ -40,7 +40,7 @@ func (p *LineFromWKB) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (p *LineFromWKB) Description() string {
-	return "returns a new linestring from a WKB string."
+	return "returns a new linestring from WKB format."
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -85,7 +85,7 @@ func WKBToLine(buf []byte, isBig bool) (sql.Linestring, error) {
 	lineData := buf[4:]
 
 	// Check length
-	if uint32(len(lineData)) != 16 * numPoints {
+	if uint32(len(lineData)) < 16 * numPoints {
 		return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
 	}
 
