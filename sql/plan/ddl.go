@@ -206,11 +206,23 @@ func (c *CreateTable) PkSchema() sql.PrimaryKeySchema {
 
 // Resolved implements the Resolvable interface.
 func (c *CreateTable) Resolved() bool {
-	resolved := c.ddlNode.Resolved()
-	for _, col := range c.CreateSchema.Schema {
-		resolved = resolved && col.Default.Resolved()
+	if !c.ddlNode.Resolved() {
+		return false
 	}
-	return resolved
+
+	for _, col := range c.CreateSchema.Schema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	for _, chDef := range c.chDefs {
+		if !chDef.Expr.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 // RowIter implements the Node interface.
