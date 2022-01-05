@@ -17,6 +17,7 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -65,7 +66,6 @@ func (p *LineFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 	return NewLineFromWKB(children[0]), nil
 }
 
-
 // WKBToLine parses the data portion of a byte array in WKB format to a point object
 func WKBToLine(buf []byte, isBig bool) (sql.Linestring, error) {
 	// Must be at least 4 bytes (length of linestring)
@@ -85,7 +85,7 @@ func WKBToLine(buf []byte, isBig bool) (sql.Linestring, error) {
 	lineData := buf[4:]
 
 	// Check length
-	if uint32(len(lineData)) < 16 * numPoints {
+	if uint32(len(lineData)) < 16*numPoints {
 		return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromWKB")
 	}
 

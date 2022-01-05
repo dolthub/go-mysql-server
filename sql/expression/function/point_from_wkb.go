@@ -17,8 +17,9 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"math"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -66,7 +67,6 @@ func (p *PointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 	}
 	return NewPointFromWKB(children[0]), nil
 }
-
 
 // WKBToPoint parses the data portion of a byte array in WKB format to a point object
 func WKBToPoint(buf []byte, isBig bool) (sql.Point, error) {

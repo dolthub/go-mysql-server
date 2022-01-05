@@ -47,7 +47,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert linestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.Linestring{Points:[]sql.Point{{1,2},{3,4}}}, sql.LinestringType{}))
+		f := NewAsWKB(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}, sql.LinestringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
@@ -57,7 +57,7 @@ func TestAsWKB(t *testing.T) {
 
 	t.Run("convert polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0,0},{1,1},{1,0},{0,0}}}}}, sql.PolygonType{}))
+		f := NewAsWKB(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}}, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")

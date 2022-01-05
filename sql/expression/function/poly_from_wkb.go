@@ -17,6 +17,7 @@ package function
 import (
 	"encoding/binary"
 	"fmt"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -65,7 +66,6 @@ func (p *PolyFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, 
 	return NewPolyFromWKB(children[0]), nil
 }
 
-
 // WKBToPoly parses the data portion of a byte array in WKB format to a point object
 func WKBToPoly(buf []byte, isBig bool) (sql.Polygon, error) {
 	// Must be at least 4 bytes (length of polygon)
@@ -91,7 +91,7 @@ func WKBToPoly(buf []byte, isBig bool) (sql.Polygon, error) {
 		if line, err := WKBToLine(polyData[s:], isBig); err == nil {
 			if isLinearRing(line) {
 				lines[i] = line
-				s += 4 + 16 * len(line.Points) // shift parsing location over
+				s += 4 + 16*len(line.Points) // shift parsing location over
 			} else {
 				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromWKB2")
 			}

@@ -76,7 +76,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Linestring{Points:[]sql.Point{{1,2},{3,4}}}, v)
+		require.Equal(sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}, v)
 	})
 
 	t.Run("convert polygon in little endian", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestGeomFromWKB(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0,0},{1,1},{1,0},{0,0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}}, v)
 	})
 
 	t.Run("convert null", func(t *testing.T) {
