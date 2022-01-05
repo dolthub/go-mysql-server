@@ -58,7 +58,7 @@ func (s Schema) Copy() Schema {
 		nc := *col
 		ns[i] = &nc
 	}
-	
+
 	return ns
 }
 
