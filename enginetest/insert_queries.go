@@ -1187,6 +1187,81 @@ var InsertIgnoreScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "Test that INSERT IGNORE properly addresses data conversion",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int primary key, v1 int)",
+			"CREATE TABLE t2 (pk int primary key, v2 varchar(1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO t1 VALUES (1, 'dasd')",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+			{
+				Query: "SELECT * FROM t1",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO t2 values (1, 'adsda')",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERUnknownError,
+			},
+			{
+				Query: "SELECT * FROM t2",
+				Expected: []sql.Row{
+					{1, "a"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Insert Ignore works correctly with ON DUPLICATE UPDATE",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
+			"INSERT INTO t1 VALUES (1,1)",
+			"CREATE TABLE t2 (pk int primary key, v2 varchar(1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT IGNORE INTO t1 VALUES (1,2) ON DUPLICATE KEY UPDATE v='dsd';",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+			{
+				Query: "SELECT * FROM t1",
+				Expected: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				Query: "INSERT IGNORE INTO t2 values (1, 'adsda')",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERUnknownError,
+			},
+			{
+				Query: "SELECT * FROM t2",
+				Expected: []sql.Row{
+					{1, "a"},
+				},
+			},
+		},
+	},
+}
+
+var InsertBrokenScripts = []ScriptTest{
+	// TODO: Support unique keys and FK violations in memory implementation
+	{
 		Name: "Test that INSERT IGNORE INTO works with unique keys",
 		SetUpScript: []string{
 			"CREATE TABLE mytable(pk int PRIMARY KEY, value varchar(10) UNIQUE)",
@@ -1220,34 +1295,34 @@ var InsertIgnoreScripts = []ScriptTest{
 		},
 	},
 	// TODO: Condense all of our casting logic into a single error.
-	//{
-	//	Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
-	//	SetUpScript: []string{
-	//		"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
-	//		`INSERT IGNORE INTO x VALUES (1, "one"), (2, TRUE), (3, "three")`,
-	//		"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
-	//		`INSERT IGNORE INTO y VALUES (1, 1), (2, "two"), (3,3);`,
-	//	},
-	//	Assertions: []ScriptTestAssertion{
-	//		{
-	//			Query: "SELECT * FROM x",
-	//			Expected: []sql.Row{
-	//				{1, "one"}, {2, 1}, {3, "three"},
-	//			},
-	//		},
-	//		{
-	//			Query: "SELECT * FROM y",
-	//			Expected: []sql.Row{
-	//				{1, 1}, {2, 0}, {3, 3},
-	//			},
-	//		},
-	//		{
-	//			Query: `INSERT IGNORE INTO y VALUES (4, "four")`,
-	//			Expected: []sql.Row{
-	//				{sql.OkResult{RowsAffected: 1}},
-	//			},
-	//			ExpectedWarning: mysql.ERTruncatedWrongValueForField,
-	//		},
-	//	},
-	//},
+	{
+		Name: "Test that INSERT IGNORE assigns the closest dataype correctly",
+		SetUpScript: []string{
+			"CREATE TABLE x (pk int primary key, c1 varchar(20) NOT NULL);",
+			`INSERT IGNORE INTO x VALUES (1, "one"), (2, TRUE), (3, "three")`,
+			"CREATE TABLE y (pk int primary key, c1 int NOT NULL);",
+			`INSERT IGNORE INTO y VALUES (1, 1), (2, "two"), (3,3);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM x",
+				Expected: []sql.Row{
+					{1, "one"}, {2, 1}, {3, "three"},
+				},
+			},
+			{
+				Query: "SELECT * FROM y",
+				Expected: []sql.Row{
+					{1, 1}, {2, 0}, {3, 3},
+				},
+			},
+			{
+				Query: `INSERT IGNORE INTO y VALUES (4, "four")`,
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+				ExpectedWarning: mysql.ERTruncatedWrongValueForField,
+			},
+		},
+	},
 }

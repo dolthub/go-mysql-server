@@ -436,6 +436,8 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = 1792 // TODO: Needs to be added to vitess
 	case ErrCantDropIndex.Is(err):
 		code = 1553 // TODO: Needs to be added to vitess
+	case ErrInvalidValue.Is(err):
+		code = mysql.ERTruncatedWrongValueForField
 	default:
 		code = mysql.ERUnknownError
 	}

@@ -548,6 +548,13 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestBrokenInsertScripts(t *testing.T, harness Harness) {
+	t.Skip()
+	for _, script := range InsertScripts {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestSpatialInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range SpatialInsertQueries {
 		e := NewEngine(t, harness)
@@ -560,9 +567,6 @@ func TestSpatialInsertInto(t *testing.T, harness Harness) {
 			}
 		}
 		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil, insertion.Bindings)
-	}
-	for _, script := range InsertScripts {
-		TestScript(t, harness, script)
 	}
 }
 
