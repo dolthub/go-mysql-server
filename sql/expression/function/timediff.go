@@ -26,8 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-const SecondInDay = 86400
-
 // TimeDiff subtracts the second argument from the first expressed as a time value.
 type TimeDiff struct {
 	expression.BinaryExpression
