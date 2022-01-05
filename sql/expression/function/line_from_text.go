@@ -109,7 +109,7 @@ func (p *LineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	// Expect a string, throw error otherwise
 	if s, ok := val.(string); ok {
-		if geomType, data, err := ParseWKTHeader(s); err == nil && geomType == "linestring"{
+		if geomType, data, err := ParseWKTHeader(s); err == nil && geomType == "linestring" {
 			return WKTToLine(data)
 		}
 	}
