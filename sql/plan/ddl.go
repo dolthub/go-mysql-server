@@ -129,7 +129,7 @@ type CreateTable struct {
 	CreateSchema sql.PrimaryKeySchema
 	ifNotExists  IfNotExistsOption
 	fkDefs       []*sql.ForeignKeyConstraint
-	chDefs       []*sql.CheckConstraint
+	chDefs       sql.CheckConstraints
 	idxDefs      []*IndexDefinition
 	like         sql.Node
 	temporary    TempTableOption
@@ -376,21 +376,20 @@ func (c *CreateTable) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) == 0 {
-		return c, nil
+		return &c, nil
 	} else if len(children) == 1 {
 		child := children[0]
-		nc := *c
 
 		switch child.(type) {
 		case *Project, *Limit:
-			nc.selectNode = child
+			c.selectNode = child
 		default:
-			nc.like = child
+			c.like = child
 		}
 
-		return &nc, nil
+		return &c, nil
 	} else {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
@@ -518,27 +517,34 @@ func (c *CreateTable) Temporary() TempTableOption {
 	return c.temporary
 }
 
-func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(c.CreateSchema.Schema)+len(c.chDefs) {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.CreateSchema.Schema)+len(c.chDefs))
 	}
 
-	nc := *c
+	nc := c
 
+	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
+	ns := make(sql.Schema, len(c.CreateSchema.Schema))
 	i := 0
 	for ; i < len(c.CreateSchema.Schema); i++ {
+		nc := *c.CreateSchema.Schema[i]
+		ns[i] = &nc
 		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 		if ok {
-			nc.CreateSchema.Schema[i].Default = unwrappedColDefVal
+			ns[i].Default = unwrappedColDefVal
 		} else { // nil fails type check
-			nc.CreateSchema.Schema[i].Default = nil
+			ns[i].Default = nil
 		}
 	}
+	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
-	for ; i < len(c.chDefs)+len(c.CreateSchema.Schema); i++ {
-		nc.chDefs[i-len(c.CreateSchema.Schema)].Expr = exprs[i]
+	ncd, err := c.chDefs.FromExpressions(exprs[i:])
+	if err != nil {
+		return nil, err
 	}
 
+	nc.chDefs = ncd
 	return &nc, nil
 }
 
