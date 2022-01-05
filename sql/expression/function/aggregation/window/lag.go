@@ -39,13 +39,15 @@ type Lag struct {
 var _ sql.FunctionExpression = (*Lag)(nil)
 var _ sql.WindowAggregation = (*Lag)(nil)
 
-func getOffset(e sql.Expression) (int, error) {
-	eval, err := e.Eval(sql.NewEmptyContext(), nil)
-	if err != nil {
+// getLagOffset extracts a non-negative integer from an expression.Literal, or errors
+func getLagOffset(e sql.Expression) (int, error) {
+	lit, ok := e.(*expression.Literal)
+	if !ok {
 		return 0, ErrInvalidLagOffset.New(e)
 	}
+	val := lit.Value()
 	var offset int
-	switch e := eval.(type) {
+	switch e := val.(type) {
 	case int:
 		offset = e
 	case int8:
@@ -67,18 +69,23 @@ func getOffset(e sql.Expression) (int, error) {
 	return offset, nil
 }
 
+// NewLag accepts variadic arguments to create a new Lag node:
+// If 1 expression, use default values for [default] and [offset]
+// If 2 expressions, use default value for [default]
+// 3 input expression match to [child], [offset], and [default] arguments
+// The offset is constrained to a non-negative integer expression.Literal.
 func NewLag(e ...sql.Expression) (*Lag, error) {
 	switch len(e) {
 	case 1:
 		return &Lag{NaryExpression: expression.NaryExpression{ChildExpressions: e[:1]}, offset: 1}, nil
 	case 2:
-		offset, err := getOffset(e[1])
+		offset, err := getLagOffset(e[1])
 		if err != nil {
 			return nil, err
 		}
 		return &Lag{NaryExpression: expression.NaryExpression{ChildExpressions: e[:1]}, offset: offset}, nil
 	case 3:
-		offset, err := getOffset(e[1])
+		offset, err := getLagOffset(e[1])
 		if err != nil {
 			return nil, err
 		}
@@ -108,10 +115,9 @@ func (l *Lag) NewBuffer() sql.Row {
 
 func (l *Lag) String() string {
 	sb := strings.Builder{}
-	switch len(l.ChildExpressions) {
-	case 2:
+	if len(l.ChildExpressions) > 1 {
 		sb.WriteString(fmt.Sprintf("lag(%s, %d, %s)", l.ChildExpressions[0].String(), l.offset, l.ChildExpressions[1]))
-	default:
+	} else {
 		sb.WriteString(fmt.Sprintf("lag(%s, %d)", l.ChildExpressions[0].String(), l.offset))
 	}
 	if l.window != nil {
@@ -123,10 +129,9 @@ func (l *Lag) String() string {
 
 func (l *Lag) DebugString() string {
 	sb := strings.Builder{}
-	switch len(l.ChildExpressions) {
-	case 2:
+	if len(l.ChildExpressions) > 1 {
 		sb.WriteString(fmt.Sprintf("lag(%s, %d, %s)", l.ChildExpressions[0].String(), l.offset, l.ChildExpressions[1]))
-	default:
+	} else {
 		sb.WriteString(fmt.Sprintf("lag(%s, %d)", l.ChildExpressions[0].String(), l.offset))
 	}
 	if l.window != nil {
@@ -223,7 +228,6 @@ func (l *Lag) Finish(ctx *sql.Context, buffer sql.Row) error {
 		var partIdx int
 		for i, row := range rows {
 			// every time we encounter a new partition, reset the partIdx for lag reference
-
 			isNew, err = isNewPartition(ctx, l.window.PartitionBy, last, row)
 			if err != nil {
 				return err
