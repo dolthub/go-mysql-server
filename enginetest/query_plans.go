@@ -1932,6 +1932,14 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `SELECT t, n, lag(t, 1, t+1) over (partition by n) FROM bigtable`,
+		ExpectedPlan: "Project(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n) as lag(t, 1, t+1) over (partition by n))\n" +
+			" └─ Window(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n))\n" +
+			"     └─ Projected table access on [t n]\n" +
+			"         └─ Table(bigtable)\n" +
+			"",
+	},
+	{
 		Query: `DELETE FROM two_pk WHERE c1 > 1`,
 		ExpectedPlan: "Delete\n" +
 			" └─ Filter(two_pk.c1 > 1)\n" +
