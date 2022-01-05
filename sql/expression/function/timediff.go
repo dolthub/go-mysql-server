@@ -364,7 +364,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 
 	default:
-		return nil, errors.NewKind("invalid interval unit: %s").New(t.unit)
+		return nil, errors.NewKind("invalid interval unit: %s").New(unit)
 	}
 
 	return res, nil
