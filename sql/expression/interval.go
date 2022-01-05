@@ -163,10 +163,6 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 	return &td, nil
 }
 
-func (i *Interval) EvalUnit(ctx *sql.Context, row sql.Row) (string, error) {
-	return i.Unit, nil
-}
-
 // WithChildren implements the Expression interface.
 func (i *Interval) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
