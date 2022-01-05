@@ -1370,8 +1370,8 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "Issue #709",
-		SetUpScript: []string {
+		Name: "Issue #709",
+		SetUpScript: []string{
 			"create table a(id int primary key, v int , key (v));",
 		},
 	},
