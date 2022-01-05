@@ -63,6 +63,7 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 	for i := 1; !nodesEqual(prev, cur); {
 		a.Log("Nodes not equal, re-running batch")
+		a.LogDiff(prev, cur)
 		if i >= b.Iterations {
 			return cur, ErrMaxAnalysisIters.New(b.Iterations)
 		}

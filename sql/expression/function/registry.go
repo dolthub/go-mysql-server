@@ -63,6 +63,7 @@ var BuiltIns = []sql.Function{
 	sql.Function0{Name: "database", Fn: NewDatabase},
 	sql.Function1{Name: "date", Fn: NewDate},
 	sql.FunctionN{Name: "datetime", Fn: NewDatetime},
+	sql.Function2{Name: "datediff", Fn: NewDateDiff},
 	sql.FunctionN{Name: "date_add", Fn: NewDateAdd},
 	sql.Function2{Name: "date_format", Fn: NewDateFormat},
 	sql.FunctionN{Name: "date_sub", Fn: NewDateSub},
@@ -128,6 +129,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "json_unquote", Fn: NewJSONUnquote},
 	sql.FunctionN{Name: "json_valid", Fn: NewJSONValid},
 	sql.FunctionN{Name: "json_value", Fn: NewJSONValue},
+	sql.FunctionN{Name: "lag", Fn: func(e ...sql.Expression) (sql.Expression, error) { return window.NewLag(e...) }},
 	sql.Function1{Name: "last", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewLast(e) }},
 	sql.Function0{Name: "last_insert_id", Fn: NewLastInsertId},
 	sql.Function1{Name: "lcase", Fn: NewLower},
@@ -183,10 +185,13 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "soundex", Fn: NewSoundex},
 	sql.Function2{Name: "split", Fn: NewSplit},
 	sql.Function1{Name: "sqrt", Fn: NewSqrt},
+<<<<<<< HEAD
 	sql.Function1{Name: "st_geomfromtext", Fn: NewGeomFromText},
 	sql.Function1{Name: "st_linefromtext", Fn: NewLineFromText},
 	sql.Function1{Name: "st_pointfromtext", Fn: NewPointFromText},
 	sql.Function1{Name: "st_polyfromtext", Fn: NewPolygonFromText},
+=======
+>>>>>>> main
 	sql.FunctionN{Name: "str_to_date", Fn: NewStrToDate},
 	sql.FunctionN{Name: "substr", Fn: NewSubstring},
 	sql.FunctionN{Name: "substring", Fn: NewSubstring},
@@ -196,6 +201,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "time_to_sec", Fn: NewTimeToSec},
 	sql.Function2{Name: "timediff", Fn: NewTimeDiff},
 	sql.FunctionN{Name: "timestamp", Fn: NewTimestamp},
+	sql.Function3{Name: "timestampdiff", Fn: NewTimestampDiff},
 	sql.Function1{Name: "to_base64", Fn: NewToBase64},
 	sql.Function1{Name: "ucase", Fn: NewUpper},
 	sql.Function1{Name: "unhex", Fn: NewUnhex},
