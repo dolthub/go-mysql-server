@@ -16,10 +16,11 @@ package function
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	"strings"
 	"time"
+
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -316,46 +317,46 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "day":
 		res = int64(diff.Hours() / 24)
 	case "week":
-		res = int64(diff.Hours() / (24*7))
+		res = int64(diff.Hours() / (24 * 7))
 	case "month":
-		res = int64(diff.Hours() / (24*30))
+		res = int64(diff.Hours() / (24 * 30))
 		if res > 0 {
-			if date2.Day() - date1.Day() < 0 {
+			if date2.Day()-date1.Day() < 0 {
 				res -= 1
-			} else if date2.Hour() - date1.Hour() < 0 {
+			} else if date2.Hour()-date1.Hour() < 0 {
 				res -= 1
-			} else if date2.Minute() - date1.Minute() < 0 {
+			} else if date2.Minute()-date1.Minute() < 0 {
 				res -= 1
-			} else if date2.Second() - date1.Second() < 0 {
+			} else if date2.Second()-date1.Second() < 0 {
 				res -= 1
 			}
 		}
 	case "quarter":
-		monthRes := int64(diff.Hours() / (24*30))
+		monthRes := int64(diff.Hours() / (24 * 30))
 		if monthRes > 0 {
-			if date2.Day() - date1.Day() < 0 {
+			if date2.Day()-date1.Day() < 0 {
 				monthRes -= 1
-			} else if date2.Hour() - date1.Hour() < 0 {
+			} else if date2.Hour()-date1.Hour() < 0 {
 				monthRes -= 1
-			} else if date2.Minute() - date1.Minute() < 0 {
+			} else if date2.Minute()-date1.Minute() < 0 {
 				monthRes -= 1
-			} else if date2.Second() - date1.Second() < 0 {
+			} else if date2.Second()-date1.Second() < 0 {
 				monthRes -= 1
 			}
 		}
 		res = monthRes / 3
 	case "year":
-		yearRes := int64(diff.Hours() / (24*365))
-		if yearRes > 0{
-			monthRes := int64(diff.Hours() / (24*30))
+		yearRes := int64(diff.Hours() / (24 * 365))
+		if yearRes > 0 {
+			monthRes := int64(diff.Hours() / (24 * 30))
 			if monthRes > 0 {
-				if date2.Day() - date1.Day() < 0 {
+				if date2.Day()-date1.Day() < 0 {
 					monthRes -= 1
-				} else if date2.Hour() - date1.Hour() < 0 {
+				} else if date2.Hour()-date1.Hour() < 0 {
 					monthRes -= 1
-				} else if date2.Minute() - date1.Minute() < 0 {
+				} else if date2.Minute()-date1.Minute() < 0 {
 					monthRes -= 1
-				} else if date2.Second() - date1.Second() < 0 {
+				} else if date2.Second()-date1.Second() < 0 {
 					monthRes -= 1
 				}
 			}

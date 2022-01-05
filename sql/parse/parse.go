@@ -2802,10 +2802,10 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		return plan.NewExistsSubquery(subqueryExp), nil
 	case *sqlparser.TimestampFuncExpr:
 		var (
-			unit sql.Expression
+			unit  sql.Expression
 			expr1 sql.Expression
 			expr2 sql.Expression
-			err error
+			err   error
 		)
 
 		unit = expression.NewLiteral(v.Unit, sql.LongText)
