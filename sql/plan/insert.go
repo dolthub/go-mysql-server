@@ -58,8 +58,6 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrForeignKeyParentViolation,
 	sql.ErrDuplicateEntry,
 	sql.ErrUniqueKeyViolation,
-	sql.ErrLengthBeyondLimit,
-	sql.ErrInvalidValue,
 }
 
 // InsertInto is a node describing the insertion into some table.
@@ -273,7 +271,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			converted, err := col.Type.Convert(row[idx]) // allows for better error handling
 			if err != nil {
 				if i.ignore {
-					row, err = i.convertDataAndIgnore(ctx, row, idx, err)
+					row, err = i.convertDataAndWarn(ctx, row, idx, err)
 					if err != nil {
 						return nil, err
 					}
@@ -348,7 +346,7 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpda
 					return nil, err
 				}
 
-				val, err = i.convertDataAndIgnore(ctx, row, idx, err)
+				val, err = i.convertDataAndWarn(ctx, row, idx, err)
 				if err != nil {
 					return nil, err
 				}
@@ -474,20 +472,25 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sq
 	}
 }
 
-// convertDataAndIgnore modifies a row with data conversion issues in INSERT IGNORE calls
+// convertDataAndWarn modifies a row with data conversion issues in INSERT IGNORE calls
 // Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
 // cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
-func (i *insertIter) convertDataAndIgnore(ctx *sql.Context, row sql.Row, columnIdx int, err error) (sql.Row, error) {
+func (i *insertIter) convertDataAndWarn(ctx *sql.Context, row sql.Row, columnIdx int, err error) (sql.Row, error) {
 	if sql.ErrLengthBeyondLimit.Is(err) {
 		maxLength := i.schema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
 		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
-	} else if sql.ErrInvalidValue.Is(err) {
-		row[columnIdx] = i.schema[columnIdx].Type.Zero()
 	} else {
-		return i.ignoreOrClose(ctx, row, err)
+		row[columnIdx] = i.schema[columnIdx].Type.Zero()
 	}
 
-	i.warnOnIgnorableError(ctx, row, err) // create the warning but ignore the error since we want this row to be processed
+	sqlerr, _, _ := sql.CastSQLError(err)
+
+	// Add a warning instead
+	ctx.Session.Warn(&sql.Warning{
+		Level:   "Note",
+		Code:    sqlerr.Num,
+		Message: err.Error(),
+	})
 
 	return row, nil
 }

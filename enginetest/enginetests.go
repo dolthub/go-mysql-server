@@ -536,6 +536,13 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestBrokenInsertScripts(t *testing.T, harness Harness) {
+	t.Skip()
+	for _, script := range InsertBrokenScripts {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestLoadData(t *testing.T, harness Harness) {
 	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
