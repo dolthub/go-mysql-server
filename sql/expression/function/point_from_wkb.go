@@ -70,6 +70,12 @@ func (p *PointFromWKB) WithChildren(children ...sql.Expression) (sql.Expression,
 
 // WKBToPoint parses the data portion of a byte array in WKB format to a point object
 func WKBToPoint(buf []byte, isBig bool) (sql.Point, error) {
+	// Must be 16 bytes (2 floats)
+	if len(buf) != 16 {
+		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromWKB1")
+	}
+
+	// Read floats x and y
 	var x, y float64
 	if isBig {
 		x = math.Float64frombits(binary.BigEndian.Uint64(buf[:8]))
@@ -96,28 +102,18 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	// Must be of type byte array
 	v, ok := val.([]byte)
 	if !ok {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB1")
+		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB")
 	}
 
-	// Must be 21 bytes long
-	if len(v) != 21 {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB2")
-	}
-
-	// Read Endianness
-	isBig := v[0] == 0
-
-	// Get type
-	var geomType uint32
-	if isBig {
-		geomType = binary.BigEndian.Uint32(v[1:5])
-	} else {
-		geomType = binary.LittleEndian.Uint32(v[1:5])
+	// Parse Header
+	isBig, geomType, err := ParseWKBHeader(v)
+	if err != nil {
+		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB")
 	}
 
 	// Not a point, throw error
-	if geomType != 1 {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB3")
+	if geomType != WKBPointID {
+		return nil, sql.ErrInvalidGISData.New("ST_PointFromWKB")
 	}
 
 	// Read data
