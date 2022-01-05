@@ -23,84 +23,84 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// PolygonFromText is a function that returns a polygon type from a WKT string
-type PolygonFromText struct {
+// PolyFromText is a function that returns a polygon type from a WKT string
+type PolyFromText struct {
 	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*PolygonFromText)(nil)
+var _ sql.FunctionExpression = (*PolyFromText)(nil)
 
 // NewPolygonFromText creates a new polygon expression.
 func NewPolygonFromText(e sql.Expression) sql.Expression {
-	return &PolygonFromText{expression.UnaryExpression{Child: e}}
+	return &PolyFromText{expression.UnaryExpression{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *PolygonFromText) FunctionName() string {
-	return "st_polygonfromtext"
+func (p *PolyFromText) FunctionName() string {
+	return "st_polyfromtext"
 }
 
 // Description implements sql.FunctionExpression
-func (p *PolygonFromText) Description() string {
+func (p *PolyFromText) Description() string {
 	return "returns a new polygon from a WKT string."
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *PolygonFromText) IsNullable() bool {
+func (p *PolyFromText) IsNullable() bool {
 	return p.Child.IsNullable()
 }
 
 // Type implements the sql.Expression interface.
-func (p *PolygonFromText) Type() sql.Type {
+func (p *PolyFromText) Type() sql.Type {
 	return p.Child.Type()
 }
 
-func (p *PolygonFromText) String() string {
-	return fmt.Sprintf("ST_POLYGONFROMTEXT(%s)", p.Child.String())
+func (p *PolyFromText) String() string {
+	return fmt.Sprintf("ST_POLYFROMTEXT(%s)", p.Child.String())
 }
 
 // WithChildren implements the Expression interface.
-func (p *PolygonFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *PolyFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 	return NewPolygonFromText(children[0]), nil
 }
 
-// ParsePolygonString Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
-func ParsePolygonString(s string) (interface{}, error) {
+// WKTToPoly Expects a string like "(1 2, 3 4), (5 6, 7 8), ..."
+func WKTToPoly(s string) (sql.Polygon, error) {
 	var lines []sql.Linestring
 	for {
 		// Look for closing parentheses
 		end := strings.Index(s, ")")
 		if end == -1 {
-			return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
 		}
 
 		// Extract linestring string; does not include ")"
-		linestringStr := s[:end]
+		lineStr := s[:end]
 
 		// Must start with open parenthesis
-		if len(linestringStr) == 0 || linestringStr[0] != '(' {
-			return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
+		if len(lineStr) == 0 || lineStr[0] != '(' {
+			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
 		}
 
 		// Remove leading "("
-		linestringStr = linestringStr[1:]
+		lineStr = lineStr[1:]
 
 		// Remove leading and trailing whitespace
-		linestringStr = strings.TrimSpace(linestringStr)
+		lineStr = strings.TrimSpace(lineStr)
 
 		// Parse line
-		if line, err := ParseLinestringString(linestringStr); err == nil {
+		if line, err := WKTToLine(lineStr); err == nil {
 			// Check if line is linearring
-			if isLinearRing(line.(sql.Linestring)) {
-				lines = append(lines, line.(sql.Linestring))
+			if isLinearRing(line) {
+				lines = append(lines, line)
 			} else {
-				return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
+				return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
 			}
 		} else {
-			return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
 		}
 
 		// Prepare next string
@@ -114,7 +114,7 @@ func ParsePolygonString(s string) (interface{}, error) {
 
 		// Linestrings must be comma-separated
 		if s[0] != ',' {
-			return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
+			return sql.Polygon{}, sql.ErrInvalidGISData.New("ST_PolyFromText")
 		}
 
 		// Drop leading comma
@@ -129,7 +129,7 @@ func ParsePolygonString(s string) (interface{}, error) {
 }
 
 // Eval implements the sql.Expression interface.
-func (p *PolygonFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *PolyFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
 	val, err := p.Child.Eval(ctx, row)
 	if err != nil {
@@ -143,10 +143,10 @@ func (p *PolygonFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	// Expect a string, throw error otherwise
 	if s, ok := val.(string); ok {
 		// TODO: possible to use a regular expression? "*polygon *\( *[0-9][0-9]* *[0-9][0-9]* *\) *" /gi
-		if s, err = TrimTypePrefix(s, "polygon"); err == nil {
-			return ParsePolygonString(s)
+		if geomType, data, err := ParseWKTHeader(s); err == nil && geomType == "polygon" {
+			return WKTToPoly(data)
 		}
 	}
 
-	return nil, sql.ErrInvalidGISData.New("ST_PolygonFromText")
+	return nil, sql.ErrInvalidGISData.New("ST_PolyFromText")
 }

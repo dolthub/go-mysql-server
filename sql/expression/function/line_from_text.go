@@ -23,55 +23,55 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// LinestringFromText is a function that returns a point type from a WKT string
-type LinestringFromText struct {
+// LineFromText is a function that returns a point type from a WKT string
+type LineFromText struct {
 	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*LinestringFromText)(nil)
+var _ sql.FunctionExpression = (*LineFromText)(nil)
 
-// NewLinestringFromText creates a new point expression.
-func NewLinestringFromText(e sql.Expression) sql.Expression {
-	return &LinestringFromText{expression.UnaryExpression{Child: e}}
+// NewLineFromText creates a new point expression.
+func NewLineFromText(e sql.Expression) sql.Expression {
+	return &LineFromText{expression.UnaryExpression{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *LinestringFromText) FunctionName() string {
-	return "st_linestringfromtext"
+func (p *LineFromText) FunctionName() string {
+	return "st_linefromtext"
 }
 
 // Description implements sql.FunctionExpression
-func (p *LinestringFromText) Description() string {
-	return "returns a new linestring from a WKT string."
+func (p *LineFromText) Description() string {
+	return "returns a new line from a WKT string."
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *LinestringFromText) IsNullable() bool {
+func (p *LineFromText) IsNullable() bool {
 	return p.Child.IsNullable()
 }
 
 // Type implements the sql.Expression interface.
-func (p *LinestringFromText) Type() sql.Type {
+func (p *LineFromText) Type() sql.Type {
 	return p.Child.Type()
 }
 
-func (p *LinestringFromText) String() string {
-	return fmt.Sprintf("ST_LINESTRINGFROMTEXT(%s)", p.Child.String())
+func (p *LineFromText) String() string {
+	return fmt.Sprintf("ST_LINEFROMTEXT(%s)", p.Child.String())
 }
 
 // WithChildren implements the Expression interface.
-func (p *LinestringFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *LineFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewLinestringFromText(children[0]), nil
+	return NewLineFromText(children[0]), nil
 }
 
-// ParseLinestringString expects a string like "1.2 3.4, 5.6 7.8, ..."
-func ParseLinestringString(s string) (interface{}, error) {
+// WKTToLine expects a string like "1.2 3.4, 5.6 7.8, ..."
+func WKTToLine(s string) (sql.Linestring, error) {
 	// Empty string is wrong
 	if len(s) == 0 {
-		return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
+		return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromText")
 	}
 
 	// Separate by comma
@@ -84,10 +84,10 @@ func ParseLinestringString(s string) (interface{}, error) {
 		ps = strings.TrimSpace(ps)
 
 		// Parse point
-		if p, err := ParsePointString(ps); err == nil {
-			points[i] = p.(sql.Point)
+		if p, err := WKTToPoint(ps); err == nil {
+			points[i] = p
 		} else {
-			return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
+			return sql.Linestring{}, sql.ErrInvalidGISData.New("ST_LineFromText")
 		}
 	}
 
@@ -96,7 +96,7 @@ func ParseLinestringString(s string) (interface{}, error) {
 }
 
 // Eval implements the sql.Expression interface.
-func (p *LinestringFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *LineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
 	val, err := p.Child.Eval(ctx, row)
 	if err != nil {
@@ -109,10 +109,10 @@ func (p *LinestringFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 
 	// Expect a string, throw error otherwise
 	if s, ok := val.(string); ok {
-		if s, err = TrimTypePrefix(s, "linestring"); err == nil {
-			return ParseLinestringString(s)
+		if geomType, data, err := ParseWKTHeader(s); err == nil && geomType == "linestring"{
+			return WKTToLine(data)
 		}
 	}
 
-	return nil, sql.ErrInvalidGISData.New("ST_LinestringFromText")
+	return nil, sql.ErrInvalidGISData.New("ST_LineFromText")
 }

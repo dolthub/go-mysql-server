@@ -68,43 +68,11 @@ func (p *PointFromText) WithChildren(children ...sql.Expression) (sql.Expression
 	return NewPointFromText(children[0]), nil
 }
 
-func TrimTypePrefix(s, typeStr string) (string, error) {
-	// Trim excess leading and trailing whitespace
-	s = strings.TrimSpace(s)
-
-	// Lowercase
-	s = strings.ToLower(s)
-
-	// typeStr prefix must be first thing
-	if s[:len(typeStr)] != typeStr {
-		return "", sql.ErrInvalidGISData.New("ST_PointFromText")
-	}
-
-	// Remove typeStr prefix
-	s = s[len(typeStr):]
-
-	// Trim leading and trailing whitespace again
-	s = strings.TrimSpace(s)
-
-	// Must be surrounded in parentheses
-	if s[0] != '(' || s[len(s)-1] != ')' {
-		return "", sql.ErrInvalidGISData.New("ST_PointFromText")
-	}
-
-	// Remove parenthesis
-	s = s[1 : len(s)-1]
-
-	// Trim leading and trailing whitespace again
-	s = strings.TrimSpace(s)
-
-	return s, nil
-}
-
-// ParsePointString expects a string like this "1.2 3.4"
-func ParsePointString(s string) (interface{}, error) {
+// WKTToPoint expects a string like this "1.2 3.4"
+func WKTToPoint(s string) (sql.Point, error) {
 	// Empty string is wrong
 	if len(s) == 0 {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
 	}
 
 	// Get everything between spaces
@@ -112,19 +80,19 @@ func ParsePointString(s string) (interface{}, error) {
 
 	// Check length
 	if len(args) != 2 {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
 	}
 
 	// Parse x
 	x, err := strconv.ParseFloat(args[0], 64)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
 	}
 
 	// Parse y
 	y, err := strconv.ParseFloat(args[1], 64)
 	if err != nil {
-		return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
+		return sql.Point{}, sql.ErrInvalidGISData.New("ST_PointFromText")
 	}
 
 	// Create point object
@@ -146,8 +114,8 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	// Expect a string, throw error otherwise
 	if s, ok := val.(string); ok {
 		// TODO: possible to use a regular expression? "*point *\( *[0-9][0-9]* *[0-9][0-9]* *\) *" /gi
-		if s, err = TrimTypePrefix(s, "point"); err == nil {
-			return ParsePointString(s)
+		if geomType, data, err := ParseWKTHeader(s); err == nil && geomType == "point"{
+			return WKTToPoint(data)
 		}
 	}
 
