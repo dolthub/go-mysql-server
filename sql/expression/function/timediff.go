@@ -158,11 +158,10 @@ func (d *DateDiff) Type() sql.Type { return sql.Int64 }
 
 // WithChildren implements the Expression interface.
 func (d *DateDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) == 2 {
-		return NewDateDiff(children[0], children[1]), nil
-	} else {
+	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 2)
 	}
+	return NewDateDiff(children[0], children[1]), nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -213,7 +212,7 @@ func (d *DateDiff) String() string {
 
 // TimestampDiff returns expr1 − expr2 expressed as a value in unit specified.
 type TimestampDiff struct {
-	unit  *expression.Interval
+	unit  sql.Expression
 	expr1 sql.Expression
 	expr2 sql.Expression
 }
@@ -221,17 +220,8 @@ type TimestampDiff struct {
 var _ sql.FunctionExpression = (*TimestampDiff)(nil)
 
 // NewTimestampDiff creates a new TIMESTAMPDIFF() function.
-func NewTimestampDiff(args... sql.Expression) (sql.Expression, error) {
-	if len(args) != 3 {
-		return nil, sql.ErrInvalidArgumentNumber.New("TIMESTAMPDIFF", 3, len(args))
-	}
-
-	u, ok := args[0].(*expression.Interval)
-	if !ok {
-		return nil, fmt.Errorf("TIMESTAMPDIFF expects an interval as first parameter")
-	}
-
-	return &TimestampDiff{u, args[1], args[2]}, nil
+func NewTimestampDiff(u, e1, e2 sql.Expression) sql.Expression {
+	return &TimestampDiff{u, e1, e2}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -264,7 +254,10 @@ func (t *TimestampDiff) Type() sql.Type { return sql.Int64 }
 
 // WithChildren implements the Expression interface.
 func (t *TimestampDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewTimestampDiff(children...)
+	if len(children) != 3 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 3)
+	}
+	return NewTimestampDiff(children[0], children[1], children[2]), nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -295,15 +288,15 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, err
 	}
 
-	unit, err := t.unit.EvalUnit(ctx, row)
+	unit, err := t.unit.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if expr2 == nil {
+	if unit == nil {
 		return nil, nil
 	}
 
-	unit = strings.TrimPrefix(strings.ToLower(unit), "sql_tsi_")
+	unit = strings.TrimPrefix(strings.ToLower(unit.(string)), "sql_tsi_")
 
 	date1 := expr1.(time.Time)
 	date2 := expr2.(time.Time)
