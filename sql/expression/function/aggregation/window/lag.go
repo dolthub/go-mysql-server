@@ -31,7 +31,6 @@ var ErrInvalidLagDefault = errors.NewKind("'LAG' default must be a literal; foun
 type Lag struct {
 	window *sql.Window
 	expression.NaryExpression
-	//def sql.Expression
 	offset int
 	pos    int
 }
@@ -74,6 +73,7 @@ func getLagOffset(e sql.Expression) (int, error) {
 // If 2 expressions, use default value for [default]
 // 3 input expression match to [child], [offset], and [default] arguments
 // The offset is constrained to a non-negative integer expression.Literal.
+// TODO: support user-defined variable offset
 func NewLag(e ...sql.Expression) (*Lag, error) {
 	switch len(e) {
 	case 1:
@@ -96,7 +96,7 @@ func NewLag(e ...sql.Expression) (*Lag, error) {
 
 // Description implements sql.FunctionExpression
 func (l *Lag) Description() string {
-	return "returns value of argument from first row of window frame."
+	return "returns the value of the expression evaluated at the lag offset row"
 }
 
 // Window implements sql.WindowExpression
@@ -106,7 +106,11 @@ func (l *Lag) Window() *sql.Window {
 
 // IsNullable implements sql.Expression
 func (l *Lag) Resolved() bool {
-	return windowResolved(l.window)
+	childrenResolved := true
+	for _, c := range l.ChildExpressions {
+		childrenResolved = childrenResolved && c.Resolved()
+	}
+	return childrenResolved && windowResolved(l.window)
 }
 
 func (l *Lag) NewBuffer() sql.Row {
@@ -153,7 +157,7 @@ func (l *Lag) Type() sql.Type {
 
 // IsNullable implements sql.Expression
 func (l *Lag) IsNullable() bool {
-	return false
+	return true
 }
 
 // Eval implements sql.Expression
