@@ -517,8 +517,8 @@ func TestNaturalJoin(t *testing.T) {
 	enginetest.TestNaturalJoin(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTestWindowAggregations(t *testing.T) {
-	enginetest.TestWindowAgg(t, enginetest.NewDefaultMemoryHarness())
+func TestTestWindowFunctions(t *testing.T) {
+	enginetest.TestWindowFunctions(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestNaturalJoinEqual(t *testing.T) {

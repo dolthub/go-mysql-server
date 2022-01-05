@@ -33,6 +33,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -2651,9 +2652,7 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT fk1", sql.ErrUnknownConstraint)
 }
 
-func TestWindowAgg(t *testing.T, harness Harness) {
-	//require := require.New(t)
-
+func TestWindowFunctions(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
 
@@ -2741,7 +2740,84 @@ func TestWindowAgg(t *testing.T, harness Harness) {
 		{4, 1},
 		{5, 0},
 	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 2},
+		{3, 4},
+		{4, 5},
+		{5, 6},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, 0},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, -1},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, -1},
+		{2, -1},
+		{3, -1},
+		{4, 0},
+		{5, 2},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, "s"},
+		{3, "s"},
+		{4, "s"},
+		{5, "s"},
+	}, nil, nil)
+
+	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+
 }
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
