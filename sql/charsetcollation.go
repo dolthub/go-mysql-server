@@ -50,30 +50,37 @@ func sensitiveLikeMatcher(likeStr string) (regex.DisposableMatcher, error) {
 	return regex.NewDisposableMatcher("go", likeStr)
 }
 
-func insensitiveCompare(a, b string) int {
-	lowerA := strings.ToLower(a)
-	lowerB := strings.ToLower(b)
-	return strings.Compare(lowerA, lowerB)
-}
+type collationCompare byte
+type collationLike byte
+
+const (
+	collationCompareInsensitive collationCompare = iota
+	collationCompareSensitive
+)
+
+const (
+	collationLikeInsensitive collationLike = iota
+	collationLikeSensitive
+)
 
 // Collation represents the collation of a string.
 type Collation struct {
-	Name        string
-	CharSet     CharacterSet
-	Compare     func(as, bs string) int
-	LikeMatcher func(likeStr string) (regex.DisposableMatcher, error)
+	Name    string
+	CharSet CharacterSet
+	compare collationCompare
+	like    collationLike
 }
 
 var Collations = map[string]Collation{}
 
 func newCollation(name string, cs CharacterSet) Collation {
-	c := Collation{Name: name, CharSet: cs, Compare: insensitiveCompare, LikeMatcher: insensitiveLikeMatcher}
+	c := Collation{Name: name, CharSet: cs, compare: collationCompareInsensitive, like: collationLikeInsensitive}
 	Collations[name] = c
 	return c
 }
 
 func newCSCollation(name string, cs CharacterSet) Collation {
-	c := Collation{Name: name, CharSet: cs, Compare: strings.Compare, LikeMatcher: sensitiveLikeMatcher}
+	c := Collation{Name: name, CharSet: cs, compare: collationCompareSensitive, like: collationLikeSensitive}
 	Collations[name] = c
 	return c
 }

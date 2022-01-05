@@ -421,5 +421,12 @@ func (t stringType) MaxByteLength() int64 {
 
 func (t stringType) CreateMatcher(likeStr string) (regex.DisposableMatcher, error) {
 	c := t.Collation()
-	return c.LikeMatcher(likeStr)
+	switch c.like {
+	case collationLikeSensitive:
+		return sensitiveLikeMatcher(likeStr)
+	case collationLikeInsensitive:
+		return insensitiveLikeMatcher(likeStr)
+	default:
+		panic(fmt.Errorf("unexpected value for like: %v", c.like))
+	}
 }
