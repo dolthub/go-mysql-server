@@ -76,6 +76,10 @@ func TestUse(t *testing.T) {
 	enginetest.TestUse(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestNoDatabaseSelected(t *testing.T) {
+	enginetest.TestNoDatabaseSelected(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestTracing(t *testing.T) {
 	enginetest.TestTracing(t, enginetest.NewDefaultMemoryHarness())
 }

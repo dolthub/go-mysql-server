@@ -3062,6 +3062,18 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Equal("foo", ctx.GetCurrentDatabase())
 }
 
+func TestNoDatabaseSelected(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	ctx := NewContext(harness)
+	ctx.SetCurrentDatabase("")
+
+	AssertErrWithCtx(t, e, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, ctx, "show tables", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, ctx, "show triggers", sql.ErrNoDatabaseSelected)
+}
+
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	q := []QueryTest{
 		{
