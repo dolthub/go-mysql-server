@@ -74,7 +74,7 @@ func serializeLine(l sql.Linestring, buf []byte) {
 	binary.LittleEndian.PutUint32(buf[0:4], uint32(len(l.Points)))
 	// Append each point
 	for i, p := range l.Points {
-		start, stop := 4 + 16 * i, 4 + 16 * (i + 1)
+		start, stop := 4+16*i, 4+16*(i+1)
 		serializePoint(p, buf[start:stop])
 	}
 }
@@ -82,7 +82,7 @@ func serializeLine(l sql.Linestring, buf []byte) {
 // LineToBytes converts a sql.Linestring to a byte array
 func LineToBytes(l sql.Linestring) []byte {
 	// Initialize line buffer
-	buf := make([]byte, 4 + 16 * len(l.Points))
+	buf := make([]byte, 4+16*len(l.Points))
 	serializeLine(l, buf)
 	return buf
 }
@@ -93,7 +93,7 @@ func serializePoly(p sql.Polygon, buf []byte) {
 	// Append each line
 	start, stop := 0, 4
 	for _, l := range p.Lines {
-		start, stop = stop, stop + 4 + 16 * len(l.Points)
+		start, stop = stop, stop+4+16*len(l.Points)
 		serializeLine(l, buf[start:stop])
 	}
 }
@@ -103,9 +103,9 @@ func PolyToBytes(p sql.Polygon) []byte {
 	// Initialize polygon buffer
 	size := 0
 	for _, l := range p.Lines {
-		size += 4 + 16 * len(l.Points)
+		size += 4 + 16*len(l.Points)
 	}
-	buf := make([]byte, 4 + size)
+	buf := make([]byte, 4+size)
 	serializePoly(p, buf)
 	return buf
 }

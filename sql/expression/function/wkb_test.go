@@ -66,4 +66,3 @@ func TestAsWKB(t *testing.T) {
 		require.Error(err)
 	})
 }
-
