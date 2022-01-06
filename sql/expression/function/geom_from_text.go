@@ -91,7 +91,7 @@ func ParseWKTHeader(s string) (string, string, error) {
 		return "", "", sql.ErrInvalidGISData.New("ST_GeomFromText")
 	}
 	// Remove parentheses, and trim
-	data = data[1:len(data)-1]
+	data = data[1 : len(data)-1]
 	data = strings.TrimSpace(data)
 
 	return geomType, data, nil

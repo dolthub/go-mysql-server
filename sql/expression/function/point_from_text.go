@@ -114,7 +114,7 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	// Expect a string, throw error otherwise
 	if s, ok := val.(string); ok {
 		// TODO: possible to use a regular expression? "*point *\( *[0-9][0-9]* *[0-9][0-9]* *\) *" /gi
-		if geomType, data, err := ParseWKTHeader(s); err == nil && geomType == "point"{
+		if geomType, data, err := ParseWKTHeader(s); err == nil && geomType == "point" {
 			return WKTToPoint(data)
 		}
 	}
