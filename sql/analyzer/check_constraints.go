@@ -96,7 +96,7 @@ func checkExpressionValid(e sql.Expression) error {
 	var err error
 	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
-		case *function.GetLock, *function.IsUsedLock, *function.IsFreeLock, *function.ReleaseAllLocks, *function.ReleaseLock:
+		case *function.GetLock, *function.IsUsedLock, *function.IsFreeLock, function.ReleaseAllLocks, *function.ReleaseLock:
 			err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
 			return false
 		case sql.FunctionExpression:
