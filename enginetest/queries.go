@@ -90,6 +90,18 @@ var SpatialQueryTests = []QueryTest{
 		Query:    `SELECT ST_Y(POINT(1,2),99.9)`,
 		Expected: []sql.Row{{sql.Point{X: 1, Y: 99.9}}},
 	},
+	{
+		Query:    `SELECT ST_X(p) from point_table`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_X(p) from point_table`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_Y(p) from point_table`,
+		Expected: []sql.Row{{2.0}},
+	},
 }
 
 var QueryTests = []QueryTest{
