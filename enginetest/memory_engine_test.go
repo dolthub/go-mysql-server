@@ -503,7 +503,7 @@ func TestChecksOnUpdate(t *testing.T) {
 	enginetest.TestChecksOnUpdate(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTestDisallowedCheckConstraints(t *testing.T) {
+func TestDisallowedCheckConstraints(t *testing.T) {
 	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 

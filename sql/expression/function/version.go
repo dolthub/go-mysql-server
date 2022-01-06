@@ -25,6 +25,11 @@ const mysqlVersion = "8.0.11"
 // Version is a function that returns server version.
 type Version string
 
+func (f Version) IsNonDeterministic() bool {
+	// Just means that the value can change over time, i.e. on an upgrade
+	return true
+}
+
 var _ sql.FunctionExpression = (Version)("")
 
 // NewVersion creates a new Version UDF.
