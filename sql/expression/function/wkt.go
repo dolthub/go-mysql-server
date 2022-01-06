@@ -113,7 +113,6 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return fmt.Sprintf("%s(%s)", geomType, data), nil
 }
 
-
 // GeomFromText is a function that returns a point type from a WKT string
 type GeomFromText struct {
 	expression.UnaryExpression
