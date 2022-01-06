@@ -24,6 +24,7 @@ import (
 // Represents the Linestring type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-linestring.html
 type Linestring struct {
+	SRID uint32
 	Points []Point
 }
 
