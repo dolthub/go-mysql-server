@@ -66,6 +66,30 @@ var SpatialQueryTests = []QueryTest{
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		}},
 	},
+	{
+		Query: `SELECT ST_X(POINT(1,2))`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query: `SELECT ST_Y(POINT(1,2))`,
+		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query: `SELECT ST_X(POINT(123.45,6.789))`,
+		Expected: []sql.Row{{123.45}},
+	},
+	{
+		Query: `SELECT ST_Y(POINT(123.45,6.789))`,
+		Expected: []sql.Row{{6.789}},
+	},
+	{
+		Query: `SELECT ST_X(POINT(1,2),99.9)`,
+		Expected: []sql.Row{{sql.Point{X: 99.9, Y: 2}}},
+	},
+	{
+		Query: `SELECT ST_Y(POINT(1,2),99.9)`,
+		Expected: []sql.Row{{sql.Point{X: 1, Y: 99.9}}},
+	},
 }
 
 var QueryTests = []QueryTest{
