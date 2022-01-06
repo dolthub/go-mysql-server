@@ -23,6 +23,7 @@ import (
 // Represents the Point type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
 type Point struct {
+	SRID uint32
 	X float64
 	Y float64
 }
