@@ -1,13 +1,3 @@
-package function
-
-import (
-	"encoding/hex"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
-	"testing"
-)
-
 // Copyright 2020-2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
