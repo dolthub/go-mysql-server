@@ -306,14 +306,56 @@ var TriggerTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
 			"INSERT INTO test VALUES (0,2),(1,3)",
-			"CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW BEGIN SET NEW.v1 = NEW.v1 * 11; SET NEW.v1 = NEW.v1 * -10; END;",
-			"INSERT INTO test VALUES (2,4);",
+			`CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW 
+				BEGIN 
+					SET NEW.v1 = NEW.v1 * 11;
+					SET NEW.v1 = NEW.v1 * -10;
+				END;`,
+			"INSERT INTO test VALUES (2,4), (6,8);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test ORDER BY 1",
 				Expected: []sql.Row{
-					{0, 2}, {1, 3}, {2, -440},
+					{0, 2}, {1, 3}, {2, -440}, {6, -880},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before insert, begin block with multiple set statements and inserts",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE test2(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE test3(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO test VALUES (0,2),(1,3)",
+			`CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW 
+				BEGIN 
+					SET NEW.v1 = NEW.v1 * 11;
+					insert into test2 values (new.pk * 3, new.v1);
+					SET NEW.v1 = NEW.v1 * -10;
+					insert into test3 values (new.pk * 5, new.v1);
+					set @var = 0;
+				END;`,
+			"INSERT INTO test VALUES (2,4), (6,8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test ORDER BY 1",
+				Expected: []sql.Row{
+					{0, 2}, {1, 3}, {2, -440}, {6, -880},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2 ORDER BY 1",
+				Expected: []sql.Row{
+					{6, 44}, {18, 88},
+				},
+			},
+			{
+				Query: "SELECT * FROM test3 ORDER BY 1",
+				Expected: []sql.Row{
+					{10, -440}, {30, -880},
 				},
 			},
 		},
@@ -1978,6 +2020,35 @@ var BrokenTriggerQueries = []ScriptTest{
 					{1, nil},
 					{2, nil},
 					{3, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into table multiple times",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE test2(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO test VALUES (0,2),(1,3)",
+			`CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW 
+				BEGIN 
+					insert into test2 values (new.pk * 3, new.v1);
+					insert into test2 values (new.pk * 5, new.v1);
+				END;`,
+			// fails at analysis time thinking that test2 is a duplicate table alias
+			"INSERT INTO test VALUES (2,4), (6,8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test ORDER BY 1",
+				Expected: []sql.Row{
+					{0, 2}, {1, 3}, {2, -440},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2 ORDER BY 1",
+				Expected: []sql.Row{
+					{2, -440},
 				},
 			},
 		},
