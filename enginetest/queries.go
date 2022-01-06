@@ -67,7 +67,7 @@ var SpatialQueryTests = []QueryTest{
 		}},
 	},
 	{
-		Query: `SELECT HEX(ST_ASWKB(p)) from point_table`,
+		Query:    `SELECT HEX(ST_ASWKB(p)) from point_table`,
 		Expected: []sql.Row{{"0101000000000000000000F03F0000000000000040"}},
 	},
 	{
@@ -78,20 +78,20 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
+		Query:    `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
 		Expected: []sql.Row{{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"}},
 	},
 	{
-		Query: `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
-		Expected: []sql.Row{{sql.Point{X:123.45,Y:6.78}}},
+		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
+		Expected: []sql.Row{{sql.Point{X: 123.45, Y: 6.78}}},
 	},
 	{
-		Query: `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{1.2, 3.45},{67.8, 9}}}}},
+		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
+		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{1.2, 3.45}, {67.8, 9}}}}},
 	},
 	{
-		Query: `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0,0},{2,2},{1,1},{0,0}}}}}}},
+		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {2, 2}, {1, 1}, {0, 0}}}}}}},
 	},
 }
 
