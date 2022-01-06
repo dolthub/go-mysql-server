@@ -123,7 +123,6 @@ func shouldUseTriggerStatementForReturnRow(stmt sql.Node) bool {
 	}
 }
 
-
 // Close implements the sql.RowIter interface.
 func (i *triggerBlockIter) Close(*sql.Context) error {
 	return nil
