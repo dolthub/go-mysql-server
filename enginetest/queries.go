@@ -67,7 +67,7 @@ var SpatialQueryTests = []QueryTest{
 		}},
 	},
 	{
-		Query: `SELECT ST_ASWKT(p) from point_table`,
+		Query:    `SELECT ST_ASWKT(p) from point_table`,
 		Expected: []sql.Row{{"POINT(1 2)"}},
 	},
 	{
@@ -78,11 +78,11 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT ST_ASWKT(p) from polygon_table`,
+		Query:    `SELECT ST_ASWKT(p) from polygon_table`,
 		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
 	},
 	{
-		Query: `SELECT ST_ASTEXT(p) from polygon_table`,
+		Query:    `SELECT ST_ASTEXT(p) from polygon_table`,
 		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
 	},
 	{
