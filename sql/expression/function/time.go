@@ -759,6 +759,10 @@ type Now struct {
 	precision *int
 }
 
+func (n *Now) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = (*Now)(nil)
 
 // NewNow returns a new Now node.
@@ -1220,6 +1224,10 @@ type CurrTime struct {
 	NoArgFunc
 }
 
+func (c CurrTime) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = CurrTime{}
 
 // Description implements sql.FunctionExpression
@@ -1260,6 +1268,10 @@ type CurrTimestamp struct {
 	args []sql.Expression
 }
 
+func (c *CurrTimestamp) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = (*CurrTimestamp)(nil)
 
 // FunctionName implements sql.FunctionExpression
@@ -1274,10 +1286,6 @@ func (c *CurrTimestamp) Description() string {
 
 func NewCurrTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	return &CurrTimestamp{args}, nil
-}
-
-func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.QueryTime(), nil
 }
 
 func (c *CurrTimestamp) String() string {

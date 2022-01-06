@@ -143,7 +143,7 @@ CREATE TABLE T2
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
@@ -506,7 +506,7 @@ func TestChecksOnUpdate(t *testing.T) {
 	enginetest.TestChecksOnUpdate(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTestDisallowedCheckConstraints(t *testing.T) {
+func TestDisallowedCheckConstraints(t *testing.T) {
 	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
