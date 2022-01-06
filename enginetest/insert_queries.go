@@ -626,13 +626,13 @@ var SpatialInsertQueries = []WriteQueryTest{
 		WriteQuery:          "INSERT INTO line_table VALUES (2, LINESTRING(POINT(1,2),POINT(3,4)));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM line_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}}, {1, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}}, {2, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}}},
+		ExpectedSelect:      []sql.Row{{0, sql.Linestring{Points: []sql.Point{{X:1,Y:2}, {X:3,Y:4}}}}, {1, sql.Linestring{Points: []sql.Point{{X:1,Y:2}, {X:3,Y:4}, {X:5,Y:6}}}}, {2, sql.Linestring{Points: []sql.Point{{X:1,Y:2}, {X:3,Y:4}}}}},
 	},
 	{
 		WriteQuery:          "INSERT INTO polygon_table VALUES (1, POLYGON(LINESTRING(POINT(1,1),POINT(1,-1),POINT(-1,-1),POINT(-1,1),POINT(1,1))));",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
 		SelectQuery:         "SELECT * FROM polygon_table;",
-		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1, 1}, {1, -1}, {-1, -1}, {-1, 1}, {1, 1}}}}}}},
+		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X:0,Y:0}, {X:0,Y:1}, {X:1,Y:1}, {X:0,Y:0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X:1,Y:1}, {X:1,Y:-1}, {X:-1, Y:-1}, {X:-1,Y:1}, {X:1,Y:1}}}}}}},
 	},
 }
 var InsertScripts = []ScriptTest{
