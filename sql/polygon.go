@@ -124,5 +124,5 @@ func (t PolygonType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t PolygonType) Zero() interface{} {
-	return Polygon{Lines: []Linestring{{[]Point{{},{},{},{}}}}}
+	return Polygon{Lines: []Linestring{{[]Point{{}, {}, {}, {}}}}}
 }
