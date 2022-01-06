@@ -143,36 +143,21 @@ CREATE TABLE T2
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "WHERE clause considers ENUM/SET types for comparisons",
+			Name: "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
 			SetUpScript: []string{
-				// "CREATE TABLE test (pk BIGINT PRIMARY KEY, v2 SET('a', 'b', 'c'));",
-				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
-				"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
+				"create table t1 (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+				"create table sequence_table (max_id integer PRIMARY KEY);",
+				"create trigger update_position_id before insert on t1 for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
+				"insert into sequence_table values (1);",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    "SELECT * FROM test;",
-					Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
-				},
-				{
-					Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-				},
-				{
-					Query:    "SELECT * FROM test;",
-					Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
-				},
-				{
-					Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
-					Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-				},
-				{
-					Query:    "SELECT * FROM test;",
-					Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+					Query:    "insert into t1 () values ();",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 		},
@@ -444,6 +429,13 @@ func TestComplexIndexQueries(t *testing.T) {
 
 func TestTriggers(t *testing.T) {
 	enginetest.TestTriggers(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestBrokenTriggers(t *testing.T) {
+	h := enginetest.NewSkippingMemoryHarness()
+	for _, script := range enginetest.BrokenTriggerQueries {
+		enginetest.TestScript(t, h, script)
+	}
 }
 
 func TestStoredProcedures(t *testing.T) {
