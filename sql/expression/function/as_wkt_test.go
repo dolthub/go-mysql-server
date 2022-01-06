@@ -15,7 +15,6 @@
 package function
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,9 +45,7 @@ func TestAsWKT(t *testing.T) {
 		f := NewAsWKT(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}, sql.LinestringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
-		require.NoError(err)
-		require.Equal(res, v)
+		require.Equal("LINESTRING(1 2,3 4)", v)
 	})
 
 	t.Run("convert polygon", func(t *testing.T) {
@@ -56,9 +53,7 @@ func TestAsWKT(t *testing.T) {
 		f := NewAsWKT(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}}, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
-		require.NoError(err)
-		require.Equal(res, v)
+		require.Equal("POLYGON((0 0,1 1,1 0,0 0))", v)
 	})
 
 	t.Run("convert null", func(t *testing.T) {
