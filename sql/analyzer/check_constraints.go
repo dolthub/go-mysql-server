@@ -97,11 +97,11 @@ func checkExpressionValid(e sql.Expression) error {
 	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *function.GetLock, *function.IsUsedLock, *function.IsFreeLock, *function.ReleaseAllLocks, *function.ReleaseLock:
-			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(e.String())
+			err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
 			return false
 		case sql.FunctionExpression:
 			if ndf, ok := e.(sql.NonDeterministicExpression); ok && ndf.IsNonDeterministic() {
-				err = sql.ErrInvalidConstraintFunctionsNotSupported.New(e.String())
+				err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
 			}
 			return false
 		case *plan.Subquery:
