@@ -93,6 +93,73 @@ var SpatialQueryTests = []QueryTest{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
 		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {2, 2}, {1, 1}, {0, 0}}}}}}},
 	},
+	{
+		Query:    `SELECT ST_ASWKT(p) from point_table`,
+		Expected: []sql.Row{{"POINT(1 2)"}},
+	},
+	{
+		Query: `SELECT ST_ASWKT(l) from line_table`,
+		Expected: []sql.Row{
+			{"LINESTRING(1 2,3 4)"},
+			{"LINESTRING(1 2,3 4,5 6)"},
+		},
+	},
+	{
+		Query:    `SELECT ST_ASWKT(p) from polygon_table`,
+		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+	},
+	{
+		Query:    `SELECT ST_ASTEXT(p) from polygon_table`,
+		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)))`,
+		Expected: []sql.Row{{sql.Point{X: 1, Y: 2}}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
+		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{1.1, 2.22}, {3.333, 4.4444}}}}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1.2, 3.4}, {2.5, -6.7}, {33, 44}, {1.2, 3.4}}}}}}},
+	},
+	{
+		Query:    `SELECT ST_X(POINT(1,2))`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_Y(POINT(1,2))`,
+		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query:    `SELECT ST_X(POINT(123.45,6.789))`,
+		Expected: []sql.Row{{123.45}},
+	},
+	{
+		Query:    `SELECT ST_Y(POINT(123.45,6.789))`,
+		Expected: []sql.Row{{6.789}},
+	},
+	{
+		Query:    `SELECT ST_X(POINT(1,2),99.9)`,
+		Expected: []sql.Row{{sql.Point{X: 99.9, Y: 2}}},
+	},
+	{
+		Query:    `SELECT ST_Y(POINT(1,2),99.9)`,
+		Expected: []sql.Row{{sql.Point{X: 1, Y: 99.9}}},
+	},
+	{
+		Query:    `SELECT ST_X(p) from point_table`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_X(p) from point_table`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_Y(p) from point_table`,
+		Expected: []sql.Row{{2.0}},
+	},
 }
 
 var QueryTests = []QueryTest{

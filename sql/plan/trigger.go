@@ -172,10 +172,6 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 }
 
 func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
-	if qp, ok := logic.(*QueryProcess); ok {
-		logic = qp.Child
-	}
-
 	switch logic := logic.(type) {
 	// TODO: are there other statement types that we should use here?
 	case *Set:

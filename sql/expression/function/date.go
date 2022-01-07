@@ -450,6 +450,10 @@ type CurrDate struct {
 	NoArgFunc
 }
 
+func (c CurrDate) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = CurrDate{}
 
 // Description implements sql.FunctionExpression
