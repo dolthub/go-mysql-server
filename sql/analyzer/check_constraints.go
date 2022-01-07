@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -95,9 +96,13 @@ func checkExpressionValid(e sql.Expression) error {
 	var err error
 	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
-		// TODO: deterministic functions are fine
+		case *function.GetLock, *function.IsUsedLock, *function.IsFreeLock, function.ReleaseAllLocks, *function.ReleaseLock:
+			err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
+			return false
 		case sql.FunctionExpression:
-			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(e.String())
+			if ndf, ok := e.(sql.NonDeterministicExpression); ok && ndf.IsNonDeterministic() {
+				err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
+			}
 			return false
 		case *plan.Subquery:
 			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(e.String())

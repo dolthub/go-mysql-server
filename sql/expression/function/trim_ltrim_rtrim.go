@@ -115,7 +115,16 @@ func (t Trim) IsNullable() bool {
 }
 
 func (t Trim) String() string {
-	return fmt.Sprintf("TRIM(%s, %s, %s)", t.str, t.pat, t.pat)
+	if t.dir == sqlparser.Leading {
+		return fmt.Sprintf("trim(leading %v from %v)", t.pat, t.str)
+	} else if t.dir == sqlparser.Trailing {
+		return fmt.Sprintf("trim(trailing %v from %v)", t.pat, t.str)
+	} else {
+		if t.pat.String() == " " {
+			return fmt.Sprintf("trim(%v)", t.str)
+		}
+		return fmt.Sprintf("trim(both %v from %v)", t.pat, t.str)
+	}
 }
 
 func (t Trim) Resolved() bool {

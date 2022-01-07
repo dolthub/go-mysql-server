@@ -5,6 +5,10 @@ import "github.com/dolthub/go-mysql-server/sql"
 // RowCount implements the ROW_COUNT() function
 type RowCount struct{}
 
+func (r RowCount) IsNonDeterministic() bool {
+	return true
+}
+
 func NewRowCount() sql.Expression {
 	return RowCount{}
 }
@@ -59,6 +63,10 @@ func (r RowCount) FunctionName() string {
 // LastInsertId implements the LAST_INSERT_ID() function
 type LastInsertId struct{}
 
+func (r LastInsertId) IsNonDeterministic() bool {
+	return true
+}
+
 func NewLastInsertId() sql.Expression {
 	return LastInsertId{}
 }
@@ -112,6 +120,10 @@ func (r LastInsertId) FunctionName() string {
 
 // FoundRows implements the FOUND_ROWS() function
 type FoundRows struct{}
+
+func (r FoundRows) IsNonDeterministic() bool {
+	return true
+}
 
 func NewFoundRows() sql.Expression {
 	return FoundRows{}
