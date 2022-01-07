@@ -21,6 +21,10 @@ import (
 // Database implements the DATABASE() function
 type Database struct{}
 
+func (db *Database) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = (*Database)(nil)
 
 // NewDatabase returns a new Database function
@@ -52,9 +56,9 @@ func (*Database) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (d *Database) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (db *Database) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(db, len(children), 0)
 	}
 	return NewDatabase(), nil
 }
