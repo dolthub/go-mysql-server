@@ -134,14 +134,14 @@ type GeomFromText struct {
 
 var _ sql.FunctionExpression = (*GeomFromText)(nil)
 
-// NewGeomFromText creates a new point expression.
-func NewGeomFromText(e sql.Expression) sql.Expression {
+// NewGeomFromWKT creates a new point expression.
+func NewGeomFromWKT(e sql.Expression) sql.Expression {
 	return &GeomFromText{expression.UnaryExpression{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
 func (p *GeomFromText) FunctionName() string {
-	return "st_geomfromtext"
+	return "st_geomfromwkt"
 }
 
 // Description implements sql.FunctionExpression
@@ -160,7 +160,7 @@ func (p *GeomFromText) Type() sql.Type {
 }
 
 func (p *GeomFromText) String() string {
-	return fmt.Sprintf("ST_GEOMFROMTEXT(%s)", p.Child.String())
+	return fmt.Sprintf("ST_GEOMFROMWKT(%s)", p.Child.String())
 }
 
 // WithChildren implements the Expression interface.
@@ -168,7 +168,7 @@ func (p *GeomFromText) WithChildren(children ...sql.Expression) (sql.Expression,
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewGeomFromText(children[0]), nil
+	return NewGeomFromWKT(children[0]), nil
 }
 
 // ParseWKTHeader should extract the type from the geometry string
@@ -359,52 +359,52 @@ func (p *GeomFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 }
 
-// PointFromText is a function that returns a point type from a WKT string
-type PointFromText struct {
+// PointFromWKT is a function that returns a point type from a WKT string
+type PointFromWKT struct {
 	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*PointFromText)(nil)
+var _ sql.FunctionExpression = (*PointFromWKT)(nil)
 
-// NewPointFromText creates a new point expression.
-func NewPointFromText(e sql.Expression) sql.Expression {
-	return &PointFromText{expression.UnaryExpression{Child: e}}
+// NewPointFromWKT creates a new point expression.
+func NewPointFromWKT(e sql.Expression) sql.Expression {
+	return &PointFromWKT{expression.UnaryExpression{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *PointFromText) FunctionName() string {
-	return "st_pointfromtext"
+func (p *PointFromWKT) FunctionName() string {
+	return "st_pointfromwkt"
 }
 
 // Description implements sql.FunctionExpression
-func (p *PointFromText) Description() string {
+func (p *PointFromWKT) Description() string {
 	return "returns a new point from a WKT string."
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *PointFromText) IsNullable() bool {
+func (p *PointFromWKT) IsNullable() bool {
 	return p.Child.IsNullable()
 }
 
 // Type implements the sql.Expression interface.
-func (p *PointFromText) Type() sql.Type {
+func (p *PointFromWKT) Type() sql.Type {
 	return p.Child.Type()
 }
 
-func (p *PointFromText) String() string {
-	return fmt.Sprintf("ST_POINTFROMTEXT(%s)", p.Child.String())
+func (p *PointFromWKT) String() string {
+	return fmt.Sprintf("ST_POINTFROMWKT(%s)", p.Child.String())
 }
 
 // WithChildren implements the Expression interface.
-func (p *PointFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *PointFromWKT) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewPointFromText(children[0]), nil
+	return NewPointFromWKT(children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.
-func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *PointFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
 	val, err := p.Child.Eval(ctx, row)
 	if err != nil {
@@ -425,52 +425,52 @@ func (p *PointFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return nil, sql.ErrInvalidGISData.New("ST_PointFromText")
 }
 
-// LineFromText is a function that returns a point type from a WKT string
-type LineFromText struct {
+// LineFromWKT is a function that returns a point type from a WKT string
+type LineFromWKT struct {
 	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*LineFromText)(nil)
+var _ sql.FunctionExpression = (*LineFromWKT)(nil)
 
-// NewLineFromText creates a new point expression.
-func NewLineFromText(e sql.Expression) sql.Expression {
-	return &LineFromText{expression.UnaryExpression{Child: e}}
+// NewLineFromWKT creates a new point expression.
+func NewLineFromWKT(e sql.Expression) sql.Expression {
+	return &LineFromWKT{expression.UnaryExpression{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *LineFromText) FunctionName() string {
-	return "st_linefromtext"
+func (p *LineFromWKT) FunctionName() string {
+	return "st_linefromwkt"
 }
 
 // Description implements sql.FunctionExpression
-func (p *LineFromText) Description() string {
+func (p *LineFromWKT) Description() string {
 	return "returns a new line from a WKT string."
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *LineFromText) IsNullable() bool {
+func (p *LineFromWKT) IsNullable() bool {
 	return p.Child.IsNullable()
 }
 
 // Type implements the sql.Expression interface.
-func (p *LineFromText) Type() sql.Type {
+func (p *LineFromWKT) Type() sql.Type {
 	return p.Child.Type()
 }
 
-func (p *LineFromText) String() string {
-	return fmt.Sprintf("ST_LINEFROMTEXT(%s)", p.Child.String())
+func (p *LineFromWKT) String() string {
+	return fmt.Sprintf("ST_LINEFROMWKT(%s)", p.Child.String())
 }
 
 // WithChildren implements the Expression interface.
-func (p *LineFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *LineFromWKT) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewLineFromText(children[0]), nil
+	return NewLineFromWKT(children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.
-func (p *LineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *LineFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
 	val, err := p.Child.Eval(ctx, row)
 	if err != nil {
@@ -491,52 +491,52 @@ func (p *LineFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return nil, sql.ErrInvalidGISData.New("ST_LineFromText")
 }
 
-// PolyFromText is a function that returns a polygon type from a WKT string
-type PolyFromText struct {
+// PolyFromWKT is a function that returns a polygon type from a WKT string
+type PolyFromWKT struct {
 	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*PolyFromText)(nil)
+var _ sql.FunctionExpression = (*PolyFromWKT)(nil)
 
-// NewPolygonFromText creates a new polygon expression.
-func NewPolygonFromText(e sql.Expression) sql.Expression {
-	return &PolyFromText{expression.UnaryExpression{Child: e}}
+// NewPolyFromWKT creates a new polygon expression.
+func NewPolyFromWKT(e sql.Expression) sql.Expression {
+	return &PolyFromWKT{expression.UnaryExpression{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (p *PolyFromText) FunctionName() string {
-	return "st_polyfromtext"
+func (p *PolyFromWKT) FunctionName() string {
+	return "st_polyfromwkt"
 }
 
 // Description implements sql.FunctionExpression
-func (p *PolyFromText) Description() string {
+func (p *PolyFromWKT) Description() string {
 	return "returns a new polygon from a WKT string."
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *PolyFromText) IsNullable() bool {
+func (p *PolyFromWKT) IsNullable() bool {
 	return p.Child.IsNullable()
 }
 
 // Type implements the sql.Expression interface.
-func (p *PolyFromText) Type() sql.Type {
+func (p *PolyFromWKT) Type() sql.Type {
 	return p.Child.Type()
 }
 
-func (p *PolyFromText) String() string {
-	return fmt.Sprintf("ST_POLYFROMTEXT(%s)", p.Child.String())
+func (p *PolyFromWKT) String() string {
+	return fmt.Sprintf("ST_POLYFROMWKT(%s)", p.Child.String())
 }
 
 // WithChildren implements the Expression interface.
-func (p *PolyFromText) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *PolyFromWKT) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return NewPolygonFromText(children[0]), nil
+	return NewPolyFromWKT(children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.
-func (p *PolyFromText) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (p *PolyFromWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
 	val, err := p.Child.Eval(ctx, row)
 	if err != nil {
