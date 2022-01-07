@@ -53,6 +53,10 @@ import (
 
 type UUIDFunc struct{}
 
+func (u UUIDFunc) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = &UUIDFunc{}
 
 func NewUUIDFunc() sql.Expression {

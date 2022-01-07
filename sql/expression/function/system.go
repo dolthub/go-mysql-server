@@ -20,6 +20,10 @@ type ConnectionID struct {
 	NoArgFunc
 }
 
+func (c ConnectionID) IsNonDeterministic() bool {
+	return true
+}
+
 func connIDFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	return ctx.ID(), nil
 }
@@ -54,6 +58,10 @@ func (c ConnectionID) WithChildren(children ...sql.Expression) (sql.Expression, 
 
 type User struct {
 	NoArgFunc
+}
+
+func (c User) IsNonDeterministic() bool {
+	return true
 }
 
 func userFuncLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
