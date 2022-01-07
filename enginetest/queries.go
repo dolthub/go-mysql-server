@@ -118,7 +118,7 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X:1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
+		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
