@@ -178,10 +178,11 @@ func (a *AddColumn) updateRowsWithDefaults(ctx *sql.Context, row sql.Row) error 
 	for {
 		r, err := tableIter.Next(ctx)
 		if err == io.EOF {
-			return nil
+			return updater.Close(ctx)
 		}
 
 		if err != nil {
+			_ = updater.Close(ctx)
 			return err
 		}
 
