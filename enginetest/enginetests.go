@@ -2424,7 +2424,13 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK ((a + b) / 2 >= 1) ENFORCED")
+
+	// TODO: checks get serialized as strings, which means that the String() method of functions is load-bearing.
+	//  We do not have tests for all of them. Write some.
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk4 CHECK (upper(c) = c) ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk5 CHECK (trim(c) = c) ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk6 CHECK (trim(leading ' ' from c) = c) ENFORCED")
+
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1,'ABC')")
 
 	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
@@ -2433,6 +2439,8 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) VALUES (0,0)", sql.ErrCheckConstraintViolated)
 	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) VALUES (0,1)", sql.ErrCheckConstraintViolated)
 	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,'abc')", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,'ABC ')", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,' ABC')", sql.ErrCheckConstraintViolated)
 
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (2,2,'ABC')")
 	RunQuery(t, e, harness, "INSERT INTO t1 (a,b) VALUES (4,NULL)")
