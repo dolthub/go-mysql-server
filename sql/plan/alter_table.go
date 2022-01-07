@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -144,7 +145,107 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, err
 	}
 
-	return sql.RowsToRowIter(), alterable.AddColumn(ctx, a.column, a.order)
+	err = alterable.AddColumn(ctx, a.column, a.order)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(), a.updateRowsWithDefaults(ctx, row)
+}
+
+// updateRowsWithDefaults iterates through an updatable table and applies an update to each row.
+func (a *AddColumn) updateRowsWithDefaults(ctx *sql.Context, row sql.Row) error {
+	updatable, err := getUpdatable(a.Child)
+	if err != nil {
+		return err
+	}
+
+	tableIter, err := a.Child.RowIter(ctx, row)
+	if err != nil {
+		return err
+	}
+
+	schema := updatable.Schema()
+	idx := -1
+	for i, col := range schema {
+		if col.Name == a.column.Name {
+			idx = i
+		}
+	}
+
+	updater := updatable.Updater(ctx)
+
+	for {
+		r, err := tableIter.Next(ctx)
+		if err == io.EOF {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		updatedRow, err := applyDefaults(ctx, updatable.Schema(), []int{idx}, r)
+		if err != nil {
+			return err
+		}
+
+		err = updater.Update(ctx, r, updatedRow)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+// applyDefaults applies the default values of the given column indices to the given row, and returns a new row with the updated values.
+// This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
+// present and in the order as represented by the schema. If no columns are given, then the given row is returned. Column indices should
+// be sorted and in ascending order, however this is not enforced.
+func applyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row) (sql.Row, error) {
+	if len(cols) == 0 {
+		return row, nil
+	}
+	newRow := row.Copy()
+	if len(tblSch) != len(row) {
+		return nil, fmt.Errorf("any row given to updateRowsWithDefaults must be of the same length as the table it represents")
+	}
+	var secondPass []int
+	for _, col := range cols {
+		if col < 0 || col > len(tblSch) {
+			return nil, fmt.Errorf("column index `%d` is out of bounds, table schema has `%d` number of columns", col, len(tblSch))
+		}
+		if !tblSch[col].Default.IsLiteral() {
+			secondPass = append(secondPass, col)
+			continue
+		} else if tblSch[col].Default == nil && !tblSch[col].Nullable {
+			val := tblSch[col].Type.Zero()
+			var err error
+			newRow[col], err = tblSch[col].Type.Convert(val)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			val, err := tblSch[col].Default.Eval(ctx, newRow)
+			if err != nil {
+				return nil, err
+			}
+			newRow[col], err = tblSch[col].Type.Convert(val)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	for _, col := range secondPass {
+		val, err := tblSch[col].Default.Eval(ctx, newRow)
+		if err != nil {
+			return nil, err
+		}
+		newRow[col], err = tblSch[col].Type.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return newRow, nil
 }
 
 func (a *AddColumn) Expressions() []sql.Expression {
