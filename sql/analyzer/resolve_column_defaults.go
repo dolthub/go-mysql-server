@@ -448,7 +448,12 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 		}
 		switch node := n.(type) {
 		case *plan.InsertInto:
-			sch := node.Destination.Schema()
+			table := getResolvedTable(node.Destination)
+			sch := table.Schema()
+			if colIndex >= len(sch) {
+				return e, nil
+			}
+
 			col := sch[colIndex]
 			colIndex++
 			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)

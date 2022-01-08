@@ -35,7 +35,9 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			return n, nil
 		}
 
-		insertable, err := plan.GetInsertable(insert.Destination)
+		table := getResolvedTable(insert.Destination)
+
+		insertable, err := plan.GetInsertable(table)
 		if err != nil {
 			return nil, err
 		}

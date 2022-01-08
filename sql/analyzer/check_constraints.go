@@ -124,8 +124,8 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.InsertInto:
 			nn := *node
 
-			rtable, ok := nn.Destination.(*plan.ResolvedTable)
-			if !ok {
+			rtable := getResolvedTable(nn.Destination)
+			if rtable == nil {
 				return node, nil
 			}
 

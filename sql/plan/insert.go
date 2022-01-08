@@ -59,7 +59,8 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrDuplicateEntry,
 	sql.ErrUniqueKeyViolation}
 
-// InsertInto is a node describing the insertion into some table.
+// InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
+// them into.
 type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
@@ -98,6 +99,7 @@ func (ii *InsertInto) Schema() sql.Schema {
 }
 
 func (ii *InsertInto) Children() []sql.Node {
+	// The source node is analyzed completely independently, so we don't include it in children
 	return []sql.Node{ii.Destination}
 }
 
@@ -109,6 +111,39 @@ func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *ii
 	nc.db = database
 	return &nc, nil
+}
+
+// InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
+// overridden. This is useful when the table in question has late-resolving column defaults.
+type InsertDestination struct {
+	UnaryNode
+	Sch sql.Schema
+}
+
+func (i *InsertDestination) String() string {
+	return i.UnaryNode.Child.String()
+}
+
+func (i *InsertDestination) Schema() sql.Schema {
+	return i.Sch
+}
+
+func (i InsertDestination) WithSchema(schema sql.Schema) sql.Node {
+	i.Sch = schema
+	return &i
+}
+
+func (i *InsertDestination) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return i.UnaryNode.Child.RowIter(ctx, row)
+}
+
+func (i InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+	}
+
+	i.UnaryNode.Child = children[0]
+	return &i, nil
 }
 
 type insertIter struct {
