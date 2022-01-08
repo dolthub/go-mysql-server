@@ -555,18 +555,46 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 }
 
 func (ii *InsertInto) Expressions() []sql.Expression {
-	return append(ii.OnDupExprs, ii.Checks.ToExpressions()...)
+	return append(wrappedColumnDefaults(ii.Destination.Schema()), append(ii.OnDupExprs, ii.Checks.ToExpressions()...)...)
+}
+
+// wrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
+func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
+	defs := make([]sql.Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
+}
+
+// schemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
+// wrapped with expression.Wrapper.
+func schemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
+	sc := schema.Copy()
+	for i, d := range defaults {
+		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			sc[i].Default = unwrappedColDefVal
+		} else {
+			sc[i].Default = nil
+		}
+	}
+	return sc
 }
 
 func (ii InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(ii.OnDupExprs)+len(ii.Checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.Checks))
+	if len(newExprs) != len(ii.Destination.Schema())+len(ii.OnDupExprs)+len(ii.Checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.Destination.Schema())+len(ii.OnDupExprs)+len(ii.Checks))
 	}
 
-	ii.OnDupExprs = newExprs[:len(ii.OnDupExprs)]
+	// TODO: need to put this updated schema somewhere
+	schemaLen := len(ii.Destination.Schema())
+	//ns := schemaWithDefaults(ii.Destination.Schema(), newExprs[:schemaLen])
+
+	ii.OnDupExprs = newExprs[schemaLen:schemaLen+len(ii.OnDupExprs)]
 
 	var err error
-	ii.Checks, err = ii.Checks.FromExpressions(newExprs[len(ii.OnDupExprs):])
+	ii.Checks, err = ii.Checks.FromExpressions(newExprs[schemaLen+len(ii.OnDupExprs):])
 	if err != nil {
 		return nil, err
 	}

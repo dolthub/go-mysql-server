@@ -31,6 +31,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_common_table_expressions", resolveCommonTableExpressions},
 	{"resolve_databases", resolveDatabases},
 	{"resolve_tables", resolveTables},
+	{"parse_column_defaults", parseColumnDefaults},
 	{"resolve_drop_constraint", resolveDropConstraint},
 	{"validate_drop_constraint", validateDropConstraint},
 	{"load_check_constraints", loadChecks},

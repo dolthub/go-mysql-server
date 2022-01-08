@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -446,6 +447,11 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return e, nil
 		}
 		switch node := n.(type) {
+		case *plan.InsertInto:
+			sch := node.Destination.Schema()
+			col := sch[colIndex]
+			colIndex++
+			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 		case *plan.CreateTable:
 			sch := node.CreateSchema.Schema
 			col := sch[colIndex]
@@ -472,6 +478,48 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return e, nil
 		}
 	})
+}
+
+// parseColumnDefaults transforms UnresolvedColumnDefault expressions into ColumnDefaultValue expressions, which
+// amounts to parsing the string representation into an actual expression. We only require an actual column default
+// value for some node types, where the value will be used.
+func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, _ := ctx.Span("parse_column_defaults")
+	defer span.Finish()
+
+	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
+		eWrapper, ok := e.(*expression.Wrapper)
+		if !ok {
+			return e, nil
+		}
+		switch n.(type) {
+		case *plan.InsertInto, *plan.CreateTable, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet:
+			return parseColumnDefaultsForWrapper(ctx, eWrapper)
+		default:
+			return e, nil
+		}
+	})
+}
+
+func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql.Expression, error) {
+	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
+	if !ok {
+		return e, nil
+	}
+
+	if newDefault.Resolved() {
+		return e, nil
+	}
+
+	if ucd, ok := newDefault.Expression.(sql.UnresolvedColumnDefault); ok {
+		var err error
+		newDefault, err = parse.StringToColumnDefaultValue(ctx, ucd.String())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return expression.WrapExpression(newDefault), nil
 }
 
 func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, error) {
