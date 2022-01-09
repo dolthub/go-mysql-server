@@ -120,6 +120,13 @@ type InsertDestination struct {
 	Sch sql.Schema
 }
 
+func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
+	return &InsertDestination{
+		UnaryNode: UnaryNode{Child: node},
+		Sch: schema,
+	}
+}
+
 func (id *InsertDestination) Expressions() []sql.Expression {
 	return wrappedColumnDefaults(id.Sch)
 }

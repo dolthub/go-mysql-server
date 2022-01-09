@@ -492,13 +492,28 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	span, _ := ctx.Span("parse_column_defaults")
 	defer span.Finish()
 
+	ii, ok := n.(*plan.InsertInto)
+	if !ok {
+		return n, nil
+	}
+
+	if !ii.Destination.Resolved() {
+		return n, nil
+	}
+
+	var err error
+	n, err = n.WithChildren(plan.NewInsertDestination(ii.Destination.Schema(), ii.Destination))
+	if err != nil {
+		return nil, err
+	}
+
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {
 			return e, nil
 		}
 		switch n.(type) {
-		case *plan.InsertInto, *plan.CreateTable, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet:
+		case *plan.InsertDestination:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, nil
