@@ -120,30 +120,38 @@ type InsertDestination struct {
 	Sch sql.Schema
 }
 
-func (i *InsertDestination) String() string {
-	return i.UnaryNode.Child.String()
+func (id *InsertDestination) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(id.Sch)
 }
 
-func (i *InsertDestination) Schema() sql.Schema {
-	return i.Sch
-}
-
-func (i InsertDestination) WithSchema(schema sql.Schema) sql.Node {
-	i.Sch = schema
-	return &i
-}
-
-func (i *InsertDestination) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return i.UnaryNode.Child.RowIter(ctx, row)
-}
-
-func (i InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
+func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(id.Sch) {
+		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
 	}
 
-	i.UnaryNode.Child = children[0]
-	return &i, nil
+	id.Sch = schemaWithDefaults(id.Sch, exprs)
+	return &id, nil
+}
+
+func (id *InsertDestination) String() string {
+	return id.UnaryNode.Child.String()
+}
+
+func (id *InsertDestination) Schema() sql.Schema {
+	return id.Sch
+}
+
+func (id *InsertDestination) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return id.UnaryNode.Child.RowIter(ctx, row)
+}
+
+func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(id, len(children), 1)
+	}
+
+	id.UnaryNode.Child = children[0]
+	return &id, nil
 }
 
 type insertIter struct {
@@ -172,6 +180,8 @@ func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 		return getInsertableTable(node.Table)
 	case sql.TableWrapper:
 		return getInsertableTable(node.Underlying())
+	case *InsertDestination:
+		return GetInsertable(node.Child)
 	case *prependNode:
 		return GetInsertable(node.Child)
 	default:
@@ -192,7 +202,7 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 
 func newInsertIter(
 	ctx *sql.Context,
-	table sql.Node,
+	dest sql.Node,
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
@@ -200,9 +210,10 @@ func newInsertIter(
 	row sql.Row,
 	ignore bool,
 ) (sql.RowIter, error) {
-	dstSchema := table.Schema()
+	// This schema may vary from the table itself, particularly in terms of column defaults
+	dstSchema := dest.Schema()
 
-	insertable, err := GetInsertable(table)
+	insertable, err := GetInsertable(dest)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +240,7 @@ func newInsertIter(
 	insertExpressions := getInsertExpressions(values)
 	insertIter := &insertIter{
 		schema:      dstSchema,
-		tableNode:   table,
+		tableNode:   dest,
 		inserter:    inserter,
 		replacer:    replacer,
 		updater:     updater,
@@ -590,7 +601,7 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 }
 
 func (ii *InsertInto) Expressions() []sql.Expression {
-	return append(wrappedColumnDefaults(ii.Destination.Schema()), append(ii.OnDupExprs, ii.Checks.ToExpressions()...)...)
+	return append(ii.OnDupExprs, ii.Checks.ToExpressions()...)
 }
 
 // wrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
@@ -618,18 +629,14 @@ func schemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema
 }
 
 func (ii InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(ii.Destination.Schema())+len(ii.OnDupExprs)+len(ii.Checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.Destination.Schema())+len(ii.OnDupExprs)+len(ii.Checks))
+	if len(newExprs) != len(ii.OnDupExprs)+len(ii.Checks) {
+		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.Checks))
 	}
 
-	// TODO: need to put this updated schema somewhere
-	schemaLen := len(ii.Destination.Schema())
-	//ns := schemaWithDefaults(ii.Destination.Schema(), newExprs[:schemaLen])
-
-	ii.OnDupExprs = newExprs[schemaLen:schemaLen+len(ii.OnDupExprs)]
+	ii.OnDupExprs = newExprs[:len(ii.OnDupExprs)]
 
 	var err error
-	ii.Checks, err = ii.Checks.FromExpressions(newExprs[schemaLen+len(ii.OnDupExprs):])
+	ii.Checks, err = ii.Checks.FromExpressions(newExprs[len(ii.OnDupExprs):])
 	if err != nil {
 		return nil, err
 	}
