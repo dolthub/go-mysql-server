@@ -120,6 +120,8 @@ type InsertDestination struct {
 	Sch sql.Schema
 }
 
+var _ sql.Expressioner = (*InsertDestination)(nil)
+
 func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
 	return &InsertDestination{
 		UnaryNode: UnaryNode{Child: node},
@@ -144,8 +146,36 @@ func (id *InsertDestination) String() string {
 	return id.UnaryNode.Child.String()
 }
 
+func (id *InsertDestination) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("InsertDestination")
+	var children []string
+	for _, col := range id.Sch {
+		children = append(children, sql.DebugString(col.Default))
+	}
+	children = append(children, sql.DebugString(id.Child))
+
+	pr.WriteChildren(children...)
+
+	return pr.String()
+}
+
 func (id *InsertDestination) Schema() sql.Schema {
 	return id.Sch
+}
+
+func (id *InsertDestination) Resolved() bool {
+	if !id.UnaryNode.Resolved() {
+		return false
+	}
+
+	for _, col := range id.Sch {
+		if col.Default != nil && !col.Default.Expression.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (id *InsertDestination) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

@@ -126,6 +126,18 @@ func (e *ColumnDefaultValue) String() string {
 	}
 }
 
+func (e *ColumnDefaultValue) DebugString() string {
+	if e == nil {
+		return ""
+	}
+
+	if e.literal {
+		return DebugString(e.Expression)
+	} else {
+		return fmt.Sprintf("(%s)", DebugString(e.Expression))
+	}
+}
+
 // Type implements sql.Expression
 func (e *ColumnDefaultValue) Type() Type {
 	if e == nil {
