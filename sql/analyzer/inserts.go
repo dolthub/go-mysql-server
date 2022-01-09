@@ -96,7 +96,8 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			return nil, err
 		}
 
-		project, err := wrapRowSource(ctx, source, insertable, columnNames)
+		// The schema of the destination node and the underlying table differ subtly in terms of defaults
+		project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
 			return nil, err
 		}
@@ -122,9 +123,9 @@ func existsNonZeroValueCount(values sql.Node) bool {
 
 // wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
 // underlying table, in the same order.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, columnNames []string) (sql.Node, error) {
-	projExprs := make([]sql.Expression, len(destTbl.Schema()))
-	for i, f := range destTbl.Schema() {
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, error) {
+	projExprs := make([]sql.Expression, len(schema))
+	for i, f := range schema {
 		found := false
 		for j, col := range columnNames {
 			if strings.EqualFold(f.Name, col) {
