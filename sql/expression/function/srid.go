@@ -113,13 +113,13 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to int32
-	srid, err = sql.Int32.Convert(srid)
+	srid, err = sql.Uint32.Convert(srid)
 	if err != nil {
 		return nil, err
 	}
 
 	// Type assertion
-	_srid := uint32(srid.(int32))
+	_srid := srid.(uint32)
 
 	// Must be either 0 or 4230
 	if _srid != 0 && _srid != 4230 {
