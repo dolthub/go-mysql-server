@@ -87,6 +87,7 @@ type AddColumn struct {
 	UnaryNode
 	column *sql.Column
 	order  *sql.ColumnOrder
+	targetSch sql.Schema
 }
 
 var _ sql.Node = (*AddColumn)(nil)
@@ -132,7 +133,7 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	tbl := alterable.(sql.Table)
-	tblSch := tbl.Schema()
+	tblSch := a.targetSch
 	if a.order != nil && !a.order.First {
 		idx := tblSch.IndexOf(a.order.AfterColumn, tbl.Name())
 		if idx < 0 {
@@ -148,21 +149,23 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 }
 
 func (a *AddColumn) Expressions() []sql.Expression {
-	return expression.WrapExpressions(a.column.Default)
+	return append(wrappedColumnDefaults(a.getTargetSchema()), expression.WrapExpressions(a.column.Default)...)
 }
 
-func (a *AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1)
+func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 + len(a.targetSch) {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1 + len(a.targetSch))
 	}
-	na := *a
-	unwrappedColDefVal, ok := exprs[0].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+
+	a.targetSch = schemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
+
+	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
-		na.column.Default = unwrappedColDefVal
+		a.column.Default = unwrappedColDefVal
 	} else { // nil fails type check
-		na.column.Default = nil
+		a.column.Default = nil
 	}
-	return &na, nil
+	return &a, nil
 }
 
 // Resolved implements the Resolvable interface.
@@ -208,6 +211,18 @@ func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (a *AddColumn) Children() []sql.Node {
 	return a.UnaryNode.Children()
+}
+
+func (a *AddColumn) getTargetSchema() sql.Schema {
+	if len(a.targetSch) == 0 && a.UnaryNode.Resolved() {
+		at, err := getAlterable(a.Child)
+		// This error will get picked up by other parts of the analysis
+		if err != nil {
+			return nil
+		}
+		a.targetSch = at.Schema()
+	}
+	return a.targetSch
 }
 
 type DropColumn struct {

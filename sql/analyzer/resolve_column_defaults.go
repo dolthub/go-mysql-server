@@ -503,7 +503,16 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return nil, err
 		}
 	case *plan.AddColumn:
-		// continue to transform below
+	// continue to transform below
+	case *plan.CreateTable:
+		if nn.Like() == nil {
+			return n, nil
+		}
+		// for create table like, continue to transform below
+	case *plan.ShowColumns:
+		// continue
+	case *plan.ShowCreateTable:
+		// continue
 	default:
 		return n, nil
 	}
