@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -179,14 +180,17 @@ const (
 
 // GeomFromWKB is a function that returns a geometry type from a WKB byte array
 type GeomFromWKB struct {
-	expression.UnaryExpression
+	expression.NaryExpression
 }
 
 var _ sql.FunctionExpression = (*GeomFromWKB)(nil)
 
 // NewGeomFromWKB creates a new geometry expression.
-func NewGeomFromWKB(e sql.Expression) sql.Expression {
-	return &GeomFromWKB{expression.UnaryExpression{Child: e}}
+func NewGeomFromWKB(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) < 1 || len(args) > 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMWKB", "1, 2, or 3", len(args))
+	}
+	return &GeomFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -199,26 +203,22 @@ func (p *GeomFromWKB) Description() string {
 	return "returns a new geometry from a WKB string."
 }
 
-// IsNullable implements the sql.Expression interface.
-func (p *GeomFromWKB) IsNullable() bool {
-	return p.Child.IsNullable()
-}
-
 // Type implements the sql.Expression interface.
 func (p *GeomFromWKB) Type() sql.Type {
-	return p.Child.Type()
+	return sql.PointType{} // TODO: replace with generic geometry type
 }
 
 func (p *GeomFromWKB) String() string {
-	return fmt.Sprintf("ST_GEOMFROMWKB(%s)", p.Child.String())
+	var args = make([]string, len(p.ChildExpressions))
+	for i, arg := range p.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_GEOMFROMWKB(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
 func (p *GeomFromWKB) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
-	}
-	return NewGeomFromWKB(children[0]), nil
+	return NewGeomFromWKB(children...)
 }
 
 // ParseWKBHeader parses the header portion of a byte array in WKB format to extract endianness and type
@@ -337,7 +337,7 @@ func WKBToPoly(buf []byte, isBig bool) (sql.Polygon, error) {
 // Eval implements the sql.Expression interface.
 func (p *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
-	val, err := p.Child.Eval(ctx, row)
+	val, err := p.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -356,6 +356,23 @@ func (p *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	isBig, geomType, err := ParseWKBHeader(v)
 	if err != nil {
 		return nil, err
+	}
+
+	// Determine SRID
+	srid := uint32(0)
+	if len(p.ChildExpressions) >= 2 {
+		s, err := p.ChildExpressions[1].Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if s == nil {
+			return nil, nil
+		}
+		s, err = sql.Uint32.Convert(s)
+		if err != nil {
+			return nil, err
+		}
+		srid = s.(uint32)
 	}
 
 	// Parse accordingly
