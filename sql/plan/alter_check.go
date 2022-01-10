@@ -117,8 +117,12 @@ func (c *CreateCheck) Execute(ctx *sql.Context) error {
 
 	for {
 		row, err := rowIter.Next(ctx)
-		if row == nil || err != io.EOF {
+		if err == io.EOF {
 			break
+		}
+
+		if err != nil {
+			return err
 		}
 
 		res, err = sql.EvaluateCondition(ctx, c.Check.Expr, row)

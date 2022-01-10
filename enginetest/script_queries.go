@@ -1567,4 +1567,17 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "adding check constraint to a table that violates said constraint correctly throws an error",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int)",
+			"INSERT INTO test VALUES (1),(2),(300)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE test ADD CONSTRAINT bad_check CHECK (pk < 5)",
+				ExpectedErr: plan.ErrCheckFailed,
+			},
+		},
+	},
 }
