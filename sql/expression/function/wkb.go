@@ -375,6 +375,13 @@ func (p *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		srid = s.(uint32)
 	}
 
+	// Must be valid SRID
+	if srid != 0 && srid != 4230 {
+		return nil, ErrInvalidSRID.New(srid)
+	}
+
+	// Determine xy order
+
 	// Parse accordingly
 	switch geomType {
 	case WKBPointID:
