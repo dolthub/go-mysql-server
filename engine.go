@@ -359,41 +359,25 @@ func (e *Engine) authCheck(ctx *sql.Context, node sql.Node) error {
 // This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
 // present and in the order as represented by the schema. If no columns are given, then the given row is returned. Column indices should
 // be sorted and in ascending order, however this is not enforced.
-func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row) (sql.Row, error) {
-	if len(cols) == 0 {
-		return row, nil
-	}
+func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row) (sql.Row, error) {
 	newRow := row.Copy()
 	if len(tblSch) != len(row) {
 		return nil, fmt.Errorf("any row given to ApplyDefaults must be of the same length as the table it represents")
 	}
-	var secondPass []int
-	for _, col := range cols {
-		if col < 0 || col > len(tblSch) {
-			return nil, fmt.Errorf("column index `%d` is out of bounds, table schema has `%d` number of columns", col, len(tblSch))
-		}
-		if !tblSch[col].Default.IsLiteral() {
-			secondPass = append(secondPass, col)
-			continue
-		} else if tblSch[col].Default == nil && !tblSch[col].Nullable {
-			val := tblSch[col].Type.Zero()
-			var err error
-			newRow[col], err = tblSch[col].Type.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			val, err := tblSch[col].Default.Eval(ctx, newRow)
-			if err != nil {
-				return nil, err
-			}
-			newRow[col], err = tblSch[col].Type.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-		}
+	secondPass := false
+	if col < 0 || col > len(tblSch) {
+		return nil, fmt.Errorf("column index `%d` is out of bounds, table schema has `%d` number of columns", col, len(tblSch))
 	}
-	for _, col := range secondPass {
+	if !tblSch[col].Default.IsLiteral() {
+		secondPass = true
+	} else if tblSch[col].Default == nil && !tblSch[col].Nullable {
+		val := tblSch[col].Type.Zero()
+		var err error
+		newRow[col], err = tblSch[col].Type.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+	} else {
 		val, err := tblSch[col].Default.Eval(ctx, newRow)
 		if err != nil {
 			return nil, err
@@ -403,6 +387,18 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 			return nil, err
 		}
 	}
+
+	if secondPass {
+		val, err := tblSch[col].Default.Eval(ctx, newRow)
+		if err != nil {
+			return nil, err
+		}
+		newRow[col], err = tblSch[col].Type.Convert(val)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return newRow, nil
 }
 
