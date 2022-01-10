@@ -54,12 +54,41 @@ func TestSRID(t *testing.T) {
 		require.Equal(uint32(4230), v)
 	})
 
-	t.Run("select specified invalid SRID is 1234", func(t *testing.T) {
+	t.Run("change SRID to 0", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 4230, X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 4230, X: 1, Y: 2}, sql.PointType{}),
+			expression.NewLiteral(0, sql.Int32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 0, X: 1, Y: 2}, v)
+	})
+
+	t.Run("change SRID to 4230", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 0, X: 123.4, Y: 56.789}, sql.PointType{}),
+			expression.NewLiteral(4230, sql.Int32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4230, X: 123.4, Y: 56.789}, v)
+	})
+
+	t.Run("change SRID to invalid 1234", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 0, X: 123.4, Y: 56.789}, sql.PointType{}),
+			expression.NewLiteral(1234, sql.Int32))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("invalid number of arguments, 0", func(t *testing.T) {
+		require := require.New(t)
+		_, err := NewSRID()
 		require.Error(err)
 	})
 }
