@@ -266,7 +266,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
 	}
 
-	for _, col := range tbl.Schema() {
+	for _, col := range d.targetSchema {
 		if col.Default == nil {
 			continue
 		}
