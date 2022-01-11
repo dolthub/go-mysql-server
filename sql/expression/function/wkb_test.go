@@ -307,7 +307,7 @@ func TestGeomFromWKB(t *testing.T) {
 		require.Equal(nil, v)
 	})
 
-	t.Run("convert null srid", func(t *testing.T) {
+	t.Run("convert null axis option", func(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
