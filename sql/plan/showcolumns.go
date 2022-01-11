@@ -93,7 +93,7 @@ func (s ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, _ := ctx.Span("plan.ShowColumns")
 
-	schema := s.Child.Schema()
+	schema := s.targetSchema
 	var rows = make([]sql.Row, len(schema))
 	for i, col := range schema {
 		var row sql.Row
