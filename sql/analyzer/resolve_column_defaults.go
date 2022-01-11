@@ -519,10 +519,6 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return n, nil
 		}
 		// for create table like, continue to transform below
-	case *plan.ShowColumns, *plan.AddColumn, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn:
-		// continue to transform below
-	default:
-		return n, nil
 	}
 
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
