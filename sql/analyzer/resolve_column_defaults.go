@@ -462,6 +462,18 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			col := sch[colIndex]
 			colIndex++
 			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+		case *plan.RenameColumn:
+			table := getResolvedTable(node.Child)
+			if table == nil {
+				return e, nil
+			}
+
+			idx := table.Schema().IndexOf(node.ColumnName, table.Name())
+			if idx < 0 {
+				return nil, sql.ErrTableColumnNotFound.New(table.Name(), node.ColumnName)
+			}
+
+			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
 		case *plan.AddColumn:
 			return resolveColumnDefaultsOnWrapper(ctx, node.Column(), eWrapper)
 		case *plan.ModifyColumn:
@@ -502,17 +514,13 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		if err != nil {
 			return nil, err
 		}
-	case *plan.AddColumn:
-	// continue to transform below
 	case *plan.CreateTable:
 		if nn.Like() == nil {
 			return n, nil
 		}
 		// for create table like, continue to transform below
-	case *plan.ShowColumns:
-		// continue
-	case *plan.ShowCreateTable:
-		// continue
+	case *plan.ShowColumns, *plan.AddColumn, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn:
+		// continue to transform below
 	default:
 		return n, nil
 	}
@@ -523,7 +531,7 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return e, nil
 		}
 		switch n.(type) {
-		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns:
+		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, nil

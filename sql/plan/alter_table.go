@@ -314,6 +314,7 @@ type RenameColumn struct {
 	UnaryNode
 	ColumnName    string
 	NewColumnName string
+	targetSchema sql.Schema
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
@@ -334,16 +335,61 @@ func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nr, nil
 }
 
+func (r RenameColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	r.targetSchema = schema
+	return &r, nil
+}
+
+func (r *RenameColumn) TargetSchema() sql.Schema {
+	return r.targetSchema
+}
+
 func (r *RenameColumn) String() string {
 	return fmt.Sprintf("rename column %s to %s", r.ColumnName, r.NewColumnName)
 }
 
+func (r *RenameColumn) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("rename column %s to %s", r.ColumnName, r.NewColumnName)
+
+	var children []string
+	for _, col := range r.targetSchema {
+		children = append(children, sql.DebugString(col))
+	}
+
+	pr.WriteChildren(children...)
+	return pr.String()
+}
+
 func (r *RenameColumn) Resolved() bool {
-	return r.UnaryNode.Resolved() && r.ddlNode.Resolved()
+	if !r.UnaryNode.Resolved() || !r.ddlNode.Resolved() {
+		return false
+	}
+
+	for _, col := range r.targetSchema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (r *RenameColumn) Schema() sql.Schema {
 	return nil
+}
+
+func (r *RenameColumn) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(r.targetSchema)
+}
+
+func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(r.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), len(r.targetSchema))
+	}
+
+	r.targetSchema = schemaWithDefaults(r.targetSchema, exprs)
+	return &r, nil
 }
 
 func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {

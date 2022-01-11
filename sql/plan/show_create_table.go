@@ -32,6 +32,7 @@ type ShowCreateTable struct {
 	IsView  bool
 	Indexes []sql.Index
 	Checks  sql.CheckConstraints
+	targetSchema sql.Schema
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
