@@ -36,7 +36,7 @@ type ShowCreateTable struct {
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(table sql.Node, isView bool) sql.Node {
+func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
