@@ -149,7 +149,7 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 }
 
 func (a *AddColumn) Expressions() []sql.Expression {
-	return append(wrappedColumnDefaults(a.getTargetSchema()), expression.WrapExpressions(a.column.Default)...)
+	return append(wrappedColumnDefaults(a.targetSch), expression.WrapExpressions(a.column.Default)...)
 }
 
 func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
@@ -171,6 +171,12 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 // Resolved implements the Resolvable interface.
 func (a *AddColumn) Resolved() bool {
 	return a.ddlNode.Resolved() && a.column.Default.Resolved()
+}
+
+// WithTargetSchema implements sql.SchemaTarget
+func (a AddColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	a.targetSch = schema
+	return &a, nil
 }
 
 func (a *AddColumn) validateDefaultPosition(tblSch sql.Schema) error {
@@ -211,18 +217,6 @@ func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 func (a *AddColumn) Children() []sql.Node {
 	return a.UnaryNode.Children()
-}
-
-func (a *AddColumn) getTargetSchema() sql.Schema {
-	if len(a.targetSch) == 0 && a.UnaryNode.Resolved() {
-		at, err := getAlterable(a.Child)
-		// This error will get picked up by other parts of the analysis
-		if err != nil {
-			return nil
-		}
-		a.targetSch = at.Schema()
-	}
-	return a.targetSch
 }
 
 type DropColumn struct {

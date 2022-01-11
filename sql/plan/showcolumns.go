@@ -26,6 +26,7 @@ type ShowColumns struct {
 	UnaryNode
 	Full    bool
 	Indexes []sql.Index
+	targetSchema sql.Schema
 }
 
 var (
@@ -64,6 +65,28 @@ func (s *ShowColumns) Schema() sql.Schema {
 		return showColumnsFullSchema
 	}
 	return showColumnsSchema
+}
+
+func (s *ShowColumns) Expressions() []sql.Expression {
+	if len(s.targetSchema) == 0 {
+		return nil
+	}
+
+	return wrappedColumnDefaults(s.targetSchema)
+}
+
+func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(s.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.targetSchema))
+	}
+
+	s.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
+	return &s, nil
+}
+
+func (s ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	s.targetSchema = schema
+	return &s, nil
 }
 
 // RowIter creates a new ShowColumns node.
