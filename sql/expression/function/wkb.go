@@ -340,6 +340,21 @@ func WKBToPoly(buf []byte, isBig bool, srid uint32, order bool) (sql.Polygon, er
 	return sql.Polygon{SRID: srid, Lines: lines}, nil
 }
 
+// ParseAxisOrder takes in a key, value string and determines the order of the xy coords
+func ParseAxisOrder(s string) (bool, error) {
+	// TODO: need to deal with whitespace, lowercase, and json-like parsing
+	s = strings.ToLower(s)
+	s = strings.TrimSpace(s)
+	switch s {
+	case "axis-order=long-lat":
+		return true, nil
+	case "axis-order=lat-long", "axis-order=srid-defined":
+		return false, nil
+	default:
+		return false, sql.ErrInvalidArgument.New("placeholder")
+	}
+}
+
 // Eval implements the sql.Expression interface.
 func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -396,16 +411,10 @@ func (g *GeomFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if o == nil {
-			return nil, err
+			return nil, nil
 		}
-		// TODO: need to deal with whitespace, lowercase, and json-like parsing
-		_o := o.(string)
-		switch _o {
-		case "axis-order=long-lat":
-			order = true
-		case "axis-order=lat-long", "axis-order=srid-defined":
-			order = false
-		default:
+		order, err = ParseAxisOrder(o.(string))
+		if err != nil {
 			return nil, sql.ErrInvalidArgument.New(g.FunctionName())
 		}
 	}
@@ -518,7 +527,6 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, ErrInvalidSRID.New(srid)
 	}
 
-	// TODO: convert this block to helper function
 	// Determine xy order
 	order := false
 	if len(p.ChildExpressions) == 3 {
@@ -527,16 +535,10 @@ func (p *PointFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 			return nil, err
 		}
 		if o == nil {
-			return nil, err
+			return nil, nil
 		}
-		// TODO: need to deal with whitespace, lowercase, and json-like parsing
-		_o := o.(string)
-		switch _o {
-		case "axis-order=long-lat":
-			order = true
-		case "axis-order=lat-long", "axis-order=srid-defined":
-			order = false
-		default:
+		order, err = ParseAxisOrder(o.(string))
+		if err != nil {
 			return nil, sql.ErrInvalidArgument.New(p.FunctionName())
 		}
 	}
@@ -640,7 +642,6 @@ func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, ErrInvalidSRID.New(srid)
 	}
 
-	// TODO: convert this block to helper function
 	// Determine xy order
 	order := false
 	if len(l.ChildExpressions) == 3 {
@@ -649,16 +650,10 @@ func (l *LineFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if o == nil {
-			return nil, err
+			return nil, nil
 		}
-		// TODO: need to deal with whitespace, lowercase, and json-like parsing
-		_o := o.(string)
-		switch _o {
-		case "axis-order=long-lat":
-			order = true
-		case "axis-order=lat-long", "axis-order=srid-defined":
-			order = false
-		default:
+		order, err = ParseAxisOrder(o.(string))
+		if err != nil {
 			return nil, sql.ErrInvalidArgument.New(l.FunctionName())
 		}
 	}
@@ -762,7 +757,6 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, ErrInvalidSRID.New(srid)
 	}
 
-	// TODO: convert this block to helper function
 	// Determine xy order
 	order := false
 	if len(p.ChildExpressions) == 3 {
@@ -771,16 +765,10 @@ func (p *PolyFromWKB) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if o == nil {
-			return nil, err
+			return nil, nil
 		}
-		// TODO: need to deal with whitespace, lowercase, and json-like parsing
-		_o := o.(string)
-		switch _o {
-		case "axis-order=long-lat":
-			order = true
-		case "axis-order=lat-long", "axis-order=srid-defined":
-			order = false
-		default:
+		order, err = ParseAxisOrder(o.(string))
+		if err != nil {
 			return nil, sql.ErrInvalidArgument.New(p.FunctionName())
 		}
 	}

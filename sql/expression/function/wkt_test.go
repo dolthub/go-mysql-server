@@ -75,7 +75,8 @@ func TestAsWKT(t *testing.T) {
 func TestGeomFromText(t *testing.T) {
 	t.Run("create valid point with well formatted string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -84,7 +85,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid point with well formatted float", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POINT(123.456 789.0)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(123.456 789.0)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -93,7 +95,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid point with whitespace string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("   POINT   (   1    2   )   ", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("   POINT   (   1    2   )   ", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -102,7 +105,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -111,15 +115,17 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create point with bad string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("badpoint(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("badpoint(1 2)", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 
 	t.Run("create valid linestring with well formatted string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("LINESTRING(1 2, 3 4)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("LINESTRING(1 2, 3 4)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -128,7 +134,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid linestring with float", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("LINESTRING(123.456 789.0, 987.654 321.0)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("LINESTRING(123.456 789.0, 987.654 321.0)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -137,7 +144,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid linestring with whitespace string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("   LINESTRING   (   1    2   ,   3    4   )   ", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("   LINESTRING   (   1    2   ,   3    4   )   ", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -146,7 +154,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -155,15 +164,17 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create linestring with bad string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 
 	t.Run("create valid polygon with well formatted string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0))", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0))", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -172,7 +183,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid polygon with multiple lines", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0), (0 0, 1 0, 1 1, 0 1, 0 0))", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0), (0 0, 1 0, 1 1, 0 1, 0 0))", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -181,7 +193,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid linestring with whitespace string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("   POLYGON    (   (   0    0    ,   0    1   ,   1    0   ,   0    0   )   )   ", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("   POLYGON    (   (   0    0    ,   0    1   ,   1    0   ,   0    0   )   )   ", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -190,7 +203,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -199,17 +213,19 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create polygon with non linear ring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("polygon((1 2, 3 4))", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("polygon((1 2, 3 4))", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 
 	t.Run("create polygon with bad string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 }

@@ -86,7 +86,8 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
 		require.NoError(err)
-		f := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -97,7 +98,8 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("00000000013FF00000000000004000000000000000")
 		require.NoError(err)
-		f := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -108,7 +110,8 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("00000000013FF0000000000000")
 		require.NoError(err)
-		f := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
@@ -118,7 +121,8 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0101000000CDCCCCCCCCDC5EC03333333333378540")
 		require.NoError(err)
-		f := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -129,7 +133,8 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
 		require.NoError(err)
-		f := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -140,16 +145,175 @@ func TestGeomFromWKB(t *testing.T) {
 		require := require.New(t)
 		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
 		require.NoError(err)
-		f := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
 	})
 
+	t.Run("convert point with srid 0", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(0, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 0, X: 1, Y: 2}, v)
+	})
+
+	t.Run("convert point with srid 4230", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4230, X: 1, Y: 2}, v)
+	})
+
+	t.Run("convert point with srid 1234", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(1234, sql.Uint32))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("convert point with srid 4230 axis srid-defined", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=srid-defined", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4230, X: 1, Y: 2}, v)
+	})
+
+	t.Run("convert point with srid 4230 axis long-lat", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4230, X: 2, Y: 1}, v)
+	})
+
+	t.Run("convert point with srid 4230 axis long-lat", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4230, X: 2, Y: 1}, v)
+	})
+
+	t.Run("convert linestring with srid 4230", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Linestring{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 1, Y: 2}, {SRID: 4230, X: 3, Y: 4}}}, v)
+	})
+
+	t.Run("convert linestring with srid 4230 axis long-lat", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("010200000002000000000000000000F03F000000000000004000000000000008400000000000001040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Linestring{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 2, Y: 1}, {SRID: 4230, X: 4, Y: 3}}}, v)
+	})
+
+	t.Run("convert polygon with srid 4230", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Polygon{SRID: 4230, Lines: []sql.Linestring{{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 0, Y: 0}, {SRID: 4230, X: 1, Y: 1}, {SRID: 4230, X: 1, Y: 0}, {SRID: 4230, X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("convert polygon with srid 4230 axis long-lat", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0103000000010000000400000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F000000000000000000000000000000000000000000000000")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Polygon{SRID: 4230, Lines: []sql.Linestring{{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 0, Y: 0}, {SRID: 4230, X: 1, Y: 1}, {SRID: 4230, X: 0, Y: 1}, {SRID: 4230, X: 0, Y: 0}}}}}, v)
+	})
+
 	t.Run("convert null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKB(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKB(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("convert null srid", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(nil, sql.Null))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("convert null srid", func(t *testing.T) {
+		require := require.New(t)
+		res, err := hex.DecodeString("0101000000000000000000F03F0000000000000040")
+		require.NoError(err)
+		f, err := NewGeomFromWKB(expression.NewLiteral(res, sql.Blob),
+			expression.NewLiteral(0, sql.Uint32),
+			expression.NewLiteral(nil, sql.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
