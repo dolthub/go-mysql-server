@@ -447,7 +447,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return e, nil
 		}
 		switch node := n.(type) {
-		case *plan.InsertDestination, *plan.ShowColumns:
+		case *plan.InsertDestination, *plan.ShowColumns, *plan.ShowCreateTable:
 			table := getResolvedTable(node)
 			sch := table.Schema()
 			if colIndex >= len(sch) {

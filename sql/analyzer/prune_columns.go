@@ -299,7 +299,7 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUpCtx(n, canPruneChild, func(c plan.TransformContext) (sql.Node, error) {
 		switch n := c.Node.(type) {
-		case *plan.RenameColumn, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet, *plan.DropColumn:
+		case *plan.RenameColumn, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet, *plan.DropColumn, *plan.ShowCreateTable:
 			// do nothing, column defaults already have been resolved
 			return n, nil
 		case *plan.SubqueryAlias:
