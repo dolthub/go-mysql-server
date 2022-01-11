@@ -3702,7 +3702,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		t32, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32")
 		require.NoError(t, err)
-		assert.Equal(t, sql.Schema{
+		assertSchemasEqualWithDefaults(t, sql.Schema{
 			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32", PrimaryKey: true},
 			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t32"},
 			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},

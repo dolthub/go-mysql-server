@@ -438,8 +438,8 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	span, _ := ctx.Span("resolveColumnDefaults")
 	defer span.Finish()
 
-	// This is kind of hacky: we rely on the fact that we know that CreateTable returns the default for every
-	// column in the table, and they get evaluated in order below
+	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
+	//  returned by Expressions() for these nodes
 	colIndex := 0
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
@@ -487,9 +487,31 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 
 			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
 		case *plan.AddColumn:
-			return resolveColumnDefaultsOnWrapper(ctx, node.Column(), eWrapper)
+			sch := node.TargetSchema()
+
+			// TODO: this is kind of gross, relies on a known order of expressions returned by node
+			var col *sql.Column
+			if colIndex < len(sch) {
+				col = sch[colIndex]
+			} else {
+				col = node.Column()
+			}
+			colIndex++
+
+			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 		case *plan.ModifyColumn:
-			return resolveColumnDefaultsOnWrapper(ctx, node.NewColumn(), eWrapper)
+			sch := node.TargetSchema()
+
+			// TODO: this is kind of gross, relies on a known order of expressions returned by node
+			var col *sql.Column
+			if colIndex < len(sch) {
+				col = sch[colIndex]
+			} else {
+				col = node.NewColumn()
+			}
+			colIndex++
+
+			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 		case *plan.AlterDefaultSet:
 			loweredColName := strings.ToLower(node.ColumnName)
 			var col *sql.Column

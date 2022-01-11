@@ -179,6 +179,10 @@ func (a AddColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	return &a, nil
 }
 
+func (a *AddColumn) TargetSchema() sql.Schema {
+	return a.targetSch
+}
+
 func (a *AddColumn) validateDefaultPosition(tblSch sql.Schema) error {
 	colsAfterThis := map[string]*sql.Column{a.column.Name: a.column}
 	if a.order != nil {
@@ -514,6 +518,10 @@ func (m *ModifyColumn) String() string {
 func (m ModifyColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	m.targetSchema = schema
 	return &m, nil
+}
+
+func (m *ModifyColumn) TargetSchema() sql.Schema {
+	return m.targetSchema
 }
 
 func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
