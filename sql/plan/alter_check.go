@@ -28,8 +28,8 @@ var (
 	// ErrNoCheckConstraintSupport is returned when the table does not support CONSTRAINT CHECK operations.
 	ErrNoCheckConstraintSupport = errors.NewKind("the table does not support check constraint operations: %s")
 
-	// ErrCheckFailed is returned when the check constraint evaluates to false
-	ErrCheckFailed = errors.NewKind("check constraint %s is violated.")
+	// ErrCheckViolated is returned when the check constraint evaluates to false
+	ErrCheckViolated = errors.NewKind("check constraint %s is violated.")
 )
 
 type CreateCheck struct {
@@ -131,7 +131,7 @@ func (c *CreateCheck) Execute(ctx *sql.Context) error {
 		}
 
 		if sql.IsFalse(res) {
-			return ErrCheckFailed.New(c.Check.Name)
+			return ErrCheckViolated.New(c.Check.Name)
 		}
 	}
 

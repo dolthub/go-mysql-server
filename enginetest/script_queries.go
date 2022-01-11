@@ -1576,7 +1576,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE test ADD CONSTRAINT bad_check CHECK (pk < 5)",
-				ExpectedErr: plan.ErrCheckFailed,
+				ExpectedErr: plan.ErrCheckViolated,
 			},
 		},
 	},
