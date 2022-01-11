@@ -222,8 +222,8 @@ func (a *AddColumn) Children() []sql.Node {
 type DropColumn struct {
 	ddlNode
 	UnaryNode
-	column string
-	order  *sql.ColumnOrder
+	Column       string
+	targetSchema sql.Schema
 }
 
 var _ sql.Node = (*DropColumn)(nil)
@@ -233,7 +233,7 @@ func NewDropColumn(db sql.Database, table *UnresolvedTable, column string) *Drop
 	return &DropColumn{
 		ddlNode:   ddlNode{db},
 		UnaryNode: UnaryNode{Child: table},
-		column:    column,
+		Column:    column,
 	}
 }
 
@@ -244,7 +244,7 @@ func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 func (d *DropColumn) String() string {
-	return fmt.Sprintf("drop column %s", d.column)
+	return fmt.Sprintf("drop column %s", d.Column)
 }
 
 func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -256,14 +256,14 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	tbl := alterable.(sql.Table)
 	found := false
 	for _, column := range tbl.Schema() {
-		if column.Name == d.column {
+		if column.Name == d.Column {
 			found = true
 			break
 		}
 	}
 
 	if !found {
-		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), d.column)
+		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), d.Column)
 	}
 
 	for _, col := range tbl.Schema() {
@@ -274,8 +274,8 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		sql.Inspect(col.Default, func(expr sql.Expression) bool {
 			switch expr := expr.(type) {
 			case *expression.GetField:
-				if expr.Name() == d.column {
-					err = sql.ErrDropColumnReferencedInDefault.New(d.column, expr.Name())
+				if expr.Name() == d.Column {
+					err = sql.ErrDropColumnReferencedInDefault.New(d.Column, expr.Name())
 					return false
 				}
 			}
@@ -286,7 +286,7 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 	}
 
-	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.column)
+	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.Column)
 }
 
 func (d *DropColumn) Schema() sql.Schema {
@@ -294,7 +294,17 @@ func (d *DropColumn) Schema() sql.Schema {
 }
 
 func (d *DropColumn) Resolved() bool {
-	return d.UnaryNode.Resolved() && d.ddlNode.Resolved()
+	if !(d.UnaryNode.Resolved() && d.ddlNode.Resolved()) {
+		return false
+	}
+
+	for _, col := range d.targetSchema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (d *DropColumn) Children() []sql.Node {
@@ -306,6 +316,28 @@ func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
 	d.UnaryNode.Child = children[0]
+	return &d, nil
+}
+
+func (d DropColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	d.targetSchema = schema
+	return &d, nil
+}
+
+func (d *DropColumn) TargetSchema() sql.Schema {
+	return d.targetSchema
+}
+
+func (d *DropColumn) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(d.targetSchema)
+}
+
+func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(d.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
+	}
+
+	d.targetSchema = schemaWithDefaults(d.targetSchema, exprs)
 	return &d, nil
 }
 

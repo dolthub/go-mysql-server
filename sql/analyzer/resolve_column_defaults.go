@@ -474,6 +474,18 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			}
 
 			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
+		case *plan.DropColumn:
+			table := getResolvedTable(node.Child)
+			if table == nil {
+				return e, nil
+			}
+
+			idx := table.Schema().IndexOf(node.Column, table.Name())
+			if idx < 0 {
+				return nil, sql.ErrTableColumnNotFound.New(table.Name(), node.Column)
+			}
+
+			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
 		case *plan.AddColumn:
 			return resolveColumnDefaultsOnWrapper(ctx, node.Column(), eWrapper)
 		case *plan.ModifyColumn:
@@ -527,7 +539,7 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return e, nil
 		}
 		switch n.(type) {
-		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn:
+		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, nil
