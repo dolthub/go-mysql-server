@@ -86,6 +86,16 @@ func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
 	return &avgBuffer{sum, rows, bufferChild}, nil
 }
 
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (a *Avg) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(a.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewAvgAgg(c), nil
+}
+
 type avgBuffer struct {
 	sum  float64
 	rows int64
