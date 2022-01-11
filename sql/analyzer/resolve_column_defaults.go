@@ -447,7 +447,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return e, nil
 		}
 		switch node := n.(type) {
-		case *plan.InsertDestination:
+		case *plan.InsertDestination, *plan.ShowColumns:
 			table := getResolvedTable(node)
 			sch := table.Schema()
 			if colIndex >= len(sch) {
@@ -523,7 +523,7 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return e, nil
 		}
 		switch n.(type) {
-		case *plan.InsertDestination, *plan.AddColumn:
+		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns:
 			return parseColumnDefaultsForWrapper(ctx, eWrapper)
 		default:
 			return e, nil

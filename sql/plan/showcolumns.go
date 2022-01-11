@@ -163,14 +163,13 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 }
 
 // WithChildren implements the Node interface.
-func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
-	showColumns := NewShowColumns(s.Full, children[0])
-	showColumns.Indexes = s.Indexes
-	return showColumns, nil
+	s.Child = children[0]
+	return &s, nil
 }
 
 func (s *ShowColumns) String() string {
@@ -181,6 +180,25 @@ func (s *ShowColumns) String() string {
 		_ = tp.WriteNode("ShowColumns")
 	}
 	_ = tp.WriteChildren(s.Child.String())
+	return tp.String()
+}
+
+func (s *ShowColumns) DebugString() string {
+	tp := sql.NewTreePrinter()
+	if s.Full {
+		_ = tp.WriteNode("ShowColumns(full)")
+	} else {
+		_ = tp.WriteNode("ShowColumns")
+	}
+
+	var children []string
+	for _, col := range s.targetSchema {
+		children = append(children, sql.DebugString(col))
+	}
+
+	children = append(children, sql.DebugString(s.Child))
+
+	_ = tp.WriteChildren(children...)
 	return tp.String()
 }
 
