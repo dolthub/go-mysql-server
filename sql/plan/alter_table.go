@@ -85,8 +85,8 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 type AddColumn struct {
 	ddlNode
 	UnaryNode
-	column *sql.Column
-	order  *sql.ColumnOrder
+	column    *sql.Column
+	order     *sql.ColumnOrder
 	targetSch sql.Schema
 }
 
@@ -153,8 +153,8 @@ func (a *AddColumn) Expressions() []sql.Expression {
 }
 
 func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 + len(a.targetSch) {
-		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1 + len(a.targetSch))
+	if len(exprs) != 1+len(a.targetSch) {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1+len(a.targetSch))
 	}
 
 	a.targetSch = schemaWithDefaults(a.targetSch, exprs[:len(a.targetSch)])
@@ -350,7 +350,7 @@ type RenameColumn struct {
 	UnaryNode
 	ColumnName    string
 	NewColumnName string
-	targetSchema sql.Schema
+	targetSchema  sql.Schema
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
@@ -466,9 +466,9 @@ func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 type ModifyColumn struct {
 	ddlNode
 	UnaryNode
-	columnName string
-	column     *sql.Column
-	order      *sql.ColumnOrder
+	columnName   string
+	column       *sql.Column
+	order        *sql.ColumnOrder
 	targetSchema sql.Schema
 }
 
@@ -572,8 +572,8 @@ func (m *ModifyColumn) Expressions() []sql.Expression {
 }
 
 func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 + len(m.targetSchema) {
-		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1 + len(m.targetSchema))
+	if len(exprs) != 1+len(m.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1+len(m.targetSchema))
 	}
 
 	m.targetSchema = schemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])

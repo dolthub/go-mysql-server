@@ -216,5 +216,3 @@ func (u UnresolvedColumnDefault) WithChildren(children ...Expression) (Expressio
 	}
 	return u, nil
 }
-
-

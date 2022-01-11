@@ -1922,28 +1922,28 @@ end;`,
 		Assertions: nil,
 	},
 	{
-		Name:        "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
+		Name: "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
 		SetUpScript: []string{
 			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
 			"create table sequence_table (max_id integer PRIMARY KEY);",
 			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
 			"insert into sequence_table values (1);",
 		},
-		Assertions:  []ScriptTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "insert into mytable () values ();",
+				Query:    "insert into mytable () values ();",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:           "insert into mytable (sometext) values ('hello');",
+				Query:    "insert into mytable (sometext) values ('hello');",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:           "insert into mytable values (10, 'goodbye');",
+				Query:    "insert into mytable values (10, 'goodbye');",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:           "select * from mytable order by id",
+				Query: "select * from mytable order by id",
 				Expected: []sql.Row{
 					{1, nil},
 					{2, "hello"},
@@ -1953,7 +1953,7 @@ end;`,
 		},
 	},
 	{
-		Name:        "insert into common sequence table workaround",
+		Name: "insert into common sequence table workaround",
 		SetUpScript: []string{
 			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
 			"create table sequence_table (max_id integer PRIMARY KEY);",
@@ -1967,25 +1967,25 @@ end;`,
 			end;`,
 			"insert into sequence_table values (1);",
 		},
-		Assertions:  []ScriptTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "insert into mytable () values ();",
+				Query:    "insert into mytable () values ();",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:           "insert into mytable (sometext) values ('hello');",
+				Query:    "insert into mytable (sometext) values ('hello');",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:           "insert into mytable values (10, 'goodbye');",
+				Query:    "insert into mytable values (10, 'goodbye');",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
-				Query:           "insert into mytable () values (), ();",
+				Query:    "insert into mytable () values (), ();",
 				Expected: []sql.Row{{sql.NewOkResult(2)}},
 			},
 			{
-				Query:           "select * from mytable order by id",
+				Query: "select * from mytable order by id",
 				Expected: []sql.Row{
 					{1, nil},
 					{2, "hello"},
@@ -2001,21 +2001,21 @@ end;`,
 // BrokenTriggerQueries contains trigger queries that should work but do not yet
 var BrokenTriggerQueries = []ScriptTest{
 	{
-		Name:        "update common table multiple times in single insert",
+		Name: "update common table multiple times in single insert",
 		SetUpScript: []string{
 			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
 			"create table sequence_table (max_id integer PRIMARY KEY);",
 			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
 			"insert into sequence_table values (1);",
 		},
-		Assertions:  []ScriptTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			// Should produce new keys 2, 3, but instead produces a duplicate key error
 			{
-				Query:           "insert into mytable () values (), ();",
+				Query:    "insert into mytable () values (), ();",
 				Expected: []sql.Row{{sql.NewOkResult(2)}},
 			},
 			{
-				Query:           "select * from mytable order by id",
+				Query: "select * from mytable order by id",
 				Expected: []sql.Row{
 					{1, nil},
 					{2, nil},

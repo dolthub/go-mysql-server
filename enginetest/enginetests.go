@@ -3760,7 +3760,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	})
 
 	t.Run("Standard default literal", func(t *testing.T) {
- 		TestQuery(t, harness, e, "CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "CREATE TABLE t1(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT 2)", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t1 (pk) VALUES (1), (2)")
 		TestQuery(t, harness, e, "SELECT * FROM t1", []sql.Row{{1, 2}, {2, 2}}, nil, nil)
 	})

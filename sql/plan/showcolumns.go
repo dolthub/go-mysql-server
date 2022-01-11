@@ -24,8 +24,8 @@ import (
 // ShowColumns shows the columns details of a table.
 type ShowColumns struct {
 	UnaryNode
-	Full    bool
-	Indexes []sql.Index
+	Full         bool
+	Indexes      []sql.Index
 	targetSchema sql.Schema
 }
 

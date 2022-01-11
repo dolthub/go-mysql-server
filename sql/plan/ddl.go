@@ -536,7 +536,7 @@ func (c *CreateTable) Temporary() TempTableOption {
 }
 
 func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	length := len(c.CreateSchema.Schema)+len(c.chDefs)
+	length := len(c.CreateSchema.Schema) + len(c.chDefs)
 	if len(exprs) != length {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}

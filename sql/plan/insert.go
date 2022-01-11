@@ -125,7 +125,7 @@ var _ sql.Expressioner = (*InsertDestination)(nil)
 func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
 	return &InsertDestination{
 		UnaryNode: UnaryNode{Child: node},
-		Sch: schema,
+		Sch:       schema,
 	}
 }
 
