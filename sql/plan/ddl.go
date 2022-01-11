@@ -222,6 +222,12 @@ func (c *CreateTable) Resolved() bool {
 		}
 	}
 
+	if c.like != nil {
+		if !c.like.Resolved() {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -530,8 +536,9 @@ func (c *CreateTable) Temporary() TempTableOption {
 }
 
 func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(c.CreateSchema.Schema)+len(c.chDefs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.CreateSchema.Schema)+len(c.chDefs))
+	length := len(c.CreateSchema.Schema)+len(c.chDefs)
+	if len(exprs) != length {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
 
 	nc := c

@@ -1372,7 +1372,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(2)", sql.Int64, true), Comment: "hi there"},
 		}
-		require.Equal(t, s, indexableTable.Schema())
+		assertSchemasEqualWithDefaults(t, s, indexableTable.Schema())
 
 		indexes, err := indexableTable.GetIndexes(ctx)
 		require.NoError(t, err)
@@ -1413,7 +1413,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t8",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(7)", sql.Int64, true), Comment: "greetings"},
 		}
-		require.Equal(t, s, indexableTable.Schema())
+		assertSchemasEqualWithDefaults(t, s, indexableTable.Schema())
 	})
 
 	t.Run("UNIQUE constraint in column definition", func(t *testing.T) {
