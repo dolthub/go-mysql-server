@@ -73,6 +73,29 @@ func (s *SRID) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewSRID(children...)
 }
 
+// DeepCopyPointSRID creates a deep copy of point object with given SRID
+func DeepCopyPointSRID(p sql.Point, srid uint32) sql.Point {
+	return sql.Point{SRID: srid, X: p.X, Y: p.Y}
+}
+
+// DeepCopyLineSRID creates a deep copy of linestring object with given SRID
+func DeepCopyLineSRID(l sql.Linestring, srid uint32) sql.Linestring {
+	points := make([]sql.Point, len(l.Points))
+	for i, p := range l.Points {
+		points[i] = DeepCopyPointSRID(p, srid)
+	}
+	return sql.Linestring{SRID: srid, Points: points}
+}
+
+// DeepCopyPolySRID creates a deep copy of polygon object with given SRID
+func DeepCopyPolySRID(p sql.Polygon, srid uint32) sql.Polygon {
+	lines := make([]sql.Linestring, len(p.Lines))
+	for i, l := range p.Lines {
+		lines[i] = DeepCopyLineSRID(l, srid)
+	}
+	return sql.Polygon{SRID: srid, Lines: lines}
+}
+
 // Eval implements the sql.Expression interface.
 func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate geometry type
@@ -86,7 +109,7 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// If just one argument, return X
+	// If just one argument, return SRID
 	if len(s.ChildExpressions) == 1 {
 		// Check that it is a geometry type
 		switch g := g.(type) {
@@ -129,11 +152,11 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Create new geometry object with matching SRID
 	switch g := g.(type) {
 	case sql.Point:
-		return sql.Point{SRID: _srid, X: g.X, Y: g.Y}, nil
+		return DeepCopyPointSRID(g, _srid), nil
 	case sql.Linestring:
-		return sql.Linestring{SRID: _srid, Points: g.Points}, nil
+		return DeepCopyLineSRID(g, _srid), nil
 	case sql.Polygon:
-		return sql.Polygon{SRID: _srid, Lines: g.Lines}, nil
+		return DeepCopyPolySRID(g, _srid), nil
 	default:
 		return nil, sql.ErrIllegalGISValue.New(g)
 	}
