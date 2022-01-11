@@ -399,16 +399,16 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	}
 
 	tbl := alterable.(sql.Table)
-	idx := tbl.Schema().IndexOf(r.ColumnName, tbl.Name())
+	idx := r.targetSchema.IndexOf(r.ColumnName, tbl.Name())
 	if idx < 0 {
 		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), r.ColumnName)
 	}
 
-	nc := *tbl.Schema()[idx]
+	nc := *r.targetSchema[idx]
 	nc.Name = r.NewColumnName
 	col := &nc
 
-	if err := updateDefaultsOnColumnRename(ctx, alterable, strings.ToLower(r.ColumnName), r.NewColumnName); err != nil {
+	if err := updateDefaultsOnColumnRename(ctx, alterable, r.targetSchema, strings.ToLower(r.ColumnName), r.NewColumnName); err != nil {
 		return nil, err
 	}
 
@@ -433,6 +433,7 @@ type ModifyColumn struct {
 	columnName string
 	column     *sql.Column
 	order      *sql.ColumnOrder
+	targetSchema sql.Schema
 }
 
 var _ sql.Node = (*ModifyColumn)(nil)
@@ -478,6 +479,11 @@ func (m *ModifyColumn) String() string {
 	return fmt.Sprintf("modify column %s", m.column.Name)
 }
 
+func (m ModifyColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	m.targetSchema = schema
+	return &m, nil
+}
+
 func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	alterable, err := getAlterable(m.Child)
 	if err != nil {
@@ -485,7 +491,7 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	}
 
 	tbl := alterable.(sql.Table)
-	tblSch := tbl.Schema()
+	tblSch := m.targetSchema
 	idx := tblSch.IndexOf(m.columnName, tbl.Name())
 	if idx < 0 {
 		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), m.columnName)
@@ -501,7 +507,8 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	if err := m.validateDefaultPosition(tblSch); err != nil {
 		return nil, err
 	}
-	if err := updateDefaultsOnColumnRename(ctx, alterable, m.columnName, m.column.Name); err != nil {
+	// TODO: fix me
+	if err := updateDefaultsOnColumnRename(ctx, alterable, tblSch, m.columnName, m.column.Name); err != nil {
 		return nil, err
 	}
 
@@ -521,26 +528,38 @@ func (m ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 func (m *ModifyColumn) Expressions() []sql.Expression {
-	return expression.WrapExpressions(m.column.Default)
+	return append(wrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
 }
 
-func (m *ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1)
+func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 + len(m.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1 + len(m.targetSchema))
 	}
-	nm := *m
-	unwrappedColDefVal, ok := exprs[0].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+
+	m.targetSchema = schemaWithDefaults(m.targetSchema, exprs[:len(m.targetSchema)])
+
+	unwrappedColDefVal, ok := exprs[len(exprs)-1].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	if ok {
-		nm.column.Default = unwrappedColDefVal
+		m.column.Default = unwrappedColDefVal
 	} else { // nil fails type check
-		nm.column.Default = nil
+		m.column.Default = nil
 	}
-	return &nm, nil
+	return &m, nil
 }
 
 // Resolved implements the Resolvable interface.
 func (m *ModifyColumn) Resolved() bool {
-	return m.ddlNode.Resolved() && m.UnaryNode.Resolved() && m.column.Default.Resolved()
+	if !(m.ddlNode.Resolved() && m.UnaryNode.Resolved() && m.column.Default.Resolved()) {
+		return false
+	}
+
+	for _, col := range m.targetSchema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
@@ -593,13 +612,13 @@ func (m *ModifyColumn) validateDefaultPosition(tblSch sql.Schema) error {
 }
 
 // updateDefaultsOnColumnRename updates each column that references the old column name within its default value.
-func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, oldName, newName string) error {
+func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, schema sql.Schema, oldName, newName string) error {
 	if oldName == newName {
 		return nil
 	}
 	var err error
 	colsToModify := make(map[*sql.Column]struct{})
-	for _, col := range tbl.Schema() {
+	for _, col := range schema {
 		if col.Default == nil {
 			continue
 		}
