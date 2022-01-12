@@ -29,6 +29,7 @@ type Last struct {
 
 var _ sql.FunctionExpression = (*Last)(nil)
 var _ sql.Aggregation = (*Last)(nil)
+var _ sql.WindowAdaptableExpression = (*Last)(nil)
 
 // NewLast returns a new Last node.
 func NewLast(e sql.Expression) *Last {
@@ -69,6 +70,15 @@ func (l *Last) NewBuffer() (sql.AggregationBuffer, error) {
 		return nil, err
 	}
 	return &lastBuffer{nil, bufferChild}, nil
+}
+
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (l *Last) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(l.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewLastAgg(c), nil
 }
 
 // Eval implements the sql.Expression interface.

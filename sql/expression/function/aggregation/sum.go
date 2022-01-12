@@ -29,6 +29,7 @@ type Sum struct {
 
 var _ sql.FunctionExpression = (*Sum)(nil)
 var _ sql.Aggregation = (*Sum)(nil)
+var _ sql.WindowAdaptableExpression = (*Sum)(nil)
 
 // NewSum returns a new Sum node.
 func NewSum(e sql.Expression) *Sum {
@@ -69,6 +70,15 @@ func (m *Sum) NewBuffer() (sql.AggregationBuffer, error) {
 		return nil, err
 	}
 	return &sumBuffer{true, 0, bufferChild}, nil
+}
+
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (m *Sum) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(m.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewSumAgg(c), nil
 }
 
 // Eval implements the Expression interface.
