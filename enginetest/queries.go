@@ -4163,6 +4163,18 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{9}, {10}, {9}},
 	},
 	{
+		Query:    `select locate("o", s) from mytable order by i`,
+		Expected: []sql.Row{{8}, {4}, {8}},
+	},
+	{
+		Query:    `select locate("o", s, 5) from mytable order by i`,
+		Expected: []sql.Row{{8}, {9}, {8}},
+	},
+	{
+		Query:    `select locate(upper("roW"), upper(s), power(10, 0)) from mytable order by i`,
+		Expected: []sql.Row{{7}, {8}, {7}},
+	},
+	{
 		Query:    "select log2(i) from mytable order by i",
 		Expected: []sql.Row{{0.0}, {1.0}, {1.5849625007211563}},
 	},
