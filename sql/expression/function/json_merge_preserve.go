@@ -74,12 +74,11 @@ func (j JSONMergePreserve) IsUnsupported() bool {
 }
 
 func (j *JSONMergePreserve) Resolved() bool {
-	for _, child := range j.Children() {
-		if child != nil && !child.Resolved() {
+	for _, d := range j.JSONDocs {
+		if !d.Resolved() {
 			return false
 		}
 	}
-
 	return true
 }
 
@@ -99,6 +98,11 @@ func (j *JSONMergePreserve) Type() sql.Type {
 }
 
 func (j *JSONMergePreserve) IsNullable() bool {
+	for _, d := range j.JSONDocs {
+		if d.IsNullable() {
+			return true
+		}
+	}
 	return false
 }
 
