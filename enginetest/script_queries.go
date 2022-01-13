@@ -1377,7 +1377,7 @@ var ScriptTests = []ScriptTest{
 	},
 	{
 		Name: "Show create table with various keys and constraints",
-		SetUpScript: []string {
+		SetUpScript: []string{
 			"create table t1(a int primary key, b varchar(10) not null default 'abc')",
 			"alter table t1 add constraint ck1 check (b like '%abc%')",
 			"create index t1b on t1(b)",
@@ -1387,8 +1387,8 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "show create table t1",
-				Expected:        []sql.Row{
+				Query: "show create table t1",
+				Expected: []sql.Row{
 					{"t1", "CREATE TABLE `t1` (\n" +
 						"  `a` int NOT NULL,\n" +
 						"  `b` varchar(10) NOT NULL DEFAULT \"abc\",\n" +
@@ -1399,8 +1399,8 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query:           "show create table t2",
-				Expected:        []sql.Row{
+				Query: "show create table t2",
+				Expected: []sql.Row{
 					{"t2", "CREATE TABLE `t2` (\n" +
 						"  `c` int NOT NULL,\n" +
 						"  `d` varchar(10),\n" +
