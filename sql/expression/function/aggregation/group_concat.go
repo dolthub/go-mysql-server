@@ -36,7 +36,6 @@ type GroupConcat struct {
 
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
-var _ sql.WindowAdaptableExpression = (*GroupConcat)(nil)
 
 func NewEmptyGroupConcat() sql.Expression {
 	return &GroupConcat{}
@@ -61,11 +60,6 @@ func (g *GroupConcat) NewBuffer() (sql.AggregationBuffer, error) {
 	var rows []sql.Row
 	distinctSet := make(map[string]bool)
 	return &groupConcatBuffer{g, rows, distinctSet}, nil
-}
-
-// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
-func (g *GroupConcat) NewWindowFunction() (sql.WindowFunction, error) {
-	return NewGroupConcatAgg(g), nil
 }
 
 // Eval implements the Expression interface.

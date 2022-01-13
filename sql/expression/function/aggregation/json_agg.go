@@ -39,9 +39,8 @@ type JSONArrayAgg struct {
 	expression.UnaryExpression
 }
 
-var _ sql.FunctionExpression = (*JSONArrayAgg)(nil)
-var _ sql.Aggregation = (*JSONArrayAgg)(nil)
-var _ sql.WindowAdaptableExpression = (*JSONArrayAgg)(nil)
+var _ sql.FunctionExpression = &JSONArrayAgg{}
+var _ sql.Aggregation = &JSONArrayAgg{}
 
 // NewJSONArrayAgg creates a new JSONArrayAgg function.
 func NewJSONArrayAgg(arg sql.Expression) *JSONArrayAgg {
@@ -58,15 +57,15 @@ func (j *JSONArrayAgg) Description() string {
 	return "returns result set as a single JSON array."
 }
 
+// IsUnsupported implements sql.FunctionExpression
+func (j *JSONArrayAgg) IsUnsupported() bool {
+	return true
+}
+
 // NewBuffer creates a new buffer for the aggregation.
 func (j *JSONArrayAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	var row []interface{}
 	return &jsonArrayBuffer{row, j}, nil
-}
-
-// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
-func (j *JSONArrayAgg) NewWindowFunction() (sql.WindowFunction, error) {
-	return NewJSONArrayAgg2(j), nil
 }
 
 // Type returns the type of the result.
@@ -154,51 +153,55 @@ type JSONObjectAgg struct {
 	value sql.Expression
 }
 
-var _ sql.FunctionExpression = (*JSONObjectAgg)(nil)
-var _ sql.Aggregation = (*JSONObjectAgg)(nil)
-var _ sql.WindowAdaptableExpression = (*JSONObjectAgg)(nil)
+var _ sql.FunctionExpression = JSONObjectAgg{}
+var _ sql.Aggregation = JSONObjectAgg{}
 
 // NewJSONObjectAgg creates a new JSONArrayAgg function.
 func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
-	return &JSONObjectAgg{key: key, value: value}
+	return JSONObjectAgg{key: key, value: value}
 }
 
 // FunctionName implements sql.FunctionExpression
-func (j *JSONObjectAgg) FunctionName() string {
+func (j JSONObjectAgg) FunctionName() string {
 	return "json_objectagg"
 }
 
 // Description implements sql.FunctionExpression
-func (j *JSONObjectAgg) Description() string {
+func (j JSONObjectAgg) Description() string {
 	return "returns result set as a single JSON object."
 }
 
+// IsUnsupported implements sql.UnsupportedFunctionStub
+func (j JSONObjectAgg) IsUnsupported() bool {
+	return true
+}
+
 // Resolved implements the Expression interface.
-func (j *JSONObjectAgg) Resolved() bool {
+func (j JSONObjectAgg) Resolved() bool {
 	return j.key.Resolved() && j.value.Resolved()
 }
 
-func (j *JSONObjectAgg) String() string {
+func (j JSONObjectAgg) String() string {
 	return fmt.Sprintf("JSON_OBJECTAGG(%s, %s)", j.key, j.value)
 }
 
 // Type implements the Expression interface.
-func (j *JSONObjectAgg) Type() sql.Type {
+func (j JSONObjectAgg) Type() sql.Type {
 	return sql.JSON
 }
 
 // IsNullable implements the Expression interface.
-func (j *JSONObjectAgg) IsNullable() bool {
+func (j JSONObjectAgg) IsNullable() bool {
 	return false
 }
 
 // Children implements the Expression interface.
-func (j *JSONObjectAgg) Children() []sql.Expression {
+func (j JSONObjectAgg) Children() []sql.Expression {
 	return []sql.Expression{j.key, j.value}
 }
 
 // WithChildren implements the Expression interface.
-func (j *JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
@@ -207,18 +210,13 @@ func (j *JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 // NewBuffer implements the Aggregation interface.
-func (j *JSONObjectAgg) NewBuffer() (sql.AggregationBuffer, error) {
+func (j JSONObjectAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	row := make(map[string]interface{})
-	return &jsonObjectBuffer{row, j}, nil
-}
-
-// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
-func (j *JSONObjectAgg) NewWindowFunction() (sql.WindowFunction, error) {
-	return NewJSONObjectAgg2(j), nil
+	return &jsonObjectBuffer{row, &j}, nil
 }
 
 // Eval implements the Expression interface.
-func (j *JSONObjectAgg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+func (j JSONObjectAgg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return nil, ErrEvalUnsupportedOnAggregation.New("JSONObjectAgg")
 }
 

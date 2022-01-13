@@ -30,7 +30,6 @@ type Max struct {
 
 var _ sql.FunctionExpression = (*Max)(nil)
 var _ sql.Aggregation = (*Max)(nil)
-var _ sql.WindowAdaptableExpression = (*Max)(nil)
 
 // NewMax returns a new Max node.
 func NewMax(e sql.Expression) *Max {
@@ -80,15 +79,6 @@ func (m *Max) NewBuffer() (sql.AggregationBuffer, error) {
 		return nil, err
 	}
 	return &maxBuffer{nil, bufferChild}, nil
-}
-
-// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
-func (m *Max) NewWindowFunction() (sql.WindowFunction, error) {
-	c, err := expression.Clone(m.UnaryExpression.Child)
-	if err != nil {
-		return nil, err
-	}
-	return NewMaxAgg(c), nil
 }
 
 // Eval implements the Expression interface.
