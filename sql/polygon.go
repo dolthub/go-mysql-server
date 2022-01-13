@@ -24,6 +24,7 @@ import (
 // Represents the Point type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-point.html
 type Polygon struct {
+	SRID  uint32
 	Lines []Linestring
 }
 
@@ -124,5 +125,5 @@ func (t PolygonType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t PolygonType) Zero() interface{} {
-	return Polygon{Lines: []Linestring{{[]Point{{0, 0}, {0, 0}, {0, 0}, {0, 0}}}}}
+	return Polygon{Lines: []Linestring{{Points: []Point{{}, {}, {}, {}}}}}
 }

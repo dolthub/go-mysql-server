@@ -87,11 +87,11 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{1.2, 3.45}, {67.8, 9}}}}},
+		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X: 1.2, Y: 3.45}, {X: 67.8, Y: 9}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {2, 2}, {1, 1}, {0, 0}}}}}}},
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 2, Y: 2}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_ASWKT(p) from point_table`,
@@ -118,11 +118,11 @@ var SpatialQueryTests = []QueryTest{
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
-		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{1.1, 2.22}, {3.333, 4.4444}}}}},
+		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{X: 1.1, Y: 2.22}, {X: 3.333, Y: 4.4444}}}}},
 	},
 	{
 		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
-		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1.2, 3.4}, {2.5, -6.7}, {33, 44}, {1.2, 3.4}}}}}}},
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 2.5, Y: -6.7}, {X: 33, Y: 44}, {X: 1.2, Y: 3.4}}}}}}},
 	},
 	{
 		Query:    `SELECT ST_X(POINT(1,2))`,
@@ -159,6 +159,35 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query:    `SELECT ST_Y(p) from point_table`,
 		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query:    `SELECT ST_SRID(p) from point_table`,
+		Expected: []sql.Row{{uint32(0)}},
+	},
+	{
+		Query:    `SELECT ST_SRID(l) from line_table`,
+		Expected: []sql.Row{{uint32(0)}, {uint32(0)}},
+	},
+	{
+		Query:    `SELECT ST_SRID(p) from polygon_table`,
+		Expected: []sql.Row{{uint32(0)}},
+	},
+	{
+		Query:    `SELECT ST_SRID(p, 4326) from point_table`,
+		Expected: []sql.Row{{sql.Point{SRID: 4326, X: 1, Y: 2}}},
+	},
+	{
+		Query: `SELECT ST_SRID(l, 4326) from line_table`,
+		Expected: []sql.Row{
+			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
+		Expected: []sql.Row{
+			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+		},
 	},
 }
 
