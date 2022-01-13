@@ -32,6 +32,10 @@ type SRID struct {
 var _ sql.FunctionExpression = (*SRID)(nil)
 
 var ErrInvalidSRID = errors.NewKind("There's no spatial reference with SRID %d")
+const (
+	CartesianSRID = 0
+	GeoSpatialSRID = 4326
+)
 
 // NewSRID creates a new STX expression.
 func NewSRID(args ...sql.Expression) (sql.Expression, error) {
@@ -73,25 +77,25 @@ func (s *SRID) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 	return NewSRID(children...)
 }
 
-// DeepCopyPointSRID creates a deep copy of point object with given SRID
-func DeepCopyPointSRID(p sql.Point, srid uint32) sql.Point {
+// PointWithSRID creates a deep copy of point object with given SRID
+func PointWithSRID(p sql.Point, srid uint32) sql.Point {
 	return sql.Point{SRID: srid, X: p.X, Y: p.Y}
 }
 
-// DeepCopyLineSRID creates a deep copy of linestring object with given SRID
-func DeepCopyLineSRID(l sql.Linestring, srid uint32) sql.Linestring {
+// LineWithSRID creates a deep copy of linestring object with given SRID
+func LineWithSRID(l sql.Linestring, srid uint32) sql.Linestring {
 	points := make([]sql.Point, len(l.Points))
 	for i, p := range l.Points {
-		points[i] = DeepCopyPointSRID(p, srid)
+		points[i] = PointWithSRID(p, srid)
 	}
 	return sql.Linestring{SRID: srid, Points: points}
 }
 
-// DeepCopyPolySRID creates a deep copy of polygon object with given SRID
-func DeepCopyPolySRID(p sql.Polygon, srid uint32) sql.Polygon {
+// PolyWithSRID creates a deep copy of polygon object with given SRID
+func PolyWithSRID(p sql.Polygon, srid uint32) sql.Polygon {
 	lines := make([]sql.Linestring, len(p.Lines))
 	for i, l := range p.Lines {
-		lines[i] = DeepCopyLineSRID(l, srid)
+		lines[i] = LineWithSRID(l, srid)
 	}
 	return sql.Polygon{SRID: srid, Lines: lines}
 }
@@ -144,19 +148,19 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Type assertion
 	_srid := srid.(uint32)
 
-	// Must be either 0 or 4230
-	if _srid != 0 && _srid != 4230 {
+	// Must be either 0 or 4326
+	if _srid != CartesianSRID && _srid != GeoSpatialSRID {
 		return nil, ErrInvalidSRID.New(_srid)
 	}
 
 	// Create new geometry object with matching SRID
 	switch g := g.(type) {
 	case sql.Point:
-		return DeepCopyPointSRID(g, _srid), nil
+		return PointWithSRID(g, _srid), nil
 	case sql.Linestring:
-		return DeepCopyLineSRID(g, _srid), nil
+		return LineWithSRID(g, _srid), nil
 	case sql.Polygon:
-		return DeepCopyPolySRID(g, _srid), nil
+		return PolyWithSRID(g, _srid), nil
 	default:
 		return nil, sql.ErrIllegalGISValue.New(g)
 	}

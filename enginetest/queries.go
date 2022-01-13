@@ -173,20 +173,20 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{{uint32(0)}},
 	},
 	{
-		Query:    `SELECT ST_SRID(p, 4230) from point_table`,
-		Expected: []sql.Row{{sql.Point{SRID: 4230, X: 1, Y: 2}}},
+		Query:    `SELECT ST_SRID(p, 4326) from point_table`,
+		Expected: []sql.Row{{sql.Point{SRID: 4326, X: 1, Y: 2}}},
 	},
 	{
-		Query: `SELECT ST_SRID(l, 4230) from line_table`,
+		Query: `SELECT ST_SRID(l, 4326) from line_table`,
 		Expected: []sql.Row{
-			{sql.Linestring{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 1, Y: 2}, {SRID: 4230, X: 3, Y: 4}}}},
-			{sql.Linestring{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 1, Y: 2}, {SRID: 4230, X: 3, Y: 4}, {SRID: 4230, X: 5, Y: 6}}}},
+			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
+			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
 		},
 	},
 	{
-		Query: `SELECT ST_SRID(p, 4230) from polygon_table`,
+		Query: `SELECT ST_SRID(p, 4326) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{SRID: 4230, Lines: []sql.Linestring{{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 0, Y: 0}, {SRID: 4230, X: 0, Y: 1}, {SRID: 4230, X: 1, Y: 1}, {SRID: 4230, X: 0, Y: 0}}}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 }

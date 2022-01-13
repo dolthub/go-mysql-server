@@ -44,19 +44,19 @@ func TestSRID(t *testing.T) {
 		require.Equal(uint32(0), v)
 	})
 
-	t.Run("select specified SRID is 4230", func(t *testing.T) {
+	t.Run("select specified SRID is 4326", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 4230, X: 1, Y: 2}, sql.PointType{}))
+		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(uint32(4230), v)
+		require.Equal(uint32(4326), v)
 	})
 
 	t.Run("change SRID to 0", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 4230, X: 1, Y: 2}, sql.PointType{}),
+		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}),
 			expression.NewLiteral(0, sql.Int32))
 		require.NoError(err)
 
@@ -65,15 +65,15 @@ func TestSRID(t *testing.T) {
 		require.Equal(sql.Point{SRID: 0, X: 1, Y: 2}, v)
 	})
 
-	t.Run("change SRID to 4230", func(t *testing.T) {
+	t.Run("change SRID to 4326", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Point{SRID: 0, X: 123.4, Y: 56.789}, sql.PointType{}),
-			expression.NewLiteral(4230, sql.Int32))
+			expression.NewLiteral(4326, sql.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{SRID: 4230, X: 123.4, Y: 56.789}, v)
+		require.Equal(sql.Point{SRID: 4326, X: 123.4, Y: 56.789}, v)
 	})
 
 	t.Run("change SRID to invalid 1234", func(t *testing.T) {
@@ -92,25 +92,25 @@ func TestSRID(t *testing.T) {
 		require.Error(err)
 	})
 
-	t.Run("change SRID of linestring to 4230", func(t *testing.T) {
+	t.Run("change SRID of linestring to 4326", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.LinestringType{}),
-			expression.NewLiteral(4230, sql.Int32))
+			expression.NewLiteral(4326, sql.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Linestring{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 1, Y: 2}, {SRID: 4230, X: 3, Y: 4}}}, v)
+		require.Equal(sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}, v)
 	})
 
-	t.Run("change SRID of polygon to 4230", func(t *testing.T) {
+	t.Run("change SRID of polygon to 4326", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewSRID(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}, sql.PolygonType{}),
-			expression.NewLiteral(4230, sql.Int32))
+			expression.NewLiteral(4326, sql.Int32))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{SRID: 4230, Lines: []sql.Linestring{{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 0, Y: 0}, {SRID: 4230, X: 0, Y: 1}, {SRID: 4230, X: 1, Y: 1}, {SRID: 4230, X: 0, Y: 0}}}}}, v)
+		require.Equal(sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}, v)
 	})
 }
