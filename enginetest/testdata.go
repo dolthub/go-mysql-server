@@ -104,8 +104,8 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}),
-					sql.NewRow(1, sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}, {5, 6}}}),
+					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+					sql.NewRow(1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "line_table", err)
@@ -122,7 +122,7 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 1}, {0, 0}}}}}),
+					sql.NewRow(0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)

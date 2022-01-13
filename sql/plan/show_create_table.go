@@ -58,7 +58,7 @@ func (sc *ShowCreateTable) Resolved() bool {
 	return true
 }
 
-func (sc *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(1, len(children))
 	}
@@ -70,9 +70,8 @@ func (sc *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) 
 		return nil, sql.ErrInvalidChildType.New(sc, child, (*SubqueryAlias)(nil))
 	}
 
-	nc := *sc
-	nc.Child = child
-	return &nc, nil
+	sc.Child = child
+	return &sc, nil
 }
 
 func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
@@ -277,7 +276,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK %s", check.Name, check.Expr.String())
+			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, check.Expr.String())
 
 			if !check.Enforced {
 				fmted += " /*!80016 NOT ENFORCED */"

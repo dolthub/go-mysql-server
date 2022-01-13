@@ -26,29 +26,29 @@ import (
 func TestPolygon(t *testing.T) {
 	t.Run("create valid polygon", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, sql.LinestringType{}))
+		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}, sql.LinestringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{[]sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid polygon with multiple linestrings", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, sql.LinestringType{}),
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{0, 0}, {1, 0}, {1, 1}, {0, 0}}}, sql.LinestringType{}),
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}}}, sql.LinestringType{}))
+		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}, sql.LinestringType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{[]sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}, {[]sql.Point{{0, 0}, {1, 0}, {1, 1}, {0, 0}}}, {[]sql.Point{{0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create invalid using invalid linestring", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{0, 0}}}, sql.LinestringType{}))
+		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 0}}}, sql.LinestringType{}))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
@@ -57,7 +57,7 @@ func TestPolygon(t *testing.T) {
 
 	t.Run("create invalid using non-linearring linestring", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{0, 0}, {0, 0}}}, sql.LinestringType{}))
+		f, err := NewPolygon(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 0}}}, sql.LinestringType{}))
 		require.NoError(err)
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)

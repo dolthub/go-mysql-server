@@ -42,7 +42,7 @@ func TestAsWKT(t *testing.T) {
 
 	t.Run("convert linestring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKT(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}, sql.LinestringType{}))
+		f := NewAsWKT(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, sql.LinestringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal("LINESTRING(1 2,3 4)", v)
@@ -50,7 +50,7 @@ func TestAsWKT(t *testing.T) {
 
 	t.Run("convert polygon", func(t *testing.T) {
 		require := require.New(t)
-		f := NewAsWKT(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {1, 1}, {1, 0}, {0, 0}}}}}, sql.PolygonType{}))
+		f := NewAsWKT(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, sql.PolygonType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal("POLYGON((0 0,1 1,1 0,0 0))", v)
@@ -75,7 +75,8 @@ func TestAsWKT(t *testing.T) {
 func TestGeomFromText(t *testing.T) {
 	t.Run("create valid point with well formatted string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -84,7 +85,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid point with well formatted float", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POINT(123.456 789.0)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(123.456 789.0)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -93,7 +95,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create valid point with whitespace string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("   POINT   (   1    2   )   ", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("   POINT   (   1    2   )   ", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -102,7 +105,8 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -111,42 +115,47 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create point with bad string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("badpoint(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("badpoint(1 2)", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 
 	t.Run("create valid linestring with well formatted string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("LINESTRING(1 2, 3 4)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("LINESTRING(1 2, 3 4)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}, v)
+		require.Equal(sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("create valid linestring with float", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("LINESTRING(123.456 789.0, 987.654 321.0)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("LINESTRING(123.456 789.0, 987.654 321.0)", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Linestring{Points: []sql.Point{{123.456, 789}, {987.654, 321}}}, v)
+		require.Equal(sql.Linestring{Points: []sql.Point{{X: 123.456, Y: 789}, {X: 987.654, Y: 321}}}, v)
 	})
 
 	t.Run("create valid linestring with whitespace string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("   LINESTRING   (   1    2   ,   3    4   )   ", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("   LINESTRING   (   1    2   ,   3    4   )   ", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Linestring{Points: []sql.Point{{1, 2}, {3, 4}}}, v)
+		require.Equal(sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, v)
 	})
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -155,42 +164,70 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create linestring with bad string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 
 	t.Run("create valid polygon with well formatted string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0))", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0))", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 0}, {0, 0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid polygon with multiple lines", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0), (0 0, 1 0, 1 1, 0 1, 0 0))", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0), (0 0, 1 0, 1 1, 0 1, 0 0))", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 0}, {0, 0}}}, {Points: []sql.Point{{0, 0}, {1, 0}, {1, 1}, {0, 1}, {0, 0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}, {Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("create valid linestring with whitespace string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("   POLYGON    (   (   0    0    ,   0    1   ,   1    0   ,   0    0   )   )   ", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("   POLYGON    (   (   0    0    ,   0    1   ,   1    0   ,   0    0   )   )   ", sql.Blob))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {0, 1}, {1, 0}, {0, 0}}}}}, v)
+		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
 	})
 
 	t.Run("null string returns null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		f, err := NewGeomFromWKT(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("null srid returns null", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob),
+			expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("null axis options returns null", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -199,17 +236,88 @@ func TestGeomFromText(t *testing.T) {
 
 	t.Run("create polygon with non linear ring", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("polygon((1 2, 3 4))", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("polygon((1 2, 3 4))", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 
 	t.Run("create polygon with bad string", func(t *testing.T) {
 		require := require.New(t)
-		f := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		f, err := NewGeomFromWKT(expression.NewLiteral("badlinestring(1 2)", sql.Blob))
+		require.NoError(err)
 
-		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
+	})
+
+	t.Run("create valid point with srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4230, X: 1, Y: 2}, v)
+	})
+
+	t.Run("create valid point with srid and axis order long lat", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("POINT(1 2)", sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4230, X: 2, Y: 1}, v)
+	})
+
+	t.Run("create valid linestring with srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("LINESTRING(1 2, 3 4)", sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Linestring{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 1, Y: 2}, {SRID: 4230, X: 3, Y: 4}}}, v)
+	})
+
+	t.Run("create valid linestring with srid and axis order long lat", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("LINESTRING(1 2, 3 4)", sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Linestring{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 2, Y: 1}, {SRID: 4230, X: 4, Y: 3}}}, v)
+	})
+
+	t.Run("create valid polygon with srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0))", sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Polygon{SRID: 4230, Lines: []sql.Linestring{{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 0, Y: 0}, {SRID: 4230, X: 0, Y: 1}, {SRID: 4230, X: 1, Y: 0}, {SRID: 4230, X: 0, Y: 0}}}}}, v)
+	})
+
+	t.Run("create valid polygon with srid", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromWKT(expression.NewLiteral("POLYGON((0 0, 0 1, 1 0, 0 0))", sql.Blob),
+			expression.NewLiteral(4230, sql.Uint32),
+			expression.NewLiteral("axis-order=long-lat", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Polygon{SRID: 4230, Lines: []sql.Linestring{{SRID: 4230, Points: []sql.Point{{SRID: 4230, X: 0, Y: 0}, {SRID: 4230, X: 1, Y: 0}, {SRID: 4230, X: 0, Y: 1}, {SRID: 4230, X: 0, Y: 0}}}}}, v)
 	})
 }

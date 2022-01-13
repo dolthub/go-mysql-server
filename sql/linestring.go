@@ -24,6 +24,7 @@ import (
 // Represents the Linestring type.
 // https://dev.mysql.com/doc/refman/8.0/en/gis-class-linestring.html
 type Linestring struct {
+	SRID   uint32
 	Points []Point
 }
 
@@ -124,5 +125,5 @@ func (t LinestringType) Type() query.Type {
 
 // Zero implements Type interface.
 func (t LinestringType) Zero() interface{} {
-	return Linestring{Points: []Point{{0, 0}, {0, 0}}}
+	return Linestring{Points: []Point{{}, {}}}
 }

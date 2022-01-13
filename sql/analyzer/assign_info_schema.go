@@ -23,10 +23,6 @@ import (
 // statements. The logic for each node is necessarily pretty custom.
 func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		if !n.Resolved() {
-			return n, nil
-		}
-
 		switch x := n.(type) {
 		case *plan.ShowIndexes:
 			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
