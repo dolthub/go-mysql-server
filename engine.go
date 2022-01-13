@@ -367,6 +367,7 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 	if len(tblSch) != len(row) {
 		return nil, fmt.Errorf("any row given to ApplyDefaults must be of the same length as the table it represents")
 	}
+
 	var secondPass []int
 	for _, col := range cols {
 		if col < 0 || col > len(tblSch) {
@@ -393,6 +394,7 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 			}
 		}
 	}
+
 	for _, col := range secondPass {
 		val, err := tblSch[col].Default.Eval(ctx, newRow)
 		if err != nil {
@@ -403,6 +405,7 @@ func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row)
 			return nil, err
 		}
 	}
+
 	return newRow, nil
 }
 

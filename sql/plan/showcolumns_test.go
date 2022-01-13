@@ -30,13 +30,17 @@ func TestShowColumns(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	schema := sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
-	})), nil, nil)
+	}
+	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema)), nil, nil)
 
-	iter, err := NewShowColumns(false, table).RowIter(ctx, nil)
+	showColumns, err := NewShowColumns(false, table).WithTargetSchema(schema)
+	require.NoError(err)
+
+	iter, err := showColumns.RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(ctx, iter)
@@ -55,18 +59,20 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	schema := sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
 		{Name: "d", Source: "foo", Type: sql.Int64, Nullable: true},
 		{Name: "e", Source: "foo", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false)},
-	})), nil, nil)
+	}
+	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema)), nil, nil)
 
-	showColumns := NewShowColumns(false, table)
+	showColumns, err := NewShowColumns(false, table).WithTargetSchema(schema)
+	require.NoError(err)
 
 	// Assign indexes. This mimics what happens during analysis
-	showColumns.Indexes = []sql.Index{
+	showColumns.(*ShowColumns).Indexes = []sql.Index{
 		&mockIndex{
 			db:    "mydb",
 			table: "foo",
@@ -106,7 +112,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	require.Equal(expected, rows)
 
 	// Test the precedence of key type. PRI > UNI > MUL
-	showColumns.Indexes = append(showColumns.Indexes,
+	showColumns.(*ShowColumns).Indexes = append(showColumns.(*ShowColumns).Indexes,
 		&mockIndex{
 			db:    "mydb",
 			table: "foo",
@@ -142,13 +148,17 @@ func TestShowColumnsFull(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	schema := sql.Schema{
 		{Name: "a", Type: sql.Text, PrimaryKey: true},
 		{Name: "b", Type: sql.Int64, Nullable: true},
 		{Name: "c", Type: sql.Int64, Default: parse.MustStringToColumnDefaultValue(ctx, "1", sql.Int64, false), Comment: "a comment"},
-	})), nil, nil)
+	}
+	table := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(schema)), nil, nil)
 
-	iter, err := NewShowColumns(true, table).RowIter(ctx, nil)
+	showColumns, err := NewShowColumns(true, table).WithTargetSchema(schema)
+	require.NoError(err)
+
+	iter, err := showColumns.RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(ctx, iter)

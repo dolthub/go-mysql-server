@@ -685,6 +685,8 @@ func mustUint64(v interface{}) uint64 {
 			return uint64(1)
 		}
 		return uint64(0)
+	case int:
+		return uint64(tv)
 	default:
 		panic("unexpected type")
 	}
