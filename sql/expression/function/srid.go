@@ -32,8 +32,9 @@ type SRID struct {
 var _ sql.FunctionExpression = (*SRID)(nil)
 
 var ErrInvalidSRID = errors.NewKind("There's no spatial reference with SRID %d")
+
 const (
-	CartesianSRID = 0
+	CartesianSRID  = 0
 	GeoSpatialSRID = 4326
 )
 
