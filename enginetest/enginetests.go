@@ -1376,7 +1376,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(2)", sql.Int64, true), Comment: "hi there"},
 		}
-		require.Equal(t, s, indexableTable.Schema())
+		assertSchemasEqualWithDefaults(t, s, indexableTable.Schema())
 
 		indexes, err := indexableTable.GetIndexes(ctx)
 		require.NoError(t, err)
@@ -1417,7 +1417,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t8",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(7)", sql.Int64, true), Comment: "greetings"},
 		}
-		require.Equal(t, s, indexableTable.Schema())
+		assertSchemasEqualWithDefaults(t, s, indexableTable.Schema())
 	})
 
 	t.Run("UNIQUE constraint in column definition", func(t *testing.T) {
@@ -1641,6 +1641,39 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		}, nil, nil)
 }
 
+func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) bool {
+	if len(expected) != len(actual) {
+		return assert.Equal(t, expected, actual)
+	}
+
+	ec, ac := make(sql.Schema, len(expected)), make(sql.Schema, len(actual))
+	for i := range expected {
+		ecc := *expected[i]
+		acc := *actual[i]
+
+		ecc.Default = nil
+		acc.Default = nil
+
+		ac[i] = &acc
+		ec[i] = &ecc
+
+		// For the default, compare just the string representations. This makes it possible for integrators who don't reify
+		// default value expressions at schema load time (best practice) to run these tests. We also trim off any parens
+		// for the same reason.
+		eds, ads := "NULL", "NULL"
+		if expected[i].Default != nil {
+			eds = strings.Trim(expected[i].Default.String(), "()")
+		}
+		if actual[i].Default != nil {
+			ads = strings.Trim(actual[i].Default.String(), "()")
+		}
+
+		assert.Equal(t, eds, ads, "column default values differ")
+	}
+
+	return assert.Equal(t, ec, ac)
+}
+
 func TestAddColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -1654,7 +1687,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
@@ -1671,7 +1704,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
@@ -1689,7 +1722,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
@@ -1709,7 +1742,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
@@ -3681,7 +3714,7 @@ func TestAlterTable(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		t32, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32")
 		require.NoError(t, err)
-		assert.Equal(t, sql.Schema{
+		assertSchemasEqualWithDefaults(t, sql.Schema{
 			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32", PrimaryKey: true},
 			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t32"},
 			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
@@ -3746,6 +3779,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	t.Run("Default expression with function and referenced column", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t2(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))", []sql.Row(nil), nil, nil)
+		e.Analyzer.Debug = true
+		e.Analyzer.Verbose = true
 		RunQuery(t, e, harness, "INSERT INTO t2 (pk) VALUES (1), (2), (3)")
 		TestQuery(t, harness, e, "SELECT * FROM t2", []sql.Row{{1, 2}, {2, 2}, {3, 3}}, nil, nil)
 	})

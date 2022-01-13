@@ -60,7 +60,8 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrUniqueKeyViolation,
 }
 
-// InsertInto is a node describing the insertion into some table.
+// InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
+// them into.
 type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
@@ -99,6 +100,7 @@ func (ii *InsertInto) Schema() sql.Schema {
 }
 
 func (ii *InsertInto) Children() []sql.Node {
+	// The source node is analyzed completely independently, so we don't include it in children
 	return []sql.Node{ii.Destination}
 }
 
@@ -110,6 +112,84 @@ func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *ii
 	nc.db = database
 	return &nc, nil
+}
+
+// InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
+// overridden. This is useful when the table in question has late-resolving column defaults.
+type InsertDestination struct {
+	UnaryNode
+	Sch sql.Schema
+}
+
+var _ sql.Expressioner = (*InsertDestination)(nil)
+
+func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
+	return &InsertDestination{
+		UnaryNode: UnaryNode{Child: node},
+		Sch:       schema,
+	}
+}
+
+func (id *InsertDestination) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(id.Sch)
+}
+
+func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(id.Sch) {
+		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
+	}
+
+	id.Sch = schemaWithDefaults(id.Sch, exprs)
+	return &id, nil
+}
+
+func (id *InsertDestination) String() string {
+	return id.UnaryNode.Child.String()
+}
+
+func (id *InsertDestination) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("InsertDestination")
+	var children []string
+	for _, col := range id.Sch {
+		children = append(children, sql.DebugString(col.Default))
+	}
+	children = append(children, sql.DebugString(id.Child))
+
+	pr.WriteChildren(children...)
+
+	return pr.String()
+}
+
+func (id *InsertDestination) Schema() sql.Schema {
+	return id.Sch
+}
+
+func (id *InsertDestination) Resolved() bool {
+	if !id.UnaryNode.Resolved() {
+		return false
+	}
+
+	for _, col := range id.Sch {
+		if col.Default != nil && !col.Default.Expression.Resolved() {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (id *InsertDestination) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return id.UnaryNode.Child.RowIter(ctx, row)
+}
+
+func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(id, len(children), 1)
+	}
+
+	id.UnaryNode.Child = children[0]
+	return &id, nil
 }
 
 type insertIter struct {
@@ -138,6 +218,8 @@ func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 		return getInsertableTable(node.Table)
 	case sql.TableWrapper:
 		return getInsertableTable(node.Underlying())
+	case *InsertDestination:
+		return GetInsertable(node.Child)
 	case *prependNode:
 		return GetInsertable(node.Child)
 	default:
@@ -158,7 +240,7 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 
 func newInsertIter(
 	ctx *sql.Context,
-	table sql.Node,
+	dest sql.Node,
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
@@ -166,9 +248,10 @@ func newInsertIter(
 	row sql.Row,
 	ignore bool,
 ) (sql.RowIter, error) {
-	dstSchema := table.Schema()
+	// This schema may vary from the table itself, particularly in terms of column defaults
+	dstSchema := dest.Schema()
 
-	insertable, err := GetInsertable(table)
+	insertable, err := GetInsertable(dest)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +278,7 @@ func newInsertIter(
 	insertExpressions := getInsertExpressions(values)
 	insertIter := &insertIter{
 		schema:      dstSchema,
-		tableNode:   table,
+		tableNode:   dest,
 		inserter:    inserter,
 		replacer:    replacer,
 		updater:     updater,
@@ -619,6 +702,30 @@ func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema,
 
 func (ii *InsertInto) Expressions() []sql.Expression {
 	return append(ii.OnDupExprs, ii.Checks.ToExpressions()...)
+}
+
+// wrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
+func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
+	defs := make([]sql.Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
+}
+
+// schemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
+// wrapped with expression.Wrapper.
+func schemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
+	sc := schema.Copy()
+	for i, d := range defaults {
+		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			sc[i].Default = unwrappedColDefVal
+		} else {
+			sc[i].Default = nil
+		}
+	}
+	return sc
 }
 
 func (ii InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {

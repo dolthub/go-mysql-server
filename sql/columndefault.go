@@ -40,6 +40,13 @@ func NewColumnDefaultValue(expr Expression, outType Type, representsLiteral bool
 	}, nil
 }
 
+// NewUnresolvedColumnDefaultValue returns a column default
+func NewUnresolvedColumnDefaultValue(expr string) *ColumnDefaultValue {
+	return &ColumnDefaultValue{
+		Expression: UnresolvedColumnDefault{exprString: expr},
+	}
+}
+
 // Children implements sql.Expression
 func (e *ColumnDefaultValue) Children() []Expression {
 	if e == nil {
@@ -119,6 +126,18 @@ func (e *ColumnDefaultValue) String() string {
 	}
 }
 
+func (e *ColumnDefaultValue) DebugString() string {
+	if e == nil {
+		return ""
+	}
+
+	if e.literal {
+		return DebugString(e.Expression)
+	} else {
+		return fmt.Sprintf("(%s)", DebugString(e.Expression))
+	}
+}
+
 // Type implements sql.Expression
 func (e *ColumnDefaultValue) Type() Type {
 	if e == nil {
@@ -161,4 +180,39 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		}
 	}
 	return nil
+}
+
+type UnresolvedColumnDefault struct {
+	exprString string
+}
+
+func (u UnresolvedColumnDefault) Resolved() bool {
+	return false
+}
+
+func (u UnresolvedColumnDefault) String() string {
+	return u.exprString
+}
+
+func (u UnresolvedColumnDefault) Type() Type {
+	panic("UnresolvedColumnDefault is a placeholder node, but Type() was called")
+}
+
+func (u UnresolvedColumnDefault) IsNullable() bool {
+	return true
+}
+
+func (u UnresolvedColumnDefault) Eval(ctx *Context, row Row) (interface{}, error) {
+	panic("UnresolvedColumnDefault is a placeholder node, but Eval() was called")
+}
+
+func (u UnresolvedColumnDefault) Children() []Expression {
+	return nil
+}
+
+func (u UnresolvedColumnDefault) WithChildren(children ...Expression) (Expression, error) {
+	if len(children) != 0 {
+		return nil, ErrInvalidChildrenNumber.New(u, len(children), 0)
+	}
+	return u, nil
 }

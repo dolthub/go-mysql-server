@@ -268,6 +268,11 @@ type Databaser interface {
 	WithDatabase(Database) (Node, error)
 }
 
+// SchemaTarget is a node that has a target schema that can be set
+type SchemaTarget interface {
+	WithTargetSchema(Schema) (Node, error)
+}
+
 // Partition represents a partition from a SQL table.
 type Partition interface {
 	Key() []byte
