@@ -162,8 +162,7 @@ func (c *CreateProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			CreatedAt:       c.CreatedAt,
 			ModifiedAt:      c.ModifiedAt,
 		},
-		db:  c.Db,
-		ctx: ctx,
+		db: c.Db,
 	}, nil
 }
 
@@ -172,11 +171,10 @@ type createProcedureIter struct {
 	once sync.Once
 	spd  sql.StoredProcedureDetails
 	db   sql.Database
-	ctx  *sql.Context
 }
 
 // Next implements the sql.RowIter interface.
-func (c *createProcedureIter) Next() (sql.Row, error) {
+func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 	run := false
 	c.once.Do(func() {
 		run = true
@@ -190,7 +188,7 @@ func (c *createProcedureIter) Next() (sql.Row, error) {
 		return nil, sql.ErrStoredProceduresNotSupported.New(c.db.Name())
 	}
 
-	err := pdb.SaveStoredProcedure(c.ctx, c.spd)
+	err := pdb.SaveStoredProcedure(ctx, c.spd)
 	if err != nil {
 		return nil, err
 	}

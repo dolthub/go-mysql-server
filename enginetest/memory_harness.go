@@ -126,7 +126,7 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 	)
 }
 
-func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.Schema, asOf interface{}) sql.Table {
+func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()
@@ -171,7 +171,7 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 	return dbs
 }
 
-func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.Schema) (sql.Table, error) {
+func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
 	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()

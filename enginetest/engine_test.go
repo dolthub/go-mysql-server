@@ -76,6 +76,10 @@ func TestUse(t *testing.T) {
 	enginetest.TestUse(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestNoDatabaseSelected(t *testing.T) {
+	enginetest.TestNoDatabaseSelected(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestTracing(t *testing.T) {
 	enginetest.TestTracing(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -91,9 +95,9 @@ func TestCurrentTimestamp(t *testing.T) {
 func TestLocks(t *testing.T) {
 	require := require.New(t)
 
-	t1 := newLockableTable(memory.NewTable("t1", nil))
-	t2 := newLockableTable(memory.NewTable("t2", nil))
-	t3 := memory.NewTable("t3", nil)
+	t1 := newLockableTable(memory.NewTable("t1", sql.PrimaryKeySchema{}))
+	t2 := newLockableTable(memory.NewTable("t2", sql.PrimaryKeySchema{}))
+	t3 := memory.NewTable("t3", sql.PrimaryKeySchema{})
 	db := memory.NewDatabase("db")
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
@@ -243,8 +247,8 @@ func TestTrackProcess(t *testing.T) {
 	a := analyzer.NewDefault(provider)
 
 	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", nil, 2)}, nil, nil),
-		plan.NewResolvedTable(memory.NewPartitionedTable("bar", nil, 4), nil, nil),
+		plan.NewResolvedTable(&nonIndexableTable{memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, 2)}, nil, nil),
+		plan.NewResolvedTable(memory.NewPartitionedTable("bar", sql.PrimaryKeySchema{}, 4), nil, nil),
 		expression.NewLiteral(int64(1), sql.Int64),
 	)
 
@@ -318,8 +322,8 @@ type nonIndexableTable struct {
 func TestLockTables(t *testing.T) {
 	require := require.New(t)
 
-	t1 := newLockableTable(memory.NewTable("foo", nil))
-	t2 := newLockableTable(memory.NewTable("bar", nil))
+	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}))
+	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}))
 	node := plan.NewLockTables([]*plan.TableLock{
 		{plan.NewResolvedTable(t1, nil, nil), true},
 		{plan.NewResolvedTable(t2, nil, nil), false},
@@ -339,9 +343,9 @@ func TestUnlockTables(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("db")
-	t1 := newLockableTable(memory.NewTable("foo", nil))
-	t2 := newLockableTable(memory.NewTable("bar", nil))
-	t3 := newLockableTable(memory.NewTable("baz", nil))
+	t1 := newLockableTable(memory.NewTable("foo", sql.PrimaryKeySchema{}))
+	t2 := newLockableTable(memory.NewTable("bar", sql.PrimaryKeySchema{}))
+	t3 := newLockableTable(memory.NewTable("baz", sql.PrimaryKeySchema{}))
 	db.AddTable("foo", t1)
 	db.AddTable("bar", t2)
 	db.AddTable("baz", t3)

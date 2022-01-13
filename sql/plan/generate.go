@@ -101,11 +101,11 @@ type generateIter struct {
 	row sql.Row
 }
 
-func (i *generateIter) Next() (sql.Row, error) {
+func (i *generateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
 		if i.gen == nil {
 			var err error
-			i.row, err = i.child.Next()
+			i.row, err = i.child.Next(ctx)
 			if err != nil {
 				return nil, err
 			}

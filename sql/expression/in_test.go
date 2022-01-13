@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 )
 
 func TestInTuple(t *testing.T) {
@@ -225,7 +226,7 @@ func TestHashInTuple(t *testing.T) {
 			),
 			nil,
 			false,
-			nil,
+			sql.ErrInvalidOperandColumns,
 			nil,
 		},
 		{
@@ -243,7 +244,7 @@ func TestHashInTuple(t *testing.T) {
 			),
 			nil,
 			false,
-			nil,
+			sql.ErrInvalidOperandColumns,
 			nil,
 		},
 		{
@@ -252,7 +253,7 @@ func TestHashInTuple(t *testing.T) {
 			expression.NewLiteral(int64(2), sql.Int64),
 			nil,
 			nil,
-			expression.ErrUnsupportedHashInOperand,
+			expression.ErrUnsupportedInOperand,
 			nil,
 		},
 		{
@@ -370,15 +371,83 @@ func TestHashInTuple(t *testing.T) {
 			),
 			nil,
 			true,
-			expression.ErrCantHashNestedExpression,
 			nil,
+			nil,
+		},
+		{
+			name: "left has a function",
+			left: expression.NewTuple(
+				function.NewLower(
+					expression.NewLiteral("hi", sql.TinyText),
+				),
+			),
+			right: expression.NewTuple(
+				expression.NewLiteral("hi", sql.TinyText),
+			),
+			result: true,
+		},
+		{
+			name: "left has a convert (type cast)",
+			left: expression.NewConvert(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				"char",
+			),
+			right: expression.NewTuple(
+				expression.NewLiteral("1", sql.TinyText),
+			),
+			row: sql.NewRow(int64(1), int64(0)),
+
+			result: true,
+		},
+		{
+			name: "left has a comparer",
+			left: expression.NewGreaterThan(
+				expression.NewGetField(0, sql.Int64, "foo", false),
+				expression.NewLiteral(1, sql.Int64),
+			),
+			right: expression.NewTuple(
+				expression.NewLiteral(true, sql.Boolean),
+			),
+			row:    sql.NewRow(int64(2), int64(0)),
+			result: true,
+		},
+		{
+			name: "left has an is null",
+			left: expression.NewIsNull(
+				expression.NewLiteral(nil, sql.Null),
+			),
+			right: expression.NewTuple(
+				expression.NewLiteral(true, sql.Boolean),
+			),
+			result: true,
+		},
+		{
+			name: "left has an is true",
+			left: expression.NewIsTrue(
+				expression.NewLiteral(true, sql.Boolean),
+			),
+			right: expression.NewTuple(
+				expression.NewLiteral(true, sql.Boolean),
+			),
+			result: true,
+		},
+		{
+			name: "left has an arithmetic",
+			left: expression.NewPlus(
+				expression.NewLiteral(4, sql.Int64),
+				expression.NewGetField(0, sql.Int64, "foo", false),
+			),
+			right: expression.NewTuple(
+				expression.NewLiteral(6, sql.Int64),
+			),
+			row:    sql.NewRow(int64(2), int64(0)),
+			result: true,
 		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-
 			expr, err := expression.NewHashInTuple(tt.left, tt.right)
 			if tt.staticErr != nil {
 				require.Error(err)

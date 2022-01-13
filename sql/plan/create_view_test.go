@@ -26,10 +26,10 @@ import (
 )
 
 func newCreateView(db memory.MemoryDatabase, isReplace bool) *CreateView {
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: sql.Int32},
 		{Name: "s", Source: "mytable", Type: sql.Text},
-	})
+	}))
 
 	db.AddTable("db", table)
 

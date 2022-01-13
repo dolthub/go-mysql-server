@@ -42,6 +42,11 @@ func (c *Coalesce) FunctionName() string {
 	return "coalesce"
 }
 
+// Description implements sql.FunctionExpression
+func (c *Coalesce) Description() string {
+	return "returns the first non-null value in a list."
+}
+
 // Type implements the sql.Expression interface.
 // The return type of Type() is the aggregated type of the argument types.
 func (c *Coalesce) Type() sql.Type {

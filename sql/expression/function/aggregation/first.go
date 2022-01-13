@@ -29,6 +29,7 @@ type First struct {
 
 var _ sql.FunctionExpression = (*First)(nil)
 var _ sql.Aggregation = (*First)(nil)
+var _ sql.WindowAdaptableExpression = (*First)(nil)
 
 // NewFirst returns a new First node.
 func NewFirst(e sql.Expression) *First {
@@ -38,6 +39,11 @@ func NewFirst(e sql.Expression) *First {
 // FunctionName implements sql.FunctionExpression
 func (f *First) FunctionName() string {
 	return "first"
+}
+
+// Description implements sql.FunctionExpression
+func (f *First) Description() string {
+	return "returns the first value in a sequence of elements of an aggregation."
 }
 
 // Type returns the resultant type of the aggregation.
@@ -64,6 +70,15 @@ func (f *First) NewBuffer() (sql.AggregationBuffer, error) {
 		return nil, err
 	}
 	return &firstBuffer{nil, bufferChild}, nil
+}
+
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (f *First) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(f.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewFirstAgg(c), nil
 }
 
 // Eval implements the Expresion interface.

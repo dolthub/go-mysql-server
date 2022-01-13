@@ -30,6 +30,7 @@ type Min struct {
 
 var _ sql.FunctionExpression = (*Min)(nil)
 var _ sql.Aggregation = (*Min)(nil)
+var _ sql.WindowAdaptableExpression = (*Min)(nil)
 
 // NewMin creates a new Min node.
 func NewMin(e sql.Expression) *Min {
@@ -39,6 +40,11 @@ func NewMin(e sql.Expression) *Min {
 // FunctionName implements sql.FunctionExpression
 func (m *Min) FunctionName() string {
 	return "min"
+}
+
+// Description implements sql.FunctionExpression
+func (m *Min) Description() string {
+	return "returns the minimum value of expr in all rows."
 }
 
 // Type returns the resultant type of the aggregation.
@@ -70,6 +76,15 @@ func (m *Min) NewBuffer() (sql.AggregationBuffer, error) {
 		return nil, err
 	}
 	return &minBuffer{nil, bufferChild}, nil
+}
+
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (m *Min) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(m.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewMinAgg(c), nil
 }
 
 // Eval implements the Expression interface.

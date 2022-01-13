@@ -47,6 +47,8 @@ func TestHandlerOutput(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
+		nil,
 	)
 	handler.NewConnection(dummyConn)
 
@@ -126,7 +128,7 @@ func TestHandlerOutput(t *testing.T) {
 			var lenLastBatch int
 			var lastRowsAffected uint64
 			handler.ComInitDB(test.conn, "test")
-			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
+			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result, more bool) error {
 				callsToCallback++
 				lenLastBatch = len(res.Rows)
 				lastRowsAffected = res.RowsAffected
@@ -156,6 +158,8 @@ func TestHandlerComPrepare(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
+		nil,
 	)
 	handler.NewConnection(dummyConn)
 
@@ -198,6 +202,106 @@ func TestHandlerComPrepare(t *testing.T) {
 	}
 }
 
+type TestListener struct {
+	Connections int
+	Queries     int
+	Disconnects int
+	Successes   int
+	Failures    int
+}
+
+func (tl *TestListener) ClientConnected() {
+	tl.Connections++
+}
+
+func (tl *TestListener) ClientDisconnected() {
+	tl.Disconnects++
+}
+
+func (tl *TestListener) QueryStarted() {
+	tl.Queries++
+}
+
+func (tl *TestListener) QueryCompleted(success bool, duration time.Duration) {
+	if success {
+		tl.Successes++
+	} else {
+		tl.Failures++
+	}
+}
+
+func TestServerEventListener(t *testing.T) {
+	require := require.New(t)
+	e := setupMemDB(require)
+	listener := &TestListener{}
+	handler := NewHandler(
+		e,
+		NewSessionManager(
+			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
+				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
+			},
+			opentracing.NoopTracer{},
+			func(db string) bool { return db == "test" },
+			e.MemoryManager,
+			e.ProcessList,
+			"foo",
+		),
+		0,
+		false,
+		listener,
+	)
+
+	cb := func(res *sqltypes.Result, more bool) error {
+		return nil
+	}
+
+	require.Equal(listener.Connections, 0)
+	require.Equal(listener.Disconnects, 0)
+	require.Equal(listener.Queries, 0)
+	require.Equal(listener.Successes, 0)
+	require.Equal(listener.Failures, 0)
+
+	conn1 := newConn(1)
+	handler.NewConnection(conn1)
+	require.Equal(listener.Connections, 1)
+	require.Equal(listener.Disconnects, 0)
+
+	err := handler.sm.SetDB(conn1, "test")
+	require.NoError(err)
+
+	err = handler.ComQuery(conn1, "SELECT 1", cb)
+	require.NoError(err)
+	require.Equal(listener.Queries, 1)
+	require.Equal(listener.Successes, 1)
+	require.Equal(listener.Failures, 0)
+
+	conn2 := newConn(2)
+	handler.NewConnection(conn2)
+	require.Equal(listener.Connections, 2)
+	require.Equal(listener.Disconnects, 0)
+
+	handler.ComInitDB(conn2, "test")
+	err = handler.ComQuery(conn2, "select 1", cb)
+	require.NoError(err)
+	require.Equal(listener.Queries, 2)
+	require.Equal(listener.Successes, 2)
+	require.Equal(listener.Failures, 0)
+
+	err = handler.ComQuery(conn1, "select bad_col from bad_table with illegal syntax", cb)
+	require.Error(err)
+	require.Equal(listener.Queries, 3)
+	require.Equal(listener.Successes, 2)
+	require.Equal(listener.Failures, 1)
+
+	handler.ConnectionClosed(conn1)
+	require.Equal(listener.Connections, 2)
+	require.Equal(listener.Disconnects, 1)
+
+	handler.ConnectionClosed(conn2)
+	require.Equal(listener.Connections, 2)
+	require.Equal(listener.Disconnects, 2)
+}
+
 func TestHandlerKill(t *testing.T) {
 	require := require.New(t)
 	e := setupMemDB(require)
@@ -215,6 +319,8 @@ func TestHandlerKill(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
+		nil,
 	)
 
 	conn1 := newConn(1)
@@ -226,7 +332,7 @@ func TestHandlerKill(t *testing.T) {
 	require.Len(handler.sm.sessions, 0)
 
 	handler.ComInitDB(conn2, "test")
-	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result) error {
+	err := handler.ComQuery(conn2, "KILL QUERY 1", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 
@@ -242,7 +348,7 @@ func TestHandlerKill(t *testing.T) {
 	ctx1, err = handler.e.ProcessList.AddProcess(ctx1, "SELECT 1")
 	require.NoError(err)
 
-	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result) error {
+	err = handler.ComQuery(conn2, "KILL "+fmt.Sprint(ctx1.ID()), func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -293,7 +399,10 @@ func TestHandlerTimeout(t *testing.T) {
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		1*time.Second)
+		1*time.Second,
+		false,
+		nil,
+	)
 
 	noTimeOutHandler := NewHandler(
 		e2, NewSessionManager(testSessionBuilder,
@@ -302,7 +411,10 @@ func TestHandlerTimeout(t *testing.T) {
 			sql.NewMemoryManager(nil),
 			sqle.NewProcessList(),
 			"foo"),
-		0)
+		0,
+		false,
+		nil,
+	)
 	require.Equal(1*time.Second, timeOutHandler.readTimeout)
 	require.Equal(0*time.Second, noTimeOutHandler.readTimeout)
 
@@ -313,18 +425,18 @@ func TestHandlerTimeout(t *testing.T) {
 	noTimeOutHandler.NewConnection(connNoTimeout)
 
 	timeOutHandler.ComInitDB(connTimeout, "test")
-	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
+	err := timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.EqualError(err, "row read wait bigger than connection timeout (errno 1105) (sqlstate HY000)")
 
-	err = timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result) error {
+	err = timeOutHandler.ComQuery(connTimeout, "SELECT SLEEP(0.5)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
 
 	noTimeOutHandler.ComInitDB(connNoTimeout, "test")
-	err = noTimeOutHandler.ComQuery(connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result) error {
+	err = noTimeOutHandler.ComQuery(connNoTimeout, "SELECT SLEEP(2)", func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -356,13 +468,15 @@ func TestOkClosedConnection(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
+		nil,
 	)
 	c := newConn(1)
 	h.NewConnection(c)
 
-	q := fmt.Sprintf("SELECT SLEEP(%d)", tcpCheckerSleepTime*4)
+	q := fmt.Sprintf("SELECT SLEEP(%d)", (tcpCheckerSleepDuration * 4 / time.Second))
 	h.ComInitDB(c, "test")
-	err = h.ComQuery(c, q, func(res *sqltypes.Result) error {
+	err = h.ComQuery(c, q, func(res *sqltypes.Result, more bool) error {
 		return nil
 	})
 	require.NoError(err)
@@ -508,6 +622,8 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 			"foo",
 		),
 		0,
+		false,
+		nil,
 	)
 
 	tests := []struct {
@@ -551,7 +667,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			handler.ComInitDB(test.conn, "test")
 			var rowsAffected uint64
-			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result) error {
+			err := handler.ComQuery(test.conn, test.query, func(res *sqltypes.Result, more bool) error {
 				rowsAffected = uint64(res.RowsAffected)
 				return nil
 			})

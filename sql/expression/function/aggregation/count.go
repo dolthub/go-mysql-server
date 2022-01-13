@@ -30,9 +30,11 @@ type Count struct {
 
 var _ sql.FunctionExpression = (*Count)(nil)
 var _ sql.Aggregation = (*Count)(nil)
+var _ sql.WindowAdaptableExpression = (*Count)(nil)
 
 var _ sql.FunctionExpression = (*CountDistinct)(nil)
 var _ sql.Aggregation = (*CountDistinct)(nil)
+var _ sql.WindowAdaptableExpression = (*CountDistinct)(nil)
 
 // NewCount creates a new Count node.
 func NewCount(e sql.Expression) *Count {
@@ -44,6 +46,11 @@ func (c *Count) FunctionName() string {
 	return "count"
 }
 
+// Description implements sql.FunctionExpression
+func (c *Count) Description() string {
+	return "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement."
+}
+
 // NewBuffer creates a new buffer for the aggregation.
 func (c *Count) NewBuffer() (sql.AggregationBuffer, error) {
 	bufferChild, err := expression.Clone(c.UnaryExpression.Child)
@@ -51,6 +58,15 @@ func (c *Count) NewBuffer() (sql.AggregationBuffer, error) {
 		return nil, err
 	}
 	return &countBuffer{0, bufferChild}, nil
+}
+
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (c *Count) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := expression.Clone(c.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewCountAgg(child), nil
 }
 
 // Type returns the type of the result.
@@ -104,6 +120,15 @@ func (c *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 	return &countDistinctBuffer{make(map[uint64]struct{}), c.Child}, nil
 }
 
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (c *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
+	child, err := expression.Clone(c.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+	return NewCountAgg(expression.NewDistinctExpression(child)), nil
+}
+
 // Type returns the type of the result.
 func (c *CountDistinct) Type() sql.Type {
 	return sql.Int64
@@ -143,6 +168,11 @@ func (c *CountDistinct) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 // FunctionName implements sql.FunctionExpression
 func (c *CountDistinct) FunctionName() string {
 	return "count distinct"
+}
+
+// Description implements sql.FunctionExpression
+func (c *CountDistinct) Description() string {
+	return "returns the number of distinct values in a result set."
 }
 
 type countDistinctBuffer struct {

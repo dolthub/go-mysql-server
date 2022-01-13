@@ -29,7 +29,7 @@ import (
 
 func TestTablePartitionsCount(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewPartitionedTable("foo", nil, 5)
+	table := memory.NewPartitionedTable("foo", sql.PrimaryKeySchema{}, 5)
 	count, err := table.PartitionCount(sql.NewEmptyContext())
 	require.NoError(err)
 	require.Equal(int64(5), count)
@@ -37,9 +37,9 @@ func TestTablePartitionsCount(t *testing.T) {
 
 func TestTableName(t *testing.T) {
 	require := require.New(t)
-	s := sql.Schema{
+	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
-	}
+	})
 
 	table := memory.NewTable("test", s)
 	require.Equal("test", table.Name())
@@ -47,10 +47,10 @@ func TestTableName(t *testing.T) {
 
 func TestTableString(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int64, Nullable: false},
-	})
+	}))
 	require.Equal("foo", table.String())
 }
 
@@ -96,7 +96,7 @@ type dummyLookupIter struct {
 
 var _ sql.IndexValueIter = (*dummyLookupIter)(nil)
 
-func (i *dummyLookupIter) Next() ([]byte, error) {
+func (i *dummyLookupIter) Next(*sql.Context) ([]byte, error) {
 	if i.pos >= len(i.values) {
 		return nil, io.EOF
 	}
@@ -110,7 +110,7 @@ func (i *dummyLookupIter) Close(_ *sql.Context) error { return nil }
 
 var tests = []struct {
 	name          string
-	schema        sql.Schema
+	schema        sql.PrimaryKeySchema
 	numPartitions int
 	rows          []sql.Row
 
@@ -131,11 +131,11 @@ var tests = []struct {
 }{
 	{
 		name: "test",
-		schema: sql.Schema{
+		schema: sql.NewPrimaryKeySchema(sql.Schema{
 			&sql.Column{Name: "col1", Source: "test", Type: sql.Text, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), `""`, sql.Text, false)},
 			&sql.Column{Name: "col2", Source: "test", Type: sql.Int32, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int32, false)},
 			&sql.Column{Name: "col3", Source: "test", Type: sql.Int64, Nullable: false, Default: parse.MustStringToColumnDefaultValue(sql.NewEmptyContext(), "0", sql.Int64, false)},
-		},
+		}),
 		numPartitions: 2,
 		rows: []sql.Row{
 			sql.NewRow("a", int32(10), int64(100)),
@@ -212,12 +212,13 @@ func TestTable(t *testing.T) {
 				require.NoError(table.Insert(sql.NewEmptyContext(), row))
 			}
 
-			pIter, err := table.Partitions(sql.NewEmptyContext())
+			ctx := sql.NewEmptyContext()
+			pIter, err := table.Partitions(ctx)
 			require.NoError(err)
 
 			for i := 0; i < test.numPartitions; i++ {
 				var p sql.Partition
-				p, err = pIter.Next()
+				p, err = pIter.Next(ctx)
 				require.NoError(err)
 
 				var iter sql.RowIter
@@ -237,7 +238,7 @@ func TestTable(t *testing.T) {
 				}
 			}
 
-			_, err = pIter.Next()
+			_, err = pIter.Next(ctx)
 			require.EqualError(err, io.EOF.Error())
 
 		})
@@ -337,11 +338,12 @@ func TestIndexed(t *testing.T) {
 func getAllRows(t *testing.T, table sql.Table) []sql.Row {
 	var require = require.New(t)
 
-	pIter, err := table.Partitions(sql.NewEmptyContext())
+	ctx := sql.NewEmptyContext()
+	pIter, err := table.Partitions(ctx)
 	require.NoError(err)
 	allRows := []sql.Row{}
 	for {
-		p, err := pIter.Next()
+		p, err := pIter.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -350,7 +352,6 @@ func getAllRows(t *testing.T, table sql.Table) []sql.Row {
 			require.NoError(err)
 		}
 
-		ctx := sql.NewEmptyContext()
 		iter, err := table.PartitionRows(ctx, p)
 		require.NoError(err)
 
@@ -375,15 +376,17 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 
 			pIter, err := table.IndexKeyValues(
 				sql.NewEmptyContext(),
-				[]string{test.schema[0].Name, test.schema[2].Name},
+				[]string{test.schema.Schema[0].Name, test.schema.Schema[2].Name},
 			)
 			require.NoError(err)
+
+			ctx := sql.NewEmptyContext()
 
 			var iter sql.IndexKeyValueIter
 			idxKVs := []*indexKeyValue{}
 			for {
 				if iter == nil {
-					_, iter, err = pIter.Next()
+					_, iter, err = pIter.Next(ctx)
 					if err != nil {
 						if err == io.EOF {
 							iter = nil
@@ -394,7 +397,7 @@ func TestTableIndexKeyValueIter(t *testing.T) {
 					}
 				}
 
-				row, data, err := iter.Next()
+				row, data, err := iter.Next(ctx)
 				if err != nil {
 					if err == io.EOF {
 						iter = nil

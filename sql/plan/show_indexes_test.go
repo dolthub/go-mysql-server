@@ -44,39 +44,39 @@ func TestShowIndexes(t *testing.T) {
 			name: "test1",
 			table: memory.NewTable(
 				"test1",
-				sql.Schema{
+				sql.NewPrimaryKeySchema(sql.Schema{
 					&sql.Column{Name: "foo", Type: sql.Int32, Source: "test1", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, false), Nullable: false},
-				},
+				}),
 			),
 		},
 		{
 			name: "test2",
 			table: memory.NewTable(
 				"test2",
-				sql.Schema{
+				sql.NewPrimaryKeySchema(sql.Schema{
 					&sql.Column{Name: "bar", Type: sql.Int64, Source: "test2", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int64, true), Nullable: true},
 					&sql.Column{Name: "rab", Type: sql.Int64, Source: "test2", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int64, false), Nullable: false},
-				},
+				}),
 			),
 		},
 		{
 			name: "test3",
 			table: memory.NewTable(
 				"test3",
-				sql.Schema{
+				sql.NewPrimaryKeySchema(sql.Schema{
 					&sql.Column{Name: "baz", Type: sql.Text, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, sql.Text, false), Nullable: false},
 					&sql.Column{Name: "zab", Type: sql.Int32, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true},
 					&sql.Column{Name: "bza", Type: sql.Int64, Source: "test3", Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int64, true), Nullable: true},
-				},
+				}),
 			),
 		},
 		{
 			name: "test4",
 			table: memory.NewTable(
 				"test4",
-				sql.Schema{
+				sql.NewPrimaryKeySchema(sql.Schema{
 					&sql.Column{Name: "oof", Type: sql.Text, Source: "test4", Default: parse.MustStringToColumnDefaultValue(ctx, `""`, sql.Text, false), Nullable: false},
-				},
+				}),
 			),
 		},
 	}

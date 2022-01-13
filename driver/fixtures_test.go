@@ -13,7 +13,7 @@ import (
 type memTable struct {
 	DatabaseName string
 	TableName    string
-	Schema       sql.Schema
+	Schema       sql.PrimaryKeySchema
 	Records      Records
 
 	once       sync.Once
@@ -54,12 +54,12 @@ func personMemTable(database, table string) (*memTable, Records) {
 	mtb := &memTable{
 		DatabaseName: database,
 		TableName:    table,
-		Schema: sql.Schema{
+		Schema: sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "name", Type: sql.Text, Nullable: false, Source: table},
 			{Name: "email", Type: sql.Text, Nullable: false, Source: table},
 			{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: table},
 			{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: table},
-		},
+		}),
 		Records: records,
 	}
 

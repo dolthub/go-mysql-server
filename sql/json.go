@@ -41,6 +41,7 @@ func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
 	if b, err = t.Convert(b); err != nil {
 		return 0, err
 	}
+	// todo: making a context here is expensive
 	return a.(JSONValue).Compare(NewEmptyContext(), b.(JSONValue))
 }
 
@@ -82,6 +83,7 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
+	// todo: making a context here is expensive
 	s, err := js.ToString(NewEmptyContext())
 	if err != nil {
 		return sqltypes.NULL, err

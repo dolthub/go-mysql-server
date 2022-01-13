@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -95,9 +96,13 @@ func checkExpressionValid(e sql.Expression) error {
 	var err error
 	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
-		// TODO: deterministic functions are fine
+		case *function.GetLock, *function.IsUsedLock, *function.IsFreeLock, function.ReleaseAllLocks, *function.ReleaseLock:
+			err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
+			return false
 		case sql.FunctionExpression:
-			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(e.String())
+			if ndf, ok := e.(sql.NonDeterministicExpression); ok && ndf.IsNonDeterministic() {
+				err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
+			}
 			return false
 		case *plan.Subquery:
 			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(e.String())
@@ -119,8 +124,8 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.InsertInto:
 			nn := *node
 
-			rtable, ok := nn.Destination.(*plan.ResolvedTable)
-			if !ok {
+			rtable := getResolvedTable(nn.Destination)
+			if rtable == nil {
 				return node, nil
 			}
 
@@ -239,13 +244,13 @@ func convertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (
 
 	selectStmt, ok := parsed.(*sqlparser.Select)
 	if !ok || len(selectStmt.SelectExprs) != 1 {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
+		return nil, sql.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
 	expr := selectStmt.SelectExprs[0]
 	ae, ok := expr.(*sqlparser.AliasedExpr)
 	if !ok {
-		return nil, parse.ErrInvalidCheckConstraint.New(check.CheckExpression)
+		return nil, sql.ErrInvalidCheckConstraint.New(check.CheckExpression)
 	}
 
 	c, err := parse.ExprToExpression(ctx, ae.Expr)

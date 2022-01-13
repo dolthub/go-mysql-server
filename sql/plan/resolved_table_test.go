@@ -55,13 +55,14 @@ func TestResolvedTableCancelled(t *testing.T) {
 	table := NewResolvedTable(newTableTest("test"), nil, nil)
 	require.NotNil(table)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	octx, cancel := context.WithCancel(context.Background())
 	cancel()
+	ctx := sql.NewContext(octx)
 
-	iter, err := table.RowIter(sql.NewContext(ctx), nil)
+	iter, err := table.RowIter(ctx, nil)
 	require.NoError(err)
 
-	_, err = iter.Next()
+	_, err = iter.Next(ctx)
 	require.Equal(context.Canceled, err)
 }
 
@@ -144,7 +145,7 @@ type partitionIter struct {
 	pos  int
 }
 
-func (p *partitionIter) Next() (sql.Partition, error) {
+func (p *partitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	if p.pos >= len(p.keys) {
 		return nil, io.EOF
 	}

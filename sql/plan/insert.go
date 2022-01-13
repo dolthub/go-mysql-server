@@ -37,8 +37,6 @@ var ErrInsertIntoDuplicateColumn = errors.NewKind("duplicate column name %v")
 var ErrInsertIntoNonexistentColumn = errors.NewKind("invalid column name %v")
 var ErrInsertIntoIncompatibleTypes = errors.NewKind("cannot convert type %s to %s")
 
-var ErrInsertIgnore = errors.NewKind("This row was ignored") // Used for making sure the row accumulator is correct
-
 // cc: https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
 // The INSERT IGNORE syntax applies to these ignorable errors
 // ER_BAD_NULL_ERROR - yes
@@ -59,9 +57,11 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrForeignKeyChildViolation,
 	sql.ErrForeignKeyParentViolation,
 	sql.ErrDuplicateEntry,
-	sql.ErrUniqueKeyViolation}
+	sql.ErrUniqueKeyViolation,
+}
 
-// InsertInto is a node describing the insertion into some table.
+// InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
+// them into.
 type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
@@ -100,6 +100,7 @@ func (ii *InsertInto) Schema() sql.Schema {
 }
 
 func (ii *InsertInto) Children() []sql.Node {
+	// The source node is analyzed completely independently, so we don't include it in children
 	return []sql.Node{ii.Destination}
 }
 
@@ -111,6 +112,84 @@ func (ii *InsertInto) WithDatabase(database sql.Database) (sql.Node, error) {
 	nc := *ii
 	nc.db = database
 	return &nc, nil
+}
+
+// InsertDestination is a wrapper for a table to be used with InsertInto.Destination that allows the schema to be
+// overridden. This is useful when the table in question has late-resolving column defaults.
+type InsertDestination struct {
+	UnaryNode
+	Sch sql.Schema
+}
+
+var _ sql.Expressioner = (*InsertDestination)(nil)
+
+func NewInsertDestination(schema sql.Schema, node sql.Node) *InsertDestination {
+	return &InsertDestination{
+		UnaryNode: UnaryNode{Child: node},
+		Sch:       schema,
+	}
+}
+
+func (id *InsertDestination) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(id.Sch)
+}
+
+func (id InsertDestination) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(id.Sch) {
+		return nil, sql.ErrInvalidChildrenNumber.New(id, len(exprs), len(id.Sch))
+	}
+
+	id.Sch = schemaWithDefaults(id.Sch, exprs)
+	return &id, nil
+}
+
+func (id *InsertDestination) String() string {
+	return id.UnaryNode.Child.String()
+}
+
+func (id *InsertDestination) DebugString() string {
+	pr := sql.NewTreePrinter()
+	pr.WriteNode("InsertDestination")
+	var children []string
+	for _, col := range id.Sch {
+		children = append(children, sql.DebugString(col.Default))
+	}
+	children = append(children, sql.DebugString(id.Child))
+
+	pr.WriteChildren(children...)
+
+	return pr.String()
+}
+
+func (id *InsertDestination) Schema() sql.Schema {
+	return id.Sch
+}
+
+func (id *InsertDestination) Resolved() bool {
+	if !id.UnaryNode.Resolved() {
+		return false
+	}
+
+	for _, col := range id.Sch {
+		if col.Default != nil && !col.Default.Expression.Resolved() {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (id *InsertDestination) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	return id.UnaryNode.Child.RowIter(ctx, row)
+}
+
+func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(id, len(children), 1)
+	}
+
+	id.UnaryNode.Child = children[0]
+	return &id, nil
 }
 
 type insertIter struct {
@@ -139,6 +218,8 @@ func GetInsertable(node sql.Node) (sql.InsertableTable, error) {
 		return getInsertableTable(node.Table)
 	case sql.TableWrapper:
 		return getInsertableTable(node.Underlying())
+	case *InsertDestination:
+		return GetInsertable(node.Child)
 	case *prependNode:
 		return GetInsertable(node.Child)
 	default:
@@ -159,7 +240,7 @@ func getInsertableTable(t sql.Table) (sql.InsertableTable, error) {
 
 func newInsertIter(
 	ctx *sql.Context,
-	table sql.Node,
+	dest sql.Node,
 	values sql.Node,
 	isReplace bool,
 	onDupUpdateExpr []sql.Expression,
@@ -167,9 +248,10 @@ func newInsertIter(
 	row sql.Row,
 	ignore bool,
 ) (sql.RowIter, error) {
-	dstSchema := table.Schema()
+	// This schema may vary from the table itself, particularly in terms of column defaults
+	dstSchema := dest.Schema()
 
-	insertable, err := GetInsertable(table)
+	insertable, err := GetInsertable(dest)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +278,7 @@ func newInsertIter(
 	insertExpressions := getInsertExpressions(values)
 	insertIter := &insertIter{
 		schema:      dstSchema,
-		tableNode:   table,
+		tableNode:   dest,
 		inserter:    inserter,
 		replacer:    replacer,
 		updater:     updater,
@@ -209,9 +291,9 @@ func newInsertIter(
 	}
 
 	if replacer != nil {
-		return NewTableEditorIter(ctx, replacer, insertIter), nil
+		return NewTableEditorIter(replacer, insertIter), nil
 	} else {
-		return NewTableEditorIter(ctx, inserter, insertIter), nil
+		return NewTableEditorIter(inserter, insertIter), nil
 	}
 }
 
@@ -228,14 +310,14 @@ func getInsertExpressions(values sql.Node) []sql.Expression {
 	return exprs
 }
 
-func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
-	row, err := i.rowSource.Next()
+func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
+	row, err := i.rowSource.Next(ctx)
 	if err == io.EOF {
 		return nil, err
 	}
 
 	if err != nil {
-		return i.ignoreOrClose(err)
+		return i.ignoreOrClose(ctx, row, err)
 	}
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
@@ -244,9 +326,9 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		row = row[len(row)-len(i.schema):]
 	}
 
-	err = i.validateNullability(i.schema, row)
+	err = i.validateNullability(ctx, i.schema, row)
 	if err != nil {
-		return i.ignoreOrClose(err)
+		return i.ignoreOrClose(ctx, row, err)
 	}
 
 	// apply check constraints
@@ -255,24 +337,33 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 			continue
 		}
 
-		res, err := sql.EvaluateCondition(i.ctx, check.Expr, row)
+		res, err := sql.EvaluateCondition(ctx, check.Expr, row)
 
 		if err != nil {
-			return nil, i.warnOnIgnorableError(err)
+			return nil, i.warnOnIgnorableError(ctx, row, err)
 		}
 
 		if sql.IsFalse(res) {
-			return nil, sql.ErrCheckConstraintViolated.New(check.Name)
+			return nil, sql.NewWrappedInsertError(row, sql.ErrCheckConstraintViolated.New(check.Name))
 		}
 	}
 
 	// Do any necessary type conversions to the target schema
-	for i, col := range i.schema {
-		if row[i] != nil {
-			row[i], err = col.Type.Convert(row[i])
+	for idx, col := range i.schema {
+		if row[idx] != nil {
+			converted, err := col.Type.Convert(row[idx]) // allows for better error handling
 			if err != nil {
-				return nil, err
+				if i.ignore {
+					row, err = i.convertDataAndWarn(ctx, row, idx, err)
+					if err != nil {
+						return nil, err
+					}
+					continue
+				} else {
+					return nil, sql.NewWrappedInsertError(row, err)
+				}
 			}
+			row[idx] = converted
 		}
 	}
 
@@ -284,16 +375,18 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		// May have multiple duplicate pk & unique errors due to multiple indexes
 		//TODO: how does this interact with triggers?
 		for {
-			if err := i.replacer.Insert(i.ctx, row); err != nil {
+			if err := i.replacer.Insert(ctx, row); err != nil {
 				if !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) {
-					_ = i.rowSource.Close(i.ctx)
-					return nil, err
+					i.rowSource.Close(ctx)
+					i.rowSource = nil
+					return nil, sql.NewWrappedInsertError(row, err)
 				}
 
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-				if err = i.replacer.Delete(i.ctx, ue.Existing); err != nil {
-					_ = i.rowSource.Close(i.ctx)
-					return nil, err
+				if err = i.replacer.Delete(ctx, ue.Existing); err != nil {
+					i.rowSource.Close(ctx)
+					i.rowSource = nil
+					return nil, sql.NewWrappedInsertError(row, err)
 				}
 				// the row had to be deleted, write the values into the toReturn row
 				for i := 0; i < len(ue.Existing); i++ {
@@ -305,39 +398,70 @@ func (i *insertIter) Next() (returnRow sql.Row, returnErr error) {
 		}
 		return toReturn, nil
 	} else {
-		if err := i.inserter.Insert(i.ctx, row); err != nil {
+		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
-				return i.ignoreOrClose(err)
+				return i.ignoreOrClose(ctx, row, err)
 			}
 
 			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-			return i.handleOnDuplicateKeyUpdate(row, ue.Existing)
+			return i.handleOnDuplicateKeyUpdate(ctx, row, ue.Existing)
 		}
 	}
 
-	i.updateLastInsertId(i.ctx, row)
+	i.updateLastInsertId(ctx, row)
 
 	return row, nil
 }
 
-func (i *insertIter) handleOnDuplicateKeyUpdate(row, rowToUpdate sql.Row) (returnRow sql.Row, returnErr error) {
-	err := i.resolveValues(i.ctx, row)
+func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpdate sql.Row) (returnRow sql.Row, returnErr error) {
+	err := i.resolveValues(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressions(i.ctx, i.updateExprs, rowToUpdate)
-	if err != nil {
-		return nil, err
+	newRow := rowToUpdate
+	for _, updateExpr := range i.updateExprs {
+		val, err := updateExpr.Eval(i.ctx, newRow)
+		if err != nil {
+			if i.ignore {
+				idx, ok := getFieldIndexFromUpdateExpr(updateExpr)
+				if !ok {
+					return nil, err
+				}
+
+				val, err = i.convertDataAndWarn(ctx, row, idx, err)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
+		}
+
+		newRow = val.(sql.Row)
 	}
 
-	err = i.updater.Update(i.ctx, rowToUpdate, newRow)
+	err = i.updater.Update(ctx, rowToUpdate, newRow)
 	if err != nil {
 		return nil, err
 	}
 
 	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
 	return rowToUpdate.Append(newRow), nil
+}
+
+func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
+	setField, ok := updateExpr.(*expression.SetField)
+	if !ok {
+		return 0, false
+	}
+
+	getField, ok := setField.Left.(*expression.GetField)
+	if !ok {
+		return 0, false
+	}
+
+	return getField.Index(), true
 }
 
 // resolveValues resolves all VALUES functions.
@@ -367,28 +491,32 @@ func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
 func (i *insertIter) Close(ctx *sql.Context) error {
 	if !i.closed {
 		i.closed = true
+		var rsErr, iErr, rErr, uErr error
+		if i.rowSource != nil {
+			rsErr = i.rowSource.Close(ctx)
+		}
 		if i.inserter != nil {
-			if err := i.inserter.Close(ctx); err != nil {
-				return err
-			}
+			iErr = i.inserter.Close(ctx)
 		}
 		if i.replacer != nil {
-			if err := i.replacer.Close(ctx); err != nil {
-				return err
-			}
+			rErr = i.replacer.Close(ctx)
 		}
 		if i.updater != nil {
-			if err := i.updater.Close(ctx); err != nil {
-				return err
-			}
+			uErr = i.updater.Close(ctx)
 		}
-		if i.rowSource != nil {
-			if err := i.rowSource.Close(ctx); err != nil {
-				return err
-			}
+		if rsErr != nil {
+			return rsErr
+		}
+		if iErr != nil {
+			return iErr
+		}
+		if rErr != nil {
+			return rErr
+		}
+		if uErr != nil {
+			return uErr
 		}
 	}
-
 	return nil
 }
 
@@ -413,16 +541,44 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 	}
 }
 
-func (i *insertIter) ignoreOrClose(err error) (sql.Row, error) {
+func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sql.Row, error) {
 	if i.ignore {
-		return nil, i.warnOnIgnorableError(err)
+		err = i.warnOnIgnorableError(ctx, row, err)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
 	} else {
-		_ = i.rowSource.Close(i.ctx)
-		return nil, err
+		i.rowSource.Close(ctx)
+		i.rowSource = nil
+		return nil, sql.NewWrappedInsertError(row, err)
 	}
 }
 
-func (i *insertIter) warnOnIgnorableError(err error) error {
+// convertDataAndWarn modifies a row with data conversion issues in INSERT IGNORE calls
+// Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
+// cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
+func (i *insertIter) convertDataAndWarn(ctx *sql.Context, row sql.Row, columnIdx int, err error) (sql.Row, error) {
+	if sql.ErrLengthBeyondLimit.Is(err) {
+		maxLength := i.schema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
+		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+	} else {
+		row[columnIdx] = i.schema[columnIdx].Type.Zero()
+	}
+
+	sqlerr, _, _ := sql.CastSQLError(err)
+
+	// Add a warning instead
+	ctx.Session.Warn(&sql.Warning{
+		Level:   "Note",
+		Code:    sqlerr.Num,
+		Message: err.Error(),
+	})
+
+	return row, nil
+}
+
+func (i *insertIter) warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {
 	if !i.ignore {
 		return err
 	}
@@ -430,10 +586,10 @@ func (i *insertIter) warnOnIgnorableError(err error) error {
 	// Check that this error is a part of the list of Ignorable Errors and create the relevant warning
 	for _, ie := range IgnorableErrors {
 		if ie.Is(err) {
-			sqlerr, _ := sql.CastSQLError(err)
+			sqlerr, _, _ := sql.CastSQLError(err)
 
 			// Add a warning instead
-			i.ctx.Session.Warn(&sql.Warning{
+			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
 				Code:    sqlerr.Num,
 				Message: err.Error(),
@@ -445,7 +601,7 @@ func (i *insertIter) warnOnIgnorableError(err error) error {
 			}
 
 			// Return the InsertIgnore err to ensure our accumulator doesn't count this row.
-			return ErrInsertIgnore.New()
+			return sql.NewErrInsertIgnore(row)
 		}
 	}
 
@@ -529,13 +685,13 @@ func (ii InsertInto) DebugString() string {
 	return pr.String()
 }
 
-func (i *insertIter) validateNullability(dstSchema sql.Schema, row sql.Row) error {
+func (i *insertIter) validateNullability(ctx *sql.Context, dstSchema sql.Schema, row sql.Row) error {
 	for count, col := range dstSchema {
 		if !col.Nullable && row[count] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			if i.ignore {
 				row[count] = col.Type.Zero()
-				_ = i.warnOnIgnorableError(sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
+				_ = i.warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
 			} else {
 				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
 			}
@@ -546,6 +702,30 @@ func (i *insertIter) validateNullability(dstSchema sql.Schema, row sql.Row) erro
 
 func (ii *InsertInto) Expressions() []sql.Expression {
 	return append(ii.OnDupExprs, ii.Checks.ToExpressions()...)
+}
+
+// wrappedColumnDefaults returns the column defaults for the schema given, wrapped with expression.Wrapper
+func wrappedColumnDefaults(schema sql.Schema) []sql.Expression {
+	defs := make([]sql.Expression, len(schema))
+	for i, col := range schema {
+		defs[i] = expression.WrapExpression(col.Default)
+	}
+	return defs
+}
+
+// schemaWithDefaults returns a copy of the schema given with the defaults provided. Default expressions must be
+// wrapped with expression.Wrapper.
+func schemaWithDefaults(schema sql.Schema, defaults []sql.Expression) sql.Schema {
+	sc := schema.Copy()
+	for i, d := range defaults {
+		unwrappedColDefVal, ok := d.(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
+		if ok {
+			sc[i].Default = unwrappedColDefVal
+		} else {
+			sc[i].Default = nil
+		}
+	}
+	return sc
 }
 
 func (ii InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {

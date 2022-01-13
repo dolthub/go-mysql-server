@@ -33,6 +33,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -42,6 +43,8 @@ import (
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
+	defer engine.Close()
+
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
@@ -53,6 +56,17 @@ func TestQueries(t *testing.T, harness Harness) {
 		for _, tt := range KeylessQueries {
 			TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 		}
+	}
+}
+
+// Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
+func TestSpatialQueries(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	createIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range SpatialQueryTests {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	}
 }
 
@@ -84,12 +98,16 @@ var infoSchemaTables = []string{
 	"auto_increment_tbl",
 	"people",
 	"datetime_table",
+	"one_pk_two_idx",
+	"one_pk_three_idx",
+	"invert_pk",
 }
 
 // TestInfoSchema runs tests of the information_schema database
 func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
 	engine := NewEngineWithDbs(t, harness, dbs)
+	defer engine.Close()
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
@@ -123,6 +141,7 @@ func TestReadOnlyDatabases(t *testing.T, harness Harness) {
 	dbs := createReadOnlyDatabases(ro)
 	dbs = createSubsetTestData(t, harness, nil, dbs[0], dbs[1])
 	engine := NewEngineWithDbs(t, harness, dbs)
+	defer engine.Close()
 
 	for _, querySet := range [][]QueryTest{
 		QueryTests,
@@ -159,6 +178,8 @@ func createReadOnlyDatabases(h ReadOnlyDatabaseHarness) (dbs []sql.Database) {
 // harness.
 func TestQueryPlans(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
+	defer engine.Close()
+
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 	for _, tt := range PlanTests {
@@ -175,6 +196,8 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 	}
 
 	engine := NewEngine(t, harness)
+	defer engine.Close()
+
 	for _, tt := range VersionedQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, tt.Bindings)
 	}
@@ -218,10 +241,10 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("db")
 
 	wrapInTransaction(t, db, harness, func() {
-		table, err := harness.NewTable(db, "members", sql.Schema{
+		table, err := harness.NewTable(db, "members", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "id", Type: sql.Int64, Source: "members", PrimaryKey: true},
 			{Name: "team", Type: sql.Text, Source: "members"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(
@@ -279,10 +302,10 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
 
 	wrapInTransaction(t, db, harness, func() {
-		_, err := harness.NewTable(db, "mytable", sql.Schema{
+		_, err := harness.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 			{Name: "s", Type: sql.Text, Source: "mytable"},
-		})
+		}))
 		require.NoError(err)
 	})
 
@@ -292,6 +315,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	cfg := &sqle.Config{Auth: au}
 	a := analyzer.NewBuilder(pro).Build()
 	e := sqle.New(a, cfg)
+	defer e.Close()
 
 	RunQuery(t, e, harness, `SELECT i FROM mytable`)
 
@@ -310,16 +334,17 @@ func TestReadOnly(t *testing.T, harness Harness) {
 
 func TestExplode(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
-	table, err := harness.NewTable(db, "t", sql.Schema{
+	table, err := harness.NewTable(db, "t", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t"},
 		{Name: "b", Type: sql.CreateArray(sql.Text), Source: "t"},
 		{Name: "c", Type: sql.Text, Source: "t"},
-	})
+	}))
 	require.NoError(t, err)
 
 	InsertRows(t, harness.NewContext(), mustInsertableTable(t, table), sql.NewRow(int64(1), []interface{}{"a", "b"}, "first"), sql.NewRow(int64(2), []interface{}{"c", "d"}, "second"), sql.NewRow(int64(3), []interface{}{"e", "f"}, "third"))
 
 	e := sqle.New(analyzer.NewDefault(harness.NewDatabaseProvider(db)), new(sqle.Config))
+	defer e.Close()
 
 	for _, q := range ExplodeQueries {
 		TestQuery(t, harness, e, q.Query, q.Expected, nil, q.Bindings)
@@ -405,6 +430,7 @@ func TestColumnAliases(t *testing.T, harness Harness) {
 		t.Run(tt.query, func(t *testing.T) {
 			require := require.New(t)
 			e := NewEngine(t, harness)
+			defer e.Close()
 
 			ctx := NewContext(harness)
 			sch, rowIter, err := e.Query(ctx, tt.query)
@@ -436,18 +462,18 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 	db := harness.NewDatabase("mydb")
 
 	wrapInTransaction(t, db, harness, func() {
-		table, err := harness.NewTable(db, "foo", sql.Schema{
+		table, err := harness.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Int64, Source: "foo", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "foo"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table), sql.NewRow(int64(1), "foo"), sql.NewRow(int64(2), "bar"), sql.NewRow(int64(3), "baz"))
 
-		table2, err := harness.NewTable(db, "bar", sql.Schema{
+		table2, err := harness.NewTable(db, "bar", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "b", Type: sql.Text, Source: "bar", PrimaryKey: true},
 			{Name: "c", Type: sql.Int64, Source: "bar"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2), sql.NewRow("qux", int64(3)), sql.NewRow("mux", int64(2)), sql.NewRow("pux", int64(1)))
@@ -466,6 +492,7 @@ func TestAmbiguousColumnResolution(t *testing.T, harness Harness) {
 
 func TestQueryErrors(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
+	defer engine.Close()
 
 	for _, tt := range errorQueries {
 		t.Run(tt.Query, func(t *testing.T) {
@@ -482,6 +509,8 @@ func TestQueryErrors(t *testing.T, harness Harness) {
 func TestInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range InsertQueries {
 		e := NewEngine(t, harness)
+		defer e.Close()
+
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
 		// If we skipped the insert, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -519,6 +548,28 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestBrokenInsertScripts(t *testing.T, harness Harness) {
+	t.Skip()
+	for _, script := range InsertScripts {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestSpatialInsertInto(t *testing.T, harness Harness) {
+	for _, insertion := range SpatialInsertQueries {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
+		// If we skipped the insert, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(insertion.WriteQuery) {
+				t.Logf("Skipping query %s", insertion.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, insertion.SelectQuery, insertion.ExpectedSelect, nil, insertion.Bindings)
+	}
+}
+
 func TestLoadData(t *testing.T, harness Harness) {
 	for _, script := range LoadDataScripts {
 		TestScript(t, harness, script)
@@ -541,6 +592,8 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 func TestReplaceInto(t *testing.T, harness Harness) {
 	for _, insertion := range ReplaceQueries {
 		e := NewEngine(t, harness)
+		defer e.Close()
+
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
 		// If we skipped the insert, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -569,6 +622,8 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 func TestUpdate(t *testing.T, harness Harness) {
 	for _, update := range UpdateTests {
 		e := NewEngine(t, harness)
+		defer e.Close()
+
 		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil, update.Bindings)
 		// If we skipped the update, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -605,9 +660,26 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSpatialUpdate(t *testing.T, harness Harness) {
+	for _, update := range SpatialUpdateTests {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil, update.Bindings)
+		// If we skipped the update, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(update.WriteQuery) {
+				t.Logf("Skipping query %s", update.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, update.SelectQuery, update.ExpectedSelect, nil, update.Bindings)
+	}
+}
+
 func TestDelete(t *testing.T, harness Harness) {
 	for _, delete := range DeleteTests {
 		e := NewEngine(t, harness)
+		defer e.Close()
+
 		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, delete.Bindings)
 		// If we skipped the delete, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -633,8 +705,25 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 	}
 }
 
+func TestSpatialDelete(t *testing.T, harness Harness) {
+	for _, delete := range SpatialDeleteTests {
+		e := NewEngine(t, harness)
+		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, delete.Bindings)
+		// If we skipped the delete, also skip the select
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(delete.WriteQuery) {
+				t.Logf("Skipping query %s", delete.SelectQuery)
+				continue
+			}
+		}
+		TestQuery(t, harness, e, delete.SelectQuery, delete.ExpectedSelect, nil, delete.Bindings)
+	}
+}
+
 func TestTruncate(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
+
 	ctx := NewContext(harness)
 
 	t.Run("Standard TRUNCATE", func(t *testing.T) {
@@ -953,6 +1042,7 @@ func TestScript(t *testing.T, harness Harness, script ScriptTest) bool {
 		myDb := harness.NewDatabase("mydb")
 		databases := []sql.Database{myDb}
 		e := NewEngineWithDbs(t, harness, databases)
+		defer e.Close()
 		TestScriptWithEngine(t, e, harness, script)
 	})
 }
@@ -1008,6 +1098,7 @@ func TestTransactionScript(t *testing.T, harness Harness, script TransactionTest
 	return t.Run(script.Name, func(t *testing.T) {
 		myDb := harness.NewDatabase("mydb")
 		e := NewEngineWithDbs(t, harness, []sql.Database{myDb})
+		defer e.Close()
 		TestTransactionScriptWithEngine(t, e, harness, script)
 	})
 }
@@ -1062,6 +1153,7 @@ func getClient(query string) string {
 
 func TestViews(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 	ctx := NewContext(harness)
 
 	// nested views
@@ -1098,6 +1190,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 	ctx := NewContext(harness)
 	_, iter, err := e.Query(ctx, "CREATE VIEW myview1 AS SELECT * FROM myhistorytable")
 	require.NoError(err)
@@ -1117,6 +1210,7 @@ func TestVersionedViews(t *testing.T, harness Harness) {
 
 func TestCreateTable(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 	ctx := NewContext(harness)
 
 	t.Run("Assortment of types without pk", func(t *testing.T) {
@@ -1282,7 +1376,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(2)", sql.Int64, true), Comment: "hi there"},
 		}
-		require.Equal(t, s, indexableTable.Schema())
+		assertSchemasEqualWithDefaults(t, s, indexableTable.Schema())
 
 		indexes, err := indexableTable.GetIndexes(ctx)
 		require.NoError(t, err)
@@ -1323,7 +1417,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t8",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(7)", sql.Int64, true), Comment: "greetings"},
 		}
-		require.Equal(t, s, indexableTable.Schema())
+		assertSchemasEqualWithDefaults(t, s, indexableTable.Schema())
 	})
 
 	t.Run("UNIQUE constraint in column definition", func(t *testing.T) {
@@ -1413,6 +1507,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -1452,6 +1547,7 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -1510,32 +1606,79 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
-	TestQuery(t, harness, e, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", []sql.Row(nil), nil, nil)
+	// Error cases
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i2 TO iX", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN iX TO i2", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO iX, RENAME COLUMN i TO i2", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO S", sql.ErrColumnExists)
+	AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO n, RENAME COLUMN s TO N", sql.ErrColumnExists)
 
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
 	require.Equal(sql.Schema{
-		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist RENAME COLUMN foo TO bar")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
+	RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2")
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable RENAME COLUMN foo TO bar")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
+	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+	require.NoError(err)
+	require.True(ok)
+	require.Equal(sql.Schema{
+		{Name: "i2", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+		{Name: "s2", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+	}, tbl.Schema())
+
+	TestQuery(t, harness, e, "select * from mytable order by i2 limit 1",
+		[]sql.Row{
+			{1, "first row"},
+		}, nil, nil)
+}
+
+func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) bool {
+	if len(expected) != len(actual) {
+		return assert.Equal(t, expected, actual)
+	}
+
+	ec, ac := make(sql.Schema, len(expected)), make(sql.Schema, len(actual))
+	for i := range expected {
+		ecc := *expected[i]
+		acc := *actual[i]
+
+		ecc.Default = nil
+		acc.Default = nil
+
+		ac[i] = &acc
+		ec[i] = &ecc
+
+		// For the default, compare just the string representations. This makes it possible for integrators who don't reify
+		// default value expressions at schema load time (best practice) to run these tests. We also trim off any parens
+		// for the same reason.
+		eds, ads := "NULL", "NULL"
+		if expected[i].Default != nil {
+			eds = strings.Trim(expected[i].Default.String(), "()")
+		}
+		if actual[i].Default != nil {
+			ads = strings.Trim(actual[i].Default.String(), "()")
+		}
+
+		assert.Equal(t, eds, ads, "column default values differ")
+	}
+
+	return assert.Equal(t, ec, ac)
 }
 
 func TestAddColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
 
@@ -1544,7 +1687,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
@@ -1561,7 +1704,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
@@ -1579,7 +1722,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
@@ -1599,7 +1742,7 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
-	require.Equal(sql.Schema{
+	assertSchemasEqualWithDefaults(t, sql.Schema{
 		{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
 		{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
 		{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
@@ -1623,18 +1766,17 @@ func TestAddColumn(t *testing.T, harness Harness) {
 }
 
 func TestModifyColumn(t *testing.T, harness Harness) {
-	require := require.New(t)
-
 	e := NewEngine(t, harness)
+	defer e.Close()
 	db, err := e.Analyzer.Catalog.Database("mydb")
-	require.NoError(err)
+	require.NoError(t, err)
 
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TEXT NOT NULL COMMENT 'modified'", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Text, Source: "mytable", Comment: "modified", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
@@ -1642,9 +1784,9 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 		{Name: "i", Type: sql.Int8, Source: "mytable", Comment: "yes", PrimaryKey: true},
 	}, tbl.Schema())
@@ -1652,9 +1794,9 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
 	}, tbl.Schema())
@@ -1662,30 +1804,52 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 	TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'", []sql.Row(nil), nil, nil)
 
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
-	require.NoError(err)
-	require.True(ok)
-	require.Equal(sql.Schema{
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable", Comment: "ok", PrimaryKey: true},
 		{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
 	}, tbl.Schema())
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
+	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY not_exist BIGINT NOT NULL COMMENT 'ok' FIRST", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist", sql.ErrTableColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'", sql.ErrTableNotFound)
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable MODIFY i BIGINT NOT NULL COMMENT 'ok' AFTER not_exist")
-	require.Error(err)
-	require.True(sql.ErrTableColumnNotFound.Is(err))
+	t.Run("auto increment attribute", func(t *testing.T) {
+		TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY i BIGINT auto_increment", []sql.Row(nil), nil, nil)
 
-	_, _, err = e.Query(NewContext(harness), "ALTER TABLE not_exist MODIFY COLUMN i INT NOT NULL COMMENT 'hello'")
-	require.Error(err)
-	require.True(sql.ErrTableNotFound.Is(err))
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+		}, tbl.Schema())
+
+		RunQuery(t, e, harness, "insert into mytable (s) values ('new row')")
+		TestQuery(t, harness, e, "select i from mytable where s = 'new row'", []sql.Row{{4}}, nil, nil)
+
+		AssertErr(t, e, harness, "ALTER TABLE mytable add column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
+
+		RunQuery(t, e, harness, "alter table mytable add column i2 bigint")
+		AssertErr(t, e, harness, "ALTER TABLE mytable modify column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
+
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: true, Source: "mytable", Comment: "changed"},
+			{Name: "i2", Type: sql.Int64, Source: "mytable", Nullable: true},
+		}, tbl.Schema())
+	})
 }
 
 func TestDropColumn(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 	ctx := NewContext(harness)
 	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
@@ -1710,6 +1874,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 
 func TestCreateDatabase(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 	ctx := NewContext(harness)
 
 	t.Run("CREATE DATABASE and create table", func(t *testing.T) {
@@ -1785,9 +1950,127 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 }
 
+func TestPkOrdinals(t *testing.T, harness Harness) {
+	tests := []struct {
+		name        string
+		create      string
+		alter       string
+		expOrdinals []int
+	}{
+		{
+			name:        "CREATE table out of order PKs",
+			create:      "CREATE TABLE a (x int, y int, primary key (y,x))",
+			expOrdinals: []int{1, 0},
+		},
+		{
+			name:        "CREATE table out of order PKs",
+			create:      "CREATE TABLE a (x int, y int, primary key (y,x))",
+			expOrdinals: []int{1, 0},
+		},
+		{
+			name:        "Drop column shifts PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a DROP COLUMN w",
+			expOrdinals: []int{3, 1},
+		},
+		{
+			name:        "Add column shifts PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a ADD COLUMN ww int AFTER v",
+			expOrdinals: []int{5, 1},
+		},
+		{
+			name:        "Modify column shifts PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a MODIFY COLUMN w int AFTER y",
+			expOrdinals: []int{3, 1},
+		},
+		{
+			name:        "Keyless table has no PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int)",
+			expOrdinals: []int{},
+		},
+		{
+			name:        "Delete PRIMARY KEY leaves no PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a DROP PRIMARY KEY",
+			expOrdinals: []int{},
+		},
+		{
+			name:        "Add primary key to table creates PK ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int)",
+			alter:       "ALTER TABLE a ADD PRIMARY KEY (y,v)",
+			expOrdinals: []int{4, 1},
+		},
+		{
+			name:        "Transpose PK column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a MODIFY COLUMN y int AFTER u",
+			expOrdinals: []int{1, 2},
+		},
+		{
+			name:        "Rename PK column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v))",
+			alter:       "ALTER TABLE a RENAME COLUMN y to yy",
+			expOrdinals: []int{4, 1},
+		},
+		{
+			name:        "Complicated table ordinals",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			expOrdinals: []int{4, 1, 3, 5, 0},
+		},
+		{
+			name:        "Complicated table add column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			alter:       "ALTER TABLE a ADD COLUMN ww int AFTER w",
+			expOrdinals: []int{5, 1, 4, 6, 0},
+		},
+		{
+			name:        "Complicated table drop column",
+			create:      "CREATE TABLE a (u int, v int, w int, ww int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			alter:       "ALTER TABLE a DROP COLUMN ww",
+			expOrdinals: []int{4, 1, 3, 5, 0},
+		},
+		{
+			name:        "Complicated table transpose column",
+			create:      "CREATE TABLE a (u int, v int, w int, x int, y int, z int, PRIMARY KEY (y,v,x,z,u))",
+			alter:       "ALTER TABLE a MODIFY COLUMN y int AFTER u",
+			expOrdinals: []int{1, 2, 4, 5, 0},
+		},
+	}
+	e := NewEngine(t, harness)
+	defer e.Close()
+	ctx := NewContext(harness)
+
+	var err error
+	var db sql.Database
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer RunQuery(t, e, harness, "DROP TABLE IF EXISTS a")
+			RunQuery(t, e, harness, tt.create)
+			RunQuery(t, e, harness, tt.alter)
+
+			db, err = e.Analyzer.Catalog.Database("mydb")
+			require.NoError(t, err)
+
+			table, ok, err := db.GetTableInsensitive(ctx, "a")
+
+			require.NoError(t, err)
+			require.True(t, ok)
+
+			pkTable, ok := table.(sql.PrimaryKeyTable)
+			require.True(t, ok)
+
+			pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
+			require.Equal(t, tt.expOrdinals, pkOrds)
+		})
+	}
+}
+
 func TestDropDatabase(t *testing.T, harness Harness) {
 	t.Run("DROP DATABASE correctly works", func(t *testing.T) {
 		e := NewEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database("mydb")
@@ -1799,6 +2082,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 	t.Run("DROP DATABASE works on newly created databases.", func(t *testing.T) {
 		e := NewEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database("testdb")
@@ -1810,6 +2094,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 	t.Run("DROP SCHEMA works on newly created databases.", func(t *testing.T) {
 		e := NewEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, "CREATE SCHEMA testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
 		_, err := e.Analyzer.Catalog.Database("testdb")
@@ -1822,6 +2107,7 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 	t.Run("DROP DATABASE IF EXISTS correctly works.", func(t *testing.T) {
 		e := NewEngine(t, harness)
+		defer e.Close()
 
 		// The test setup sets a database name, which interferes with DROP DATABASE tests
 		ctx := NewContext(harness)
@@ -1850,6 +2136,7 @@ func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	TestQuery(t, harness, e, "CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)", []sql.Row(nil), nil, nil)
 	TestQuery(t, harness, e, "ALTER TABLE parent ADD INDEX pb (b)", []sql.Row(nil), nil, nil)
@@ -1971,6 +2258,7 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	TestQuery(t, harness, e, "CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)", []sql.Row(nil), nil, nil)
 	TestQuery(t, harness, e, "ALTER TABLE parent ADD INDEX pb (b)", []sql.Row(nil), nil, nil)
@@ -2033,11 +2321,13 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (B > 0)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0) NOT ENFORCED")
 	RunQuery(t, e, harness, "ALTER TABLE T1 ADD CONSTRAINT chk3 CHECK (B > 1)")
+	RunQuery(t, e, harness, "ALTER TABLE T1 ADD CONSTRAINT chk4 CHECK (upper(C) = c)")
 
 	db, err := e.Analyzer.Catalog.Database("mydb")
 	require.NoError(err)
@@ -2067,6 +2357,11 @@ func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 		{
 			Name:            "chk3",
 			CheckExpression: "(b > 1)",
+			Enforced:        true,
+		},
+		{
+			Name:            "chk4",
+			CheckExpression: "(UPPER(c) = c)",
 			Enforced:        true,
 		},
 	}
@@ -2136,7 +2431,7 @@ CREATE TABLE T2
 
 	// Some faulty create statements
 	AssertErr(t, e, harness, "ALTER TABLE t3 ADD CONSTRAINT chk2 CHECK (c > 0)", sql.ErrTableNotFound)
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (c > 0)", sql.ErrColumnNotFound)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK (d > 0)", sql.ErrColumnNotFound)
 
 	AssertErr(t, e, harness, `
 CREATE TABLE t4
@@ -2156,36 +2451,50 @@ CREATE TABLE t4
 
 func TestChecksOnInsert(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 
-	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
+	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c varchar(20))")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (b > 0)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk3 CHECK ((a + b) / 2 >= 1) ENFORCED")
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1)")
+
+	// TODO: checks get serialized as strings, which means that the String() method of functions is load-bearing.
+	//  We do not have tests for all of them. Write some.
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk4 CHECK (upper(c) = c) ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk5 CHECK (trim(c) = c) ENFORCED")
+	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk6 CHECK (trim(leading ' ' from c) = c) ENFORCED")
+
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (1,1,'ABC')")
 
 	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
+		{1, 1, "ABC"},
 	}, nil, nil)
-	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,0)", sql.ErrCheckConstraintViolated)
-	AssertErr(t, e, harness, "INSERT INTO t1 VALUES (0,1)", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) VALUES (0,0)", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) VALUES (0,1)", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,'abc')", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,'ABC ')", sql.ErrCheckConstraintViolated)
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b,c) VALUES (2,2,' ABC')", sql.ErrCheckConstraintViolated)
 
-	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (4,NULL)")
+	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (2,2,'ABC')")
+	RunQuery(t, e, harness, "INSERT INTO t1 (a,b) VALUES (4,NULL)")
 
 	TestQuery(t, harness, e, `SELECT * FROM t1`, []sql.Row{
-		{1, 1},
-		{4, nil},
+		{1, 1, "ABC"},
+		{2, 2, "ABC"},
+		{4, nil, nil},
 	}, nil, nil)
 
 	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER)")
 	RunQuery(t, e, harness, "INSERT INTO t2 VALUES (2,2),(3,3)")
 	RunQuery(t, e, harness, "DELETE FROM t1")
 
-	AssertErr(t, e, harness, "INSERT INTO t1 select a - 2, b - 1 from t2", sql.ErrCheckConstraintViolated)
-	RunQuery(t, e, harness, "INSERT INTO t1 select a, b from t2")
+	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) select a - 2, b - 1 from t2", sql.ErrCheckConstraintViolated)
+	RunQuery(t, e, harness, "INSERT INTO t1 (a,b) select a, b from t2")
 }
 
 func TestChecksOnUpdate(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (b > 10) NOT ENFORCED")
@@ -2209,28 +2518,60 @@ func TestChecksOnUpdate(t *testing.T, harness Harness) {
 
 func TestDisallowedCheckConstraints(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER)")
 
-	// functions, UDFs, procedures
-	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")", sql.ErrInvalidConstraintFunctionsNotSupported)
+	// non-deterministic functions
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_user = \"root@\")", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (user() = \"root@\")", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (now() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_date() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (uuid() > 'a')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (database() = 'foo')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (schema() = 'foo')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (version() = 'foo')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (last_insert_id() = 0)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (rand() < .8)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (row_count() = 0)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (found_rows() = 0)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (curdate() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (curtime() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (current_timestamp() > '2021')", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (connection_id() = 2)", sql.ErrInvalidConstraintFunctionNotSupported)
+
+	// locks
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (get_lock('abc', 0) is null)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (release_all_locks() is null)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (release_lock('abc') is null)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (is_free_lock('abc') is null)", sql.ErrInvalidConstraintFunctionNotSupported)
+	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK (is_used_lock('abc') is null)", sql.ErrInvalidConstraintFunctionNotSupported)
+
+	// subqueries
 	AssertErr(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk2 CHECK ((select count(*) from t1) = 0)", sql.ErrInvalidConstraintSubqueryNotSupported)
+
+	// TODO: need checks for stored procedures, also not allowed
+
+	// Some spot checks on create table forms of the above
 	AssertErr(t, e, harness, `
 CREATE TABLE t3 (
 	a int primary key CONSTRAINT chk2 CHECK (current_user = "root@")
 )
-`, sql.ErrInvalidConstraintFunctionsNotSupported)
+`, sql.ErrInvalidConstraintFunctionNotSupported)
+
 	AssertErr(t, e, harness, `
 CREATE TABLE t3 (
 	a int primary key,
 	CHECK (current_user = "root@")
 )
-`, sql.ErrInvalidConstraintFunctionsNotSupported)
+`, sql.ErrInvalidConstraintFunctionNotSupported)
+
 	AssertErr(t, e, harness, `
 CREATE TABLE t3 (
 	a int primary key CONSTRAINT chk2 CHECK (a = (select count(*) from t1))
 )
 `, sql.ErrInvalidConstraintSubqueryNotSupported)
+
 	AssertErr(t, e, harness, `
 CREATE TABLE t3 (
 	a int primary key,
@@ -2243,6 +2584,7 @@ func TestDropCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
@@ -2286,6 +2628,7 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
 	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
@@ -2395,10 +2738,9 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "ALTER TABLE t1 DROP CONSTRAINT fk1", sql.ErrUnknownConstraint)
 }
 
-func TestWindowAgg(t *testing.T, harness Harness) {
-	//require := require.New(t)
-
+func TestWindowFunctions(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
 	RunQuery(t, e, harness, "INSERT INTO t1 VALUES (0,0,0), (1,1,1), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
@@ -2484,17 +2826,94 @@ func TestWindowAgg(t *testing.T, harness Harness) {
 		{4, 1},
 		{5, 0},
 	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a+2) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, 2},
+		{3, 4},
+		{4, 5},
+		{5, 6},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1, a-1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, 0},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 0) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, 0},
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{4, 4},
+		{5, 5},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 1, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, -1},
+		{2, 0},
+		{3, 2},
+		{4, 3},
+		{5, 4},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag(a, 3, -1) over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, -1},
+		{1, -1},
+		{2, -1},
+		{3, -1},
+		{4, 0},
+		{5, 2},
+	}, nil, nil)
+
+	TestQuery(t, harness, e, `SELECT a, lag('s') over (partition by c order by a) FROM t1 order by a`, []sql.Row{
+		{0, nil},
+		{1, nil},
+		{2, "s"},
+		{3, "s"},
+		{4, "s"},
+		{5, "s"},
+	}, nil, nil)
+
+	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+
 }
+
 func TestNaturalJoin(t *testing.T, harness Harness) {
 	require := require.New(t)
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t1"},
 			{Name: "c", Type: sql.Text, Source: "t1"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2502,11 +2921,11 @@ func TestNaturalJoin(t *testing.T, harness Harness) {
 			sql.NewRow("a_2", "b_2", "c_2"),
 			sql.NewRow("a_3", "b_3", "c_3"))
 
-		t2, err := harness.NewTable(db, "t2", sql.Schema{
+		t2, err := harness.NewTable(db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t2"},
 			{Name: "d", Type: sql.Text, Source: "t2"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
@@ -2529,11 +2948,11 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t1"},
 			{Name: "c", Type: sql.Text, Source: "t1"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2541,11 +2960,11 @@ func TestNaturalJoinEqual(t *testing.T, harness Harness) {
 			sql.NewRow("a_2", "b_2", "c_2"),
 			sql.NewRow("a_3", "b_3", "c_3"))
 
-		t2, err := harness.NewTable(db, "t2", sql.Schema{
+		t2, err := harness.NewTable(db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t2", PrimaryKey: true},
 			{Name: "b", Type: sql.Text, Source: "t2"},
 			{Name: "c", Type: sql.Text, Source: "t2"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
@@ -2568,9 +2987,9 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "a", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -2578,9 +2997,9 @@ func TestNaturalJoinDisjoint(t *testing.T, harness Harness) {
 			sql.NewRow("a2"),
 			sql.NewRow("a3"))
 
-		t2, err := harness.NewTable(db, "t2", sql.Schema{
+		t2, err := harness.NewTable(db, "t2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "b", Type: sql.Text, Source: "t2", PrimaryKey: true},
-		})
+		}))
 		require.NoError(err)
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t2),
 			sql.NewRow("b1"),
@@ -2608,11 +3027,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 
 	db := harness.NewDatabase("mydb")
 	wrapInTransaction(t, db, harness, func() {
-		table1, err := harness.NewTable(db, "table1", sql.Schema{
+		table1, err := harness.NewTable(db, "table1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "table1"},
 			{Name: "f", Type: sql.Float64, Source: "table1"},
 			{Name: "t", Type: sql.Text, Source: "table1"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table1),
@@ -2621,11 +3040,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 			sql.NewRow(int32(10), float64(2.1), "table1"),
 		)
 
-		table2, err := harness.NewTable(db, "table2", sql.Schema{
+		table2, err := harness.NewTable(db, "table2", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i2", Type: sql.Int32, Source: "table2"},
 			{Name: "f2", Type: sql.Float64, Source: "table2"},
 			{Name: "t2", Type: sql.Text, Source: "table2"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table2),
@@ -2634,11 +3053,11 @@ func TestInnerNestedInNaturalJoins(t *testing.T, harness Harness) {
 			sql.NewRow(int32(20), float64(2.2), "table2"),
 		)
 
-		table3, err := harness.NewTable(db, "table3", sql.Schema{
+		table3, err := harness.NewTable(db, "table3", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "table3"},
 			{Name: "f2", Type: sql.Float64, Source: "table3"},
 			{Name: "t3", Type: sql.Text, Source: "table3"},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, table3),
@@ -2714,6 +3133,7 @@ func TestVariables(t *testing.T, harness Harness) {
 
 func TestVariableErrors(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 	for _, test := range VariableErrorTests {
 		AssertErr(t, e, harness, test.Query, test.ExpectedErr)
 	}
@@ -2752,15 +3172,11 @@ func TestWarnings(t *testing.T, harness Harness) {
 			Query: `
 			SHOW WARNINGS LIMIT 0
 			`,
-			Expected: []sql.Row{
-				{"", 3, ""},
-				{"", 2, ""},
-				{"", 1, ""},
-			},
+			Expected: nil,
 		},
 		{
 			Query: `
-			SHOW WARNINGS LIMIT 2,0
+			SHOW WARNINGS LIMIT 2,1
 			`,
 			Expected: []sql.Row{
 				{"", 1, ""},
@@ -2785,6 +3201,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 	}
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	ctx := NewContext(harness)
 	ctx.Session.Warn(&sql.Warning{Code: 1})
@@ -2799,6 +3216,7 @@ func TestWarnings(t *testing.T, harness Harness) {
 func TestClearWarnings(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
+	defer e.Close()
 	ctx := NewContext(harness)
 
 	_, iter, err := e.Query(ctx, "-- some empty query as a comment")
@@ -2845,6 +3263,7 @@ func TestClearWarnings(t *testing.T, harness Harness) {
 func TestUse(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	ctx := NewContext(harness)
 	require.Equal("mydb", ctx.GetCurrentDatabase())
@@ -2862,6 +3281,18 @@ func TestUse(t *testing.T, harness Harness) {
 	require.Len(rows, 0)
 
 	require.Equal("foo", ctx.GetCurrentDatabase())
+}
+
+func TestNoDatabaseSelected(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	ctx := NewContext(harness)
+	ctx.SetCurrentDatabase("")
+
+	AssertErrWithCtx(t, e, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, ctx, "show tables", sql.ErrNoDatabaseSelected)
+	AssertErrWithCtx(t, e, ctx, "show triggers", sql.ErrNoDatabaseSelected)
 }
 
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
@@ -2889,6 +3320,7 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 	}
 
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	ctx := NewContext(harness)
 	err := ctx.Session.SetSessionVariable(ctx, "sql_select_limit", int64(1))
@@ -2902,6 +3334,7 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 func TestTracing(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	tracer := new(test.MemTracer)
 
@@ -2921,7 +3354,7 @@ func TestTracing(t *testing.T, harness Harness) {
 	spans := tracer.Spans
 	var expectedSpans = []string{
 		"plan.Limit",
-		"plan.Sort",
+		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",
 		"plan.Filter",
@@ -2944,6 +3377,7 @@ func TestTracing(t *testing.T, harness Harness) {
 
 func TestCurrentTimestamp(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	date := time.Date(
 		2000,      // year
@@ -3002,6 +3436,8 @@ func TestCurrentTimestamp(t *testing.T, harness Harness) {
 func TestShowTableStatus(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
 	engine := NewEngineWithDbs(t, harness, dbs)
+	defer engine.Close()
+
 	createIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
@@ -3017,10 +3453,10 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 	e := sqle.NewDefault(harness.NewDatabaseProvider(db))
 
 	wrapInTransaction(t, db, harness, func() {
-		t1, err := harness.NewTable(db, "t1", sql.Schema{
+		t1, err := harness.NewTable(db, "t1", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "pk", Type: sql.Text, Source: "t1", PrimaryKey: true},
 			{Name: "v", Type: sql.Text, Source: "t1", PrimaryKey: true},
-		})
+		}))
 		require.NoError(err)
 
 		InsertRows(t, NewContext(harness), mustInsertableTable(t, t1),
@@ -3173,7 +3609,8 @@ func AssertErrWithCtx(t *testing.T, e *sqle.Engine, ctx *sql.Context, query stri
 	}
 	require.Error(t, err)
 	if expectedErrKind != nil {
-		require.True(t, expectedErrKind.Is(err), "Expected error of type %s but got %s", expectedErrKind, err)
+		_, orig, _ := sql.CastSQLError(err)
+		require.True(t, expectedErrKind.Is(orig), "Expected error of type %s but got %s", expectedErrKind, err)
 	}
 	// If there are multiple error strings then we only match against the first
 	if len(errStrs) >= 1 {
@@ -3238,14 +3675,94 @@ func (c customFunc) WithChildren(children ...sql.Expression) (sql.Expression, er
 
 func TestDateParse(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
+	defer engine.Close()
+
 	for _, tt := range DateParseQueries {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, nil, nil)
 	}
 }
 
+func TestAlterTable(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+
+	t.Run("Modify column invalid after", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t1008(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)")
+		AssertErr(t, e, harness, "ALTER TABLE t1008 MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
+	})
+
+	t.Run("Add column invalid after", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t1009(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)")
+		AssertErr(t, e, harness, "ALTER TABLE t1009 ADD COLUMN v4 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
+	})
+
+	t.Run("rename column added in same statement", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t30(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')")
+		AssertErr(t, e, harness, "ALTER TABLE t30 ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2", sql.ErrTableColumnNotFound)
+	})
+
+	t.Run("modify column added in same statement", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t31(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')")
+		AssertErr(t, e, harness, "ALTER TABLE t31 ADD COLUMN v3 BIGINT DEFAULT 5, modify column v3 bigint default null", sql.ErrTableColumnNotFound)
+	})
+
+	t.Run("variety of alter column statements in a single statement", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t32(pk BIGINT PRIMARY KEY, v1 int, v2 int, v3 int, toRename int)")
+		RunQuery(t, e, harness, `alter table t32 add column v4 int after pk,
+			drop column v2, modify v1 varchar(100) not null,
+			alter column v3 set default 100, rename column toRename to newName`)
+
+		ctx := NewContext(harness)
+		t32, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t32")
+		require.NoError(t, err)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t32", PrimaryKey: true},
+			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t32"},
+			{Name: "v1", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 100), Source: "t32"},
+			{Name: "v3", Type: sql.Int32, Nullable: true, Source: "t32", Default: NewColumnDefaultValue(expression.NewLiteral(int8(100), sql.Int8), sql.Int32, true, true)},
+			{Name: "newName", Type: sql.Int32, Nullable: true, Source: "t32"},
+		}, t32.Schema())
+	})
+
+	t.Run("mix of alter column, add and drop constraints in one statement", func(t *testing.T) {
+		RunQuery(t, e, harness, "CREATE TABLE t33(pk BIGINT PRIMARY KEY, v1 int, v2 int)")
+		RunQuery(t, e, harness, `alter table t33 add column v4 int after pk, 
+			drop column v2, add constraint v1gt0 check (v1 > 0)`)
+
+		ctx := NewContext(harness)
+		t33, _, err := e.Analyzer.Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t33")
+		require.NoError(t, err)
+		assert.Equal(t, sql.Schema{
+			{Name: "pk", Type: sql.Int64, Nullable: false, Source: "t33", PrimaryKey: true},
+			{Name: "v4", Type: sql.Int32, Nullable: true, Source: "t33"},
+			{Name: "v1", Type: sql.Int32, Nullable: true, Source: "t33"},
+		}, t33.Schema())
+
+		ct, ok := t33.(sql.CheckTable)
+		require.True(t, ok, "CheckTable required for this test")
+		checks, err := ct.GetChecks(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, []sql.CheckDefinition{
+			{
+				Name:            "v1gt0",
+				CheckExpression: "(v1 > 0)",
+				Enforced:        true,
+			},
+		}, checks)
+	})
+}
+
+func NewColumnDefaultValue(expr sql.Expression, outType sql.Type, representsLiteral bool, mayReturnNil bool) *sql.ColumnDefaultValue {
+	cdv, err := sql.NewColumnDefaultValue(expr, outType, representsLiteral, mayReturnNil)
+	if err != nil {
+		panic(err)
+	}
+	return cdv
+}
+
 func TestColumnDefaults(t *testing.T, harness Harness) {
 	require := require.New(t)
 	e := NewEngine(t, harness)
+	defer e.Close()
 
 	e.Analyzer.Catalog.RegisterFunction(sql.Function1{
 		Name: "customfunc",
@@ -3262,6 +3779,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	t.Run("Default expression with function and referenced column", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t2(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))", []sql.Row(nil), nil, nil)
+		e.Analyzer.Debug = true
+		e.Analyzer.Verbose = true
 		RunQuery(t, e, harness, "INSERT INTO t2 (pk) VALUES (1), (2), (3)")
 		TestQuery(t, harness, e, "SELECT * FROM t2", []sql.Row{{1, 2}, {2, 2}, {3, 3}}, nil, nil)
 	})
@@ -3516,8 +4035,8 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	t.Run("Add multiple columns same ALTER", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t30(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT '4')", []sql.Row(nil), nil, nil)
 		RunQuery(t, e, harness, "INSERT INTO t30 (pk) VALUES (1), (2)")
-		TestQuery(t, harness, e, "ALTER TABLE t30 ADD COLUMN v3 BIGINT DEFAULT 5, RENAME COLUMN v3 to v2", []sql.Row(nil), nil, nil)
-		TestQuery(t, harness, e, "SELECT pk, v1, v2 FROM t30", []sql.Row{{1, 4, 5}, {2, 4, 5}}, nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE t30 ADD COLUMN v2 BIGINT DEFAULT 5, ADD COLUMN V3 BIGINT DEFAULT 7", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "SELECT pk, v1, v2, V3 FROM t30", []sql.Row{{1, 4, 5, 7}, {2, 4, 5, 7}}, nil, nil)
 	})
 
 	t.Run("Add non-nullable column without default #1", func(t *testing.T) {
@@ -3614,16 +4133,6 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "CREATE TABLE t1007(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)", []sql.Row(nil), nil, nil)
 		AssertErr(t, e, harness, "ALTER TABLE t1007 MODIFY COLUMN v1 BIGINT DEFAULT (pk) FIRST", sql.ErrInvalidDefaultValueOrder)
 	})
-
-	t.Run("Modify column invalid after", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE t1008(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)", []sql.Row(nil), nil, nil)
-		AssertErr(t, e, harness, "ALTER TABLE t1008 MODIFY COLUMN v1 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
-	})
-
-	t.Run("Add column invalid after", func(t *testing.T) {
-		TestQuery(t, harness, e, "CREATE TABLE t1009(pk BIGINT DEFAULT (v2) PRIMARY KEY, v1 BIGINT DEFAULT (pk), v2 BIGINT)", []sql.Row(nil), nil, nil)
-		AssertErr(t, e, harness, "ALTER TABLE t1009 ADD COLUMN v1 BIGINT DEFAULT (pk) AFTER v3", sql.ErrTableColumnNotFound)
-	})
 }
 
 func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql.Context) sql.PersistableSession) {
@@ -3653,6 +4162,8 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}
 
 	e := NewEngine(t, harness)
+	defer e.Close()
+
 	ctx := NewContext(harness)
 
 	for _, tt := range q {

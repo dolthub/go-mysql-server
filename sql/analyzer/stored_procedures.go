@@ -120,7 +120,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		if err != nil {
 			return nil, err
 		}
-		newChildren[i] = stripQueryProcess(newChild)
+		newChildren[i] = StripQueryProcess(newChild)
 	}
 	return node.WithChildren(newChildren...)
 }
@@ -146,7 +146,7 @@ func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		return nil, err
 	}
 
-	return cp.WithChildren(stripQueryProcess(newProc))
+	return cp.WithChildren(StripQueryProcess(newProc))
 }
 
 // validateStoredProcedure handles Procedure nodes, resolving references to the parameters, along with ensuring

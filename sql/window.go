@@ -66,8 +66,8 @@ func (w *Window) String() string {
 		for i, expression := range w.PartitionBy {
 			if i > 0 {
 				sb.WriteString(", ")
-				sb.WriteString(expression.String())
 			}
+			sb.WriteString(expression.String())
 		}
 	}
 	if len(w.OrderBy) > 0 {

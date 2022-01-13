@@ -24,19 +24,19 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var lSchema = sql.Schema{
+var lSchema = sql.NewPrimaryKeySchema(sql.Schema{
 	{Name: "lcol1", Type: sql.Text},
 	{Name: "lcol2", Type: sql.Text},
 	{Name: "lcol3", Type: sql.Int32},
 	{Name: "lcol4", Type: sql.Int64},
-}
+})
 
-var rSchema = sql.Schema{
+var rSchema = sql.NewPrimaryKeySchema(sql.Schema{
 	{Name: "rcol1", Type: sql.Text},
 	{Name: "rcol2", Type: sql.Text},
 	{Name: "rcol3", Type: sql.Int32},
 	{Name: "rcol4", Type: sql.Int64},
-}
+})
 
 func TestCrossJoin(t *testing.T) {
 	require := require.New(t)
@@ -69,7 +69,7 @@ func TestCrossJoin(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	row, err := iter.Next()
+	row, err := iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 
@@ -84,7 +84,7 @@ func TestCrossJoin(t *testing.T) {
 	require.Equal(int32(1), row[6])
 	require.Equal(int64(2), row[7])
 
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.NoError(err)
 	require.NotNil(row)
 
@@ -98,13 +98,13 @@ func TestCrossJoin(t *testing.T) {
 	require.Equal(int64(4), row[7])
 
 	for i := 0; i < 2; i++ {
-		row, err = iter.Next()
+		row, err = iter.Next(ctx)
 		require.NoError(err)
 		require.NotNil(row)
 	}
 
 	// total: 4 rows
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.NotNil(err)
 	require.Equal(err, io.EOF)
 	require.Nil(row)
@@ -127,7 +127,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	row, err := iter.Next()
+	row, err := iter.Next(ctx)
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 
@@ -144,7 +144,7 @@ func TestCrossJoin_Empty(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(iter)
 
-	row, err = iter.Next()
+	row, err = iter.Next(ctx)
 	require.Equal(io.EOF, err)
 	require.Nil(row)
 }

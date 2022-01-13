@@ -389,7 +389,7 @@ var characterSetSchema = Schema{
 	{Name: "character_set_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
 	{Name: "default_collate_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: CharacterSetsTableName},
 	{Name: "description", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false, Source: CharacterSetsTableName},
-	{Name: "maxlen", Type: Uint8, Default: nil, Nullable: false, Source: CharacterSetsTableName},
+	{Name: "maxlen", Type: Uint64, Default: nil, Nullable: false, Source: CharacterSetsTableName},
 }
 
 var enginesSchema = Schema{
@@ -618,7 +618,7 @@ func charsetRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			c.String(),
 			c.DefaultCollation().String(),
 			c.Description(),
-			c.MaxLength(),
+			uint64(c.MaxLength()),
 		})
 	}
 	return RowsToRowIter(rows...), nil
@@ -1178,7 +1178,7 @@ func (t *informationSchemaTable) String() string {
 func (p *informationSchemaPartition) Key() []byte { return p.key }
 
 // Next implements single PartitionIter interface
-func (pit *informationSchemaPartitionIter) Next() (Partition, error) {
+func (pit *informationSchemaPartitionIter) Next(ctx *Context) (Partition, error) {
 	if pit.pos == 0 {
 		pit.pos++
 		return pit, nil

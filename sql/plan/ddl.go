@@ -92,13 +92,13 @@ func (i *IndexDefinition) String() string {
 
 // TableSpec is a node describing the schema of a table.
 type TableSpec struct {
-	Schema  sql.Schema
+	Schema  sql.PrimaryKeySchema
 	FkDefs  []*sql.ForeignKeyConstraint
 	ChDefs  []*sql.CheckConstraint
 	IdxDefs []*IndexDefinition
 }
 
-func (c *TableSpec) WithSchema(schema sql.Schema) *TableSpec {
+func (c *TableSpec) WithSchema(schema sql.PrimaryKeySchema) *TableSpec {
 	nc := *c
 	nc.Schema = schema
 	return &nc
@@ -125,15 +125,15 @@ func (c *TableSpec) WithIndices(idxDefs []*IndexDefinition) *TableSpec {
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
 	ddlNode
-	name        string
-	schema      sql.Schema
-	ifNotExists IfNotExistsOption
-	fkDefs      []*sql.ForeignKeyConstraint
-	chDefs      []*sql.CheckConstraint
-	idxDefs     []*IndexDefinition
-	like        sql.Node
-	temporary   TempTableOption
-	selectNode  sql.Node
+	name         string
+	CreateSchema sql.PrimaryKeySchema
+	ifNotExists  IfNotExistsOption
+	fkDefs       []*sql.ForeignKeyConstraint
+	chDefs       sql.CheckConstraints
+	idxDefs      []*IndexDefinition
+	like         sql.Node
+	temporary    TempTableOption
+	selectNode   sql.Node
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -142,19 +142,19 @@ var _ sql.Expressioner = (*CreateTable)(nil)
 
 // NewCreateTable creates a new CreateTable node
 func NewCreateTable(db sql.Database, name string, ifn IfNotExistsOption, temp TempTableOption, tableSpec *TableSpec) *CreateTable {
-	for _, s := range tableSpec.Schema {
+	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
 	}
 
 	return &CreateTable{
-		ddlNode:     ddlNode{db},
-		name:        name,
-		schema:      tableSpec.Schema,
-		fkDefs:      tableSpec.FkDefs,
-		chDefs:      tableSpec.ChDefs,
-		idxDefs:     tableSpec.IdxDefs,
-		ifNotExists: ifn,
-		temporary:   temp,
+		ddlNode:      ddlNode{db},
+		name:         name,
+		CreateSchema: tableSpec.Schema,
+		fkDefs:       tableSpec.FkDefs,
+		chDefs:       tableSpec.ChDefs,
+		idxDefs:      tableSpec.IdxDefs,
+		ifNotExists:  ifn,
+		temporary:    temp,
 	}
 }
 
@@ -171,20 +171,20 @@ func NewCreateTableLike(db sql.Database, name string, likeTable sql.Node, ifn If
 
 // NewCreateTableSelect create a new CreateTable node for CREATE TABLE [AS] SELECT
 func NewCreateTableSelect(db sql.Database, name string, selectNode sql.Node, tableSpec *TableSpec, ifn IfNotExistsOption, temp TempTableOption) *CreateTable {
-	for _, s := range tableSpec.Schema {
+	for _, s := range tableSpec.Schema.Schema {
 		s.Source = name
 	}
 
 	return &CreateTable{
-		ddlNode:     ddlNode{db: db},
-		schema:      tableSpec.Schema,
-		fkDefs:      tableSpec.FkDefs,
-		chDefs:      tableSpec.ChDefs,
-		idxDefs:     tableSpec.IdxDefs,
-		name:        name,
-		selectNode:  selectNode,
-		ifNotExists: ifn,
-		temporary:   temp,
+		ddlNode:      ddlNode{db: db},
+		CreateSchema: tableSpec.Schema,
+		fkDefs:       tableSpec.FkDefs,
+		chDefs:       tableSpec.ChDefs,
+		idxDefs:      tableSpec.IdxDefs,
+		name:         name,
+		selectNode:   selectNode,
+		ifNotExists:  ifn,
+		temporary:    temp,
 	}
 }
 
@@ -197,16 +197,38 @@ func (c *CreateTable) WithDatabase(db sql.Database) (sql.Node, error) {
 
 // Schema implements the sql.Node interface.
 func (c *CreateTable) Schema() sql.Schema {
-	return c.schema
+	return sql.Schema{}
+}
+
+func (c *CreateTable) PkSchema() sql.PrimaryKeySchema {
+	return c.CreateSchema
 }
 
 // Resolved implements the Resolvable interface.
 func (c *CreateTable) Resolved() bool {
-	resolved := c.ddlNode.Resolved()
-	for _, col := range c.schema {
-		resolved = resolved && col.Default.Resolved()
+	if !c.ddlNode.Resolved() {
+		return false
 	}
-	return resolved
+
+	for _, col := range c.CreateSchema.Schema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	for _, chDef := range c.chDefs {
+		if !chDef.Expr.Resolved() {
+			return false
+		}
+	}
+
+	if c.like != nil {
+		if !c.like.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 // RowIter implements the Node interface.
@@ -222,7 +244,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			return sql.RowsToRowIter(), err
 		}
 
-		err = creatable.CreateTemporaryTable(ctx, c.name, c.schema)
+		err = creatable.CreateTemporaryTable(ctx, c.name, c.CreateSchema)
 	} else {
 		creatable, ok := c.db.(sql.TableCreator)
 		if !ok {
@@ -233,7 +255,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			return sql.RowsToRowIter(), err
 		}
 
-		err = creatable.CreateTable(ctx, c.name, c.schema)
+		err = creatable.CreateTable(ctx, c.name, c.CreateSchema)
 	}
 
 	if err != nil && !(sql.ErrTableAlreadyExists.Is(err) && (c.ifNotExists == IfNotExists)) {
@@ -250,8 +272,15 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
 	}
 
-	if len(c.idxDefs) > 0 {
-		err = c.createIndexes(ctx, tableNode)
+	var nonPrimaryIdxes []*IndexDefinition
+	for _, def := range c.idxDefs {
+		if def.Constraint != sql.IndexConstraint_Primary {
+			nonPrimaryIdxes = append(nonPrimaryIdxes, def)
+		}
+	}
+
+	if len(nonPrimaryIdxes) > 0 {
+		err = c.createIndexes(ctx, tableNode, nonPrimaryIdxes)
 		if err != nil {
 			return sql.RowsToRowIter(), err
 		}
@@ -274,13 +303,13 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	return sql.RowsToRowIter(), nil
 }
 
-func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table) error {
+func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
 		return ErrNotIndexable.New()
 	}
 
-	for _, idxDef := range c.idxDefs {
+	for _, idxDef := range idxes {
 		err := idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
 		if err != nil {
 			return err
@@ -365,21 +394,20 @@ func (c *CreateTable) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) == 0 {
-		return c, nil
+		return &c, nil
 	} else if len(children) == 1 {
 		child := children[0]
-		nc := *c
 
 		switch child.(type) {
 		case *Project, *Limit:
-			nc.selectNode = child
+			c.selectNode = child
 		default:
-			nc.like = child
+			c.like = child
 		}
 
-		return &nc, nil
+		return &c, nil
 	} else {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
@@ -455,7 +483,7 @@ func (c *CreateTable) schemaDebugString() string {
 	p := sql.NewTreePrinter()
 	p.WriteNode("Columns")
 	var children []string
-	for _, col := range c.schema {
+	for _, col := range c.CreateSchema.Schema {
 		children = append(children, sql.DebugString(col))
 	}
 	p.WriteChildren(children...)
@@ -463,9 +491,9 @@ func (c *CreateTable) schemaDebugString() string {
 }
 
 func (c *CreateTable) Expressions() []sql.Expression {
-	exprs := make([]sql.Expression, len(c.schema)+len(c.chDefs))
+	exprs := make([]sql.Expression, len(c.CreateSchema.Schema)+len(c.chDefs))
 	i := 0
-	for _, col := range c.schema {
+	for _, col := range c.CreateSchema.Schema {
 		exprs[i] = expression.WrapExpression(col.Default)
 		i++
 	}
@@ -487,10 +515,10 @@ func (c *CreateTable) Select() sql.Node {
 func (c *CreateTable) TableSpec() *TableSpec {
 	tableSpec := TableSpec{}
 
-	ret := tableSpec.WithSchema(c.schema)
-	ret = tableSpec.WithForeignKeys(c.fkDefs)
-	ret = tableSpec.WithIndices(c.idxDefs)
-	ret = tableSpec.WithCheckConstraints(c.chDefs)
+	ret := tableSpec.WithSchema(c.CreateSchema)
+	ret = ret.WithForeignKeys(c.fkDefs)
+	ret = ret.WithIndices(c.idxDefs)
+	ret = ret.WithCheckConstraints(c.chDefs)
 
 	return ret
 }
@@ -507,34 +535,40 @@ func (c *CreateTable) Temporary() TempTableOption {
 	return c.temporary
 }
 
-func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(c.schema)+len(c.chDefs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.schema)+len(c.chDefs))
+func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	length := len(c.CreateSchema.Schema) + len(c.chDefs)
+	if len(exprs) != length {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
 
-	nc := *c
+	nc := c
 
+	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
+	ns := c.CreateSchema.Schema.Copy()
 	i := 0
-	for ; i < len(c.schema); i++ {
+	for ; i < len(c.CreateSchema.Schema); i++ {
 		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 		if ok {
-			nc.schema[i].Default = unwrappedColDefVal
+			ns[i].Default = unwrappedColDefVal
 		} else { // nil fails type check
-			nc.schema[i].Default = nil
+			ns[i].Default = nil
 		}
 	}
+	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
-	for ; i < len(c.chDefs)+len(c.schema); i++ {
-		nc.chDefs[i-len(c.schema)].Expr = exprs[i]
+	ncd, err := c.chDefs.FromExpressions(exprs[i:])
+	if err != nil {
+		return nil, err
 	}
 
+	nc.chDefs = ncd
 	return &nc, nil
 }
 
 func (c *CreateTable) validateDefaultPosition() error {
 	colsAfterThis := make(map[string]*sql.Column)
-	for i := len(c.schema) - 1; i >= 0; i-- {
-		col := c.schema[i]
+	for i := len(c.CreateSchema.Schema) - 1; i >= 0; i-- {
+		col := c.CreateSchema.Schema[i]
 		colsAfterThis[col.Name] = col
 		if err := inspectDefaultForInvalidColumns(col, colsAfterThis); err != nil {
 			return err

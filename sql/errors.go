@@ -60,6 +60,9 @@ var (
 	// ErrAmbiguousColumnInOrderBy is returned when an order by column is ambiguous
 	ErrAmbiguousColumnInOrderBy = errors.NewKind("Column %q in order clause is ambiguous")
 
+	// ErrColumnExists is returned when an ALTER TABLE statement would create a duplicate column
+	ErrColumnExists = errors.NewKind("Column %q already exists")
+
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 
@@ -194,8 +197,8 @@ var (
 	// ErrDatabaseExists is returned when CREATE DATABASE attempts to create a database that already exists.
 	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
-	// ErrInvalidConstraintFunctionsNotSupported is returned when a CONSTRAINT CHECK is called with a sub-function expression.
-	ErrInvalidConstraintFunctionsNotSupported = errors.NewKind("Invalid constraint expression, functions not supported: %s")
+	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
+	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
 
 	// ErrInvalidConstraintSubqueryNotSupported is returned when a CONSTRAINT CHECK is called with a sub-query expression.
 	ErrInvalidConstraintSubqueryNotSupported = errors.NewKind("Invalid constraint expression, sub-queries not supported: %s")
@@ -352,18 +355,49 @@ var (
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
+
+	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
+	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
+
+	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
+	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
+
+	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
+	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
+
+	// ErrInvalidSQLValType is returned when a SQL value is of the incorrect type during parsing
+	ErrInvalidSQLValType = errors.NewKind("invalid SQLVal of type: %d")
+
+	// ErrInvalidIndexPrefix is returned when an index prefix is outside the accepted range
+	ErrInvalidIndexPrefix = errors.NewKind("invalid index prefix: %v")
+
+	// ErrUnknownIndexColumn is returned when a column in an index is not in the table
+	ErrUnknownIndexColumn = errors.NewKind("unknown column: '%s' in index '%s'")
+
+	// ErrInvalidAutoIncCols is returned when an auto_increment column cannot be applied
+	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
+
+	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
+	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
+
+	// ErrInvalidCheckConstraint is returned when a  check constraint is defined incorrectly
+	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
 )
 
-func CastSQLError(err error) (*mysql.SQLError, bool) {
+func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 	if err == nil {
-		return nil, true
+		return nil, nil, true
 	}
 	if mysqlErr, ok := err.(*mysql.SQLError); ok {
-		return mysqlErr, false
+		return mysqlErr, nil, false
 	}
 
 	var code int
 	var sqlState string = ""
+
+	if w, ok := err.(WrappedInsertError); ok {
+		return CastSQLError(w.Cause)
+	}
 
 	switch {
 	case ErrTableNotFound.Is(err):
@@ -402,11 +436,13 @@ func CastSQLError(err error) (*mysql.SQLError, bool) {
 		code = 1792 // TODO: Needs to be added to vitess
 	case ErrCantDropIndex.Is(err):
 		code = 1553 // TODO: Needs to be added to vitess
+	case ErrInvalidValue.Is(err):
+		code = mysql.ERTruncatedWrongValueForField
 	default:
 		code = mysql.ERUnknownError
 	}
 
-	return mysql.NewSQLError(code, sqlState, err.Error()), false
+	return mysql.NewSQLError(code, sqlState, err.Error()), err, false // return the original error as well
 }
 
 type UniqueKeyError struct {
@@ -431,4 +467,32 @@ func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
 
 func (ue UniqueKeyError) Error() string {
 	return fmt.Sprintf("%s", ue.keyStr)
+}
+
+type WrappedInsertError struct {
+	OffendingRow Row
+	Cause        error
+}
+
+func NewWrappedInsertError(r Row, err error) WrappedInsertError {
+	return WrappedInsertError{
+		OffendingRow: r,
+		Cause:        err,
+	}
+}
+
+func (w WrappedInsertError) Error() string {
+	return w.Cause.Error()
+}
+
+type ErrInsertIgnore struct {
+	OffendingRow Row
+}
+
+func NewErrInsertIgnore(row Row) ErrInsertIgnore {
+	return ErrInsertIgnore{OffendingRow: row}
+}
+
+func (e ErrInsertIgnore) Error() string {
+	return "Insert ignore error shoudl never be printed"
 }

@@ -27,13 +27,13 @@ import (
 )
 
 func TestJoinSchema(t *testing.T) {
-	t1 := NewResolvedTable(memory.NewTable("foo", sql.Schema{
+	t1 := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
-	}), nil, nil)
+	})), nil, nil)
 
-	t2 := NewResolvedTable(memory.NewTable("bar", sql.Schema{
+	t2 := NewResolvedTable(memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "b", Source: "bar", Type: sql.Int64},
-	}), nil, nil)
+	})), nil, nil)
 
 	t.Run("inner", func(t *testing.T) {
 		j := NewInnerJoin(t1, t2, nil)
@@ -127,19 +127,19 @@ func TestInnerJoinEmpty(t *testing.T) {
 	iter, err := j.RowIter(ctx, nil)
 	require.NoError(err)
 
-	assertRows(t, iter, 0)
+	assertRows(t, ctx, iter, 0)
 }
 
 func BenchmarkInnerJoin(b *testing.B) {
-	t1 := memory.NewTable("foo", sql.Schema{
+	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
 		{Name: "b", Source: "foo", Type: sql.Text},
-	})
+	}))
 
-	t2 := memory.NewTable("bar", sql.Schema{
+	t2 := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "bar", Type: sql.Int64},
 		{Name: "b", Source: "bar", Type: sql.Text},
-	})
+	}))
 
 	for i := 0; i < 5; i++ {
 		t1.Insert(sql.NewEmptyContext(), sql.NewRow(int64(i), fmt.Sprintf("t1_%d", i)))

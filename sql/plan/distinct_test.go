@@ -29,10 +29,10 @@ func TestDistinct(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
-	}
+	})
 	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
@@ -58,7 +58,7 @@ func TestDistinct(t *testing.T) {
 
 	var results []string
 	for {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -76,10 +76,10 @@ func TestOrderedDistinct(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
-	}
+	})
 	child := memory.NewTable("test", childSchema)
 
 	rows := []sql.Row{
@@ -105,7 +105,7 @@ func TestOrderedDistinct(t *testing.T) {
 
 	var results []string
 	for {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -140,7 +140,7 @@ func BenchmarkDistinct(b *testing.B) {
 
 		var rows int
 		for {
-			_, err := iter.Next()
+			_, err := iter.Next(ctx)
 			if err == io.EOF {
 				break
 			}
@@ -173,7 +173,7 @@ func BenchmarkOrderedDistinct(b *testing.B) {
 
 		var rows int
 		for {
-			_, err := iter.Next()
+			_, err := iter.Next(ctx)
 			if err == io.EOF {
 				break
 			}

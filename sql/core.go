@@ -67,10 +67,23 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+type Expression2 interface {
+	Expression
+	// Eval2 evaluates the given row frame and returns a result.
+	Eval2(ctx *Context, f *RowFrame) (Value, error)
+}
+
+// UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
+type UnsupportedFunctionStub interface {
+	IsUnsupported() bool
+}
+
 // FunctionExpression is an Expression that represents a function.
 type FunctionExpression interface {
 	Expression
 	FunctionName() string
+	Description() string
+	// TODO: add Example() function
 }
 
 // NonDeterministicExpression allows a way for expressions to declare that they are non-deterministic, which will
@@ -93,6 +106,58 @@ type Aggregation interface {
 	NewBuffer() (AggregationBuffer, error)
 }
 
+// WindowBuffer is a type alias for a window materialization
+type WindowBuffer []Row
+
+// WindowInterval is a WindowBuffer index range, where [Start] is inclusive, and [End] is exclusive
+type WindowInterval struct {
+	Start, End int
+}
+
+// WindowFunction performs aggregations on buffer intervals, optionally maintaining internal state
+// for performance optimizations
+type WindowFunction interface {
+	Disposable
+
+	// StartPartition discards any previous state and initializes the aggregation for a new partition
+	StartPartition(*Context, WindowInterval, WindowBuffer) error
+	// NewSlidingFrameInterval is updates the function's internal aggregation state for the next
+	// Compute call using three WindowInterval: added, dropped, and current.
+	//TODO: implement sliding window interface in aggregation functions and windowBlockIter
+	//NewSlidingFrameInterval(added, dropped WindowInterval)
+	// Compute returns an aggregation result for a given interval and buffer
+	Compute(*Context, WindowInterval, WindowBuffer) interface{}
+}
+
+// WindowAdaptableExpression is an Expression that can be executed as a window aggregation
+type WindowAdaptableExpression interface {
+	Expression
+
+	// NewEvalable constructs an executable aggregation WindowFunction
+	NewWindowFunction() (WindowFunction, error)
+}
+
+// WindowFramer is responsible for tracking window frame indices for partition rows.
+// WindowFramer is aware of the framing strategy (offsets, ranges, etc),
+// and is responsible for returning a WindowInterval for each partition row.
+type WindowFramer interface {
+	// NewFramer is a prototype constructor that create a new Framer with pass-through
+	// parent arguments
+	NewFramer(WindowInterval) WindowFramer
+	// Next returns the next WindowInterval frame, or an io.EOF error after the last row
+	Next() (WindowInterval, error)
+	// FirstIdx returns the current frame start index
+	FirstIdx() int
+	// LastIdx returns the last valid index in the current frame
+	LastIdx() int
+	// Interval returns the current frame as a WindowInterval
+	Interval() (WindowInterval, error)
+	// SlidingInterval returns three WindowIntervals: the current frame, dropped range since the
+	// last frame, and added range since the last frame.
+	// TODO: implement sliding window interface in framers, windowBlockIter, and aggregation functions
+	//SlidingInterval(ctx Context) (WindowInterval, WindowInterval, WindowInterval)
+}
+
 type AggregationBuffer interface {
 	Disposable
 
@@ -103,7 +168,7 @@ type AggregationBuffer interface {
 }
 
 // WindowAggregation implements a window aggregation expression. A WindowAggregation is similar to an Aggregation,
-// except that it returns a result row for every input row, as opposed to as single for the entire result set. Every
+// except that it returns a result row for every input row, as opposed to as single for the entire result set. A
 // WindowAggregation is expected to track its input rows in the order received, and to return the value for the row
 // index given on demand.
 type WindowAggregation interface {
@@ -140,6 +205,14 @@ type Node interface {
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
 	WithChildren(...Node) (Node, error)
+}
+
+type Node2 interface {
+	Node
+
+	// RowIter2 produces a row iterator from this node. The current row frame being
+	// evaluated is provided, as well the context of the query.
+	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
 
 // CommentedNode allows comments to be set and retrieved on it
@@ -195,6 +268,11 @@ type Databaser interface {
 	WithDatabase(Database) (Node, error)
 }
 
+// SchemaTarget is a node that has a target schema that can be set
+type SchemaTarget interface {
+	WithTargetSchema(Schema) (Node, error)
+}
+
 // Partition represents a partition from a SQL table.
 type Partition interface {
 	Key() []byte
@@ -203,7 +281,7 @@ type Partition interface {
 // PartitionIter is an iterator that retrieves partitions.
 type PartitionIter interface {
 	Closer
-	Next() (Partition, error)
+	Next(*Context) (Partition, error)
 }
 
 // Table represents the backend of a SQL table.
@@ -213,6 +291,12 @@ type Table interface {
 	Schema() Schema
 	Partitions(*Context) (PartitionIter, error)
 	PartitionRows(*Context, Partition) (RowIter, error)
+}
+
+type Table2 interface {
+	Table
+
+	PartitionRows2(*Context, Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {
@@ -360,6 +444,11 @@ type PrimaryKeyAlterableTable interface {
 	DropPrimaryKey(ctx *Context) error
 }
 
+type PrimaryKeyTable interface {
+	// PrimaryKeySchema returns this table's PrimaryKeySchema
+	PrimaryKeySchema() PrimaryKeySchema
+}
+
 // TableEditor is the base interface for sub interfaces that can update rows in a table during an INSERT, REPLACE,
 // UPDATE, or DELETE statement.
 type TableEditor interface {
@@ -433,7 +522,7 @@ type AutoIncrementTable interface {
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.
-	//Implementations are responsible for updating their state to provide the correct values.
+	// Implementations are responsible for updating their state to provide the correct values.
 	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (interface{}, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
@@ -715,7 +804,7 @@ func DBTableIter(ctx *Context, db Database, cb func(Table) (cont bool, err error
 type TableCreator interface {
 	// Creates the table with the given name and schema. If a table with that name already exists, must return
 	// sql.ErrTableAlreadyExists.
-	CreateTable(ctx *Context, name string, schema Schema) error
+	CreateTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
 
 // TemporaryTableCreator is a database that can create temporary tables that persist only as long as the session.
@@ -724,7 +813,7 @@ type TemporaryTableCreator interface {
 	Database
 	// Creates the table with the given name and schema. If a temporary table with that name already exists, must
 	// return sql.ErrTableAlreadyExists
-	CreateTemporaryTable(ctx *Context, name string, schema Schema) error
+	CreateTemporaryTable(ctx *Context, name string, schema PrimaryKeySchema) error
 }
 
 // ViewDefinition is the named textual definition of a view

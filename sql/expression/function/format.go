@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,11 @@ func NewFormat(args ...sql.Expression) (sql.Expression, error) {
 // FunctionName implements sql.FunctionExpression
 func (f *Format) FunctionName() string {
 	return "format"
+}
+
+// Description implements sql.FunctionExpression
+func (f *Format) Description() string {
+	return "returns a number formatted to specified number of decimal places."
 }
 
 // Type implements the Expression interface.

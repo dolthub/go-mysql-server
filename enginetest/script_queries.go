@@ -503,7 +503,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (1)",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -511,7 +511,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "insert into a (y) values (2), (3)",
-				Expected: []sql.Row{{sql.NewOkResult(2)}},
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 2, InsertID: 2}}},
 			},
 			{
 				Query:    "select last_insert_id()",
@@ -803,19 +803,19 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"1-2-3-4"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"color,fabric"}, {"color,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute`) FROM t",
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(attribute ORDER BY attribute) FROM t`,
+				Query:    "SELECT group_concat(`attribute` ORDER BY `attribute`) FROM t",
 				Expected: []sql.Row{{"color,color,fabric,shape"}},
 			},
 			{
@@ -827,11 +827,11 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"2"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute ASC) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` ASC) FROM t",
 				Expected: []sql.Row{{"color,fabric,shape"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY attribute DESC) FROM t`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY `attribute` DESC) FROM t",
 				Expected: []sql.Row{{"shape,fabric,color"}},
 			},
 			{
@@ -847,15 +847,15 @@ var ScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrExpectedSingleRow,
 			},
 			{
-				Query:    `SELECT group_concat(attribute) FROM t where o_id=2`,
+				Query:    "SELECT group_concat(`attribute`) FROM t where o_id=2",
 				Expected: []sql.Row{{"color,fabric"}},
 			},
 			{
-				Query:    `SELECT group_concat(DISTINCT attribute ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc`,
+				Query:    "SELECT group_concat(DISTINCT `attribute` ORDER BY value DESC SEPARATOR ';') FROM t group by o_id order by o_id asc",
 				Expected: []sql.Row{{"fabric;color"}, {"shape;color"}},
 			},
 			{
-				Query:    `SELECT group_concat(o_id) FROM t WHERE attribute='color'`,
+				Query:    "SELECT group_concat(o_id) FROM t WHERE `attribute`='color'",
 				Expected: []sql.Row{{"2,3"}},
 			},
 		},
@@ -1275,6 +1275,65 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
 				Expected: []sql.Row{{4, 5, 6, 7}, {5, 6, 7, 8}},
 			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
+				Expected: []sql.Row{{"Filter((test.v3 = 7) AND (test.v2 >= 6))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
+				Expected: []sql.Row{{4, 5, 6, 7}},
+			},
+		},
+	},
+	{
+		Name: "Multiple indexes on the same columns in a different order",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, v3 BIGINT, INDEX v123 (v1, v2, v3), INDEX v321 (v3, v2, v1), INDEX v132 (v1, v3, v2));",
+			"INSERT INTO test VALUES (1,2,3,4), (2,3,4,5), (3,4,5,6), (4,5,6,7), (5,6,7,8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
+				Expected: []sql.Row{{"Filter((test.v1 = 2) AND (test.v2 > 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
+				Expected: []sql.Row{{1, 2, 3, 4}},
+			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
+				Expected: []sql.Row{{"Filter((test.v2 = 4) AND (test.v3 > 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
+				Expected: []sql.Row{{2, 3, 4, 5}},
+			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
+				Expected: []sql.Row{{"Filter((test.v3 = 6) AND (test.v1 > 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
+				Expected: []sql.Row{{3, 4, 5, 6}},
+			},
+			{
+				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
+				Expected: []sql.Row{{"Filter(((test.v1 = 5) AND (test.v3 <= 10)) AND (test.v2 >= 1))"},
+					{" └─ Projected table access on [pk v1 v2 v3]"},
+					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+			},
+			{
+				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
+				Expected: []sql.Row{{4, 5, 6, 7}},
+			},
 		},
 	},
 	{
@@ -1310,6 +1369,49 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Issue #709",
+		SetUpScript: []string{
+			"create table a(id int primary key, v int , key (v));",
+		},
+	},
+	{
+		Name: "Show create table with various keys and constraints",
+		SetUpScript: []string{
+			"create table t1(a int primary key, b varchar(10) not null default 'abc')",
+			"alter table t1 add constraint ck1 check (b like '%abc%')",
+			"create index t1b on t1(b)",
+			"create table t2(c int primary key, d varchar(10))",
+			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
+			"alter table t2 add constraint t2du unique (d)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` varchar(10) NOT NULL DEFAULT \"abc\",\n" +
+						"  PRIMARY KEY (`a`),\n" +
+						"  KEY `t1b` (`b`),\n" +
+						"  CONSTRAINT `ck1` CHECK (`b` LIKE \"%abc%\")\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				},
+			},
+			{
+				Query: "show create table t2",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `c` int NOT NULL,\n" +
+						"  `d` varchar(10),\n" +
+						"  PRIMARY KEY (`c`),\n" +
+						"  UNIQUE KEY `t2.d` (`d`),\n" +
+						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
@@ -1338,8 +1440,8 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"mytable1",
 						"CREATE TABLE `mytable1` (\n  `pk` int NOT NULL,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check1` CHECK (`pk` = 5),\n" +
-							"  CONSTRAINT `check11` CHECK (`pk` < 6)\n" +
+							"  CONSTRAINT `check1` CHECK ((`pk` = 5)),\n" +
+							"  CONSTRAINT `check11` CHECK ((`pk` < 6))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1352,8 +1454,8 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable2` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check2` CHECK (`v` < 5),\n" +
-							"  CONSTRAINT `check12` CHECK ((`pk` + `v`) = 6)\n" +
+							"  CONSTRAINT `check2` CHECK ((`v` < 5)),\n" +
+							"  CONSTRAINT `check12` CHECK (((`pk` + `v`) = 6))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1366,8 +1468,8 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable3` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check3` CHECK ((`pk` > 2) AND (`v` < 5)),\n" +
-							"  CONSTRAINT `check13` CHECK (`pk` BETWEEN 2 AND 100)\n" +
+							"  CONSTRAINT `check3` CHECK (((`pk` > 2) AND (`v` < 5))),\n" +
+							"  CONSTRAINT `check13` CHECK ((`pk` BETWEEN 2 AND 100))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1380,7 +1482,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable4` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check4` CHECK (((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9))\n" +
+							"  CONSTRAINT `check4` CHECK ((((`pk` > 2) AND (`v` < 5)) AND (`pk` < 9)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1393,7 +1495,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable5` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check5` CHECK ((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9)))\n" +
+							"  CONSTRAINT `check5` CHECK (((`pk` > 2) OR ((`v` < 5) AND (`pk` < 9))))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1406,7 +1508,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable6` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check6` CHECK (NOT(`pk`))\n" +
+							"  CONSTRAINT `check6` CHECK ((NOT(`pk`)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1419,7 +1521,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable7` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check7` CHECK (NOT((`pk` = `v`)))\n" +
+							"  CONSTRAINT `check7` CHECK ((NOT((`pk` = `v`))))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1432,7 +1534,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable8` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check8` CHECK (((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10))\n" +
+							"  CONSTRAINT `check8` CHECK ((((`pk` > 2) OR (`v` < 5)) OR (`pk` < 10)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1445,7 +1547,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable9` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check9` CHECK (((`pk` + `v`) / 2) >= 1)\n" +
+							"  CONSTRAINT `check9` CHECK ((((`pk` + `v`) / 2) >= 1))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1458,7 +1560,7 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 						"CREATE TABLE `mytable10` (\n  `pk` int NOT NULL,\n" +
 							"  `v` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  CONSTRAINT `check10` CHECK (`v` < 5) /*!80016 NOT ENFORCED */\n" +
+							"  CONSTRAINT `check10` CHECK ((`v` < 5)) /*!80016 NOT ENFORCED */\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 					},
 				},
@@ -1486,6 +1588,32 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 					{"def", "mydb", "vcheck", "mydb", "mytable", "CHECK", "YES"},
 					{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 				},
+			},
+		},
+	},
+	{
+		Name: "multi column index, lower()",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 varchar(100), v2 varchar(100), INDEX (v1,v2));",
+			"INSERT INTO test VALUES (1,'happy','birthday'), (2,'HAPPY','BIRTHDAY'), (3,'hello','sailor');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM test where lower(v1) = 'happy' and lower(v2) = 'birthday' order by 1",
+				Expected: []sql.Row{{1}, {2}},
+			},
+		},
+	},
+	{
+		Name: "adding check constraint to a table that violates said constraint correctly throws an error",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int)",
+			"INSERT INTO test VALUES (1),(2),(300)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE test ADD CONSTRAINT bad_check CHECK (pk < 5)",
+				ExpectedErr: plan.ErrCheckViolated,
 			},
 		},
 	},

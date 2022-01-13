@@ -61,9 +61,8 @@ func (u *Union) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 	ui := &unionIter{
-		ctx,
 		li,
-		func() (sql.RowIter, error) {
+		func(ctx *sql.Context) (sql.RowIter, error) {
 			return u.right.RowIter(ctx, row)
 		},
 	}
@@ -93,27 +92,26 @@ func (u Union) DebugString() string {
 }
 
 type unionIter struct {
-	ctx      *sql.Context
 	cur      sql.RowIter
-	nextIter func() (sql.RowIter, error)
+	nextIter func(ctx *sql.Context) (sql.RowIter, error)
 }
 
-func (ui *unionIter) Next() (sql.Row, error) {
-	res, err := ui.cur.Next()
+func (ui *unionIter) Next(ctx *sql.Context) (sql.Row, error) {
+	res, err := ui.cur.Next(ctx)
 	if err == io.EOF {
 		if ui.nextIter == nil {
 			return nil, io.EOF
 		}
-		err = ui.cur.Close(ui.ctx)
+		err = ui.cur.Close(ctx)
 		if err != nil {
 			return nil, err
 		}
-		ui.cur, err = ui.nextIter()
+		ui.cur, err = ui.nextIter(ctx)
 		ui.nextIter = nil
 		if err != nil {
 			return nil, err
 		}
-		return ui.cur.Next()
+		return ui.cur.Next(ctx)
 	}
 	return res, err
 }

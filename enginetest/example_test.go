@@ -38,7 +38,7 @@ func Example() {
 
 	// Iterate results and print them.
 	for {
-		row, err := r.Next()
+		row, err := r.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -61,10 +61,10 @@ func checkIfError(err error) {
 
 func createTestDatabase() sql.Database {
 	db := memory.NewDatabase("test")
-	table := memory.NewTable("mytable", sql.Schema{
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Source: "mytable"},
 		{Name: "email", Type: sql.Text, Source: "mytable"},
-	})
+	}))
 	db.AddTable("mytable", table)
 	ctx := sql.NewEmptyContext()
 

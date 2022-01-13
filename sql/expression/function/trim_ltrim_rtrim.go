@@ -42,6 +42,11 @@ func (t *Trim) FunctionName() string {
 	return "trim"
 }
 
+// Description implements sql.FunctionExpression
+func (t *Trim) Description() string {
+	return "remove leading and trailing spaces."
+}
+
 // Children implements the Expression interface.
 func (t *Trim) Children() []sql.Expression {
 	return []sql.Expression{t.str, t.pat}
@@ -110,7 +115,16 @@ func (t Trim) IsNullable() bool {
 }
 
 func (t Trim) String() string {
-	return fmt.Sprintf("TRIM(%s, %s, %s)", t.str, t.pat, t.pat)
+	if t.dir == sqlparser.Leading {
+		return fmt.Sprintf("trim(leading %v from %v)", t.pat, t.str)
+	} else if t.dir == sqlparser.Trailing {
+		return fmt.Sprintf("trim(trailing %v from %v)", t.pat, t.str)
+	} else {
+		if t.pat.String() == " " {
+			return fmt.Sprintf("trim(%v)", t.str)
+		}
+		return fmt.Sprintf("trim(both %v from %v)", t.pat, t.str)
+	}
 }
 
 func (t Trim) Resolved() bool {
@@ -136,8 +150,14 @@ func NewLeftTrim(str sql.Expression) sql.Expression {
 
 var _ sql.FunctionExpression = (*LeftTrim)(nil)
 
+// FunctionName implements sql.FunctionExpression
 func (t *LeftTrim) FunctionName() string {
 	return "ltrim"
+}
+
+// Description implements sql.FunctionExpression
+func (t *LeftTrim) Description() string {
+	return "returns the string str with leading space characters removed."
 }
 
 func (t *LeftTrim) Type() sql.Type { return sql.LongText }
@@ -187,8 +207,14 @@ func NewRightTrim(str sql.Expression) sql.Expression {
 
 var _ sql.FunctionExpression = (*RightTrim)(nil)
 
+// FunctionName implements sql.FunctionExpression
 func (t *RightTrim) FunctionName() string {
 	return "rtrim"
+}
+
+// Description implements sql.FunctionExpression
+func (t *RightTrim) Description() string {
+	return "returns the string str with trailing space characters removed."
 }
 
 func (t *RightTrim) Type() sql.Type { return sql.LongText }

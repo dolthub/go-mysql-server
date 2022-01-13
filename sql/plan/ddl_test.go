@@ -32,10 +32,10 @@ func TestCreateTable(t *testing.T) {
 	_, ok := tables["testTable"]
 	require.False(ok)
 
-	s := sql.Schema{
+	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: sql.Text},
 		{Name: "c2", Type: sql.Int32},
-	}
+	})
 
 	require.NoError(createTable(t, db, "testTable", s, IfNotExistsAbsent, IsTempTableAbsent))
 
@@ -44,7 +44,7 @@ func TestCreateTable(t *testing.T) {
 	newTable, ok := tables["testTable"]
 	require.True(ok)
 
-	require.Equal(newTable.Schema(), s)
+	require.Equal(newTable.Schema(), s.Schema)
 
 	for _, s := range newTable.Schema() {
 		require.Equal("testTable", s.Source)
@@ -58,11 +58,12 @@ func TestDropTable(t *testing.T) {
 	require := require.New(t)
 
 	db := memory.NewDatabase("test")
+	ctx := sql.NewEmptyContext()
 
-	s := sql.Schema{
+	s := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: sql.Text},
 		{Name: "c2", Type: sql.Int32},
-	}
+	})
 
 	require.NoError(createTable(t, db, "testTable1", s, IfNotExistsAbsent, IsTempTableAbsent))
 	require.NoError(createTable(t, db, "testTable2", s, IfNotExistsAbsent, IsTempTableAbsent))
@@ -72,7 +73,7 @@ func TestDropTable(t *testing.T) {
 	rows, err := d.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
-	r, err := rows.Next()
+	r, err := rows.Next(ctx)
 	require.Equal(err, io.EOF)
 	require.Nil(r)
 
@@ -99,7 +100,7 @@ func TestDropTable(t *testing.T) {
 	require.False(ok)
 }
 
-func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, ifNotExists IfNotExistsOption, temporary TempTableOption) error {
+func createTable(t *testing.T, db sql.Database, name string, schema sql.PrimaryKeySchema, ifNotExists IfNotExistsOption, temporary TempTableOption) error {
 	c := NewCreateTable(db, name, ifNotExists, temporary, &TableSpec{Schema: schema})
 
 	rows, err := c.RowIter(sql.NewEmptyContext(), nil)
@@ -107,7 +108,8 @@ func createTable(t *testing.T, db sql.Database, name string, schema sql.Schema, 
 		return err
 	}
 
-	r, err := rows.Next()
+	ctx := sql.NewEmptyContext()
+	r, err := rows.Next(ctx)
 	require.Nil(t, r)
 	require.Equal(t, io.EOF, err)
 	return nil

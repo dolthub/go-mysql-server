@@ -41,6 +41,11 @@ func (r *Reverse) FunctionName() string {
 	return "reverse"
 }
 
+// Description implements sql.FunctionExpression
+func (r *Reverse) Description() string {
+	return "returns the string str with the order of the characters reversed."
+}
+
 // Eval implements the Expression interface.
 func (r *Reverse) Eval(
 	ctx *sql.Context,
@@ -101,6 +106,11 @@ func NewRepeat(str sql.Expression, count sql.Expression) sql.Expression {
 // FunctionName implements sql.FunctionExpression
 func (r *Repeat) FunctionName() string {
 	return "repeat"
+}
+
+// Description implements sql.FunctionExpression
+func (r *Repeat) Description() string {
+	return "returns a string consisting of the string str repeated count times."
 }
 
 func (r *Repeat) String() string {
@@ -168,6 +178,11 @@ func NewReplace(str sql.Expression, fromStr sql.Expression, toStr sql.Expression
 // FunctionName implements sql.FunctionExpression
 func (r *Replace) FunctionName() string {
 	return "replace"
+}
+
+// Description implements sql.FunctionExpression
+func (r *Replace) Description() string {
+	return "returns the string str with all occurrences of the string from_str replaced by the string to_str."
 }
 
 // Children implements the Expression interface.

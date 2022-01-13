@@ -38,20 +38,22 @@ type IndexBuilder struct {
 // integrators through the Index function NewLookup.
 func NewIndexBuilder(ctx *Context, idx Index) *IndexBuilder {
 	colExprTypes := make(map[string]Type)
+	ranges := make(map[string][]RangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes(ctx) {
 		colExprTypes[cet.Expression] = cet.Type
+		ranges[cet.Expression] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
 	}
 	return &IndexBuilder{
 		idx:          idx,
 		isInvalid:    false,
 		err:          nil,
 		colExprTypes: colExprTypes,
-		ranges:       make(map[string][]RangeColumnExpr),
+		ranges:       ranges,
 	}
 }
 
-// Equals represents colExpr = key.
-func (b *IndexBuilder) Equals(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+// Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
+func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *IndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -61,7 +63,11 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, key interface{}) *In
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	b.updateCol(ctx, colExpr, ClosedRangeColumnExpr(key, key, typ))
+	potentialRanges := make([]RangeColumnExpr, len(keys))
+	for i, key := range keys {
+		potentialRanges[i] = ClosedRangeColumnExpr(key, key, typ)
+	}
+	b.updateCol(ctx, colExpr, potentialRanges...)
 	return b
 }
 
@@ -154,10 +160,19 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 	return b
 }
 
-// Ranges returns all ranges for this index builder. If the builder is invalid for any reason then this returns nil.
-func (b *IndexBuilder) Ranges() RangeCollection {
-	if b.err != nil || b.isInvalid {
+// Ranges returns all ranges for this index builder. If the builder is in an error state then this returns nil.
+func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
+	if b.err != nil {
 		return nil
+	}
+	// An invalid builder that did not error got into a state where no columns will ever match, so we return an empty range
+	if b.isInvalid {
+		cets := b.idx.ColumnExpressionTypes(ctx)
+		emptyRange := make(Range, len(cets))
+		for i, cet := range cets {
+			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+		}
+		return RangeCollection{emptyRange}
 	}
 	var allColumns [][]RangeColumnExpr
 	for _, colExpr := range b.idx.Expressions() {
@@ -201,10 +216,8 @@ func (b *IndexBuilder) Ranges() RangeCollection {
 func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	if b.err != nil {
 		return nil, b.err
-	} else if b.isInvalid {
-		return nil, nil
 	} else {
-		ranges := b.Ranges()
+		ranges := b.Ranges(ctx)
 		if len(ranges) == 0 {
 			return nil, nil
 		}
@@ -212,6 +225,9 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	}
 }
 
+// updateCol updates the internal columns with the given ranges by intersecting each given range with each existing
+// range. That means that each given range is treated as an OR with respect to the other given ranges. If multiple
+// ranges are to be intersected with respect to one another, multiple calls to updateCol should be made.
 func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...RangeColumnExpr) {
 	if len(potentialRanges) == 0 {
 		return
@@ -225,10 +241,8 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 
 	var newRanges []RangeColumnExpr
 	for _, currentRange := range currentRanges {
-		newRange := currentRange
 		for _, potentialRange := range potentialRanges {
-			var err error
-			newRange, ok, err = newRange.TryIntersect(potentialRange)
+			newRange, ok, err := currentRange.TryIntersect(potentialRange)
 			if err != nil {
 				b.isInvalid = true
 				b.err = err

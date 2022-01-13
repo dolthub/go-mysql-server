@@ -52,6 +52,11 @@ func (v *Values) FunctionName() string {
 	return "values"
 }
 
+// Description implements sql.FunctionExpression.
+func (v *Values) Description() string {
+	return "defines the values to be used during an INSERT."
+}
+
 // String implements sql.FunctionExpression.
 func (v *Values) String() string {
 	return fmt.Sprintf("VALUES(%s)", v.Child.String())

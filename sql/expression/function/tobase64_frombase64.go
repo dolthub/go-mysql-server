@@ -42,6 +42,11 @@ func (t *ToBase64) FunctionName() string {
 	return "to_base64"
 }
 
+// Description implements sql.FunctionExpression
+func (t *ToBase64) Description() string {
+	return "encodes the string str in base64 format."
+}
+
 // Eval implements the Expression interface.
 func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := t.Child.Eval(ctx, row)
@@ -122,6 +127,11 @@ func NewFromBase64(e sql.Expression) sql.Expression {
 // FunctionName implements sql.FunctionExpression
 func (t *FromBase64) FunctionName() string {
 	return "from_base64"
+}
+
+// Description implements sql.FunctionExpression
+func (t *FromBase64) Description() string {
+	return "decodes the base64-encoded string str."
 }
 
 // Eval implements the Expression interface.

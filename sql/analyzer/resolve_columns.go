@@ -476,9 +476,17 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	indexSchema(scope.Schema())
 
 	// For the innermost scope (the node being evaluated), look at the schemas of the children instead of this node
-	// itself.
-	for _, child := range n.Children() {
-		indexChildNode(child)
+	// itself. Skip this for DDL nodes that handle indexing separately.
+	shouldIndexChildNode := true
+	switch n.(type) {
+	case *plan.AddColumn, *plan.ModifyColumn:
+		shouldIndexChildNode = false
+	}
+
+	if shouldIndexChildNode {
+		for _, child := range n.Children() {
+			indexChildNode(child)
+		}
 	}
 
 	// For certain DDL nodes, we have to do more work
@@ -519,7 +527,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 
 	switch node := n.(type) {
 	case *plan.CreateTable: // For this node in particular, the columns will only come into existence after the analyzer step, so we forge them here.
-		for _, col := range node.Schema() {
+		for _, col := range node.CreateSchema.Schema {
 			columns[tableCol{
 				table: "",
 				col:   strings.ToLower(col.Name),
@@ -531,21 +539,11 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 			idx++
 		}
 	case *plan.AddColumn: // Add/Modify need to have the full column set in order to resolve a default expression.
-		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
-			indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
-		}
+		tbl := node.Child
+		indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
 	case *plan.ModifyColumn:
-		if tbl, ok, _ := node.Database().GetTableInsensitive(ctx, node.TableName()); ok {
-			colIdx := tbl.Schema().IndexOf(node.Column(), node.TableName())
-			if colIdx < 0 {
-				return nil, sql.ErrTableColumnNotFound.New(node.TableName(), node.Column())
-			}
-
-			var newSch sql.Schema
-			newSch = append(newSch, tbl.Schema()[:colIdx]...)
-			newSch = append(newSch, tbl.Schema()[colIdx+1:]...)
-			indexSchemaForDefaults(node.NewColumn(), node.Order(), newSch)
-		}
+		tbl := node.Child
+		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
 	}
 
 	return columns, nil

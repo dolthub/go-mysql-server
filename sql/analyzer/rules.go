@@ -22,17 +22,21 @@ import (
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
 	{"validate_offset_and_limit", validateLimitAndOffset},
+	{"validate_create_table", validateCreateTable},
 	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_variables", resolveVariables},
 	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_views", resolveViews},
 	{"lift_common_table_expressions", liftCommonTableExpressions},
 	{"resolve_common_table_expressions", resolveCommonTableExpressions},
+	{"resolve_databases", resolveDatabases},
 	{"resolve_tables", resolveTables},
+	{"set_target_schemas", setTargetSchemas},
+	{"resolve_create_like", resolveCreateLike},
+	{"parse_column_defaults", parseColumnDefaults},
 	{"resolve_drop_constraint", resolveDropConstraint},
 	{"validate_drop_constraint", validateDropConstraint},
 	{"load_check_constraints", loadChecks},
-	{"resolve_create_like", resolveCreateLike},
 	{"resolve_create_select", resolveCreateSelect},
 	{"resolve_subqueries", resolveSubqueries},
 	{"resolve_unions", resolveUnions},
@@ -44,6 +48,7 @@ var OnceBeforeDefault = []Rule{
 	{"assign_info_schema", assignInfoSchema},
 	{"validate_read_only_database", validateReadOnlyDatabase},
 	{"validate_read_only_transaction", validateReadOnlyTransaction},
+	{"validate_database_set", validateDatabaseSet},
 }
 
 // DefaultRules to apply when analyzing nodes.
@@ -59,13 +64,13 @@ var DefaultRules = []Rule{
 	{"resolve_columns", resolveColumns},
 	{"validate_check_constraint", validateCreateCheck},
 	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
-	{"resolve_database", resolveDatabase},
 	{"expand_stars", expandStars},
 	{"resolve_having", resolveHaving},
 	{"merge_union_schemas", mergeUnionSchemas},
 	{"flatten_aggregation_exprs", flattenAggregationExpressions},
 	{"reorder_projection", reorderProjection},
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},
+	{"replace_cross_joins", replaceCrossJoins},
 	{"move_join_conds_to_filter", moveJoinConditionsToFilter},
 	{"eval_filter", evalFilter},
 	{"optimize_distinct", optimizeDistinct},
@@ -79,6 +84,7 @@ var OnceAfterDefault = []Rule{
 	{"load_triggers", loadTriggers},
 	{"process_truncate", processTruncate},
 	{"resolve_column_defaults", resolveColumnDefaults},
+	{"validate_alter_column", validateAlterColumn},
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
 	{"assign_catalog", assignCatalog},
@@ -90,6 +96,7 @@ var OnceAfterDefault = []Rule{
 	{"pushdown_projections", pushdownProjections},
 	{"set_join_scope_len", setJoinScopeLen},
 	{"erase_projection", eraseProjection},
+	{"insert_topn", insertTopNNodes},
 	// One final pass at analyzing subqueries to handle rewriting field indexes after changes to outer scope by
 	// previous rules.
 	{"resolve_subquery_exprs", resolveSubqueryExpressions},

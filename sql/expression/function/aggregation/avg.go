@@ -39,6 +39,11 @@ func (a *Avg) FunctionName() string {
 	return "avg"
 }
 
+// Description implements sql.FunctionExpression
+func (a *Avg) Description() string {
+	return "returns the average value of expr in all rows."
+}
+
 func (a *Avg) String() string {
 	return fmt.Sprintf("AVG(%s)", a.Child)
 }
@@ -79,6 +84,16 @@ func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
 	}
 
 	return &avgBuffer{sum, rows, bufferChild}, nil
+}
+
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (a *Avg) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(a.UnaryExpression.Child)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewAvgAgg(c), nil
 }
 
 type avgBuffer struct {

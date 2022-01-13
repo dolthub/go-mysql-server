@@ -35,8 +35,14 @@ func NewAbsVal(e sql.Expression) sql.Expression {
 	return &AbsVal{expression.UnaryExpression{Child: e}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (t *AbsVal) FunctionName() string {
 	return "abs"
+}
+
+// Description implements sql.FunctionExpression
+func (t *AbsVal) Description() string {
+	return "returns the absolute value of an expression."
 }
 
 // Eval implements the Expression interface.

@@ -28,10 +28,10 @@ func TestTableAlias(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable("bar", sql.Schema{
+	table := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Text, Nullable: true},
 		{Name: "b", Type: sql.Text, Nullable: true},
-	})
+	}))
 	alias := NewTableAlias("foo", NewResolvedTable(table, nil, nil))
 
 	var rows = []sql.Row{
@@ -53,7 +53,7 @@ func TestTableAlias(t *testing.T) {
 
 	var i int
 	for {
-		row, err := iter.Next()
+		row, err := iter.Next(ctx)
 		if err == io.EOF {
 			break
 		}

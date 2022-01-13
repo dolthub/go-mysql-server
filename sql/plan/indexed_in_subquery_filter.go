@@ -108,14 +108,14 @@ func (i *IndexedInSubqueryFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.Ro
 		tupLits[j] = expression.NewLiteral(res[j], i.subquery.Type())
 	}
 	expr := expression.NewInTuple(i.getField, expression.NewTuple(tupLits...))
-	return NewFilterIter(ctx, expr, &indexedInSubqueryIter{ctx, res, i.child, nil, 0}), nil
+	return NewFilterIter(expr, &indexedInSubqueryIter{res, i.child, nil, 0}), nil
 }
 
 type deferredErrIter struct {
 	err error
 }
 
-func (i *deferredErrIter) Next() (sql.Row, error) {
+func (i *deferredErrIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.err != nil {
 		err := i.err
 		i.err = nil
@@ -129,14 +129,13 @@ func (i *deferredErrIter) Close(ctx *sql.Context) error {
 }
 
 type indexedInSubqueryIter struct {
-	ctx   *sql.Context
 	rows  []interface{}
 	child sql.Node
 	cur   sql.RowIter
 	i     int
 }
 
-func (iter *indexedInSubqueryIter) Next() (sql.Row, error) {
+func (iter *indexedInSubqueryIter) Next(ctx *sql.Context) (sql.Row, error) {
 	var ret sql.Row
 	err := io.EOF
 	for err == io.EOF {
@@ -144,16 +143,16 @@ func (iter *indexedInSubqueryIter) Next() (sql.Row, error) {
 			if iter.i >= len(iter.rows) {
 				return nil, io.EOF
 			}
-			childIter, err := iter.child.RowIter(iter.ctx, sql.NewRow(iter.rows[iter.i]))
+			childIter, err := iter.child.RowIter(ctx, sql.NewRow(iter.rows[iter.i]))
 			if err != nil {
 				return nil, err
 			}
 			iter.i += 1
 			iter.cur = childIter
 		}
-		ret, err = iter.cur.Next()
+		ret, err = iter.cur.Next(ctx)
 		if err == io.EOF {
-			cerr := iter.cur.Close(iter.ctx)
+			cerr := iter.cur.Close(ctx)
 			iter.cur = nil
 			if cerr != nil {
 				return nil, cerr

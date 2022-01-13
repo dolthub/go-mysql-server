@@ -50,6 +50,18 @@ func (s Schema) CheckRow(row Row) error {
 	return nil
 }
 
+// Copy returns a deep copy of this schema, making a copy of all columns
+func (s Schema) Copy() Schema {
+	ns := make(Schema, len(s))
+
+	for i, col := range s {
+		nc := *col
+		ns[i] = &nc
+	}
+
+	return ns
+}
+
 // Contains returns whether the schema contains a column with the given name.
 func (s Schema) Contains(column string, source string) bool {
 	return s.IndexOf(column, source) >= 0
@@ -102,4 +114,24 @@ func IsKeyless(s Schema) bool {
 	}
 
 	return true
+}
+
+// PrimaryKeySchema defines table metadata for columns and primary key ordering
+type PrimaryKeySchema struct {
+	Schema
+	PkOrdinals []int
+}
+
+// NewPrimaryKeySchema constructs a new PrimaryKeySchema. PK ordinals
+// default to the in-order set read from the Schema.
+func NewPrimaryKeySchema(s Schema, pkOrds ...int) PrimaryKeySchema {
+	if len(pkOrds) == 0 {
+		pkOrds = make([]int, 0)
+		for i, c := range s {
+			if c.PrimaryKey {
+				pkOrds = append(pkOrds, i)
+			}
+		}
+	}
+	return PrimaryKeySchema{Schema: s, PkOrdinals: pkOrds}
 }

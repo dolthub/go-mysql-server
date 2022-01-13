@@ -54,7 +54,7 @@ func (sc *ShowCharset) Schema() sql.Schema {
 		{Name: "Charset", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Description", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
 		{Name: "Default collation", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Maxlen", Type: sql.Uint8, Default: nil, Nullable: false},
+		{Name: "Maxlen", Type: sql.Uint64, Default: nil, Nullable: false},
 	}
 }
 
@@ -78,8 +78,8 @@ type showCharsetIter struct {
 	originalIter sql.RowIter
 }
 
-func (sci *showCharsetIter) Next() (sql.Row, error) {
-	row, err := sci.originalIter.Next()
+func (sci *showCharsetIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := sci.originalIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}

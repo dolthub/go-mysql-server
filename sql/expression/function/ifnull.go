@@ -43,6 +43,11 @@ func (f *IfNull) FunctionName() string {
 	return "ifnull"
 }
 
+// Description implements sql.FunctionExpression
+func (f *IfNull) Description() string {
+	return "if expr1 is not NULL, it returns expr1; otherwise it returns expr2."
+}
+
 // Eval implements the Expression interface.
 func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	left, err := f.Left.Eval(ctx, row)

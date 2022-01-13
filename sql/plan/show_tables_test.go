@@ -34,9 +34,9 @@ func TestShowTables(t *testing.T) {
 	require.Nil(unresolvedShowTables.Children())
 
 	db := memory.NewDatabase("test")
-	db.AddTable("test1", memory.NewTable("test1", nil))
-	db.AddTable("test2", memory.NewTable("test2", nil))
-	db.AddTable("test3", memory.NewTable("test3", nil))
+	db.AddTable("test1", memory.NewTable("test1", sql.PrimaryKeySchema{}))
+	db.AddTable("test2", memory.NewTable("test2", sql.PrimaryKeySchema{}))
+	db.AddTable("test3", memory.NewTable("test3", sql.PrimaryKeySchema{}))
 
 	resolvedShowTables := NewShowTables(db, false, nil)
 	require.True(resolvedShowTables.Resolved())
@@ -45,18 +45,18 @@ func TestShowTables(t *testing.T) {
 	iter, err := resolvedShowTables.RowIter(ctx, nil)
 	require.NoError(err)
 
-	res, err := iter.Next()
+	res, err := iter.Next(ctx)
 	require.NoError(err)
 	require.Equal("test1", res[0])
 
-	res, err = iter.Next()
+	res, err = iter.Next(ctx)
 	require.NoError(err)
 	require.Equal("test2", res[0])
 
-	res, err = iter.Next()
+	res, err = iter.Next(ctx)
 	require.NoError(err)
 	require.Equal("test3", res[0])
 
-	_, err = iter.Next()
+	_, err = iter.Next(ctx)
 	require.Equal(io.EOF, err)
 }

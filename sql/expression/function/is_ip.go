@@ -34,8 +34,14 @@ func NewIsIPv4(val sql.Expression) sql.Expression {
 	return &IsIPv4{expression.UnaryExpression{Child: val}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (i *IsIPv4) FunctionName() string {
 	return "is_ipv4"
+}
+
+// Description implements sql.FunctionExpression
+func (i *IsIPv4) Description() string {
+	return "returns whether argument is an IPv4 address."
 }
 
 func (i *IsIPv4) String() string {
@@ -90,8 +96,14 @@ func NewIsIPv6(val sql.Expression) sql.Expression {
 	return &IsIPv6{expression.UnaryExpression{Child: val}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (i *IsIPv6) FunctionName() string {
 	return "is_ipv6"
+}
+
+// Description implements sql.FunctionExpression
+func (i *IsIPv6) Description() string {
+	return "returns whether argument is an IPv6 address."
 }
 
 func (i *IsIPv6) String() string {
@@ -146,8 +158,14 @@ func NewIsIPv4Compat(val sql.Expression) sql.Expression {
 	return &IsIPv4Compat{expression.UnaryExpression{Child: val}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (i *IsIPv4Compat) FunctionName() string {
 	return "is_ipv4_compat"
+}
+
+// Description implements sql.FunctionExpression
+func (i *IsIPv4Compat) Description() string {
+	return "returns whether argument is an IPv4-compatible address."
 }
 
 func (i *IsIPv4Compat) String() string {
@@ -206,8 +224,14 @@ func NewIsIPv4Mapped(val sql.Expression) sql.Expression {
 	return &IsIPv4Mapped{expression.UnaryExpression{Child: val}}
 }
 
+// FunctionName implements sql.FunctionExpression
 func (i *IsIPv4Mapped) FunctionName() string {
 	return "is_ipv4_mapped"
+}
+
+// Description implements sql.FunctionExpression
+func (i *IsIPv4Mapped) Description() string {
+	return "returns whether argument is an IPv4-mapped address."
 }
 
 func (i *IsIPv4Mapped) String() string {

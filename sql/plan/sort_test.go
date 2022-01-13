@@ -26,11 +26,11 @@ import (
 )
 
 func TestSort(t *testing.T) {
-	schema := sql.Schema{
+	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
 		{Name: "col2", Type: sql.Int32, Nullable: true},
 		{Name: "col3", Type: sql.Float64, Nullable: true},
-	}
+	})
 
 	type sortTest struct {
 		rows       []sql.Row
@@ -227,9 +227,9 @@ func TestSortAscending(t *testing.T) {
 		sql.NewRow("b"),
 	}
 
-	schema := sql.Schema{
+	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
-	}
+	})
 
 	child := memory.NewTable("test", schema)
 	for _, row := range data {
@@ -240,7 +240,7 @@ func TestSortAscending(t *testing.T) {
 		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: sql.Ascending, NullOrdering: sql.NullsFirst},
 	}
 	s := NewSort(sf, NewResolvedTable(child, nil, nil))
-	require.Equal(schema, s.Schema())
+	require.Equal(schema.Schema, s.Schema())
 
 	expected := []sql.Row{
 		sql.NewRow(nil),
@@ -267,9 +267,9 @@ func TestSortDescending(t *testing.T) {
 		sql.NewRow("b"),
 	}
 
-	schema := sql.Schema{
+	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: sql.Text, Nullable: true},
-	}
+	})
 
 	child := memory.NewTable("test", schema)
 	for _, row := range data {
@@ -280,7 +280,7 @@ func TestSortDescending(t *testing.T) {
 		{Column: expression.NewGetField(0, sql.Text, "col1", true), Order: sql.Descending, NullOrdering: sql.NullsFirst},
 	}
 	s := NewSort(sf, NewResolvedTable(child, nil, nil))
-	require.Equal(schema, s.Schema())
+	require.Equal(schema.Schema, s.Schema())
 
 	expected := []sql.Row{
 		sql.NewRow("d"),

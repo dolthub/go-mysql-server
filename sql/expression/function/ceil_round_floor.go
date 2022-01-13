@@ -40,6 +40,11 @@ func (c *Ceil) FunctionName() string {
 	return "ceil"
 }
 
+// Description implements sql.FunctionExpression
+func (c *Ceil) Description() string {
+	return "returns the smallest integer value that is greater than or equal to number."
+}
+
 // Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
 	childType := c.Child.Type()
@@ -111,6 +116,11 @@ func NewFloor(num sql.Expression) sql.Expression {
 // FunctionName implements sql.FunctionExpression
 func (f *Floor) FunctionName() string {
 	return "floor"
+}
+
+// Description implements sql.FunctionExpression
+func (f *Floor) Description() string {
+	return "returns the largest integer value that is less than or equal to number."
 }
 
 // Type implements the Expression interface.
@@ -197,6 +207,11 @@ func NewRound(args ...sql.Expression) (sql.Expression, error) {
 // FunctionName implements sql.FunctionExpression
 func (r *Round) FunctionName() string {
 	return "round"
+}
+
+// Description implements sql.FunctionExpression
+func (r *Round) Description() string {
+	return "rounds the number to decimals decimal places."
 }
 
 // Children implements the Expression interface.

@@ -28,21 +28,44 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 		}
 
 		e, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
-			switch e := expr.(type) {
-			case *expression.InTuple:
-				switch e.Left().(type) {
-				// cannot HASH IN *plan.Subquery
-				case expression.Tuple, *expression.Literal, *expression.GetField:
-					return expression.NewHashInTuple(e.Left(), e.Right())
-				default:
-				}
-			default:
+			if e, ok := expr.(*expression.InTuple); ok &&
+				hasSingleOutput(e.Left()) &&
+				isStatic(e.Right()) {
+				return expression.NewHashInTuple(e.Left(), e.Right())
 			}
 			return expr, nil
 		})
+
 		if err != nil {
 			return nil, err
 		}
 		return filter.WithExpressions(e)
+	})
+}
+
+// hasSingleOutput checks if an expression evaluates to a single output
+func hasSingleOutput(e sql.Expression) bool {
+	return !expression.InspectUp(e, func(expr sql.Expression) bool {
+		switch expr.(type) {
+		case expression.Tuple, *expression.Literal, *expression.GetField,
+			expression.Comparer, *expression.Convert, sql.FunctionExpression,
+			*expression.IsTrue, *expression.IsNull, *expression.Arithmetic:
+			return false
+		default:
+			return true
+		}
+		return false
+	})
+}
+
+// isStatic checks if an expression is static
+func isStatic(e sql.Expression) bool {
+	return !expression.InspectUp(e, func(expr sql.Expression) bool {
+		switch expr.(type) {
+		case expression.Tuple, *expression.Literal:
+			return false
+		default:
+			return true
+		}
 	})
 }

@@ -101,24 +101,30 @@ func (p *QueryProcess) DebugString() string {
 // shouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
 // any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
 func (p *QueryProcess) shouldSetFoundRows() bool {
-	var limit *Limit
+	var fromLimit *bool
+	var fromTopN *bool
 	Inspect(p.Child, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *StartTransaction:
 			return true
 		case *Limit:
-			limit = n
-			return false
+			fromLimit = &n.CalcFoundRows
+			return true
+		case *TopN:
+			fromTopN = &n.CalcFoundRows
+			return true
 		default:
-			return false
+			return true
 		}
 	})
 
-	if limit == nil {
+	if fromLimit == nil && fromTopN == nil {
 		return true
 	}
-
-	return !limit.CalcFoundRows
+	if fromTopN != nil {
+		return !*fromTopN
+	}
+	return !*fromLimit
 }
 
 // ProcessIndexableTable is a wrapper for sql.Tables inside a query process
@@ -291,8 +297,8 @@ func (i *trackedRowIter) Dispose() {
 	}
 }
 
-func (i *trackedRowIter) Next() (sql.Row, error) {
-	row, err := i.iter.Next()
+func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -339,8 +345,8 @@ type trackedPartitionIndexKeyValueIter struct {
 	OnRowNext        NamedNotifyFunc
 }
 
-func (i *trackedPartitionIndexKeyValueIter) Next() (sql.Partition, sql.IndexKeyValueIter, error) {
-	p, iter, err := i.PartitionIndexKeyValueIter.Next()
+func (i *trackedPartitionIndexKeyValueIter) Next(ctx *sql.Context) (sql.Partition, sql.IndexKeyValueIter, error) {
+	p, iter, err := i.PartitionIndexKeyValueIter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -389,8 +395,8 @@ func (i *trackedIndexKeyValueIter) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-func (i *trackedIndexKeyValueIter) Next() ([]interface{}, []byte, error) {
-	v, k, err := i.iter.Next()
+func (i *trackedIndexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error) {
+	v, k, err := i.iter.Next(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -426,7 +432,8 @@ func IsDDLNode(node sql.Node) bool {
 		*CreateProcedure, *DropProcedure,
 		*CreateForeignKey, *DropForeignKey,
 		*CreateCheck, *DropCheck,
-		*CreateTrigger, *DropTrigger, *AlterPK:
+		*CreateTrigger, *DropTrigger, *AlterPK,
+		*Block: // Block as a top level node wraps a set of ALTER TABLE statements
 		return true
 	default:
 		return false

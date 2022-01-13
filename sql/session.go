@@ -532,6 +532,7 @@ type Context struct {
 	Session
 	Memory      *MemoryManager
 	ProcessList ProcessList
+	services    Services
 	pid         uint64
 	query       string
 	queryTime   time.Time
@@ -590,6 +591,13 @@ func WithProcessList(p ProcessList) ContextOption {
 	}
 }
 
+// WithServices sets the services for the Context
+func WithServices(services Services) ContextOption {
+	return func(ctx *Context) {
+		ctx.services = services
+	}
+}
+
 var ctxNowFunc = time.Now
 var ctxNowFuncMutex = &sync.Mutex{}
 
@@ -617,7 +625,7 @@ func NewContext(
 ) *Context {
 	c := &Context{
 		Context:   ctx,
-		Session:   NewBaseSession(),
+		Session:   nil,
 		queryTime: ctxNowFunc(),
 		tracer:    opentracing.NoopTracer{},
 	}
@@ -628,9 +636,11 @@ func NewContext(
 	if c.Memory == nil {
 		c.Memory = NewMemoryManager(ProcessMemory)
 	}
-
 	if c.ProcessList == nil {
 		c.ProcessList = EmptyProcessList{}
+	}
+	if c.Session == nil {
+		c.Session = NewBaseSession()
 	}
 
 	return c
@@ -651,6 +661,11 @@ func (c *Context) Pid() uint64 { return c.pid }
 
 // Query returns the query string associated with this context.
 func (c *Context) Query() string { return c.query }
+
+func (c Context) WithQuery(q string) *Context {
+	c.query = q
+	return &c
+}
 
 // QueryTime returns the time.Time when the context associated with this query was created
 func (c *Context) QueryTime() time.Time {
@@ -717,9 +732,39 @@ func (c *Context) Warn(code int, msg string, args ...interface{}) {
 	})
 }
 
+// Terminate the connection associated with |connID|.
+func (c *Context) KillConnection(connID uint32) error {
+	if c.services.KillConnection != nil {
+		return c.services.KillConnection(connID)
+	}
+	return nil
+}
+
+// Load the remote file |filename| from the client. Returns a |ReadCloser| for
+// the file's contents. Returns an error if this functionality is not
+// supported.
+func (c *Context) LoadInfile(filename string) (io.ReadCloser, error) {
+	if c.services.LoadInfile != nil {
+		return c.services.LoadInfile(filename)
+	}
+	return nil, ErrUnsupportedFeature.New("LOAD DATA LOCAL INFILE ...")
+}
+
 func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 	eg, egCtx := errgroup.WithContext(c.Context)
 	return eg, c.WithContext(egCtx)
+}
+
+// Services are handles to optional or plugin functionality that can be
+// used by the SQL implementation in certain situations. An integrator can set
+// methods on Services for a given *Context and different parts of go-mysql-server
+// will inspect it in order to fulfill their implementations. Currently, the
+// KillConnection service is available. Set these with |WithServices|; the
+// implementation will access them through the corresponding methods on
+// *Context, such as |KillConnection|.
+type Services struct {
+	KillConnection func(connID uint32) error
+	LoadInfile     func(filename string) (io.ReadCloser, error)
 }
 
 // NewSpanIter creates a RowIter executed in the given span.
@@ -760,10 +805,10 @@ func (i *spanIter) updateTimings(start time.Time) {
 	i.total += elapsed
 }
 
-func (i *spanIter) Next() (Row, error) {
+func (i *spanIter) Next(ctx *Context) (Row, error) {
 	start := time.Now()
 
-	row, err := i.iter.Next()
+	row, err := i.iter.Next(ctx)
 	if err == io.EOF {
 		i.finish()
 		return nil, err

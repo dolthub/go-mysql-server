@@ -40,7 +40,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				}
 			}
 
-			return n.WithChildren(stripQueryProcess(child))
+			return n.WithChildren(StripQueryProcess(child))
 		default:
 			return n, nil
 		}
@@ -67,7 +67,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 				}
 			}
 
-			return n.WithChildren(stripQueryProcess(child))
+			return n.WithChildren(StripQueryProcess(child))
 		default:
 			return n, nil
 		}
@@ -119,7 +119,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return nil, err
 		}
 
-		return s.WithQuery(stripQueryProcess(analyzed)), nil
+		return s.WithQuery(StripQueryProcess(analyzed)), nil
 	})
 }
 
@@ -127,7 +127,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 // Something similar happens in the trackProcess analyzer step, but we can't always wait that long to get rid of the
 // QueryProcess node.
 // TODO: instead of stripping this node off after analysis, it would be better to just not add it in the first place.
-func stripQueryProcess(n sql.Node) sql.Node {
+func StripQueryProcess(n sql.Node) sql.Node {
 	nodeIsPassthrough := true
 	for nodeIsPassthrough {
 		switch tn := n.(type) {

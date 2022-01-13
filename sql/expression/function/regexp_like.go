@@ -21,6 +21,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -64,6 +66,11 @@ func NewRegexpLike(args ...sql.Expression) (sql.Expression, error) {
 // FunctionName implements sql.FunctionExpression
 func (r *RegexpLike) FunctionName() string {
 	return "regexp_like"
+}
+
+// Description implements sql.FunctionExpression
+func (r *RegexpLike) Description() string {
+	return "returns whether string matches regular expression."
 }
 
 // Type implements the sql.Expression interface.
@@ -166,6 +173,11 @@ func compileRegex(ctx *sql.Context, pattern, flags sql.Expression, funcName stri
 	patternVal, err = sql.LongText.Convert(patternVal)
 	if err != nil {
 		return nil, err
+	}
+
+	// Empty regex, throw illegal argument
+	if len(patternVal.(string)) == 0 {
+		return nil, errors.NewKind("Illegal argument to regular expression.").New()
 	}
 
 	flagsStr := "(?i)"

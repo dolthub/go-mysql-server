@@ -28,9 +28,9 @@ import (
 
 func TestInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: sql.Text},
-	})
+	}))
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))
@@ -116,9 +116,9 @@ func TestInSubquery(t *testing.T) {
 
 func TestNotInSubquery(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	table := memory.NewTable("foo", sql.Schema{
+	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "t", Source: "foo", Type: sql.Text},
-	})
+	}))
 
 	require.NoError(t, table.Insert(ctx, sql.Row{"one"}))
 	require.NoError(t, table.Insert(ctx, sql.Row{"two"}))

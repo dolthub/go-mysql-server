@@ -68,7 +68,7 @@ type describeIter struct {
 	i      int
 }
 
-func (i *describeIter) Next() (sql.Row, error) {
+func (i *describeIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if i.i >= len(i.schema) {
 		return nil, io.EOF
 	}

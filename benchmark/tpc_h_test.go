@@ -79,7 +79,7 @@ func executeQueries(b *testing.B, e *sqle.Engine) error {
 				}
 
 				for {
-					_, err = iter.Next()
+					_, err = iter.Next(ctx)
 					if err == io.EOF {
 						break
 					}
@@ -101,7 +101,7 @@ func genDB(b *testing.B) (sql.Database, error) {
 	for _, m := range tpchTableMetadata {
 		b.Log("generating table", m.name)
 		t := memory.NewTable(m.name, m.schema)
-		if err := insertDataToTable(m.name, t, len(m.schema)); err != nil {
+		if err := insertDataToTable(m.name, t, len(m.schema.Schema)); err != nil {
 			return nil, err
 		}
 

@@ -41,7 +41,7 @@ func (r *Releaser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 
-	return &releaseIter{ctx: ctx, child: iter, release: r.Release}, nil
+	return &releaseIter{child: iter, release: r.Release}, nil
 }
 
 func (r *Releaser) Schema() sql.Schema {
@@ -67,16 +67,15 @@ func (r *Releaser) Equal(n sql.Node) bool {
 }
 
 type releaseIter struct {
-	ctx     *sql.Context
 	child   sql.RowIter
 	release func()
 	once    sync.Once
 }
 
-func (i *releaseIter) Next() (sql.Row, error) {
-	row, err := i.child.Next()
+func (i *releaseIter) Next(ctx *sql.Context) (sql.Row, error) {
+	row, err := i.child.Next(ctx)
 	if err != nil {
-		_ = i.Close(i.ctx)
+		_ = i.Close(ctx)
 		return nil, err
 	}
 	return row, nil

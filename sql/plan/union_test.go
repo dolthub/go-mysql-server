@@ -28,10 +28,10 @@ import (
 func TestUnion(t *testing.T) {
 	require := require.New(t)
 
-	childSchema := sql.Schema{
+	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Nullable: true},
 		{Name: "email", Type: sql.Text, Nullable: true},
-	}
+	})
 	child := memory.NewTable("test", childSchema)
 	empty := memory.NewTable("empty", childSchema)
 
@@ -82,6 +82,8 @@ func TestUnion(t *testing.T) {
 		},
 	}
 
+	ctx := sql.NewEmptyContext()
+
 	for _, c := range cases {
 		iter, err := c.node.RowIter(sql.NewEmptyContext(), nil)
 		require.NoError(err)
@@ -89,7 +91,7 @@ func TestUnion(t *testing.T) {
 
 		var results []string
 		for {
-			row, err := iter.Next()
+			row, err := iter.Next(ctx)
 			if err == io.EOF {
 				break
 			}

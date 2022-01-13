@@ -132,6 +132,7 @@ func (t arrayType) SQL(v interface{}) (sqltypes.Value, error) {
 	var val []byte
 	js, ok := v.(JSONValue)
 	if ok {
+		// todo: making a context here is expensive
 		s, err := js.ToString(NewEmptyContext())
 		if err != nil {
 			return sqltypes.Value{}, err

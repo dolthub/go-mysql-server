@@ -27,7 +27,7 @@ func TestShowGrants(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	iter, err := NewShowGrants().RowIter(ctx, nil)
+	iter, err := NewShowGrants(false, nil, nil).RowIter(ctx, nil)
 	require.NoError(err)
 
 	rows, err := sql.RowIterToRows(ctx, iter)

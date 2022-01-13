@@ -121,8 +121,8 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c TransformContext) (
 	}
 }
 
-func (t *triggerIter) Next() (row sql.Row, returnErr error) {
-	childRow, err := t.child.Next()
+func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
+	childRow, err := t.child.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 
 	var logicRow sql.Row
 	for {
-		row, err := logicIter.Next()
+		row, err := logicIter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
@@ -172,10 +172,6 @@ func (t *triggerIter) Next() (row sql.Row, returnErr error) {
 }
 
 func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
-	if qp, ok := logic.(*QueryProcess); ok {
-		logic = qp.Child
-	}
-
 	switch logic := logic.(type) {
 	// TODO: are there other statement types that we should use here?
 	case *Set:
