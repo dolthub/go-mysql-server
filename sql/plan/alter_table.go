@@ -201,8 +201,7 @@ func (a *AddColumn) updateRowsWithDefaults(ctx *sql.Context, row sql.Row) error 
 
 // applyDefaults applies the default values of the given column indices to the given row, and returns a new row with the updated values.
 // This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
-// present and in the order as represented by the schema. If no columns are given, then the given row is returned. Column indices should
-// be sorted and in ascending order, however this is not enforced.
+// present and in the order as represented by the schema.
 func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd *sql.ColumnDefaultValue) (sql.Row, error) {
 	newRow := row.Copy()
 	if len(tblSch) != len(row) {
