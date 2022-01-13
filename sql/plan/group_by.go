@@ -101,24 +101,7 @@ func (g *GroupBy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if len(g.GroupByExprs) == 0 {
 		iter = newGroupByIter(g.SelectedExprs, i)
 	} else {
-		aggs := make([]*aggregation.Aggregation, len(g.SelectedExprs))
-		for i, e := range g.SelectedExprs {
-			switch a := e.(type) {
-			case sql.WindowAdaptableExpression:
-				fn, err := a.NewWindowFunction()
-				if err != nil {
-					return nil, err
-				}
-				aggs[i] = aggregation.NewAggregation(fn, aggregation.NewGroupByFramer())
-			default:
-				fn, err := aggregation.NewLast(a).NewWindowFunction()
-				if err != nil {
-					return nil, err
-				}
-				aggs[i] = aggregation.NewAggregation(fn, aggregation.NewGroupByFramer())
-			}
-		}
-		iter = aggregation.NewWindowBlockIter(g.GroupByExprs, nil, aggs, i)
+		iter = newGroupByGroupingIter(ctx, g.SelectedExprs, g.GroupByExprs, i)
 	}
 
 	return sql.NewSpanIter(span, iter), nil
@@ -258,6 +241,128 @@ func (i *groupByIter) Close(ctx *sql.Context) error {
 func (i *groupByIter) Dispose() {
 	for _, b := range i.buf {
 		b.Dispose()
+	}
+}
+
+type groupByGroupingIter struct {
+	selectedExprs []sql.Expression
+	groupByExprs  []sql.Expression
+	aggregations  sql.KeyValueCache
+	keys          []uint64
+	pos           int
+	child         sql.RowIter
+	dispose       sql.DisposeFunc
+}
+
+func newGroupByGroupingIter(
+	ctx *sql.Context,
+	selectedExprs, groupByExprs []sql.Expression,
+	child sql.RowIter,
+) *groupByGroupingIter {
+	return &groupByGroupingIter{
+		selectedExprs: selectedExprs,
+		groupByExprs:  groupByExprs,
+		child:         child,
+	}
+}
+
+func (i *groupByGroupingIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.aggregations == nil {
+		i.aggregations, i.dispose = ctx.Memory.NewHistoryCache()
+		if err := i.compute(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	if i.pos >= len(i.keys) {
+		return nil, io.EOF
+	}
+
+	buffers, err := i.get(i.keys[i.pos])
+	if err != nil {
+		return nil, err
+	}
+	i.pos++
+	return evalBuffers(ctx, buffers)
+}
+
+func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
+	for {
+		row, err := i.child.Next(ctx)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		key, err := groupingKey(ctx, i.groupByExprs, row)
+		if err != nil {
+			return err
+		}
+
+		b, err := i.get(key)
+		if sql.ErrKeyNotFound.Is(err) {
+			b = make([]sql.AggregationBuffer, len(i.selectedExprs))
+			for j, a := range i.selectedExprs {
+				b[j], err = newAggregationBuffer(a)
+				if err != nil {
+					return err
+				}
+			}
+
+			if err := i.aggregations.Put(key, b); err != nil {
+				return err
+			}
+
+			i.keys = append(i.keys, key)
+		} else if err != nil {
+			return err
+		}
+
+		err = updateBuffers(ctx, b, row)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (i *groupByGroupingIter) get(key uint64) ([]sql.AggregationBuffer, error) {
+	v, err := i.aggregations.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, nil
+	}
+	return v.([]sql.AggregationBuffer), err
+}
+
+func (i *groupByGroupingIter) put(key uint64, val []sql.AggregationBuffer) error {
+	return i.aggregations.Put(key, val)
+}
+
+func (i *groupByGroupingIter) Close(ctx *sql.Context) error {
+	i.Dispose()
+	i.aggregations = nil
+	if i.dispose != nil {
+		i.dispose()
+		i.dispose = nil
+	}
+
+	return i.child.Close(ctx)
+}
+
+func (i *groupByGroupingIter) Dispose() {
+	for _, k := range i.keys {
+		bs, _ := i.get(k)
+		if bs != nil {
+			for _, b := range bs {
+				b.Dispose()
+			}
+		}
 	}
 }
 
