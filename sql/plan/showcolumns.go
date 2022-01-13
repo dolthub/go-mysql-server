@@ -24,8 +24,9 @@ import (
 // ShowColumns shows the columns details of a table.
 type ShowColumns struct {
 	UnaryNode
-	Full    bool
-	Indexes []sql.Index
+	Full         bool
+	Indexes      []sql.Index
+	targetSchema sql.Schema
 }
 
 var (
@@ -66,11 +67,33 @@ func (s *ShowColumns) Schema() sql.Schema {
 	return showColumnsSchema
 }
 
+func (s *ShowColumns) Expressions() []sql.Expression {
+	if len(s.targetSchema) == 0 {
+		return nil
+	}
+
+	return wrappedColumnDefaults(s.targetSchema)
+}
+
+func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(s.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.targetSchema))
+	}
+
+	s.targetSchema = schemaWithDefaults(s.targetSchema, exprs)
+	return &s, nil
+}
+
+func (s ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	s.targetSchema = schema
+	return &s, nil
+}
+
 // RowIter creates a new ShowColumns node.
 func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	span, _ := ctx.Span("plan.ShowColumns")
 
-	schema := s.Child.Schema()
+	schema := s.targetSchema
 	var rows = make([]sql.Row, len(schema))
 	for i, col := range schema {
 		var row sql.Row
@@ -140,14 +163,13 @@ func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 }
 
 // WithChildren implements the Node interface.
-func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
 
-	showColumns := NewShowColumns(s.Full, children[0])
-	showColumns.Indexes = s.Indexes
-	return showColumns, nil
+	s.Child = children[0]
+	return &s, nil
 }
 
 func (s *ShowColumns) String() string {
@@ -158,6 +180,25 @@ func (s *ShowColumns) String() string {
 		_ = tp.WriteNode("ShowColumns")
 	}
 	_ = tp.WriteChildren(s.Child.String())
+	return tp.String()
+}
+
+func (s *ShowColumns) DebugString() string {
+	tp := sql.NewTreePrinter()
+	if s.Full {
+		_ = tp.WriteNode("ShowColumns(full)")
+	} else {
+		_ = tp.WriteNode("ShowColumns")
+	}
+
+	var children []string
+	for _, col := range s.targetSchema {
+		children = append(children, sql.DebugString(col))
+	}
+
+	children = append(children, sql.DebugString(s.Child))
+
+	_ = tp.WriteChildren(children...)
 	return tp.String()
 }
 
