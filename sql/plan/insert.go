@@ -57,7 +57,8 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrForeignKeyChildViolation,
 	sql.ErrForeignKeyParentViolation,
 	sql.ErrDuplicateEntry,
-	sql.ErrUniqueKeyViolation}
+	sql.ErrUniqueKeyViolation,
+}
 
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
 // them into.
@@ -348,13 +349,21 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	// Do any necessary type conversions to the target schema
-	for i, col := range i.schema {
-		if row[i] != nil {
-			converted, err := col.Type.Convert(row[i]) // allows for better error handling
+	for idx, col := range i.schema {
+		if row[idx] != nil {
+			converted, err := col.Type.Convert(row[idx]) // allows for better error handling
 			if err != nil {
-				return nil, sql.NewWrappedInsertError(row, err)
+				if i.ignore {
+					row, err = i.convertDataAndWarn(ctx, row, idx, err)
+					if err != nil {
+						return nil, err
+					}
+					continue
+				} else {
+					return nil, sql.NewWrappedInsertError(row, err)
+				}
 			}
-			row[i] = converted
+			row[idx] = converted
 		}
 	}
 
@@ -410,9 +419,26 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpda
 		return nil, err
 	}
 
-	newRow, err := applyUpdateExpressions(ctx, i.updateExprs, rowToUpdate)
-	if err != nil {
-		return nil, err
+	newRow := rowToUpdate
+	for _, updateExpr := range i.updateExprs {
+		val, err := updateExpr.Eval(i.ctx, newRow)
+		if err != nil {
+			if i.ignore {
+				idx, ok := getFieldIndexFromUpdateExpr(updateExpr)
+				if !ok {
+					return nil, err
+				}
+
+				val, err = i.convertDataAndWarn(ctx, row, idx, err)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
+			}
+		}
+
+		newRow = val.(sql.Row)
 	}
 
 	err = i.updater.Update(ctx, rowToUpdate, newRow)
@@ -422,6 +448,20 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, row, rowToUpda
 
 	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
 	return rowToUpdate.Append(newRow), nil
+}
+
+func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
+	setField, ok := updateExpr.(*expression.SetField)
+	if !ok {
+		return 0, false
+	}
+
+	getField, ok := setField.Left.(*expression.GetField)
+	if !ok {
+		return 0, false
+	}
+
+	return getField.Index(), true
 }
 
 // resolveValues resolves all VALUES functions.
@@ -513,6 +553,29 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sq
 		i.rowSource = nil
 		return nil, sql.NewWrappedInsertError(row, err)
 	}
+}
+
+// convertDataAndWarn modifies a row with data conversion issues in INSERT IGNORE calls
+// Per MySQL docs "Rows set to values that would cause data conversion errors are set to the closest valid values instead"
+// cc. https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sql-mode-strict
+func (i *insertIter) convertDataAndWarn(ctx *sql.Context, row sql.Row, columnIdx int, err error) (sql.Row, error) {
+	if sql.ErrLengthBeyondLimit.Is(err) {
+		maxLength := i.schema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
+		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
+	} else {
+		row[columnIdx] = i.schema[columnIdx].Type.Zero()
+	}
+
+	sqlerr, _, _ := sql.CastSQLError(err)
+
+	// Add a warning instead
+	ctx.Session.Warn(&sql.Warning{
+		Level:   "Note",
+		Code:    sqlerr.Num,
+		Message: err.Error(),
+	})
+
+	return row, nil
 }
 
 func (i *insertIter) warnOnIgnorableError(ctx *sql.Context, row sql.Row, err error) error {

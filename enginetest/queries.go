@@ -66,6 +66,100 @@ var SpatialQueryTests = []QueryTest{
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 		}},
 	},
+	{
+		Query:    `SELECT HEX(ST_ASWKB(p)) from point_table`,
+		Expected: []sql.Row{{"0101000000000000000000F03F0000000000000040"}},
+	},
+	{
+		Query: `SELECT HEX(ST_ASWKB(l)) from line_table`,
+		Expected: []sql.Row{
+			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
+			{"010200000003000000000000000000F03F00000000000000400000000000000840000000000000104000000000000014400000000000001840"},
+		},
+	},
+	{
+		Query:    `SELECT HEX(ST_ASWKB(p)) from polygon_table`,
+		Expected: []sql.Row{{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POINT(123.45,6.78)))`,
+		Expected: []sql.Row{{sql.Point{X: 123.45, Y: 6.78}}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(LINESTRING(POINT(1.2,3.45),point(67.8,9))))`,
+		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{1.2, 3.45}, {67.8, 9}}}}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMWKB(ST_ASWKB(POLYGON(LINESTRING(POINT(0,0),POINT(2,2),POINT(1,1),POINT(0,0)))))`,
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{0, 0}, {2, 2}, {1, 1}, {0, 0}}}}}}},
+	},
+	{
+		Query:    `SELECT ST_ASWKT(p) from point_table`,
+		Expected: []sql.Row{{"POINT(1 2)"}},
+	},
+	{
+		Query: `SELECT ST_ASWKT(l) from line_table`,
+		Expected: []sql.Row{
+			{"LINESTRING(1 2,3 4)"},
+			{"LINESTRING(1 2,3 4,5 6)"},
+		},
+	},
+	{
+		Query:    `SELECT ST_ASWKT(p) from polygon_table`,
+		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+	},
+	{
+		Query:    `SELECT ST_ASTEXT(p) from polygon_table`,
+		Expected: []sql.Row{{"POLYGON((0 0,0 1,1 1,0 0))"}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POINT(1,2)))`,
+		Expected: []sql.Row{{sql.Point{X: 1, Y: 2}}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(LINESTRING(POINT(1.1,2.22),POINT(3.333,4.4444))))`,
+		Expected: []sql.Row{{sql.Linestring{Points: []sql.Point{{1.1, 2.22}, {3.333, 4.4444}}}}},
+	},
+	{
+		Query:    `SELECT ST_GEOMFROMTEXT(ST_ASWKT(POLYGON(LINESTRING(POINT(1.2, 3.4),POINT(2.5, -6.7),POINT(33, 44),POINT(1.2,3.4)))))`,
+		Expected: []sql.Row{{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{1.2, 3.4}, {2.5, -6.7}, {33, 44}, {1.2, 3.4}}}}}}},
+	},
+	{
+		Query:    `SELECT ST_X(POINT(1,2))`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_Y(POINT(1,2))`,
+		Expected: []sql.Row{{2.0}},
+	},
+	{
+		Query:    `SELECT ST_X(POINT(123.45,6.789))`,
+		Expected: []sql.Row{{123.45}},
+	},
+	{
+		Query:    `SELECT ST_Y(POINT(123.45,6.789))`,
+		Expected: []sql.Row{{6.789}},
+	},
+	{
+		Query:    `SELECT ST_X(POINT(1,2),99.9)`,
+		Expected: []sql.Row{{sql.Point{X: 99.9, Y: 2}}},
+	},
+	{
+		Query:    `SELECT ST_Y(POINT(1,2),99.9)`,
+		Expected: []sql.Row{{sql.Point{X: 1, Y: 99.9}}},
+	},
+	{
+		Query:    `SELECT ST_X(p) from point_table`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_X(p) from point_table`,
+		Expected: []sql.Row{{1.0}},
+	},
+	{
+		Query:    `SELECT ST_Y(p) from point_table`,
+		Expected: []sql.Row{{2.0}},
+	},
 }
 
 var QueryTests = []QueryTest{
@@ -451,6 +545,22 @@ var QueryTests = []QueryTest{
 			{5},
 			{703},
 			{369},
+		},
+	},
+	{
+		Query: "SELECT TIMESTAMPDIFF(SECOND,'2007-12-31 23:59:58', '2007-12-31 00:00:00');",
+		Expected: []sql.Row{
+			{-86398},
+		},
+	},
+	{
+		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM 
+			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
+		Expected: []sql.Row{
+			{1090140},
+			{-7200},
+			{44},
+			{-5040},
 		},
 	},
 	{
@@ -4051,6 +4161,18 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "select char_length(s) from mytable order by i",
 		Expected: []sql.Row{{9}, {10}, {9}},
+	},
+	{
+		Query:    `select locate("o", s) from mytable order by i`,
+		Expected: []sql.Row{{8}, {4}, {8}},
+	},
+	{
+		Query:    `select locate("o", s, 5) from mytable order by i`,
+		Expected: []sql.Row{{8}, {9}, {8}},
+	},
+	{
+		Query:    `select locate(upper("roW"), upper(s), power(10, 0)) from mytable order by i`,
+		Expected: []sql.Row{{7}, {8}, {7}},
 	},
 	{
 		Query:    "select log2(i) from mytable order by i",

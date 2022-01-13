@@ -2800,6 +2800,24 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		return plan.NewExistsSubquery(subqueryExp), nil
+	case *sqlparser.TimestampFuncExpr:
+		var (
+			unit  sql.Expression
+			expr1 sql.Expression
+			expr2 sql.Expression
+			err   error
+		)
+
+		unit = expression.NewLiteral(v.Unit, sql.LongText)
+		expr1, err = ExprToExpression(ctx, v.Expr1)
+		expr2, err = ExprToExpression(ctx, v.Expr2)
+
+		if v.Name == "timestampdiff" {
+			return function.NewTimestampDiff(unit, expr1, expr2), err
+		} else if v.Name == "timestampadd" {
+			return nil, fmt.Errorf("TIMESTAMPADD() not supported")
+		}
+		return nil, nil
 	}
 }
 

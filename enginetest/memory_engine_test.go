@@ -349,12 +349,15 @@ func TestInsertInto(t *testing.T) {
 }
 
 func TestInsertIgnoreInto(t *testing.T) {
-	t.Skip() // TODO: Missing index checks and FK checks on in memory table
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestInsertIntoErrors(t *testing.T) {
 	enginetest.TestInsertIntoErrors(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestBrokenInsertScripts(t *testing.T) {
+	enginetest.TestBrokenInsertScripts(t, enginetest.NewSkippingMemoryHarness())
 }
 
 func TestSpatialInsertInto(t *testing.T) {
