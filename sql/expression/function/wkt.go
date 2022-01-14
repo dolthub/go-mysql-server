@@ -136,7 +136,7 @@ var _ sql.FunctionExpression = (*GeomFromText)(nil)
 
 // NewGeomFromWKT creates a new point expression.
 func NewGeomFromWKT(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 0 || len(args) > 3 {
+	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMWKT", "1, 2, or 3", len(args))
 	}
 	return &GeomFromText{expression.NaryExpression{ChildExpressions: args}}, nil
