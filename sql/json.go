@@ -129,8 +129,8 @@ func DeepCopyJson(v interface{}) interface{} {
 			newArray[i] = Copy(doc)
 		}
 		return newArray
-	case bool, string, float64, float32, 
-		int, int8, int16, int32, int64, 
+	case bool, string, float64, float32,
+		int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
 		return v
 	default:
