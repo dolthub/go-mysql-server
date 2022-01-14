@@ -50,7 +50,55 @@ func (g *AsGeoJSON) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewAsGeoJSON(children...)
 }
 
+func PointToSlice(p sql.Point) [2]float64 {
+	return [2]float64{p.X, p.Y}
+}
+
+func LineToSlice(l sql.Linestring) [][2]float64 {
+	arr := make([][2]float64, len(l.Points))
+	for i, p := range l.Points {
+		arr[i] = PointToSlice(p)
+	}
+	return arr
+}
+
+func PolyToSlice(p sql.Polygon) [][][2]float64 {
+	arr := make([][][2]float64, len(p.Lines))
+	for i, l := range p.Lines {
+		arr[i] = LineToSlice(l)
+	}
+	return arr
+}
+
 // Eval implements the sql.Expression interface.
 func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate child
+	val, err := g.ChildExpressions[0].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
 
+	if val == nil {
+		return nil, nil
+	}
+
+	// Create map object to hold values
+	obj := make(map[string]interface{}, 2) // TODO: needs to be 3 when including bounding box
+
+	switch v := val.(type) {
+	case sql.Point:
+		obj["type"] = "Point"
+		obj["coordinates"] = PointToSlice(v)
+	case sql.Linestring:
+		obj["type"] = "LineString"
+		obj["coordinates"] = LineToSlice(v)
+	case sql.Polygon:
+		obj["type"] = "Polygon"
+		obj["coordinates"] = PolyToSlice(v)
+	default:
+		return nil, ErrInvalidArgumentType.New(g.FunctionName())
+	}
+
+	// TODO: GeoJSON object always assume srid is 4326
+	return sql.JSONDocument{Val: obj}, nil
 }

@@ -188,6 +188,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "sqrt", Fn: NewSqrt},
 	sql.FunctionN{Name: "str_to_date", Fn: NewStrToDate},
 	sql.Function1{Name: "st_asbinary", Fn: NewAsWKB},
+	sql.FunctionN{Name: "st_asgeojson", Fn: NewAsGeoJSON},
 	sql.Function1{Name: "st_aswkb", Fn: NewAsWKB},
 	sql.Function1{Name: "st_aswkt", Fn: NewAsWKT},
 	sql.Function1{Name: "st_astext", Fn: NewAsWKT},
