@@ -28,7 +28,7 @@ import (
 // Example of how to implement a MySQL server based on a Engine:
 //
 // ```
-// > mysql --host=127.0.0.1 --port=5123 -u user -ppass db -e "SELECT * FROM mytable"
+// > mysql --host=127.0.0.1 --port=3306 -u root mydb -e "SELECT * FROM mytable"
 // +----------+-------------------+-------------------------------+---------------------+
 // | name     | email             | phone_numbers                 | created_at          |
 // +----------+-------------------+-------------------------------+---------------------+
