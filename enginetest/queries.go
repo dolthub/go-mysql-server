@@ -3293,6 +3293,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select time_format(time_col, '%h%p') from datetime_table order by 1",
+		Expected: []sql.Row{
+			{"03AM"},
+			{"03PM"},
+			{"04AM"},
+		},
+	},
+	{
 		Query: "select from_unixtime(i) from mytable order by 1",
 		Expected: []sql.Row{
 			{time.Unix(1, 0)},
@@ -6886,6 +6894,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"date_col"},
 			{"datetime_col"},
 			{"timestamp_col"},
+			{"time_col"},
 		},
 	},
 	{
@@ -6908,6 +6917,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"date_col"},
 			{"datetime_col"},
 			{"timestamp_col"},
+			{"time_col"},
 		},
 	},
 	{
@@ -6930,6 +6940,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"date_col"},
 			{"datetime_col"},
 			{"timestamp_col"},
+			{"time_col"},
 		},
 	},
 	{
@@ -7764,7 +7775,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(52), uint64(156), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
@@ -7777,7 +7788,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(52), uint64(156), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
@@ -7807,7 +7818,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(52), uint64(156), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},

@@ -181,7 +181,7 @@ func (af AppendFuncWrapper) Append(bytes []byte, t time.Time) []byte {
 }
 
 var mysqlDateFormatSpec = strftime.NewSpecificationSet()
-var specifierToFunc = map[byte]func(time.Time) string{
+var dateFormatSpecifierToFunc = map[byte]func(time.Time) string{
 	'a': nil,
 	'b': nil,
 	'c': monthNum,
@@ -216,7 +216,7 @@ var specifierToFunc = map[byte]func(time.Time) string{
 }
 
 func init() {
-	for specifier, fn := range specifierToFunc {
+	for specifier, fn := range dateFormatSpecifierToFunc {
 		if fn != nil {
 			panicIfErr(mysqlDateFormatSpec.Set(specifier, wrap(fn)))
 		}
@@ -224,7 +224,7 @@ func init() {
 
 	// replace any strftime specifiers that aren't supported
 	fn := func(b byte) {
-		if _, ok := specifierToFunc[b]; !ok {
+		if _, ok := dateFormatSpecifierToFunc[b]; !ok {
 			panicIfErr(mysqlDateFormatSpec.Set(b, wrap(func(time.Time) string {
 				return string(b)
 			})))

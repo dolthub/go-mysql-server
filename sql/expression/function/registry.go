@@ -208,6 +208,7 @@ var BuiltIns = []sql.Function{
 	sql.Function3{Name: "substring_index", Fn: NewSubstringIndex},
 	sql.Function1{Name: "sum", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewSum(e) }},
 	sql.Function1{Name: "tan", Fn: NewTan},
+	sql.Function2{Name: "time_format", Fn: NewTimeFormat},
 	sql.Function1{Name: "time_to_sec", Fn: NewTimeToSec},
 	sql.Function2{Name: "timediff", Fn: NewTimeDiff},
 	sql.FunctionN{Name: "timestamp", Fn: NewTimestamp},
