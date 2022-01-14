@@ -35,22 +35,26 @@ func TestJSONMergePreserve(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	//f4, err := NewJSONMergePreserve(
-	//	expression.NewGetField(0, sql.LongText, "arg1", false),
-	//	expression.NewGetField(1, sql.LongText, "arg2", false),
-	//	expression.NewGetField(2, sql.LongText, "arg3", false),
-	//	expression.NewGetField(3, sql.LongText, "arg4", false),
-	//)
-	//require.NoError(t, err)
+	f4, err := NewJSONMergePreserve(
+		expression.NewGetField(0, sql.LongText, "arg1", false),
+		expression.NewGetField(1, sql.LongText, "arg2", false),
+		expression.NewGetField(2, sql.LongText, "arg3", false),
+		expression.NewGetField(3, sql.LongText, "arg4", false),
+	)
+	require.NoError(t, err)
 
 	jsonArray1 := []interface{}{1, 2}
 	jsonArray2 := []interface{}{true, false}
+	jsonValue1 := `"single Value"`
 	jsonObj1 := map[string]interface{}{"name": "x"}
 	jsonObj2 := map[string]interface{}{"id": 47}
 	jsonObj3 := map[string]interface{}{"a": 1, "b": 2}
 	jsonObj4 := map[string]interface{}{"a": 3, "c": 4}
 	jsonObj5 := map[string]interface{}{"a": 5, "d": 6}
+	jsonObj6 := map[string]interface{}{"a": 3, "e": 8}
+	jsonObj7 := map[string]interface{}{"a": map[string]interface{}{"one": false, "two": 2.55}, "e": 8}
 	json3ObjResult := map[string]interface{}{"a": []interface{}{1, 3, 5}, "b": 2, "c": 4, "d": 6}
+	json4ObjResult := map[string]interface{}{"a": []interface{}{1, 3, 5, 3}, "b": 2, "c": 4, "d": 6, "e": 8}
 	sData1 := map[string]interface{}{
 		"Suspect": map[string]interface{}{
 			"Name": "Bart",
@@ -72,7 +76,20 @@ func TestJSONMergePreserve(t *testing.T) {
 			"Parents": []interface{}{"Marge","Homer"},
 		},
 	}
-
+	mixedData := []interface{}{
+		map[string]interface{}{
+			"a": []interface{}{
+				1,
+				map[string]interface{}{
+					"one": false,
+					"two": 2.55,
+				},
+			},
+			"b": 2,
+			"e": 8,
+		},
+		"single Value",
+	}
 
 	testCases := []struct {
 		f        sql.Expression
@@ -86,6 +103,8 @@ func TestJSONMergePreserve(t *testing.T) {
 		{f2, sql.Row{jsonArray1, jsonObj2}, sql.JSONDocument{Val: []interface{}{1, 2, map[string]interface{}{"id": 47}}}, nil},
 		{f3, sql.Row{jsonObj3, jsonObj4, jsonObj5}, sql.JSONDocument{Val: json3ObjResult}, nil},
 		{f2, sql.Row{sData1, sData2}, sql.JSONDocument{Val: resultData}, nil},
+		{f4, sql.Row{jsonObj3, jsonObj4, jsonObj5, jsonObj6}, sql.JSONDocument{Val: json4ObjResult}, nil},
+		{f3, sql.Row{jsonObj3, jsonObj7, jsonValue1}, sql.JSONDocument{Val: mixedData}, nil},
 	}
 
 	for _, tt := range testCases {

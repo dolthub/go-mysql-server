@@ -107,3 +107,71 @@ func (t jsonType) Zero() interface{} {
 	// JSON Null
 	return nil
 }
+
+// Copy implements deep copy
+func Copy(v interface{}) interface{} {
+	if v == nil {
+		return nil
+	}
+
+	switch v.(type) {
+	case map[string]interface{}:
+		m := v.(map[string]interface{})
+		newMap := make(map[string]interface{})
+		for k, value := range m {
+			newMap[k] = Copy(value)
+		}
+		return newMap
+	case []interface{}:
+		arr := v.([]interface{})
+		newArray := make([]interface{}, len(arr))
+		for i, doc := range arr {
+			newArray[i] = Copy(doc)
+		}
+		return newArray
+	case bool:
+		newBool := v.(bool)
+		return newBool
+	case string:
+		newString := v.(string)
+		return newString
+	case float64:
+		newFloat64 := v.(float64)
+		return newFloat64
+	case float32:
+		newFloat32 := v.(float32)
+		return newFloat32
+	case int:
+		newInt := v.(int)
+		return newInt
+	case int8:
+		newInt8 := v.(int8)
+		return newInt8
+	case int16:
+		newInt16 := v.(int16)
+		return newInt16
+	case int32:
+		newInt32 := v.(int32)
+		return newInt32
+	case int64:
+		newInt := v.(int)
+		return newInt
+	case uint:
+		newUInt := v.(uint)
+		return newUInt
+	case uint8:
+		newUInt8 := v.(uint8)
+		return newUInt8
+	case uint16:
+		newUInt16 := v.(uint16)
+		return newUInt16
+	case uint32:
+		newUInt32 := v.(uint32)
+		return newUInt32
+	case uint64:
+		newUInt64 := v.(uint64)
+		return newUInt64
+	default:
+		return nil
+	}
+}

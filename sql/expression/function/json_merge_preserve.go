@@ -117,7 +117,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		return nil, err
 	}
 
-	mergedMap := initialJSON.(sql.JSONDocument).Val
+	mergedMap := sql.Copy(initialJSON.(sql.JSONDocument).Val)
 
 	for _, json := range j.JSONDocs[1:] {
 		js, jErr := json.Eval(ctx, row)
@@ -132,10 +132,8 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 
 		jsMap := js.(sql.JSONDocument).Val
 
-		mergedMap, jErr = merge(mergedMap, jsMap)
-		if jErr != nil {
-			return nil, jErr
-		}
+		mergedMap = merge(mergedMap, jsMap)
+
 	}
 
 	return sql.JSONDocument{Val: mergedMap}, nil
@@ -153,37 +151,26 @@ func (j *JSONMergePreserve) WithChildren(children ...sql.Expression) (sql.Expres
 	return NewJSONMergePreserve(children...)
 }
 
-func merge(base, add interface{}) (interface{}, error){
-	if add == nil {
-		return base, nil
-	}
-	if base == nil {
-		return add, nil
-	}
-	var err error
-
+func merge(base, add interface{}) interface{} {
 	// "base" is JSON object
 	if baseObj, baseOk := base.(map[string]interface{}); baseOk {
 		// "add" is JSON object
 		if addObj, addOk := add.(map[string]interface{}); addOk {
 			for key, val := range addObj {
 				if exists, found := baseObj[key]; found {
-					baseObj[key], err = merge(exists, addObj[key])
-					if err != nil {
-						return nil, err
-					}
+					baseObj[key] = merge(exists, addObj[key])
 				} else {
 					baseObj[key] = val
 				}
 			}
-			return baseObj, nil
+			return baseObj
 		}
 	}
 	return mergeIntoArrays(base, add)
 }
 
 // mergeIntoArrays returns array of interface{} that takes JSON object OR JSON array OR JSON value
-func mergeIntoArrays(base, add interface{}) (interface{}, error) {
+func mergeIntoArrays(base, add interface{}) interface{} {
 	var baseArray []interface{}
 
 	if baseArr, ok := base.([]interface{}); ok {
@@ -193,8 +180,8 @@ func mergeIntoArrays(base, add interface{}) (interface{}, error) {
 	}
 
 	if addArr, ok := add.([]interface{}); ok {
-		return append(baseArray, addArr...), nil
+		return append(baseArray, addArr...)
 	}
 
-	return append(baseArray, add), nil
+	return append(baseArray, add)
 }
