@@ -117,7 +117,7 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 		return nil, err
 	}
 
-	mergedMap := sql.Copy(initialJSON.(sql.JSONDocument).Val)
+	mergedMap := sql.DeepCopyJson(initialJSON.(sql.JSONDocument).Val)
 
 	for _, json := range j.JSONDocs[1:] {
 		js, jErr := json.Eval(ctx, row)

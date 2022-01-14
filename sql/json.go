@@ -108,7 +108,7 @@ func (t jsonType) Zero() interface{} {
 	return nil
 }
 
-// Copy implements deep copy
+// DeepCopyJson implements deep copy of JSON document
 func DeepCopyJson(v interface{}) interface{} {
 	if v == nil {
 		return nil
@@ -119,14 +119,14 @@ func DeepCopyJson(v interface{}) interface{} {
 		m := v.(map[string]interface{})
 		newMap := make(map[string]interface{})
 		for k, value := range m {
-			newMap[k] = Copy(value)
+			newMap[k] = DeepCopyJson(value)
 		}
 		return newMap
 	case []interface{}:
 		arr := v.([]interface{})
 		newArray := make([]interface{}, len(arr))
 		for i, doc := range arr {
-			newArray[i] = Copy(doc)
+			newArray[i] = DeepCopyJson(doc)
 		}
 		return newArray
 	case bool, string, float64, float32,
