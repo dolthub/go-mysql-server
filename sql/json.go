@@ -109,7 +109,7 @@ func (t jsonType) Zero() interface{} {
 }
 
 // Copy implements deep copy
-func Copy(v interface{}) interface{} {
+func DeepCopyJson(v interface{}) interface{} {
 	if v == nil {
 		return nil
 	}
