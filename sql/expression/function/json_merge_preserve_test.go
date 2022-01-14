@@ -64,8 +64,8 @@ func TestJSONMergePreserve(t *testing.T) {
 		},
 		"Victim": "Lisa",
 		"Case": map[string]interface{}{
-			"Id": 33845,
-			"Date": "2006-01-02T15:04:05-07:00",
+			"Id":     33845,
+			"Date":   "2006-01-02T15:04:05-07:00",
 			"Closed": true,
 		},
 	}
@@ -75,7 +75,7 @@ func TestJSONMergePreserve(t *testing.T) {
 			"Parents": []interface{}{"Marge", "Homer"},
 			"Hobbies": []interface{}{"Trouble"},
 		},
-		"Witnesses": []interface{}{"Maggie","Ned"},
+		"Witnesses": []interface{}{"Maggie", "Ned"},
 	}
 	resultData := map[string]interface{}{
 		"Suspect": map[string]interface{}{
@@ -86,11 +86,11 @@ func TestJSONMergePreserve(t *testing.T) {
 		},
 		"Victim": "Lisa",
 		"Case": map[string]interface{}{
-			"Id": 33845,
-			"Date": "2006-01-02T15:04:05-07:00",
+			"Id":     33845,
+			"Date":   "2006-01-02T15:04:05-07:00",
 			"Closed": true,
 		},
-		"Witnesses": []interface{}{"Maggie","Ned"},
+		"Witnesses": []interface{}{"Maggie", "Ned"},
 	}
 	mixedData := []interface{}{
 		map[string]interface{}{
