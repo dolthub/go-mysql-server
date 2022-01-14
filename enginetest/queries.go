@@ -3800,6 +3800,22 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) WHEN 2 THEN JSON_OBJECT("b", 2) END FROM mytable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": 1}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": 1}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+		},
+	},
+	{
 		Query: "SHOW COLLATION WHERE `Collation` IN ('binary', 'utf8_general_ci', 'utf8mb4_0900_ai_ci')",
 		Expected: []sql.Row{
 			{
