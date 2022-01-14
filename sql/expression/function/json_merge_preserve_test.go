@@ -15,10 +15,12 @@
 package function
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestJSONMergePreserve(t *testing.T) {
@@ -57,23 +59,23 @@ func TestJSONMergePreserve(t *testing.T) {
 	json4ObjResult := map[string]interface{}{"a": []interface{}{1, 3, 5, 3}, "b": 2, "c": 4, "d": 6, "e": 8}
 	sData1 := map[string]interface{}{
 		"Suspect": map[string]interface{}{
-			"Name": "Bart",
+			"Name":    "Bart",
 			"Hobbies": []interface{}{"Skateboarding", "Mischief"},
 		},
 	}
 	sData2 := map[string]interface{}{
 		"Suspect": map[string]interface{}{
-		"Age": 10,
-		"Parents": []interface{}{"Marge","Homer"},
-		"Hobbies": []interface{}{"Trouble"},
+			"Age":     10,
+			"Parents": []interface{}{"Marge", "Homer"},
+			"Hobbies": []interface{}{"Trouble"},
 		},
 	}
 	resultData := map[string]interface{}{
 		"Suspect": map[string]interface{}{
-			"Age": 10,
-			"Name": "Bart",
+			"Age":     10,
+			"Name":    "Bart",
 			"Hobbies": []interface{}{"Skateboarding", "Mischief", "Trouble"},
-			"Parents": []interface{}{"Marge","Homer"},
+			"Parents": []interface{}{"Marge", "Homer"},
 		},
 	}
 	mixedData := []interface{}{
@@ -98,7 +100,7 @@ func TestJSONMergePreserve(t *testing.T) {
 		err      error
 	}{
 		{f2, sql.Row{jsonArray1, jsonArray2}, sql.JSONDocument{Val: []interface{}{1, 2, true, false}}, nil},
-		{f2, sql.Row{jsonObj1, jsonObj2}, sql.JSONDocument{Val: map[string]interface{}{"name": "x" , "id": 47}}, nil},
+		{f2, sql.Row{jsonObj1, jsonObj2}, sql.JSONDocument{Val: map[string]interface{}{"name": "x", "id": 47}}, nil},
 		{f2, sql.Row{1, true}, sql.JSONDocument{Val: []interface{}{1, true}}, nil},
 		{f2, sql.Row{jsonArray1, jsonObj2}, sql.JSONDocument{Val: []interface{}{1, 2, map[string]interface{}{"id": 47}}}, nil},
 		{f3, sql.Row{jsonObj3, jsonObj4, jsonObj5}, sql.JSONDocument{Val: json3ObjResult}, nil},
