@@ -277,5 +277,5 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	default:
 		return nil, errors.New("Bad type")
 	}
-
+	return nil, nil
 }
