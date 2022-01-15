@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/shopspring/decimal"
 	"math"
 	"strings"
+
+	"github.com/shopspring/decimal"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // AsGeoJSON is a function that returns a point type from a WKT string
@@ -176,7 +178,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, ErrInvalidArgument.New(g.FunctionName(), _flag)
 	}
 	// TODO: figure out exactly what flags are; only 1,3,5 have bbox
-	if _flag % 2 == 1 {
+	if _flag%2 == 1 {
 		// Calculate bounding box
 		tmp := FindBBox(val)
 		res := [4]decimal.Decimal{}
