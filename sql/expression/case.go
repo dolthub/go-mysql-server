@@ -80,6 +80,9 @@ func combinedCaseBranchType(left, right sql.Type) sql.Type {
 			return sql.Int64
 		}
 	}
+	if sql.IsJSON(left) && sql.IsJSON(right) {
+		return sql.JSON
+	}
 	return sql.LongText
 }
 
