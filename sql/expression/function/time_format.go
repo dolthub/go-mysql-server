@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/lestrrat-go/strftime"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/lestrrat-go/strftime"
 )
 
 var mysqlTimeFormatSpec = strftime.NewSpecificationSet()
