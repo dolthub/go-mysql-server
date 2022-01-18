@@ -72,6 +72,7 @@ func (j *JSONMergePreserve) Description() string {
 func (j JSONMergePreserve) IsUnsupported() bool {
 	return false
 }
+
 // Resolved implements the Expression interface.
 func (j *JSONMergePreserve) Resolved() bool {
 	for _, d := range j.JSONDocs {
