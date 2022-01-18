@@ -97,7 +97,7 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return sql.JSONDocument{Val: make([]interface{}, 0)}, nil
 	}
 
-	var resultArray =make([]interface{}, len(j.Docs))
+	var resultArray = make([]interface{}, len(j.Docs))
 
 	for i, doc := range j.Docs {
 		jsonDoc, err := doc.Eval(ctx, row)
