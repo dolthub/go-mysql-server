@@ -15,6 +15,7 @@
 package function
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -50,9 +51,10 @@ func (j JSONArray) Description() string {
 
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (j JSONArray) IsUnsupported() bool {
-	return true
+	return false
 }
 
+// Resolved implements the Expression interface.
 func (j *JSONArray) Resolved() bool {
 	for _, d := range j.Docs {
 		if !d.Resolved() {
@@ -62,6 +64,7 @@ func (j *JSONArray) Resolved() bool {
 	return true
 }
 
+// String implements the Expression interface.
 func (j *JSONArray) String() string {
 	children := j.Children()
 	var parts = make([]string, len(children))
@@ -73,10 +76,12 @@ func (j *JSONArray) String() string {
 	return fmt.Sprintf("JSON_ARRAY(%s)", strings.Join(parts, ", "))
 }
 
+// Type implements the Expression interface.
 func (j *JSONArray) Type() sql.Type {
 	return sql.JSON
 }
 
+// IsNullable implements the Expression interface.
 func (j *JSONArray) IsNullable() bool {
 	for _, d := range j.Docs {
 		if d.IsNullable() {
@@ -86,33 +91,37 @@ func (j *JSONArray) IsNullable() bool {
 	return false
 }
 
+// Eval implements the Expression interface.
 func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if len(j.Docs) == 0 {
 		return sql.JSONDocument{Val: make([]interface{}, 0)}, nil
 	}
 
-	var resultArray []interface{}
+	var resultArray =make([]interface{}, len(j.Docs))
 
-	for _, doc := range j.Docs {
+	for i, doc := range j.Docs {
 		jsonDoc, err := doc.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
+
 		jsonDoc, err = j.Type().Convert(jsonDoc)
 		if err != nil {
 			return nil, err
 		}
 
-		appendArray(&resultArray, jsonDoc.(sql.JSONDocument).Val)
+		resultArray[i] = jsonInputToString(jsonDoc.(sql.JSONDocument).Val)
 	}
 
 	return sql.JSONDocument{Val: resultArray}, nil
 }
 
+// Children implements the Expression interface.
 func (j *JSONArray) Children() []sql.Expression {
 	return j.Docs
 }
 
+// WithChildren implements the Expression interface.
 func (j *JSONArray) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_array did not receive the correct amount of args")
@@ -121,19 +130,57 @@ func (j *JSONArray) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewJSONArray(children...)
 }
 
-func appendArray (array *[]interface{}, add interface{}) {
-	if addArr, ok := add.([]interface{}); ok {
-		for _, item := range addArr {
-			if item == nil {
-				item = "NULL"
-			}
-			*array = append(*array, item)
-		}
-	} else {
-		if add == nil {
-			add = "NULL"
-		}
-		*array = append(*array, add)
+// jsonInputToString returns string representation of a json document
+func jsonInputToString(v interface{}) interface{} {
+	if v == nil {
+		return nil
 	}
-	return
+
+	switch v.(type) {
+	case []interface{}, map[string]interface{}:
+		return innerDocToString(v)
+	case bool, string, float64, float32,
+		int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64:
+		return v
+	default:
+		return ""
+	}
+}
+
+func innerDocToString(d interface{}) string {
+	if d == nil {
+		return "NULL"
+	}
+
+	switch d.(type) {
+	case map[string]interface{}:
+		m := d.(map[string]interface{})
+		newString := "{"
+		for k, value := range m {
+			newString += fmt.Sprintf("\"%s\"", k) + ": " + innerDocToString(value) + ", "
+		}
+		newString = strings.TrimSuffix(newString, ", ") + "}"
+		return newString
+	case []interface{}:
+		arr := d.([]interface{})
+		newString := "["
+		for _, value := range arr {
+			newString += innerDocToString(value) + ", "
+		}
+		newString = strings.TrimSuffix(newString, ", ") + "]"
+		return newString
+	case string:
+		res, err := json.Marshal(d)
+		if err != nil {
+			return ""
+		}
+		return string(res)
+	case bool, float64, float32,
+		int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprintf("%v", d)
+	default:
+		return ""
+	}
 }
