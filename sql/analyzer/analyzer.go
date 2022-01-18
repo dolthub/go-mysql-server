@@ -264,7 +264,7 @@ type Analyzer struct {
 	// Batches of Rules to apply.
 	Batches []*Batch
 	// Catalog of databases and registered functions.
-	Catalog sql.Catalog
+	Catalog *Catalog
 	// ProcedureCache is a cache of stored procedures.
 	ProcedureCache *ProcedureCache
 }

@@ -21,6 +21,7 @@ import (
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
+	{"check_privileges", checkPrivileges},
 	{"validate_offset_and_limit", validateLimitAndOffset},
 	{"validate_create_table", validateCreateTable},
 	{"load_stored_procedures", loadStoredProcedures},

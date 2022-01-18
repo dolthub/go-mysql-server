@@ -422,6 +422,10 @@ func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestUsersAndPrivileges(t *testing.T) {
+	enginetest.TestUsersAndPrivileges(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestComplexIndexQueries(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
 	enginetest.TestComplexIndexQueries(t, harness)
