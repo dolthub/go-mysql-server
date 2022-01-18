@@ -58,9 +58,6 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 }
 
 func (c *Catalog) AllDatabases() []sql.Database {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	return c.provider.AllDatabases()
 }
 
