@@ -70,9 +70,9 @@ func (j *JSONMergePreserve) Description() string {
 
 // IsUnsupported implements sql.UnsupportedFunctionStub
 func (j JSONMergePreserve) IsUnsupported() bool {
-	return true
+	return false
 }
-
+// Resolved implements the Expression interface.
 func (j *JSONMergePreserve) Resolved() bool {
 	for _, d := range j.JSONDocs {
 		if !d.Resolved() {
@@ -82,6 +82,7 @@ func (j *JSONMergePreserve) Resolved() bool {
 	return true
 }
 
+// String implements the Expression interface.
 func (j *JSONMergePreserve) String() string {
 	children := j.Children()
 	var parts = make([]string, len(children))
@@ -93,10 +94,12 @@ func (j *JSONMergePreserve) String() string {
 	return fmt.Sprintf("JSON_MERGE_PRESERVE(%s)", strings.Join(parts, ", "))
 }
 
+// Type implements the Expression interface.
 func (j *JSONMergePreserve) Type() sql.Type {
 	return sql.JSON
 }
 
+// IsNullable implements the Expression interface.
 func (j *JSONMergePreserve) IsNullable() bool {
 	for _, d := range j.JSONDocs {
 		if d.IsNullable() {
@@ -106,6 +109,7 @@ func (j *JSONMergePreserve) IsNullable() bool {
 	return false
 }
 
+// Eval implements the Expression interface.
 func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	initialJSON, err := j.JSONDocs[0].Eval(ctx, row)
 	if err != nil {
@@ -139,10 +143,12 @@ func (j *JSONMergePreserve) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 	return sql.JSONDocument{Val: mergedMap}, nil
 }
 
+// Children implements the Expression interface.
 func (j *JSONMergePreserve) Children() []sql.Expression {
 	return j.JSONDocs
 }
 
+// WithChildren implements the Expression interface.
 func (j *JSONMergePreserve) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_merge_preserve did not receive the correct amount of args")
@@ -151,6 +157,7 @@ func (j *JSONMergePreserve) WithChildren(children ...sql.Expression) (sql.Expres
 	return NewJSONMergePreserve(children...)
 }
 
+// merge returns merged json document as interface{} type
 func merge(base, add interface{}) interface{} {
 	// "base" is JSON object
 	if baseObj, baseOk := base.(map[string]interface{}); baseOk {

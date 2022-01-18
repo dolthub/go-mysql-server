@@ -113,6 +113,8 @@ func TestJSONMergePreserve(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
+		{f2, sql.Row{nil, nil}, sql.JSONDocument{Val: []interface{}{nil, nil}}, nil},
+		{f2, sql.Row{jsonArray1, nil}, sql.JSONDocument{Val: []interface{}{1, 2, nil}}, nil},
 		{f2, sql.Row{jsonArray1, jsonArray2}, sql.JSONDocument{Val: []interface{}{1, 2, true, false}}, nil},
 		{f2, sql.Row{jsonObj1, jsonObj2}, sql.JSONDocument{Val: map[string]interface{}{"name": "x", "id": 47}}, nil},
 		{f2, sql.Row{1, true}, sql.JSONDocument{Val: []interface{}{1, true}}, nil},

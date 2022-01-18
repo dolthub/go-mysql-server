@@ -571,13 +571,15 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2) 
-                    FROM (values 
+                    FROM (values
+						 row('{ "a": 1, "b": 2 }','null'), 
                          row('{ "a": 1, "b": 2 }','"row one"'), 
                          row('{ "a": 3, "c": 4 }','4'), 
                          row('{ "a": 5, "d": 6 }','[true, true]'),
                          row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
                     test (val1, val2)`,
 		Expected: []sql.Row{
+			{sql.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
 			{sql.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
 			{sql.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
 			{sql.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
