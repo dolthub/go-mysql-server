@@ -230,7 +230,7 @@ func (g *GeomFromGeoJSON) String() string {
 
 // WithChildren implements the Expression interface.
 func (g *GeomFromGeoJSON) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewAsGeoJSON(children...)
+	return NewGeomFromGeoJSON(children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -251,7 +251,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	}
 	// Parse string as JSON
 	var obj map[string]interface{}
-	err = json.Unmarshal(val.([]byte), obj)
+	err = json.Unmarshal([]byte(val.(string)), &obj)
 	if err != nil {
 		return nil, err
 	}
@@ -267,11 +267,22 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	// Create type accordingly
 	switch geomType {
 	case "Point":
-		c, ok := coords.([]float64)
+		c, ok := coords.([]interface{})
 		if !ok {
 			return nil, errors.New("coordinates wrong type")
 		}
-		return sql.Point{SRID: 4326, X: c[1], Y: c[0]}, nil
+		if len(c) != 2 {
+			return nil, errors.New("too many coordinates")
+		}
+		x, ok := c[1].(float64)
+		if !ok {
+			 return nil, errors.New("invalid x coordinate")
+		}
+		y, ok := c[0].(float64)
+		if !ok {
+			return nil, errors.New("invalid y coordinate")
+		}
+		return sql.Point{SRID: 4326, X: x, Y: y}, nil
 	case "LineString":
 	case "Polygon":
 	default:
