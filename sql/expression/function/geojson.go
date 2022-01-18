@@ -235,6 +235,67 @@ func (g *GeomFromGeoJSON) WithChildren(children ...sql.Expression) (sql.Expressi
 	return NewGeomFromGeoJSON(children...)
 }
 
+func SliceToPoint(coords interface{}) (interface{}, error) {
+	// coords must be a slice of 2 float64
+	c, ok := coords.([]interface{})
+	if !ok {
+		return nil, errors.New("coordinates wrong type")
+	}
+	if len(c) != 2 {
+		return nil, errors.New("incorrect number of coordinates")
+	}
+	x, ok := c[1].(float64)
+	if !ok {
+		return nil, errors.New("invalid x coordinate")
+	}
+	y, ok := c[0].(float64)
+	if !ok {
+		return nil, errors.New("invalid y coordinate")
+	}
+	return sql.Point{SRID: 4326, X: x, Y: y}, nil
+}
+
+func SliceToLine(coords interface{}) (interface{}, error) {
+	// coords must be a slice of at least 2 slices of 2 float64
+	cs, ok := coords.([]interface{})
+	if !ok {
+		return nil, errors.New("coordinates wrong type")
+	}
+	if len(cs) < 2 {
+		return nil, errors.New("not enough points")
+	}
+	points := make([]sql.Point, len(cs))
+	for i, c := range cs {
+		p, err := SliceToPoint(c)
+		if err != nil {
+			return nil, err
+		}
+		points[i] = p.(sql.Point)
+	}
+	return sql.Linestring{SRID: 4326, Points: points}, nil
+}
+
+func SliceToPoly(coords interface{}) (sql.Polygon, error) {
+	// coords must be a slice of slices of at least 2 slices of 2 float64
+	cs, ok := coords.([]interface{})
+	if !ok {
+		return sql.Polygon{}, errors.New("coordinates wrong type")
+	}
+	if len(cs) == 0 {
+		return sql.Polygon{}, errors.New("not enough lines")
+	}
+	lines := make([]sql.Linestring, len(cs))
+	for i, c := range cs {
+		l, err := SliceToLine(c)
+		if err != nil {
+			return sql.Polygon{}, err
+		}
+		// TODO: check that line is a linearring
+		lines[i] = l.(sql.Linestring)
+	}
+	return sql.Polygon{SRID: 4326, Lines: lines}, nil
+}
+
 // Eval implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -269,26 +330,12 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	// Create type accordingly
 	switch geomType {
 	case "Point":
-		c, ok := coords.([]interface{})
-		if !ok {
-			return nil, errors.New("coordinates wrong type")
-		}
-		if len(c) != 2 {
-			return nil, errors.New("too many coordinates")
-		}
-		x, ok := c[1].(float64)
-		if !ok {
-			 return nil, errors.New("invalid x coordinate")
-		}
-		y, ok := c[0].(float64)
-		if !ok {
-			return nil, errors.New("invalid y coordinate")
-		}
-		return sql.Point{SRID: 4326, X: x, Y: y}, nil
+		return SliceToPoint(coords)
 	case "LineString":
+		return SliceToLine(coords)
 	case "Polygon":
+		return SliceToPoly(coords)
 	default:
 		return nil, errors.New("Bad type")
 	}
-	return nil, nil
 }
