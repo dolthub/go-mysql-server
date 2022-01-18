@@ -91,8 +91,6 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 }
 
 func (c *Catalog) HasDB(db string) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	return c.provider.HasDatabase(db)
 }
 
