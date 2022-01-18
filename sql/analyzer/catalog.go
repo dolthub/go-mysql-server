@@ -98,8 +98,6 @@ func (c *Catalog) HasDB(db string) bool {
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(db string) (sql.Database, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	if strings.ToLower(db) == "mysql" {
 		return c.GrantTables, nil
 	}
