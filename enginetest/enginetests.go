@@ -1003,6 +1003,12 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func TestUsersAndPrivileges(t *testing.T, harness Harness) {
+	for _, script := range UserPrivTests {
+		TestScript(t, harness, script)
+	}
+}
+
 func TestComplexIndexQueries(t *testing.T, harness Harness) {
 	for _, script := range ComplexIndexQueries {
 		TestScript(t, harness, script)

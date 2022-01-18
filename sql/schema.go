@@ -53,12 +53,13 @@ func (s Schema) CheckRow(row Row) error {
 // Copy returns a deep copy of this schema, making a copy of all columns
 func (s Schema) Copy() Schema {
 	ns := make(Schema, len(s))
-
 	for i, col := range s {
 		nc := *col
+		if nc.Default != nil {
+			nc.Default = &(*nc.Default)
+		}
 		ns[i] = &nc
 	}
-
 	return ns
 }
 

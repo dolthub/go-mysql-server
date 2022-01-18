@@ -22,14 +22,20 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
 type Catalog struct {
+	GrantTables *grant_tables.GrantTables
+
 	provider         sql.DatabaseProvider
 	builtInFunctions function.Registry
 	mu               sync.RWMutex
 	locks            sessionLocks
 }
+
+var _ sql.Catalog = (*Catalog)(nil)
+var _ sql.FunctionProvider = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
@@ -38,8 +44,9 @@ type dbLocks map[string]tableLocks
 type sessionLocks map[uint32]dbLocks
 
 // NewCatalog returns a new empty Catalog with the given provider
-func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
+func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	return &Catalog{
+		GrantTables:      grant_tables.CreateEmptyGrantTables(),
 		provider:         provider,
 		builtInFunctions: function.NewRegistry(),
 		locks:            make(sessionLocks),
@@ -49,8 +56,6 @@ func NewCatalog(provider sql.DatabaseProvider) sql.Catalog {
 func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
 }
-
-var _ sql.FunctionProvider = (*Catalog)(nil)
 
 func (c *Catalog) AllDatabases() []sql.Database {
 	c.mu.RLock()
@@ -95,6 +100,9 @@ func (c *Catalog) HasDB(db string) bool {
 func (c *Catalog) Database(db string) (sql.Database, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	if strings.ToLower(db) == "mysql" {
+		return c.GrantTables, nil
+	}
 	return c.provider.Database(db)
 }
 
