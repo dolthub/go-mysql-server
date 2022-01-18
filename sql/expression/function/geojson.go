@@ -278,7 +278,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		}
 		x, ok := c[1].(float64)
 		if !ok {
-			 return nil, errors.New("invalid x coordinate")
+			return nil, errors.New("invalid x coordinate")
 		}
 		y, ok := c[0].(float64)
 		if !ok {
