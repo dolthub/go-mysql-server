@@ -48,7 +48,7 @@ func (g *AsGeoJSON) String() string {
 	for i, arg := range g.ChildExpressions {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("ST_GEOMFROMWKT(%s)", strings.Join(args, ","))
+	return fmt.Sprintf("ST_ASGEOJSON(%s)", strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
@@ -188,7 +188,6 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		obj["bbox"] = res
 	}
 
-	// TODO: GeoJSON object always assume srid is 4326
 	return sql.JSONDocument{Val: obj}, nil
 }
 
@@ -239,18 +238,18 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 	// coords must be a slice of 2 float64
 	c, ok := coords.([]interface{})
 	if !ok {
-		return nil, errors.New("coordinates wrong type")
+		return nil, errors.New("member 'coordinates' must be of type 'array'")
 	}
 	if len(c) != 2 {
-		return nil, errors.New("incorrect number of coordinates")
+		return nil, errors.New("unsupported number of coordinate dimensions")
 	}
 	x, ok := c[1].(float64)
 	if !ok {
-		return nil, errors.New("invalid x coordinate")
+		return nil, errors.New("coordinate must be of type number")
 	}
 	y, ok := c[0].(float64)
 	if !ok {
-		return nil, errors.New("invalid y coordinate")
+		return nil, errors.New("coordinate must be of type number")
 	}
 	return sql.Point{SRID: 4326, X: x, Y: y}, nil
 }
@@ -259,10 +258,10 @@ func SliceToLine(coords interface{}) (interface{}, error) {
 	// coords must be a slice of at least 2 slices of 2 float64
 	cs, ok := coords.([]interface{})
 	if !ok {
-		return nil, errors.New("coordinates wrong type")
+		return nil, errors.New("member 'coordinates' must be of type 'array'")
 	}
 	if len(cs) < 2 {
-		return nil, errors.New("not enough points")
+		return nil, errors.New("invalid GeoJSON data provided")
 	}
 	points := make([]sql.Point, len(cs))
 	for i, c := range cs {
@@ -275,22 +274,24 @@ func SliceToLine(coords interface{}) (interface{}, error) {
 	return sql.Linestring{SRID: 4326, Points: points}, nil
 }
 
-func SliceToPoly(coords interface{}) (sql.Polygon, error) {
+func SliceToPoly(coords interface{}) (interface{}, error) {
 	// coords must be a slice of slices of at least 2 slices of 2 float64
 	cs, ok := coords.([]interface{})
 	if !ok {
-		return sql.Polygon{}, errors.New("coordinates wrong type")
+		return nil, errors.New("member 'coordinates' must be of type 'array'")
 	}
 	if len(cs) == 0 {
-		return sql.Polygon{}, errors.New("not enough lines")
+		return nil, errors.New("not enough lines")
 	}
 	lines := make([]sql.Linestring, len(cs))
 	for i, c := range cs {
 		l, err := SliceToLine(c)
 		if err != nil {
-			return sql.Polygon{}, err
+			return nil, err
 		}
-		// TODO: check that line is a linearring
+		if !isLinearRing(l.(sql.Linestring)) {
+			return nil, errors.New("invalid GeoJSON data provided")
+		}
 		lines[i] = l.(sql.Linestring)
 	}
 	return sql.Polygon{SRID: 4326, Lines: lines}, nil
@@ -336,6 +337,6 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	case "Polygon":
 		return SliceToPoly(coords)
 	default:
-		return nil, errors.New("Bad type")
+		return nil, errors.New("member 'type' is wrong")
 	}
 }
