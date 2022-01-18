@@ -593,6 +593,29 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2) 
+                    FROM (values
+						 row('{ "a": 1, "b": 2 }','null'), 
+                         row('{ "a": 1, "b": 2 }','"row one"'), 
+                         row('{ "a": 3, "c": 4 }','4'), 
+                         row('{ "a": 5, "d": 6 }','[true, true]'),
+                         row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
+                    test (val1, val2)`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
+			{sql.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
+			{sql.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
+			{sql.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
+			{sql.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
+		},
+	},
+	{
 		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', '"do"')`,
 		Expected: []sql.Row{
 			{sql.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": NULL}", null, 4, "[true, false]", "do"]`)},

@@ -55,5 +55,5 @@ func TestCatalogLockTable(t *testing.T) {
 		},
 	}
 
-	require.Equal(expected, c.(*Catalog).locks)
+	require.Equal(expected, c.locks)
 }
