@@ -91,15 +91,11 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 }
 
 func (c *Catalog) HasDB(db string) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	return c.provider.HasDatabase(db)
 }
 
 // Database returns the database with the given name.
 func (c *Catalog) Database(db string) (sql.Database, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
 	if strings.ToLower(db) == "mysql" {
 		return c.GrantTables, nil
 	}
