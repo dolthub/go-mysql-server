@@ -133,26 +133,27 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	if includeTable(includedTables, "specialtable") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "specialtable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "id", Type: sql.Int64, Source: "specialtable", PrimaryKey: true},
 				{Name: "name", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "specialtable"},
 			}))
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow("first_row"),
-					sql.NewRow("second_row"),
-					sql.NewRow("third_row"),
-					sql.NewRow(`%`),
-					sql.NewRow(`'`),
-					sql.NewRow(`"`),
-					sql.NewRow("\t"),
-					sql.NewRow("\n"),
-					sql.NewRow("\v"),
-					sql.NewRow(`test%test`),
-					sql.NewRow(`test'test`),
-					sql.NewRow(`test"test`),
-					sql.NewRow("test\ttest"),
-					sql.NewRow("test\ntest"),
-					sql.NewRow("test\vtest"),
+					sql.NewRow(1, "first_row"),
+					sql.NewRow(2, "second_row"),
+					sql.NewRow(3, "third_row"),
+					sql.NewRow(4, `%`),
+					sql.NewRow(5, `'`),
+					sql.NewRow(6, `"`),
+					sql.NewRow(7, "\t"),
+					sql.NewRow(8, "\n"),
+					sql.NewRow(9, "\v"),
+					sql.NewRow(10, `test%test`),
+					sql.NewRow(11, `test'test`),
+					sql.NewRow(12, `test"test`),
+					sql.NewRow(13, "test\ttest"),
+					sql.NewRow(14, "test\ntest"),
+					sql.NewRow(15, "test\vtest"),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "specialtable", err)
