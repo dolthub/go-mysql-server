@@ -616,27 +616,21 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', '"do"')`,
+		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', "do")`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": NULL}", null, 4, "[true, false]", "do"]`)},
+			{sql.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(val1, val2) FROM (values
-					row('[3,9,4]', null), 
-					row('{ "a": true, "b": 2 }', '"row two"'), 
-					row('{ "a": null, "c": "4" }', 8), 
-					row('{ "a": 5, "d": 6 }', '[true, true]'),
-					row('{ "a": [5, 3], "d": 6 }', false),
-					row('{ "a": 5, "d": 6 }', '{ "a": 3, "e": 2 }'))
+					row(2, null), 
+					row(3, "row two"), 
+					row(4, "row three"))
                     test (val1, val2)`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`["[3, 9, 4]", null]`)},
-			{sql.MustJSON(`["{\"a\": true, \"b\": 2}", "row two"]`)},
-			{sql.MustJSON(`["{\"a\": NULL, \"c\": \"4\"}", 8]`)},
-			{sql.MustJSON(`["{\"a\": 5, \"d\": 6}", "[true, true]"]`)},
-			{sql.MustJSON(`["{\"a\": [5, 3], \"d\": 6}", false]`)},
-			{sql.MustJSON(`["{\"a\": 5, \"d\": 6}", "{\"a\": 3, \"e\": 2}"]`)},
+			{sql.MustJSON(`[2, null]`)},
+			{sql.MustJSON(`[3, "row two"]`)},
+			{sql.MustJSON(`[4, "row three"]`)},
 		},
 	},
 	{

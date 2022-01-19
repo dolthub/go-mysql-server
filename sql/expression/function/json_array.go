@@ -15,7 +15,6 @@
 package function
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -105,12 +104,7 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		jsonDoc, err = j.Type().Convert(jsonDoc)
-		if err != nil {
-			return nil, err
-		}
-
-		resultArray[i] = jsonInputToString(jsonDoc.(sql.JSONDocument).Val)
+		resultArray[i] = jsonDoc
 	}
 
 	return sql.JSONDocument{Val: resultArray}, nil
@@ -128,74 +122,4 @@ func (j *JSONArray) WithChildren(children ...sql.Expression) (sql.Expression, er
 	}
 
 	return NewJSONArray(children...)
-}
-
-// jsonInputToString returns string representation of a json document
-func jsonInputToString(v interface{}) interface{} {
-	if v == nil {
-		return nil
-	}
-
-	switch v.(type) {
-	case map[string]interface{}:
-		m := v.(map[string]interface{})
-		var keys []string
-		for k, _ := range m {
-			keys = append(keys, k)
-		}
-		return innerDocToString(v, keys)
-	case []interface{}:
-		return innerDocToString(v, nil)
-	case bool, string, float64, float32,
-		int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64:
-		return v
-	default:
-		return ""
-	}
-}
-
-func innerDocToString(d interface{}, keys []string) string {
-	if d == nil {
-		return "NULL"
-	}
-
-	switch d.(type) {
-	case map[string]interface{}:
-		m := d.(map[string]interface{})
-		newString := "{"
-		for _, k := range keys {
-			if mm, ok := m[k].(map[string]interface{}); ok {
-				var mmKeys []string
-				for mk, _ := range mm {
-					mmKeys = append(mmKeys, mk)
-				}
-				newString += fmt.Sprintf("\"%s\"", k) + ": " + innerDocToString(mm, mmKeys) + ", "
-			} else {
-				newString += fmt.Sprintf("\"%s\"", k) + ": " + innerDocToString(m[k], nil) + ", "
-			}
-		}
-		newString = strings.TrimSuffix(newString, ", ") + "}"
-		return newString
-	case []interface{}:
-		arr := d.([]interface{})
-		newString := "["
-		for _, value := range arr {
-			newString += innerDocToString(value, nil) + ", "
-		}
-		newString = strings.TrimSuffix(newString, ", ") + "]"
-		return newString
-	case string:
-		res, err := json.Marshal(d)
-		if err != nil {
-			return ""
-		}
-		return string(res)
-	case bool, float64, float32,
-		int, int8, int16, int32, int64,
-		uint, uint8, uint16, uint32, uint64:
-		return fmt.Sprintf("%v", d)
-	default:
-		return ""
-	}
 }
