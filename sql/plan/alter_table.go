@@ -199,7 +199,7 @@ func (a *AddColumn) updateRowsWithDefaults(ctx *sql.Context, row sql.Row) error 
 	}
 }
 
-// applyDefaults applies the default values of the given column indices to the given row, and returns a new row with the updated values.
+// applyDefaults applies the default value of the given column index to the given row, and returns a new row with the updated values.
 // This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
 // present and in the order as represented by the schema.
 func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd *sql.ColumnDefaultValue) (sql.Row, error) {
@@ -207,15 +207,13 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 	if len(tblSch) != len(row) {
 		return nil, fmt.Errorf("any row given to ApplyDefaults must be of the same length as the table it represents")
 	}
-	secondPass := false
+
 	if col < 0 || col > len(tblSch) {
 		return nil, fmt.Errorf("column index `%d` is out of bounds, table schema has `%d` number of columns", col, len(tblSch))
 	}
 
 	columnDefaultExpr := cd
-	if !columnDefaultExpr.IsLiteral() {
-		secondPass = true
-	} else if columnDefaultExpr == nil && !tblSch[col].Nullable {
+	if columnDefaultExpr == nil && !tblSch[col].Nullable {
 		val := tblSch[col].Type.Zero()
 		var err error
 		newRow[col], err = tblSch[col].Type.Convert(val)
@@ -223,17 +221,6 @@ func applyDefaults(ctx *sql.Context, tblSch sql.Schema, col int, row sql.Row, cd
 			return nil, err
 		}
 	} else {
-		val, err := columnDefaultExpr.Eval(ctx, newRow)
-		if err != nil {
-			return nil, err
-		}
-		newRow[col], err = tblSch[col].Type.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if secondPass {
 		val, err := columnDefaultExpr.Eval(ctx, newRow)
 		if err != nil {
 			return nil, err
