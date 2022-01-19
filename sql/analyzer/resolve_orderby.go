@@ -74,7 +74,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		// below its child.
 		if len(colsFromChild) == 0 {
 			a.Log("pushing down sort, missing columns: %s", strings.Join(missingCols, ", "))
-			return pushSortDown(sort)
+			return pushSortDown(sort, missingCols)
 		}
 
 		a.Log("fixing sort dependencies, missing columns: %s", strings.Join(missingCols, ", "))
@@ -156,7 +156,7 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 
 var errSortPushdown = errors.NewKind("unable to push plan.Sort node below %T")
 
-func pushSortDown(sort *plan.Sort) (sql.Node, error) {
+func pushSortDown(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 	switch child := sort.Child.(type) {
 	case *plan.Project:
 		return plan.NewProject(
@@ -169,12 +169,14 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 			child.GroupByExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
-	case *plan.ResolvedTable, plan.JoinNode:
+	case *plan.Window:
+		return reorderSort(sort, missingCols)
+	case *plan.ResolvedTable:
 		return sort, nil
 	default:
 		children := child.Children()
 		if len(children) == 1 {
-			newChild, err := pushSortDown(plan.NewSort(sort.SortFields, children[0]))
+			newChild, err := pushSortDown(plan.NewSort(sort.SortFields, children[0]), missingCols)
 			if err != nil {
 				return nil, err
 			}

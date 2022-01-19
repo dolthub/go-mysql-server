@@ -268,6 +268,36 @@ func TestPushdownSortWindow(t *testing.T) {
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "", "x", false),
+					expression.NewGetFieldWithTable(1, sql.Int64, "", "row_number() over ( partition by foo.b order by [foo.a, idx=0, type=BIGINT, nullable=false] invalid SortOrder)", false),
+				},
+				plan.NewSort(
+					[]sql.SortField{
+						{Column: expression.NewUnresolvedColumn("a")},
+					},
+					plan.NewWindow(
+						[]sql.Expression{
+							expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
+							mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+								sql.NewWindow(
+									[]sql.Expression{
+										expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+									},
+									sql.SortFields{
+										{
+											Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+										},
+									},
+								),
+							)),
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewResolvedTable(table, nil, nil),
+					),
+				),
+			),
 		},
 		{
 			name: "don't push sort below window, missing field",
@@ -292,6 +322,36 @@ func TestPushdownSortWindow(t *testing.T) {
 						)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
+				),
+			),
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(1, sql.Int64, "", "row_number() over ( partition by foo.b order by [foo.a, idx=0, type=BIGINT, nullable=false] invalid SortOrder)", false),
+				},
+				plan.NewSort(
+					[]sql.SortField{
+						{Column: expression.NewUnresolvedColumn("a")},
+					},
+					plan.NewWindow(
+						[]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
+								sql.NewWindow(
+									[]sql.Expression{
+										expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+									},
+									sql.SortFields{
+										{
+											Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+										},
+									},
+								),
+							)),
+							expression.NewUnresolvedColumn("a"),
+						},
+						plan.NewResolvedTable(table, nil, nil),
+					),
 				),
 			),
 		},
