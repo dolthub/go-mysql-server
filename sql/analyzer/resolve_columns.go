@@ -617,14 +617,14 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		// it refers to the alias, and not the one in the child. However,
 		// in the aggregate, aliases in that same aggregate cannot be used,
 		// so it refers to the column in the child node.
-		var groupingColumns = make(map[string]struct{})
+		var groupingColumns = make(map[string]*expression.UnresolvedColumn)
 		for _, g := range g.GroupByExprs {
 			for _, n := range findAllColumns(g) {
-				groupingColumns[strings.ToLower(n)] = struct{}{}
+				groupingColumns[strings.ToLower(n.Name())] = n
 			}
 		}
 
-		var selectedColumns = make(map[string]struct{})
+		var selectedColumns = make(map[string]*expression.UnresolvedColumn)
 		for _, agg := range g.SelectedExprs {
 			// This alias is going to be pushed down, so don't bother gathering
 			// its requirements.
@@ -635,7 +635,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			}
 
 			for _, n := range findAllColumns(agg) {
-				selectedColumns[strings.ToLower(n)] = struct{}{}
+				selectedColumns[strings.ToLower(n.Name())] = n
 			}
 		}
 
@@ -686,38 +686,43 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 
 		// Instead of iterating columns directly, we want them sorted so the
 		// executions of the rule are consistent.
-		var missingCols = make([]string, 0, len(selectedColumns)+len(groupingColumns))
-		for col := range selectedColumns {
+		var missingCols = make([]*expression.UnresolvedColumn, 0, len(selectedColumns)+len(groupingColumns))
+		for _, col := range selectedColumns {
 			missingCols = append(missingCols, col)
 		}
-		for col := range groupingColumns {
+		for _, col := range groupingColumns {
 			missingCols = append(missingCols, col)
 		}
-		sort.Strings(missingCols)
+
+		sort.SliceStable(missingCols, func(i, j int) bool {
+			return missingCols[i].Name() < missingCols[j].Name()
+		})
 
 		var renames = make(map[string]string)
 		// All columns required by expressions in both grouping and aggregation
 		// must also be projected in the new projection node or they will not
 		// be able to resolve.
 		for _, col := range missingCols {
-			name := col
+			name := col.Name()
 			// If an alias has been pushed down with the same name as a missing
 			// column, there will be a conflict of names. We must find an unique name
 			// for the missing column.
-			if _, ok := aliases[col]; ok {
+			if _, ok := aliases[name]; ok {
 				for i := 1; ; i++ {
-					name = fmt.Sprintf("%s_%02d", col, i)
-					if !stringContains(missingCols, name) {
+					name = fmt.Sprintf("%s_%02d", col.Name(), i)
+					if _, ok := selectedColumns[name]; !ok {
+						break
+					} else if _, ok := groupingColumns[name]; !ok {
 						break
 					}
 				}
 			}
 
-			if name == col {
-				projection = append(projection, expression.NewUnresolvedColumn(col))
+			if name == col.Name() {
+				projection = append(projection, col)
 			} else {
-				renames[col] = name
-				projection = append(projection, expression.NewAlias(name, expression.NewUnresolvedColumn(col)))
+				renames[col.Name()] = name
+				projection = append(projection, expression.NewAlias(name, col))
 			}
 		}
 
@@ -766,12 +771,12 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[s
 	return newExprs
 }
 
-func findAllColumns(e sql.Expression) []string {
-	var cols []string
+func findAllColumns(e sql.Expression) []*expression.UnresolvedColumn {
+	var cols []*expression.UnresolvedColumn
 	sql.Inspect(e, func(e sql.Expression) bool {
 		col, ok := e.(*expression.UnresolvedColumn)
 		if ok {
-			cols = append(cols, col.Name())
+			cols = append(cols, col)
 		}
 		return true
 	})

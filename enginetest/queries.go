@@ -7117,6 +7117,30 @@ var InfoSchemaQueries = []QueryTest{
 		Query:    "SELECT * FROM information_schema.partitions",
 		Expected: []sql.Row{},
 	},
+	{
+		Query: `
+				select CONCAT(tbl.table_schema, '.', tbl.table_name) as the_table,
+				       col.column_name, GROUP_CONCAT(kcu.column_name SEPARATOR ',') as pk
+				from information_schema.tables as tbl
+				join information_schema.columns as col
+ 				  on tbl.table_name = col.table_name
+				join information_schema.key_column_usage as kcu
+				  on tbl.table_name = kcu.table_name
+				join information_schema.table_constraints as tc
+				  on kcu.constraint_name = tc.constraint_name
+				where tbl.table_schema = 'mydb' and
+ 					  tbl.table_name = kcu.table_name and
+  					  tc.constraint_type = 'PRIMARY KEY' and
+					  col.column_name like 'pk%'
+				group by the_table, col.column_name
+				`,
+		Expected: []sql.Row{
+			{"mydb.one_pk_two_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.one_pk_three_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.auto_increment_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.fk_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+		},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
