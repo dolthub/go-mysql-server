@@ -7,8 +7,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -56,22 +54,22 @@ func (g *AsGeoJSON) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewAsGeoJSON(children...)
 }
 
-func PointToSlice(p sql.Point, prec int32) [2]decimal.Decimal {
-	return [2]decimal.Decimal{decimal.NewFromFloat(p.X).Round(prec), decimal.NewFromFloat(p.Y).Round(prec)}
+func PointToSlice(p sql.Point) [2]float64 {
+	return [2]float64{p.X, p.Y}
 }
 
-func LineToSlice(l sql.Linestring, prec int32) [][2]decimal.Decimal {
-	arr := make([][2]decimal.Decimal, len(l.Points))
+func LineToSlice(l sql.Linestring) [][2]float64 {
+	arr := make([][2]float64, len(l.Points))
 	for i, p := range l.Points {
-		arr[i] = PointToSlice(p, prec)
+		arr[i] = PointToSlice(p)
 	}
 	return arr
 }
 
-func PolyToSlice(p sql.Polygon, prec int32) [][][2]decimal.Decimal {
-	arr := make([][][2]decimal.Decimal, len(p.Lines))
+func PolyToSlice(p sql.Polygon) [][][2]float64 {
+	arr := make([][][2]float64, len(p.Lines))
 	for i, l := range p.Lines {
-		arr[i] = LineToSlice(l, prec)
+		arr[i] = LineToSlice(l)
 	}
 	return arr
 }
@@ -103,6 +101,26 @@ func FindBBox(v interface{}) [4]float64 {
 	return res
 }
 
+func RoundFloatSlices(v interface{}, p float64) interface{} {
+	switch v := v.(type) {
+	case [2]float64:
+		return [2]float64{math.Round(v[0] * p) / p, math.Round(v[1] * p) / p}
+	case [][2]float64:
+		res := make([][2]float64, len(v))
+		for i, c := range v {
+			res[i] = RoundFloatSlices(c, p).([2]float64)
+		}
+		return res
+	case [][][2]float64:
+		res := make([][][2]float64, len(v))
+		for i, c := range v {
+			res[i] = RoundFloatSlices(c, p).([][2]float64)
+		}
+		return res
+	}
+	return nil
+}
+
 // Eval implements the sql.Expression interface.
 func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate child
@@ -116,47 +134,66 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Evaluate precision
-	// TODO: any better way to handle precision? math.Round(x * math.Pow10(prec)) / math.Pow10(prec)
-	prec := int32(math.MaxInt32) // TODO: MySQL claims to be able to handle 2^32-1, but I can't get it past 2^31-1
-	if len(g.ChildExpressions) >= 2 {
-		p, err := g.ChildExpressions[1].Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			return nil, nil
-		}
-		p, err = sql.Int32.Convert(p)
-		if err != nil {
-			return nil, err
-		}
-		prec = p.(int32)
-	}
-
-	// TODO: takes too long to deal with high precisions, 17 is about the most MySQL prints anyway
-	if prec > 17 {
-		prec = 17
-	}
-
 	// Create map object to hold values
 	obj := make(map[string]interface{}, 3) // TODO: needs to be 3 when including bounding box
 	switch v := val.(type) {
 	case sql.Point:
 		obj["type"] = "Point"
-		obj["coordinates"] = PointToSlice(v, prec)
+		obj["coordinates"] = PointToSlice(v)
 	case sql.Linestring:
 		obj["type"] = "LineString"
-		obj["coordinates"] = LineToSlice(v, prec)
+		obj["coordinates"] = LineToSlice(v)
 	case sql.Polygon:
 		obj["type"] = "Polygon"
-		obj["coordinates"] = PolyToSlice(v, prec)
+		obj["coordinates"] = PolyToSlice(v)
 	default:
 		return nil, ErrInvalidArgumentType.New(g.FunctionName())
 	}
 
+	// No precision argument, just return object
+	if len(g.ChildExpressions) == 1 {
+		return sql.JSONDocument{Val: obj}, nil
+	}
+
+	// Evaluate precision
+	p, err := g.ChildExpressions[1].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, nil
+	}
+	// Must be an int type
+	_p := 0
+	switch p := p.(type) {
+	case int8:
+		_p = int(p)
+	case int16:
+		_p = int(p)
+	case int32:
+		_p = int(p)
+	case int64:
+		_p = int(p)
+	case int:
+		_p = p
+	default:
+		return nil, errors.New("incorrect precision value")
+	}
+	// Must be >= 0
+	if _p < 0 {
+		return nil, errors.New("incorrect precision value")
+	}
+
+	// TODO: lose accuracy with high precisions, 17 is about the most MySQL prints anyway
+	if _p > 17 {
+		_p = 17
+	}
+
+	prec := math.Pow10(_p)
+	obj["coordinates"] = RoundFloatSlices(obj["coordinates"], prec)
+
 	// No flag argument, just return object
-	if len(g.ChildExpressions) < 3 {
+	if len(g.ChildExpressions) == 2 {
 		return sql.JSONDocument{Val: obj}, nil
 	}
 
@@ -168,11 +205,22 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if flag == nil {
 		return nil, nil
 	}
-	flag, err = sql.Int32.Convert(flag)
-	if err != nil {
-		return nil, err
+	// Must be an int type
+	_flag := 0
+	switch flag := flag.(type) {
+	case int8:
+		_flag = int(flag)
+	case int16:
+		_flag = int(flag)
+	case int32:
+		_flag = int(flag)
+	case int64:
+		_flag = int(flag)
+	case int:
+		_flag = flag
+	default:
+		return nil, errors.New("incorrect flag value")
 	}
-	_flag := flag.(int32)
 	// Only flags 0-7 are valid
 	if _flag < 0 || _flag > 7 {
 		return nil, ErrInvalidArgument.New(g.FunctionName(), _flag)
@@ -180,14 +228,12 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// TODO: figure out exactly what flags are; only 1,3,5 have bbox
 	if _flag%2 == 1 {
 		// Calculate bounding box
-		tmp := FindBBox(val)
-		res := [4]decimal.Decimal{}
-		for i, t := range tmp {
-			res[i] = decimal.NewFromFloat(t).Round(prec)
+		res := FindBBox(val)
+		for i, r := range res {
+			res[i] = math.Round(r * prec) / prec
 		}
 		obj["bbox"] = res
 	}
-
 	return sql.JSONDocument{Val: obj}, nil
 }
 
@@ -240,7 +286,7 @@ func SliceToPoint(coords interface{}) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("member 'coordinates' must be of type 'array'")
 	}
-	if len(c) != 2 {
+	if len(c) < 2 {
 		return nil, errors.New("unsupported number of coordinate dimensions")
 	}
 	x, ok := c[1].(float64)
@@ -329,14 +375,136 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		return nil, errors.New("missing required member 'coordinates'")
 	}
 	// Create type accordingly
+	var res interface{}
 	switch geomType {
 	case "Point":
-		return SliceToPoint(coords)
+		res, err = SliceToPoint(coords)
 	case "LineString":
-		return SliceToLine(coords)
+		res, err = SliceToLine(coords)
 	case "Polygon":
-		return SliceToPoly(coords)
+		res, err = SliceToPoly(coords)
 	default:
 		return nil, errors.New("member 'type' is wrong")
 	}
+	// Handle error
+	if err != nil {
+		return nil, err
+	}
+	// if only 1 argument, return
+	if len(g.ChildExpressions) == 1 {
+		return res, nil
+	}
+	// Evaluate flag argument
+	flag, err := g.ChildExpressions[1].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if flag == nil {
+		return nil, nil
+	}
+	// Must be an int type
+	_flag := 0
+	switch flag := flag.(type) {
+	case int8:
+		_flag = int(flag)
+	case int16:
+		_flag = int(flag)
+	case int32:
+		_flag = int(flag)
+	case int64:
+		_flag = int(flag)
+	case int:
+		_flag = flag
+	default:
+		return nil, errors.New("incorrect flag value")
+	}
+	// Only flags 1-4 are valid
+	if _flag < 1 || _flag > 4 {
+		return nil, ErrInvalidArgument.New(g.FunctionName(), _flag)
+	}
+	// If flag is 1 and dimension of coordinates is greater than 2, throw error
+	if _flag == 1 {
+		// Swap coordinates with SRID 0
+		switch geomType {
+		case "Point":
+			if len(obj["coordinates"].([]interface{})) > 2 {
+				return nil, errors.New("unsupported number of coordinate dimensions")
+			}
+		case "LineString":
+			for _, a := range obj["coordinates"].([]interface{}) {
+				if len(a.([]interface{})) > 2 {
+					return nil, errors.New("unsupported number of coordinate dimensions")
+				}
+			}
+		case "Polygon":
+			for _, a := range obj["coordinates"].([]interface{}) {
+				for _, b := range a.([]interface{}) {
+					if len(b.([]interface{})) > 2 {
+						return nil, errors.New("unsupported number of coordinate dimensions")
+					}
+				}
+			}
+		}
+	}
+	// If no SRID provided, return answer
+	if len(g.ChildExpressions) == 2 {
+		return res, nil
+	}
+	// Evaluate SRID
+	srid, err := g.ChildExpressions[2].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if srid == nil {
+		return nil, nil
+	}
+	// Must be an int type
+	_srid := uint32(0)
+	switch srid := srid.(type) {
+	case int8:
+		_srid = uint32(srid)
+	case int16:
+		_srid = uint32(srid)
+	case int32:
+		_srid = uint32(srid)
+	case int64:
+		_srid = uint32(srid)
+	case int:
+		_srid = uint32(srid)
+	default:
+		return nil, errors.New("incorrect srid value")
+	}
+	// Check for invalid SRID
+	if _srid != 0 && _srid != 4326 {
+		return nil, ErrInvalidSRID.New(g.FunctionName(), _srid)
+	}
+	// If SRID 4326, do nothing
+	if _srid == 4326 {
+		return res, nil
+	}
+	// Swap coordinates with SRID 0
+	switch geomType {
+	case "Point":
+		_res := res.(sql.Point)
+		_res.SRID = _srid
+		_res.X, _res.Y = _res.Y, _res.X
+		return _res, nil
+	case "LineString":
+		_res := res.(sql.Linestring)
+		_res.SRID = _srid
+		for _, p := range _res.Points {
+			p.X, p.Y = p.Y, p.X
+		}
+		return _res, nil
+	case "Polygon":
+		_res := res.(sql.Polygon)
+		_res.SRID = _srid
+		for _, l := range _res.Lines {
+			for _, p := range l.Points {
+				p.X, p.Y = p.Y, p.X
+			}
+		}
+		return _res, nil
+	}
+	return nil, nil
 }
