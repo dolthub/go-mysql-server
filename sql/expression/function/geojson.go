@@ -104,7 +104,7 @@ func FindBBox(v interface{}) [4]float64 {
 func RoundFloatSlices(v interface{}, p float64) interface{} {
 	switch v := v.(type) {
 	case [2]float64:
-		return [2]float64{math.Round(v[0] * p) / p, math.Round(v[1] * p) / p}
+		return [2]float64{math.Round(v[0]*p) / p, math.Round(v[1]*p) / p}
 	case [][2]float64:
 		res := make([][2]float64, len(v))
 		for i, c := range v {
@@ -230,7 +230,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		// Calculate bounding box
 		res := FindBBox(val)
 		for i, r := range res {
-			res[i] = math.Round(r * prec) / prec
+			res[i] = math.Round(r*prec) / prec
 		}
 		obj["bbox"] = res
 	}
