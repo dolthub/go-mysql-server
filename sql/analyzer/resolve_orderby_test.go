@@ -244,7 +244,7 @@ func TestPushdownSortWindow(t *testing.T) {
 			),
 		},
 		{
-			name: "push sort below window, with alias",
+			name: "don't push sort below window, with alias",
 			node: plan.NewSort(
 				[]sql.SortField{
 					{Column: expression.NewUnresolvedColumn("a")},
@@ -268,32 +268,9 @@ func TestPushdownSortWindow(t *testing.T) {
 					plan.NewResolvedTable(table, nil, nil),
 				),
 			),
-			expected: plan.NewWindow(
-				[]sql.Expression{
-					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
-							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-								},
-							},
-						),
-					)),
-				},
-				plan.NewSort(
-					[]sql.SortField{
-						{Column: expression.NewUnresolvedColumn("a")},
-					},
-					plan.NewResolvedTable(table, nil, nil),
-				),
-			),
 		},
 		{
-			name: "push sort below window, missing field",
+			name: "don't push sort below window, missing field",
 			node: plan.NewSort(
 				[]sql.SortField{
 					{Column: expression.NewUnresolvedColumn("a")},
@@ -313,29 +290,6 @@ func TestPushdownSortWindow(t *testing.T) {
 								},
 							),
 						)),
-					},
-					plan.NewResolvedTable(table, nil, nil),
-				),
-			),
-			expected: plan.NewWindow(
-				[]sql.Expression{
-					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
-					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
-							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-								},
-							},
-						),
-					)),
-				},
-				plan.NewSort(
-					[]sql.SortField{
-						{Column: expression.NewUnresolvedColumn("a")},
 					},
 					plan.NewResolvedTable(table, nil, nil),
 				),

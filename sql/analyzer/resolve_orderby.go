@@ -169,12 +169,7 @@ func pushSortDown(sort *plan.Sort) (sql.Node, error) {
 			child.GroupByExprs,
 			plan.NewSort(sort.SortFields, child.Child),
 		), nil
-	case *plan.Window:
-		return plan.NewWindow(
-			child.SelectExprs,
-			plan.NewSort(sort.SortFields, child.Child),
-		), nil
-	case *plan.ResolvedTable:
+	case *plan.ResolvedTable, plan.JoinNode:
 		return sort, nil
 	default:
 		children := child.Children()
