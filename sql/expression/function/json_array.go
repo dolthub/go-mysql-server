@@ -137,8 +137,15 @@ func jsonInputToString(v interface{}) interface{} {
 	}
 
 	switch v.(type) {
-	case []interface{}, map[string]interface{}:
-		return innerDocToString(v)
+	case map[string]interface{}:
+		m := v.(map[string]interface{})
+		var keys []string
+		for k, _ := range m {
+			keys = append(keys, k)
+		}
+		return innerDocToString(v, keys)
+	case []interface{}:
+		return innerDocToString(v, nil)
 	case bool, string, float64, float32,
 		int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
@@ -148,7 +155,7 @@ func jsonInputToString(v interface{}) interface{} {
 	}
 }
 
-func innerDocToString(d interface{}) string {
+func innerDocToString(d interface{}, keys []string) string {
 	if d == nil {
 		return "NULL"
 	}
@@ -157,8 +164,16 @@ func innerDocToString(d interface{}) string {
 	case map[string]interface{}:
 		m := d.(map[string]interface{})
 		newString := "{"
-		for k, value := range m {
-			newString += fmt.Sprintf("\"%s\"", k) + ": " + innerDocToString(value) + ", "
+		for _, k := range keys {
+			if mm, ok := m[k].(map[string]interface{}); ok {
+				var mmKeys []string
+				for mk, _ := range mm {
+					mmKeys = append(mmKeys, mk)
+				}
+				newString += fmt.Sprintf("\"%s\"", k) + ": " + innerDocToString(mm, mmKeys) + ", "
+			} else {
+				newString += fmt.Sprintf("\"%s\"", k) + ": " + innerDocToString(m[k], nil) + ", "
+			}
 		}
 		newString = strings.TrimSuffix(newString, ", ") + "}"
 		return newString
@@ -166,7 +181,7 @@ func innerDocToString(d interface{}) string {
 		arr := d.([]interface{})
 		newString := "["
 		for _, value := range arr {
-			newString += innerDocToString(value) + ", "
+			newString += innerDocToString(value, nil) + ", "
 		}
 		newString = strings.TrimSuffix(newString, ", ") + "]"
 		return newString
