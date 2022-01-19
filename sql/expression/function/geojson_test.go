@@ -123,6 +123,45 @@ func TestAsGeoJSON(t *testing.T) {
 		require.NoError(err)
 		require.Equal(sql.JSONDocument{Val: map[string]interface{}{"coordinates":[][][2]float64{{{0,0},{0,1},{1,1},{0,0}}},"type":"Polygon", "bbox":[4]float64{0,0,1,1}}}, v)
 	})
+	t.Run("convert null is null", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(1, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+	t.Run("convert null precision is null", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}),
+			expression.NewLiteral(nil, sql.Null),
+			expression.NewLiteral(1, sql.Int64),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+	t.Run("convert null flag is null", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewAsGeoJSON(
+			expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}),
+			expression.NewLiteral(2, sql.Int64),
+			expression.NewLiteral(nil, sql.Null),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
 }
 
 func TestGeomFromGeoJSON(t *testing.T) {
@@ -151,9 +190,9 @@ func TestGeomFromGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{4326, []sql.Linestring{{4326, []sql.Point{{4326, 0, 0},{4326, 1, 1},{4326, 1, 0},{4326, 0, 0}}}}}, v)
+		require.Equal(sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{4326, []sql.Point{{4326, 0, 0},{4326, 1, 1},{4326, 1, 0},{4326, 0, 0}}}}}, v)
 	})
-	t.Run("convert polygon to geojson", func(t *testing.T) {
+	t.Run("reject dimensions greater than 2 with flag 1", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewGeomFromGeoJSON(
 			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, sql.Blob),
@@ -163,5 +202,52 @@ func TestGeomFromGeoJSON(t *testing.T) {
 
 		_, err = f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
+	})
+	t.Run("accept dimensions greater than 2 with flag 2", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(
+			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0,0]]]}`, sql.Blob),
+			expression.NewLiteral(2, sql.Int32),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Equal(sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{4326, []sql.Point{{4326, 0, 0},{4326, 1, 1},{4326, 1, 0},{4326, 0, 0}}}}}, v)
+	})
+	t.Run("srid 0 swaps x and y", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(
+			expression.NewLiteral(`{"type":"Point", "coordinates":[1,2]}`, sql.Blob),
+			expression.NewLiteral(1, sql.Int32),
+			expression.NewLiteral(0, sql.Int32),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Equal(sql.Point{0, 1, 2}, v)
+	})
+	t.Run("srid 0 swaps x and y", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(
+			expression.NewLiteral(`{"type":"LineString", "coordinates":[[1,2],[3,4]]}`, sql.Blob),
+			expression.NewLiteral(1, sql.Int32),
+			expression.NewLiteral(0, sql.Int32),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Equal(sql.Linestring{SRID: 0, Points: []sql.Point{{0, 1, 2},{0, 3, 4}}}, v)
+	})
+	t.Run("srid 0 swaps x and y", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewGeomFromGeoJSON(
+			expression.NewLiteral(`{"type":"Polygon", "coordinates":[[[0,0],[1,1],[0,1],[0,0]]]}`, sql.Blob),
+			expression.NewLiteral(1, sql.Int32),
+			expression.NewLiteral(0, sql.Int32),
+		)
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Equal(sql.Polygon{SRID: 0, Lines: []sql.Linestring{{0, []sql.Point{{0, 0, 0},{0, 1, 1},{0, 0, 1},{0, 0, 0}}}}}, v)
 	})
 }

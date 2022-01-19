@@ -458,7 +458,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if srid == nil {
 		return nil, nil
 	}
-	// Must be an int type
+	// Must be an uint32 type
 	_srid := uint32(0)
 	switch srid := srid.(type) {
 	case int8:
@@ -492,16 +492,19 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	case "LineString":
 		_res := res.(sql.Linestring)
 		_res.SRID = _srid
-		for _, p := range _res.Points {
-			p.X, p.Y = p.Y, p.X
+		for i, p := range _res.Points {
+			_res.Points[i].SRID = _srid
+			_res.Points[i].X, _res.Points[i].Y = p.Y, p.X
 		}
 		return _res, nil
 	case "Polygon":
 		_res := res.(sql.Polygon)
 		_res.SRID = _srid
-		for _, l := range _res.Lines {
-			for _, p := range l.Points {
-				p.X, p.Y = p.Y, p.X
+		for i, l := range _res.Lines {
+			_res.Lines[i].SRID = _srid
+			for j, p := range l.Points {
+				_res.Lines[i].Points[j].SRID = _srid
+				_res.Lines[i].Points[j].X, _res.Lines[i].Points[j].Y = p.Y, p.X
 			}
 		}
 		return _res, nil
