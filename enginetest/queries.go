@@ -622,15 +622,18 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT JSON_ARRAY(val1, val2) FROM (values
-					row(2, null), 
-					row(3, "row two"), 
-					row(4, "row three"))
-                    test (val1, val2)`,
+		Query: `SELECT JSON_ARRAY('a', 1, datetime('2020-01-01T12:00:00'))`,
+		Expected: []sql.Row{{
+			sql.MustJSON(`["a", 1, "2020-01-01 12:00:00 +0000 UTC"]`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_ARRAY(pk, c1, c2, c3) FROM jsontable`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`[2, null]`)},
-			{sql.MustJSON(`[3, "row two"]`)},
-			{sql.MustJSON(`[4, "row three"]`)},
+			{sql.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
+			{sql.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
+			{sql.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
+			{sql.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
 		},
 	},
 	{

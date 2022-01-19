@@ -16,9 +16,9 @@ package function
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
+	"time"
 )
 
 // JSON_ARRAY([val[, val] ...])
@@ -104,7 +104,24 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		resultArray[i] = jsonDoc
+		if jsonStr, ok := jsonDoc.(string); ok {
+			resultArray[i] = jsonStr
+		} else {
+			jsonDoc, err = j.Type().Convert(jsonDoc)
+			if err != nil {
+				return nil, err
+			}
+
+			js := jsonDoc.(sql.JSONDocument).Val
+
+			switch js.(type) {
+			case time.Time:
+				t := js.(time.Time)
+				resultArray[i] = t.String()
+			default:
+				resultArray[i] = js
+			}
+		}
 	}
 
 	return sql.JSONDocument{Val: resultArray}, nil
