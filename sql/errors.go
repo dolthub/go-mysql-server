@@ -380,8 +380,11 @@ var (
 	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 
-	// ErrInvalidCheckConstraint is returned when a  check constraint is defined incorrectly
+	// ErrInvalidCheckConstraint is returned when a check constraint is defined incorrectly
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
+
+	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
+	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

@@ -273,17 +273,6 @@ type SchemaTarget interface {
 	WithTargetSchema(Schema) (Node, error)
 }
 
-// Partition represents a partition from a SQL table.
-type Partition interface {
-	Key() []byte
-}
-
-// PartitionIter is an iterator that retrieves partitions.
-type PartitionIter interface {
-	Closer
-	Next(*Context) (Partition, error)
-}
-
 // Table represents the backend of a SQL table.
 type Table interface {
 	Nameable

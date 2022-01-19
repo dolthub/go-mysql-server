@@ -17,7 +17,6 @@ package sql
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -32,7 +31,6 @@ var (
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
-	timespanRegex                   = regexp.MustCompile(`^-?(\d{1,3}):(\d{1,2})(:(\d{1,2})(\.(\d{1,9}))?)?$`)
 	timespanMinimum           int64 = -3020399000000
 	timespanMaximum           int64 = 3020399000000
 	microsecondsPerSecond     int64 = 1000000
@@ -43,6 +41,8 @@ var (
 
 // Represents the TIME type.
 // https://dev.mysql.com/doc/refman/8.0/en/time.html
+// TIME is implemented as TIME(6)
+// TODO: implement parameters on the TIME type
 type TimeType interface {
 	Type
 	ConvertToTimeDuration(v interface{}) (time.Duration, error)
@@ -238,7 +238,7 @@ func (t timespanType) SQL(v interface{}) (sqltypes.Value, error) {
 
 // String implements Type interface.
 func (t timespanType) String() string {
-	return "TIME"
+	return "TIME(6)"
 }
 
 // Type implements Type interface.
@@ -272,67 +272,119 @@ func int64Abs(v int64) int64 {
 }
 
 func stringToTimespan(s string) (timespanImpl, error) {
-	matches := timespanRegex.FindStringSubmatch(s)
-	if len(matches) == 7 {
-		hours, _ := strconv.Atoi(matches[1])
-		minutes, _ := strconv.Atoi(matches[2])
-		if minutes > 59 {
-			return timespanImpl{}, ErrConvertingToTimeType.New(s)
-		}
-		seconds, _ := strconv.Atoi(matches[4])
-		if seconds > 59 {
-			return timespanImpl{}, ErrConvertingToTimeType.New(s)
-		}
-		microseconds, _ := strconv.Atoi(matches[6])
-		if int64(microseconds) >= microsecondsPerSecond {
-			for i := microsecondsPerSecond * 1000; i >= microsecondsPerSecond*10; i /= 10 {
-				if int64(microseconds) > i {
-					microseconds /= 10
-				}
-			}
-			if microseconds%10 >= 5 {
-				microseconds += 10
-			}
-			microseconds /= 10
-			if int64(microseconds) == microsecondsPerSecond {
-				microseconds = 0
-				seconds++
-			}
-			if seconds == 60 {
-				seconds = 0
-				minutes++
-			}
-			if minutes == 60 {
-				minutes = 0
-				hours++
-			}
-		} else {
-			for i := 10; i < int(microsecondsPerSecond); i *= 10 {
-				if microseconds < i {
-					microseconds *= 10
-				}
-			}
-		}
-		if hours > 838 {
-			hours = 838
-			minutes = 59
-			seconds = 59
-		}
-		if hours == 838 && minutes == 59 && seconds == 59 {
-			microseconds = 0
-		}
-		impl := timespanImpl{
-			hours:        int16(hours),
-			minutes:      int8(minutes),
-			seconds:      int8(seconds),
-			microseconds: int32(microseconds),
-		}
-		if s[0] == '-' {
-			impl.negative = true
-		}
-		return impl, nil
+	impl := timespanImpl{}
+	if len(s) > 0 && s[0] == '-' {
+		impl.negative = true
+		s = s[1:]
 	}
-	return timespanImpl{}, ErrConvertingToTimeType.New(s)
+
+	comps := strings.SplitN(s, ".", 2)
+
+	// Parse microseconds
+	if len(comps) == 2 {
+		microStr := comps[1]
+		if len(microStr) < 6 {
+			microStr += strings.Repeat("0", 6-len(comps[1]))
+		}
+		microStr, remainStr := microStr[0:6], microStr[6:]
+		microseconds, err := strconv.Atoi(microStr)
+		if err != nil {
+			return timespanImpl{}, ErrConvertingToTimeType.New(s)
+		}
+		// MySQL just uses the last digit to round up. This is weird, but matches their implementation.
+		if len(remainStr) > 0 && remainStr[len(remainStr)-1:] >= "5" {
+			microseconds++
+		}
+		impl.microseconds = int32(microseconds)
+	}
+
+	// Parse H-M-S time
+	hmsComps := strings.SplitN(comps[0], ":", 3)
+	hms := make([]string, 3)
+	if len(hmsComps) >= 2 {
+		if len(hmsComps[0]) > 3 {
+			return timespanImpl{}, ErrConvertingToTimeType.New(s)
+		}
+		hms[0] = hmsComps[0]
+		if len(hmsComps[1]) > 2 {
+			return timespanImpl{}, ErrConvertingToTimeType.New(s)
+		}
+		hms[1] = hmsComps[1]
+		if len(hmsComps) == 3 {
+			if len(hmsComps[2]) > 2 {
+				return timespanImpl{}, ErrConvertingToTimeType.New(s)
+			}
+			hms[2] = hmsComps[2]
+		}
+	} else {
+		l := len(hmsComps[0])
+		hms[2] = safeSubstr(hmsComps[0], l-2, l)
+		hms[1] = safeSubstr(hmsComps[0], l-4, l-2)
+		hms[0] = safeSubstr(hmsComps[0], l-7, l-4)
+	}
+
+	hours, err := strconv.Atoi(hms[0])
+	if len(hms[0]) > 0 && err != nil {
+		return timespanImpl{}, ErrConvertingToTimeType.New(s)
+	}
+	impl.hours = int16(hours)
+
+	minutes, err := strconv.Atoi(hms[1])
+	if len(hms[1]) > 0 && err != nil {
+		return timespanImpl{}, ErrConvertingToTimeType.New(s)
+	} else if minutes >= 60 {
+		return timespanImpl{}, ErrConvertingToTimeType.New(s)
+	}
+	impl.minutes = int8(minutes)
+
+	seconds, err := strconv.Atoi(hms[2])
+	if len(hms[2]) > 0 && err != nil {
+		return timespanImpl{}, ErrConvertingToTimeType.New(s)
+	} else if seconds >= 60 {
+		return timespanImpl{}, ErrConvertingToTimeType.New(s)
+	}
+	impl.seconds = int8(seconds)
+
+	if impl.microseconds == int32(microsecondsPerSecond) {
+		impl.microseconds = 0
+		impl.seconds++
+	}
+	if impl.seconds == 60 {
+		impl.seconds = 0
+		impl.minutes++
+	}
+	if impl.minutes == 60 {
+		impl.minutes = 0
+		impl.hours++
+	}
+
+	if impl.hours > 838 {
+		impl.hours = 838
+		impl.minutes = 59
+		impl.seconds = 59
+	}
+
+	if impl.hours == 838 && impl.minutes == 59 && impl.seconds == 59 {
+		impl.microseconds = 0
+	}
+
+	return impl, nil
+}
+
+func safeSubstr(s string, start int, end int) string {
+	if start < 0 {
+		start = 0
+	}
+	if end < 0 {
+		end = 0
+	}
+	if start > len(s) {
+		start = len(s)
+		end = len(s)
+	} else if end > len(s) {
+		end = len(s)
+	}
+	return s[start:end]
 }
 
 func microsecondsToTimespan(v int64) timespanImpl {

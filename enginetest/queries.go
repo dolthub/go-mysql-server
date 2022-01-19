@@ -593,6 +593,29 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2) 
+                    FROM (values
+						 row('{ "a": 1, "b": 2 }','null'), 
+                         row('{ "a": 1, "b": 2 }','"row one"'), 
+                         row('{ "a": 3, "c": 4 }','4'), 
+                         row('{ "a": 5, "d": 6 }','[true, true]'),
+                         row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
+                    test (val1, val2)`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
+			{sql.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
+			{sql.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
+			{sql.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
+			{sql.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
+		},
+	},
+	{
 		Query: `SELECT column_0, sum(column_1) FROM 
 			(values row(1,1), row(1,3), row(2,2), row(2,5), row(3,9)) a 
 			group by 1 order by 1`,
@@ -2058,71 +2081,71 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"secon"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%a_%" ESCAPE 'a'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%a_%" ESCAPE 'a'`,
 		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$_%" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$_%" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "first$_%" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "first$_%" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{"first_row"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$_row" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$_row" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{"first_row"}, sql.Row{"second_row"}, sql.Row{"third_row"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "$%" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$%" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{"%"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "$'" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$'" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{`'`}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "$\"" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "$\"" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{`"`}},
 	},
 	{
-		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE '$\t' ESCAPE '$'",
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\t' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"\t"}},
 	},
 	{
-		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE '$\n' ESCAPE '$'",
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\n' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"\n"}},
 	},
 	{
-		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '$\v' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"\v"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "test$%test" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "test$%test" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{"test%test"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$%%" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$%%" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{"%"}, sql.Row{"test%test"}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%$'%" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%$'%" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{`'`}, sql.Row{`test'test`}},
 	},
 	{
-		Query:    `SELECT * FROM specialtable t WHERE t.name LIKE "%\"%" ESCAPE '$'`,
+		Query:    `SELECT name FROM specialtable t WHERE t.name LIKE "%\"%" ESCAPE '$'`,
 		Expected: []sql.Row{sql.Row{`"`}, sql.Row{`test"test`}},
 	},
 	{
-		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE 'test$\ttest' ESCAPE '$'",
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE 'test$\ttest' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"test\ttest"}},
 	},
 	{
-		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE '%$\n%' ESCAPE '$'",
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\n%' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"\n"}, sql.Row{"test\ntest"}},
 	},
 	{
-		Query:    "SELECT * FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
+		Query:    "SELECT name FROM specialtable t WHERE t.name LIKE '%$\v%' ESCAPE '$'",
 		Expected: []sql.Row{sql.Row{"\v"}, sql.Row{"test\vtest"}},
 	},
 	{
@@ -3293,6 +3316,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select time_format(time_col, '%h%p') from datetime_table order by 1",
+		Expected: []sql.Row{
+			{"03AM"},
+			{"03PM"},
+			{"04AM"},
+		},
+	},
+	{
 		Query: "select from_unixtime(i) from mytable order by 1",
 		Expected: []sql.Row{
 			{time.Unix(1, 0)},
@@ -3789,6 +3820,22 @@ var QueryTests = []QueryTest{
 			{"one"},
 			{"two"},
 			{nil},
+		},
+	},
+	{
+		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) WHEN 2 THEN JSON_OBJECT("b", 2) END FROM mytable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": 1}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) ELSE JSON_OBJECT("b", 2) END FROM mytable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"a": 1}`)},
+			{sql.MustJSON(`{"b": 2}`)},
+			{sql.MustJSON(`{"b": 2}`)},
 		},
 	},
 	{
@@ -6886,6 +6933,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"date_col"},
 			{"datetime_col"},
 			{"timestamp_col"},
+			{"time_col"},
 		},
 	},
 	{
@@ -6908,6 +6956,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"date_col"},
 			{"datetime_col"},
 			{"timestamp_col"},
+			{"time_col"},
 		},
 	},
 	{
@@ -6930,6 +6979,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"date_col"},
 			{"datetime_col"},
 			{"timestamp_col"},
+			{"time_col"},
 		},
 	},
 	{
@@ -7066,6 +7116,30 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query:    "SELECT * FROM information_schema.partitions",
 		Expected: []sql.Row{},
+	},
+	{
+		Query: `
+				select CONCAT(tbl.table_schema, '.', tbl.table_name) as the_table,
+				       col.column_name, GROUP_CONCAT(kcu.column_name SEPARATOR ',') as pk
+				from information_schema.tables as tbl
+				join information_schema.columns as col
+ 				  on tbl.table_name = col.table_name
+				join information_schema.key_column_usage as kcu
+				  on tbl.table_name = kcu.table_name
+				join information_schema.table_constraints as tc
+				  on kcu.constraint_name = tc.constraint_name
+				where tbl.table_schema = 'mydb' and
+ 					  tbl.table_name = kcu.table_name and
+  					  tc.constraint_type = 'PRIMARY KEY' and
+					  col.column_name like 'pk%'
+				group by the_table, col.column_name
+				`,
+		Expected: []sql.Row{
+			{"mydb.one_pk_two_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.one_pk_three_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.auto_increment_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.fk_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+		},
 	},
 }
 
@@ -7432,11 +7506,11 @@ var errorQueries = []QueryErrorTest{
 		},
 	},
 	{
-		Query:       `SELECT * FROM specialtable t WHERE t.name LIKE '$%' ESCAPE 'abc'`,
+		Query:       `SELECT name FROM specialtable t WHERE t.name LIKE '$%' ESCAPE 'abc'`,
 		ExpectedErr: sql.ErrInvalidArgument,
 	},
 	{
-		Query:       `SELECT * FROM specialtable t WHERE t.name LIKE '$%' ESCAPE '$$'`,
+		Query:       `SELECT name FROM specialtable t WHERE t.name LIKE '$%' ESCAPE '$$'`,
 		ExpectedErr: sql.ErrInvalidArgument,
 	},
 	{
@@ -7764,7 +7838,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(52), uint64(156), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
@@ -7777,7 +7851,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"floattable", "InnoDB", "10", "Fixed", uint64(6), uint64(24), uint64(144), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(52), uint64(156), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 	{
@@ -7807,7 +7881,7 @@ var ShowTableStatusQueries = []QueryTest{
 			{"niltable", "InnoDB", "10", "Fixed", uint64(6), uint64(32), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"newlinetable", "InnoDB", "10", "Fixed", uint64(5), uint64(65540), uint64(327700), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"people", "InnoDB", "10", "Fixed", uint64(5), uint64(196620), uint64(983100), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(32), uint64(96), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"datetime_table", "InnoDB", "10", "Fixed", uint64(3), uint64(52), uint64(156), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"invert_pk", "InnoDB", "10", "Fixed", uint64(3), uint64(24), uint64(72), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},

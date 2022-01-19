@@ -72,3 +72,45 @@ func TestFloatCovert(t *testing.T) {
 		})
 	}
 }
+
+func TestColumnTypeToType_Time(t *testing.T) {
+	tests := []struct {
+		length   string
+		expected Type
+		err      bool
+	}{
+		{"", Time, false},
+		{"0", nil, true},
+		{"1", nil, true},
+		{"2", nil, true},
+		{"3", nil, true},
+		{"4", nil, true},
+		{"5", nil, true},
+		{"6", Time, false},
+		{"7", nil, true},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v", test.length, test.err), func(t *testing.T) {
+			var precision *sqlparser.SQLVal
+
+			if test.length != "" {
+				precision = &sqlparser.SQLVal{
+					Type: sqlparser.IntVal,
+					Val:  []byte(test.length),
+				}
+			}
+
+			ct := &sqlparser.ColumnType{
+				Type:   "TIME",
+				Length: precision,
+			}
+			res, err := ColumnTypeToType(ct)
+			if test.err {
+				assert.Error(t, err)
+			} else {
+				assert.Equal(t, test.expected, res)
+			}
+		})
+	}
+}
