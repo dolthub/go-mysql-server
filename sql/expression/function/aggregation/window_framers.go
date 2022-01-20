@@ -27,6 +27,13 @@ var _ sql.WindowFramer = (*RowFramer)(nil)
 var _ sql.WindowFramer = (*PartitionFramer)(nil)
 var _ sql.WindowFramer = (*GroupByFramer)(nil)
 
+// NewUnboundedPrecedingToCurrentRowFramer generates sql.WindowInterval
+// from the first row in a partition to the current row.
+//
+// Ex: partition = [0, 1, 2, 3, 4, 5]
+// =>
+// frames: {0,0},   {0,1}, {0,2},   {0,3},     {0,4},     {0,5}
+// rows:   [0],     [0,1], [0,1,2], [1,2,3,4], [1,2,3,4], [1,2,3,4,5]
 func NewUnboundedPrecedingToCurrentRowFramer() *RowFramer {
 	return &RowFramer{
 		unboundedPreceding: true,
@@ -35,6 +42,24 @@ func NewUnboundedPrecedingToCurrentRowFramer() *RowFramer {
 		frameStart:         -1,
 		partitionStart:     -1,
 		partitionEnd:       -1,
+	}
+}
+
+// NewNPrecedingToCurrentRowFramer generates sql.WindowInterval
+// in the active partitions using an index offset.
+//
+// Ex: precedingOffset = 3; partition = [0, 1, 2, 3, 4, 5]
+// =>
+// frames: {0,0},   {0,1}, {0,2},   {0,3},   {1,4},   {2,5}
+// rows:   [0],     [0,1], [0,1,2], [1,2,3], [2,3,4], [3,4,5]
+func NewNPrecedingToCurrentRowFramer(n int) *RowFramer {
+	return &RowFramer{
+		precedingOffset: n,
+		followingOffset: 0,
+		frameEnd:        -1,
+		frameStart:      -1,
+		partitionStart:  -1,
+		partitionEnd:    -1,
 	}
 }
 
@@ -49,7 +74,7 @@ type RowFramer struct {
 }
 
 func (f *RowFramer) Close() {
-	panic("implement me")
+	return
 }
 
 func (f *RowFramer) NewFramer(interval sql.WindowInterval) sql.WindowFramer {

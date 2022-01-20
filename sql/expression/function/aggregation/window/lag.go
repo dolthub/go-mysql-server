@@ -16,13 +16,13 @@ package window
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 var ErrInvalidLagOffset = errors.NewKind("'LAG' offset must be a non-negative integer; found: %v")
@@ -37,6 +37,7 @@ type Lag struct {
 
 var _ sql.FunctionExpression = (*Lag)(nil)
 var _ sql.WindowAggregation = (*Lag)(nil)
+var _ sql.WindowAdaptableExpression = (*Lag)(nil)
 
 // getLagOffset extracts a non-negative integer from an expression.Literal, or errors
 func getLagOffset(e sql.Expression) (int, error) {
@@ -111,10 +112,6 @@ func (l *Lag) Resolved() bool {
 		childrenResolved = childrenResolved && c.Resolved()
 	}
 	return childrenResolved && windowResolved(l.window)
-}
-
-func (l *Lag) NewBuffer() sql.Row {
-	return sql.NewRow(make([]sql.Row, 0))
 }
 
 func (l *Lag) String() string {
@@ -199,70 +196,17 @@ func (l *Lag) WithWindow(window *sql.Window) (sql.WindowAggregation, error) {
 	return &nl, nil
 }
 
-// Add implements sql.WindowAggregation
-func (l *Lag) Add(ctx *sql.Context, buffer, row sql.Row) error {
-	rows := buffer[0].([]sql.Row)
-	// order -> row, original_idx
-	buffer[0] = append(rows, append(row, nil, l.pos))
-
-	l.pos++
-	return nil
-}
-
-// Finish implements sql.WindowAggregation
-func (l *Lag) Finish(ctx *sql.Context, buffer sql.Row) error {
-	rows := buffer[0].([]sql.Row)
-	if len(rows) > 0 && l.window != nil && l.window.OrderBy != nil {
-		sorter := &expression.Sorter{
-			SortFields: append(partitionsToSortFields(l.Window().PartitionBy), l.Window().OrderBy...),
-			Rows:       rows,
-			Ctx:        ctx,
-		}
-		sort.Stable(sorter)
-		if sorter.LastError != nil {
-			return sorter.LastError
-		}
-
-		// Now that we have the rows in sorted order, set the lag expression
-		lagIdx := len(rows[0]) - 2
-		originalIdx := len(rows[0]) - 1
-		var last sql.Row
-		var err error
-		var isNew bool
-		var partIdx int
-		for i, row := range rows {
-			// every time we encounter a new partition, reset the partIdx for lag reference
-			isNew, err = isNewPartition(ctx, l.window.PartitionBy, last, row)
-			if err != nil {
-				return err
-			}
-			if isNew {
-				partIdx = 0
-			}
-
-			if partIdx >= l.offset {
-				row[lagIdx], err = l.ChildExpressions[0].Eval(ctx, rows[i-l.offset])
-				if err != nil {
-					return nil
-				}
-			} else if len(l.ChildExpressions) > 1 {
-				row[lagIdx], err = l.ChildExpressions[1].Eval(ctx, row)
-			}
-			partIdx++
-			last = row
-		}
-
-		// And finally sort again by the original order
-		sort.SliceStable(rows, func(i, j int) bool {
-			return rows[i][originalIdx].(int) < rows[j][originalIdx].(int)
-		})
+func (l *Lag) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(l.ChildExpressions[0])
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
-
-// EvalRow implements sql.WindowAggregation
-func (l *Lag) EvalRow(i int, buffer sql.Row) (interface{}, error) {
-	rows := buffer[0].([]sql.Row)
-	lagIdx := len(rows[0]) - 2
-	return rows[i][lagIdx], nil
+	var def sql.Expression
+	if len(l.ChildExpressions) > 1 {
+		def, err = expression.Clone(l.ChildExpressions[1])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return aggregation.NewLag(c, def, l.offset), nil
 }

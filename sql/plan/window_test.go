@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2021-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,95 +15,89 @@
 package plan
 
 import (
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 )
 
-func TestWindow(t *testing.T) {
-	t.Run("test buffer oversharing", func(t *testing.T) {
-		w := sql.NewWindow(
-			[]sql.Expression{
-				expression.NewGetField(1, sql.TinyText, "b", false),
-			},
-			sql.SortFields{
-				{
-					Column: expression.NewGetField(0, sql.Int32, "a", false),
-				},
-			},
-		)
-		wIter := &windowIter{
-			selectExprs: []sql.Expression{
-				mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(w)),
-				mustExpr(window.NewFirstValue(
-					expression.NewGetField(1, sql.TinyText, "b", false),
-				).(*window.FirstValue).WithWindow(w),
-				),
-			},
-			childIter: newDummyIter(),
+func TestWindowPlanToIter(t *testing.T) {
+	n1, err := window.NewRowNumber().(sql.WindowAggregation).WithWindow(
+		&sql.Window{
+			PartitionBy: []sql.Expression{
+				expression.NewGetField(2, sql.Int64, "c", false)},
+			OrderBy: nil,
+		})
+	require.NoError(t, err)
+
+	n2, err := aggregation.NewMax(
+		expression.NewGetField(0, sql.Int64, "a", false),
+	).WithWindow(
+		&sql.Window{
+			PartitionBy: []sql.Expression{
+				expression.NewGetField(1, sql.Int64, "b", false)},
+			OrderBy: nil,
+		})
+	require.NoError(t, err)
+	n3 := expression.NewGetField(0, sql.Int64, "a", false)
+	n4, err := aggregation.NewMin(
+		expression.NewGetField(0, sql.Int64, "a", false),
+	).WithWindow(
+		&sql.Window{
+			PartitionBy: []sql.Expression{
+				expression.NewGetField(1, sql.Int64, "b", false)},
+			OrderBy: nil,
+		})
+	require.NoError(t, err)
+
+	fn1, err := n1.NewWindowFunction()
+	require.NoError(t, err)
+	fn2, err := n2.NewWindowFunction()
+	require.NoError(t, err)
+	fn3, err := aggregation.NewLast(n3).NewWindowFunction()
+	fn4, err := n4.NewWindowFunction()
+	require.NoError(t, err)
+
+	agg1 := aggregation.NewAggregation(fn1, fn1.DefaultFramer())
+	agg2 := aggregation.NewAggregation(fn2, fn2.DefaultFramer())
+	agg3 := aggregation.NewAggregation(fn3, fn3.DefaultFramer())
+	agg4 := aggregation.NewAggregation(fn4, fn4.DefaultFramer())
+
+	window := NewWindow([]sql.Expression{n1, n2, n3, n4}, nil)
+	outputIters, outputOrdinals, err := windowToIter(window)
+	require.NoError(t, err)
+
+	require.Equal(t, len(outputIters), 3)
+	require.Equal(t, len(outputOrdinals), 3)
+	accOrdinals := make([]int, 0)
+	for _, p := range outputOrdinals {
+		for _, v := range p {
+			accOrdinals = append(accOrdinals, v)
 		}
-
-		ctx := sql.NewEmptyContext()
-
-		res := make([]sql.Row, 0)
-		for {
-			r, err := wIter.Next(ctx)
-			if err == io.EOF {
-				break
-			}
-			res = append(res, r)
-		}
-
-		require.Equal(t, res, []sql.Row{sql.NewRow(1, "a"), sql.NewRow(1, "b"), sql.NewRow(1, "c")})
-	})
-}
-
-type dummyIter struct {
-	rows []sql.Row
-	pos  int
-}
-
-func newDummyIter() *dummyIter {
-	rows := []sql.Row{
-		newRowWithExtraCap(2, "a"),
-		newRowWithExtraCap(1, "b"),
-		newRowWithExtraCap(3, "c"),
 	}
-	return &dummyIter{
-		rows: rows,
-	}
-}
+	require.ElementsMatch(t, accOrdinals, []int{0, 1, 2, 3})
 
-func (i *dummyIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.pos >= len(i.rows) {
-		return nil, io.EOF
+	// check aggs
+	allOutputAggs := make([]*aggregation.Aggregation, 0)
+	for _, i := range outputIters {
+		allOutputAggs = append(allOutputAggs, i.WindowBlock().Aggs...)
 	}
-	row := i.rows[i.pos]
-	i.pos++
-	return row, nil
-}
+	require.ElementsMatch(t, allOutputAggs, []*aggregation.Aggregation{agg1, agg2, agg3, agg4})
 
-func (i *dummyIter) Close(ctx *sql.Context) error {
-	return nil
-}
-
-func mustExpr(e sql.Expression, err error) sql.Expression {
-	if err != nil {
-		panic(err)
+	// check partitionBy
+	allPartitionBy := make([][]sql.Expression, 0)
+	for _, i := range outputIters {
+		allPartitionBy = append(allPartitionBy, i.WindowBlock().PartitionBy)
 	}
-	return e
-}
-
-// sql.NewRow, but the slice's underlying array is not filled
-func newRowWithExtraCap(values ...interface{}) sql.Row {
-	row := make([]interface{}, 0, len(values)+2)
-	for _, v := range values {
-		row = append(row, v)
-	}
-	return row
+	require.ElementsMatch(t, allPartitionBy, [][]sql.Expression{
+		nil,
+		{
+			expression.NewGetField(1, sql.Int64, "b", false),
+		}, {
+			expression.NewGetField(2, sql.Int64, "c", false),
+		}})
 }

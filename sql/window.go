@@ -16,6 +16,8 @@ package sql
 
 import (
 	"strings"
+
+	"github.com/cespare/xxhash"
 )
 
 // A Window specifies the window parameters of a window function
@@ -81,6 +83,29 @@ func (w *Window) String() string {
 	}
 	sb.WriteString(")")
 	return sb.String()
+}
+
+func (w *Window) PartitionId() (uint64, error) {
+	if w == nil {
+		return 0, nil
+	}
+	sb := strings.Builder{}
+	if len(w.PartitionBy) > 0 {
+		for _, expression := range w.PartitionBy {
+			sb.WriteString(expression.String())
+		}
+	}
+	if len(w.OrderBy) > 0 {
+		for _, ob := range w.OrderBy {
+			sb.WriteString(ob.String())
+		}
+	}
+	hash := xxhash.New()
+	_, err := hash.Write([]byte(sb.String()))
+	if err != nil {
+		return 0, err
+	}
+	return hash.Sum64(), nil
 }
 
 func (w *Window) DebugString() string {

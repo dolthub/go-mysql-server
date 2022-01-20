@@ -32,6 +32,7 @@ type GroupConcat struct {
 	selectExprs []sql.Expression
 	maxLen      int
 	returnType  sql.Type
+	window      *sql.Window
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
@@ -54,6 +55,18 @@ func (g *GroupConcat) Description() string {
 
 func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, selectExprs []sql.Expression, maxLen int) (*GroupConcat, error) {
 	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}, nil
+}
+
+// WithWindow implements sql.Aggregation
+func (g *GroupConcat) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+	ng := *g
+	ng.window = window
+	return &ng, nil
+}
+
+// Window implements sql.Aggregation
+func (g *GroupConcat) Window() *sql.Window {
+	return g.window
 }
 
 // NewBuffer creates a new buffer for the aggregation.

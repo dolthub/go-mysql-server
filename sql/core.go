@@ -101,9 +101,13 @@ type NonDeterministicExpression interface {
 // eval'd with |Eval|. Calling |Eval| directly on an Aggregation expression is
 // typically an error.
 type Aggregation interface {
-	Expression
+	WindowAdaptableExpression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() (AggregationBuffer, error)
+	// WithWindow returns a version of this aggregation with the window given
+	WithWindow(window *Window) (Aggregation, error)
+	// Window returns this expression's window
+	Window() *Window
 }
 
 // WindowBuffer is a type alias for a window materialization
@@ -119,8 +123,12 @@ type WindowInterval struct {
 type WindowFunction interface {
 	Disposable
 
+	// WithWindow passes fields from the parent Window, deferring partial construction of a WindowFunction
+	WithWindow(w *Window) WindowFunction
 	// StartPartition discards any previous state and initializes the aggregation for a new partition
 	StartPartition(*Context, WindowInterval, WindowBuffer) error
+	// DefaultFramer returns a new instance of the default WindowFramer for a particular aggregation
+	DefaultFramer() WindowFramer
 	// NewSlidingFrameInterval is updates the function's internal aggregation state for the next
 	// Compute call using three WindowInterval: added, dropped, and current.
 	//TODO: implement sliding window interface in aggregation functions and windowBlockIter
@@ -172,21 +180,11 @@ type AggregationBuffer interface {
 // WindowAggregation is expected to track its input rows in the order received, and to return the value for the row
 // index given on demand.
 type WindowAggregation interface {
-	Expression
+	WindowAdaptableExpression
 	// Window returns this expression's window
 	Window() *Window
 	// WithWindow returns a version of this window aggregation with the window given
 	WithWindow(window *Window) (WindowAggregation, error)
-	// NewBuffer creates a new buffer and returns it as a Row. This buffer will be provided for all further operations.
-	NewBuffer() Row
-	// Add updates the aggregation with the input row given. Implementors must keep track of rows added in order so
-	// that they can later be retrieved by EvalRow(int)
-	Add(ctx *Context, buffer, row Row) error
-	// Finish gives aggregations that need to final computation once all rows have been added (like sorting their
-	// inputs) a chance to do before iteration begins
-	Finish(ctx *Context, buffer Row) error
-	// EvalRow returns the value of the expression for the row with the index given
-	EvalRow(i int, buffer Row) (interface{}, error)
 }
 
 // Node is a node in the execution plan tree.

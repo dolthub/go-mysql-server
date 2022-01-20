@@ -2443,22 +2443,6 @@ func selectToSelectionNode(
 		if len(g) > 0 {
 			return nil, sql.ErrUnsupportedFeature.New("group by with window functions")
 		}
-		for _, e := range selectExprs {
-			if isAggregateExpr(e) {
-				sql.Inspect(e, func(e sql.Expression) bool {
-					if uf, ok := e.(*expression.UnresolvedFunction); ok {
-						if uf.Window == nil || len(uf.Window.PartitionBy) > 0 || len(uf.Window.OrderBy) > 0 {
-							err = sql.ErrUnsupportedFeature.New("aggregate functions appearing alongside window functions must have an empty OVER () clause")
-							return false
-						}
-					}
-					return true
-				})
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
 		return plan.NewWindow(selectExprs, child), nil
 	}
 
@@ -2846,7 +2830,9 @@ func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {
 	switch v.Name.Lowered() {
-	case "first", "last":
+	case "first", "last", "count", "sum", "avg", "max", "min",
+		"count_distinct", "json_arrayagg",
+		"row_number", "percent_rank", "lag", "first_value":
 		return true
 	}
 

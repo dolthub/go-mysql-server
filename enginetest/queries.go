@@ -726,9 +726,9 @@ var QueryTests = []QueryTest{
 		Query: `select mt.i, 
 			((
 				select count(*) from mytable
-            	where i in (
-               		select mt2.i from mytable mt2 where mt2.i > mt.i
-            	)
+           	where i in (
+              		select mt2.i from mytable mt2 where mt2.i > mt.i
+           	)
 			)) as greater_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 2}, {2, 1}, {3, 0}},
@@ -737,9 +737,9 @@ var QueryTests = []QueryTest{
 		Query: `select mt.i, 
 			((
 				select count(*) from mytable
-            	where i in (
-               		select mt2.i from mytable mt2 where mt2.i = mt.i
-            	)
+           	where i in (
+              		select mt2.i from mytable mt2 where mt2.i = mt.i
+           	)
 			)) as eq_count
 			from mytable mt order by 1`,
 		Expected: []sql.Row{{1, 1}, {2, 1}, {3, 1}},
@@ -2753,6 +2753,42 @@ var QueryTests = []QueryTest{
 				where mytable.i = 3 order by 1`,
 		Expected: []sql.Row{
 			{1, 3},
+		},
+	},
+	{
+		Query: `select pk,
+					   row_number() over (order by pk desc),
+					   sum(v1) over (partition by v2 order by pk),
+					   percent_rank() over(partition by v2 order by pk)
+				from one_pk_three_idx order by pk`,
+		Expected: []sql.Row{
+			{0, 8, float64(0), float64(0)},
+			{1, 7, float64(0), float64(1) / float64(3)},
+			{2, 6, float64(0), float64(0)},
+			{3, 5, float64(0), float64(0)},
+			{4, 4, float64(1), float64(2) / float64(3)},
+			{5, 3, float64(3), float64(1)},
+			{6, 2, float64(3), float64(0)},
+			{7, 1, float64(4), float64(0)},
+		},
+	},
+	{
+		Query: `select pk,
+					   first_value(pk) over (order by pk desc),
+					   lag(pk, 1) over (order by pk desc),
+					   count(pk) over(partition by v1 order by pk),
+					   max(pk) over(partition by v1 order by pk desc),
+					   avg(v2) over (partition by v1 order by pk)
+				from one_pk_three_idx order by pk`,
+		Expected: []sql.Row{
+			{0, 7, 1, 1, 3, float64(0)},
+			{1, 7, 2, 2, 3, float64(0)},
+			{2, 7, 3, 3, 3, float64(1) / float64(3)},
+			{3, 7, 4, 4, 3, float64(3) / float64(4)},
+			{4, 7, 5, 1, 4, float64(0)},
+			{5, 7, 6, 1, 5, float64(0)},
+			{6, 7, 7, 1, 6, float64(3)},
+			{7, 7, nil, 1, 7, float64(4)},
 		},
 	},
 	{
@@ -5720,7 +5756,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select i, row_number() over (order by i desc), 
+		Query: `select i, row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by 1;`,
 		Expected: []sql.Row{
 			{1, 3, 1},
@@ -5743,7 +5779,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select row_number() over (order by i desc), 
+		Query: `select row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by i;`,
 		Expected: []sql.Row{
 			{3, 1},
@@ -5752,7 +5788,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select *, row_number() over (order by i desc), 
+		Query: `select *, row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by i;`,
 		Expected: []sql.Row{
 			{1, "first row", 3, 1},
@@ -5761,10 +5797,10 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select row_number() over (order by i desc), 
-				row_number() over (order by length(s),i) 
-				from mytable mt join othertable ot 
-				on mt.i = ot.i2    
+		Query: `select row_number() over (order by i desc),
+				row_number() over (order by length(s),i)
+				from mytable mt join othertable ot
+				on mt.i = ot.i2
 				order by mt.i;`,
 		Expected: []sql.Row{
 			{3, 1},
@@ -5773,7 +5809,7 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select i, row_number() over (order by i desc), 
+		Query: `select i, row_number() over (order by i desc),
 				row_number() over (order by length(s),i) from mytable order by 1 desc;`,
 		Expected: []sql.Row{
 			{3, 1, 2},
@@ -5792,8 +5828,8 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `select i, row_number() over (order by i desc) + 3,
-			row_number() over (order by length(s),i) as s_asc, 
-			row_number() over (order by length(s) desc,i desc) as s_desc 
+			row_number() over (order by length(s),i) as s_asc,
+			row_number() over (order by length(s) desc,i desc) as s_desc
 			from mytable order by 1;`,
 		Expected: []sql.Row{
 			{1, 6, 1, 3},
@@ -5803,7 +5839,7 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query: `select i, row_number() over (order by i desc) + 3,
-			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0  
+			row_number() over (order by length(s),i) + 0.0 / row_number() over (order by length(s) desc,i desc) + 0.0
 			from mytable order by 1;`,
 		Expected: []sql.Row{
 			{1, 6, 1.0},
@@ -5821,8 +5857,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select pk1, pk2, 
-			row_number() over (partition by pk1 order by c1 desc) 
+		Query: `select pk1, pk2,
+			row_number() over (partition by pk1 order by c1 desc)
 			from two_pk order by 1,2;`,
 		Expected: []sql.Row{
 			{0, 0, 2},
@@ -5832,8 +5868,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select pk1, pk2, 
-			row_number() over (partition by pk1 order by c1 desc), 
+		Query: `select pk1, pk2,
+			row_number() over (partition by pk1 order by c1 desc),
 			row_number() over (partition by pk2 order by 10 - c1)
 			from two_pk order by 1,2;`,
 		Expected: []sql.Row{
@@ -5844,8 +5880,8 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `select pk1, pk2, 
-			row_number() over (partition by pk1 order by c1 desc), 
+		Query: `select pk1, pk2,
+			row_number() over (partition by pk1 order by c1 desc),
 			row_number() over (partition by pk2 order by 10 - c1),
 			max(c4) over ()
 			from two_pk order by 1,2;`,
@@ -5854,6 +5890,58 @@ var QueryTests = []QueryTest{
 			{0, 1, 1, 2, 33},
 			{1, 0, 2, 1, 33},
 			{1, 1, 1, 1, 33},
+		},
+	},
+	{
+		Query: "SELECT pk, row_number() over (partition by v2 order by pk ), max(v3) over (partition by v2 order by pk) FROM one_pk_three_idx ORDER BY pk",
+		Expected: []sql.Row{
+			{0, 1, 3},
+			{1, 2, 3},
+			{2, 1, 0},
+			{3, 1, 2},
+			{4, 3, 3},
+			{5, 4, 3},
+			{6, 1, 0},
+			{7, 1, 4},
+		},
+	},
+	{
+		Query: "SELECT pk, count(*) over (order by v2) FROM one_pk_three_idx ORDER BY pk",
+		Expected: []sql.Row{
+			{0, 4},
+			{1, 4},
+			{2, 5},
+			{3, 6},
+			{4, 4},
+			{5, 4},
+			{6, 7},
+			{7, 8},
+		},
+	},
+	{
+		Query: "SELECT pk, count(*) over (partition by v2) FROM one_pk_three_idx ORDER BY pk",
+		Expected: []sql.Row{
+			{0, 4},
+			{1, 4},
+			{2, 1},
+			{3, 1},
+			{4, 4},
+			{5, 4},
+			{6, 1},
+			{7, 1},
+		},
+	},
+	{
+		Query: "SELECT pk, row_number() over (order by v2, pk), max(pk) over () from one_pk_three_idx ORDER BY pk",
+		Expected: []sql.Row{
+			{0, 1, 7},
+			{1, 2, 7},
+			{2, 5, 7},
+			{3, 6, 7},
+			{4, 3, 7},
+			{5, 4, 7},
+			{6, 7, 7},
+			{7, 8, 7},
 		},
 	},
 	{
