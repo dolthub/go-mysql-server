@@ -589,7 +589,7 @@ func (m ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 
 // Resolved implements the Resolvable interface.
 func (m *ModifyColumn) Resolved() bool {
-	if !(m.ddlNode.Resolved() && m.UnaryNode.Resolved() && m.column.Default.Resolved()) {
+	if !(m.UnaryNode.Resolved() && m.column.Default.Resolved()) {
 		return false
 	}
 
