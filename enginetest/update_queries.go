@@ -544,4 +544,8 @@ var UpdateErrorTests = []QueryErrorTest{
 		Query:       `UPDATE keyless INNER JOIN one_pk on keyless.c0 = one_pk.pk SET keyless.c0 = keyless.c0 + 1`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
+	{
+		Query:       `UPDATE people set height_inches = null where height_inches < 100`,
+		ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+	},
 }

@@ -849,6 +849,8 @@ type ColumnOrder struct {
 // AlterableTable should be implemented by tables that can receive ALTER TABLE statements to modify their schemas.
 type AlterableTable interface {
 	Table
+	UpdatableTable
+
 	// AddColumn adds a column to this table as given. If non-nil, order specifies where in the schema to add the column.
 	AddColumn(ctx *Context, column *Column, order *ColumnOrder) error
 	// DropColumn drops the column with the name given.
