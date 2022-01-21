@@ -2752,7 +2752,8 @@ CREATE TABLE t2
 	),
 	`SELECT COUNT(DISTINCT i) FROM foo`: plan.NewGroupBy(
 		[]sql.Expression{
-			aggregation.NewCountDistinct(expression.NewUnresolvedColumn("i")),
+			expression.NewAlias("COUNT(DISTINCT i)",
+				aggregation.NewCountDistinct(expression.NewUnresolvedColumn("i"))),
 		},
 		[]sql.Expression{},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2799,7 +2800,7 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (partition by s order by x)",
-				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("s"),
 					},
@@ -2831,7 +2832,7 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (order by x)",
-				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow(
 					[]sql.Expression{},
 					sql.SortFields{
 						{
@@ -2843,7 +2844,7 @@ CREATE TABLE t2
 				)),
 			),
 			expression.NewAlias("row_number() over (partition by y)",
-				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow(
 					[]sql.Expression{
 						expression.NewUnresolvedColumn("y"),
 					},
@@ -2857,7 +2858,7 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (order by x)",
-				expression.NewUnresolvedFunction("row_number", false, sql.NewWindow(
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow(
 					[]sql.Expression{},
 					sql.SortFields{
 						{
@@ -2873,6 +2874,113 @@ CREATE TABLE t2
 					[]sql.Expression{},
 					nil,
 				),
+					expression.NewUnresolvedColumn("b"),
+				),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (partition by b), max(b) over (partition by b) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewAlias("row_number() over (partition by b)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("b"),
+					},
+					nil,
+				)),
+			),
+			expression.NewAlias("max(b) over (partition by b)",
+				expression.NewUnresolvedFunction("max", true, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("b"),
+					},
+					nil,
+				),
+					expression.NewUnresolvedColumn("b"),
+				),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (partition by c), max(b) over (partition by b) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewAlias("row_number() over (partition by c)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("c"),
+					},
+					nil,
+				)),
+			),
+			expression.NewAlias("max(b) over (partition by b)",
+				expression.NewUnresolvedFunction("max", true, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("b"),
+					},
+					nil,
+				),
+					expression.NewUnresolvedColumn("b"),
+				),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, count(i) over (order by x) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewAlias("count(i) over (order by x)",
+				expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+					[]sql.Expression{},
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
+					},
+				),
+					expression.NewUnresolvedColumn("i"),
+				),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, count(i) over (partition by y) FROM foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewAlias("count(i) over (partition by y)",
+				expression.NewUnresolvedFunction("count", true, sql.NewWindow(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("y"),
+					},
+					nil,
+				),
+					expression.NewUnresolvedColumn("i"),
+				),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT i, row_number() over (order by a), max(b) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("i"),
+			expression.NewAlias("row_number() over (order by a)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow(
+					[]sql.Expression{},
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("a"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
+					},
+				)),
+			),
+			expression.NewAlias("max(b)",
+				expression.NewUnresolvedFunction("max", true, nil,
 					expression.NewUnresolvedColumn("b"),
 				),
 			),
@@ -3335,10 +3443,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`CREATE TABLE test (pk int not null null primary key)`:      ErrPrimaryKeyOnNullField,
 	`CREATE TABLE test (pk int null, primary key(pk))`:          ErrPrimaryKeyOnNullField,
 	`CREATE TABLE test (pk int not null null, primary key(pk))`: ErrPrimaryKeyOnNullField,
-	`SELECT a, count(i) over (order by x) FROM foo`:             sql.ErrUnsupportedFeature,
-	`SELECT a, count(i) over (partition by y) FROM foo`:         sql.ErrUnsupportedFeature,
 	`SELECT i, row_number() over (order by a) group by 1`:       sql.ErrUnsupportedFeature,
-	`SELECT i, row_number() over (order by a), max(b)`:          sql.ErrUnsupportedFeature,
 	`SHOW COUNT(*) WARNINGS`:                                    sql.ErrUnsupportedFeature,
 	`SHOW ERRORS`:                                               sql.ErrUnsupportedFeature,
 	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,

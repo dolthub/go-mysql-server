@@ -517,7 +517,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 						} else {
 							err = sql.ErrIfMismatchedColumnsInTuple(e.Children()[0].Type(), e.Children()[1].Type())
 						}
-					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JSONArrayAgg:
+					case *aggregation.Count, *aggregation.CountDistinct, *aggregation.JsonArray:
 						if _, s := e.Children()[0].(*expression.Star); s {
 							return false
 						}

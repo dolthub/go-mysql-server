@@ -20,125 +20,10 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ErrUnsupportedJSONFunction is returned when a unsupported JSON function is called.
 var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
-
-// JSON_ARRAYAGG(col_or_expr) [over_clause]
-//
-// JSONArrayAgg Aggregates a result set as a single JSON array whose elements consist of the rows. The order of elements
-// in this array is undefined. The function acts on a column or an expression that evaluates to a single value. Returns
-// NULL if the result contains no rows, or in the event of an error.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_json-arrayagg
-//
-// see also: https://dev.mysql.com/doc/refman/8.0/en/json.html#json-normalization
-type JSONArrayAgg struct {
-	expression.UnaryExpression
-}
-
-var _ sql.FunctionExpression = (*JSONArrayAgg)(nil)
-var _ sql.Aggregation = (*JSONArrayAgg)(nil)
-var _ sql.WindowAdaptableExpression = (*JSONArrayAgg)(nil)
-
-// NewJSONArrayAgg creates a new JSONArrayAgg function.
-func NewJSONArrayAgg(arg sql.Expression) *JSONArrayAgg {
-	return &JSONArrayAgg{expression.UnaryExpression{Child: arg}}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j *JSONArrayAgg) FunctionName() string {
-	return "json_arrayagg"
-}
-
-// Description implements sql.FunctionExpression
-func (j *JSONArrayAgg) Description() string {
-	return "returns result set as a single JSON array."
-}
-
-// NewBuffer creates a new buffer for the aggregation.
-func (j *JSONArrayAgg) NewBuffer() (sql.AggregationBuffer, error) {
-	var row []interface{}
-	return &jsonArrayBuffer{row, j}, nil
-}
-
-// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
-func (j *JSONArrayAgg) NewWindowFunction() (sql.WindowFunction, error) {
-	return NewJSONArrayAgg2(j), nil
-}
-
-// Type returns the type of the result.
-func (j *JSONArrayAgg) Type() sql.Type {
-	return sql.JSON
-}
-
-// IsNullable returns whether the return value can be null.
-func (j *JSONArrayAgg) IsNullable() bool {
-	return true
-}
-
-// Resolved implements the Expression interface.
-func (j *JSONArrayAgg) Resolved() bool {
-	if _, ok := j.Child.(*expression.Star); ok {
-		return true
-	}
-
-	return j.Child.Resolved()
-}
-
-func (j *JSONArrayAgg) String() string {
-	return fmt.Sprintf("JSON_ARRAYAGG(%s)", j.Child)
-}
-
-// WithChildren implements the Expression interface.
-func (j *JSONArrayAgg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 1)
-	}
-	return NewJSONArrayAgg(children[0]), nil
-}
-
-// Eval implements the Expression interface.
-func (j *JSONArrayAgg) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return nil, ErrEvalUnsupportedOnAggregation.New("JSONArrayAgg")
-}
-
-type jsonArrayBuffer struct {
-	vals []interface{}
-	jaa  *JSONArrayAgg
-}
-
-// Update implements the AggregationBuffer interface.
-func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	v, err := j.jaa.Child.Eval(ctx, row)
-	if err != nil {
-		return err
-	}
-
-	// unwrap JSON values
-	if js, ok := v.(sql.JSONValue); ok {
-		doc, err := js.Unmarshall(ctx)
-		if err != nil {
-			return err
-		}
-		v = doc.Val
-	}
-
-	j.vals = append(j.vals, v)
-
-	return nil
-}
-
-// Eval implements the AggregationBuffer interface.
-func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
-	return sql.JSONDocument{Val: j.vals}, nil
-}
-
-// Dispose implements the Disposable interface.
-func (j *jsonArrayBuffer) Dispose() {
-}
 
 // JSON_OBJECTAGG(key, value) [over_clause]
 //
@@ -150,15 +35,16 @@ func (j *jsonArrayBuffer) Dispose() {
 //
 // see also: https://dev.mysql.com/doc/refman/8.0/en/json.html#json-normalization
 type JSONObjectAgg struct {
-	key   sql.Expression
-	value sql.Expression
+	key    sql.Expression
+	value  sql.Expression
+	window *sql.Window
 }
 
 var _ sql.FunctionExpression = (*JSONObjectAgg)(nil)
 var _ sql.Aggregation = (*JSONObjectAgg)(nil)
 var _ sql.WindowAdaptableExpression = (*JSONObjectAgg)(nil)
 
-// NewJSONObjectAgg creates a new JSONArrayAgg function.
+// NewJSONObjectAgg creates a new JSONObjectAgg function.
 func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
 	return &JSONObjectAgg{key: key, value: value}
 }
@@ -206,6 +92,18 @@ func (j *JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression
 	return NewJSONObjectAgg(children[0], children[1]), nil
 }
 
+// WithWindow implements sql.Aggregation
+func (j *JSONObjectAgg) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+	nj := *j
+	nj.window = window
+	return &nj, nil
+}
+
+// Window implements sql.Aggregation
+func (j *JSONObjectAgg) Window() *sql.Window {
+	return j.window
+}
+
 // NewBuffer implements the Aggregation interface.
 func (j *JSONObjectAgg) NewBuffer() (sql.AggregationBuffer, error) {
 	row := make(map[string]interface{})
@@ -214,7 +112,7 @@ func (j *JSONObjectAgg) NewBuffer() (sql.AggregationBuffer, error) {
 
 // NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
 func (j *JSONObjectAgg) NewWindowFunction() (sql.WindowFunction, error) {
-	return NewJSONObjectAgg2(j), nil
+	return NewWindowedJSONObjectAgg(j), nil
 }
 
 // Eval implements the Expression interface.

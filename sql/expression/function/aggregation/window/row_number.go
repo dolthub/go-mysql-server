@@ -15,12 +15,10 @@
 package window
 
 import (
-	"sort"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 type RowNumber struct {
@@ -30,6 +28,7 @@ type RowNumber struct {
 
 var _ sql.FunctionExpression = (*RowNumber)(nil)
 var _ sql.WindowAggregation = (*RowNumber)(nil)
+var _ sql.WindowAdaptableExpression = (*RowNumber)(nil)
 
 func NewRowNumber() sql.Expression {
 	return &RowNumber{}
@@ -48,10 +47,6 @@ func (r *RowNumber) Window() *sql.Window {
 // IsNullable implements sql.Expression
 func (r *RowNumber) Resolved() bool {
 	return windowResolved(r.window)
-}
-
-func (r *RowNumber) NewBuffer() sql.Row {
-	return sql.NewRow(make([]sql.Row, 0))
 }
 
 func (r *RowNumber) String() string {
@@ -116,59 +111,6 @@ func (r *RowNumber) WithWindow(window *sql.Window) (sql.WindowAggregation, error
 	return &nr, nil
 }
 
-// Add implements sql.WindowAggregation
-func (r *RowNumber) Add(ctx *sql.Context, buffer, row sql.Row) error {
-	rows := buffer[0].([]sql.Row)
-	buffer[0] = append(rows, append(row, nil, r.pos))
-	r.pos++
-	return nil
-}
-
-// Finish implements sql.WindowAggregation
-func (r *RowNumber) Finish(ctx *sql.Context, buffer sql.Row) error {
-	rows := buffer[0].([]sql.Row)
-	if len(rows) > 0 && r.window != nil && r.window.OrderBy != nil {
-		sorter := &expression.Sorter{
-			SortFields: append(partitionsToSortFields(r.Window().PartitionBy), r.Window().OrderBy...),
-			Rows:       rows,
-			Ctx:        ctx,
-		}
-		sort.Stable(sorter)
-		if sorter.LastError != nil {
-			return sorter.LastError
-		}
-
-		// Now that we have the rows in sorted order, number them
-		rowNumIdx := len(rows[0]) - 2
-		originalOrderIdx := len(rows[0]) - 1
-		var last sql.Row
-		var rowNum int
-		for _, row := range rows {
-			// every time we encounter a new partition, start the count over
-			isNew, err := isNewPartition(ctx, r.window.PartitionBy, last, row)
-			if err != nil {
-				return err
-			}
-			if isNew {
-				rowNum = 1
-			}
-
-			row[rowNumIdx] = rowNum
-
-			rowNum++
-			last = row
-		}
-
-		// And finally sort again by the original order
-		sort.SliceStable(rows, func(i, j int) bool {
-			return rows[i][originalOrderIdx].(int) < rows[j][originalOrderIdx].(int)
-		})
-	}
-	return nil
-}
-
-// EvalRow implements sql.WindowAggregation
-func (r *RowNumber) EvalRow(i int, buffer sql.Row) (interface{}, error) {
-	rows := buffer[0].([]sql.Row)
-	return rows[i][len(rows[i])-2], nil
+func (r *RowNumber) NewWindowFunction() (sql.WindowFunction, error) {
+	return aggregation.NewRowNumber(), nil
 }

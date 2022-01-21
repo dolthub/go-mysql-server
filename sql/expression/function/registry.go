@@ -99,7 +99,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "is_uuid", Fn: NewIsUUID},
 	sql.Function1{Name: "isnull", Fn: NewIsNull},
 	sql.FunctionN{Name: "json_array", Fn: NewJSONArray},
-	sql.Function1{Name: "json_arrayagg", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewJSONArrayAgg(e) }},
+	sql.Function1{Name: "json_arrayagg", Fn: func(e sql.Expression) sql.Expression { return aggregation.NewJsonArray(e) }},
 	sql.Function2{Name: "json_objectagg", Fn: aggregation.NewJSONObjectAgg},
 	sql.FunctionN{Name: "json_array_append", Fn: NewJSONArrayAppend},
 	sql.FunctionN{Name: "json_array_insert", Fn: NewJSONArrayInsert},

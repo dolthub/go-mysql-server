@@ -542,7 +542,7 @@ func TestNaturalJoin(t *testing.T) {
 	enginetest.TestNaturalJoin(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTestWindowFunctions(t *testing.T) {
+func TestWindowFunctions(t *testing.T) {
 	enginetest.TestWindowFunctions(t, enginetest.NewDefaultMemoryHarness())
 }
 
