@@ -616,15 +616,27 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT JSON_ARRAY()`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`[]`)},
+		},
+	},
+	{
 		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', "do")`,
 		Expected: []sql.Row{
 			{sql.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
 		},
 	},
 	{
-		Query: `SELECT JSON_ARRAY('a', 1, datetime('2020-01-01T12:00:00'))`,
-		Expected: []sql.Row{{
-			sql.MustJSON(`["a", 1, "2020-01-01 12:00:00 +0000 UTC"]`)},
+		Query: `SELECT JSON_ARRAY(1, 'say, "hi"', JSON_OBJECT("abc", 22))`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_ARRAY(JSON_OBJECT("a", JSON_ARRAY(1,2)), JSON_OBJECT("b", 22))`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
 		},
 	},
 	{
@@ -634,6 +646,15 @@ var QueryTests = []QueryTest{
 			{sql.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
 			{sql.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
 			{sql.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_ARRAY(JSON_OBJECT("id", pk, "name", c1), c2, c3) FROM jsontable`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
+			{sql.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
+			{sql.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
+			{sql.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
 		},
 	},
 	{

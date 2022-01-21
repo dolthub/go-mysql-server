@@ -16,10 +16,8 @@ package function
 
 import (
 	"fmt"
-	"strings"
-	"time"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
 )
 
 // JSON_ARRAY([val[, val] ...])
@@ -29,14 +27,14 @@ import (
 // https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-array
 
 type JSONArray struct {
-	Docs []sql.Expression
+	vals []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*JSONArray)(nil)
 
 // NewJSONArray creates a new JSONArray function.
 func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
-	return &JSONArray{Docs: args}, nil
+	return &JSONArray{vals: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -56,7 +54,7 @@ func (j JSONArray) IsUnsupported() bool {
 
 // Resolved implements the Expression interface.
 func (j *JSONArray) Resolved() bool {
-	for _, d := range j.Docs {
+	for _, d := range j.vals {
 		if !d.Resolved() {
 			return false
 		}
@@ -83,7 +81,7 @@ func (j *JSONArray) Type() sql.Type {
 
 // IsNullable implements the Expression interface.
 func (j *JSONArray) IsNullable() bool {
-	for _, d := range j.Docs {
+	for _, d := range j.vals {
 		if d.IsNullable() {
 			return true
 		}
@@ -93,35 +91,27 @@ func (j *JSONArray) IsNullable() bool {
 
 // Eval implements the Expression interface.
 func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if len(j.Docs) == 0 {
+	if len(j.vals) == 0 {
 		return sql.JSONDocument{Val: make([]interface{}, 0)}, nil
 	}
 
-	var resultArray = make([]interface{}, len(j.Docs))
+	var resultArray = make([]interface{}, len(j.vals))
 
-	for i, doc := range j.Docs {
+	for i, doc := range j.vals {
 		jsonDoc, err := doc.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 
-		if jsonStr, ok := jsonDoc.(string); ok {
-			resultArray[i] = jsonStr
-		} else {
+		switch jsonDoc.(type) {
+		case []interface{}, map[string]interface{}, sql.JSONDocument:
 			jsonDoc, err = j.Type().Convert(jsonDoc)
 			if err != nil {
 				return nil, err
 			}
-
-			js := jsonDoc.(sql.JSONDocument).Val
-
-			switch js.(type) {
-			case time.Time:
-				t := js.(time.Time)
-				resultArray[i] = t.String()
-			default:
-				resultArray[i] = js
-			}
+			resultArray[i] = jsonDoc.(sql.JSONDocument).Val
+		default:
+			resultArray[i] = jsonDoc
 		}
 	}
 
@@ -130,7 +120,7 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Children implements the Expression interface.
 func (j *JSONArray) Children() []sql.Expression {
-	return j.Docs
+	return j.vals
 }
 
 // WithChildren implements the Expression interface.

@@ -101,7 +101,16 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, sql.ErrInvalidType.New(expr.Type())
 			}
 		} else {
-			obj[key] = val
+			switch val.(type) {
+			case []interface{}, map[string]interface{}, sql.JSONDocument:
+				val, err = j.Type().Convert(val)
+				if err != nil {
+					return nil, err
+				}
+				obj[key] = val.(sql.JSONDocument).Val
+			default:
+				obj[key] = val
+			}
 		}
 	}
 
