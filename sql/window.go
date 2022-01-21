@@ -24,7 +24,7 @@ import (
 type Window struct {
 	PartitionBy []Expression
 	OrderBy     SortFields
-	id uint64
+	id          uint64
 	// TODO: window frame
 }
 
