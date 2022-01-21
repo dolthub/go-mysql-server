@@ -75,13 +75,18 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
-
+	allGetFields := make(map[int]sql.Expression, 0)
+	projDeps := make(map[int]struct{}, 0)
 	for i, p := range projection {
 		var transformed bool
 		e, err := expression.TransformUp(p, func(e sql.Expression) (sql.Expression, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
-				// continue on
+			// continue on
+			case *expression.GetField:
+				allGetFields[e.Index()] = e
+				projDeps[e.Index()] = struct{}{}
+				return e, nil
 			default:
 				return e, nil
 			}
@@ -104,6 +109,24 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 			)
 		} else {
 			newProjection[i] = e
+		}
+	}
+
+	// find subset of allGetFields not covered by newAggregates
+	newAggDeps := make(map[int]struct{}, 0)
+	for _, agg := range newAggregates {
+		_, _ = expression.TransformUp(agg, func(e sql.Expression) (sql.Expression, error) {
+			switch e := e.(type) {
+			case *expression.GetField:
+				newAggDeps[e.Index()] = struct{}{}
+			}
+			return e, nil
+		})
+	}
+	for i, _ := range projDeps {
+		if _, ok := newAggDeps[i]; !ok {
+			// add pass-through dependency
+			newAggregates = append(newAggregates, allGetFields[i])
 		}
 	}
 
