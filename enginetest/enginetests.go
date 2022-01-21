@@ -1500,6 +1500,28 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		}, t10aTable.Schema())
 	})
 
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "CREATE TABLE mydb.t11 (a INTEGER NOT NULL PRIMARY KEY, "+
+				"b VARCHAR(10) NOT NULL)", []sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database("mydb")
+		require.NoError(t, err)
+
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t11")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t11"},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t11"},
+		}
+
+		require.Equal(t, s, testTable.Schema())
+	})
+
 	//TODO: Implement "CREATE TABLE otherDb.tableName"
 }
 
@@ -1541,6 +1563,11 @@ func TestDropTable(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
 	require.Error(err)
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		TestQueryWithContext(t, ctx, e, "DROP TABLE IF EXISTS mydb.one_pk", []sql.Row(nil), nil, nil)
+	})
 }
 
 func TestRenameTable(t *testing.T, harness Harness) {
