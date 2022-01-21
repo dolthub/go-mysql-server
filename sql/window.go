@@ -24,6 +24,7 @@ import (
 type Window struct {
 	PartitionBy []Expression
 	OrderBy     SortFields
+	id uint64
 	// TODO: window frame
 }
 
@@ -89,6 +90,9 @@ func (w *Window) PartitionId() (uint64, error) {
 	if w == nil {
 		return 0, nil
 	}
+	if w.id != uint64(0) {
+		return w.id, nil
+	}
 	sb := strings.Builder{}
 	if len(w.PartitionBy) > 0 {
 		for _, expression := range w.PartitionBy {
@@ -105,7 +109,8 @@ func (w *Window) PartitionId() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return hash.Sum64(), nil
+	w.id = hash.Sum64()
+	return w.id, nil
 }
 
 func (w *Window) DebugString() string {
