@@ -189,6 +189,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		_p = 17
 	}
 
+	// Round floats
 	prec := math.Pow10(_p)
 	obj["coordinates"] = RoundFloatSlices(obj["coordinates"], prec)
 
