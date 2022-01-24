@@ -98,22 +98,20 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var resultArray = make([]interface{}, len(j.vals))
 
-	for i, doc := range j.vals {
-		jsonDoc, err := doc.Eval(ctx, row)
+	for i, vs := range j.vals {
+		val, err := vs.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 
-		switch jsonDoc.(type) {
-		case []interface{}, map[string]interface{}, sql.JSONDocument:
-			jsonDoc, err = j.Type().Convert(jsonDoc)
+		if json, ok := val.(sql.JSONValue); ok {
+			doc, err := json.(sql.JSONValue).Unmarshall(ctx)
 			if err != nil {
 				return nil, err
 			}
-			resultArray[i] = jsonDoc.(sql.JSONDocument).Val
-		default:
-			resultArray[i] = jsonDoc
+			val = doc.Val
 		}
+		resultArray[i] = val
 	}
 
 	return sql.JSONDocument{Val: resultArray}, nil
