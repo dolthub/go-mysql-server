@@ -28,6 +28,9 @@ var (
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
+	// ErrNotAuthorized is returned when the engine has been set to Read Only but a write operation was attempted.
+	ErrNotAuthorized = errors.NewKind("not authorized")
+
 	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
 	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
 

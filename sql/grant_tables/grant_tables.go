@@ -15,7 +15,14 @@
 package grant_tables
 
 import (
+	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+	"net"
 	"strings"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -23,6 +30,8 @@ import (
 // GrantTables are the collection of tables that are used with any user or privilege-related operations.
 // https://dev.mysql.com/doc/refman/8.0/en/grant-tables.html
 type GrantTables struct {
+	Enabled bool
+
 	user *grantTable
 	//TODO: add the rest of these tables
 	//db               *grantTable
@@ -37,14 +46,34 @@ type GrantTables struct {
 }
 
 var _ sql.Database = (*GrantTables)(nil)
+var _ mysql.AuthServer = (*GrantTables)(nil)
 
 // CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
 func CreateEmptyGrantTables() *GrantTables {
 	grantTables := &GrantTables{
-		user: newGrantTable(userTblName, userTblSchema, UserPrimaryKey{}),
+		user: newGrantTable(userTblName, userTblSchema, UserPrimaryKey{}, UserSecondaryKey{}),
 	}
-	addDefaultRootUser(grantTables.user)
 	return grantTables
+}
+
+// AddRootAccount adds the root account to the list of accounts.
+func (g *GrantTables) AddRootAccount() {
+	g.Enabled = true
+	addDefaultRootUser(g.user)
+}
+
+// AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
+// meant to replace the "auth.New..." functions while the remaining functions are added.
+func (g *GrantTables) AddSuperUser(username string, password string) {
+	//TODO: remove this function and the called function
+	g.Enabled = true
+	hash := sha1.New()
+	hash.Write([]byte(password))
+	s1 := hash.Sum(nil)
+	hash.Reset()
+	hash.Write(s1)
+	s2 := hash.Sum(nil)
+	addSuperUser(g.user, username, "*"+strings.ToUpper(hex.EncodeToString(s2)))
 }
 
 // Name implements the interface sql.Database.
@@ -65,6 +94,72 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 // GetTableNames implements the interface sql.Database.
 func (g *GrantTables) GetTableNames(ctx *sql.Context) ([]string, error) {
 	return []string{"user"}, nil
+}
+
+// AuthMethod implements the interface mysql.AuthServer.
+func (g *GrantTables) AuthMethod(user string) (string, error) {
+	//TODO: this should pass in the host as well to correctly determine which auth method to use
+	return "mysql_native_password", nil
+}
+
+// Salt implements the interface mysql.AuthServer.
+func (g *GrantTables) Salt() ([]byte, error) {
+	return mysql.NewSalt()
+}
+
+// ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
+func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
+	if !g.Enabled {
+		return mysqlGetter(user), nil
+	}
+
+	host, _, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return nil, err
+	}
+	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
+	// For now, this just does another check for localhost if the host is 127.0.0.1
+	var userRow sql.Row
+	userRows := g.user.data.Get(UserPrimaryKey{
+		Host: host,
+		User: user,
+	})
+	if len(userRows) == 1 {
+		userRow = userRows[0]
+	} else {
+		userRows = g.user.data.Get(UserSecondaryKey{
+			User: user,
+		})
+		for _, readUserRow := range userRows {
+			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
+			if host == readUserRow[0] || (host == "127.0.0.1" && readUserRow[0] == "localhost") || readUserRow[0] == "%" {
+				userRow = readUserRow
+				break
+			}
+		}
+	}
+	if len(userRow) == 0 {
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+	}
+
+	if password, ok := userRows[0][40].(string); ok && len(password) > 0 { // index 40 is the authentication string, see the mysql.user schema
+		if !validateMysqlNativePassword(authResponse, salt, password) {
+			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+		}
+	} else if len(authResponse) > 0 { // password is nil or empty, therefore no password is set
+		// a password was given and the account has no password set, therefore access is denied
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+	}
+
+	return mysqlGetter(user), nil
+}
+
+// Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
+func (g *GrantTables) Negotiate(c *mysql.Conn, user string, remoteAddr net.Addr) (mysql.Getter, error) {
+	if !g.Enabled {
+		return mysqlGetter(user), nil
+	}
+	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }
 
 // Persist passes along all changes to the integrator.
@@ -89,6 +184,42 @@ func columnTemplate(name string, source string, isPk bool, template *sql.Column)
 	newCol.Source = source
 	newCol.PrimaryKey = isPk
 	return &newCol
+}
+
+// validateMysqlNativePassword was taken directly from vitess and validates the password hash for "mysql_native_password".
+func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword string) bool {
+	// SERVER: recv(authResponse)
+	// 		   hash_stage1=xor(authResponse, sha1(salt,hash))
+	// 		   candidate_hash2=sha1(hash_stage1)
+	// 		   check(candidate_hash2==hash)
+	if len(authResponse) == 0 || len(mysqlNativePassword) == 0 {
+		return false
+	}
+	if mysqlNativePassword[0] == '*' {
+		mysqlNativePassword = mysqlNativePassword[1:]
+	}
+
+	hash, err := hex.DecodeString(mysqlNativePassword)
+	if err != nil {
+		return false
+	}
+
+	// scramble = SHA1(salt+hash)
+	crypt := sha1.New()
+	crypt.Write(salt)
+	crypt.Write(hash)
+	scramble := crypt.Sum(nil)
+
+	// token = scramble XOR stage1Hash
+	for i := range scramble {
+		scramble[i] ^= authResponse[i]
+	}
+	stage1Hash := scramble
+	crypt.Reset()
+	crypt.Write(stage1Hash)
+	candidateHash2 := crypt.Sum(nil)
+
+	return bytes.Equal(candidateHash2, hash)
 }
 
 // mustDefault enforces that no error occurred when constructing the column default value.

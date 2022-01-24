@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package auth
+package grant_tables
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
-
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-// None is an Auth method that always succeeds.
-type None struct{}
+type mysqlGetter string
 
-// Mysql implements Auth interface.
-func (n *None) Mysql() mysql.AuthServer {
-	return new(mysql.AuthServerNone)
-}
+var _ mysql.Getter = mysqlGetter("")
 
-// Mysql implements Auth interface.
-func (n *None) Allowed(ctx *sql.Context, permission Permission) error {
-	return nil
+// Get implements the interface mysql.Getter.
+func (m mysqlGetter) Get() *query.VTGateCallerID {
+	return &query.VTGateCallerID{Username: string(m), Groups: nil}
 }

@@ -29,7 +29,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -310,11 +309,8 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	})
 
 	pro := harness.NewDatabaseProvider(db)
-
-	au := auth.NewNativeSingle("user", "pass", auth.ReadPerm)
-	cfg := &sqle.Config{Auth: au}
 	a := analyzer.NewBuilder(pro).Build()
-	e := sqle.New(a, cfg)
+	e := sqle.New(a, &sqle.Config{IsReadOnly: true})
 	defer e.Close()
 
 	RunQuery(t, e, harness, `SELECT i FROM mytable`)
@@ -328,7 +324,7 @@ func TestReadOnly(t *testing.T, harness Harness) {
 	}
 
 	for _, query := range writingQueries {
-		AssertErr(t, e, harness, query, auth.ErrNotAuthorized)
+		AssertErr(t, e, harness, query, sql.ErrNotAuthorized)
 	}
 }
 
@@ -1005,7 +1001,14 @@ func TestScripts(t *testing.T, harness Harness) {
 
 func TestUsersAndPrivileges(t *testing.T, harness Harness) {
 	for _, script := range UserPrivTests {
-		TestScript(t, harness, script)
+		t.Run(script.Name, func(t *testing.T) {
+			myDb := harness.NewDatabase("mydb")
+			databases := []sql.Database{myDb}
+			e := NewEngineWithDbs(t, harness, databases)
+			defer e.Close()
+			e.Analyzer.Catalog.GrantTables.AddRootAccount()
+			TestScriptWithEngine(t, e, harness, script)
+		})
 	}
 }
 

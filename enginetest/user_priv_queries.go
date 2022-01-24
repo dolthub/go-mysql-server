@@ -83,10 +83,10 @@ var UserPrivTests = []ScriptTest{
 						0,                       // max_updates
 						0,                       // max_connections
 						0,                       // max_user_connections
-						"caching_sha2_password", // plugin
-						nil,                     // authentication_string
+						"mysql_native_password", // plugin
+						"",                      // authentication_string
 						"N",                     // password_expired
-						time.Unix(0, 0).UTC(),   // password_last_changed
+						time.Unix(1, 0).UTC(),   // password_last_changed
 						nil,                     // password_lifetime
 						"N",                     // account_locked
 						"Y",                     // Create_role_priv
