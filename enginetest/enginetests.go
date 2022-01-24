@@ -1505,7 +1505,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		ctx.SetCurrentDatabase("")
 
 		TestQueryWithContext(t, ctx, e, "CREATE TABLE mydb.t11 (a INTEGER NOT NULL PRIMARY KEY, "+
-				"b VARCHAR(10) NOT NULL)", []sql.Row(nil), nil, nil)
+			"b VARCHAR(10) NOT NULL)", []sql.Row(nil), nil, nil)
 
 		db, err := e.Analyzer.Catalog.Database("mydb")
 		require.NoError(t, err)
