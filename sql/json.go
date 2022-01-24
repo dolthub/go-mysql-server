@@ -49,7 +49,11 @@ func (t jsonType) Compare(a interface{}, b interface{}) (int, error) {
 func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	switch v := v.(type) {
 	case JSONValue:
-		return v, nil
+		val, vErr := v.Unmarshall(nil)
+		if vErr != nil {
+			return nil, err
+		}
+		return val, nil
 	case []byte:
 		err = json.Unmarshal(v, &doc)
 	case string:
