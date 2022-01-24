@@ -67,13 +67,16 @@ func (g *GrantTables) AddRootAccount() {
 func (g *GrantTables) AddSuperUser(username string, password string) {
 	//TODO: remove this function and the called function
 	g.Enabled = true
-	hash := sha1.New()
-	hash.Write([]byte(password))
-	s1 := hash.Sum(nil)
-	hash.Reset()
-	hash.Write(s1)
-	s2 := hash.Sum(nil)
-	addSuperUser(g.user, username, "*"+strings.ToUpper(hex.EncodeToString(s2)))
+	if len(password) > 0 {
+		hash := sha1.New()
+		hash.Write([]byte(password))
+		s1 := hash.Sum(nil)
+		hash.Reset()
+		hash.Write(s1)
+		s2 := hash.Sum(nil)
+		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
+	}
+	addSuperUser(g.user, username, password)
 }
 
 // Name implements the interface sql.Database.
