@@ -202,6 +202,27 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
+	if includeTable(includedTables, "jsontable") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "jsontable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "pk", Type: sql.Int8, Source: "jsontable", PrimaryKey: true},
+				{Name: "c1", Type: sql.Text, Source: "jsontable"},
+				{Name: "c2", Type: sql.JSON, Source: "jsontable"},
+				{Name: "c3", Type: sql.JSON, Source: "jsontable"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(1, "row one", sql.JSONDocument{Val: []interface{}{1, 2}}, sql.JSONDocument{Val: map[string]interface{}{"a": 2}}),
+					sql.NewRow(2, "row two", sql.JSONDocument{Val: []interface{}{3, 4}}, sql.JSONDocument{Val: map[string]interface{}{"b": 2}}),
+					sql.NewRow(3, "row three", sql.JSONDocument{Val: []interface{}{5, 6}}, sql.JSONDocument{Val: map[string]interface{}{"c": 2}}),
+					sql.NewRow(4, "row four", sql.JSONDocument{Val: []interface{}{7, 8}}, sql.JSONDocument{Val: map[string]interface{}{"d": 2}}))
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
+			}
+		})
+	}
+
 	if includeTable(includedTables, "two_pk") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "two_pk", sql.NewPrimaryKeySchema(sql.Schema{

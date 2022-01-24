@@ -238,37 +238,6 @@ func (j JSONValue) IsUnsupported() bool {
 // JSON creation functions //
 /////////////////////////////
 
-// JSON_ARRAY([val[, val] ...])
-//
-// JSONArray Evaluates a (possibly empty) list of values and returns a JSON array containing those values.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-array
-type JSONArray struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONArray{}
-
-// NewJSONArray creates a new JSONArray function.
-func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONArray{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONArray) FunctionName() string {
-	return "json_array"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONArray) Description() string {
-	return "creates JSON array."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONArray) IsUnsupported() bool {
-	return true
-}
-
 // JSON_QUOTE(string)
 //
 // JSONQuote Quotes a string as a JSON value by wrapping it with double quote characters and escaping interior quote and
