@@ -3431,7 +3431,6 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) bool {
 }
 
 var fixturesErrors = map[string]*errors.Kind{
-	`SHOW METHEMONEY`:                                           sql.ErrUnsupportedFeature,
 	`SELECT INTERVAL 1 DAY - '2018-05-01'`:                      sql.ErrUnsupportedSyntax,
 	`SELECT INTERVAL 1 DAY * '2018-05-01'`:                      sql.ErrUnsupportedSyntax,
 	`SELECT '2018-05-01' * INTERVAL 1 DAY`:                      sql.ErrUnsupportedSyntax,
