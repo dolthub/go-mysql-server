@@ -105,7 +105,7 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		switch jsonDoc.(type) {
-		case []interface{}, map[string]interface{}, sql.JSONValue, sql.JSONDocument:
+		case []interface{}, map[string]interface{}, sql.JSONDocument:
 			if jsonDocVal, ok := jsonDoc.(sql.JSONDocument); ok {
 				jsonDoc = jsonDocVal.Val
 			}
@@ -114,6 +114,10 @@ func (j *JSONArray) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, err
 			}
 			resultArray[i] = jsonDoc.(sql.JSONDocument).Val
+		case sql.JSONValue:
+			v := jsonDoc.(sql.JSONValue)
+			v, err = v.Unmarshall(ctx)
+			resultArray[i] = v.(sql.JSONDocument).Val
 		default:
 			resultArray[i] = jsonDoc
 		}

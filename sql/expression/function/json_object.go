@@ -102,7 +102,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		} else {
 			switch val.(type) {
-			case []interface{}, map[string]interface{}, sql.JSONValue, sql.JSONDocument:
+			case []interface{}, map[string]interface{}, sql.JSONDocument:
 				if jsonDoc, ok := val.(sql.JSONDocument); ok {
 					val = jsonDoc.Val
 				}
@@ -111,6 +111,10 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 					return nil, err
 				}
 				obj[key] = val.(sql.JSONDocument).Val
+			case sql.JSONValue:
+				v := val.(sql.JSONValue)
+				v, err = v.Unmarshall(ctx)
+				obj[key] = v.(sql.JSONDocument).Val
 			default:
 				obj[key] = val
 			}
