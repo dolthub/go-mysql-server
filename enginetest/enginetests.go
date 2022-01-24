@@ -3926,7 +3926,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 	//  We use "0000-01-01 00:00:00"
 	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literals", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
-				"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row(nil), nil, nil)
+			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row(nil), nil, nil)
 
 		RunQuery(t, e, harness, "insert into t10zero(pk) values (1)")
 
