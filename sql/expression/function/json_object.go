@@ -102,7 +102,10 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		} else {
 			switch val.(type) {
-			case []interface{}, map[string]interface{}, sql.JSONDocument:
+			case []interface{}, map[string]interface{}, sql.JSONValue, sql.JSONDocument:
+				if jsonDoc, ok := val.(sql.JSONDocument); ok {
+					val = jsonDoc.Val
+				}
 				val, err = j.Type().Convert(val)
 				if err != nil {
 					return nil, err
