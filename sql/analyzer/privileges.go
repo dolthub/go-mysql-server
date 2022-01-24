@@ -14,11 +14,19 @@
 
 package analyzer
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+)
 
 // checkPrivileges verifies the given statement (node n) by checking that the calling user has the necessary privileges
 // to execute it.
 func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	//TODO: implement this
+	switch n.(type) {
+	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
+		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
+		a.Catalog.GrantTables.Enabled = true
+	}
 	return n, nil
 }

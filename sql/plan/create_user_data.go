@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
@@ -47,7 +49,12 @@ func (un *UserName) StringWithQuote(quote string, replacement string) string {
 }
 
 // Authentication represents an authentication method for a user.
-type Authentication interface{} //TODO: add these
+type Authentication interface {
+	// Plugin returns the name of the plugin that this authentication represents.
+	Plugin() string
+	// Password returns the value to insert into the database as the password.
+	Password() string
+}
 
 // AuthenticatedUser represents a user with the relevant methods of authentication.
 type AuthenticatedUser struct {
@@ -84,4 +91,34 @@ type PasswordOptions struct {
 	ReuseInterval  *int64
 	FailedAttempts *int64
 	LockTime       *int64
+}
+
+// AuthenticationMysqlNativePassword is an authentication type that represents "mysql_native_password".
+type AuthenticationMysqlNativePassword string
+
+var _ Authentication = AuthenticationMysqlNativePassword("")
+
+// Plugin implements the interface Authentication.
+func (a AuthenticationMysqlNativePassword) Plugin() string {
+	return "mysql_native_password"
+}
+
+// Password implements the interface Authentication.
+func (a AuthenticationMysqlNativePassword) Password() string {
+	if len(a) == 0 {
+		return ""
+	}
+	// native = sha1(sha1(password))
+	hash := sha1.New()
+	hash.Write([]byte(a))
+	s1 := hash.Sum(nil)
+	hash.Reset()
+	hash.Write(s1)
+	s2 := hash.Sum(nil)
+	return "*" + strings.ToUpper(hex.EncodeToString(s2))
+}
+
+// NewDefaultAuthentication returns the given password with the default authentication method.
+func NewDefaultAuthentication(password string) Authentication {
+	return AuthenticationMysqlNativePassword(password)
 }

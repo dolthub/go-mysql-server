@@ -28,8 +28,10 @@ import (
 const userTblName = "user"
 
 var (
-	userPkCols      = []uint16{0, 1}
-	errUserPkAssign = fmt.Errorf("the primary key for the `user` table expects a host and user string")
+	userPkCols        = []uint16{0, 1}
+	userUserCols      = []uint16{1}
+	errUserPkAssign   = fmt.Errorf("the primary key for the `user` table expects a host and user string")
+	errUserUserAssign = fmt.Errorf("the secondary key for the `user` table expects a user string")
 
 	userTblSchema sql.Schema
 )
@@ -40,7 +42,13 @@ type UserPrimaryKey struct {
 	User string
 }
 
+// UserSecondaryKey is a key that represents the secondary key for the "user" Grant Table, which contains only usernames.
+type UserSecondaryKey struct {
+	User string
+}
+
 var _ in_mem_table.InMemTableDataKey = UserPrimaryKey{}
+var _ in_mem_table.InMemTableDataKey = UserSecondaryKey{}
 
 // AssignValues implements the interface in_mem_table.InMemTableDataKey.
 func (u UserPrimaryKey) AssignValues(vals ...interface{}) (in_mem_table.InMemTableDataKey, error) {
@@ -64,6 +72,25 @@ func (u UserPrimaryKey) AssignValues(vals ...interface{}) (in_mem_table.InMemTab
 // RepresentedColumns implements the interface in_mem_table.InMemTableDataKey.
 func (u UserPrimaryKey) RepresentedColumns() []uint16 {
 	return userPkCols
+}
+
+// AssignValues implements the interface in_mem_table.InMemTableDataKey.
+func (u UserSecondaryKey) AssignValues(vals ...interface{}) (in_mem_table.InMemTableDataKey, error) {
+	if len(vals) != 1 {
+		return u, errUserUserAssign
+	}
+	user, ok := vals[0].(string)
+	if !ok {
+		return u, errUserUserAssign
+	}
+	return UserSecondaryKey{
+		User: user,
+	}, nil
+}
+
+// RepresentedColumns implements the interface in_mem_table.InMemTableDataKey.
+func (u UserSecondaryKey) RepresentedColumns() []uint16 {
+	return userUserCols
 }
 
 // init creates the schema for the "user" Grant Table.
@@ -234,10 +261,69 @@ func addDefaultRootUser(userTable *grantTable) {
 		0,                       // 36: max_updates
 		0,                       // 37: max_connections
 		0,                       // 38: max_user_connections
-		"caching_sha2_password", // 39: plugin
-		nil,                     // 40: authentication_string //TODO: figure out what this password should be
+		"mysql_native_password", // 39: plugin
+		"",                      // 40: authentication_string
 		"N",                     // 41: password_expired
-		time.Unix(0, 0).UTC(),   // 42: password_last_changed
+		time.Unix(1, 0).UTC(),   // 42: password_last_changed
+		nil,                     // 43: password_lifetime
+		"N",                     // 44: account_locked
+		"Y",                     // 45: Create_role_priv
+		"Y",                     // 46: Drop_role_priv
+		nil,                     // 47: Password_reuse_history
+		nil,                     // 48: Password_reuse_time
+		nil,                     // 49: Password_require_current
+		nil,                     // 50: User_attributes
+	})
+	if err != nil {
+		panic(err) // Insertion should never fail so this should never be reached
+	}
+}
+
+func addSuperUser(userTable *grantTable, username string, password string) {
+	err := userTable.Data().Put(sql.Row{
+		"%",                     // 00: Host
+		username,                // 01: User
+		"Y",                     // 02: Select_priv
+		"Y",                     // 03: Insert_priv
+		"Y",                     // 04: Update_priv
+		"Y",                     // 05: Delete_priv
+		"Y",                     // 06: Create_priv
+		"Y",                     // 07: Drop_priv
+		"Y",                     // 08: Reload_priv
+		"Y",                     // 09: Shutdown_priv
+		"Y",                     // 10: Process_priv
+		"Y",                     // 11: File_priv
+		"Y",                     // 12: Grant_priv
+		"Y",                     // 13: References_priv
+		"Y",                     // 14: Index_priv
+		"Y",                     // 15: Alter_priv
+		"Y",                     // 16: Show_db_priv
+		"Y",                     // 17: Super_priv
+		"Y",                     // 18: Create_tmp_table_priv
+		"Y",                     // 19: Lock_tables_priv
+		"Y",                     // 20: Execute_priv
+		"Y",                     // 21: Repl_slave_priv
+		"Y",                     // 22: Repl_client_priv
+		"Y",                     // 23: Create_view_priv
+		"Y",                     // 24: Show_view_priv
+		"Y",                     // 25: Create_routine_priv
+		"Y",                     // 26: Alter_routine_priv
+		"Y",                     // 27: Create_user_priv
+		"Y",                     // 28: Event_priv
+		"Y",                     // 29: Trigger_priv
+		"Y",                     // 30: Create_tablespace_priv
+		"",                      // 31: ssl_type
+		"",                      // 32: ssl_cipher
+		"",                      // 33: x509_issuer
+		"",                      // 34: x509_subject
+		0,                       // 35: max_questions
+		0,                       // 36: max_updates
+		0,                       // 37: max_connections
+		0,                       // 38: max_user_connections
+		"mysql_native_password", // 39: plugin
+		password,                // 40: authentication_string
+		"N",                     // 41: password_expired
+		time.Unix(1, 0).UTC(),   // 42: password_last_changed
 		nil,                     // 43: password_lifetime
 		"N",                     // 44: account_locked
 		"Y",                     // 45: Create_role_priv

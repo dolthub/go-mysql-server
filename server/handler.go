@@ -32,7 +32,6 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -327,14 +326,6 @@ func (h *Handler) doQuery(
 			return remainder, err
 		}
 	}
-
-	// TODO: it would be nice to put this logic in the engine itself, not the handler, but we wouldn't get accurate
-	//  timing without some more work
-	defer func() {
-		if q, ok := h.e.Auth.(*auth.Audit); ok {
-			q.Query(ctx, time.Since(start), err)
-		}
-	}()
 
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
