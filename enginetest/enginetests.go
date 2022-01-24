@@ -1918,6 +1918,13 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 			{Name: "i2", Type: sql.Int64, Source: "mytable", Nullable: true},
 		}, tbl.Schema())
 	})
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed'", []sql.Row(nil), nil, nil)
+	})
 }
 
 func TestDropColumn(t *testing.T, harness Harness) {
@@ -1945,6 +1952,15 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable DROP COLUMN s")
 	require.Error(err)
 	require.True(sql.ErrTableColumnNotFound.Is(err))
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		t.Skip("broken")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row(nil), nil, nil)
+	})
 }
 
 func TestCreateDatabase(t *testing.T, harness Harness) {
