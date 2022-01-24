@@ -213,10 +213,10 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, "row one", sql.JSONDocument{Val: []interface{}{1, 2}}, sql.JSONDocument{Val: map[string]interface{}{"a": 2}}),
-					sql.NewRow(2, "row two", sql.JSONDocument{Val: []interface{}{3, 4}}, sql.JSONDocument{Val: map[string]interface{}{"b": 2}}),
-					sql.NewRow(3, "row three", sql.JSONDocument{Val: []interface{}{5, 6}}, sql.JSONDocument{Val: map[string]interface{}{"c": 2}}),
-					sql.NewRow(4, "row four", sql.JSONDocument{Val: []interface{}{7, 8}}, sql.JSONDocument{Val: map[string]interface{}{"d": 2}}))
+					sql.NewRow(1, "row one", []interface{}{1, 2}, map[string]interface{}{"a": 2}),
+					sql.NewRow(2, "row two", []interface{}{3, 4}, map[string]interface{}{"b": 2}),
+					sql.NewRow(3, "row three", []interface{}{5, 6}, map[string]interface{}{"c": 2}),
+					sql.NewRow(4, "row four", []interface{}{7, 8}, map[string]interface{}{"d": 2}))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
 			}
