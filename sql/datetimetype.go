@@ -234,6 +234,11 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 			return zeroTime, nil
 		}
 		return zeroTime, ErrConvertingToTime.New(v)
+	case uint:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
 	case uint8:
 		if value == 0 {
 			return zeroTime, nil
@@ -250,6 +255,16 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		}
 		return zeroTime, ErrConvertingToTime.New(v)
 	case uint64:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case float32:
+		if value == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
+	case float64:
 		if value == 0 {
 			return zeroTime, nil
 		}
