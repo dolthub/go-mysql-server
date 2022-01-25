@@ -33,7 +33,7 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(1, v)
+		require.Equal(1.0, v)
 	})
 
 	t.Run("two float points", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(2, v)
+		require.Equal(2.0, v)
 	})
 
 	t.Run("point to line", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(2, v)
+		require.Equal(5.0, v)
 	})
 
 	t.Run("line to point", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(2, v)
+		require.Equal(5.0, v)
 	})
 
 	t.Run("line to line", func(t *testing.T) {
@@ -81,7 +81,7 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(4, v)
+		require.Equal(4.0, v)
 	})
 
 	t.Run("line to poly", func(t *testing.T) {
@@ -93,7 +93,7 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(0, v)
+		require.Equal(0.0, v)
 	})
 
 	t.Run("poly to line", func(t *testing.T) {
@@ -105,7 +105,7 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(0, v)
+		require.Equal(0.0, v)
 	})
 
 	t.Run("poly to poly", func(t *testing.T) {
@@ -117,13 +117,13 @@ func TestDistance(t *testing.T) {
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(1, v)
+		require.Equal(0.0, v)
 	})
 
 	t.Run("null geometry 1", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
-			nil,
+			expression.NewLiteral(nil, sql.Null),
 			expression.NewLiteral(sql.Point{X: 0, Y: 1}, sql.PointType{}),
 		)
 		require.NoError(err)
@@ -136,7 +136,7 @@ func TestDistance(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
 			expression.NewLiteral(sql.Point{X: 0, Y: 1}, sql.PointType{}),
-			nil,
+			expression.NewLiteral(nil, sql.Null),
 		)
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -149,7 +149,7 @@ func TestDistance(t *testing.T) {
 		f, err := NewDistance(
 			expression.NewLiteral(sql.Point{X: 0, Y: 1}, sql.PointType{}),
 			expression.NewLiteral(sql.Point{X: 0, Y: 1}, sql.PointType{}),
-			nil,
+			expression.NewLiteral(nil, sql.Null),
 		)
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
