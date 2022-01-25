@@ -37,7 +37,7 @@ func GetLogger() *logrus.Logger {
 }
 
 func SetLogger(newLogger *logrus.Logger) {
-	logger =  newLogger
+	logger = newLogger
 }
 
 type key uint
