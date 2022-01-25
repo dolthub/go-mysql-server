@@ -96,10 +96,11 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			var ok bool
-			if key, ok = val.(string); !ok {
-				return nil, sql.ErrInvalidType.New(expr.Type())
+			val, err2 := sql.LongText.Convert(val)
+			if err2 != nil {
+				return nil, err2
 			}
+			key = val.(string)
 		} else {
 			switch val.(type) {
 			case []interface{}, map[string]interface{}, sql.JSONDocument:
