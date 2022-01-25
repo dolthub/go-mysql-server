@@ -96,9 +96,9 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			val, err2 := sql.LongText.Convert(val)
-			if err2 != nil {
-				return nil, err2
+			val, err := sql.LongText.Convert(val)
+			if err != nil {
+				return nil, err
 			}
 			key = val.(string)
 		} else {
