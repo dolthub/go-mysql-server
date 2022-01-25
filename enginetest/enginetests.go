@@ -1509,6 +1509,28 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		}, t10aTable.Schema())
 	})
 
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "CREATE TABLE mydb.t11 (a INTEGER NOT NULL PRIMARY KEY, "+
+			"b VARCHAR(10) NOT NULL)", []sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database("mydb")
+		require.NoError(t, err)
+
+		testTable, ok, err := db.GetTableInsensitive(ctx, "t11")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t11"},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, Source: "t11"},
+		}
+
+		require.Equal(t, s, testTable.Schema())
+	})
+
 	//TODO: Implement "CREATE TABLE otherDb.tableName"
 }
 
@@ -1550,6 +1572,15 @@ func TestDropTable(t *testing.T, harness Harness) {
 
 	_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
 	require.Error(err)
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		t.Skip("Panics")
+
+		TestQueryWithContext(t, ctx, e, "DROP TABLE IF EXISTS mydb.one_pk", []sql.Row(nil), nil, nil)
+	})
 }
 
 func TestRenameTable(t *testing.T, harness Harness) {
@@ -1609,6 +1640,26 @@ func TestRenameTable(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE emptytable RENAME niltable")
 	require.Error(err)
 	require.True(sql.ErrTableAlreadyExists.Is(err))
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		t.Skip("broken")
+		TestQueryWithContext(t, ctx, e, "RENAME TABLE mydb.emptytable TO mydb.emptytable2", []sql.Row(nil), nil, nil)
+
+		_, ok, err = db.GetTableInsensitive(NewContext(harness), "emptytable")
+		require.NoError(err)
+		require.False(ok)
+
+		_, ok, err = db.GetTableInsensitive(NewContext(harness), "emptytable2")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(NewContext(harness), "RENAME TABLE mydb.emptytable2 TO emptytable3")
+		require.Error(err)
+		require.True(sql.ErrNoDatabaseSelected.Is(err))
+	})
 }
 
 func TestRenameColumn(t *testing.T, harness Harness) {
@@ -1772,6 +1823,30 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable ADD COLUMN b INT NOT NULL DEFAULT 'yes'")
 	require.Error(err)
 	require.True(sql.ErrIncompatibleDefaultType.Is(err))
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		t.Skip("broken")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row(nil), nil, nil)
+
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+		assertSchemasEqualWithDefaults(t, sql.Schema{
+			{Name: "s3", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), `"yay"`, sql.MustCreateStringWithDefaults(sqltypes.VarChar, 25), true)},
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true},
+			{Name: "s2", Type: sql.Text, Source: "mytable", Comment: "hello", Nullable: true},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "mytable", Comment: "column s"},
+			{Name: "i2", Type: sql.Int32, Source: "mytable", Comment: "hello", Nullable: true, Default: parse.MustStringToColumnDefaultValue(NewContext(harness), "42", sql.Int32, true)},
+			{Name: "s4", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+			{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
+			{Name: "s10", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
+		}, tbl.Schema())
+
+	})
 }
 
 func TestModifyColumn(t *testing.T, harness Harness) {
@@ -1852,6 +1927,13 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 			{Name: "i2", Type: sql.Int64, Source: "mytable", Nullable: true},
 		}, tbl.Schema())
 	})
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed'", []sql.Row(nil), nil, nil)
+	})
 }
 
 func TestDropColumn(t *testing.T, harness Harness) {
@@ -1879,6 +1961,15 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "ALTER TABLE mytable DROP COLUMN s")
 	require.Error(err)
 	require.True(sql.ErrTableColumnNotFound.Is(err))
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		t.Skip("broken")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row(nil), nil, nil)
+	})
 }
 
 func TestCreateDatabase(t *testing.T, harness Harness) {
@@ -3836,15 +3927,63 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "SELECT * FROM t9", []sql.Row{{1, "77"}, {2, "77"}}, nil, nil)
 	})
 
-	// TODO: test that the correct values are set once we set the clock
-	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literal", func(t *testing.T) {
+	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP current_timestamp", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t10(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT NOW(), v2 DATETIME DEFAULT CURRENT_TIMESTAMP(),"+
 			"v3 TIMESTAMP DEFAULT NOW(), v4 TIMESTAMP DEFAULT CURRENT_TIMESTAMP())", []sql.Row(nil), nil, nil)
+
+		now := time.Now()
+		sql.RunWithNowFunc(func() time.Time {
+			return now
+		}, func() error {
+			RunQuery(t, e, harness, "insert into t10(pk) values (1)")
+			return nil
+		})
+		TestQuery(
+			t, harness, e,
+			"select * from t10 order by 1",
+			[]sql.Row{{1, now.UTC(), now.UTC().Truncate(time.Second), now.UTC(), now.UTC().Truncate(time.Second)}},
+			nil,
+			nil,
+		)
 	})
 
-	// TODO: test that the correct values are set once we set the clock
+	// TODO: zero timestamps work slightly differently than they do in MySQL, where the zero time is "0000-00-00 00:00:00"
+	//  We use "0000-01-01 00:00:00"
+	t.Run("DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP literals", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t10zero(pk BIGINT PRIMARY KEY, v1 DATETIME DEFAULT '2020-01-01 01:02:03', v2 DATETIME DEFAULT 0,"+
+			"v3 TIMESTAMP DEFAULT '2020-01-01 01:02:03', v4 TIMESTAMP DEFAULT 0)", []sql.Row(nil), nil, nil)
+
+		RunQuery(t, e, harness, "insert into t10zero(pk) values (1)")
+
+		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
+		TestQuery(
+			t, harness, e,
+			"select * from t10zero order by 1",
+			[]sql.Row{{1, time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), sql.Datetime.Zero(), time.Date(2020, 1, 1, 1, 2, 3, 0, time.UTC), sql.Timestamp.Zero()}},
+			nil,
+			nil,
+		)
+	})
+
 	t.Run("Non-DATETIME/TIMESTAMP NOW/CURRENT_TIMESTAMP expression", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t11(pk BIGINT PRIMARY KEY, v1 DATE DEFAULT (NOW()), v2 VARCHAR(20) DEFAULT (CURRENT_TIMESTAMP()))", []sql.Row(nil), nil, nil)
+
+		now := time.Now()
+		sql.RunWithNowFunc(func() time.Time {
+			return now
+		}, func() error {
+			RunQuery(t, e, harness, "insert into t11(pk) values (1)")
+			return nil
+		})
+
+		// TODO: the string conversion does not transform to UTC like other NOW() calls, fix this
+		TestQuery(
+			t, harness, e,
+			"select * from t11 order by 1",
+			[]sql.Row{{1, now.UTC().Truncate(time.Hour * 24), now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)}},
+			nil,
+			nil,
+		)
 	})
 
 	t.Run("REPLACE INTO with default expression", func(t *testing.T) {
