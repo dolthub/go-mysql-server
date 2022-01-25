@@ -108,7 +108,7 @@ func FindGeometryDistance(a, b interface{}) float64 {
 	}
 
 	// Return distance between two points
-	return math.Sqrt(math.Pow(_a.X - _b.X, 2) + math.Pow(_a.Y - _b.Y, 2))
+	return math.Sqrt(math.Pow(_a.X-_b.X, 2) + math.Pow(_a.Y-_b.Y, 2))
 
 }
 

@@ -52,7 +52,7 @@ func TestDistance(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
 			expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 5},{X: 100, Y: 100},{X: 300, Y: 300}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 5}, {X: 100, Y: 100}, {X: 300, Y: 300}}}, sql.LinestringType{}),
 		)
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -63,7 +63,7 @@ func TestDistance(t *testing.T) {
 	t.Run("line to point", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 5},{X: 100, Y: 100},{X: 300, Y: 300}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 5}, {X: 100, Y: 100}, {X: 300, Y: 300}}}, sql.LinestringType{}),
 			expression.NewLiteral(sql.Point{X: 0, Y: 0}, sql.PointType{}),
 		)
 		require.NoError(err)
@@ -75,8 +75,8 @@ func TestDistance(t *testing.T) {
 	t.Run("line to line", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 5},{X: 200, Y: 100},{X: 123, Y: 123}}}, sql.LinestringType{}),
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 5, Y: 5},{X: 450, Y: 900},{X: 666, Y: 999}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 5}, {X: 200, Y: 100}, {X: 123, Y: 123}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 5, Y: 5}, {X: 450, Y: 900}, {X: 666, Y: 999}}}, sql.LinestringType{}),
 		)
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -87,8 +87,8 @@ func TestDistance(t *testing.T) {
 	t.Run("line to poly", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 1},{X: 2, Y: 2}}}, sql.LinestringType{}),
-			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0},{X: 1, Y: 1},{X: 1, Y: 0},{X: 0, Y: 0}}}}}, sql.PolygonType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, sql.PolygonType{}),
 		)
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -99,8 +99,8 @@ func TestDistance(t *testing.T) {
 	t.Run("poly to line", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
-			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0},{X: 1, Y: 1},{X: 1, Y: 0},{X: 0, Y: 0}}}}}, sql.PolygonType{}),
-			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 1},{X: 2, Y: 2}}}, sql.LinestringType{}),
+			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, sql.PolygonType{}),
+			expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 1, Y: 1}, {X: 2, Y: 2}}}, sql.LinestringType{}),
 		)
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -111,8 +111,8 @@ func TestDistance(t *testing.T) {
 	t.Run("poly to poly", func(t *testing.T) {
 		require := require.New(t)
 		f, err := NewDistance(
-			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0},{X: 1, Y: 1},{X: 1, Y: 0},{X: 0, Y: 0}}}}}, sql.PolygonType{}),
-			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 0},{X: 2, Y: 1},{X: 2, Y: 0},{X: 1, Y: 0}}}}}, sql.PolygonType{}),
+			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, sql.PolygonType{}),
+			expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 0}, {X: 2, Y: 1}, {X: 2, Y: 0}, {X: 1, Y: 0}}}}}, sql.PolygonType{}),
 		)
 		require.NoError(err)
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
