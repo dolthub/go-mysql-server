@@ -101,7 +101,7 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 
 	logger := s.sessions[conn.ConnectionID].session.GetLogger()
 	if logger == nil {
-		log := sql.GetLogger()
+		log := logrus.StandardLogger()
 		logger = logrus.NewEntry(log)
 	}
 
