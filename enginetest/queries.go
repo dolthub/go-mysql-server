@@ -6185,6 +6185,37 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT JSON_OBJECT(1000000, 10);`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"1000000": 10}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_OBJECT(DATE('1981-02-16'), 10);`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"1981-02-16": 10}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_OBJECT(JSON_OBJECT("foo", "bar"), 10);`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"{\"foo\":\"bar\"}": 10}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_OBJECT(true, 10);`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"true": 10}`)},
+		},
+	},
+	{
+		Query: `SELECT JSON_OBJECT(10.1, 10);`,
+		Expected: []sql.Row{
+			{sql.MustJSON(`{"10.1": 10}`)},
+		},
+	},
+
+	{
 		Query: `SELECT JSON_OBJECT("i",i,"s",s) as js FROM mytable;`,
 		Expected: []sql.Row{
 			{sql.MustJSON(`{"i": 1, "s": "first row"}`)},
@@ -7702,10 +7733,6 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT JSON_OBJECT("a","b","c") FROM dual`,
 		ExpectedErr: sql.ErrInvalidArgumentNumber,
-	},
-	{
-		Query:       `SELECT JSON_OBJECT(1, 2) FROM dual`,
-		ExpectedErr: sql.ErrInvalidType,
 	},
 	{
 		Query:          `select JSON_EXTRACT('{"id":"abc"}', '$.id')-1;`,

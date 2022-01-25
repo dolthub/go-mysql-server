@@ -96,10 +96,11 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			var ok bool
-			if key, ok = val.(string); !ok {
-				return nil, sql.ErrInvalidType.New(expr.Type())
+			val, err := sql.LongText.Convert(val)
+			if err != nil {
+				return nil, err
 			}
+			key = val.(string)
 		} else {
 			if json, ok := val.(sql.JSONValue); ok {
 				doc, err := json.Unmarshall(ctx)
