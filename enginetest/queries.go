@@ -6131,9 +6131,9 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT JSON_OBJECT(FROM_UNIXTIME(420), 10);`,
+		Query: `SELECT JSON_OBJECT(DATE('1981-02-16'), 10);`,
 		Expected: []sql.Row{
-			{sql.MustJSON(`{"1969-12-31 16:07:00": 10}`)},
+			{sql.MustJSON(`{"1981-02-16": 10}`)},
 		},
 	},
 	{
