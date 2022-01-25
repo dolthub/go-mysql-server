@@ -30,6 +30,16 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var logger = logrus.StandardLogger()
+
+func GetLogger() *logrus.Logger {
+	return logger
+}
+
+func SetLogger(newLogger *logrus.Logger) {
+	logger =  newLogger
+}
+
 type key uint
 
 const (
@@ -167,7 +177,7 @@ func (s *BaseSession) GetLogger() *logrus.Entry {
 	defer s.mu.Unlock()
 
 	if s.logger == nil {
-		log := logrus.StandardLogger()
+		log := logger
 		s.logger = logrus.NewEntry(log)
 	}
 	return s.logger
