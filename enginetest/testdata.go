@@ -78,6 +78,28 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	var table sql.Table
 	var err error
 
+	if includeTable(includedTables, "stringtogeojson_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "stringtogeojson_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "stringtogeojson_table", PrimaryKey: true},
+				{Name: "s", Type: sql.LongBlob, Source: "stringtogeojson_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(0, `{"type": "Point", "coordinates": [1,2]}`),
+					sql.NewRow(1, `{"type": "Point", "coordinates": [123.45,56.789]}`),
+					sql.NewRow(2, `{"type": "LineString", "coordinates": [[1,2],[3,4]]}`),
+					sql.NewRow(3, `{"type": "LineString", "coordinates": [[1.23,2.345],[3.56789,4.56]]}`),
+					sql.NewRow(4, `{"type": "Polygon", "coordinates": [[[1.1,2.2],[3.3,4.4],[5.5,6.6],[1.1,2.2]]]}`),
+					sql.NewRow(5, `{"type": "Polygon", "coordinates": [[[0,0],[1,1],[2,2],[0,0]]]}`),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "point_table", err)
+			}
+		})
+	}
+
 	if includeTable(includedTables, "point_table") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "point_table", sql.NewPrimaryKeySchema(sql.Schema{
