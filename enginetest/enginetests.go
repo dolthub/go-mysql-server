@@ -3879,8 +3879,6 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	t.Run("Default expression with function and referenced column", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t2(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))", []sql.Row(nil), nil, nil)
-		e.Analyzer.Debug = true
-		e.Analyzer.Verbose = true
 		RunQuery(t, e, harness, "INSERT INTO t2 (pk) VALUES (1), (2), (3)")
 		TestQuery(t, harness, e, "SELECT * FROM t2", []sql.Row{{1, 2}, {2, 2}, {3, 3}}, nil, nil)
 	})
@@ -4151,6 +4149,24 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "INSERT INTO t32 VALUES (1), (2), (3)")
 		TestQuery(t, harness, e, "ALTER TABLE t32 ADD COLUMN v1 VARCHAR(20) NOT NULL", []sql.Row(nil), nil, nil)
 		TestQuery(t, harness, e, "SELECT * FROM t32", []sql.Row{{1, ""}, {2, ""}, {3, ""}}, nil, nil)
+	})
+
+	t.Run("Column defaults with functions", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t33(pk varchar(100) DEFAULT (replace(UUID(), '-', '')), v1 timestamp DEFAULT now(), v2 varchar(100), primary key (pk))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "insert into t33 (v2) values ('abc')", []sql.Row{{sql.NewOkResult(1)}}, nil, nil)
+		TestQuery(t, harness, e, "select count(*) from t33", []sql.Row{{1}}, nil, nil)
+		RunQuery(t, e, harness, "alter table t33 add column name varchar(100)")
+		RunQuery(t, e, harness, "alter table t33 rename column v1 to v1_new")
+		RunQuery(t, e, harness, "alter table t33 rename column name to name2")
+		RunQuery(t, e, harness, "alter table t33 drop column name2")
+
+		TestQuery(t, harness, e, "desc t33",
+			[]sql.Row{
+				{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), \"-\", \"\"))", ""},
+				{"v1_new", "timestamp", "YES", "", "NOW()", ""},
+				{"v2", "varchar(100)", "YES", "", "", ""},
+			},
+			nil, nil)
 	})
 
 	t.Run("Invalid literal for column type", func(t *testing.T) {
