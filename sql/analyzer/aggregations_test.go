@@ -168,6 +168,46 @@ func TestFlattenAggregationExprs(t *testing.T) {
 				),
 			),
 		},
+		{
+			name: "aggregate with pass through column dependency",
+			node: plan.NewGroupBy(
+				[]sql.Expression{
+					expression.NewArithmetic(
+						aggregation.NewSum(
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						),
+						expression.NewGetFieldWithTable(1, sql.Int64, "bar", "a", false),
+						"+",
+					),
+				},
+				[]sql.Expression{
+					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+				},
+				plan.NewResolvedTable(table, nil, nil),
+			),
+
+			expected: plan.NewProject(
+				[]sql.Expression{
+					expression.NewArithmetic(
+						expression.NewGetField(0, sql.Float64, "SUM(foo.a)", false),
+						expression.NewGetFieldWithTable(1, sql.Int64, "bar", "a", false),
+						"+",
+					),
+				},
+				plan.NewGroupBy(
+					[]sql.Expression{
+						aggregation.NewSum(
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+						),
+						expression.NewGetFieldWithTable(1, sql.Int64, "bar", "a", false),
+					},
+					[]sql.Expression{
+						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
+					},
+					plan.NewResolvedTable(table, nil, nil),
+				),
+			),
+		},
 	}
 
 	for _, test := range tests {
