@@ -258,14 +258,14 @@ var SpatialQueryTests = []QueryTest{
 	{
 		Query: `SELECT ST_SWAPXY(l) from line_table`,
 		Expected: []sql.Row{
-			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1},{X: 4, Y: 3}}}},
-			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1},{X: 4, Y: 3},{X: 6, Y: 5}}}},
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
 		},
 	},
 	{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
-			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0},{X: 1, Y: 0},{X: 1, Y: 1},{X: 0, Y: 0}}}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 }
