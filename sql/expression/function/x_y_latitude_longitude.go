@@ -105,6 +105,11 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Return null if geometry is null
+	if p == nil {
+		return nil, nil
+	}
+
 	// Check that it is a point
 	_p, ok := p.(sql.Point)
 	if !ok {
@@ -215,6 +220,11 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	p, err := s.args[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+
+	// Return null if geometry is null
+	if p == nil {
+		return nil, nil
 	}
 
 	// Check that it is a point
