@@ -34,7 +34,7 @@ func TestDimension(t *testing.T) {
 
 	t.Run("linestring is dimension 1", func(t *testing.T) {
 		require := require.New(t)
-		f := NewDimension(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 1},{X: 2, Y: 3}}}, sql.LinestringType{}))
+		f := NewDimension(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, sql.LinestringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(1, v)
@@ -42,7 +42,7 @@ func TestDimension(t *testing.T) {
 
 	t.Run("polygon dimension 2", func(t *testing.T) {
 		require := require.New(t)
-		f := NewDimension(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0},{X: 1, Y: 1},{X: 0, Y: 1},{X: 0, Y: 0}}}}}, sql.PointType{}))
+		f := NewDimension(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, sql.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(2, v)
