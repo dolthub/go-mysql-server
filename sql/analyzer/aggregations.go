@@ -75,8 +75,8 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
-	allGetFields := make(map[int]sql.Expression, 0)
-	projDeps := make(map[int]struct{}, 0)
+	allGetFields := make(map[int]sql.Expression)
+	projDeps := make(map[int]struct{})
 	for i, p := range projection {
 		var transformed bool
 		e, err := expression.TransformUp(p, func(e sql.Expression) (sql.Expression, error) {
