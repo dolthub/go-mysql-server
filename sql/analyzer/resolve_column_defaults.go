@@ -463,29 +463,27 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			colIndex++
 			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 		case *plan.RenameColumn:
-			table := getResolvedTable(node.Child)
-			if table == nil {
-				return e, nil
-			}
+			sch := node.TargetSchema()
 
-			idx := table.Schema().IndexOf(node.ColumnName, table.Name())
-			if idx < 0 {
-				return nil, sql.ErrTableColumnNotFound.New(table.Name(), node.ColumnName)
+			// TODO: this is kind of gross, relies on a known order of expressions returned by node
+			var col *sql.Column
+			if colIndex < len(sch) {
+				col = sch[colIndex]
 			}
+			colIndex++
 
-			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
+			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 		case *plan.DropColumn:
-			table := getResolvedTable(node.Child)
-			if table == nil {
-				return e, nil
-			}
+			sch := node.TargetSchema()
 
-			idx := table.Schema().IndexOf(node.Column, table.Name())
-			if idx < 0 {
-				return nil, sql.ErrTableColumnNotFound.New(table.Name(), node.Column)
+			// TODO: this is kind of gross, relies on a known order of expressions returned by node
+			var col *sql.Column
+			if colIndex < len(sch) {
+				col = sch[colIndex]
 			}
+			colIndex++
 
-			return resolveColumnDefaultsOnWrapper(ctx, node.TargetSchema()[idx], eWrapper)
+			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 		case *plan.AddColumn:
 			sch := node.TargetSchema()
 

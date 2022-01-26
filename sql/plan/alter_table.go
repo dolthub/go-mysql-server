@@ -256,7 +256,17 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 // Resolved implements the Resolvable interface.
 func (a *AddColumn) Resolved() bool {
-	return a.ddlNode.Resolved() && a.column.Default.Resolved()
+	if !(a.ddlNode.Resolved() && a.column.Default.Resolved()) {
+		return false
+	}
+
+	for _, col := range a.targetSch {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 // WithTargetSchema implements sql.SchemaTarget

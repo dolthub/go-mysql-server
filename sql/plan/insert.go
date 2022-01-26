@@ -171,7 +171,7 @@ func (id *InsertDestination) Resolved() bool {
 	}
 
 	for _, col := range id.Sch {
-		if !col.Default.Expression.Resolved() {
+		if !col.Default.Resolved() {
 			return false
 		}
 	}
