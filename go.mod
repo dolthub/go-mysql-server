@@ -3,11 +3,12 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20220124175014-b3008964c421
+	github.com/dolthub/vitess v0.0.0-20220126232952-c2e6dea44fb6
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529
+	github.com/golang/mock v1.3.1 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kr/text v0.2.0 // indirect
@@ -26,7 +27,6 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/text v0.3.7
-	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/genproto v0.0.0-20210506142907-4a47615972c2 // indirect
 	google.golang.org/grpc v1.37.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
