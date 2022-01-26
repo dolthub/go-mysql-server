@@ -137,8 +137,8 @@ func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error
 			fn, err = e.NewWindowFunction()
 		default:
 			// non window aggregates resolve to LastAgg with empty over clause
-			window = sql.NewWindow(nil, nil)
-			fn, err = aggregation.NewLast(expr).NewWindowFunction()
+			window = sql.NewWindow(nil, nil, nil)
+			fn, err = aggregation.NewLast(e).NewWindowFunction()
 		}
 		if err != nil {
 			return nil, nil, err

@@ -15,8 +15,12 @@
 package expression
 
 import (
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+var ErrInvalidOffset = errors.NewKind("offset must be a non-negative integer; found: %v")
 
 // IsUnary returns whether the expression is unary or not.
 func IsUnary(e sql.Expression) bool {
@@ -114,4 +118,34 @@ func Dispose(e sql.Expression) {
 		sql.Dispose(e)
 		return true
 	})
+}
+
+// LiteralToInt extracts a non-negative integer from an expression.Literal, or errors
+func LiteralToInt(e sql.Expression) (int, error) {
+	lit, ok := e.(*Literal)
+	if !ok {
+		return 0, ErrInvalidOffset.New(e)
+	}
+	val := lit.Value()
+	var offset int
+	switch e := val.(type) {
+	case int:
+		offset = e
+	case int8:
+		offset = int(e)
+	case int16:
+		offset = int(e)
+	case int32:
+		offset = int(e)
+	case int64:
+		offset = int(e)
+	default:
+		return 0, ErrInvalidOffset.New(e)
+	}
+
+	if offset < 0 {
+		return 0, ErrInvalidOffset.New(e)
+	}
+
+	return offset, nil
 }
