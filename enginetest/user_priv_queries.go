@@ -37,7 +37,7 @@ var UserPrivTests = []ScriptTest{
 				Expected: []sql.Row{{sql.NewOkResult(0)}},
 			},
 			{
-				Query:    "INSERT INTO mysql.user (Host, User, ssl_cipher, x509_issuer, x509_subject) VALUES ('localhost', 'testuser2', '', '', '');",
+				Query:    "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'testuser2');",
 				Expected: []sql.Row{{sql.NewOkResult(1)}},
 			},
 			{
@@ -79,10 +79,10 @@ var UserPrivTests = []ScriptTest{
 						"",                      // ssl_cipher
 						"",                      // x509_issuer
 						"",                      // x509_subject
-						0,                       // max_questions
-						0,                       // max_updates
-						0,                       // max_connections
-						0,                       // max_user_connections
+						uint32(0),               // max_questions
+						uint32(0),               // max_updates
+						uint32(0),               // max_connections
+						uint32(0),               // max_user_connections
 						"mysql_native_password", // plugin
 						"",                      // authentication_string
 						"N",                     // password_expired

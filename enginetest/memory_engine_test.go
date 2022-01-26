@@ -18,21 +18,15 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -430,87 +424,6 @@ func TestScripts(t *testing.T) {
 
 func TestUsersAndPrivileges(t *testing.T) {
 	enginetest.TestUsersAndPrivileges(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
-
-	// Grab a free port
-	ctx := sql.NewEmptyContext()
-	listener, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	port := listener.Addr().(*net.TCPAddr).Port
-	require.NoError(t, listener.Close())
-
-	engine := sqle.NewDefault(memory.NewMemoryDBProvider(memory.NewDatabase("test")))
-	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
-	engine.Analyzer.Catalog.GrantTables.AddSuperUser("bestuser", "the_pass")
-	_, _, err = engine.Query(ctx, "CREATE USER rand_user@localhost IDENTIFIED BY 'rand_pass';")
-	require.NoError(t, err)
-	_, _, err = engine.Query(ctx, "CREATE USER ranuse@localhost IDENTIFIED WITH mysql_native_password BY 'ranpas';")
-	require.NoError(t, err)
-	serverConfig := server.Config{
-		Protocol:       "tcp",
-		Address:        fmt.Sprintf("localhost:%d", port),
-		MaxConnections: 1000,
-	}
-
-	s, err := server.NewDefaultServer(serverConfig, engine)
-	require.NoError(t, err)
-	go func() {
-		err := s.Start()
-		require.NoError(t, err)
-	}()
-	defer func() {
-		require.NoError(t, s.Close())
-	}()
-	time.Sleep(time.Second)
-
-	conn, err := dbr.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("rand_user:rand_pass@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("rand_user:rand_pass1@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("rand_user:@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("ranuse:ranpas@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("ranuse:what@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("ranuse:@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("bestuser:the_pass@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("bestuser:the_past@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
 }
 
 func TestComplexIndexQueries(t *testing.T) {

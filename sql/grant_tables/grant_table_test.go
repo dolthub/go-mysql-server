@@ -54,6 +54,7 @@ func TestGrantTableData(t *testing.T) {
 				PrimaryKey: true,
 			},
 		},
+		&testEntry{},
 		testPK{},
 		testSK{},
 	)
@@ -80,44 +81,74 @@ func TestGrantTableData(t *testing.T) {
 	require.NoError(t, deleter.Delete(ctx, row4))
 	require.Error(t, inserter.Insert(ctx, row1))
 
-	rows, err := sql.RowIterToRows(ctx, testTable.data.ToRowIter())
+	rows, err := sql.RowIterToRows(ctx, testTable.data.ToRowIter(ctx))
 	require.NoError(t, err)
 	require.ElementsMatch(t, []sql.Row{row1, row2b, row3}, rows)
 
-	require.NoError(t, testTable.data.Put(row5))
-	require.NoError(t, testTable.data.Put(row6))
-	require.NoError(t, testTable.data.Put(row7))
-	require.NoError(t, testTable.data.Put(row8))
+	require.NoError(t, testTable.data.Put(ctx, &testEntry{row5}))
+	require.NoError(t, testTable.data.Put(ctx, &testEntry{row6}))
+	require.NoError(t, testTable.data.Put(ctx, &testEntry{row7}))
+	require.NoError(t, testTable.data.Put(ctx, &testEntry{row8}))
 
-	require.Equal(t, []sql.Row{row5}, testTable.data.Get(testPK{5}))
-	require.True(t, testTable.data.Has(row6))
-	require.ElementsMatch(t, []sql.Row{row7, row8}, testTable.data.Get(testSK{15, 14}))
-	require.NoError(t, testTable.data.Remove(testSK{15, 14}, nil))
-	require.False(t, testTable.data.Has(row7))
-	require.False(t, testTable.data.Has(row8))
-	require.NoError(t, testTable.data.Remove(nil, row5))
-	require.False(t, testTable.data.Has(row5))
+	require.Equal(t, []in_mem_table.Entry{&testEntry{row5}}, testTable.data.Get(testPK{5}))
+	require.True(t, testTable.data.Has(ctx, &testEntry{row6}))
+	require.ElementsMatch(t, []in_mem_table.Entry{&testEntry{row7}, &testEntry{row8}}, testTable.data.Get(testSK{15, 14}))
+	require.NoError(t, testTable.data.Remove(ctx, testSK{15, 14}, nil))
+	require.False(t, testTable.data.Has(ctx, &testEntry{row7}))
+	require.False(t, testTable.data.Has(ctx, &testEntry{row8}))
+	require.NoError(t, testTable.data.Remove(ctx, nil, &testEntry{row5}))
+	require.False(t, testTable.data.Has(ctx, &testEntry{row5}))
+}
+
+type testEntry struct {
+	sql.Row
+}
+
+var _ in_mem_table.Entry = (*testEntry)(nil)
+
+func (te *testEntry) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
+	return &testEntry{row}, nil
+}
+func (te *testEntry) UpdateFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
+	return &testEntry{row}, nil
+}
+func (te *testEntry) ToRow(ctx *sql.Context) sql.Row {
+	return te.Row
+}
+func (te *testEntry) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
+	otherRow, ok := otherEntry.(*testEntry)
+	if !ok {
+		return false
+	}
+	if len(te.Row) != len(otherRow.Row) {
+		return false
+	}
+	for i := range te.Row {
+		if te.Row[i] != otherRow.Row[i] {
+			return false
+		}
+	}
+	return true
 }
 
 type testPK struct {
 	val int64
 }
 
-var _ in_mem_table.InMemTableDataKey = testPK{}
+var _ in_mem_table.Key = testPK{}
 
-func (tpk testPK) AssignValues(vals ...interface{}) (in_mem_table.InMemTableDataKey, error) {
-	if len(vals) != 1 {
+func (tpk testPK) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
+	return tpk.KeyFromRow(ctx, entry.(*testEntry).Row)
+}
+func (tpk testPK) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
+	if len(row) != 3 {
 		return tpk, fmt.Errorf("wrong number of values")
 	}
-	val, ok := vals[0].(int64)
+	val, ok := row[0].(int64)
 	if !ok {
 		return tpk, fmt.Errorf("value is not int64")
 	}
 	return testPK{val}, nil
-}
-
-func (tpk testPK) RepresentedColumns() []uint16 {
-	return []uint16{0}
 }
 
 type testSK struct {
@@ -125,23 +156,22 @@ type testSK struct {
 	val1 int64
 }
 
-var _ in_mem_table.InMemTableDataKey = testSK{}
+var _ in_mem_table.Key = testSK{}
 
-func (tsk testSK) AssignValues(vals ...interface{}) (in_mem_table.InMemTableDataKey, error) {
-	if len(vals) != 2 {
+func (tsk testSK) KeyFromEntry(ctx *sql.Context, entry in_mem_table.Entry) (in_mem_table.Key, error) {
+	return tsk.KeyFromRow(ctx, entry.(*testEntry).Row)
+}
+func (tsk testSK) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Key, error) {
+	if len(row) != 3 {
 		return tsk, fmt.Errorf("wrong number of values")
 	}
-	val2, ok := vals[0].(int64)
+	val2, ok := row[2].(int64)
 	if !ok {
 		return tsk, fmt.Errorf("value is not int64")
 	}
-	val1, ok := vals[1].(int64)
+	val1, ok := row[1].(int64)
 	if !ok {
 		return tsk, fmt.Errorf("value is not int64")
 	}
 	return testSK{val2, val1}, nil
-}
-
-func (tsk testSK) RepresentedColumns() []uint16 {
-	return []uint16{2, 1}
 }
