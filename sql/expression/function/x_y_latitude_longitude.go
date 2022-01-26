@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -25,7 +26,7 @@ import (
 
 // STX is a function that the x value from a given point.
 type STX struct {
-	args []sql.Expression
+	expression.NaryExpression
 }
 
 var _ sql.FunctionExpression = (*STX)(nil)
@@ -37,7 +38,7 @@ func NewSTX(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_X", "1 or 2", len(args))
 	}
-	return &STX{args}, nil
+	return &STX{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -50,34 +51,10 @@ func (s *STX) Description() string {
 	return "returns the x value of given point. If given a second argument, returns a new point with second argument as x value."
 }
 
-// Children implements the sql.Expression interface.
-func (s *STX) Children() []sql.Expression {
-	return s.args
-}
-
-// Resolved implements the sql.Expression interface.
-func (s *STX) Resolved() bool {
-	for _, arg := range s.args {
-		if !arg.Resolved() {
-			return false
-		}
-	}
-	return true
-}
-
-// IsNullable implements the sql.Expression interface.
-func (s *STX) IsNullable() bool {
-	for _, arg := range s.args {
-		if arg.IsNullable() {
-			return true
-		}
-	}
-	return false
-}
 
 // Type implements the sql.Expression interface.
 func (s *STX) Type() sql.Type {
-	if len(s.args) == 1 {
+	if len(s.ChildExpressions) == 1 {
 		return sql.Float64
 	} else {
 		return sql.PointType{}
@@ -85,8 +62,8 @@ func (s *STX) Type() sql.Type {
 }
 
 func (s *STX) String() string {
-	var args = make([]string, len(s.args))
-	for i, arg := range s.args {
+	var args = make([]string, len(s.ChildExpressions))
+	for i, arg := range s.ChildExpressions {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("ST_X(%s)", strings.Join(args, ","))
@@ -100,7 +77,7 @@ func (s *STX) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 // Eval implements the sql.Expression interface.
 func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate point
-	p, err := s.args[0].Eval(ctx, row)
+	p, err := s.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -117,12 +94,12 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If just one argument, return X
-	if len(s.args) == 1 {
+	if len(s.ChildExpressions) == 1 {
 		return _p.X, nil
 	}
 
 	// Evaluate second argument
-	x, err := s.args[1].Eval(ctx, row)
+	x, err := s.ChildExpressions[1].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +121,7 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // STY is a function that the x value from a given point.
 type STY struct {
-	args []sql.Expression
+	expression.NaryExpression
 }
 
 var _ sql.FunctionExpression = (*STY)(nil)
@@ -154,7 +131,7 @@ func NewSTY(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_Y", "1 or 2", len(args))
 	}
-	return &STY{args}, nil
+	return &STY{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -167,34 +144,9 @@ func (s *STY) Description() string {
 	return "returns the y value of given point. If given a second argument, returns a new point with second argument as y value."
 }
 
-// Children implements the sql.Expression interface.
-func (s *STY) Children() []sql.Expression {
-	return s.args
-}
-
-// Resolved implements the sql.Expression interface.
-func (s *STY) Resolved() bool {
-	for _, arg := range s.args {
-		if !arg.Resolved() {
-			return false
-		}
-	}
-	return true
-}
-
-// IsNullable implements the sql.Expression interface.
-func (s *STY) IsNullable() bool {
-	for _, arg := range s.args {
-		if arg.IsNullable() {
-			return true
-		}
-	}
-	return false
-}
-
 // Type implements the sql.Expression interface.
 func (s *STY) Type() sql.Type {
-	if len(s.args) == 1 {
+	if len(s.ChildExpressions) == 1 {
 		return sql.Float64
 	} else {
 		return sql.PointType{}
@@ -202,8 +154,8 @@ func (s *STY) Type() sql.Type {
 }
 
 func (s *STY) String() string {
-	var args = make([]string, len(s.args))
-	for i, arg := range s.args {
+	var args = make([]string, len(s.ChildExpressions))
+	for i, arg := range s.ChildExpressions {
 		args[i] = arg.String()
 	}
 	return fmt.Sprintf("ST_Y(%s)", strings.Join(args, ","))
@@ -217,7 +169,7 @@ func (s *STY) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 // Eval implements the sql.Expression interface.
 func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Evaluate point
-	p, err := s.args[0].Eval(ctx, row)
+	p, err := s.ChildExpressions[0].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -234,12 +186,12 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// If just one argument, return Y
-	if len(s.args) == 1 {
+	if len(s.ChildExpressions) == 1 {
 		return _p.Y, nil
 	}
 
 	// Evaluate second argument
-	y, err := s.args[1].Eval(ctx, row)
+	y, err := s.ChildExpressions[1].Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
