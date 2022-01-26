@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2021-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,325 +15,364 @@
 package grant_tables
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
-
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
-const userTblName = "user"
+// User represents a user from the user Grant Table.
+type User struct {
+	User                string
+	Host                string
+	PrivilegeSet        map[PrivilegeType]struct{}
+	Plugin              string
+	Password            string
+	PasswordLastChanged time.Time
+	Locked              bool
+	Attributes          *string
+	//TODO: add the remaining fields
 
-var (
-	userPkCols        = []uint16{0, 1}
-	userUserCols      = []uint16{1}
-	errUserPkAssign   = fmt.Errorf("the primary key for the `user` table expects a host and user string")
-	errUserUserAssign = fmt.Errorf("the secondary key for the `user` table expects a user string")
-
-	userTblSchema sql.Schema
-)
-
-// UserPrimaryKey is a key that represents the primary key for the "user" Grant Table.
-type UserPrimaryKey struct {
-	Host string
-	User string
+	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a
+	// hidden column, therefore it's represented here as an additional field.
+	IsRole bool
 }
 
-// UserSecondaryKey is a key that represents the secondary key for the "user" Grant Table, which contains only usernames.
-type UserSecondaryKey struct {
-	User string
-}
+var _ in_mem_table.Entry = (*User)(nil)
 
-var _ in_mem_table.InMemTableDataKey = UserPrimaryKey{}
-var _ in_mem_table.InMemTableDataKey = UserSecondaryKey{}
-
-// AssignValues implements the interface in_mem_table.InMemTableDataKey.
-func (u UserPrimaryKey) AssignValues(vals ...interface{}) (in_mem_table.InMemTableDataKey, error) {
-	if len(vals) != 2 {
-		return u, errUserPkAssign
+// NewFromRow implements the interface in_mem_table.Entry.
+func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
+	if err := userTblSchema.CheckRow(row); err != nil {
+		return nil, err
 	}
-	host, ok := vals[0].(string)
-	if !ok {
-		return u, errUserPkAssign
+	//TODO: once the remaining fields are added, fill those in as well
+	var attributes *string
+	passwordLastChanged := time.Now().UTC()
+	if val, ok := row[userTblColIdxMap["User_attributes"]].(string); ok {
+		attributes = &val
 	}
-	user, ok := vals[1].(string)
-	if !ok {
-		return u, errUserPkAssign
+	if val, ok := row[userTblColIdxMap["password_last_changed"]].(time.Time); ok {
+		passwordLastChanged = val
 	}
-	return UserPrimaryKey{
-		Host: host,
-		User: user,
+	return &User{
+		User:                row[userTblColIdxMap["User"]].(string),
+		Host:                row[userTblColIdxMap["Host"]].(string),
+		PrivilegeSet:        u.rowToPrivSet(ctx, row),
+		Plugin:              row[userTblColIdxMap["plugin"]].(string),
+		Password:            row[userTblColIdxMap["authentication_string"]].(string),
+		PasswordLastChanged: passwordLastChanged,
+		Locked:              row[userTblColIdxMap["account_locked"]].(string) == "Y",
+		Attributes:          attributes,
+		IsRole:              false,
 	}, nil
 }
 
-// RepresentedColumns implements the interface in_mem_table.InMemTableDataKey.
-func (u UserPrimaryKey) RepresentedColumns() []uint16 {
-	return userPkCols
+// UpdateFromRow implements the interface in_mem_table.Entry.
+func (u *User) UpdateFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
+	updatedEntry, err := u.NewFromRow(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	updatedEntry.(*User).IsRole = u.IsRole
+	return updatedEntry, nil
 }
 
-// AssignValues implements the interface in_mem_table.InMemTableDataKey.
-func (u UserSecondaryKey) AssignValues(vals ...interface{}) (in_mem_table.InMemTableDataKey, error) {
-	if len(vals) != 1 {
-		return u, errUserUserAssign
+// ToRow implements the interface in_mem_table.Entry.
+func (u *User) ToRow(ctx *sql.Context) sql.Row {
+	row := make(sql.Row, len(userTblSchema))
+	var err error
+	for i, col := range userTblSchema {
+		row[i], err = col.Default.Eval(ctx, nil)
+		if err != nil {
+			panic(err) // Should never happen, schema is static
+		}
 	}
-	user, ok := vals[0].(string)
+	//TODO: once the remaining fields are added, fill those in as well
+	row[userTblColIdxMap["User"]] = u.User
+	row[userTblColIdxMap["Host"]] = u.Host
+	row[userTblColIdxMap["plugin"]] = u.Plugin
+	row[userTblColIdxMap["authentication_string"]] = u.Password
+	row[userTblColIdxMap["password_last_changed"]] = u.PasswordLastChanged
+	if u.Locked {
+		row[userTblColIdxMap["account_locked"]] = "Y"
+	}
+	if u.Attributes != nil {
+		row[userTblColIdxMap["User_attributes"]] = *u.Attributes
+	}
+	u.privSetToRow(ctx, row)
+	return row
+}
+
+// Equals implements the interface in_mem_table.Entry.
+func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
+	otherUser, ok := otherEntry.(*User)
 	if !ok {
-		return u, errUserUserAssign
+		return false
 	}
-	return UserSecondaryKey{
-		User: user,
-	}, nil
+	// IsRole is not tested for equality, as it is additional information
+	//TODO: once the remaining fields are added, fill those in as well
+	if u.User != otherUser.User ||
+		u.Host != otherUser.Host ||
+		u.Plugin != otherUser.Plugin ||
+		u.Password != otherUser.Password ||
+		!u.PasswordLastChanged.Equal(otherUser.PasswordLastChanged) ||
+		u.Locked != otherUser.Locked {
+		return false
+	}
+	if len(u.PrivilegeSet) != len(otherUser.PrivilegeSet) {
+		return false
+	}
+	for priv := range u.PrivilegeSet {
+		if _, ok := otherUser.PrivilegeSet[priv]; !ok {
+			return false
+		}
+	}
+	if u.Attributes == nil && otherUser.Attributes != nil ||
+		u.Attributes != nil && otherUser.Attributes == nil ||
+		(u.Attributes != nil && *u.Attributes != *otherUser.Attributes) {
+		return false
+	}
+	return true
 }
 
-// RepresentedColumns implements the interface in_mem_table.InMemTableDataKey.
-func (u UserSecondaryKey) RepresentedColumns() []uint16 {
-	return userUserCols
+// rowToPrivSet returns a set of privileges for the given row.
+func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) map[PrivilegeType]struct{} {
+	privSet := make(map[PrivilegeType]struct{})
+	for i, val := range row {
+		switch i {
+		case userTblColIdxMap["Select_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Select] = struct{}{}
+			}
+		case userTblColIdxMap["Insert_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Insert] = struct{}{}
+			}
+		case userTblColIdxMap["Update_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Update] = struct{}{}
+			}
+		case userTblColIdxMap["Delete_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Delete] = struct{}{}
+			}
+		case userTblColIdxMap["Create_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Create] = struct{}{}
+			}
+		case userTblColIdxMap["Drop_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Drop] = struct{}{}
+			}
+		case userTblColIdxMap["Reload_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Reload] = struct{}{}
+			}
+		case userTblColIdxMap["Shutdown_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Shutdown] = struct{}{}
+			}
+		case userTblColIdxMap["Process_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Process] = struct{}{}
+			}
+		case userTblColIdxMap["File_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_File] = struct{}{}
+			}
+		case userTblColIdxMap["Grant_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Grant] = struct{}{}
+			}
+		case userTblColIdxMap["References_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_References] = struct{}{}
+			}
+		case userTblColIdxMap["Index_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Index] = struct{}{}
+			}
+		case userTblColIdxMap["Alter_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Alter] = struct{}{}
+			}
+		case userTblColIdxMap["Show_db_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_ShowDB] = struct{}{}
+			}
+		case userTblColIdxMap["Super_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Super] = struct{}{}
+			}
+		case userTblColIdxMap["Create_tmp_table_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_CreateTempTable] = struct{}{}
+			}
+		case userTblColIdxMap["Lock_tables_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_LockTables] = struct{}{}
+			}
+		case userTblColIdxMap["Execute_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Execute] = struct{}{}
+			}
+		case userTblColIdxMap["Repl_slave_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_ReplicationSlave] = struct{}{}
+			}
+		case userTblColIdxMap["Repl_client_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_ReplicationClient] = struct{}{}
+			}
+		case userTblColIdxMap["Create_view_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_CreateView] = struct{}{}
+			}
+		case userTblColIdxMap["Show_view_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_ShowView] = struct{}{}
+			}
+		case userTblColIdxMap["Create_routine_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_CreateRoutine] = struct{}{}
+			}
+		case userTblColIdxMap["Alter_routine_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_AlterRoutine] = struct{}{}
+			}
+		case userTblColIdxMap["Create_user_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_CreateUser] = struct{}{}
+			}
+		case userTblColIdxMap["Event_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Event] = struct{}{}
+			}
+		case userTblColIdxMap["Trigger_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_Trigger] = struct{}{}
+			}
+		case userTblColIdxMap["Create_tablespace_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_CreateTablespace] = struct{}{}
+			}
+		case userTblColIdxMap["Create_role_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_CreateRole] = struct{}{}
+			}
+		case userTblColIdxMap["Drop_role_priv"]:
+			if val.(string) == "Y" {
+				privSet[PrivilegeType_DropRole] = struct{}{}
+			}
+		}
+	}
+	return privSet
 }
 
-// init creates the schema for the "user" Grant Table.
-func init() {
-	// Types
-	char32_utf8_bin := sql.MustCreateString(sqltypes.Char, 32, sql.Collation_utf8_bin)
-	char64_utf8_bin := sql.MustCreateString(sqltypes.Char, 64, sql.Collation_utf8_bin)
-	char255_ascii_general_ci := sql.MustCreateString(sqltypes.Char, 255, sql.Collation_ascii_general_ci)
-	enum_ANY_X509_SPECIFIED_utf8_general_ci := sql.MustCreateEnumType([]string{"", "ANY", "X509", "SPECIFIED"}, sql.Collation_utf8_general_ci)
-	enum_N_Y_utf8_general_ci := sql.MustCreateEnumType([]string{"N", "Y"}, sql.Collation_utf8_general_ci)
-	text_utf8_bin := sql.CreateText(sql.Collation_utf8_bin)
-
-	// Column Templates
-	blob_not_null_default_nil := &sql.Column{
-		Type:     sql.Blob,
-		Default:  nil,
-		Nullable: false,
-	}
-	char32_utf8_bin_not_null_default_empty := &sql.Column{
-		Type:     char32_utf8_bin,
-		Default:  mustDefault(expression.NewLiteral("", char32_utf8_bin), char32_utf8_bin, true, false),
-		Nullable: false,
-	}
-	char64_utf8_bin_not_null_default_caching_sha2_password := &sql.Column{
-		Type:     char64_utf8_bin,
-		Default:  mustDefault(expression.NewLiteral("caching_sha2_password", char64_utf8_bin), char64_utf8_bin, true, false),
-		Nullable: false,
-	}
-	char255_ascii_general_ci_not_null_default_empty := &sql.Column{
-		Type:     char255_ascii_general_ci,
-		Default:  mustDefault(expression.NewLiteral("", char255_ascii_general_ci), char255_ascii_general_ci, true, false),
-		Nullable: false,
-	}
-	enum_ANY_X509_SPECIFIED_utf8_general_ci_not_null_default_empty := &sql.Column{
-		Type:     enum_ANY_X509_SPECIFIED_utf8_general_ci,
-		Default:  mustDefault(expression.NewLiteral("", enum_ANY_X509_SPECIFIED_utf8_general_ci), enum_ANY_X509_SPECIFIED_utf8_general_ci, true, false),
-		Nullable: false,
-	}
-	enum_N_Y_utf8_general_ci_not_null_default_N := &sql.Column{
-		Type:     enum_N_Y_utf8_general_ci,
-		Default:  mustDefault(expression.NewLiteral("N", enum_N_Y_utf8_general_ci), enum_N_Y_utf8_general_ci, true, false),
-		Nullable: false,
-	}
-	enum_N_Y_utf8_general_ci_nullable_default_nil := &sql.Column{
-		Type:     enum_N_Y_utf8_general_ci,
-		Default:  nil,
-		Nullable: true,
-	}
-	int_unsigned_not_null_default_0 := &sql.Column{
-		Type:     sql.Uint32,
-		Default:  mustDefault(expression.NewLiteral(uint32(0), sql.Uint32), sql.Uint32, true, false),
-		Nullable: false,
-	}
-	json_nullable_default_nil := &sql.Column{
-		Type:     sql.JSON,
-		Default:  nil,
-		Nullable: true,
-	}
-	smallint_unsigned_nullable_default_nil := &sql.Column{
-		Type:     sql.Uint16,
-		Default:  nil,
-		Nullable: true,
-	}
-	text_utf8_bin_nullable_default_nil := &sql.Column{
-		Type:     text_utf8_bin,
-		Default:  nil,
-		Nullable: true,
-	}
-	timestamp_nullable_default_nil := &sql.Column{
-		Type:     sql.Timestamp,
-		Default:  nil,
-		Nullable: true,
-	}
-
-	userTblSchema = sql.Schema{
-		columnTemplate("Host", userTblName, true, char255_ascii_general_ci_not_null_default_empty),
-		columnTemplate("User", userTblName, true, char32_utf8_bin_not_null_default_empty),
-		columnTemplate("Select_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Insert_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Update_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Delete_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Create_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Drop_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Reload_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Shutdown_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Process_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("File_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Grant_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("References_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Index_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Alter_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Show_db_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Super_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Create_tmp_table_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Lock_tables_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Execute_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Repl_slave_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Repl_client_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Create_view_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Show_view_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Create_routine_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Alter_routine_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Create_user_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Event_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Trigger_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Create_tablespace_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("ssl_type", userTblName, false, enum_ANY_X509_SPECIFIED_utf8_general_ci_not_null_default_empty),
-		columnTemplate("ssl_cipher", userTblName, false, blob_not_null_default_nil),
-		columnTemplate("x509_issuer", userTblName, false, blob_not_null_default_nil),
-		columnTemplate("x509_subject", userTblName, false, blob_not_null_default_nil),
-		columnTemplate("max_questions", userTblName, false, int_unsigned_not_null_default_0),
-		columnTemplate("max_updates", userTblName, false, int_unsigned_not_null_default_0),
-		columnTemplate("max_connections", userTblName, false, int_unsigned_not_null_default_0),
-		columnTemplate("max_user_connections", userTblName, false, int_unsigned_not_null_default_0),
-		columnTemplate("plugin", userTblName, false, char64_utf8_bin_not_null_default_caching_sha2_password),
-		columnTemplate("authentication_string", userTblName, false, text_utf8_bin_nullable_default_nil),
-		columnTemplate("password_expired", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("password_last_changed", userTblName, false, timestamp_nullable_default_nil),
-		columnTemplate("password_lifetime", userTblName, false, smallint_unsigned_nullable_default_nil),
-		columnTemplate("account_locked", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Create_role_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Drop_role_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Password_reuse_history", userTblName, false, smallint_unsigned_nullable_default_nil),
-		columnTemplate("Password_reuse_time", userTblName, false, smallint_unsigned_nullable_default_nil),
-		columnTemplate("Password_require_current", userTblName, false, enum_N_Y_utf8_general_ci_nullable_default_nil),
-		columnTemplate("User_attributes", userTblName, false, json_nullable_default_nil),
+// privSetToRow applies the this User's set of privileges to the given row. Only sets privileges that exist to "Y",
+// therefore any privileges that do not exist will have their default values.
+func (u *User) privSetToRow(ctx *sql.Context, row sql.Row) {
+	for priv := range u.PrivilegeSet {
+		switch priv {
+		case PrivilegeType_Select:
+			row[userTblColIdxMap["Select_priv"]] = "Y"
+		case PrivilegeType_Insert:
+			row[userTblColIdxMap["Insert_priv"]] = "Y"
+		case PrivilegeType_Update:
+			row[userTblColIdxMap["Update_priv"]] = "Y"
+		case PrivilegeType_Delete:
+			row[userTblColIdxMap["Delete_priv"]] = "Y"
+		case PrivilegeType_Create:
+			row[userTblColIdxMap["Create_priv"]] = "Y"
+		case PrivilegeType_Drop:
+			row[userTblColIdxMap["Drop_priv"]] = "Y"
+		case PrivilegeType_Reload:
+			row[userTblColIdxMap["Reload_priv"]] = "Y"
+		case PrivilegeType_Shutdown:
+			row[userTblColIdxMap["Shutdown_priv"]] = "Y"
+		case PrivilegeType_Process:
+			row[userTblColIdxMap["Process_priv"]] = "Y"
+		case PrivilegeType_File:
+			row[userTblColIdxMap["File_priv"]] = "Y"
+		case PrivilegeType_Grant:
+			row[userTblColIdxMap["Grant_priv"]] = "Y"
+		case PrivilegeType_References:
+			row[userTblColIdxMap["References_priv"]] = "Y"
+		case PrivilegeType_Index:
+			row[userTblColIdxMap["Index_priv"]] = "Y"
+		case PrivilegeType_Alter:
+			row[userTblColIdxMap["Alter_priv"]] = "Y"
+		case PrivilegeType_ShowDB:
+			row[userTblColIdxMap["Show_db_priv"]] = "Y"
+		case PrivilegeType_Super:
+			row[userTblColIdxMap["Super_priv"]] = "Y"
+		case PrivilegeType_CreateTempTable:
+			row[userTblColIdxMap["Create_tmp_table_priv"]] = "Y"
+		case PrivilegeType_LockTables:
+			row[userTblColIdxMap["Lock_tables_priv"]] = "Y"
+		case PrivilegeType_Execute:
+			row[userTblColIdxMap["Execute_priv"]] = "Y"
+		case PrivilegeType_ReplicationSlave:
+			row[userTblColIdxMap["Repl_slave_priv"]] = "Y"
+		case PrivilegeType_ReplicationClient:
+			row[userTblColIdxMap["Repl_client_priv"]] = "Y"
+		case PrivilegeType_CreateView:
+			row[userTblColIdxMap["Create_view_priv"]] = "Y"
+		case PrivilegeType_ShowView:
+			row[userTblColIdxMap["Show_view_priv"]] = "Y"
+		case PrivilegeType_CreateRoutine:
+			row[userTblColIdxMap["Create_routine_priv"]] = "Y"
+		case PrivilegeType_AlterRoutine:
+			row[userTblColIdxMap["Alter_routine_priv"]] = "Y"
+		case PrivilegeType_CreateUser:
+			row[userTblColIdxMap["Create_user_priv"]] = "Y"
+		case PrivilegeType_Event:
+			row[userTblColIdxMap["Event_priv"]] = "Y"
+		case PrivilegeType_Trigger:
+			row[userTblColIdxMap["Trigger_priv"]] = "Y"
+		case PrivilegeType_CreateTablespace:
+			row[userTblColIdxMap["Create_tablespace_priv"]] = "Y"
+		case PrivilegeType_CreateRole:
+			row[userTblColIdxMap["Create_role_priv"]] = "Y"
+		case PrivilegeType_DropRole:
+			row[userTblColIdxMap["Drop_role_priv"]] = "Y"
+		}
 	}
 }
 
-func addDefaultRootUser(userTable *grantTable) {
-	err := userTable.Data().Put(sql.Row{
-		"localhost",             // 00: Host
-		"root",                  // 01: User
-		"Y",                     // 02: Select_priv
-		"Y",                     // 03: Insert_priv
-		"Y",                     // 04: Update_priv
-		"Y",                     // 05: Delete_priv
-		"Y",                     // 06: Create_priv
-		"Y",                     // 07: Drop_priv
-		"Y",                     // 08: Reload_priv
-		"Y",                     // 09: Shutdown_priv
-		"Y",                     // 10: Process_priv
-		"Y",                     // 11: File_priv
-		"Y",                     // 12: Grant_priv
-		"Y",                     // 13: References_priv
-		"Y",                     // 14: Index_priv
-		"Y",                     // 15: Alter_priv
-		"Y",                     // 16: Show_db_priv
-		"Y",                     // 17: Super_priv
-		"Y",                     // 18: Create_tmp_table_priv
-		"Y",                     // 19: Lock_tables_priv
-		"Y",                     // 20: Execute_priv
-		"Y",                     // 21: Repl_slave_priv
-		"Y",                     // 22: Repl_client_priv
-		"Y",                     // 23: Create_view_priv
-		"Y",                     // 24: Show_view_priv
-		"Y",                     // 25: Create_routine_priv
-		"Y",                     // 26: Alter_routine_priv
-		"Y",                     // 27: Create_user_priv
-		"Y",                     // 28: Event_priv
-		"Y",                     // 29: Trigger_priv
-		"Y",                     // 30: Create_tablespace_priv
-		"",                      // 31: ssl_type
-		"",                      // 32: ssl_cipher
-		"",                      // 33: x509_issuer
-		"",                      // 34: x509_subject
-		0,                       // 35: max_questions
-		0,                       // 36: max_updates
-		0,                       // 37: max_connections
-		0,                       // 38: max_user_connections
-		"mysql_native_password", // 39: plugin
-		"",                      // 40: authentication_string
-		"N",                     // 41: password_expired
-		time.Unix(1, 0).UTC(),   // 42: password_last_changed
-		nil,                     // 43: password_lifetime
-		"N",                     // 44: account_locked
-		"Y",                     // 45: Create_role_priv
-		"Y",                     // 46: Drop_role_priv
-		nil,                     // 47: Password_reuse_history
-		nil,                     // 48: Password_reuse_time
-		nil,                     // 49: Password_require_current
-		nil,                     // 50: User_attributes
-	})
-	if err != nil {
-		panic(err) // Insertion should never fail so this should never be reached
-	}
-}
+// PrivilegeType represents a privilege.
+type PrivilegeType int
 
-func addSuperUser(userTable *grantTable, username string, password string) {
-	err := userTable.Data().Put(sql.Row{
-		"%",                     // 00: Host
-		username,                // 01: User
-		"Y",                     // 02: Select_priv
-		"Y",                     // 03: Insert_priv
-		"Y",                     // 04: Update_priv
-		"Y",                     // 05: Delete_priv
-		"Y",                     // 06: Create_priv
-		"Y",                     // 07: Drop_priv
-		"Y",                     // 08: Reload_priv
-		"Y",                     // 09: Shutdown_priv
-		"Y",                     // 10: Process_priv
-		"Y",                     // 11: File_priv
-		"Y",                     // 12: Grant_priv
-		"Y",                     // 13: References_priv
-		"Y",                     // 14: Index_priv
-		"Y",                     // 15: Alter_priv
-		"Y",                     // 16: Show_db_priv
-		"Y",                     // 17: Super_priv
-		"Y",                     // 18: Create_tmp_table_priv
-		"Y",                     // 19: Lock_tables_priv
-		"Y",                     // 20: Execute_priv
-		"Y",                     // 21: Repl_slave_priv
-		"Y",                     // 22: Repl_client_priv
-		"Y",                     // 23: Create_view_priv
-		"Y",                     // 24: Show_view_priv
-		"Y",                     // 25: Create_routine_priv
-		"Y",                     // 26: Alter_routine_priv
-		"Y",                     // 27: Create_user_priv
-		"Y",                     // 28: Event_priv
-		"Y",                     // 29: Trigger_priv
-		"Y",                     // 30: Create_tablespace_priv
-		"",                      // 31: ssl_type
-		"",                      // 32: ssl_cipher
-		"",                      // 33: x509_issuer
-		"",                      // 34: x509_subject
-		0,                       // 35: max_questions
-		0,                       // 36: max_updates
-		0,                       // 37: max_connections
-		0,                       // 38: max_user_connections
-		"mysql_native_password", // 39: plugin
-		password,                // 40: authentication_string
-		"N",                     // 41: password_expired
-		time.Unix(1, 0).UTC(),   // 42: password_last_changed
-		nil,                     // 43: password_lifetime
-		"N",                     // 44: account_locked
-		"Y",                     // 45: Create_role_priv
-		"Y",                     // 46: Drop_role_priv
-		nil,                     // 47: Password_reuse_history
-		nil,                     // 48: Password_reuse_time
-		nil,                     // 49: Password_require_current
-		nil,                     // 50: User_attributes
-	})
-	if err != nil {
-		panic(err) // Insertion should never fail so this should never be reached
-	}
-}
+const (
+	PrivilegeType_Select PrivilegeType = iota
+	PrivilegeType_Insert
+	PrivilegeType_Update
+	PrivilegeType_Delete
+	PrivilegeType_Create
+	PrivilegeType_Drop
+	PrivilegeType_Reload
+	PrivilegeType_Shutdown
+	PrivilegeType_Process
+	PrivilegeType_File
+	PrivilegeType_Grant
+	PrivilegeType_References
+	PrivilegeType_Index
+	PrivilegeType_Alter
+	PrivilegeType_ShowDB
+	PrivilegeType_Super
+	PrivilegeType_CreateTempTable
+	PrivilegeType_LockTables
+	PrivilegeType_Execute
+	PrivilegeType_ReplicationSlave
+	PrivilegeType_ReplicationClient
+	PrivilegeType_CreateView
+	PrivilegeType_ShowView
+	PrivilegeType_CreateRoutine
+	PrivilegeType_AlterRoutine
+	PrivilegeType_CreateUser
+	PrivilegeType_Event
+	PrivilegeType_Trigger
+	PrivilegeType_CreateTablespace
+	PrivilegeType_CreateRole
+	PrivilegeType_DropRole
+)
