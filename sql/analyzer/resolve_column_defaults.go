@@ -445,13 +445,16 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
 	//  returned by Expressions() for these nodes
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if n.Resolved() {
+			return n, nil
+		}
 
 		// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
 		// we need to count the column indexes in the very hacky way outlined above.
 		colIndex := 0
 
 		switch node := n.(type) {
-		case *plan.InsertDestination, *plan.ShowColumns, *plan.ShowCreateTable:
+		case *plan.ShowColumns, *plan.ShowCreateTable:
 			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
@@ -464,6 +467,17 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 					return e, nil
 				}
 
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.InsertDestination:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
+				}
+				sch := node.Sch
 				col := sch[colIndex]
 				colIndex++
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
