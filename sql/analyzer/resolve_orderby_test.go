@@ -227,16 +227,13 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-							sql.NewWindow(
-								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							sql.NewWindow([]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							}, sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 								},
-								sql.SortFields{
-									{
-										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-									},
-								},
-							),
+							}, nil),
 						)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
@@ -253,16 +250,13 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.Expression{
 						expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-							sql.NewWindow(
-								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							sql.NewWindow([]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							}, sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 								},
-								sql.SortFields{
-									{
-										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-									},
-								},
-							),
+							}, nil),
 						)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
@@ -272,16 +266,13 @@ func TestPushdownSortWindow(t *testing.T) {
 				[]sql.Expression{
 					expression.NewAlias("x", expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false)),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						sql.NewWindow([]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						}, sql.SortFields{
+							{
+								Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-								},
-							},
-						),
+						}, nil),
 					)),
 				},
 				plan.NewSort(
@@ -302,16 +293,13 @@ func TestPushdownSortWindow(t *testing.T) {
 					[]sql.Expression{
 						expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
 						mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-							sql.NewWindow(
-								[]sql.Expression{
-									expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							sql.NewWindow([]sql.Expression{
+								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+							}, sql.SortFields{
+								{
+									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 								},
-								sql.SortFields{
-									{
-										Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-									},
-								},
-							),
+							}, nil),
 						)),
 					},
 					plan.NewResolvedTable(table, nil, nil),
@@ -321,16 +309,13 @@ func TestPushdownSortWindow(t *testing.T) {
 				[]sql.Expression{
 					expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow(
-							[]sql.Expression{
-								expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						sql.NewWindow([]sql.Expression{
+							expression.NewGetFieldWithTable(0, sql.Int64, "foo", "b", false),
+						}, sql.SortFields{
+							{
+								Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
 							},
-							sql.SortFields{
-								{
-									Column: expression.NewGetFieldWithTable(0, sql.Int64, "foo", "a", false),
-								},
-							},
-						),
+						}, nil),
 					)),
 				},
 				plan.NewSort(

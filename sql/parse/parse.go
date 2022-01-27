@@ -39,6 +39,12 @@ var (
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
+
+	ErrInvalidFrameUnit = errors.NewKind("invalid frame unit")
+
+	ErrFrameEndUnboundedPreceding = errors.NewKind("frame end cannot be unbounded preceding")
+
+	ErrFrameStartUnboundedFollowing = errors.NewKind("frame start cannot be unbounded following")
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -2669,9 +2675,12 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 			exprs[0] = expression.NewDistinctExpression(exprs[0])
 		}
-
+		over, err := overToWindow(ctx, v.Over)
+		if err != nil {
+			return nil, err
+		}
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
-			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
+			isAggregateFunc(v), over, exprs...), nil
 	case *sqlparser.GroupConcatExpr:
 		exprs, err := selectExprsToExpressions(ctx, v.Exprs)
 		if err != nil {
@@ -2818,14 +2827,14 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	}
 }
 
-func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
+func overToWindow(ctx *sql.Context, over *sqlparser.Over) (*sql.Window, error) {
 	if over == nil {
-		return nil
+		return nil, nil
 	}
 
 	sortFields, err := orderByToSortFields(ctx, over.OrderBy)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	partitions := make([]sql.Expression, len(over.PartitionBy))
@@ -2833,11 +2842,20 @@ func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
 		var err error
 		partitions[i], err = ExprToExpression(ctx, expr)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 	}
 
-	return sql.NewWindow(partitions, sortFields)
+	if over.Frame != nil && over.Frame.Unit == sqlparser.RangeUnit {
+		// TODO: implement rangeFramerBase
+		return nil, fmt.Errorf("RANGE framing not supported")
+	}
+
+	frame, err := NewFrame(ctx, over.Frame)
+	if err != nil {
+		return nil, err
+	}
+	return sql.NewWindow(partitions, sortFields, frame), nil
 }
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {

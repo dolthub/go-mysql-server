@@ -21,6 +21,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+//go:generate optgen -out window_framer.og.go -pkg aggregation framer window_framer.go
+
 var ErrPartitionNotSet = errors.New("attempted to general a window frame interval before framer partition was set")
 
 var _ sql.WindowFramer = (*RowFramer)(nil)
@@ -253,5 +255,165 @@ func (f *GroupByFramer) Interval() (sql.WindowInterval, error) {
 }
 
 func (f *GroupByFramer) SlidingInterval(ctx sql.Context) (sql.WindowInterval, sql.WindowInterval, sql.WindowInterval) {
+	panic("implement me")
+}
+
+type rowFramerBase struct {
+	idx            int
+	partitionStart int
+	partitionEnd   int
+	frameStart     int
+	frameEnd       int
+	partitionSet   bool
+
+	startOffset int
+	endOffset   int
+
+	unboundedFollowing bool
+	unboundedPreceding bool
+	startCurrentRow    bool
+	endCurrentRow      bool
+
+	startNPreceding int
+	startNFollowing int
+	endNPreceding   int
+	endNFollowing   int
+}
+
+func (f *rowFramerBase) NewFramer(interval sql.WindowInterval) sql.WindowFramer {
+	var startOffset int
+	if f.startNPreceding != 0 {
+		startOffset = -f.startNPreceding
+	}
+	if f.startNFollowing != 0 {
+		startOffset = f.startNFollowing
+	}
+
+	var endOffset int
+	if f.endNPreceding != 0 {
+		endOffset = -f.endNPreceding
+	}
+	if f.endNFollowing != 0 {
+		endOffset = f.endNFollowing
+	}
+
+	return &rowFramerBase{
+		idx:            interval.Start,
+		partitionStart: interval.Start,
+		partitionEnd:   interval.End,
+		frameStart:     -1,
+		frameEnd:       -1,
+		partitionSet:   true,
+		startOffset:    startOffset,
+		endOffset:      endOffset,
+		// pass through parent state
+		unboundedPreceding: f.unboundedPreceding,
+		unboundedFollowing: f.unboundedFollowing,
+		startCurrentRow:    f.startCurrentRow,
+		endCurrentRow:      f.endCurrentRow,
+		startNPreceding:    f.startNPreceding,
+		startNFollowing:    f.startNFollowing,
+		endNPreceding:      f.endNPreceding,
+		endNFollowing:      f.endNFollowing,
+	}
+}
+
+func (f *rowFramerBase) Next() (sql.WindowInterval, error) {
+	if f.idx != 0 && f.idx >= f.partitionEnd || !f.partitionSet {
+		return sql.WindowInterval{}, io.EOF
+	}
+
+	newStart := f.idx + f.startOffset
+	if f.unboundedPreceding || newStart < f.partitionStart {
+		newStart = f.partitionStart
+	}
+
+	newEnd := f.idx + f.endOffset + 1
+	if f.unboundedFollowing || newEnd > f.partitionEnd {
+		newEnd = f.partitionEnd
+	}
+
+	if newStart > newEnd {
+		newStart = newEnd
+	}
+
+	f.frameStart = newStart
+	f.frameEnd = newEnd
+
+	f.idx++
+	return f.Interval()
+}
+
+func (f *rowFramerBase) FirstIdx() int {
+	return f.frameStart
+}
+
+func (f *rowFramerBase) LastIdx() int {
+	return f.frameEnd
+}
+
+func (f *rowFramerBase) Interval() (sql.WindowInterval, error) {
+	if !f.partitionSet {
+		return sql.WindowInterval{}, ErrPartitionNotSet
+	}
+	return sql.WindowInterval{Start: f.frameStart, End: f.frameEnd}, nil
+}
+
+var _ sql.WindowFramer = (*rowFramerBase)(nil)
+
+type rangeFramerBase struct {
+	idx                          int
+	partitionStart, partitionEnd int
+	frameStart, frameEnd         int
+	partitionSet                 bool
+
+	unboundedFollowing bool
+	unboundedPreceding bool
+	startCurrentRow    bool
+	endCurrentRow      bool
+
+	startNPreceding sql.Expression
+	startNFollowing sql.Expression
+	endNPreceding   sql.Expression
+	endNFollowing   sql.Expression
+}
+
+var _ sql.WindowFramer = (*rangeFramerBase)(nil)
+
+func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) sql.WindowFramer {
+	return &rangeFramerBase{
+		idx:            interval.Start,
+		partitionStart: interval.Start,
+		partitionEnd:   interval.End,
+		frameStart:     -1,
+		frameEnd:       -1,
+		partitionSet:   true,
+		// pass through parent state
+		unboundedPreceding: f.unboundedPreceding,
+		unboundedFollowing: f.unboundedFollowing,
+		startCurrentRow:    f.startCurrentRow,
+		endCurrentRow:      f.endCurrentRow,
+		startNPreceding:    f.startNPreceding,
+		startNFollowing:    f.startNFollowing,
+		endNPreceding:      f.endNPreceding,
+		endNFollowing:      f.endNFollowing,
+	}
+}
+
+func (f *rangeFramerBase) Next() (sql.WindowInterval, error) {
+	// TODO pass order by clause in constructor
+	// TODO scan ahead buffer of peer groups, use rank algorithm
+	panic("implement me")
+}
+
+func (f *rangeFramerBase) FirstIdx() int {
+	return f.frameStart
+}
+
+func (f *rangeFramerBase) LastIdx() int {
+	return f.frameEnd
+}
+
+func (f *rangeFramerBase) Interval() (sql.WindowInterval, error) {
 	panic("implement me")
 }

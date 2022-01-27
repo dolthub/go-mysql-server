@@ -124,7 +124,7 @@ type WindowFunction interface {
 	Disposable
 
 	// WithWindow passes fields from the parent Window, deferring partial construction of a WindowFunction
-	WithWindow(w *Window) WindowFunction
+	WithWindow(w *Window) (WindowFunction, error)
 	// StartPartition discards any previous state and initializes the aggregation for a new partition
 	StartPartition(*Context, WindowInterval, WindowBuffer) error
 	// DefaultFramer returns a new instance of the default WindowFramer for a particular aggregation
@@ -164,6 +164,33 @@ type WindowFramer interface {
 	// last frame, and added range since the last frame.
 	// TODO: implement sliding window interface in framers, windowBlockIter, and aggregation functions
 	//SlidingInterval(ctx Context) (WindowInterval, WindowInterval, WindowInterval)
+}
+
+// WindowFrame describe input bounds for an aggregation function
+// execution. A frame will only have two non-null fields for the start
+// and end bounds. A WindowFrame plan node is associated
+// with an exec WindowFramer.
+type WindowFrame interface {
+	fmt.Stringer
+
+	// NewFramer constructs an executable WindowFramer
+	NewFramer() (WindowFramer, error)
+	// UnboundedFollowing returns whether a frame end is unbounded
+	UnboundedFollowing() bool
+	// UnboundedPreceding returns whether a frame start is unbounded
+	UnboundedPreceding() bool
+	// StartCurrentRow returns whether a frame start is CURRENT ROW
+	StartCurrentRow() bool
+	// EndCurrentRow returns whether a frame end is CURRENT ROW
+	EndCurrentRow() bool
+	// StartNFollowing returns a frame's start preceding Expression or nil
+	StartNPreceding() Expression
+	// StartNFollowing returns a frame's start following Expression or nil
+	StartNFollowing() Expression
+	// EndNPreceding returns whether a frame end preceding Expression or nil
+	EndNPreceding() Expression
+	// EndNPreceding returns whether a frame end following Expression or nil
+	EndNFollowing() Expression
 }
 
 type AggregationBuffer interface {
