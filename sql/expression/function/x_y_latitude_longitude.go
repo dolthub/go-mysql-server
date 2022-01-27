@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// STX is a function that the x value from a given point.
+// STX is a function that returns the x value from a given point.
 type STX struct {
 	expression.NaryExpression
 }
@@ -119,7 +119,7 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return sql.Point{X: _x.(float64), Y: _p.Y}, nil
 }
 
-// STY is a function that the x value from a given point.
+// STY is a function that returns the y value from a given point.
 type STY struct {
 	expression.NaryExpression
 }
@@ -209,4 +209,219 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Create point with old X and new Ys
 	return sql.Point{X: _p.X, Y: _y.(float64)}, nil
+}
+
+
+// Longitude is a function that returns the x value from a given point.
+type Longitude struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*Longitude)(nil)
+
+var ErrNonGeographic = errors.NewKind("function %s is only defined for geographic spatial reference systems, but one of its argument is in SRID %v, which is not geographic")
+var ErrLatitudeOutOfRange = errors.NewKind("latitude %v is out of range in function %s. it must be within [-90.0, 90.0]")
+var ErrLongitudeOutOfRange = errors.NewKind("longitude %v is out of range in function %s. it must be within [-180.0, 180.0]")
+
+// NewLongitude creates a new STX expression.
+func NewLongitude(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 1 && len(args) != 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_LONGITUDE", "1 or 2", len(args))
+	}
+	return &Longitude{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (s *Longitude) FunctionName() string {
+	return "st_longitude"
+}
+
+// Description implements sql.FunctionExpression
+func (s *Longitude) Description() string {
+	return "returns the latitude value of given point. If given a second argument, returns a new point with second argument as latitude value."
+}
+
+
+// Type implements the sql.Expression interface.
+func (s *Longitude) Type() sql.Type {
+	if len(s.ChildExpressions) == 1 {
+		return sql.Float64
+	} else {
+		return sql.PointType{}
+	}
+}
+
+func (s *Longitude) String() string {
+	var args = make([]string, len(s.ChildExpressions))
+	for i, arg := range s.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_LONGITUDE(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (s *Longitude) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLongitude(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (s *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate point
+	p, err := s.ChildExpressions[0].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return null if geometry is null
+	if p == nil {
+		return nil, nil
+	}
+
+	// Check that it is a point
+	_p, ok := p.(sql.Point)
+	if !ok {
+		return nil, ErrInvalidType.New(s.FunctionName())
+	}
+
+	// Point needs to have SRID 4326
+	// TODO: might need to be == Cartesian instead for other SRIDs
+	if _p.SRID != GeoSpatialSRID {
+		return nil, ErrNonGeographic.New(s.FunctionName(), _p.SRID)
+	}
+
+	// If just one argument, return X
+	if len(s.ChildExpressions) == 1 {
+		return _p.X, nil
+	}
+
+	// Evaluate second argument
+	x, err := s.ChildExpressions[1].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return null if second argument is null
+	if x == nil {
+		return nil, nil
+	}
+
+	// Convert to float64
+	x, err = sql.Float64.Convert(x)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check that value is within longitude range [-180, 180]
+	_x := x.(float64)
+	if _x < -180.0 || _x > 180.0 {
+		return nil, ErrLongitudeOutOfRange.New(_x, s.FunctionName())
+	}
+
+	// Create point with new X and old Y
+	return sql.Point{X: _x, Y: _p.Y}, nil
+}
+
+// Latitude is a function that returns the x value from a given point.
+type Latitude struct {
+	expression.NaryExpression
+}
+
+var _ sql.FunctionExpression = (*Latitude)(nil)
+
+// NewLatitude creates a new STX expression.
+func NewLatitude(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 1 && len(args) != 2 {
+		return nil, sql.ErrInvalidArgumentNumber.New("ST_LATITUDE", "1 or 2", len(args))
+	}
+	return &Latitude{expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (s *Latitude) FunctionName() string {
+	return "st_latitude"
+}
+
+// Description implements sql.FunctionExpression
+func (s *Latitude) Description() string {
+	return "returns the latitude value of given point. If given a second argument, returns a new point with second argument as latitude value."
+}
+
+
+// Type implements the sql.Expression interface.
+func (s *Latitude) Type() sql.Type {
+	if len(s.ChildExpressions) == 1 {
+		return sql.Float64
+	} else {
+		return sql.PointType{}
+	}
+}
+
+func (s *Latitude) String() string {
+	var args = make([]string, len(s.ChildExpressions))
+	for i, arg := range s.ChildExpressions {
+		args[i] = arg.String()
+	}
+	return fmt.Sprintf("ST_LATITUDE(%s)", strings.Join(args, ","))
+}
+
+// WithChildren implements the Expression interface.
+func (s *Latitude) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewLongitude(children...)
+}
+
+// Eval implements the sql.Expression interface.
+func (s *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate point
+	p, err := s.ChildExpressions[0].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return null if geometry is null
+	if p == nil {
+		return nil, nil
+	}
+
+	// Check that it is a point
+	_p, ok := p.(sql.Point)
+	if !ok {
+		return nil, ErrInvalidType.New(s.FunctionName())
+	}
+
+	// Point needs to have SRID 4326
+	// TODO: might need to be == Cartesian instead for other SRIDs
+	if _p.SRID != GeoSpatialSRID {
+		return nil, ErrNonGeographic.New(s.FunctionName(), _p.SRID)
+	}
+
+	// If just one argument, return X
+	if len(s.ChildExpressions) == 1 {
+		return _p.X, nil
+	}
+
+	// Evaluate second argument
+	x, err := s.ChildExpressions[1].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return null if second argument is null
+	if x == nil {
+		return nil, nil
+	}
+
+	// Convert to float64
+	x, err = sql.Float64.Convert(x)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check that value is within longitude range [-180, 180]
+	_x := x.(float64)
+	if _x < -180.0 || _x > 180.0 {
+		return nil, ErrLongitudeOutOfRange.New(_x, s.FunctionName())
+	}
+
+	// Create point with new X and old Y
+	return sql.Point{X: _x, Y: _p.Y}, nil
 }
