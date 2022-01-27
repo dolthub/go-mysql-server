@@ -434,97 +434,148 @@ var validColumnDefaultFuncs = map[string]struct{}{
 	"yearweek":                           {},
 }
 
+type targetSchema interface {
+	TargetSchema() sql.Schema
+}
+
 func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("resolveColumnDefaults")
 	defer span.Finish()
 
 	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
 	//  returned by Expressions() for these nodes
-	colIndex := 0
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
-		eWrapper, ok := e.(*expression.Wrapper)
-		if !ok {
-			return e, nil
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if n.Resolved() {
+			return n, nil
 		}
+
+		// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
+		// we need to count the column indexes in the very hacky way outlined above.
+		colIndex := 0
+
 		switch node := n.(type) {
-		case *plan.InsertDestination, *plan.ShowColumns, *plan.ShowCreateTable:
-			table := getResolvedTable(node)
-			sch := table.Schema()
-			if colIndex >= len(sch) {
-				return e, nil
-			}
-
-			col := sch[colIndex]
-			colIndex++
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.CreateTable:
-			sch := node.CreateSchema.Schema
-			col := sch[colIndex]
-			colIndex++
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.RenameColumn:
-			sch := node.TargetSchema()
-
-			// TODO: this is kind of gross, relies on a known order of expressions returned by node
-			var col *sql.Column
-			if colIndex < len(sch) {
-				col = sch[colIndex]
-			}
-			colIndex++
-
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.DropColumn:
-			sch := node.TargetSchema()
-
-			// TODO: this is kind of gross, relies on a known order of expressions returned by node
-			var col *sql.Column
-			if colIndex < len(sch) {
-				col = sch[colIndex]
-			}
-			colIndex++
-
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.AddColumn:
-			sch := node.TargetSchema()
-
-			// TODO: this is kind of gross, relies on a known order of expressions returned by node
-			var col *sql.Column
-			if colIndex < len(sch) {
-				col = sch[colIndex]
-			} else {
-				col = node.Column()
-			}
-			colIndex++
-
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.ModifyColumn:
-			sch := node.TargetSchema()
-
-			// TODO: this is kind of gross, relies on a known order of expressions returned by node
-			var col *sql.Column
-			if colIndex < len(sch) {
-				col = sch[colIndex]
-			} else {
-				col = node.NewColumn()
-			}
-			colIndex++
-
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-		case *plan.AlterDefaultSet:
-			loweredColName := strings.ToLower(node.ColumnName)
-			var col *sql.Column
-			for _, schCol := range node.Schema() {
-				if strings.ToLower(schCol.Name) == loweredColName {
-					col = schCol
-					break
+		case *plan.ShowColumns, *plan.ShowCreateTable:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
 				}
-			}
-			if col == nil {
-				return nil, sql.ErrTableColumnNotFound.New(node.Child.String(), node.ColumnName)
-			}
-			return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+
+				table := getResolvedTable(node)
+				sch := table.Schema()
+				if colIndex >= len(sch) {
+					return e, nil
+				}
+
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.InsertDestination:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
+				}
+				sch := node.Sch
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.CreateTable:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
+				}
+				sch := node.CreateSchema.Schema
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.RenameColumn, *plan.DropColumn:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
+				}
+
+				// Not a public interface, should make part of sql.SchemaTarget?
+				sch := node.(targetSchema).TargetSchema()
+
+				var col *sql.Column
+				if colIndex >= len(sch) {
+					return e, nil
+				}
+
+				col = sch[colIndex]
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+
+		case *plan.ModifyColumn:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
+				}
+
+				sch := node.TargetSchema()
+
+				var col *sql.Column
+				if colIndex < len(sch) {
+					col = sch[colIndex]
+				} else {
+					col = node.NewColumn()
+				}
+
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.AddColumn:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
+				}
+
+				sch := node.TargetSchema()
+
+				var col *sql.Column
+				if colIndex < len(sch) {
+					col = sch[colIndex]
+				} else {
+					col = node.Column()
+				}
+
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.AlterDefaultSet:
+			return plan.TransformExpressionsUp(node, func(e sql.Expression) (sql.Expression, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, nil
+				}
+
+				loweredColName := strings.ToLower(node.ColumnName)
+				var col *sql.Column
+				for _, schCol := range node.Schema() {
+					if strings.ToLower(schCol.Name) == loweredColName {
+						col = schCol
+						break
+					}
+				}
+				if col == nil {
+					return nil, sql.ErrTableColumnNotFound.New(node.Child.String(), node.ColumnName)
+				}
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
 		default:
-			return e, nil
+			return node, nil
 		}
 	})
 }
