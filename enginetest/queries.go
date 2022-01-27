@@ -5780,6 +5780,14 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
+		Expected: []sql.Row{
+			{float64(2)},
+			{float64(4)},
+			{float64(6)},
+		},
+	},
+	{
 		Query:    "SELECT 2.0 + CAST(5 AS DECIMAL)",
 		Expected: []sql.Row{{float64(7)}},
 	},
