@@ -206,10 +206,11 @@ var (
 	// ErrInvalidConstraintSubqueryNotSupported is returned when a CONSTRAINT CHECK is called with a sub-query expression.
 	ErrInvalidConstraintSubqueryNotSupported = errors.NewKind("Invalid constraint expression, sub-queries not supported: %s")
 
-	ErrCheckConstraintViolatedFmtStr = "Check constraint %q violated"
-
 	// ErrCheckConstraintViolated is returned when a CONSTRAINT CHECK is called with a sub-query expression.
-	ErrCheckConstraintViolated = errors.NewKind(ErrCheckConstraintViolatedFmtStr)
+	ErrCheckConstraintViolated = errors.NewKind("Check constraint %q violated")
+
+	// ErrCheckConstraintInvalidatedByColumnAlter is returned when an alter column statement would invalidate a check constraint.
+	ErrCheckConstraintInvalidatedByColumnAlter = errors.NewKind("can't alter column %q because it would invalidate check constraint %q")
 
 	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
 	// list with a different number of columns than the schema of the table.
