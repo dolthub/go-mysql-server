@@ -37,10 +37,34 @@ func (e *Not) Type() sql.Type {
 
 // Eval implements the Expression interface.
 func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	v, err := e.Child.Eval(ctx, row)
+	var v interface{}
+	var err error
+
+	switch e.Child.(type) {
+	case *Between:
+		v, err = e.Child.(*Between).EvalNotBetween(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if v == nil {
+			return nil, nil
+		}
+		b, ok := v.(bool)
+		if !ok {
+			b, err = sql.ConvertToBool(v)
+			if err != nil {
+				return nil, err
+			}
+		}
+		// NOT BETWEEN will return already negated result
+		return b, nil
+	}
+
+	v, err = e.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+
 	if v == nil {
 		return nil, nil
 	}
