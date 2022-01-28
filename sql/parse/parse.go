@@ -2107,6 +2107,7 @@ func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan
 		}
 	}
 	return plan.NewGrant(
+		sql.UnresolvedDatabase("mysql"),
 		convertPrivilege(n.Privileges...),
 		convertObjectType(n.ObjectType),
 		convertPrivilegeLevel(n.PrivilegeLevel),

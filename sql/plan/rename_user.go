@@ -27,6 +27,8 @@ type RenameUser struct {
 	NewName []UserName
 }
 
+var _ sql.Node = (*RenameUser)(nil)
+
 // NewRenameUser returns a new RenameUser node.
 func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 	return &RenameUser{
@@ -34,8 +36,6 @@ func NewRenameUser(oldNames []UserName, newNames []UserName) *RenameUser {
 		NewName: newNames,
 	}
 }
-
-var _ sql.Node = (*RenameUser)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *RenameUser) Schema() sql.Schema {

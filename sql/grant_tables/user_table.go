@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2021-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,8 +34,7 @@ var (
 	errUserSkEntry = fmt.Errorf("the secondary key for the `user` table was given an unknown entry")
 	errUserSkRow   = fmt.Errorf("the secondary key for the `user` table was given a row belonging to an unknown schema")
 
-	userTblSchema    sql.Schema
-	userTblColIdxMap = make(map[string]int)
+	userTblSchema sql.Schema
 )
 
 // UserPrimaryKey is a key that represents the primary key for the "user" Grant Table.
@@ -69,11 +68,11 @@ func (u UserPrimaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.
 	if len(row) != len(userTblSchema) {
 		return u, errUserPkRow
 	}
-	host, ok := row[userTblColIdxMap["Host"]].(string)
+	host, ok := row[userTblColIndex_Host].(string)
 	if !ok {
 		return u, errUserPkRow
 	}
-	user, ok := row[userTblColIdxMap["User"]].(string)
+	user, ok := row[userTblColIndex_User].(string)
 	if !ok {
 		return u, errUserPkRow
 	}
@@ -99,7 +98,7 @@ func (u UserSecondaryKey) KeyFromRow(ctx *sql.Context, row sql.Row) (in_mem_tabl
 	if len(row) != len(userTblSchema) {
 		return u, errUserSkRow
 	}
-	user, ok := row[userTblColIdxMap["User"]].(string)
+	user, ok := row[userTblColIndex_User].(string)
 	if !ok {
 		return u, errUserSkRow
 	}
@@ -233,49 +232,13 @@ func init() {
 		columnTemplate("Password_require_current", userTblName, false, enum_N_Y_utf8_general_ci_nullable_default_nil),
 		columnTemplate("User_attributes", userTblName, false, json_nullable_default_nil),
 	}
-	for i, col := range userTblSchema {
-		userTblColIdxMap[col.Name] = i
-	}
 }
 
 func addSuperUser(userTable *grantTable, username string, host string, password string) {
-	privSet := map[PrivilegeType]struct{}{
-		PrivilegeType_Select:            {},
-		PrivilegeType_Insert:            {},
-		PrivilegeType_Update:            {},
-		PrivilegeType_Delete:            {},
-		PrivilegeType_Create:            {},
-		PrivilegeType_Drop:              {},
-		PrivilegeType_Reload:            {},
-		PrivilegeType_Shutdown:          {},
-		PrivilegeType_Process:           {},
-		PrivilegeType_File:              {},
-		PrivilegeType_Grant:             {},
-		PrivilegeType_References:        {},
-		PrivilegeType_Index:             {},
-		PrivilegeType_Alter:             {},
-		PrivilegeType_ShowDB:            {},
-		PrivilegeType_Super:             {},
-		PrivilegeType_CreateTempTable:   {},
-		PrivilegeType_LockTables:        {},
-		PrivilegeType_Execute:           {},
-		PrivilegeType_ReplicationSlave:  {},
-		PrivilegeType_ReplicationClient: {},
-		PrivilegeType_CreateView:        {},
-		PrivilegeType_ShowView:          {},
-		PrivilegeType_CreateRoutine:     {},
-		PrivilegeType_AlterRoutine:      {},
-		PrivilegeType_CreateUser:        {},
-		PrivilegeType_Event:             {},
-		PrivilegeType_Trigger:           {},
-		PrivilegeType_CreateTablespace:  {},
-		PrivilegeType_CreateRole:        {},
-		PrivilegeType_DropRole:          {},
-	}
 	err := userTable.data.Put(sql.NewEmptyContext(), &User{
 		User:                username,
 		Host:                host,
-		PrivilegeSet:        privSet,
+		PrivilegeSet:        newUserGlobalStaticPrivilegesWithAllPrivileges(),
 		Plugin:              "mysql_native_password",
 		Password:            password,
 		PasswordLastChanged: time.Unix(1, 0).UTC(),
@@ -287,3 +250,58 @@ func addSuperUser(userTable *grantTable, username string, host string, password 
 		panic(err) // Insertion should never fail so this should never be reached
 	}
 }
+
+// These represent the column indexes of the user Grant Table.
+const (
+	userTblColIndex_Host int = iota
+	userTblColIndex_User
+	userTblColIndex_Select_priv
+	userTblColIndex_Insert_priv
+	userTblColIndex_Update_priv
+	userTblColIndex_Delete_priv
+	userTblColIndex_Create_priv
+	userTblColIndex_Drop_priv
+	userTblColIndex_Reload_priv
+	userTblColIndex_Shutdown_priv
+	userTblColIndex_Process_priv
+	userTblColIndex_File_priv
+	userTblColIndex_Grant_priv
+	userTblColIndex_References_priv
+	userTblColIndex_Index_priv
+	userTblColIndex_Alter_priv
+	userTblColIndex_Show_db_priv
+	userTblColIndex_Super_priv
+	userTblColIndex_Create_tmp_table_priv
+	userTblColIndex_Lock_tables_priv
+	userTblColIndex_Execute_priv
+	userTblColIndex_Repl_slave_priv
+	userTblColIndex_Repl_client_priv
+	userTblColIndex_Create_view_priv
+	userTblColIndex_Show_view_priv
+	userTblColIndex_Create_routine_priv
+	userTblColIndex_Alter_routine_priv
+	userTblColIndex_Create_user_priv
+	userTblColIndex_Event_priv
+	userTblColIndex_Trigger_priv
+	userTblColIndex_Create_tablespace_priv
+	userTblColIndex_ssl_type
+	userTblColIndex_ssl_cipher
+	userTblColIndex_x509_issuer
+	userTblColIndex_x509_subject
+	userTblColIndex_max_questions
+	userTblColIndex_max_updates
+	userTblColIndex_max_connections
+	userTblColIndex_max_user_connections
+	userTblColIndex_plugin
+	userTblColIndex_authentication_string
+	userTblColIndex_password_expired
+	userTblColIndex_password_last_changed
+	userTblColIndex_password_lifetime
+	userTblColIndex_account_locked
+	userTblColIndex_Create_role_priv
+	userTblColIndex_Drop_role_priv
+	userTblColIndex_Password_reuse_history
+	userTblColIndex_Password_reuse_time
+	userTblColIndex_Password_require_current
+	userTblColIndex_User_attributes
+)

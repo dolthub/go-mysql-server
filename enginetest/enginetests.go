@@ -1002,98 +1002,129 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
-func TestUsersAndPrivileges(t *testing.T, harness Harness) {
+func TestUserPrivileges(t *testing.T, h Harness) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestUserPrivileges as the harness must implement ClientHarness")
+	}
+
 	for _, script := range UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {
 			myDb := harness.NewDatabase("mydb")
 			databases := []sql.Database{myDb}
-			e := NewEngineWithDbs(t, harness, databases)
-			defer e.Close()
-			e.Analyzer.Catalog.GrantTables.AddRootAccount()
-			TestScriptWithEngine(t, e, harness, script)
+			engine := NewEngineWithDbs(t, harness, databases)
+			defer engine.Close()
+
+			ctx := NewContextWithClient(harness, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, ctx, statement)
+			}
+			for _, assertion := range script.Assertions {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(assertion.Query) {
+						t.Skipf("Skipping query %s", assertion.Query)
+					}
+				}
+
+				user := assertion.User
+				host := assertion.Host
+				if user == "" {
+					user = "root"
+				}
+				if host == "" {
+					host = "localhost"
+				}
+				ctx := NewContextWithClient(harness, sql.Client{
+					User:    user,
+					Address: host,
+				})
+
+				if assertion.ExpectedErr != nil {
+					t.Run(assertion.Query, func(t *testing.T) {
+						AssertErrWithCtx(t, engine, ctx, assertion.Query, assertion.ExpectedErr)
+					})
+				} else {
+					t.Run(assertion.Query, func(t *testing.T) {
+						TestQueryWithContext(t, ctx, engine, assertion.Query, assertion.Expected, nil, nil)
+					})
+				}
+			}
 		})
 	}
+}
 
-	// Grab a free port
-	ctx := sql.NewEmptyContext()
-	listener, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	port := listener.Addr().(*net.TCPAddr).Port
-	require.NoError(t, listener.Close())
-
-	engine := sqle.NewDefault(harness.NewDatabaseProvider())
-	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
-	engine.Analyzer.Catalog.GrantTables.AddSuperUser("bestuser", "the_pass")
-	_, _, err = engine.Query(ctx, "CREATE USER rand_user@localhost IDENTIFIED BY 'rand_pass';")
-	require.NoError(t, err)
-	_, _, err = engine.Query(ctx, "CREATE USER ranuse@localhost IDENTIFIED WITH mysql_native_password BY 'ranpas';")
-	require.NoError(t, err)
-	serverConfig := server.Config{
-		Protocol:       "tcp",
-		Address:        fmt.Sprintf("localhost:%d", port),
-		MaxConnections: 1000,
+func TestUserAuthentication(t *testing.T, h Harness) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestUserAuthentication as the harness must implement ClientHarness")
 	}
 
-	s, err := server.NewDefaultServer(serverConfig, engine)
-	require.NoError(t, err)
-	go func() {
-		err := s.Start()
-		require.NoError(t, err)
-	}()
-	defer func() {
-		require.NoError(t, s.Close())
-	}()
-	time.Sleep(time.Second)
+	port := getEmptyPort(t)
+	for _, script := range ServerAuthTests {
+		t.Run(script.Name, func(t *testing.T) {
+			ctx := NewContextWithClient(harness, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			serverConfig := server.Config{
+				Protocol:       "tcp",
+				Address:        fmt.Sprintf("localhost:%d", port),
+				MaxConnections: 1000,
+			}
 
-	conn, err := dbr.Open("mysql", fmt.Sprintf("root:@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
+			engine := sqle.NewDefault(harness.NewDatabaseProvider())
+			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+			if script.SetUpFunc != nil {
+				script.SetUpFunc(ctx, t, engine)
+			}
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, ctx, statement)
+			}
 
-	conn, err = dbr.Open("mysql", fmt.Sprintf("root:pass@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
+			s, err := server.NewDefaultServer(serverConfig, engine)
+			require.NoError(t, err)
+			go func() {
+				err := s.Start()
+				require.NoError(t, err)
+			}()
+			defer func() {
+				require.NoError(t, s.Close())
+			}()
 
-	conn, err = dbr.Open("mysql", fmt.Sprintf("rand_user:rand_pass@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("rand_user:rand_pass1@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("rand_user:@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("ranuse:ranpas@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("ranuse:what@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("ranuse:@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("bestuser:the_pass@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.NoError(t, conn.Ping())
-	require.NoError(t, conn.Close())
-
-	conn, err = dbr.Open("mysql", fmt.Sprintf("bestuser:the_past@tcp(localhost:%d)/", port), nil)
-	require.NoError(t, err)
-	require.Error(t, conn.Ping())
-	require.NoError(t, conn.Close())
+			for _, assertion := range script.Assertions {
+				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/",
+					assertion.Username, assertion.Password, port), nil)
+				require.NoError(t, err)
+				if assertion.ExpectedErr {
+					r, err := conn.Query(assertion.Query)
+					if !assert.Error(t, err) {
+						require.NoError(t, r.Close())
+					}
+				} else {
+					r, err := conn.Query(assertion.Query)
+					if assert.NoError(t, err) {
+						require.NoError(t, r.Close())
+					}
+				}
+				require.NoError(t, conn.Close())
+			}
+		})
+	}
 }
 
 func TestComplexIndexQueries(t *testing.T, harness Harness) {
@@ -4504,9 +4535,23 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 
 var pid uint64
 
-func NewContext(harness Harness) *sql.Context {
-	ctx := harness.NewContext()
+func getEmptyPort(t *testing.T) int {
+	listener, err := net.Listen("tcp", ":0")
+	require.NoError(t, err)
+	port := listener.Addr().(*net.TCPAddr).Port
+	require.NoError(t, listener.Close())
+	return port
+}
 
+func NewContext(harness Harness) *sql.Context {
+	return newContextSetup(harness.NewContext())
+}
+
+func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context {
+	return newContextSetup(harness.NewContextWithClient(client))
+}
+
+func newContextSetup(ctx *sql.Context) *sql.Context {
 	// Select a current database if there isn't one yet
 	if ctx.GetCurrentDatabase() == "" {
 		ctx.SetCurrentDatabase("mydb")
@@ -4553,7 +4598,7 @@ func NewSession(harness Harness) *sql.Context {
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() *sql.BaseSession {
-	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "client", User: "user"}, 1)
+	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {

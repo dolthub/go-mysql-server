@@ -388,6 +388,12 @@ var (
 
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
+
+	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
+	ErrPrivilegeCheckFailed = errors.NewKind("%s command denied to user %s for table '%s'")
+
+	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
+	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

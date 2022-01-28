@@ -21,7 +21,6 @@ import (
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
-	{"check_privileges", checkPrivileges},
 	{"validate_offset_and_limit", validateLimitAndOffset},
 	{"validate_create_table", validateCreateTable},
 	{"load_stored_procedures", loadStoredProcedures},
@@ -50,6 +49,7 @@ var OnceBeforeDefault = []Rule{
 	{"validate_read_only_database", validateReadOnlyDatabase},
 	{"validate_read_only_transaction", validateReadOnlyTransaction},
 	{"validate_database_set", validateDatabaseSet},
+	{"check_privileges", checkPrivileges}, // Ensure that checking privileges happens after db & table resolution
 }
 
 // DefaultRules to apply when analyzing nodes.
