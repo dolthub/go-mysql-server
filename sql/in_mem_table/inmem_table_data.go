@@ -57,8 +57,9 @@ type Entry interface {
 	UpdateFromRow(ctx *sql.Context, row sql.Row) (Entry, error)
 	// ToRow returns this Entry as a sql.Row.
 	ToRow(ctx *sql.Context) sql.Row
-	// Equals returns whether the calling entry is equivalent to the given entry. Equivalence should only be determined
-	// on values that have a direct mapping to and from a sql.Row.
+	// Equals returns whether the calling entry is equivalent to the given entry. Standard struct comparison may work
+	// for some entries, however other implementations may have fields that should not be considered when checking for
+	// equality, therefore such implementations can make the comparable fields explicit.
 	Equals(ctx *sql.Context, otherEntry Entry) bool
 }
 

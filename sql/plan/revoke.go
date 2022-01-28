@@ -29,6 +29,8 @@ type Revoke struct {
 	Users          []UserName
 }
 
+var _ sql.Node = (*Revoke)(nil)
+
 // NewRevoke returns a new Revoke node.
 func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName) *Revoke {
 	return &Revoke{
@@ -38,8 +40,6 @@ func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel,
 		Users:          users,
 	}
 }
-
-var _ sql.Node = (*Revoke)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *Revoke) Schema() sql.Schema {
@@ -88,14 +88,14 @@ type RevokeAll struct {
 	Users []UserName
 }
 
+var _ sql.Node = (*RevokeAll)(nil)
+
 // NewRevokeAll returns a new RevokeAll node.
 func NewRevokeAll(users []UserName) *RevokeAll {
 	return &RevokeAll{
 		Users: users,
 	}
 }
-
-var _ sql.Node = (*RevokeAll)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *RevokeAll) Schema() sql.Schema {
@@ -140,6 +140,8 @@ type RevokeRole struct {
 	TargetUsers []UserName
 }
 
+var _ sql.Node = (*RevokeRole)(nil)
+
 // NewRevokeRole returns a new RevokeRole node.
 func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
 	return &RevokeRole{
@@ -147,8 +149,6 @@ func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
 		TargetUsers: users,
 	}
 }
-
-var _ sql.Node = (*RevokeRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *RevokeRole) Schema() sql.Schema {
@@ -197,6 +197,8 @@ type RevokeProxy struct {
 	From []UserName
 }
 
+var _ sql.Node = (*RevokeProxy)(nil)
+
 // NewRevokeProxy returns a new RevokeProxy node.
 func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
 	return &RevokeProxy{
@@ -204,8 +206,6 @@ func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
 		From: from,
 	}
 }
-
-var _ sql.Node = (*RevokeProxy)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *RevokeProxy) Schema() sql.Schema {

@@ -79,6 +79,35 @@ func (g *GrantTables) AddSuperUser(username string, password string) {
 	addSuperUser(g.user, username, "%", password)
 }
 
+// GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
+// roles, roleSearch changes whether the search matches against user or role rules.
+func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
+	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
+	// For now, this just does another check for localhost if the host is 127.0.0.1
+	//TODO: match on anonymous users, which have an empty username (different for roles)
+	var userEntry *User
+	userEntries := g.user.data.Get(UserPrimaryKey{
+		Host: host,
+		User: user,
+	})
+	if len(userEntries) == 1 {
+		userEntry = userEntries[0].(*User)
+	} else {
+		userEntries = g.user.data.Get(UserSecondaryKey{
+			User: user,
+		})
+		for _, readUserEntry := range userEntries {
+			readUserEntry := readUserEntry.(*User)
+			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
+			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") || (readUserEntry.Host == "%" && !roleSearch) {
+				userEntry = readUserEntry
+				break
+			}
+		}
+	}
+	return userEntry
+}
+
 // Name implements the interface sql.Database.
 func (g *GrantTables) Name() string {
 	return "mysql"
@@ -113,39 +142,22 @@ func (g *GrantTables) Salt() ([]byte, error) {
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
 func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
-		return mysqlGetter(user), nil
+		host, _, err := net.SplitHostPort(addr.String())
+		if err != nil {
+			return nil, err
+		}
+		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
 	host, _, err := net.SplitHostPort(addr.String())
 	if err != nil {
 		return nil, err
 	}
-	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
-	// For now, this just does another check for localhost if the host is 127.0.0.1
-	var userEntry *User
-	userEntries := g.user.data.Get(UserPrimaryKey{
-		Host: host,
-		User: user,
-	})
-	if len(userEntries) == 1 {
-		userEntry = userEntries[0].(*User)
-	} else {
-		userEntries = g.user.data.Get(UserSecondaryKey{
-			User: user,
-		})
-		for _, readUserEntry := range userEntries {
-			readUserEntry := readUserEntry.(*User)
-			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
-			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") || readUserEntry.Host == "%" {
-				userEntry = readUserEntry
-				break
-			}
-		}
-	}
+
+	userEntry := g.GetUser(user, host, false)
 	if userEntry == nil {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
-
 	if len(userEntry.Password) > 0 {
 		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
 			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
@@ -155,13 +167,17 @@ func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
 
-	return mysqlGetter(user), nil
+	return MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
 }
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
-func (g *GrantTables) Negotiate(c *mysql.Conn, user string, remoteAddr net.Addr) (mysql.Getter, error) {
+func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
-		return mysqlGetter(user), nil
+		host, _, err := net.SplitHostPort(addr.String())
+		if err != nil {
+			return nil, err
+		}
+		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }

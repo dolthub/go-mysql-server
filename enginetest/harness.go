@@ -37,6 +37,13 @@ type Harness interface {
 	NewContext() *sql.Context
 }
 
+// ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.
+type ClientHarness interface {
+	Harness
+	// NewContextWithClient returns a context that will return the given client when requested from the session.
+	NewContextWithClient(client sql.Client) *sql.Context
+}
+
 // SkippingHarness provides a way for integrators to skip tests that are known to be broken. E.g., integrators that
 // can't handle every possible SQL type.
 type SkippingHarness interface {

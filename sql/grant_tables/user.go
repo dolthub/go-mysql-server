@@ -15,6 +15,8 @@
 package grant_tables
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,7 +27,7 @@ import (
 type User struct {
 	User                string
 	Host                string
-	PrivilegeSet        map[PrivilegeType]struct{}
+	PrivilegeSet        UserGlobalStaticPrivileges
 	Plugin              string
 	Password            string
 	PasswordLastChanged time.Time
@@ -48,20 +50,20 @@ func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, er
 	//TODO: once the remaining fields are added, fill those in as well
 	var attributes *string
 	passwordLastChanged := time.Now().UTC()
-	if val, ok := row[userTblColIdxMap["User_attributes"]].(string); ok {
+	if val, ok := row[userTblColIndex_User_attributes].(string); ok {
 		attributes = &val
 	}
-	if val, ok := row[userTblColIdxMap["password_last_changed"]].(time.Time); ok {
+	if val, ok := row[userTblColIndex_password_last_changed].(time.Time); ok {
 		passwordLastChanged = val
 	}
 	return &User{
-		User:                row[userTblColIdxMap["User"]].(string),
-		Host:                row[userTblColIdxMap["Host"]].(string),
+		User:                row[userTblColIndex_User].(string),
+		Host:                row[userTblColIndex_Host].(string),
 		PrivilegeSet:        u.rowToPrivSet(ctx, row),
-		Plugin:              row[userTblColIdxMap["plugin"]].(string),
-		Password:            row[userTblColIdxMap["authentication_string"]].(string),
+		Plugin:              row[userTblColIndex_plugin].(string),
+		Password:            row[userTblColIndex_authentication_string].(string),
 		PasswordLastChanged: passwordLastChanged,
-		Locked:              row[userTblColIdxMap["account_locked"]].(string) == "Y",
+		Locked:              row[userTblColIndex_account_locked].(string) == "Y",
 		Attributes:          attributes,
 		IsRole:              false,
 	}, nil
@@ -88,16 +90,16 @@ func (u *User) ToRow(ctx *sql.Context) sql.Row {
 		}
 	}
 	//TODO: once the remaining fields are added, fill those in as well
-	row[userTblColIdxMap["User"]] = u.User
-	row[userTblColIdxMap["Host"]] = u.Host
-	row[userTblColIdxMap["plugin"]] = u.Plugin
-	row[userTblColIdxMap["authentication_string"]] = u.Password
-	row[userTblColIdxMap["password_last_changed"]] = u.PasswordLastChanged
+	row[userTblColIndex_User] = u.User
+	row[userTblColIndex_Host] = u.Host
+	row[userTblColIndex_plugin] = u.Plugin
+	row[userTblColIndex_authentication_string] = u.Password
+	row[userTblColIndex_password_last_changed] = u.PasswordLastChanged
 	if u.Locked {
-		row[userTblColIdxMap["account_locked"]] = "Y"
+		row[userTblColIndex_account_locked] = "Y"
 	}
 	if u.Attributes != nil {
-		row[userTblColIdxMap["User_attributes"]] = *u.Attributes
+		row[userTblColIndex_User_attributes] = *u.Attributes
 	}
 	u.privSetToRow(ctx, row)
 	return row
@@ -116,18 +118,9 @@ func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 		u.Plugin != otherUser.Plugin ||
 		u.Password != otherUser.Password ||
 		!u.PasswordLastChanged.Equal(otherUser.PasswordLastChanged) ||
-		u.Locked != otherUser.Locked {
-		return false
-	}
-	if len(u.PrivilegeSet) != len(otherUser.PrivilegeSet) {
-		return false
-	}
-	for priv := range u.PrivilegeSet {
-		if _, ok := otherUser.PrivilegeSet[priv]; !ok {
-			return false
-		}
-	}
-	if u.Attributes == nil && otherUser.Attributes != nil ||
+		u.Locked != otherUser.Locked ||
+		!u.PrivilegeSet.Equals(otherUser.PrivilegeSet) ||
+		u.Attributes == nil && otherUser.Attributes != nil ||
 		u.Attributes != nil && otherUser.Attributes == nil ||
 		(u.Attributes != nil && *u.Attributes != *otherUser.Attributes) {
 		return false
@@ -135,134 +128,146 @@ func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 	return true
 }
 
+// UserHostToString returns the user and host as a formatted string using the quotes given. If a replacement is given,
+// then also replaces any existing instances of the quotes with the replacement.
+func (u *User) UserHostToString(quote string, replacement string) string {
+	user := u.User
+	host := u.Host
+	if len(replacement) > 0 {
+		user = strings.ReplaceAll(user, quote, replacement)
+		host = strings.ReplaceAll(host, quote, replacement)
+	}
+	return fmt.Sprintf("%s%s%s@%s%s%s", quote, user, quote, quote, host, quote)
+}
+
 // rowToPrivSet returns a set of privileges for the given row.
-func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) map[PrivilegeType]struct{} {
-	privSet := make(map[PrivilegeType]struct{})
+func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) UserGlobalStaticPrivileges {
+	privSet := NewUserGlobalStaticPrivileges()
 	for i, val := range row {
 		switch i {
-		case userTblColIdxMap["Select_priv"]:
+		case userTblColIndex_Select_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Select] = struct{}{}
+				privSet.Add(PrivilegeType_Select)
 			}
-		case userTblColIdxMap["Insert_priv"]:
+		case userTblColIndex_Insert_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Insert] = struct{}{}
+				privSet.Add(PrivilegeType_Insert)
 			}
-		case userTblColIdxMap["Update_priv"]:
+		case userTblColIndex_Update_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Update] = struct{}{}
+				privSet.Add(PrivilegeType_Update)
 			}
-		case userTblColIdxMap["Delete_priv"]:
+		case userTblColIndex_Delete_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Delete] = struct{}{}
+				privSet.Add(PrivilegeType_Delete)
 			}
-		case userTblColIdxMap["Create_priv"]:
+		case userTblColIndex_Create_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Create] = struct{}{}
+				privSet.Add(PrivilegeType_Create)
 			}
-		case userTblColIdxMap["Drop_priv"]:
+		case userTblColIndex_Drop_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Drop] = struct{}{}
+				privSet.Add(PrivilegeType_Drop)
 			}
-		case userTblColIdxMap["Reload_priv"]:
+		case userTblColIndex_Reload_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Reload] = struct{}{}
+				privSet.Add(PrivilegeType_Reload)
 			}
-		case userTblColIdxMap["Shutdown_priv"]:
+		case userTblColIndex_Shutdown_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Shutdown] = struct{}{}
+				privSet.Add(PrivilegeType_Shutdown)
 			}
-		case userTblColIdxMap["Process_priv"]:
+		case userTblColIndex_Process_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Process] = struct{}{}
+				privSet.Add(PrivilegeType_Process)
 			}
-		case userTblColIdxMap["File_priv"]:
+		case userTblColIndex_File_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_File] = struct{}{}
+				privSet.Add(PrivilegeType_File)
 			}
-		case userTblColIdxMap["Grant_priv"]:
+		case userTblColIndex_Grant_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Grant] = struct{}{}
+				privSet.Add(PrivilegeType_Grant)
 			}
-		case userTblColIdxMap["References_priv"]:
+		case userTblColIndex_References_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_References] = struct{}{}
+				privSet.Add(PrivilegeType_References)
 			}
-		case userTblColIdxMap["Index_priv"]:
+		case userTblColIndex_Index_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Index] = struct{}{}
+				privSet.Add(PrivilegeType_Index)
 			}
-		case userTblColIdxMap["Alter_priv"]:
+		case userTblColIndex_Alter_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Alter] = struct{}{}
+				privSet.Add(PrivilegeType_Alter)
 			}
-		case userTblColIdxMap["Show_db_priv"]:
+		case userTblColIndex_Show_db_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_ShowDB] = struct{}{}
+				privSet.Add(PrivilegeType_ShowDB)
 			}
-		case userTblColIdxMap["Super_priv"]:
+		case userTblColIndex_Super_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Super] = struct{}{}
+				privSet.Add(PrivilegeType_Super)
 			}
-		case userTblColIdxMap["Create_tmp_table_priv"]:
+		case userTblColIndex_Create_tmp_table_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_CreateTempTable] = struct{}{}
+				privSet.Add(PrivilegeType_CreateTempTable)
 			}
-		case userTblColIdxMap["Lock_tables_priv"]:
+		case userTblColIndex_Lock_tables_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_LockTables] = struct{}{}
+				privSet.Add(PrivilegeType_LockTables)
 			}
-		case userTblColIdxMap["Execute_priv"]:
+		case userTblColIndex_Execute_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Execute] = struct{}{}
+				privSet.Add(PrivilegeType_Execute)
 			}
-		case userTblColIdxMap["Repl_slave_priv"]:
+		case userTblColIndex_Repl_slave_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_ReplicationSlave] = struct{}{}
+				privSet.Add(PrivilegeType_ReplicationSlave)
 			}
-		case userTblColIdxMap["Repl_client_priv"]:
+		case userTblColIndex_Repl_client_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_ReplicationClient] = struct{}{}
+				privSet.Add(PrivilegeType_ReplicationClient)
 			}
-		case userTblColIdxMap["Create_view_priv"]:
+		case userTblColIndex_Create_view_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_CreateView] = struct{}{}
+				privSet.Add(PrivilegeType_CreateView)
 			}
-		case userTblColIdxMap["Show_view_priv"]:
+		case userTblColIndex_Show_view_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_ShowView] = struct{}{}
+				privSet.Add(PrivilegeType_ShowView)
 			}
-		case userTblColIdxMap["Create_routine_priv"]:
+		case userTblColIndex_Create_routine_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_CreateRoutine] = struct{}{}
+				privSet.Add(PrivilegeType_CreateRoutine)
 			}
-		case userTblColIdxMap["Alter_routine_priv"]:
+		case userTblColIndex_Alter_routine_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_AlterRoutine] = struct{}{}
+				privSet.Add(PrivilegeType_AlterRoutine)
 			}
-		case userTblColIdxMap["Create_user_priv"]:
+		case userTblColIndex_Create_user_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_CreateUser] = struct{}{}
+				privSet.Add(PrivilegeType_CreateUser)
 			}
-		case userTblColIdxMap["Event_priv"]:
+		case userTblColIndex_Event_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Event] = struct{}{}
+				privSet.Add(PrivilegeType_Event)
 			}
-		case userTblColIdxMap["Trigger_priv"]:
+		case userTblColIndex_Trigger_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_Trigger] = struct{}{}
+				privSet.Add(PrivilegeType_Trigger)
 			}
-		case userTblColIdxMap["Create_tablespace_priv"]:
+		case userTblColIndex_Create_tablespace_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_CreateTablespace] = struct{}{}
+				privSet.Add(PrivilegeType_CreateTablespace)
 			}
-		case userTblColIdxMap["Create_role_priv"]:
+		case userTblColIndex_Create_role_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_CreateRole] = struct{}{}
+				privSet.Add(PrivilegeType_CreateRole)
 			}
-		case userTblColIdxMap["Drop_role_priv"]:
+		case userTblColIndex_Drop_role_priv:
 			if val.(string) == "Y" {
-				privSet[PrivilegeType_DropRole] = struct{}{}
+				privSet.Add(PrivilegeType_DropRole)
 			}
 		}
 	}
@@ -272,70 +277,70 @@ func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) map[PrivilegeType]str
 // privSetToRow applies the this User's set of privileges to the given row. Only sets privileges that exist to "Y",
 // therefore any privileges that do not exist will have their default values.
 func (u *User) privSetToRow(ctx *sql.Context, row sql.Row) {
-	for priv := range u.PrivilegeSet {
+	for _, priv := range u.PrivilegeSet.ToSlice() {
 		switch priv {
 		case PrivilegeType_Select:
-			row[userTblColIdxMap["Select_priv"]] = "Y"
+			row[userTblColIndex_Select_priv] = "Y"
 		case PrivilegeType_Insert:
-			row[userTblColIdxMap["Insert_priv"]] = "Y"
+			row[userTblColIndex_Insert_priv] = "Y"
 		case PrivilegeType_Update:
-			row[userTblColIdxMap["Update_priv"]] = "Y"
+			row[userTblColIndex_Update_priv] = "Y"
 		case PrivilegeType_Delete:
-			row[userTblColIdxMap["Delete_priv"]] = "Y"
+			row[userTblColIndex_Delete_priv] = "Y"
 		case PrivilegeType_Create:
-			row[userTblColIdxMap["Create_priv"]] = "Y"
+			row[userTblColIndex_Create_priv] = "Y"
 		case PrivilegeType_Drop:
-			row[userTblColIdxMap["Drop_priv"]] = "Y"
+			row[userTblColIndex_Drop_priv] = "Y"
 		case PrivilegeType_Reload:
-			row[userTblColIdxMap["Reload_priv"]] = "Y"
+			row[userTblColIndex_Reload_priv] = "Y"
 		case PrivilegeType_Shutdown:
-			row[userTblColIdxMap["Shutdown_priv"]] = "Y"
+			row[userTblColIndex_Shutdown_priv] = "Y"
 		case PrivilegeType_Process:
-			row[userTblColIdxMap["Process_priv"]] = "Y"
+			row[userTblColIndex_Process_priv] = "Y"
 		case PrivilegeType_File:
-			row[userTblColIdxMap["File_priv"]] = "Y"
+			row[userTblColIndex_File_priv] = "Y"
 		case PrivilegeType_Grant:
-			row[userTblColIdxMap["Grant_priv"]] = "Y"
+			row[userTblColIndex_Grant_priv] = "Y"
 		case PrivilegeType_References:
-			row[userTblColIdxMap["References_priv"]] = "Y"
+			row[userTblColIndex_References_priv] = "Y"
 		case PrivilegeType_Index:
-			row[userTblColIdxMap["Index_priv"]] = "Y"
+			row[userTblColIndex_Index_priv] = "Y"
 		case PrivilegeType_Alter:
-			row[userTblColIdxMap["Alter_priv"]] = "Y"
+			row[userTblColIndex_Alter_priv] = "Y"
 		case PrivilegeType_ShowDB:
-			row[userTblColIdxMap["Show_db_priv"]] = "Y"
+			row[userTblColIndex_Show_db_priv] = "Y"
 		case PrivilegeType_Super:
-			row[userTblColIdxMap["Super_priv"]] = "Y"
+			row[userTblColIndex_Super_priv] = "Y"
 		case PrivilegeType_CreateTempTable:
-			row[userTblColIdxMap["Create_tmp_table_priv"]] = "Y"
+			row[userTblColIndex_Create_tmp_table_priv] = "Y"
 		case PrivilegeType_LockTables:
-			row[userTblColIdxMap["Lock_tables_priv"]] = "Y"
+			row[userTblColIndex_Lock_tables_priv] = "Y"
 		case PrivilegeType_Execute:
-			row[userTblColIdxMap["Execute_priv"]] = "Y"
+			row[userTblColIndex_Execute_priv] = "Y"
 		case PrivilegeType_ReplicationSlave:
-			row[userTblColIdxMap["Repl_slave_priv"]] = "Y"
+			row[userTblColIndex_Repl_slave_priv] = "Y"
 		case PrivilegeType_ReplicationClient:
-			row[userTblColIdxMap["Repl_client_priv"]] = "Y"
+			row[userTblColIndex_Repl_client_priv] = "Y"
 		case PrivilegeType_CreateView:
-			row[userTblColIdxMap["Create_view_priv"]] = "Y"
+			row[userTblColIndex_Create_view_priv] = "Y"
 		case PrivilegeType_ShowView:
-			row[userTblColIdxMap["Show_view_priv"]] = "Y"
+			row[userTblColIndex_Show_view_priv] = "Y"
 		case PrivilegeType_CreateRoutine:
-			row[userTblColIdxMap["Create_routine_priv"]] = "Y"
+			row[userTblColIndex_Create_routine_priv] = "Y"
 		case PrivilegeType_AlterRoutine:
-			row[userTblColIdxMap["Alter_routine_priv"]] = "Y"
+			row[userTblColIndex_Alter_routine_priv] = "Y"
 		case PrivilegeType_CreateUser:
-			row[userTblColIdxMap["Create_user_priv"]] = "Y"
+			row[userTblColIndex_Create_user_priv] = "Y"
 		case PrivilegeType_Event:
-			row[userTblColIdxMap["Event_priv"]] = "Y"
+			row[userTblColIndex_Event_priv] = "Y"
 		case PrivilegeType_Trigger:
-			row[userTblColIdxMap["Trigger_priv"]] = "Y"
+			row[userTblColIndex_Trigger_priv] = "Y"
 		case PrivilegeType_CreateTablespace:
-			row[userTblColIdxMap["Create_tablespace_priv"]] = "Y"
+			row[userTblColIndex_Create_tablespace_priv] = "Y"
 		case PrivilegeType_CreateRole:
-			row[userTblColIdxMap["Create_role_priv"]] = "Y"
+			row[userTblColIndex_Create_role_priv] = "Y"
 		case PrivilegeType_DropRole:
-			row[userTblColIdxMap["Drop_role_priv"]] = "Y"
+			row[userTblColIndex_Drop_role_priv] = "Y"
 		}
 	}
 }
