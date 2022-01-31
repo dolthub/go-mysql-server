@@ -1802,7 +1802,6 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 	}, tbl.Schema())
 
 	RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i TO i2, RENAME COLUMN s TO s2")
-
 	tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
 	require.NoError(err)
 	require.True(ok)
@@ -1815,6 +1814,25 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		[]sql.Row{
 			{1, "first row"},
 		}, nil, nil)
+
+	t.Run("rename column preserves table checks", func(t *testing.T) {
+		RunQuery(t, e, harness, "ALTER TABLE mytable ADD CONSTRAINT test_check CHECK (i2 < 12345)")
+
+		AssertErr(t, e, harness, "ALTER TABLE mytable RENAME COLUMN i2 TO i3", sql.ErrCheckConstraintInvalidatedByColumnAlter)
+
+		RunQuery(t, e, harness, "ALTER TABLE mytable RENAME COLUMN s2 TO s3")
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+
+		checkTable, ok := tbl.(sql.CheckTable)
+		require.True(ok)
+		checks, err := checkTable.GetChecks(harness.NewContext())
+		require.NoError(err)
+		require.Equal(1, len(checks))
+		require.Equal("test_check", checks[0].Name)
+		require.Equal("(i2 < 12345)", checks[0].CheckExpression)
+	})
 }
 
 func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) bool {
@@ -2085,6 +2103,26 @@ func TestDropColumn(t *testing.T, harness Harness) {
 		t.Skip("broken")
 
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row(nil), nil, nil)
+	})
+
+	t.Run("drop column preserves table check constraints", func(t *testing.T) {
+		RunQuery(t, e, harness, "ALTER TABLE mytable ADD COLUMN j int, ADD COLUMN k int")
+		RunQuery(t, e, harness, "ALTER TABLE mytable ADD CONSTRAINT test_check CHECK (j < 12345)")
+
+		AssertErr(t, e, harness, "ALTER TABLE mytable DROP COLUMN j", sql.ErrCheckConstraintInvalidatedByColumnAlter)
+
+		RunQuery(t, e, harness, "ALTER TABLE mytable DROP COLUMN k")
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(err)
+		require.True(ok)
+
+		checkTable, ok := tbl.(sql.CheckTable)
+		require.True(ok)
+		checks, err := checkTable.GetChecks(harness.NewContext())
+		require.NoError(err)
+		require.Equal(1, len(checks))
+		require.Equal("test_check", checks[0].Name)
+		require.Equal("(j < 12345)", checks[0].CheckExpression)
 	})
 }
 

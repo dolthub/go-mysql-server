@@ -323,6 +323,7 @@ type DropColumn struct {
 	ddlNode
 	UnaryNode
 	Column       string
+	Checks       sql.CheckConstraints
 	targetSchema sql.Schema
 }
 
@@ -446,6 +447,7 @@ type RenameColumn struct {
 	UnaryNode
 	ColumnName    string
 	NewColumnName string
+	Checks        sql.CheckConstraints
 	targetSchema  sql.Schema
 }
 

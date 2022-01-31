@@ -17,6 +17,8 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -59,6 +61,9 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.AddColumn:
 			sch = n.Child.Schema()
 			return false
+		case *plan.DropColumn:
+			sch = n.Child.Schema()
+			return false
 		}
 		return true
 	})
@@ -90,11 +95,21 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			if err != nil {
 				return nil, err
 			}
+		case *plan.DropColumn:
+			sch, err = validateDropColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return n, nil
 	})
 }
 
+// validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
+// column names, doesn't invalidate any table check constraints).
+//
+// Note that schema is passed in twice, because one version is the initial version before the alter column expressions
+// are applied, and the second version is the current schema that is being modified as multiple nodes are processed.
 func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sql.Schema, error) {
 	table := rc.Child
 	nameable := table.(sql.Nameable)
@@ -109,6 +124,11 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 	if !initialSch.Contains(rc.ColumnName, nameable.Name()) ||
 		!sch.Contains(rc.ColumnName, nameable.Name()) {
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
+	}
+
+	err := validateColumnNotUsedInCheckConstraint(rc.ColumnName, rc.Checks)
+	if err != nil {
+		return nil, err
 	}
 
 	return renameInSchema(sch, rc.ColumnName, rc.NewColumnName, nameable.Name()), nil
@@ -146,7 +166,45 @@ func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.Modi
 		return nil, err
 	}
 
+	// TODO: When a column is being modified, we should ideally check that any existing table check constraints
+	//       are still valid (e.g. if the column type changed) and throw an error if they are invalidated.
+	//       That would be consistent with MySQL behavior.
+
 	return newSch, nil
+}
+
+func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Schema, error) {
+	table := dc.Child
+	nameable := table.(sql.Nameable)
+
+	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
+	if err != nil {
+		return nil, err
+	}
+
+	newSch := removeInSchema(sch, dc.Column, nameable.Name())
+
+	return newSch, nil
+}
+
+// validateColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
+// the specified table check constraints.
+func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	for _, check := range checks {
+		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
+				if columnName == unresolvedColumn.Name() {
+					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+				}
+			}
+			return e, nil
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {
@@ -176,6 +234,18 @@ func renameInSchema(sch sql.Schema, oldColName, newColName, tableName string) sq
 			cc.Name = newColName
 			schCopy[i] = &cc
 		} else {
+			cc := *sch[i]
+			schCopy[i] = &cc
+		}
+	}
+	return schCopy
+}
+
+func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
+	idx := sch.IndexOf(colName, tableName)
+	schCopy := make(sql.Schema, len(sch))
+	for i := range sch {
+		if i != idx {
 			cc := *sch[i]
 			schCopy[i] = &cc
 		}

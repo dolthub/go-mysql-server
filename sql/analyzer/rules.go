@@ -64,7 +64,7 @@ var DefaultRules = []Rule{
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
 	{"resolve_column_defaults", resolveColumnDefaults},
-	{"validate_check_constraint", validateCreateCheck},
+	{"validate_check_constraint", validateCheckConstraints},
 	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
 	{"expand_stars", expandStars},
 	{"resolve_having", resolveHaving},
