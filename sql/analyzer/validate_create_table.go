@@ -104,8 +104,11 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	})
 }
 
-// Schema is passed in twice, because one version is the initial version before the alter column expressions are
-// applied, and the second version is the current schema that is being modified as nodes are processed
+// validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
+// column names, doesn't invalidate any table check constraints).
+//
+// Note that schema is passed in twice, because one version is the initial version before the alter column expressions
+// are applied, and the second version is the current schema that is being modified as multiple nodes are processed.
 func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sql.Schema, error) {
 	table := rc.Child
 	nameable := table.(sql.Nameable)
@@ -122,20 +125,9 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), rc.ColumnName)
 	}
 
-	// Make sure renaming this column won't invalidate any table check constraints
-	for _, check := range rc.Checks {
-		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
-			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				if rc.ColumnName == unresolvedColumn.Name() {
-					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(rc.NewColumnName, check.Name)
-				}
-			}
-			return e, nil
-		})
-
-		if err != nil {
-			return nil, err
-		}
+	err := validateColumnNotUsedInCheckConstraint(rc.ColumnName, rc.Checks)
+	if err != nil {
+		return nil, err
 	}
 
 	return renameInSchema(sch, rc.ColumnName, rc.NewColumnName, nameable.Name()), nil
@@ -184,26 +176,34 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	table := dc.Child
 	nameable := table.(sql.Nameable)
 
-	// Iterate over checks and make sure none of them reference dc.Column
-	for _, check := range dc.Checks {
+	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
+	if err != nil {
+		return nil, err
+	}
+
+	newSch := removeInSchema(sch, dc.Column, nameable.Name())
+
+	return newSch, nil
+}
+
+// validateColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
+// the specified table check constraints.
+func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	for _, check := range checks {
 		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
-				dropColumnName := dc.Column
-				if dropColumnName == unresolvedColumn.Name() {
-					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(dc.Column, check.Name)
+				if columnName == unresolvedColumn.Name() {
+					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
 				}
 			}
 			return e, nil
 		})
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-
-	newSch := removeInSchema(sch, dc.Column, nameable.Name())
-
-	return newSch, nil
+	return nil
 }
 
 func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {

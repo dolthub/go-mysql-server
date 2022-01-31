@@ -25,11 +25,12 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// validateCreateCheck legal expressions for CREATE CHECK statements, including those embedded in CREATE TABLE
-// statements
-// TODO: validateCreateCheck doesn't currently do any type validation on the check and will allow you to create
+// validateCheckConstraints validates DDL nodes that create table check constraints, such as CREATE TABLE and
+// ALTER TABLE statements.
+//
+// TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
 //       checks that will never evaluate correctly.
-func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
 		return validateCreateCheckNode(n)
@@ -144,7 +145,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.Update:
 			nn := *node
 
-			rtable := getResolvedTable(node)
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
 				return node, nil
 			}
@@ -164,7 +165,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.ShowCreateTable:
 			nn := *node
 
-			rtable := getResolvedTable(node)
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
 				return node, nil
 			}
@@ -205,7 +206,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.DropColumn:
 			nn := *node
 
-			rtable := getResolvedTable(node)
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
 				return node, nil
 			}
@@ -226,7 +227,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.RenameColumn:
 			nn := *node
 
-			rtable := getResolvedTable(node)
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
 				return node, nil
 			}
