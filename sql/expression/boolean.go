@@ -41,7 +41,6 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if v == nil {
 		return nil, nil
 	}
