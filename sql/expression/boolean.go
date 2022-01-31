@@ -37,10 +37,7 @@ func (e *Not) Type() sql.Type {
 
 // Eval implements the Expression interface.
 func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	var v interface{}
-	var err error
-
-	v, err = e.Child.Eval(ctx, row)
+	v, err := e.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
