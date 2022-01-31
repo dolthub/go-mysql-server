@@ -40,6 +40,8 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var v interface{}
 	var err error
 
+	// NOT-BETWEEN() is not equal to NOT(BETWEEN()) as cases with NULL value for min and/or max are
+	// handled differently than only negating the BETWEEN() result.
 	switch e.Child.(type) {
 	case *Between:
 		e.Child.(*Between).Negated = true
