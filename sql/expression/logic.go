@@ -149,11 +149,16 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	if lval == nil && rval == nil {
-		return nil, nil
+	if rval == true {
+		return true, nil
 	}
 
-	return rval == true, nil
+	if lval == false && rval == false {
+		return false, nil
+	}
+
+	// (lval == nil && rval == nil) || (lval == false && rval == nil) || (lval == nil && rval == false)
+	return nil, nil
 }
 
 // WithChildren implements the Expression interface.

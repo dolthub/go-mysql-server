@@ -2548,6 +2548,17 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
+		Query: "SELECT DISTINCT * FROM (values row(7,31,27), row(79,17,38), row(78,59,26)) a (col0, col1, col2) WHERE ( + col1 + + col2 ) NOT BETWEEN NULL AND col1",
+		Expected: []sql.Row{{7, 31, 27},
+			{79, 17, 38},
+			{78, 59, 26}},
+	},
+	{
+		Query: "SELECT + tab0.col2 * - tab0.col1 FROM (values row(89,91,82), row(35,97,1), row(24,86,33)) tab0 (col0, col1, col2) " +
+			"WHERE NOT ( + col2 * + col2 * col1 ) BETWEEN col1 * tab0.col0 AND NULL",
+		Expected: []sql.Row{{-97}},
+	},
+	{
 		Query:    "SELECT id FROM typestable WHERE ti > '2019-12-31'",
 		Expected: []sql.Row{{int64(1)}},
 	},
