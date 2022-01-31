@@ -31,9 +31,11 @@ var ErrPartitionNotSet = errors.New("attempted to general a window frame interva
 var ErrRangeIntervalTypeMismatch = errors.New("range bound type must match the order by expression type")
 var ErrRangeInvalidOrderBy = sqlerr.NewKind("a range's order by must be one expression; found: %d")
 
-var _ sql.WindowFramer = (*RowFramer)(nil)
 var _ sql.WindowFramer = (*PartitionFramer)(nil)
 var _ sql.WindowFramer = (*GroupByFramer)(nil)
+var _ sql.WindowFramer = (*rowFramerBase)(nil)
+var _ sql.WindowFramer = (*rangeFramerBase)(nil)
+var _ sql.WindowFramer = (*PeerGroupFramer)(nil)
 
 // NewUnboundedPrecedingToCurrentRowFramer generates sql.WindowInterval
 // from the first row in a partition to the current row.
@@ -42,104 +44,13 @@ var _ sql.WindowFramer = (*GroupByFramer)(nil)
 // =>
 // frames: {0,0},   {0,1}, {0,2},   {0,3},     {0,4},     {0,5}
 // rows:   [0],     [0,1], [0,1,2], [1,2,3,4], [1,2,3,4], [1,2,3,4,5]
-func NewUnboundedPrecedingToCurrentRowFramer() *RowFramer {
-	return &RowFramer{
-		unboundedPreceding: true,
-		followingOffset:    0,
-		frameEnd:           -1,
-		frameStart:         -1,
-		partitionStart:     -1,
-		partitionEnd:       -1,
+func NewUnboundedPrecedingToCurrentRowFramer() *RowsUnboundedPrecedingToCurrentRowFramer {
+	return &RowsUnboundedPrecedingToCurrentRowFramer{
+		rowFramerBase{
+			unboundedPreceding: true,
+			endCurrentRow:      false,
+		},
 	}
-}
-
-// NewNPrecedingToCurrentRowFramer generates sql.WindowInterval
-// in the active partitions using an index offset.
-//
-// Ex: precedingOffset = 3; partition = [0, 1, 2, 3, 4, 5]
-// =>
-// frames: {0,0},   {0,1}, {0,2},   {0,3},   {1,4},   {2,5}
-// rows:   [0],     [0,1], [0,1,2], [1,2,3], [2,3,4], [3,4,5]
-func NewNPrecedingToCurrentRowFramer(n int) *RowFramer {
-	return &RowFramer{
-		precedingOffset: n,
-		followingOffset: 0,
-		frameEnd:        -1,
-		frameStart:      -1,
-		partitionStart:  -1,
-		partitionEnd:    -1,
-	}
-}
-
-type RowFramer struct {
-	idx                          int
-	partitionStart, partitionEnd int
-	frameStart, frameEnd         int
-	partitionSet                 bool
-
-	followingOffset, precedingOffset       int
-	unboundedPreceding, unboundedFollowing bool
-}
-
-func (f *RowFramer) Close() {
-	return
-}
-
-func (f *RowFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
-	return &RowFramer{
-		idx:            interval.Start,
-		partitionStart: interval.Start,
-		partitionEnd:   interval.End,
-		frameStart:     -1,
-		frameEnd:       -1,
-		partitionSet:   true,
-		// pass through parent state
-		unboundedPreceding: f.unboundedPreceding,
-		unboundedFollowing: f.unboundedFollowing,
-		followingOffset:    f.followingOffset,
-		precedingOffset:    f.precedingOffset,
-	}, nil
-}
-
-func (f *RowFramer) Next(ctx *sql.Context, buffer sql.WindowBuffer) (sql.WindowInterval, error) {
-	if f.idx != 0 && f.idx >= f.partitionEnd || !f.partitionSet {
-		return sql.WindowInterval{}, io.EOF
-	}
-
-	newStart := f.idx - f.precedingOffset
-	if f.unboundedPreceding || newStart < f.partitionStart {
-		newStart = f.partitionStart
-	}
-
-	newEnd := f.idx + f.followingOffset + 1
-	if f.unboundedFollowing || newEnd > f.partitionEnd {
-		newEnd = f.partitionEnd
-	}
-
-	f.frameStart = newStart
-	f.frameEnd = newEnd
-
-	f.idx++
-	return f.Interval()
-}
-
-func (f *RowFramer) FirstIdx() int {
-	return f.frameEnd
-}
-
-func (f *RowFramer) LastIdx() int {
-	return f.frameStart
-}
-
-func (f *RowFramer) Interval() (sql.WindowInterval, error) {
-	if !f.partitionSet {
-		return sql.WindowInterval{}, ErrPartitionNotSet
-	}
-	return sql.WindowInterval{Start: f.frameStart, End: f.frameEnd}, nil
-}
-
-func (f *RowFramer) SlidingInterval(ctx sql.Context) (sql.WindowInterval, sql.WindowInterval, sql.WindowInterval) {
-	panic("implement me")
 }
 
 type PartitionFramer struct {
@@ -387,8 +298,6 @@ func (f *rowFramerBase) Interval() (sql.WindowInterval, error) {
 	return sql.WindowInterval{Start: f.frameStart, End: f.frameEnd}, nil
 }
 
-var _ sql.WindowFramer = (*rowFramerBase)(nil)
-
 // rangeFramerBase is a sql.WindowFramer iterator that tracks
 // value ranges in a sql.WindowBuffer using bound
 // conditions on the order by [orderBy] column. Only a subset of
@@ -430,8 +339,6 @@ type rangeFramerBase struct {
 	endNPreceding      sql.Expression
 	endNFollowing      sql.Expression
 }
-
-var _ sql.WindowFramer = (*rangeFramerBase)(nil)
 
 func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
 	var startInclusion sql.Expression
@@ -576,4 +483,117 @@ func (f *rangeFramerBase) Interval() (sql.WindowInterval, error) {
 		return sql.WindowInterval{}, ErrPartitionNotSet
 	}
 	return sql.WindowInterval{Start: f.frameStart, End: f.frameEnd}, nil
+}
+
+type PeerGroupFramer struct {
+	idx                          int
+	partitionStart, partitionEnd int
+	frameStart, frameEnd         int
+	partitionSet                 bool
+
+	// reference for peer calculation
+	orderBy []sql.Expression
+}
+
+func NewPeerGroupFramer(orderBy []sql.Expression) *PeerGroupFramer {
+	return &PeerGroupFramer{
+		frameEnd:       -1,
+		frameStart:     -1,
+		partitionStart: -1,
+		partitionEnd:   -1,
+		orderBy:        orderBy,
+	}
+}
+
+func (f *PeerGroupFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
+	return &PeerGroupFramer{
+		idx:            interval.Start,
+		partitionStart: interval.Start,
+		partitionEnd:   interval.End,
+		frameStart:     interval.Start,
+		frameEnd:       interval.Start,
+		partitionSet:   true,
+		orderBy:        f.orderBy,
+	}, nil
+}
+
+func (f *PeerGroupFramer) Next(ctx *sql.Context, buf sql.WindowBuffer) (sql.WindowInterval, error) {
+	if f.idx != 0 && f.idx >= f.partitionEnd || !f.partitionSet {
+		return sql.WindowInterval{}, io.EOF
+	}
+	if f.idx >= f.frameEnd {
+		peerGroup, err := nextPeerGroup(ctx, f.idx, f.partitionEnd, f.orderBy, buf)
+		if err != nil {
+			return sql.WindowInterval{}, err
+		}
+		f.frameStart = peerGroup.Start
+		f.frameEnd = peerGroup.End
+	}
+	f.idx++
+	return f.Interval()
+}
+
+func (f *PeerGroupFramer) FirstIdx() int {
+	return f.frameStart
+}
+
+func (f *PeerGroupFramer) LastIdx() int {
+	return f.frameEnd
+}
+
+func (f *PeerGroupFramer) Interval() (sql.WindowInterval, error) {
+	if !f.partitionSet {
+		return sql.WindowInterval{}, ErrPartitionNotSet
+	}
+	return sql.WindowInterval{Start: f.frameStart, End: f.frameEnd}, nil
+}
+
+// nextPeerGroup scans for a sql.WindowInterval of rows with the same value as
+// the current row [a.pos]. This is equivalent to a partitioning algorithm, but
+// we are using the OrderBy fields, and we stream the results.
+// ex: [1, 2, 2, 2, 2, 3, 3, 4, 5, 5, 6] => {0,1}, {1,5}, {5,7}, {8,9}, {9,10}
+func nextPeerGroup(ctx *sql.Context, pos, partitionEnd int, orderBy []sql.Expression, buffer sql.WindowBuffer) (sql.WindowInterval, error) {
+	if pos >= partitionEnd || pos > len(buffer) {
+		return sql.WindowInterval{}, nil
+	}
+	var row sql.Row
+	i := pos + 1
+	last := buffer[pos]
+	for i < partitionEnd {
+		row = buffer[i]
+		if newPeerGroup, err := isNewOrderByValue(ctx, orderBy, last, row); err != nil {
+			return sql.WindowInterval{}, err
+		} else if newPeerGroup {
+			break
+		}
+		i++
+		last = row
+	}
+	return sql.WindowInterval{Start: pos, End: i}, nil
+}
+
+// isNewOrderByValue compares the order by columns between two rows, returning true when the last row is null or
+// when the next row's orderBy columns are unique
+func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
+	if len(last) == 0 {
+		return true, nil
+	}
+
+	lastExp, _, err := evalExprs(ctx, orderByExprs, last)
+	if err != nil {
+		return false, err
+	}
+
+	thisExp, _, err := evalExprs(ctx, orderByExprs, row)
+	if err != nil {
+		return false, err
+	}
+
+	for i := range lastExp {
+		if lastExp[i] != thisExp[i] {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

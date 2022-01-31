@@ -3290,14 +3290,15 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 		`SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval '1' DAY following) FROM c order by x`,
 		[]sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}, {float64(10)}, {float64(10)}, {float64(10)}, {float64(10)}},
 		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`,
+		[]sql.Row{{1}, {1}, {1}, {1}, {1}, {0}, {2}, {2}, {0}, {0}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT count(y) over (partition by z order by date range between interval '1' DAY preceding and interval '2' DAY following) FROM c order by x`,
+		[]sql.Row{{4}, {4}, {4}, {5}, {2}, {2}, {4}, {4}, {4}, {4}},
+		nil, nil)
 
-	// TODO: count fails with RANGE frames
-	// CountAgg needs to use a peerGroupFramer as default, rangeFramer currently
-	// gives it valid intervals but it's ignoring and manually calculating peer groups itself
-	//TestQuery(t, harness, e,
-	//	`SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`,
-	//	[]sql.Row{{1},{1},{1},{1},{1},{0},{2}, {2}, {0},{0}},
-	//	nil, nil)
 	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", aggregation.ErrRangeInvalidOrderBy)
 	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", sql.ErrInvalidValue)
 }
