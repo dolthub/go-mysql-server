@@ -150,3 +150,173 @@ func TestSTY(t *testing.T) {
 		require.Error(err)
 	})
 }
+
+func TestLongitude(t *testing.T) {
+	t.Run("select longitude value", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(1.0, v)
+	})
+
+	t.Run("replace longitude value", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral(123.456, sql.Float64))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4326, X: 123.456, Y: 0}, v)
+	})
+
+	t.Run("replace x value with valid string", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral("-123.456", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4326, X: -123.456, Y: 0}, v)
+	})
+
+	t.Run("replace x value with negative float", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral("-123.456", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4326, X: -123.456, Y: 0}, v)
+	})
+
+	t.Run("null point", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("replace with null value", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("replace x value with out of range coordinate", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral(999, sql.Blob))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("non-point provided", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLongitude(expression.NewLiteral("notapoint", sql.Blob))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+}
+
+func TestLatitude(t *testing.T) {
+	t.Run("select latitude value", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 1, Y: 2}, sql.PointType{}))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(2.0, v)
+	})
+
+	t.Run("replace latitude value", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral(12.3456, sql.Float64))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4326, X: 0, Y: 12.3456}, v)
+	})
+
+	t.Run("replace y value with valid string", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral("-12.3456", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4326, X: 0, Y: -12.3456}, v)
+	})
+
+	t.Run("replace y value with negative float", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral("-12.3456", sql.Blob))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Point{SRID: 4326, X: 0, Y: -12.3456}, v)
+	})
+
+	t.Run("null point", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("replace with null value", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral(nil, sql.Null))
+		require.NoError(err)
+
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(nil, v)
+	})
+
+	t.Run("replace y value with out of range coordinate", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral(sql.Point{SRID: 4326, X: 0, Y: 0}, sql.PointType{}),
+			expression.NewLiteral(999, sql.Blob))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
+	t.Run("non-point provided", func(t *testing.T) {
+		require := require.New(t)
+		f, err := NewLatitude(expression.NewLiteral("notapoint", sql.Blob))
+		require.NoError(err)
+
+		_, err = f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+}
