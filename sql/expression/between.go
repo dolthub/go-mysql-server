@@ -22,9 +22,9 @@ import (
 
 // Between checks a value is between two given values.
 type Between struct {
-	Val   sql.Expression
-	Lower sql.Expression
-	Upper sql.Expression
+	Val     sql.Expression
+	Lower   sql.Expression
+	Upper   sql.Expression
 	Negated bool
 }
 
