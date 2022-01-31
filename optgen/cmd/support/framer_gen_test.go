@@ -23,7 +23,7 @@ func TestFramerGen(t *testing.T) {
 		
 		var _ sql.WindowFramer = (*RowsUnboundedPrecedingToNPrecedingFramer)(nil)
 		
-		func NewRowsUnboundedPrecedingToNPrecedingFramer(frame sql.WindowFrame) (sql.WindowFramer, error) {
+		func NewRowsUnboundedPrecedingToNPrecedingFramer(frame sql.WindowFrame, window *sql.Window) (sql.WindowFramer, error) {
 		  unboundedPreceding := true
 		  endNPreceding, err := expression.LiteralToInt(frame.EndNPreceding())
 		  if err != nil {

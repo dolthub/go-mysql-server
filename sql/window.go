@@ -27,7 +27,6 @@ type Window struct {
 	OrderBy     SortFields
 	Frame       WindowFrame
 	id          uint64
-	// TODO: window frame
 }
 
 func NewWindow(partitionBy []Expression, orderBy []SortField, frame WindowFrame) *Window {
@@ -55,7 +54,7 @@ func (w *Window) FromExpressions(children []Expression) (*Window, error) {
 	}
 
 	nw := *w
-	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)])
+	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)]...)
 	nw.PartitionBy = children[len(nw.OrderBy):]
 	return &nw, nil
 }

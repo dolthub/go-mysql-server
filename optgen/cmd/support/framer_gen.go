@@ -53,7 +53,7 @@ func (g *FramerGen) genFramerType(def frameDef) {
 
 func (g *FramerGen) genNewFramer(def frameDef) {
 	framerName := fmt.Sprintf("%sFramer", def.Name())
-	fmt.Fprintf(g.w, "func New%sFramer(frame sql.WindowFrame) (sql.WindowFramer, error) {\n", def.Name())
+	fmt.Fprintf(g.w, "func New%sFramer(frame sql.WindowFrame, window *sql.Window) (sql.WindowFramer, error) {\n", def.Name())
 
 	for _, a := range def.Args() {
 		switch a.argType() {
@@ -72,12 +72,20 @@ func (g *FramerGen) genNewFramer(def frameDef) {
 		}
 	}
 
+	if def.unit == rang {
+		fmt.Fprintf(g.w, "  exprs := window.OrderBy.ToExpressions()\n")
+		fmt.Fprintf(g.w, "  if len(exprs) != 1 {\n")
+		fmt.Fprintf(g.w, "    return nil, ErrRangeInvalidOrderBy.New(len(exprs))\n")
+		fmt.Fprintf(g.w, "  }\n")
+	}
+
 	fmt.Fprintf(g.w, "  return &%s{\n", framerName)
 	switch def.unit {
 	case rows:
 		fmt.Fprintf(g.w, "    rowFramerBase{\n")
 	case rang:
 		fmt.Fprintf(g.w, "    rangeFramerBase{\n")
+		fmt.Fprintf(g.w, "      orderBy: exprs[0],\n")
 	}
 
 	for _, a := range def.Args() {

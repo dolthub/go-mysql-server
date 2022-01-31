@@ -28,7 +28,7 @@ import (
 func TestWindowRowFramers(t *testing.T) {
 	tests := []struct {
 		Name     string
-		Framer   func(frame sql.WindowFrame) (sql.WindowFramer, error)
+		Framer   func(sql.WindowFrame, *sql.Window) (sql.WindowFramer, error)
 		Expected []sql.WindowInterval
 	}{
 		{
@@ -154,8 +154,9 @@ func TestWindowRowFramers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
 			frameDef := dummyFrame{}
-			framer, err := tt.Framer(frameDef)
+			framer, err := tt.Framer(frameDef, nil)
 			require.NoError(t, err)
 
 			_, err = framer.Interval()
@@ -165,10 +166,133 @@ func TestWindowRowFramers(t *testing.T) {
 			var res []sql.WindowInterval
 			var frame sql.WindowInterval
 			for _, p := range partitions {
-				framer = framer.NewFramer(p)
+				framer, err = framer.NewFramer(p)
+				require.NoError(t, err)
 
 				for {
-					frame, err = framer.Next()
+					frame, err = framer.Next(ctx, nil)
+					if errors.Is(err, io.EOF) {
+						break
+					}
+					res = append(res, frame)
+				}
+			}
+			require.Equal(t, tt.Expected, res)
+		})
+	}
+}
+
+func TestWindowRangeFramers(t *testing.T) {
+	tests := []struct {
+		Name     string
+		Framer   func(sql.WindowFrame, *sql.Window) (sql.WindowFramer, error)
+		OrderBy  []sql.Expression
+		Expected []sql.WindowInterval
+	}{
+		{
+			Name:   "range unbound preceding to unbound following framer",
+			Framer: NewRangeUnboundedPrecedingToUnboundedFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10},
+				{Start: 10, End: 16}, {Start: 10, End: 16}, {Start: 10, End: 16}, {Start: 10, End: 16}, {Start: 10, End: 16}, {Start: 10, End: 16},
+				{Start: 16, End: 19}, {Start: 16, End: 19}, {Start: 16, End: 19},
+			},
+		},
+		{
+			Name:   "range 2 preceding to 1 preceding framer",
+			Framer: NewRangeNPrecedingToNPrecedingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 0}, {Start: 0, End: 0}, {Start: 0, End: 2}, {Start: 2, End: 3}, {Start: 3, End: 4}, {Start: 3, End: 4}, {Start: 4, End: 6}, {Start: 4, End: 7}, {Start: 4, End: 7}, {Start: 6, End: 9},
+				{Start: 10, End: 10}, {Start: 10, End: 10}, {Start: 10, End: 12}, {Start: 12, End: 13}, {Start: 13, End: 14}, {Start: 13, End: 14},
+				{Start: 16, End: 16}, {Start: 16, End: 17}, {Start: 16, End: 18},
+			},
+		},
+		{
+			Name:   "range current row to current row framer",
+			Framer: NewRangeCurrentRowToCurrentRowFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 2}, {Start: 0, End: 2}, {Start: 2, End: 3}, {Start: 3, End: 4}, {Start: 4, End: 6}, {Start: 4, End: 6}, {Start: 6, End: 7}, {Start: 7, End: 9}, {Start: 7, End: 9}, {Start: 9, End: 10},
+				{Start: 10, End: 12}, {Start: 10, End: 12}, {Start: 12, End: 13}, {Start: 13, End: 14}, {Start: 14, End: 16}, {Start: 14, End: 16},
+				{Start: 16, End: 17}, {Start: 17, End: 18}, {Start: 18, End: 19},
+			},
+		},
+		{
+			Name:   "range unbounded preceding to current row framer",
+			Framer: NewRangeUnboundedPrecedingToCurrentRowFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 2}, {Start: 0, End: 2}, {Start: 0, End: 3}, {Start: 0, End: 4}, {Start: 0, End: 6}, {Start: 0, End: 6}, {Start: 0, End: 7}, {Start: 0, End: 9}, {Start: 0, End: 9}, {Start: 0, End: 10},
+				{Start: 10, End: 12}, {Start: 10, End: 12}, {Start: 10, End: 13}, {Start: 10, End: 14}, {Start: 10, End: 16}, {Start: 10, End: 16},
+				{Start: 16, End: 17}, {Start: 16, End: 18}, {Start: 16, End: 19},
+			},
+		},
+		{
+			Name:   "range 1 following to 1 following framer",
+			Framer: NewRangeNFollowingToNFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 2, End: 3}, {Start: 2, End: 3}, {Start: 3, End: 3}, {Start: 4, End: 4}, {Start: 6, End: 7}, {Start: 6, End: 7}, {Start: 7, End: 9}, {Start: 9, End: 10}, {Start: 9, End: 10}, {Start: 10, End: 10},
+				{Start: 12, End: 13}, {Start: 12, End: 13}, {Start: 13, End: 13}, {Start: 14, End: 14}, {Start: 16, End: 16}, {Start: 16, End: 16},
+				{Start: 17, End: 18}, {Start: 18, End: 19}, {Start: 19, End: 19},
+			},
+		},
+		{
+			Name:   "range unbounded preceding to 1 following framer",
+			Framer: NewRangeUnboundedPrecedingToNFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 3}, {Start: 0, End: 3}, {Start: 0, End: 3}, {Start: 0, End: 4}, {Start: 0, End: 7}, {Start: 0, End: 7}, {Start: 0, End: 9}, {Start: 0, End: 10}, {Start: 0, End: 10}, {Start: 0, End: 10},
+				{Start: 10, End: 13}, {Start: 10, End: 13}, {Start: 10, End: 13}, {Start: 10, End: 14}, {Start: 10, End: 16}, {Start: 10, End: 16},
+				{Start: 16, End: 18}, {Start: 16, End: 19}, {Start: 16, End: 19},
+			},
+		},
+		{
+			Name:   "rows 2 preceding to 1 following framer",
+			Framer: NewRangeNPrecedingToNFollowingFramer,
+			Expected: []sql.WindowInterval{
+				{},
+				{Start: 0, End: 3}, {Start: 0, End: 3}, {Start: 0, End: 3}, {Start: 2, End: 4}, {Start: 3, End: 7}, {Start: 3, End: 7}, {Start: 4, End: 9}, {Start: 4, End: 10}, {Start: 4, End: 10}, {Start: 6, End: 10},
+				{Start: 10, End: 13}, {Start: 10, End: 13}, {Start: 10, End: 13}, {Start: 12, End: 14}, {Start: 13, End: 16}, {Start: 13, End: 16},
+				{Start: 16, End: 18}, {Start: 16, End: 19}, {Start: 16, End: 19},
+			},
+		},
+	}
+
+	buffer := []sql.Row{
+		{0, 1}, {0, 1}, {0, 2}, {0, 4}, {0, 6}, {0, 6}, {0, 7}, {0, 8}, {0, 8}, {0, 9},
+		{1, 1}, {1, 1}, {1, 2}, {1, 4}, {1, 6}, {1, 6},
+		{2, 1}, {2, 2}, {2, 3},
+	}
+	partitions := []sql.WindowInterval{
+		{}, // nil rows creates one empty partition
+		{Start: 0, End: 10},
+		{Start: 10, End: 16},
+		{Start: 16, End: 19},
+	}
+	expr := expression.NewGetField(1, sql.Int64, "", false)
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			ctx := sql.NewEmptyContext()
+			frameDef := dummyFrame{}
+			w := &sql.Window{OrderBy: sql.SortFields{{Column: expr, Order: 1}}}
+			framer, err := tt.Framer(frameDef, w)
+			require.NoError(t, err)
+
+			_, err = framer.Interval()
+			require.Error(t, err)
+			require.Equal(t, err, ErrPartitionNotSet)
+
+			var res []sql.WindowInterval
+			var frame sql.WindowInterval
+			for _, p := range partitions {
+				framer, err = framer.NewFramer(p)
+				require.NoError(t, err)
+				for {
+					frame, err = framer.Next(ctx, buffer)
 					if errors.Is(err, io.EOF) {
 						break
 					}
@@ -188,7 +312,7 @@ func (d dummyFrame) String() string {
 	panic("implement me")
 }
 
-func (d dummyFrame) NewFramer() (sql.WindowFramer, error) {
+func (d dummyFrame) NewFramer(*sql.Window) (sql.WindowFramer, error) {
 	panic("implement me")
 }
 
