@@ -620,7 +620,6 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		var groupingColumns = make(map[string]*expression.UnresolvedColumn)
 		for _, g := range g.GroupByExprs {
 			for _, n := range findAllColumns(g) {
-				// TODO (Jen): maybe use UnresolvedColumn as key? or NOT use only column name
 				groupingColumns[strings.ToLower(n.Name())] = n
 			}
 		}
