@@ -65,8 +65,8 @@ func TestFrameGen(t *testing.T) {
 		  return f.unboundedFollowing
 		}
 		
-		func (f *RowsUnboundedPrecedingToNPrecedingFrame) NewFramer() (sql.WindowFramer, error) {
-			return agg.NewRowsUnboundedPrecedingToNPrecedingFramer(f)
+		func (f *RowsUnboundedPrecedingToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+			return agg.NewRowsUnboundedPrecedingToNPrecedingFramer(f, w)
 		}
 		`,
 	}

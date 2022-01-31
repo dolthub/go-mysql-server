@@ -58,7 +58,7 @@ func NewSumAgg(e sql.Expression) *SumAgg {
 func (a *SumAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +156,7 @@ func NewAvgAgg(e sql.Expression) *AvgAgg {
 func (a *AvgAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +220,7 @@ func NewMaxAgg(e sql.Expression) *MaxAgg {
 func (a *MaxAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -292,7 +292,7 @@ func NewMinAgg(e sql.Expression) *MinAgg {
 func (a *MinAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -364,7 +364,7 @@ func NewLastAgg(e sql.Expression) *LastAgg {
 func (a *LastAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w != nil && w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -421,7 +421,7 @@ func NewFirstAgg(e sql.Expression) *FirstAgg {
 func (a *FirstAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -500,7 +500,7 @@ func NewCountDistinctAgg(e sql.Expression) *CountAgg {
 func (a *CountAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -519,6 +519,7 @@ func (a *CountAgg) DefaultFramer() sql.WindowFramer {
 	if a.framer != nil {
 		return a.framer
 	}
+	// TODO: this should be a NewPeerGroupFramer
 	return NewPartitionFramer()
 }
 
@@ -599,7 +600,7 @@ func NewGroupConcatAgg(gc *GroupConcat) *GroupConcatAgg {
 func (a *GroupConcatAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -744,7 +745,7 @@ func NewJsonArrayAgg(expr sql.Expression) *WindowedJSONArrayAgg {
 func (a *WindowedJSONArrayAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -818,7 +819,7 @@ func NewWindowedJSONObjectAgg(j *JSONObjectAgg) *WindowedJSONObjectAgg {
 func (a *WindowedJSONObjectAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
-		framer, err := w.Frame.NewFramer()
+		framer, err := w.Frame.NewFramer(w)
 		if err != nil {
 			return nil, err
 		}
@@ -1016,7 +1017,7 @@ func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 // we are using the OrderBy fields, and we stream the results.
 // ex: [1, 2, 2, 2, 2, 3, 3, 4, 5, 5, 6] => {0,1}, {1,5}, {5,7}, {8,9}, {9,10}
 func nextPeerGroup(ctx *sql.Context, pos, partitionEnd int, orderBy []sql.Expression, buffer sql.WindowBuffer) (sql.WindowInterval, error) {
-	if pos >= len(buffer) {
+	if pos >= partitionEnd || pos > len(buffer) {
 		return sql.WindowInterval{}, nil
 	}
 	var row sql.Row

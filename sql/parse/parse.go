@@ -2847,11 +2847,6 @@ func overToWindow(ctx *sql.Context, over *sqlparser.Over) (*sql.Window, error) {
 		}
 	}
 
-	if over.Frame != nil && over.Frame.Unit == sqlparser.RangeUnit {
-		// TODO: implement rangeFramerBase
-		return nil, fmt.Errorf("RANGE framing not supported")
-	}
-
 	frame, err := NewFrame(ctx, over.Frame)
 	if err != nil {
 		return nil, err

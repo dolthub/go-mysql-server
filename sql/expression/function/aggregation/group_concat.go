@@ -180,7 +180,7 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	sortFieldMarker := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[sortFieldMarker:], g.maxLen)
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen)
 }
 
 type groupConcatBuffer struct {

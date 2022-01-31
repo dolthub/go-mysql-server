@@ -36,6 +36,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -3123,7 +3124,6 @@ func TestWindowRowFrames(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
 
-	// rows
 	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
 	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
 	TestQuery(t, harness, e,
@@ -3174,63 +3174,132 @@ func TestWindowRowFrames(t *testing.T, harness Harness) {
 		`SELECT sum(y) over (partition by z order by x rows between 2 preceding and 1 preceding) FROM a order by x`,
 		[]sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}},
 		nil, nil)
+}
 
-	// TODO implement ranges
-	// ranges
-	//RunQuery(t, e, harness, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
-	//RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,0,0), (2,0,0), (3,1,0), (4,1,0), (5,3,0)")
+func TestWindowRangeFrames(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
+	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range unbounded preceding) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range 2 preceding) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and 1 following) FROM a order by x`,
+		[]sql.Row{{float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 1 preceding and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and 2 following) FROM a order by x`,
+		[]sql.Row{{float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 1 preceding and 1 following) FROM a order by x`,
+		[]sql.Row{{float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 1 preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`,
+		[]sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}},
+		nil, nil)
+
+	// fixed frame size, 3 days
+	RunQuery(t, e, harness, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
+	RunQuery(t, e, harness, "INSERT INTO b VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-27'), (2,0,0, '2022-01-28'), (3,1,0,'2022-01-29'), (4,1,0,'2022-01-30'), (5,3,0,'2022-01-31')")
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 2 DAY preceding and interval 1 DAY preceding) FROM b order by x`,
+		[]sql.Row{{nil}, {float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and interval 1 DAY following) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY following and interval 2 DAY following) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}, {float64(3)}, {nil}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range interval 1 DAY preceding) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and current row) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and unbounded following) FROM b order by x`,
+		[]sql.Row{{float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval 1 DAY following) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(5)}},
+		nil, nil)
+
+	// variable range size, 1 or many days
+	RunQuery(t, e, harness, "CREATE TABLE c (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
+	RunQuery(t, e, harness, "INSERT INTO c VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-26'), (2,0,0, '2022-01-26'), (3,1,0,'2022-01-27'), (4,1,0,'2022-01-29'), (5,3,0,'2022-01-30'), (6,0,0, '2022-02-03'), (7,1,0,'2022-02-03'), (8,1,0,'2022-02-04'), (9,3,0,'2022-02-04')")
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval '2' DAY preceding and interval '1' DAY preceding) FROM c order by x`,
+		[]sql.Row{{nil}, {nil}, {nil}, {float64(0)}, {float64(1)}, {float64(1)}, {nil}, {nil}, {float64(1)}, {float64(1)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and interval '1' DAY following) FROM c order by x`,
+		[]sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT first_value(x) over (partition by z order by date range interval '1' DAY preceding) FROM c order by x`,
+		[]sql.Row{{0}, {0}, {0}, {0}, {4}, {4}, {6}, {6}, {6}, {6}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and current row) FROM c order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT avg(y) over (partition by z order by date range between interval '1' DAY preceding and unbounded following) FROM c order by x`,
+		[]sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(3) / float64(2)}, {float64(3) / float64(2)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval '1' DAY following) FROM c order by x`,
+		[]sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}, {float64(10)}, {float64(10)}, {float64(10)}, {float64(10)}},
+		nil, nil)
+
+	// TODO: count fails with RANGE frames
+	// CountAgg needs to use a peerGroupFramer as default, rangeFramer currently
+	// gives it valid intervals but it's ignoring and manually calculating peer groups itself
 	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range 2 following) FROM a order by x`,
-	//	[]sql.Row{{0},{0},{0},{0},{0},{0}},
+	//	`SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`,
+	//	[]sql.Row{{1},{1},{1},{1},{1},{0},{2}, {2}, {0},{0}},
 	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range unbounded preceding) FROM a order by x`,
-	//	[]sql.Row{{0},{1},{3},{3},{4},{7}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range current row) FROM a order by x`,
-	//	[]sql.Row{{0},{1},{2},{0},{1},{3}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range 2 preceding) FROM a order by x`,
-	//	[]sql.Row{{0},{1},{3},{3},{3},{4}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between current row and 1 following) FROM a order by x`,
-	//	[]sql.Row{{1},{3},{2},{1},{4},{3}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between 1 preceding and current row) FROM a order by x`,
-	//	[]sql.Row{{0},{1},{3},{2},{1},{4}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between current row and 2 following) FROM a order by x`,
-	//	[]sql.Row{{3},{3},{3},{4},{4},{3}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between current row and current row) FROM a order by x`,
-	//	[]sql.Row{{0},{1},{2},{0},{1},{3}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between current row and unbounded following) FROM a order by x`,
-	//	[]sql.Row{{7},{7},{6},{4},{4},{3}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between 1 preceding and 1 following) FROM a order by x`,
-	//	[]sql.Row{{1},{3},{3},{3},{4},{4}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between 1 preceding and unbounded following) FROM a order by x`,
-	//	[]sql.Row{{7},{7},{7},{6},{4},{4}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`,
-	//	[]sql.Row{{7},{7},{7},{7},{7},{7}},
-	//	nil, nil)
-	//TestQuery(t, harness, e,
-	//	`SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`,
-	//	[]sql.Row{{nil},{0},{1},{3},{2},{1}},
-	//	nil, nil)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", aggregation.ErrRangeInvalidOrderBy)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", sql.ErrInvalidValue)
 }
 
 func TestNaturalJoin(t *testing.T, harness Harness) {

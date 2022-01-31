@@ -151,9 +151,9 @@ type WindowAdaptableExpression interface {
 type WindowFramer interface {
 	// NewFramer is a prototype constructor that create a new Framer with pass-through
 	// parent arguments
-	NewFramer(WindowInterval) WindowFramer
+	NewFramer(WindowInterval) (WindowFramer, error)
 	// Next returns the next WindowInterval frame, or an io.EOF error after the last row
-	Next() (WindowInterval, error)
+	Next(*Context, WindowBuffer) (WindowInterval, error)
 	// FirstIdx returns the current frame start index
 	FirstIdx() int
 	// LastIdx returns the last valid index in the current frame
@@ -174,7 +174,7 @@ type WindowFrame interface {
 	fmt.Stringer
 
 	// NewFramer constructs an executable WindowFramer
-	NewFramer() (WindowFramer, error)
+	NewFramer(*Window) (WindowFramer, error)
 	// UnboundedFollowing returns whether a frame end is unbounded
 	UnboundedFollowing() bool
 	// UnboundedPreceding returns whether a frame start is unbounded

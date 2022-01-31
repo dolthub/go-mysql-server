@@ -247,7 +247,7 @@ func (g *FrameGen) genFrameAccessors(def frameDef) {
 }
 
 func (g *FrameGen) genNewFramer(def frameDef) {
-	fmt.Fprintf(g.w, "func (f *%sFrame) NewFramer() (sql.WindowFramer, error) {\n", def.Name())
-	fmt.Fprintf(g.w, "    return agg.New%sFramer(f)\n", def.Name())
+	fmt.Fprintf(g.w, "func (f *%sFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {\n", def.Name())
+	fmt.Fprintf(g.w, "    return agg.New%sFramer(f, w)\n", def.Name())
 	fmt.Fprintf(g.w, "}\n\n")
 }

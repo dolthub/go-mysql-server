@@ -554,6 +554,10 @@ func TestWindowRowFrames(t *testing.T) {
 	enginetest.TestWindowRowFrames(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestWindowRangeFrames(t *testing.T) {
+	enginetest.TestWindowRangeFrames(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestNaturalJoinEqual(t *testing.T) {
 	enginetest.TestNaturalJoinEqual(t, enginetest.NewDefaultMemoryHarness())
 }
