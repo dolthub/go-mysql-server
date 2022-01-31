@@ -25,12 +25,11 @@ type Between struct {
 	Val     sql.Expression
 	Lower   sql.Expression
 	Upper   sql.Expression
-	Negated bool
 }
 
 // NewBetween creates a new Between expression.
 func NewBetween(val, lower, upper sql.Expression) *Between {
-	return &Between{val, lower, upper, false}
+	return &Between{val, lower, upper}
 }
 
 func (b *Between) String() string {
@@ -113,25 +112,6 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	cmpUpper, err := typ.Compare(val, upper)
 	if err != nil {
 		return nil, err
-	}
-
-	if b.Negated {
-		if lower != nil && upper == nil {
-			if cmpLower < 0 { // lower is TRUE
-				return true, nil
-			} else {
-				return nil, nil
-			}
-		}
-		if upper != nil && lower == nil {
-			if cmpUpper > 0 { // upper is TRUE
-				return true, nil
-			} else {
-				return nil, nil
-			}
-		}
-
-		return cmpLower < 0 || cmpUpper > 0, nil
 	}
 
 	if lower != nil && upper == nil {
