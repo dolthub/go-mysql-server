@@ -620,6 +620,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		var groupingColumns = make(map[string]*expression.UnresolvedColumn)
 		for _, g := range g.GroupByExprs {
 			for _, n := range findAllColumns(g) {
+				// TODO (Jen): maybe use UnresolvedColumn as key? or NOT use only column name
 				groupingColumns[strings.ToLower(n.Name())] = n
 			}
 		}
@@ -660,7 +661,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			// to true. If it's not required, there's no need for a reorder if
 			// no other alias is required.
 			_, ok = groupingColumns[name]
-			if ok {
+			if ok && groupingColumns[name].Table() == "" {
 				aliases[name] = len(newSelectedExprs)
 				needsReorder = true
 				delete(groupingColumns, name)
