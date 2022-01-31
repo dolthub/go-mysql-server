@@ -603,6 +603,41 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "same alias names for result column name and alias table column name",
+		SetUpScript: []string{
+			"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+			"INSERT INTO tab0 VALUES(83,0,38)",
+			"INSERT INTO tab0 VALUES(26,0,79)",
+			"INSERT INTO tab0 VALUES(43,81,24)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT + 13 AS col0 FROM tab0 GROUP BY tab0.col0",
+				Expected: []sql.Row{{13}, {13}, {13}},
+			},
+			{
+				Query:    "SELECT 82 col1 FROM tab0 AS cor0 GROUP BY cor0.col1",
+				Expected: []sql.Row{{82}, {82}},
+			},
+			{
+				Query:    "SELECT - cor0.col2 * - col2 AS col1 FROM tab0 AS cor0 GROUP BY col2, cor0.col1",
+				Expected: []sql.Row{{1444}, {6241}, {576}},
+			},
+			{
+				Query:    "SELECT ALL + 40 col1 FROM tab0 AS cor0 GROUP BY cor0.col1",
+				Expected: []sql.Row{{40}, {40}},
+			},
+			{
+				Query:    "SELECT DISTINCT - cor0.col1 col1 FROM tab0 AS cor0 GROUP BY cor0.col1, cor0.col2",
+				Expected: []sql.Row{{-81}, {0}},
+			},
+			{
+				Query:    "SELECT DISTINCT ( cor0.col0 ) - col0 AS col2 FROM tab0 AS cor0 GROUP BY cor0.col2, cor0.col0, cor0.col0",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
 		Name: "found_rows() behavior",
 		SetUpScript: []string{
 			"create table b (x int primary key)",
