@@ -25,11 +25,12 @@ type Between struct {
 	Val   sql.Expression
 	Lower sql.Expression
 	Upper sql.Expression
+	Negated bool
 }
 
 // NewBetween creates a new Between expression.
 func NewBetween(val, lower, upper sql.Expression) *Between {
-	return &Between{val, lower, upper}
+	return &Between{val, lower, upper, false}
 }
 
 func (b *Between) String() string {
@@ -114,15 +115,34 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if b.Negated {
+		if lower != nil && upper == nil {
+			if cmpLower < 0 { // lower is TRUE
+				return true, nil
+			} else {
+				return nil, nil
+			}
+		}
+		if upper != nil && lower == nil {
+			if cmpUpper > 0 { // upper is TRUE
+				return true, nil
+			} else {
+				return nil, nil
+			}
+		}
+
+		return cmpLower < 0 || cmpUpper > 0, nil
+	}
+
 	if lower != nil && upper == nil {
-		if cmpLower > 0 { // lower is TRUE
+		if cmpLower > 0 {
 			return nil, nil
 		} else {
 			return false, nil
 		}
 	}
 	if upper != nil && lower == nil {
-		if cmpUpper < 0 { // upper is TRUE
+		if cmpUpper < 0 {
 			return nil, nil
 		} else {
 			return false, nil
@@ -138,78 +158,4 @@ func (b *Between) WithChildren(children ...sql.Expression) (sql.Expression, erro
 		return nil, sql.ErrInvalidChildrenNumber.New(b, len(children), 3)
 	}
 	return NewBetween(children[0], children[1], children[2]), nil
-}
-
-// EvalNotBetween implements the Expression interface.
-func (b *Between) EvalNotBetween(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := b.Val.Type().Promote()
-
-	val, err := b.Val.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if val == nil {
-		return nil, nil
-	}
-
-	val, err = typ.Convert(val)
-	if err != nil {
-		return nil, err
-	}
-
-	lower, err := b.Lower.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if lower != nil {
-		lower, err = typ.Convert(lower)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	upper, err := b.Upper.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if upper != nil {
-		upper, err = typ.Convert(upper)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if lower == nil && upper == nil {
-		return nil, nil
-	}
-
-	cmpLower, err := typ.Compare(val, lower)
-	if err != nil {
-		return nil, err
-	}
-
-	cmpUpper, err := typ.Compare(val, upper)
-	if err != nil {
-		return nil, err
-	}
-
-	if lower != nil && upper == nil {
-		if cmpLower < 0 { // lower is TRUE
-			return true, nil
-		} else {
-			return nil, nil
-		}
-	}
-	if upper != nil && lower == nil {
-		if cmpUpper > 0 { // upper is TRUE
-			return true, nil
-		} else {
-			return nil, nil
-		}
-	}
-
-	return cmpLower < 0 || cmpUpper > 0, nil
 }

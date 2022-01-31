@@ -42,7 +42,8 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch e.Child.(type) {
 	case *Between:
-		v, err = e.Child.(*Between).EvalNotBetween(ctx, row)
+		e.Child.(*Between).Negated = true
+		v, err = e.Child.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
