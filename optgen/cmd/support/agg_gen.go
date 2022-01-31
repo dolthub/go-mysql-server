@@ -14,16 +14,20 @@ type AggDef struct {
 	Nullable bool
 }
 
+var _ GenDefs = ([]AggDef)(nil)
+
 type AggGen struct {
 	defines []AggDef
 	w       io.Writer
 }
 
-func (g *AggGen) Generate(defines []AggDef, w io.Writer) {
-	g.defines = defines
+func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
+	g.defines = defines.([]AggDef)
+
 	g.w = w
 
 	fmt.Fprintf(g.w, "import (\n")
+	fmt.Fprintf(g.w, "    \"fmt\"\n")
 	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql\"\n")
 	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql/expression\"\n")
 	fmt.Fprintf(g.w, ")\n\n")
@@ -111,7 +115,7 @@ func (g *AggGen) genAggWindowConstructor(define AggDef) {
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")
-	fmt.Fprintf(g.w, "    return New%sAgg(child).WithWindow(a.Window()), nil\n", define.Name)
+	fmt.Fprintf(g.w, "    return New%sAgg(child).WithWindow(a.Window())\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

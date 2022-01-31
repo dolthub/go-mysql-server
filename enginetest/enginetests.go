@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -24,15 +25,18 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -999,15 +1003,127 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
-func TestUsersAndPrivileges(t *testing.T, harness Harness) {
+func TestUserPrivileges(t *testing.T, h Harness) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestUserPrivileges as the harness must implement ClientHarness")
+	}
+
 	for _, script := range UserPrivTests {
 		t.Run(script.Name, func(t *testing.T) {
 			myDb := harness.NewDatabase("mydb")
 			databases := []sql.Database{myDb}
-			e := NewEngineWithDbs(t, harness, databases)
-			defer e.Close()
-			e.Analyzer.Catalog.GrantTables.AddRootAccount()
-			TestScriptWithEngine(t, e, harness, script)
+			engine := NewEngineWithDbs(t, harness, databases)
+			defer engine.Close()
+
+			ctx := NewContextWithClient(harness, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, ctx, statement)
+			}
+			for _, assertion := range script.Assertions {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(assertion.Query) {
+						t.Skipf("Skipping query %s", assertion.Query)
+					}
+				}
+
+				user := assertion.User
+				host := assertion.Host
+				if user == "" {
+					user = "root"
+				}
+				if host == "" {
+					host = "localhost"
+				}
+				ctx := NewContextWithClient(harness, sql.Client{
+					User:    user,
+					Address: host,
+				})
+
+				if assertion.ExpectedErr != nil {
+					t.Run(assertion.Query, func(t *testing.T) {
+						AssertErrWithCtx(t, engine, ctx, assertion.Query, assertion.ExpectedErr)
+					})
+				} else {
+					t.Run(assertion.Query, func(t *testing.T) {
+						TestQueryWithContext(t, ctx, engine, assertion.Query, assertion.Expected, nil, nil)
+					})
+				}
+			}
+		})
+	}
+}
+
+func TestUserAuthentication(t *testing.T, h Harness) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestUserAuthentication as the harness must implement ClientHarness")
+	}
+
+	port := getEmptyPort(t)
+	for _, script := range ServerAuthTests {
+		t.Run(script.Name, func(t *testing.T) {
+			ctx := NewContextWithClient(harness, sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			serverConfig := server.Config{
+				Protocol:       "tcp",
+				Address:        fmt.Sprintf("localhost:%d", port),
+				MaxConnections: 1000,
+			}
+
+			engine := sqle.NewDefault(harness.NewDatabaseProvider())
+			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+			if script.SetUpFunc != nil {
+				script.SetUpFunc(ctx, t, engine)
+			}
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, ctx, statement)
+			}
+
+			s, err := server.NewDefaultServer(serverConfig, engine)
+			require.NoError(t, err)
+			go func() {
+				err := s.Start()
+				require.NoError(t, err)
+			}()
+			defer func() {
+				require.NoError(t, s.Close())
+			}()
+
+			for _, assertion := range script.Assertions {
+				conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(localhost:%d)/",
+					assertion.Username, assertion.Password, port), nil)
+				require.NoError(t, err)
+				if assertion.ExpectedErr {
+					r, err := conn.Query(assertion.Query)
+					if !assert.Error(t, err) {
+						require.NoError(t, r.Close())
+					}
+				} else {
+					r, err := conn.Query(assertion.Query)
+					if assert.NoError(t, err) {
+						require.NoError(t, r.Close())
+					}
+				}
+				require.NoError(t, conn.Close())
+			}
 		})
 	}
 }
@@ -3037,9 +3153,191 @@ func TestWindowFunctions(t *testing.T, harness Harness) {
 		{5, "s"},
 	}, nil, nil)
 
-	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", window.ErrInvalidLagOffset)
-	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", window.ErrInvalidLagOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, -1) over (partition by c) FROM t1", expression.ErrInvalidOffset)
+	AssertErr(t, e, harness, "SELECT a, lag(a, 's') over (partition by c) FROM t1", expression.ErrInvalidOffset)
 
+}
+
+func TestWindowRowFrames(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
+	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows unbounded preceding) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows 2 preceding) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between current row and 1 following) FROM a order by x`,
+		[]sql.Row{{float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between 1 preceding and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between current row and 2 following) FROM a order by x`,
+		[]sql.Row{{float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between current row and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between current row and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between 1 preceding and 1 following) FROM a order by x`,
+		[]sql.Row{{float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between 1 preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between unbounded preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x rows between 2 preceding and 1 preceding) FROM a order by x`,
+		[]sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}},
+		nil, nil)
+}
+
+func TestWindowRangeFrames(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	RunQuery(t, e, harness, "CREATE TABLE a (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER)")
+	RunQuery(t, e, harness, "INSERT INTO a VALUES (0,0,0), (1,1,0), (2,2,0), (3,0,0), (4,1,0), (5,3,0)")
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range unbounded preceding) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(7)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range 2 preceding) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and 1 following) FROM a order by x`,
+		[]sql.Row{{float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 1 preceding and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and 2 following) FROM a order by x`,
+		[]sql.Row{{float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and current row) FROM a order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(0)}, {float64(1)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between current row and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}, {float64(3)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 1 preceding and 1 following) FROM a order by x`,
+		[]sql.Row{{float64(1)}, {float64(3)}, {float64(3)}, {float64(3)}, {float64(4)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 1 preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(6)}, {float64(4)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between unbounded preceding and unbounded following) FROM a order by x`,
+		[]sql.Row{{float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}, {float64(7)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by x range between 2 preceding and 1 preceding) FROM a order by x`,
+		[]sql.Row{{nil}, {float64(0)}, {float64(1)}, {float64(3)}, {float64(2)}, {float64(1)}},
+		nil, nil)
+
+	// fixed frame size, 3 days
+	RunQuery(t, e, harness, "CREATE TABLE b (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
+	RunQuery(t, e, harness, "INSERT INTO b VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-27'), (2,0,0, '2022-01-28'), (3,1,0,'2022-01-29'), (4,1,0,'2022-01-30'), (5,3,0,'2022-01-31')")
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 2 DAY preceding and interval 1 DAY preceding) FROM b order by x`,
+		[]sql.Row{{nil}, {float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and interval 1 DAY following) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY following and interval 2 DAY following) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}, {float64(3)}, {nil}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range interval 1 DAY preceding) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and current row) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval 1 DAY preceding and unbounded following) FROM b order by x`,
+		[]sql.Row{{float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval 1 DAY following) FROM b order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(1)}, {float64(2)}, {float64(5)}, {float64(5)}},
+		nil, nil)
+
+	// variable range size, 1 or many days
+	RunQuery(t, e, harness, "CREATE TABLE c (x INTEGER PRIMARY KEY, y INTEGER, z INTEGER, date DATE)")
+	RunQuery(t, e, harness, "INSERT INTO c VALUES (0,0,0,'2022-01-26'), (1,0,0,'2022-01-26'), (2,0,0, '2022-01-26'), (3,1,0,'2022-01-27'), (4,1,0,'2022-01-29'), (5,3,0,'2022-01-30'), (6,0,0, '2022-02-03'), (7,1,0,'2022-02-03'), (8,1,0,'2022-02-04'), (9,3,0,'2022-02-04')")
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval '2' DAY preceding and interval '1' DAY preceding) FROM c order by x`,
+		[]sql.Row{{nil}, {nil}, {nil}, {float64(0)}, {float64(1)}, {float64(1)}, {nil}, {nil}, {float64(1)}, {float64(1)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and interval '1' DAY following) FROM c order by x`,
+		[]sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}, {float64(5)}, {float64(5)}, {float64(5)}, {float64(5)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT first_value(x) over (partition by z order by date range interval '1' DAY preceding) FROM c order by x`,
+		[]sql.Row{{0}, {0}, {0}, {0}, {4}, {4}, {6}, {6}, {6}, {6}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between interval '1' DAY preceding and current row) FROM c order by x`,
+		[]sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT avg(y) over (partition by z order by date range between interval '1' DAY preceding and unbounded following) FROM c order by x`,
+		[]sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(3) / float64(2)}, {float64(3) / float64(2)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}, {float64(5) / float64(4)}},
+		nil, nil)
+	TestQuery(t, harness, e,
+		`SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval '1' DAY following) FROM c order by x`,
+		[]sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}, {float64(10)}, {float64(10)}, {float64(10)}, {float64(10)}},
+		nil, nil)
+
+	// TODO: count fails with RANGE frames
+	// CountAgg needs to use a peerGroupFramer as default, rangeFramer currently
+	// gives it valid intervals but it's ignoring and manually calculating peer groups itself
+	//TestQuery(t, harness, e,
+	//	`SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`,
+	//	[]sql.Row{{1},{1},{1},{1},{1},{0},{2}, {2}, {0},{0}},
+	//	nil, nil)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", aggregation.ErrRangeInvalidOrderBy)
+	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", sql.ErrInvalidValue)
 }
 
 func TestNaturalJoin(t *testing.T, harness Harness) {
@@ -3917,8 +4215,6 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 
 	t.Run("Default expression with function and referenced column", func(t *testing.T) {
 		TestQuery(t, harness, e, "CREATE TABLE t2(pk BIGINT PRIMARY KEY, v1 SMALLINT DEFAULT (GREATEST(pk, 2)))", []sql.Row(nil), nil, nil)
-		e.Analyzer.Debug = true
-		e.Analyzer.Verbose = true
 		RunQuery(t, e, harness, "INSERT INTO t2 (pk) VALUES (1), (2), (3)")
 		TestQuery(t, harness, e, "SELECT * FROM t2", []sql.Row{{1, 2}, {2, 2}, {3, 3}}, nil, nil)
 	})
@@ -4191,6 +4487,24 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(t, harness, e, "SELECT * FROM t32", []sql.Row{{1, ""}, {2, ""}, {3, ""}}, nil, nil)
 	})
 
+	t.Run("Column defaults with functions", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE t33(pk varchar(100) DEFAULT (replace(UUID(), '-', '')), v1 timestamp DEFAULT now(), v2 varchar(100), primary key (pk))", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "insert into t33 (v2) values ('abc')", []sql.Row{{sql.NewOkResult(1)}}, nil, nil)
+		TestQuery(t, harness, e, "select count(*) from t33", []sql.Row{{1}}, nil, nil)
+		RunQuery(t, e, harness, "alter table t33 add column name varchar(100)")
+		RunQuery(t, e, harness, "alter table t33 rename column v1 to v1_new")
+		RunQuery(t, e, harness, "alter table t33 rename column name to name2")
+		RunQuery(t, e, harness, "alter table t33 drop column name2")
+
+		TestQuery(t, harness, e, "desc t33",
+			[]sql.Row{
+				{"pk", "varchar(100)", "NO", "PRI", "(replace(UUID(), \"-\", \"\"))", ""},
+				{"v1_new", "timestamp", "YES", "", "NOW()", ""},
+				{"v2", "varchar(100)", "YES", "", "", ""},
+			},
+			nil, nil)
+	})
+
 	t.Run("Invalid literal for column type", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 INT UNSIGNED DEFAULT -1)", sql.ErrIncompatibleDefaultType)
 	})
@@ -4328,9 +4642,23 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 
 var pid uint64
 
-func NewContext(harness Harness) *sql.Context {
-	ctx := harness.NewContext()
+func getEmptyPort(t *testing.T) int {
+	listener, err := net.Listen("tcp", ":0")
+	require.NoError(t, err)
+	port := listener.Addr().(*net.TCPAddr).Port
+	require.NoError(t, listener.Close())
+	return port
+}
 
+func NewContext(harness Harness) *sql.Context {
+	return newContextSetup(harness.NewContext())
+}
+
+func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context {
+	return newContextSetup(harness.NewContextWithClient(client))
+}
+
+func newContextSetup(ctx *sql.Context) *sql.Context {
 	// Select a current database if there isn't one yet
 	if ctx.GetCurrentDatabase() == "" {
 		ctx.SetCurrentDatabase("mydb")
@@ -4377,7 +4705,7 @@ func NewSession(harness Harness) *sql.Context {
 // NewBaseSession returns a new BaseSession compatible with these tests. Most tests will work with any session
 // implementation, but for full compatibility use a session based on this one.
 func NewBaseSession() *sql.BaseSession {
-	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "client", User: "user"}, 1)
+	return sql.NewBaseSessionWithClientServer("address", sql.Client{Address: "localhost", User: "root"}, 1)
 }
 
 func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {

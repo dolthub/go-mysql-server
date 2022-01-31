@@ -62,7 +62,7 @@ func (a *Avg) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewAvgAgg(child).WithWindow(a.Window()), nil
+	return NewAvgAgg(child).WithWindow(a.Window())
 }
 
 type Count struct {
@@ -118,7 +118,7 @@ func (a *Count) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewCountAgg(child).WithWindow(a.Window()), nil
+	return NewCountAgg(child).WithWindow(a.Window())
 }
 
 type CountDistinct struct {
@@ -174,7 +174,7 @@ func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewCountDistinctAgg(child).WithWindow(a.Window()), nil
+	return NewCountDistinctAgg(child).WithWindow(a.Window())
 }
 
 type First struct {
@@ -230,7 +230,7 @@ func (a *First) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewFirstAgg(child).WithWindow(a.Window()), nil
+	return NewFirstAgg(child).WithWindow(a.Window())
 }
 
 type Last struct {
@@ -286,7 +286,7 @@ func (a *Last) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewLastAgg(child).WithWindow(a.Window()), nil
+	return NewLastAgg(child).WithWindow(a.Window())
 }
 
 type Max struct {
@@ -342,7 +342,7 @@ func (a *Max) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewMaxAgg(child).WithWindow(a.Window()), nil
+	return NewMaxAgg(child).WithWindow(a.Window())
 }
 
 type Min struct {
@@ -398,7 +398,7 @@ func (a *Min) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewMinAgg(child).WithWindow(a.Window()), nil
+	return NewMinAgg(child).WithWindow(a.Window())
 }
 
 type Sum struct {
@@ -454,7 +454,7 @@ func (a *Sum) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewSumAgg(child).WithWindow(a.Window()), nil
+	return NewSumAgg(child).WithWindow(a.Window())
 }
 
 type JsonArray struct {
@@ -510,5 +510,5 @@ func (a *JsonArray) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewJsonArrayAgg(child).WithWindow(a.Window()), nil
+	return NewJsonArrayAgg(child).WithWindow(a.Window())
 }

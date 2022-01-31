@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cespare/xxhash"
@@ -24,12 +25,12 @@ import (
 type Window struct {
 	PartitionBy []Expression
 	OrderBy     SortFields
+	Frame       WindowFrame
 	id          uint64
-	// TODO: window frame
 }
 
-func NewWindow(partitionBy []Expression, orderBy []SortField) *Window {
-	return &Window{PartitionBy: partitionBy, OrderBy: orderBy}
+func NewWindow(partitionBy []Expression, orderBy []SortField, frame WindowFrame) *Window {
+	return &Window{PartitionBy: partitionBy, OrderBy: orderBy, Frame: frame}
 }
 
 // ToExpressions converts the PartitionBy and OrderBy expressions to a single slice of expressions suitable for
@@ -53,7 +54,7 @@ func (w *Window) FromExpressions(children []Expression) (*Window, error) {
 	}
 
 	nw := *w
-	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)])
+	nw.OrderBy = nw.OrderBy.FromExpressions(children[:len(nw.OrderBy)]...)
 	nw.PartitionBy = children[len(nw.OrderBy):]
 	return &nw, nil
 }
@@ -81,6 +82,9 @@ func (w *Window) String() string {
 			}
 			sb.WriteString(ob.String())
 		}
+	}
+	if w.Frame != nil {
+		sb.WriteString(fmt.Sprintf(" %s", w.Frame.String()))
 	}
 	sb.WriteString(")")
 	return sb.String()
@@ -117,26 +121,5 @@ func (w *Window) DebugString() string {
 	if w == nil {
 		return ""
 	}
-	sb := strings.Builder{}
-	sb.WriteString("over (")
-	if len(w.PartitionBy) > 0 {
-		sb.WriteString(" partition by ")
-		for i, expression := range w.PartitionBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(DebugString(expression))
-		}
-	}
-	if len(w.OrderBy) > 0 {
-		sb.WriteString(" order by ")
-		for i, ob := range w.OrderBy {
-			if i > 0 {
-				sb.WriteString(", ")
-			}
-			sb.WriteString(DebugString(ob))
-		}
-	}
-	sb.WriteString(")")
-	return sb.String()
+	return w.String()
 }

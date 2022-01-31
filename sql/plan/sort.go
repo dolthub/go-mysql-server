@@ -287,7 +287,7 @@ func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), len(n.Fields))
 	}
 
-	var fields = n.Fields.FromExpressions(exprs)
+	var fields = n.Fields.FromExpressions(exprs...)
 
 	topn := NewTopN(fields, n.Limit, n.Child)
 	topn.CalcFoundRows = n.CalcFoundRows

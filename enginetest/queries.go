@@ -3635,19 +3635,19 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT USER()`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER()`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -3659,7 +3659,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT CURRENT_user`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -5777,6 +5777,14 @@ var QueryTests = []QueryTest{
 			{1, 1},
 			{2, 2},
 			{3, 3},
+		},
+	},
+	{
+		Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
+		Expected: []sql.Row{
+			{float64(2)},
+			{float64(4)},
+			{float64(6)},
 		},
 	},
 	{

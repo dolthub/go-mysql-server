@@ -45,7 +45,10 @@ func (a *Aggregation) startPartition(ctx *sql.Context, interval sql.WindowInterv
 	if err != nil {
 		return err
 	}
-	a.framer = a.framer.NewFramer(interval)
+	a.framer, err = a.framer.NewFramer(interval)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -261,13 +264,13 @@ func (i *WindowPartitionIter) compute(ctx *sql.Context) (sql.Row, error) {
 	// but updated independently. This allows aggregations with the same
 	// partition and sorting to have different framing behavior.
 	for j, agg := range i.w.Aggs {
-		interval, err := agg.framer.Next()
+		interval, err := agg.framer.Next(ctx, i.input)
 		if errors.Is(err, io.EOF) {
 			err = i.nextPartition(ctx)
 			if err != nil {
 				return nil, err
 			}
-			interval, err = agg.framer.Next()
+			interval, err = agg.framer.Next(ctx, i.input)
 			if err != nil {
 				return nil, err
 			}
@@ -324,8 +327,12 @@ func (i *WindowPartitionIter) nextPartition(ctx *sql.Context) error {
 	i.currentPartition = i.partitions[i.partitionIdx]
 	i.outputOrderingPos = i.currentPartition.Start
 
+	var err error
 	for _, a := range i.w.Aggs {
-		a.startPartition(ctx, i.currentPartition, i.input)
+		err = a.startPartition(ctx, i.currentPartition, i.input)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

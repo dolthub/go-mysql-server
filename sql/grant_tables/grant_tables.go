@@ -51,7 +51,7 @@ var _ mysql.AuthServer = (*GrantTables)(nil)
 // CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
 func CreateEmptyGrantTables() *GrantTables {
 	grantTables := &GrantTables{
-		user: newGrantTable(userTblName, userTblSchema, UserPrimaryKey{}, UserSecondaryKey{}),
+		user: newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
 	}
 	return grantTables
 }
@@ -59,7 +59,7 @@ func CreateEmptyGrantTables() *GrantTables {
 // AddRootAccount adds the root account to the list of accounts.
 func (g *GrantTables) AddRootAccount() {
 	g.Enabled = true
-	addDefaultRootUser(g.user)
+	addSuperUser(g.user, "root", "localhost", "")
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
@@ -76,7 +76,36 @@ func (g *GrantTables) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(g.user, username, password)
+	addSuperUser(g.user, username, "%", password)
+}
+
+// GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
+// roles, roleSearch changes whether the search matches against user or role rules.
+func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
+	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
+	// For now, this just does another check for localhost if the host is 127.0.0.1
+	//TODO: match on anonymous users, which have an empty username (different for roles)
+	var userEntry *User
+	userEntries := g.user.data.Get(UserPrimaryKey{
+		Host: host,
+		User: user,
+	})
+	if len(userEntries) == 1 {
+		userEntry = userEntries[0].(*User)
+	} else {
+		userEntries = g.user.data.Get(UserSecondaryKey{
+			User: user,
+		})
+		for _, readUserEntry := range userEntries {
+			readUserEntry := readUserEntry.(*User)
+			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
+			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") || (readUserEntry.Host == "%" && !roleSearch) {
+				userEntry = readUserEntry
+				break
+			}
+		}
+	}
+	return userEntry
 }
 
 // Name implements the interface sql.Database.
@@ -113,40 +142,24 @@ func (g *GrantTables) Salt() ([]byte, error) {
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
 func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
-		return mysqlGetter(user), nil
+		host, _, err := net.SplitHostPort(addr.String())
+		if err != nil {
+			return nil, err
+		}
+		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
 	host, _, err := net.SplitHostPort(addr.String())
 	if err != nil {
 		return nil, err
 	}
-	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
-	// For now, this just does another check for localhost if the host is 127.0.0.1
-	var userRow sql.Row
-	userRows := g.user.data.Get(UserPrimaryKey{
-		Host: host,
-		User: user,
-	})
-	if len(userRows) == 1 {
-		userRow = userRows[0]
-	} else {
-		userRows = g.user.data.Get(UserSecondaryKey{
-			User: user,
-		})
-		for _, readUserRow := range userRows {
-			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
-			if host == readUserRow[0] || (host == "127.0.0.1" && readUserRow[0] == "localhost") || readUserRow[0] == "%" {
-				userRow = readUserRow
-				break
-			}
-		}
-	}
-	if len(userRow) == 0 {
+
+	userEntry := g.GetUser(user, host, false)
+	if userEntry == nil {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
-
-	if password, ok := userRows[0][40].(string); ok && len(password) > 0 { // index 40 is the authentication string, see the mysql.user schema
-		if !validateMysqlNativePassword(authResponse, salt, password) {
+	if len(userEntry.Password) > 0 {
+		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
 			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 		}
 	} else if len(authResponse) > 0 { // password is nil or empty, therefore no password is set
@@ -154,13 +167,17 @@ func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
 
-	return mysqlGetter(user), nil
+	return MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
 }
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
-func (g *GrantTables) Negotiate(c *mysql.Conn, user string, remoteAddr net.Addr) (mysql.Getter, error) {
+func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
-		return mysqlGetter(user), nil
+		host, _, err := net.SplitHostPort(addr.String())
+		if err != nil {
+			return nil, err
+		}
+		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }

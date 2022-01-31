@@ -130,5 +130,5 @@ func (f *FirstValue) NewWindowFunction() (sql.WindowFunction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return aggregation.NewFirstAgg(c), nil
+	return aggregation.NewFirstAgg(c).WithWindow(f.window)
 }

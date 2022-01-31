@@ -115,58 +115,16 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			password = user.Auth1.Password()
 		}
 		//TODO: validate all of the data
-		err := userTableData.Put(sql.Row{
-			user.UserName.Host, // 00: Host
-			user.UserName.Name, // 01: User
-			"N",                // 02: Select_priv
-			"N",                // 03: Insert_priv
-			"N",                // 04: Update_priv
-			"N",                // 05: Delete_priv
-			"N",                // 06: Create_priv
-			"N",                // 07: Drop_priv
-			"N",                // 08: Reload_priv
-			"N",                // 09: Shutdown_priv
-			"N",                // 10: Process_priv
-			"N",                // 11: File_priv
-			"N",                // 12: Grant_priv
-			"N",                // 13: References_priv
-			"N",                // 14: Index_priv
-			"N",                // 15: Alter_priv
-			"N",                // 16: Show_db_priv
-			"N",                // 17: Super_priv
-			"N",                // 18: Create_tmp_table_priv
-			"N",                // 19: Lock_tables_priv
-			"N",                // 20: Execute_priv
-			"N",                // 21: Repl_slave_priv
-			"N",                // 22: Repl_client_priv
-			"N",                // 23: Create_view_priv
-			"N",                // 24: Show_view_priv
-			"N",                // 25: Create_routine_priv
-			"N",                // 26: Alter_routine_priv
-			"N",                // 27: Create_user_priv
-			"N",                // 28: Event_priv
-			"N",                // 29: Trigger_priv
-			"N",                // 30: Create_tablespace_priv
-			"",                 // 31: ssl_type
-			"",                 // 32: ssl_cipher
-			"",                 // 33: x509_issuer
-			"",                 // 34: x509_subject
-			0,                  // 35: max_questions
-			0,                  // 36: max_updates
-			0,                  // 37: max_connections
-			0,                  // 38: max_user_connections
-			plugin,             // 39: plugin
-			password,           // 40: authentication_string
-			"N",                // 41: password_expired
-			time.Now().UTC(),   // 42: password_last_changed
-			nil,                // 43: password_lifetime
-			"N",                // 44: account_locked
-			"N",                // 45: Create_role_priv
-			"N",                // 46: Drop_role_priv
-			nil,                // 47: Password_reuse_history
-			nil,                // 48: Password_reuse_time
-			nil,                // 49: Password_require_current
-			nil,                // 50: User_attributes
+		err := userTableData.Put(ctx, &grant_tables.User{
+			User:                user.UserName.Name,
+			Host:                user.UserName.Host,
+			PrivilegeSet:        grant_tables.NewUserGlobalStaticPrivileges(),
+			Plugin:              plugin,
+			Password:            password,
+			PasswordLastChanged: time.Now().UTC(),
+			Locked:              false,
+			Attributes:          nil,
+			IsRole:              false,
 		})
 		if err != nil {
 			return nil, err

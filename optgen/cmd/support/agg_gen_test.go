@@ -20,7 +20,8 @@ func TestAggGen(t *testing.T) {
 			},
 		},
 		expected: `
-		        import (
+        import (
+            "fmt"
             "github.com/dolthub/go-mysql-server/sql"
             "github.com/dolthub/go-mysql-server/sql/expression"
         )
@@ -78,7 +79,7 @@ func TestAggGen(t *testing.T) {
             if err != nil {
                 return nil, err
             }
-            return NewTestAgg(child).WithWindow(a.Window()), nil
+            return NewTestAgg(child).WithWindow(a.Window())
         }
 		`,
 	}

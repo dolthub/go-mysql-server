@@ -19,11 +19,15 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
-type mysqlGetter string
+// MysqlConnectionUser is stored in mysql's connection as UserData once a connection has been authenticated.
+type MysqlConnectionUser struct {
+	User string
+	Host string
+}
 
-var _ mysql.Getter = mysqlGetter("")
+var _ mysql.Getter = MysqlConnectionUser{}
 
 // Get implements the interface mysql.Getter.
-func (m mysqlGetter) Get() *query.VTGateCallerID {
-	return &query.VTGateCallerID{Username: string(m), Groups: nil}
+func (m MysqlConnectionUser) Get() *query.VTGateCallerID {
+	return &query.VTGateCallerID{Username: m.User, Groups: nil}
 }

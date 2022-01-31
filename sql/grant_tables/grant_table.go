@@ -22,7 +22,7 @@ import (
 type grantTable struct {
 	name string
 	sch  sql.Schema
-	data *in_mem_table.InMemTableData
+	data *in_mem_table.Data
 }
 
 var _ sql.Table = (*grantTable)(nil)
@@ -33,11 +33,17 @@ var _ sql.ReplaceableTable = (*grantTable)(nil)
 var _ sql.TruncateableTable = (*grantTable)(nil)
 
 // newGrantTable returns a new Grant Table with the given schema and keys.
-func newGrantTable(name string, sch sql.Schema, primaryKey in_mem_table.InMemTableDataKey, secondaryKeys ...in_mem_table.InMemTableDataKey) *grantTable {
+func newGrantTable(
+	name string,
+	sch sql.Schema,
+	entryRef in_mem_table.Entry,
+	primaryKey in_mem_table.Key,
+	secondaryKeys ...in_mem_table.Key,
+) *grantTable {
 	return &grantTable{
 		name: name,
 		sch:  sch,
-		data: in_mem_table.NewInMemTableData(sch, primaryKey, secondaryKeys),
+		data: in_mem_table.NewData(entryRef, primaryKey, secondaryKeys),
 	}
 }
 
@@ -63,27 +69,27 @@ func (g *grantTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the interface sql.Table.
 func (g *grantTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return g.data.ToRowIter(), nil
+	return g.data.ToRowIter(ctx), nil
 }
 
 // Inserter implements the interface sql.InsertableTable.
 func (g *grantTable) Inserter(ctx *sql.Context) sql.RowInserter {
-	return in_mem_table.NewInMemTableDataEditor(g.data)
+	return in_mem_table.NewDataEditor(g.data)
 }
 
 // Updater implements the interface sql.UpdatableTable.
 func (g *grantTable) Updater(ctx *sql.Context) sql.RowUpdater {
-	return in_mem_table.NewInMemTableDataEditor(g.data)
+	return in_mem_table.NewDataEditor(g.data)
 }
 
 // Deleter implements the interface sql.DeletableTable.
 func (g *grantTable) Deleter(ctx *sql.Context) sql.RowDeleter {
-	return in_mem_table.NewInMemTableDataEditor(g.data)
+	return in_mem_table.NewDataEditor(g.data)
 }
 
 // Replacer implements the interface sql.ReplaceableTable.
 func (g *grantTable) Replacer(ctx *sql.Context) sql.RowReplacer {
-	return in_mem_table.NewInMemTableDataEditor(g.data)
+	return in_mem_table.NewDataEditor(g.data)
 }
 
 // Truncate implements the interface sql.TruncateableTable.
@@ -94,6 +100,6 @@ func (g *grantTable) Truncate(ctx *sql.Context) (int, error) {
 }
 
 // Data returns the in-memory table data for the grant table.
-func (g *grantTable) Data() *in_mem_table.InMemTableData {
+func (g *grantTable) Data() *in_mem_table.Data {
 	return g.data
 }
