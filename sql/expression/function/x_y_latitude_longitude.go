@@ -16,12 +16,12 @@ package function
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // STX is a function that returns the x value from a given point.
@@ -50,7 +50,6 @@ func (s *STX) FunctionName() string {
 func (s *STX) Description() string {
 	return "returns the x value of given point. If given a second argument, returns a new point with second argument as x value."
 }
-
 
 // Type implements the sql.Expression interface.
 func (s *STX) Type() sql.Type {
@@ -211,7 +210,6 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return sql.Point{SRID: _p.SRID, X: _p.X, Y: _y.(float64)}, nil
 }
 
-
 // Longitude is a function that returns the x value from a given point.
 type Longitude struct {
 	expression.NaryExpression
@@ -240,7 +238,6 @@ func (l *Longitude) FunctionName() string {
 func (l *Longitude) Description() string {
 	return "returns the latitude value of given point. If given a second argument, returns a new point with second argument as latitude value."
 }
-
 
 // Type implements the sql.Expression interface.
 func (l *Longitude) Type() sql.Type {
@@ -345,7 +342,6 @@ func (l *Latitude) FunctionName() string {
 func (l *Latitude) Description() string {
 	return "returns the latitude value of given point. If given a second argument, returns a new point with second argument as latitude value."
 }
-
 
 // Type implements the sql.Expression interface.
 func (l *Latitude) Type() sql.Type {
