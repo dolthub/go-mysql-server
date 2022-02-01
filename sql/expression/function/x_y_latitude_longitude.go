@@ -221,7 +221,7 @@ var ErrNonGeographic = errors.NewKind("function %s is only defined for geographi
 var ErrLatitudeOutOfRange = errors.NewKind("latitude %v is out of range in function %s. it must be within [-90.0, 90.0]")
 var ErrLongitudeOutOfRange = errors.NewKind("longitude %v is out of range in function %s. it must be within [-180.0, 180.0]")
 
-// NewLongitude creates a new STX expression.
+// NewLongitude creates a new ST_LONGITUDE expression.
 func NewLongitude(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LONGITUDE", "1 or 2", len(args))
@@ -236,7 +236,7 @@ func (l *Longitude) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (l *Longitude) Description() string {
-	return "returns the latitude value of given point. If given a second argument, returns a new point with second argument as latitude value."
+	return "returns the longitude value of given point. If given a second argument, returns a new point with second argument as longitude value."
 }
 
 // Type implements the sql.Expression interface.
@@ -325,7 +325,7 @@ type Latitude struct {
 
 var _ sql.FunctionExpression = (*Latitude)(nil)
 
-// NewLatitude creates a new STX expression.
+// NewLatitude creates a new ST_LATITUDE expression.
 func NewLatitude(args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LATITUDE", "1 or 2", len(args))
