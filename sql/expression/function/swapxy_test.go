@@ -23,7 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-func TestDimension(t *testing.T) {
+func TestSwapXY(t *testing.T) {
 	t.Run("point swap", func(t *testing.T) {
 		require := require.New(t)
 		f := NewSwapXY(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
