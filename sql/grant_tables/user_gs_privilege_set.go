@@ -70,11 +70,23 @@ func (ugsp UserGlobalStaticPrivileges) Add(privileges ...PrivilegeType) {
 	}
 }
 
+// Merge merges the given set of privileges to the calling set of privileges.
+func (ugsp UserGlobalStaticPrivileges) Merge(other UserGlobalStaticPrivileges) {
+	for priv := range other.privSet {
+		ugsp.privSet[priv] = struct{}{}
+	}
+}
+
 // Remove removes the given privilege(s).
 func (ugsp UserGlobalStaticPrivileges) Remove(privileges ...PrivilegeType) {
 	for _, priv := range privileges {
 		delete(ugsp.privSet, priv)
 	}
+}
+
+// Clear removes all privileges.
+func (ugsp *UserGlobalStaticPrivileges) Clear() {
+	ugsp.privSet = make(map[PrivilegeType]struct{})
 }
 
 // Has returns whether the given privilege(s) exists.

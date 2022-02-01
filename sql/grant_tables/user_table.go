@@ -28,7 +28,6 @@ import (
 const userTblName = "user"
 
 var (
-	userUserCols   = []uint16{1}
 	errUserPkEntry = fmt.Errorf("the primary key for the `user` table was given an unknown entry")
 	errUserPkRow   = fmt.Errorf("the primary key for the `user` table was given a row belonging to an unknown schema")
 	errUserSkEntry = fmt.Errorf("the secondary key for the `user` table was given an unknown entry")
@@ -251,7 +250,7 @@ func addSuperUser(userTable *grantTable, username string, host string, password 
 	}
 }
 
-// These represent the column indexes of the user Grant Table.
+// These represent the column indexes of the "user" Grant Table.
 const (
 	userTblColIndex_Host int = iota
 	userTblColIndex_User

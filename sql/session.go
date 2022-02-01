@@ -495,6 +495,7 @@ func (s *BaseSession) SetTransaction(tx Transaction) {
 
 // NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
+	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
 	return &BaseSession{
 		addr:          server,
 		client:        client,
@@ -514,6 +515,7 @@ var autoSessionIDs uint32 = 1
 
 // NewBaseSession creates a new empty session.
 func NewBaseSession() *BaseSession {
+	//TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
 	return &BaseSession{
 		id:            atomic.AddUint32(&autoSessionIDs, 1),
 		systemVars:    SystemVariables.NewSessionMap(),
