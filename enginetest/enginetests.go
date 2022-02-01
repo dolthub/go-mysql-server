@@ -48,7 +48,7 @@ func TestQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	defer engine.Close()
 
-	createIndexes(t, harness, engine)
+	CreateIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range QueryTests {
@@ -65,7 +65,7 @@ func TestQueries(t *testing.T, harness Harness) {
 // Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
-	createIndexes(t, harness, engine)
+	CreateIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range SpatialQueryTests {
@@ -77,7 +77,7 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 // debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {
 	engine := NewEngine(t, harness)
-	createIndexes(t, harness, engine)
+	CreateIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range queries {
@@ -111,7 +111,7 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	dbs := CreateSubsetTestData(t, harness, infoSchemaTables)
 	engine := NewEngineWithDbs(t, harness, dbs)
 	defer engine.Close()
-	createIndexes(t, harness, engine)
+	CreateIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range InfoSchemaQueries {
@@ -122,7 +122,7 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	}
 }
 
-func createIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
+func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
 	if ih, ok := harness.(IndexHarness); ok && ih.SupportsNativeIndexCreation() {
 		err := createNativeIndexes(t, harness, engine)
 		require.NoError(t, err)
@@ -183,7 +183,7 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	defer engine.Close()
 
-	createIndexes(t, harness, engine)
+	CreateIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 	for _, tt := range PlanTests {
 		t.Run(tt.Query, func(t *testing.T) {
@@ -3874,7 +3874,7 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 	engine := NewEngineWithDbs(t, harness, dbs)
 	defer engine.Close()
 
-	createIndexes(t, harness, engine)
+	CreateIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
 	for _, tt := range ShowTableStatusQueries {
