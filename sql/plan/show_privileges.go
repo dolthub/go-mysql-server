@@ -23,12 +23,12 @@ import (
 // ShowPrivileges represents the statement SHOW PRIVILEGES.
 type ShowPrivileges struct{}
 
+var _ sql.Node = (*ShowPrivileges)(nil)
+
 // NewShowPrivileges returns a new ShowPrivileges node.
 func NewShowPrivileges() *ShowPrivileges {
 	return &ShowPrivileges{}
 }
-
-var _ sql.Node = (*ShowPrivileges)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *ShowPrivileges) Schema() sql.Schema {

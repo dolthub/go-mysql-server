@@ -39,6 +39,12 @@ var (
 	errInvalidSortOrder = errors.NewKind("invalid sort order: %s")
 
 	ErrPrimaryKeyOnNullField = errors.NewKind("All parts of PRIMARY KEY must be NOT NULL")
+
+	ErrInvalidFrameUnit = errors.NewKind("invalid frame unit")
+
+	ErrFrameEndUnboundedPreceding = errors.NewKind("frame end cannot be unbounded preceding")
+
+	ErrFrameStartUnboundedFollowing = errors.NewKind("frame start cannot be unbounded following")
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -137,7 +143,7 @@ func parse(ctx *sql.Context, query string, multi bool) (sql.Node, string, string
 // and the length set to 255 with the default collation.
 func ParseColumnTypeString(ctx *sql.Context, columnType string) (sql.Type, error) {
 	createStmt := fmt.Sprintf("CREATE TABLE a(b %s)", columnType)
-	parseResult, err := sqlparser.ParseStrictDDL(createStmt)
+	parseResult, err := sqlparser.Parse(createStmt)
 	if err != nil {
 		return nil, err
 	}
@@ -169,19 +175,9 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		}
 		return convertShow(ctx, n, query)
 	case *sqlparser.DDL:
-		// unlike other statements, DDL statements have loose parsing by default
-		// TODO: fix this
-		ddl, err := sqlparser.ParseStrictDDL(query)
-		if err != nil {
-			return nil, err
-		}
-		return convertDDL(ctx, query, ddl.(*sqlparser.DDL))
+		return convertDDL(ctx, query, n)
 	case *sqlparser.MultiAlterDDL:
-		multiAlterDdl, err := sqlparser.ParseStrictDDL(query)
-		if err != nil {
-			return nil, err
-		}
-		return convertMultiAlterDDL(ctx, query, multiAlterDdl.(*sqlparser.MultiAlterDDL))
+		return convertMultiAlterDDL(ctx, query, n)
 	case *sqlparser.DBDDL:
 		return convertDBDDL(n)
 	case *sqlparser.Explain:
@@ -1950,7 +1946,19 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		authUser := plan.AuthenticatedUser{
 			UserName: convertAccountName(user.AccountName)[0],
 		}
-		//TODO: figure out how to represent authentication
+		if user.Auth1 != nil {
+			if user.Auth1.Plugin == "mysql_native_password" && len(user.Auth1.Password) > 0 {
+				authUser.Auth1 = plan.AuthenticationMysqlNativePassword(user.Auth1.Password)
+			} else if user.Auth1.Plugin == "" && len(user.Auth1.Password) > 0 {
+				authUser.Auth1 = plan.NewDefaultAuthentication(user.Auth1.Password)
+			} else {
+				return nil, fmt.Errorf(`the given authentication format is not yet supported`)
+			}
+		}
+		if user.Auth2 != nil || user.Auth3 != nil || user.AuthInitial != nil {
+			return nil, fmt.Errorf(`multi-factor authentication is not yet supported`)
+		}
+		//TODO: figure out how to represent the remaining authentication methods and multi-factor auth
 		authUsers[i] = authUser
 	}
 	var tlsOptions *plan.TLSOptions
@@ -2064,6 +2072,7 @@ func convertCreateUser(ctx *sql.Context, n *sqlparser.CreateUser) (*plan.CreateU
 		PasswordOptions: passwordOptions,
 		Locked:          n.Locked,
 		Attribute:       n.Attribute,
+		GrantTables:     sql.UnresolvedDatabase("mysql"),
 	}, nil
 }
 
@@ -2098,6 +2107,7 @@ func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan
 		}
 	}
 	return plan.NewGrant(
+		sql.UnresolvedDatabase("mysql"),
 		convertPrivilege(n.Privileges...),
 		convertObjectType(n.ObjectType),
 		convertPrivilegeLevel(n.PrivilegeLevel),
@@ -2452,22 +2462,6 @@ func selectToSelectionNode(
 		if len(g) > 0 {
 			return nil, sql.ErrUnsupportedFeature.New("group by with window functions")
 		}
-		for _, e := range selectExprs {
-			if isAggregateExpr(e) {
-				sql.Inspect(e, func(e sql.Expression) bool {
-					if uf, ok := e.(*expression.UnresolvedFunction); ok {
-						if uf.Window == nil || len(uf.Window.PartitionBy) > 0 || len(uf.Window.OrderBy) > 0 {
-							err = sql.ErrUnsupportedFeature.New("aggregate functions appearing alongside window functions must have an empty OVER () clause")
-							return false
-						}
-					}
-					return true
-				})
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
 		return plan.NewWindow(selectExprs, child), nil
 	}
 
@@ -2682,9 +2676,12 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 			exprs[0] = expression.NewDistinctExpression(exprs[0])
 		}
-
+		over, err := overToWindow(ctx, v.Over)
+		if err != nil {
+			return nil, err
+		}
 		return expression.NewUnresolvedFunction(v.Name.Lowered(),
-			isAggregateFunc(v), overToWindow(ctx, v.Over), exprs...), nil
+			isAggregateFunc(v), over, exprs...), nil
 	case *sqlparser.GroupConcatExpr:
 		exprs, err := selectExprsToExpressions(ctx, v.Exprs)
 		if err != nil {
@@ -2810,17 +2807,35 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 		}
 
 		return plan.NewExistsSubquery(subqueryExp), nil
+	case *sqlparser.TimestampFuncExpr:
+		var (
+			unit  sql.Expression
+			expr1 sql.Expression
+			expr2 sql.Expression
+			err   error
+		)
+
+		unit = expression.NewLiteral(v.Unit, sql.LongText)
+		expr1, err = ExprToExpression(ctx, v.Expr1)
+		expr2, err = ExprToExpression(ctx, v.Expr2)
+
+		if v.Name == "timestampdiff" {
+			return function.NewTimestampDiff(unit, expr1, expr2), err
+		} else if v.Name == "timestampadd" {
+			return nil, fmt.Errorf("TIMESTAMPADD() not supported")
+		}
+		return nil, nil
 	}
 }
 
-func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
+func overToWindow(ctx *sql.Context, over *sqlparser.Over) (*sql.Window, error) {
 	if over == nil {
-		return nil
+		return nil, nil
 	}
 
 	sortFields, err := orderByToSortFields(ctx, over.OrderBy)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	partitions := make([]sql.Expression, len(over.PartitionBy))
@@ -2828,16 +2843,22 @@ func overToWindow(ctx *sql.Context, over *sqlparser.Over) *sql.Window {
 		var err error
 		partitions[i], err = ExprToExpression(ctx, expr)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 	}
 
-	return sql.NewWindow(partitions, sortFields)
+	frame, err := NewFrame(ctx, over.Frame)
+	if err != nil {
+		return nil, err
+	}
+	return sql.NewWindow(partitions, sortFields, frame), nil
 }
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {
 	switch v.Name.Lowered() {
-	case "first", "last":
+	case "first", "last", "count", "sum", "avg", "max", "min",
+		"count_distinct", "json_arrayagg",
+		"row_number", "percent_rank", "lag", "first_value":
 		return true
 	}
 

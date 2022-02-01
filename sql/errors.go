@@ -28,6 +28,9 @@ var (
 	// ErrUnsupportedFeature is thrown when a feature is not already supported
 	ErrUnsupportedFeature = errors.NewKind("unsupported feature: %s")
 
+	// ErrNotAuthorized is returned when the engine has been set to Read Only but a write operation was attempted.
+	ErrNotAuthorized = errors.NewKind("not authorized")
+
 	// ErrInvalidSystemVariableValue is returned when a system variable is assigned a value that it does not accept.
 	ErrInvalidSystemVariableValue = errors.NewKind("Variable '%s' can't be set to the value of '%v'")
 
@@ -197,16 +200,17 @@ var (
 	// ErrDatabaseExists is returned when CREATE DATABASE attempts to create a database that already exists.
 	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
-	// ErrInvalidConstraintFunctionsNotSupported is returned when a CONSTRAINT CHECK is called with a sub-function expression.
-	ErrInvalidConstraintFunctionsNotSupported = errors.NewKind("Invalid constraint expression, functions not supported: %s")
+	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
+	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
 
 	// ErrInvalidConstraintSubqueryNotSupported is returned when a CONSTRAINT CHECK is called with a sub-query expression.
 	ErrInvalidConstraintSubqueryNotSupported = errors.NewKind("Invalid constraint expression, sub-queries not supported: %s")
 
-	ErrCheckConstraintViolatedFmtStr = "Check constraint %q violated"
-
 	// ErrCheckConstraintViolated is returned when a CONSTRAINT CHECK is called with a sub-query expression.
-	ErrCheckConstraintViolated = errors.NewKind(ErrCheckConstraintViolatedFmtStr)
+	ErrCheckConstraintViolated = errors.NewKind("Check constraint %q violated")
+
+	// ErrCheckConstraintInvalidatedByColumnAlter is returned when an alter column statement would invalidate a check constraint.
+	ErrCheckConstraintInvalidatedByColumnAlter = errors.NewKind("can't alter column %q because it would invalidate check constraint %q")
 
 	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
 	// list with a different number of columns than the schema of the table.
@@ -356,6 +360,12 @@ var (
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
 
+	// ErrInvalidGISData is thrown when a "ST_<spatial_type>FromText" function receives a malformed string
+	ErrInvalidGISData = errors.NewKind("invalid GIS data provided to function %s")
+
+	// ErrIllegalGISValue is thrown when a spatial type constructor receives a non-geometric when one should be provided
+	ErrIllegalGISValue = errors.NewKind("illegal non geometric '%v' value found during parsing")
+
 	// ErrUnsupportedSyntax is returned when syntax that parses correctly is not supported
 	ErrUnsupportedSyntax = errors.NewKind("unsupported syntax: %s")
 
@@ -374,8 +384,17 @@ var (
 	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 
-	// ErrInvalidCheckConstraint is returned when a  check constraint is defined incorrectly
+	// ErrInvalidCheckConstraint is returned when a check constraint is defined incorrectly
 	ErrInvalidCheckConstraint = errors.NewKind("invalid constraint definition: %s")
+
+	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
+	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
+
+	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
+	ErrPrivilegeCheckFailed = errors.NewKind("%s command denied to user %s for table '%s'")
+
+	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
+	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
@@ -430,6 +449,8 @@ func CastSQLError(err error) (*mysql.SQLError, error, bool) {
 		code = 1792 // TODO: Needs to be added to vitess
 	case ErrCantDropIndex.Is(err):
 		code = 1553 // TODO: Needs to be added to vitess
+	case ErrInvalidValue.Is(err):
+		code = mysql.ERTruncatedWrongValueForField
 	default:
 		code = mysql.ERUnknownError
 	}

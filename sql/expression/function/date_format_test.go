@@ -83,7 +83,7 @@ func TestDateFormatting(t *testing.T) {
 
 func TestUnsupportedSpecifiers(t *testing.T) {
 	testFunc := func(t *testing.T, b byte) {
-		if _, ok := specifierToFunc[b]; !ok {
+		if _, ok := dateFormatSpecifierToFunc[b]; !ok {
 			name := fmt.Sprintf("%%%s", string(b))
 			t.Run(name, func(t *testing.T) {
 				result, err := formatDate(name, time.Now())
@@ -172,20 +172,20 @@ func TestDateFormatEval(t *testing.T) {
 	dateFormat = NewDateFormat(dateLit, nil)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, nil, nil)
+	assert.Nil(t, res)
 
 	dateFormat = NewDateFormat(nil, format)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, nil, nil)
+	assert.Nil(t, res)
 
 	dateFormat = NewDateFormat(dateLit, nullLiteral)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, nil, nil)
+	assert.Nil(t, res)
 
 	dateFormat = NewDateFormat(nullLiteral, format)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, nil, nil)
+	assert.Nil(t, res)
 }

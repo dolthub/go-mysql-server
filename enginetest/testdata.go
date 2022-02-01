@@ -78,29 +78,104 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	var table sql.Table
 	var err error
 
+	if includeTable(includedTables, "stringtogeojson_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "stringtogeojson_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "stringtogeojson_table", PrimaryKey: true},
+				{Name: "s", Type: sql.LongBlob, Source: "stringtogeojson_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(0, `{"type": "Point", "coordinates": [1,2]}`),
+					sql.NewRow(1, `{"type": "Point", "coordinates": [123.45,56.789]}`),
+					sql.NewRow(2, `{"type": "LineString", "coordinates": [[1,2],[3,4]]}`),
+					sql.NewRow(3, `{"type": "LineString", "coordinates": [[1.23,2.345],[3.56789,4.56]]}`),
+					sql.NewRow(4, `{"type": "Polygon", "coordinates": [[[1.1,2.2],[3.3,4.4],[5.5,6.6],[1.1,2.2]]]}`),
+					sql.NewRow(5, `{"type": "Polygon", "coordinates": [[[0,0],[1,1],[2,2],[0,0]]]}`),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "point_table", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "point_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "point_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "point_table", PrimaryKey: true},
+				{Name: "p", Type: sql.PointType{}, Source: "point_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(5, sql.Point{X: 1, Y: 2}),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "point_table", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "line_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "line_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "line_table", PrimaryKey: true},
+				{Name: "l", Type: sql.LinestringType{}, Source: "line_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+					sql.NewRow(1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "line_table", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "polygon_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "polygon_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "polygon_table", PrimaryKey: true},
+				{Name: "p", Type: sql.PolygonType{}, Source: "polygon_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)
+			}
+		})
+	}
+
 	if includeTable(includedTables, "specialtable") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "specialtable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "id", Type: sql.Int64, Source: "specialtable", PrimaryKey: true},
 				{Name: "name", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "specialtable"},
 			}))
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow("first_row"),
-					sql.NewRow("second_row"),
-					sql.NewRow("third_row"),
-					sql.NewRow(`%`),
-					sql.NewRow(`'`),
-					sql.NewRow(`"`),
-					sql.NewRow("\t"),
-					sql.NewRow("\n"),
-					sql.NewRow("\v"),
-					sql.NewRow(`test%test`),
-					sql.NewRow(`test'test`),
-					sql.NewRow(`test"test`),
-					sql.NewRow("test\ttest"),
-					sql.NewRow("test\ntest"),
-					sql.NewRow("test\vtest"),
+					sql.NewRow(1, "first_row"),
+					sql.NewRow(2, "second_row"),
+					sql.NewRow(3, "third_row"),
+					sql.NewRow(4, `%`),
+					sql.NewRow(5, `'`),
+					sql.NewRow(6, `"`),
+					sql.NewRow(7, "\t"),
+					sql.NewRow(8, "\n"),
+					sql.NewRow(9, "\v"),
+					sql.NewRow(10, `test%test`),
+					sql.NewRow(11, `test'test`),
+					sql.NewRow(12, `test"test`),
+					sql.NewRow(13, "test\ttest"),
+					sql.NewRow(14, "test\ntest"),
+					sql.NewRow(15, "test\vtest"),
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "specialtable", err)
@@ -143,6 +218,27 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					sql.NewRow(1, 10, 11, 12, 13, 14),
 					sql.NewRow(2, 20, 21, 22, 23, 24),
 					sql.NewRow(3, 30, 31, 32, 33, 34))
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "jsontable") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "jsontable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "pk", Type: sql.Int8, Source: "jsontable", PrimaryKey: true},
+				{Name: "c1", Type: sql.Text, Source: "jsontable"},
+				{Name: "c2", Type: sql.JSON, Source: "jsontable"},
+				{Name: "c3", Type: sql.JSON, Source: "jsontable"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(1, "row one", sql.JSONDocument{Val: []interface{}{1, 2}}, sql.JSONDocument{Val: map[string]interface{}{"a": 2}}),
+					sql.NewRow(2, "row two", sql.JSONDocument{Val: []interface{}{3, 4}}, sql.JSONDocument{Val: map[string]interface{}{"b": 2}}),
+					sql.NewRow(3, "row three", sql.JSONDocument{Val: []interface{}{5, 6}}, sql.JSONDocument{Val: map[string]interface{}{"c": 2}}),
+					sql.NewRow(4, "row four", sql.JSONDocument{Val: []interface{}{7, 8}}, sql.JSONDocument{Val: map[string]interface{}{"d": 2}}))
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "one_pk", err)
 			}
@@ -468,13 +564,14 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				{Name: "date_col", Type: sql.Date, Source: "datetime_table", Nullable: true},
 				{Name: "datetime_col", Type: sql.Datetime, Source: "datetime_table", Nullable: true},
 				{Name: "timestamp_col", Type: sql.Timestamp, Source: "datetime_table", Nullable: true},
+				{Name: "time_col", Type: sql.Time, Source: "datetime_table", Nullable: true},
 			}))
 
 			if err == nil {
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, mustParseDate("2019-12-31T12:00:00Z"), mustParseTime("2020-01-01T12:00:00Z"), mustParseTime("2020-01-02T12:00:00Z")),
-					sql.NewRow(2, mustParseDate("2020-01-03T12:00:00Z"), mustParseTime("2020-01-04T12:00:00Z"), mustParseTime("2020-01-05T12:00:00Z")),
-					sql.NewRow(3, mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z")),
+					sql.NewRow(1, mustParseDate("2019-12-31T12:00:00Z"), mustParseTime("2020-01-01T12:00:00Z"), mustParseTime("2020-01-02T12:00:00Z"), mustSQLTime(3*time.Hour+10*time.Minute)),
+					sql.NewRow(2, mustParseDate("2020-01-03T12:00:00Z"), mustParseTime("2020-01-04T12:00:00Z"), mustParseTime("2020-01-05T12:00:00Z"), mustSQLTime(4*time.Hour+44*time.Second)),
+					sql.NewRow(3, mustParseDate("2020-01-07T00:00:00Z"), mustParseTime("2020-01-07T12:00:00Z"), mustParseTime("2020-01-07T12:00:01Z"), mustSQLTime(15*time.Hour+5*time.Millisecond)),
 				)
 			}
 		})
@@ -659,6 +756,14 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	}
 
 	return []sql.Database{myDb, foo}
+}
+
+func mustSQLTime(d time.Duration) interface{} {
+	val, err := sql.Time.Convert(d)
+	if err != nil {
+		panic(err)
+	}
+	return val
 }
 
 func mustParseTime(datestring string) time.Time {

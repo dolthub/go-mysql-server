@@ -136,6 +136,35 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "trigger before insert, insert into other table with different schema",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int)",
+			"create table b (z int primary key)",
+			"create trigger insert_into_b before insert on a for each row insert into b values (new.x + 1)",
+			"insert into a values (1,2), (3,4), (5,6)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from a order by 1",
+				Expected: []sql.Row{
+					{1}, {3}, {5},
+				},
+			},
+			{
+				Query: "select z from b order by 1",
+				Expected: []sql.Row{
+					{2}, {4}, {6},
+				},
+			},
+			{
+				Query: "insert into a values (7,8), (9,10)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+		},
+	},
+	{
 		Name: "trigger before insert, delete from other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
@@ -277,14 +306,56 @@ var TriggerTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
 			"INSERT INTO test VALUES (0,2),(1,3)",
-			"CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW BEGIN SET NEW.v1 = NEW.v1 * 11; SET NEW.v1 = NEW.v1 * -10; END;",
-			"INSERT INTO test VALUES (2,4);",
+			`CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW 
+				BEGIN 
+					SET NEW.v1 = NEW.v1 * 11;
+					SET NEW.v1 = NEW.v1 * -10;
+				END;`,
+			"INSERT INTO test VALUES (2,4), (6,8);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM test ORDER BY 1",
 				Expected: []sql.Row{
-					{0, 2}, {1, 3}, {2, -440},
+					{0, 2}, {1, 3}, {2, -440}, {6, -880},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before insert, begin block with multiple set statements and inserts",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE test2(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE test3(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO test VALUES (0,2),(1,3)",
+			`CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW 
+				BEGIN 
+					SET NEW.v1 = NEW.v1 * 11;
+					insert into test2 values (new.pk * 3, new.v1);
+					SET NEW.v1 = NEW.v1 * -10;
+					insert into test3 values (new.pk * 5, new.v1);
+					set @var = 0;
+				END;`,
+			"INSERT INTO test VALUES (2,4), (6,8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test ORDER BY 1",
+				Expected: []sql.Row{
+					{0, 2}, {1, 3}, {2, -440}, {6, -880},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2 ORDER BY 1",
+				Expected: []sql.Row{
+					{6, 44}, {18, 88},
+				},
+			},
+			{
+				Query: "SELECT * FROM test3 ORDER BY 1",
+				Expected: []sql.Row{
+					{10, -440}, {30, -880},
 				},
 			},
 		},
@@ -1849,6 +1920,138 @@ end;`,
 			"create trigger t1 before insert on a for each row begin if NEW.x in (select 2+2 from dual) then signal SQLSTATE '45000' SET MESSAGE_TEXT = 'String field contains invalid value, like empty string, ''none'', ''null'', ''n/a'', ''nan'' etc.'; end if; end;",
 		},
 		Assertions: nil,
+	},
+	{
+		Name: "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
+		SetUpScript: []string{
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table sequence_table (max_id integer PRIMARY KEY);",
+			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
+			"insert into sequence_table values (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into mytable () values ();",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into mytable (sometext) values ('hello');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into mytable values (10, 'goodbye');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query: "select * from mytable order by id",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, "hello"},
+					{3, "goodbye"},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into common sequence table workaround",
+		SetUpScript: []string{
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table sequence_table (max_id integer PRIMARY KEY);",
+			`create trigger update_position_id before insert on mytable for each row 
+			begin 
+				if @max_id is null then set @max_id = (select coalesce(max(max_id),1) from sequence_table);
+				end if;
+				set new.id = @max_id;
+				set @max_id = @max_id + 1;
+				update sequence_table set max_id = @max_id; 
+			end;`,
+			"insert into sequence_table values (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into mytable () values ();",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into mytable (sometext) values ('hello');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into mytable values (10, 'goodbye');",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "insert into mytable () values (), ();",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query: "select * from mytable order by id",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, "hello"},
+					{3, "goodbye"},
+					{4, nil},
+					{5, nil},
+				},
+			},
+		},
+	},
+}
+
+// BrokenTriggerQueries contains trigger queries that should work but do not yet
+var BrokenTriggerQueries = []ScriptTest{
+	{
+		Name: "update common table multiple times in single insert",
+		SetUpScript: []string{
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table sequence_table (max_id integer PRIMARY KEY);",
+			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
+			"insert into sequence_table values (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Should produce new keys 2, 3, but instead produces a duplicate key error
+			{
+				Query:    "insert into mytable () values (), ();",
+				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+			{
+				Query: "select * from mytable order by id",
+				Expected: []sql.Row{
+					{1, nil},
+					{2, nil},
+					{3, nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into table multiple times",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"CREATE TABLE test2(pk BIGINT PRIMARY KEY, v1 BIGINT);",
+			"INSERT INTO test VALUES (0,2),(1,3)",
+			`CREATE TRIGGER tt BEFORE INSERT ON test FOR EACH ROW 
+				BEGIN 
+					insert into test2 values (new.pk * 3, new.v1);
+					insert into test2 values (new.pk * 5, new.v1);
+				END;`,
+			// fails at analysis time thinking that test2 is a duplicate table alias
+			"INSERT INTO test VALUES (2,4), (6,8);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test ORDER BY 1",
+				Expected: []sql.Row{
+					{0, 2}, {1, 3}, {2, -440},
+				},
+			},
+			{
+				Query: "SELECT * FROM test2 ORDER BY 1",
+				Expected: []sql.Row{
+					{2, -440},
+				},
+			},
+		},
 	},
 }
 

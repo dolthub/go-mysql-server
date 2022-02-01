@@ -759,6 +759,10 @@ type Now struct {
 	precision *int
 }
 
+func (n *Now) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = (*Now)(nil)
 
 // NewNow returns a new Now node.
@@ -1216,92 +1220,12 @@ func (m *WeekOfYear) WithChildren(children ...sql.Expression) (sql.Expression, e
 	return NewWeekOfYear(children[0]), nil
 }
 
-// TimeDiff subtracts the second argument from the first expressed as a time value.
-type TimeDiff struct {
-	expression.BinaryExpression
-}
-
-var _ sql.FunctionExpression = (*TimeDiff)(nil)
-
-// NewTimeDiff creates a new NewTimeDiff expression.
-func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
-	return &TimeDiff{
-		expression.BinaryExpression{
-			Left:  e1,
-			Right: e2,
-		},
-	}
-}
-
-// FunctionName implements sql.FunctionExpression
-func (td *TimeDiff) FunctionName() string {
-	return "timediff"
-}
-
-// Description implements sql.FunctionExpression
-func (td *TimeDiff) Description() string {
-	return "returns expr1 − expr2 expressed as a time value. expr1 and expr2 are time or date-and-time expressions, but both must be of the same type."
-}
-
-// Type implements the Expression interface.
-func (td *TimeDiff) Type() sql.Type { return sql.Time }
-
-// IsNullable implements the Expression interface.
-func (td *TimeDiff) IsNullable() bool { return false }
-
-func (td *TimeDiff) String() string {
-	return fmt.Sprintf("TIMEDIFF(%s, %s)", td.Left, td.Right)
-}
-
-// WithChildren implements the Expression interface.
-func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(td, len(children), 2)
-	}
-	return NewTimeDiff(children[0], children[1]), nil
-}
-
-// Eval implements the Expression interface.
-func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	left, err := td.Left.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	right, err := td.Right.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	if left == nil || right == nil {
-		return nil, ErrTimeUnexpectedlyNil.New("TIMEDIFF")
-	}
-
-	if leftDatetimeInt, err := sql.Datetime.Convert(left); err == nil {
-		rightDatetimeInt, err := sql.Datetime.Convert(right)
-		if err != nil {
-			return nil, err
-		}
-		leftDatetime := leftDatetimeInt.(time.Time)
-		rightDatetime := rightDatetimeInt.(time.Time)
-		if leftDatetime.Location() != rightDatetime.Location() {
-			rightDatetime = rightDatetime.In(leftDatetime.Location())
-		}
-		return sql.Time.Convert(leftDatetime.Sub(rightDatetime))
-	} else if leftTime, err := sql.Time.ConvertToTimeDuration(left); err == nil {
-		rightTime, err := sql.Time.ConvertToTimeDuration(right)
-		if err != nil {
-			return nil, err
-		}
-		resTime := leftTime - rightTime
-		return sql.Time.Convert(resTime)
-	} else {
-		return nil, ErrInvalidArgumentType.New("timediff")
-	}
-}
-
 type CurrTime struct {
 	NoArgFunc
+}
+
+func (c CurrTime) IsNonDeterministic() bool {
+	return true
 }
 
 var _ sql.FunctionExpression = CurrTime{}
@@ -1344,6 +1268,10 @@ type CurrTimestamp struct {
 	args []sql.Expression
 }
 
+func (c *CurrTimestamp) IsNonDeterministic() bool {
+	return true
+}
+
 var _ sql.FunctionExpression = (*CurrTimestamp)(nil)
 
 // FunctionName implements sql.FunctionExpression
@@ -1358,10 +1286,6 @@ func (c *CurrTimestamp) Description() string {
 
 func NewCurrTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	return &CurrTimestamp{args}, nil
-}
-
-func currDatetimeLogic(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	return ctx.QueryTime(), nil
 }
 
 func (c *CurrTimestamp) String() string {

@@ -5,6 +5,10 @@ import "github.com/dolthub/go-mysql-server/sql"
 // RowCount implements the ROW_COUNT() function
 type RowCount struct{}
 
+func (r RowCount) IsNonDeterministic() bool {
+	return true
+}
+
 func NewRowCount() sql.Expression {
 	return RowCount{}
 }
@@ -28,7 +32,7 @@ func (r RowCount) String() string {
 
 // Type implements sql.Expression
 func (r RowCount) Type() sql.Type {
-	return sql.Uint64
+	return sql.Int64
 }
 
 // IsNullable implements sql.Expression
@@ -59,6 +63,10 @@ func (r RowCount) FunctionName() string {
 // LastInsertId implements the LAST_INSERT_ID() function
 type LastInsertId struct{}
 
+func (r LastInsertId) IsNonDeterministic() bool {
+	return true
+}
+
 func NewLastInsertId() sql.Expression {
 	return LastInsertId{}
 }
@@ -82,7 +90,7 @@ func (r LastInsertId) String() string {
 
 // Type implements sql.Expression
 func (r LastInsertId) Type() sql.Type {
-	return sql.Uint64
+	return sql.Int64
 }
 
 // IsNullable implements sql.Expression
@@ -113,6 +121,10 @@ func (r LastInsertId) FunctionName() string {
 // FoundRows implements the FOUND_ROWS() function
 type FoundRows struct{}
 
+func (r FoundRows) IsNonDeterministic() bool {
+	return true
+}
+
 func NewFoundRows() sql.Expression {
 	return FoundRows{}
 }
@@ -141,7 +153,7 @@ func (r FoundRows) String() string {
 
 // Type implements sql.Expression
 func (r FoundRows) Type() sql.Type {
-	return sql.Uint64
+	return sql.Int64
 }
 
 // IsNullable implements sql.Expression

@@ -69,7 +69,6 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 		cfg.DisableClientMultiStatements,
 		listener,
 	)
-	a := cfg.Auth.Mysql()
 	l, err := NewListener(cfg.Protocol, cfg.Address, handler)
 	if err != nil {
 		return nil, err
@@ -77,7 +76,7 @@ func NewServer(cfg Config, e *sqle.Engine, sb SessionBuilder, listener ServerEve
 
 	listenerCfg := mysql.ListenerConfig{
 		Listener:           l,
-		AuthServer:         a,
+		AuthServer:         e.Analyzer.Catalog.GrantTables,
 		Handler:            handler,
 		ConnReadTimeout:    cfg.ConnReadTimeout,
 		ConnWriteTimeout:   cfg.ConnWriteTimeout,

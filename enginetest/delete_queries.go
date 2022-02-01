@@ -139,6 +139,27 @@ var DeleteTests = []WriteQueryTest{
 	},
 }
 
+var SpatialDeleteTests = []WriteQueryTest{
+	{
+		WriteQuery:          "DELETE FROM point_table;",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM point_table;",
+		ExpectedSelect:      nil,
+	},
+	{
+		WriteQuery:          "DELETE FROM line_table;",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
+		SelectQuery:         "SELECT * FROM line_table;",
+		ExpectedSelect:      nil,
+	},
+	{
+		WriteQuery:          "DELETE FROM polygon_table;",
+		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(1)}},
+		SelectQuery:         "SELECT * FROM polygon_table;",
+		ExpectedSelect:      nil,
+	},
+}
+
 var DeleteErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "invalid table",

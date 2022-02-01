@@ -16,19 +16,22 @@ package analyzer
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-// validateCreateCheck legal expressions for CREATE CHECK statements, including those embedded in CREATE TABLE
-// statements
-func validateCreateCheck(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+// validateCheckConstraints validates DDL nodes that create table check constraints, such as CREATE TABLE and
+// ALTER TABLE statements.
+//
+// TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
+//       checks that will never evaluate correctly.
+func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
 		return validateCreateCheckNode(n)
@@ -95,9 +98,13 @@ func checkExpressionValid(e sql.Expression) error {
 	var err error
 	sql.Inspect(e, func(e sql.Expression) bool {
 		switch e := e.(type) {
-		// TODO: deterministic functions are fine
+		case *function.GetLock, *function.IsUsedLock, *function.IsFreeLock, function.ReleaseAllLocks, *function.ReleaseLock:
+			err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
+			return false
 		case sql.FunctionExpression:
-			err = sql.ErrInvalidConstraintFunctionsNotSupported.New(e.String())
+			if ndf, ok := e.(sql.NonDeterministicExpression); ok && ndf.IsNonDeterministic() {
+				err = sql.ErrInvalidConstraintFunctionNotSupported.New(e.String())
+			}
 			return false
 		case *plan.Subquery:
 			err = sql.ErrInvalidConstraintSubqueryNotSupported.New(e.String())
@@ -119,8 +126,8 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.InsertInto:
 			nn := *node
 
-			rtable, ok := nn.Destination.(*plan.ResolvedTable)
-			if !ok {
+			rtable := getResolvedTable(nn.Destination)
+			if rtable == nil {
 				return node, nil
 			}
 
@@ -137,8 +144,9 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 
 			return &nn, nil
 		case *plan.Update:
-			rtable := getResolvedTable(node)
+			nn := *node
 
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
 				return node, nil
 			}
@@ -149,7 +157,6 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			}
 
 			var err error
-			nn := *node
 			nn.Checks, err = loadChecksFromTable(ctx, table)
 			if err != nil {
 				return nil, err
@@ -157,8 +164,9 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 
 			return &nn, nil
 		case *plan.ShowCreateTable:
-			rtable := getResolvedTable(node)
+			nn := *node
 
+			rtable := getResolvedTable(nn.Child)
 			if rtable == nil {
 				return node, nil
 			}
@@ -169,21 +177,17 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			}
 
 			var err error
-			nn := *node
 			checks, err := loadChecksFromTable(ctx, table)
 			if err != nil {
 				return nil, err
 			}
 
+			// To match MySQL output format, transform the column names and wrap with backticks
 			transformedChecks := make(sql.CheckConstraints, len(checks))
-
 			for i, check := range checks {
 				newExpr, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
 					if t, ok := e.(*expression.UnresolvedColumn); ok {
-						name := t.Name()
-						strings.Replace(name, "`", "", -1) // remove any preexisting backticks
-
-						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", name)), nil
+						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), nil
 					}
 
 					return e, nil
@@ -196,16 +200,56 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 				check.Expr = newExpr
 				transformedChecks[i] = check
 			}
-
 			nn.Checks = transformedChecks
 
 			return &nn, nil
 
-		// TODO: throw an error if an ALTER TABLE would invalidate a check constraint, or fix them up automatically
-		//  when possible
-		//case *plan.DropColumn:
-		//case *plan.RenameColumn:
-		//case *plan.ModifyColumn:
+		case *plan.DropColumn:
+			nn := *node
+
+			rtable := getResolvedTable(nn.Child)
+			if rtable == nil {
+				return node, nil
+			}
+
+			table, ok := rtable.Table.(sql.CheckTable)
+			if !ok {
+				return node, nil
+			}
+
+			var err error
+			nn.Checks, err = loadChecksFromTable(ctx, table)
+			if err != nil {
+				return nil, err
+			}
+
+			return &nn, nil
+
+		case *plan.RenameColumn:
+			nn := *node
+
+			rtable := getResolvedTable(nn.Child)
+			if rtable == nil {
+				return node, nil
+			}
+
+			table, ok := rtable.Table.(sql.CheckTable)
+			if !ok {
+				return node, nil
+			}
+
+			var err error
+			nn.Checks, err = loadChecksFromTable(ctx, table)
+			if err != nil {
+				return nil, err
+			}
+
+			return &nn, nil
+
+		// TODO: ModifyColumn can also invalidate table check constraints (e.g. by changing the column's type).
+		//       Ideally, we should also load checks for ModifyColumn and error out if they would be invalidated.
+		// case *plan.ModifyColumn:
+
 		default:
 			return node, nil
 		}

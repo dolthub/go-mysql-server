@@ -15,12 +15,16 @@
 package plan
 
 import (
-	"io"
+	"errors"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
+
+var ErrAggregationMissingWindow = errors.New("aggregation missing window expression")
 
 type Window struct {
 	SelectExprs []sql.Expression
@@ -99,153 +103,78 @@ func (w *Window) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 
 // RowIter implements sql.Node
 func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+
 	childIter, err := w.Child.RowIter(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
-	return &windowIter{
-		selectExprs: w.SelectExprs,
-		childIter:   childIter,
-	}, nil
+	blockIters, outputOrdinals, err := windowToIter(w)
+	if err != nil {
+		return nil, err
+	}
+	return aggregation.NewWindowIter(blockIters, outputOrdinals, childIter), nil
 }
 
-type windowIter struct {
-	selectExprs []sql.Expression
-	childIter   sql.RowIter
-	rows        []sql.Row
-	buffers     []sql.Row
-	pos         int
-}
-
-func (i *windowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.buffers == nil {
-		err := i.compute(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if i.pos >= len(i.rows) {
-		return nil, io.EOF
-	}
-
-	row := i.rows[i.pos]
-
-	for j, expr := range i.selectExprs {
-		var err error
-		switch expr := expr.(type) {
-		case sql.WindowAggregation:
-			row[j], err = expr.EvalRow(i.pos, i.buffers[j])
-			if err != nil {
-				return nil, err
-			}
-		case sql.Aggregation:
-			row[j], err = i.buffers[j][0].(sql.AggregationBuffer).Eval(ctx)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	i.pos++
-	return row, nil
-}
-
-func (i *windowIter) compute(ctx *sql.Context) error {
-	i.buffers = make([]sql.Row, len(i.selectExprs))
-
-	// TOOD(aaron): i.buffers is a []sql.Row, and we tuck an
-	// AggregationBuffer into one when we have a sql.Aggregation. But
-	// i.buffers should get the same treatment it gets in groupByIter,
-	// where we can use a common interface that makes sense for our use
-	// case. This needs some work to look better.
-
+// windowToIter transforms a plan.Window into a series
+// of aggregation.WindowPartitionIter and a list of output projection indexes
+// for each window partition.
+// TODO: make partition ordering deterministic
+func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error) {
+	partIdToOutputIdxs := make(map[uint64][]int, 0)
+	partIdToBlock := make(map[uint64]*aggregation.WindowPartition, 0)
+	var window *sql.Window
+	var agg *aggregation.Aggregation
+	var fn sql.WindowFunction
 	var err error
-	for j, expr := range i.selectExprs {
-		i.buffers[j], err = newBuffer(expr)
-		if err != nil {
-			return err
-		}
-	}
-
-	for {
-		row, err := i.childIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		outRow := make(sql.Row, len(i.selectExprs))
-		for j, expr := range i.selectExprs {
-			// Window aggregations share row slices to avoid copying,
-			// but buffer appending bleeds if a row slice's underlying
-			// array is unfilled. The current sql.NewRow impl trims excess cap.
-			rowCopy := sql.NewRow(row...)
-			switch expr := expr.(type) {
-			case sql.WindowAggregation:
-				err := expr.Add(ctx, i.buffers[j], rowCopy)
-				if err != nil {
-					return err
-				}
-			case sql.Aggregation:
-				err = i.buffers[j][0].(sql.AggregationBuffer).Update(ctx, rowCopy)
-				if err != nil {
-					return err
-				}
-			default:
-				outRow[j], err = expr.Eval(ctx, rowCopy)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		i.rows = append(i.rows, outRow)
-	}
-
-	for j, expr := range i.selectExprs {
-		if wa, ok := expr.(sql.WindowAggregation); ok {
-			err := wa.Finish(ctx, i.buffers[j])
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func newBuffer(expr sql.Expression) (sql.Row, error) {
-	switch n := expr.(type) {
-	case sql.Aggregation:
-		// For now, we tuck the sql.AggregationBuffer into the first
-		// element of the returned row.
-		b, err := n.NewBuffer()
-		if err != nil {
-			return nil, err
-		}
-		return sql.NewRow(b), nil
-	case sql.WindowAggregation:
-		return n.NewBuffer(), nil
-	default:
-		return nil, nil
-	}
-}
-
-func (i *windowIter) Close(ctx *sql.Context) error {
-	i.Dispose()
-	i.buffers = nil
-	return i.childIter.Close(ctx)
-}
-
-func (i *windowIter) Dispose() {
-	for j, expr := range i.selectExprs {
-		switch expr.(type) {
+	// collect functions in hash map keyed by partitioning scheme
+	for i, expr := range w.SelectExprs {
+		switch e := expr.(type) {
 		case sql.Aggregation:
-			i.buffers[j][0].(sql.AggregationBuffer).Dispose()
+			window = e.Window()
+			fn, err = e.NewWindowFunction()
+		case sql.WindowAggregation:
+			window = e.Window()
+			fn, err = e.NewWindowFunction()
+		default:
+			// non window aggregates resolve to LastAgg with empty over clause
+			window = sql.NewWindow(nil, nil, nil)
+			fn, err = aggregation.NewLast(e).NewWindowFunction()
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		agg = aggregation.NewAggregation(fn, fn.DefaultFramer())
+
+		id, err := window.PartitionId()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if block, ok := partIdToBlock[id]; !ok {
+			if err != nil {
+				return nil, nil, err
+			}
+			partIdToBlock[id] = aggregation.NewWindowPartition(
+				window.PartitionBy,
+				window.OrderBy,
+				[]*aggregation.Aggregation{agg},
+			)
+			partIdToOutputIdxs[id] = []int{i}
+		} else {
+			block.AddAggregation(agg)
+			partIdToOutputIdxs[id] = append(partIdToOutputIdxs[id], i)
 		}
 	}
+
+	// convert partition hash map into list
+	blockIters := make([]*aggregation.WindowPartitionIter, len(partIdToBlock))
+	outputOrdinals := make([][]int, len(partIdToBlock))
+	i := 0
+	for id, block := range partIdToBlock {
+		outputIdx := partIdToOutputIdxs[id]
+		blockIters[i] = aggregation.NewWindowPartitionIter(block)
+		outputOrdinals[i] = outputIdx
+		i++
+	}
+	return blockIters, outputOrdinals, nil
 }

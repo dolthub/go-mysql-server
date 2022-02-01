@@ -238,37 +238,6 @@ func (j JSONValue) IsUnsupported() bool {
 // JSON creation functions //
 /////////////////////////////
 
-// JSON_ARRAY([val[, val] ...])
-//
-// JSONArray Evaluates a (possibly empty) list of values and returns a JSON array containing those values.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-array
-type JSONArray struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONArray{}
-
-// NewJSONArray creates a new JSONArray function.
-func NewJSONArray(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONArray{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONArray) FunctionName() string {
-	return "json_array"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONArray) Description() string {
-	return "creates JSON array."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONArray) IsUnsupported() bool {
-	return true
-}
-
 // JSON_QUOTE(string)
 //
 // JSONQuote Quotes a string as a JSON value by wrapping it with double quote characters and escaping interior quote and
@@ -482,53 +451,6 @@ func (j JSONMergePatch) IsUnsupported() bool {
 // https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-merge
 type JSONMerge struct {
 	sql.Expression
-}
-
-// JSON_MERGE_PRESERVE(json_doc, json_doc[, json_doc] ...)
-//
-// JSONMergePreserve Merges two or more JSON documents and returns the merged result. Returns NULL if any argument is
-// NULL. An error occurs if any argument is not a valid JSON document. Merging takes place according to the following
-// rules:
-//   - Adjacent arrays are merged to a single array.
-//   - Adjacent objects are merged to a single object.
-//   - A scalar value is autowrapped as an array and merged as an array.
-//   - An adjacent array and object are merged by autowrapping the object as an array and merging the two arrays.
-//
-// This function was added in MySQL 8.0.3 as a synonym for JSONMerge. The JSONMerge function is now deprecated,
-// and is subject to removal in a future release of MySQL.
-//
-// The behavior of JSONMergePatch is the same as that of JSONMergePreserve, with the following two exceptions:
-//   - JSONMergePatch removes any member in the first object with a matching key in the second object, provided that
-//     the value associated with the key in the second object is not JSON null.
-//   - If the second object has a member with a key matching a member in the first object, JSONMergePatch replaces
-//     the value in the first object with the value in the second object, whereas JSONMergePreserve appends the
-//     second value to the first value.
-//
-// https://dev.mysql.com/doc/refman/8.0/en/json-modification-functions.html#function_json-merge-preserve
-type JSONMergePreserve struct {
-	sql.Expression
-}
-
-var _ sql.FunctionExpression = JSONMergePreserve{}
-
-// NewJSONMergePreserve creates a new JSONMergePreserve function.
-func NewJSONMergePreserve(args ...sql.Expression) (sql.Expression, error) {
-	return nil, ErrUnsupportedJSONFunction.New(JSONMergePreserve{}.FunctionName())
-}
-
-// FunctionName implements sql.FunctionExpression
-func (j JSONMergePreserve) FunctionName() string {
-	return "json_merge_preserve"
-}
-
-// Description implements sql.FunctionExpression
-func (j JSONMergePreserve) Description() string {
-	return "merges JSON documents, preserving duplicate keys."
-}
-
-// IsUnsupported implements sql.UnsupportedFunctionStub
-func (j JSONMergePreserve) IsUnsupported() bool {
-	return true
 }
 
 // JSON_REMOVE(json_doc, path[, path] ...)

@@ -50,6 +50,19 @@ func (s Schema) CheckRow(row Row) error {
 	return nil
 }
 
+// Copy returns a deep copy of this schema, making a copy of all columns
+func (s Schema) Copy() Schema {
+	ns := make(Schema, len(s))
+	for i, col := range s {
+		nc := *col
+		if nc.Default != nil {
+			nc.Default = &(*nc.Default)
+		}
+		ns[i] = &nc
+	}
+	return ns
+}
+
 // Contains returns whether the schema contains a column with the given name.
 func (s Schema) Contains(column string, source string) bool {
 	return s.IndexOf(column, source) >= 0

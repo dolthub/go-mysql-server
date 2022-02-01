@@ -15,7 +15,105 @@
 package aggregation
 
 import (
+	"fmt"
+
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 var ErrEvalUnsupportedOnAggregation = errors.NewKind("Unimplemented %s.Eval(). The code should have used AggregationBuffer.Eval(ctx).")
+
+// unaryAggBase is the generic embedded class optgen
+// uses to codegen single expression aggregate functions.
+type unaryAggBase struct {
+	expression.UnaryExpression
+	window       *sql.Window
+	functionName string
+	description  string
+	typ          sql.Type
+}
+
+var _ sql.Aggregation = (*unaryAggBase)(nil)
+
+func (a *unaryAggBase) NewWindowFunction() (sql.WindowFunction, error) {
+	panic("unaryAggBase is a base type, type must implement NewWindowFunction")
+}
+
+func (a *unaryAggBase) NewBuffer() (sql.AggregationBuffer, error) {
+	panic("unaryAggBase is a base type, type must implement NewWindowFunction")
+}
+
+// WithWindow returns a new unaryAggBase to be embedded in wrapping type
+func (a *unaryAggBase) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+	na := *a
+	na.window = window
+	return &na, nil
+}
+
+func (a *unaryAggBase) Window() *sql.Window {
+	return a.window
+}
+
+func (a *unaryAggBase) String() string {
+	return fmt.Sprintf("%s(%s)", a.functionName, a.Child)
+}
+
+func (a *unaryAggBase) Type() sql.Type {
+	return a.typ
+}
+
+func (a *unaryAggBase) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return nil, ErrEvalUnsupportedOnAggregation.New(a.FunctionName())
+}
+
+func (a *unaryAggBase) Children() []sql.Expression {
+	children := []sql.Expression{a.Child}
+	if a.window != nil {
+		children = append(children, a.window.ToExpressions()...)
+	}
+	return children
+}
+
+func (a *unaryAggBase) Resolved() bool {
+	if _, ok := a.Child.(*expression.Star); ok {
+		return true
+	} else if !a.Child.Resolved() {
+		return false
+	}
+	if a.window == nil {
+		return true
+	}
+	return windowResolved(a.window)
+}
+
+// WithChildren returns a new unaryAggBase to be embedded in wrapping type
+func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) < 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+	}
+
+	na := *a
+	na.UnaryExpression = expression.UnaryExpression{Child: children[0]}
+	if len(children) > 1 && a.window != nil {
+		w, err := a.window.FromExpressions(children[1:])
+		if err != nil {
+			return nil, err
+		}
+		return na.WithWindow(w)
+	}
+	return &na, nil
+}
+
+func (a unaryAggBase) FunctionName() string {
+	return a.functionName
+}
+
+func (a unaryAggBase) Description() string {
+	return a.description
+}
+
+func windowResolved(w *sql.Window) bool {
+	return expression.ExpressionsResolved(append(w.OrderBy.ToExpressions(), w.PartitionBy...)...)
+}

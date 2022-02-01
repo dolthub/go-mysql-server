@@ -81,13 +81,11 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if lower == nil {
-		return nil, nil
-	}
-
-	lower, err = typ.Convert(lower)
-	if err != nil {
-		return nil, err
+	if lower != nil {
+		lower, err = typ.Convert(lower)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	upper, err := b.Upper.Eval(ctx, row)
@@ -95,13 +93,15 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	if upper == nil {
-		return nil, nil
+	if upper != nil {
+		upper, err = typ.Convert(upper)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	upper, err = typ.Convert(upper)
-	if err != nil {
-		return nil, err
+	if lower == nil && upper == nil {
+		return nil, nil
 	}
 
 	cmpLower, err := typ.Compare(val, lower)
@@ -112,6 +112,21 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	cmpUpper, err := typ.Compare(val, upper)
 	if err != nil {
 		return nil, err
+	}
+
+	if lower != nil && upper == nil {
+		if cmpLower > 0 {
+			return nil, nil
+		} else {
+			return false, nil
+		}
+	}
+	if upper != nil && lower == nil {
+		if cmpUpper < 0 {
+			return nil, nil
+		} else {
+			return false, nil
+		}
 	}
 
 	return cmpLower >= 0 && cmpUpper <= 0, nil

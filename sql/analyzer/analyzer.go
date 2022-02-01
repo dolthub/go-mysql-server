@@ -264,7 +264,7 @@ type Analyzer struct {
 	// Batches of Rules to apply.
 	Batches []*Batch
 	// Catalog of databases and registered functions.
-	Catalog sql.Catalog
+	Catalog *Catalog
 	// ProcedureCache is a cache of stored procedures.
 	ProcedureCache *ProcedureCache
 }
@@ -319,6 +319,8 @@ func (a *Analyzer) LogDiff(prev, next sql.Node) {
 			}
 			if len(diff) > 0 {
 				a.Log(diff)
+			} else {
+				a.Log("nodes are different, but no textual diff found (implement better DebugString?)")
 			}
 		}
 	}

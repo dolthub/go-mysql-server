@@ -423,6 +423,27 @@ var UpdateTests = []WriteQueryTest{
 	},
 }
 
+var SpatialUpdateTests = []WriteQueryTest{
+	{
+		WriteQuery:          "UPDATE point_table SET p = point(123.456,789);",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM point_table;",
+		ExpectedSelect:      []sql.Row{{int64(5), sql.Point{X: 123.456, Y: 789}}},
+	},
+	{
+		WriteQuery:          "UPDATE line_table SET l = linestring(point(1.2,3.4),point(5.6,7.8));",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(2, 2)}},
+		SelectQuery:         "SELECT * FROM line_table;",
+		ExpectedSelect:      []sql.Row{{int64(0), sql.Linestring{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}, {int64(1), sql.Linestring{Points: []sql.Point{{X: 1.2, Y: 3.4}, {X: 5.6, Y: 7.8}}}}},
+	},
+	{
+		WriteQuery:          "UPDATE polygon_table SET p = polygon(linestring(point(1,1),point(1,-1),point(-1,-1),point(-1,1),point(1,1)));",
+		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		SelectQuery:         "SELECT * FROM polygon_table;",
+		ExpectedSelect:      []sql.Row{{int64(0), sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
+	},
+}
+
 // These tests return the correct select query answer but the wrong write result.
 var SkippedUpdateTests = []WriteQueryTest{
 	{
@@ -522,5 +543,9 @@ var UpdateErrorTests = []QueryErrorTest{
 	{
 		Query:       `UPDATE keyless INNER JOIN one_pk on keyless.c0 = one_pk.pk SET keyless.c0 = keyless.c0 + 1`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+	{
+		Query:       `UPDATE people set height_inches = null where height_inches < 100`,
+		ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
 	},
 }

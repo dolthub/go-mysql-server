@@ -96,6 +96,27 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	})
 }
 
+// setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
+// store supplementary schema information. This is useful for lazy resolution of column default values.
+func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, _ := ctx.Span("set_target_schema")
+	defer span.Finish()
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		t, ok := n.(sql.SchemaTarget)
+		if !ok {
+			return n, nil
+		}
+
+		table := getResolvedTable(n)
+		if table == nil {
+			return n, nil
+		}
+
+		return t.WithTargetSchema(table.Schema())
+	})
+}
+
 func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t *plan.UnresolvedTable) (sql.Node, error) {
 	if sql.ErrDatabaseNotFound.Is(err) {
 		if tableName == dualTableName {

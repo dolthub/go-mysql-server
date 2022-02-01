@@ -178,12 +178,16 @@ func TestNumberConvert(t *testing.T) {
 		{Int64, "33.0", int64(33), false},
 		{Int64, "33.1", int64(33), false},
 		{Int64, strconv.FormatInt(math.MaxInt64, 10), int64(math.MaxInt64), false},
+		{Int64, true, int64(1), false},
+		{Int64, false, int64(0), false},
 		{Uint8, int64(34), uint8(34), false},
 		{Uint16, int16(35), uint16(35), false},
 		{Uint24, 36.756, uint32(36), false},
 		{Uint32, uint8(37), uint32(37), false},
 		{Uint64, time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), false},
 		{Uint64, "01000", uint64(1000), false},
+		{Uint64, true, uint64(1), false},
+		{Uint64, false, uint64(0), false},
 		{Float32, "22.25", float32(22.25), false},
 		{Float64, float32(893.875), float64(893.875), false},
 
@@ -226,6 +230,16 @@ func TestNumberConvert(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
+	val, err := Boolean.SQL(true)
+	require.NoError(t, err)
+	assert.Equal(t, "INT8(1)", val.String())
+
+	val, err = Boolean.SQL(false)
+	require.NoError(t, err)
+	assert.Equal(t, "INT8(0)", val.String())
 }
 
 func TestNumberString(t *testing.T) {

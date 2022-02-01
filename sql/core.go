@@ -101,9 +101,96 @@ type NonDeterministicExpression interface {
 // eval'd with |Eval|. Calling |Eval| directly on an Aggregation expression is
 // typically an error.
 type Aggregation interface {
-	Expression
+	WindowAdaptableExpression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() (AggregationBuffer, error)
+	// WithWindow returns a version of this aggregation with the window given
+	WithWindow(window *Window) (Aggregation, error)
+	// Window returns this expression's window
+	Window() *Window
+}
+
+// WindowBuffer is a type alias for a window materialization
+type WindowBuffer []Row
+
+// WindowInterval is a WindowBuffer index range, where [Start] is inclusive, and [End] is exclusive
+type WindowInterval struct {
+	Start, End int
+}
+
+// WindowFunction performs aggregations on buffer intervals, optionally maintaining internal state
+// for performance optimizations
+type WindowFunction interface {
+	Disposable
+
+	// WithWindow passes fields from the parent Window, deferring partial construction of a WindowFunction
+	WithWindow(w *Window) (WindowFunction, error)
+	// StartPartition discards any previous state and initializes the aggregation for a new partition
+	StartPartition(*Context, WindowInterval, WindowBuffer) error
+	// DefaultFramer returns a new instance of the default WindowFramer for a particular aggregation
+	DefaultFramer() WindowFramer
+	// NewSlidingFrameInterval is updates the function's internal aggregation state for the next
+	// Compute call using three WindowInterval: added, dropped, and current.
+	//TODO: implement sliding window interface in aggregation functions and windowBlockIter
+	//NewSlidingFrameInterval(added, dropped WindowInterval)
+	// Compute returns an aggregation result for a given interval and buffer
+	Compute(*Context, WindowInterval, WindowBuffer) interface{}
+}
+
+// WindowAdaptableExpression is an Expression that can be executed as a window aggregation
+type WindowAdaptableExpression interface {
+	Expression
+
+	// NewEvalable constructs an executable aggregation WindowFunction
+	NewWindowFunction() (WindowFunction, error)
+}
+
+// WindowFramer is responsible for tracking window frame indices for partition rows.
+// WindowFramer is aware of the framing strategy (offsets, ranges, etc),
+// and is responsible for returning a WindowInterval for each partition row.
+type WindowFramer interface {
+	// NewFramer is a prototype constructor that create a new Framer with pass-through
+	// parent arguments
+	NewFramer(WindowInterval) (WindowFramer, error)
+	// Next returns the next WindowInterval frame, or an io.EOF error after the last row
+	Next(*Context, WindowBuffer) (WindowInterval, error)
+	// FirstIdx returns the current frame start index
+	FirstIdx() int
+	// LastIdx returns the last valid index in the current frame
+	LastIdx() int
+	// Interval returns the current frame as a WindowInterval
+	Interval() (WindowInterval, error)
+	// SlidingInterval returns three WindowIntervals: the current frame, dropped range since the
+	// last frame, and added range since the last frame.
+	// TODO: implement sliding window interface in framers, windowBlockIter, and aggregation functions
+	//SlidingInterval(ctx Context) (WindowInterval, WindowInterval, WindowInterval)
+}
+
+// WindowFrame describe input bounds for an aggregation function
+// execution. A frame will only have two non-null fields for the start
+// and end bounds. A WindowFrame plan node is associated
+// with an exec WindowFramer.
+type WindowFrame interface {
+	fmt.Stringer
+
+	// NewFramer constructs an executable WindowFramer
+	NewFramer(*Window) (WindowFramer, error)
+	// UnboundedFollowing returns whether a frame end is unbounded
+	UnboundedFollowing() bool
+	// UnboundedPreceding returns whether a frame start is unbounded
+	UnboundedPreceding() bool
+	// StartCurrentRow returns whether a frame start is CURRENT ROW
+	StartCurrentRow() bool
+	// EndCurrentRow returns whether a frame end is CURRENT ROW
+	EndCurrentRow() bool
+	// StartNFollowing returns a frame's start preceding Expression or nil
+	StartNPreceding() Expression
+	// StartNFollowing returns a frame's start following Expression or nil
+	StartNFollowing() Expression
+	// EndNPreceding returns whether a frame end preceding Expression or nil
+	EndNPreceding() Expression
+	// EndNPreceding returns whether a frame end following Expression or nil
+	EndNFollowing() Expression
 }
 
 type AggregationBuffer interface {
@@ -116,25 +203,15 @@ type AggregationBuffer interface {
 }
 
 // WindowAggregation implements a window aggregation expression. A WindowAggregation is similar to an Aggregation,
-// except that it returns a result row for every input row, as opposed to as single for the entire result set. Every
+// except that it returns a result row for every input row, as opposed to as single for the entire result set. A
 // WindowAggregation is expected to track its input rows in the order received, and to return the value for the row
 // index given on demand.
 type WindowAggregation interface {
-	Expression
+	WindowAdaptableExpression
 	// Window returns this expression's window
 	Window() *Window
 	// WithWindow returns a version of this window aggregation with the window given
 	WithWindow(window *Window) (WindowAggregation, error)
-	// NewBuffer creates a new buffer and returns it as a Row. This buffer will be provided for all further operations.
-	NewBuffer() Row
-	// Add updates the aggregation with the input row given. Implementors must keep track of rows added in order so
-	// that they can later be retrieved by EvalRow(int)
-	Add(ctx *Context, buffer, row Row) error
-	// Finish gives aggregations that need to final computation once all rows have been added (like sorting their
-	// inputs) a chance to do before iteration begins
-	Finish(ctx *Context, buffer Row) error
-	// EvalRow returns the value of the expression for the row with the index given
-	EvalRow(i int, buffer Row) (interface{}, error)
 }
 
 // Node is a node in the execution plan tree.
@@ -216,15 +293,9 @@ type Databaser interface {
 	WithDatabase(Database) (Node, error)
 }
 
-// Partition represents a partition from a SQL table.
-type Partition interface {
-	Key() []byte
-}
-
-// PartitionIter is an iterator that retrieves partitions.
-type PartitionIter interface {
-	Closer
-	Next(*Context) (Partition, error)
+// SchemaTarget is a node that has a target schema that can be set
+type SchemaTarget interface {
+	WithTargetSchema(Schema) (Node, error)
 }
 
 // Table represents the backend of a SQL table.
@@ -803,6 +874,8 @@ type ColumnOrder struct {
 // AlterableTable should be implemented by tables that can receive ALTER TABLE statements to modify their schemas.
 type AlterableTable interface {
 	Table
+	UpdatableTable
+
 	// AddColumn adds a column to this table as given. If non-nil, order specifies where in the schema to add the column.
 	AddColumn(ctx *Context, column *Column, order *ColumnOrder) error
 	// DropColumn drops the column with the name given.

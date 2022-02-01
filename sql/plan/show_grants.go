@@ -27,6 +27,8 @@ type ShowGrants struct {
 	Using       []UserName
 }
 
+var _ sql.Node = (*ShowGrants)(nil)
+
 // NewShowGrants returns a new ShowGrants node.
 func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *ShowGrants {
 	return &ShowGrants{
@@ -35,8 +37,6 @@ func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *Sh
 		Using:       using,
 	}
 }
-
-var _ sql.Node = (*ShowGrants)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *ShowGrants) Schema() sql.Schema {

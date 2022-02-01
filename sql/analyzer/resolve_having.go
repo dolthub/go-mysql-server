@@ -449,8 +449,8 @@ func aggregationEquals(ctx *sql.Context, a, b sql.Expression) bool {
 		}
 
 		return aggregationChildEquals(ctx, a.Child, b.Child)
-	case *aggregation.JSONArrayAgg:
-		b, ok := b.(*aggregation.JSONArrayAgg)
+	case *aggregation.JsonArray:
+		b, ok := b.(*aggregation.JsonArray)
 		if !ok {
 			return false
 		}

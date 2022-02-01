@@ -27,6 +27,8 @@ type DropUser struct {
 	Users    []UserName
 }
 
+var _ sql.Node = (*DropUser)(nil)
+
 // NewDropUser returns a new DropUser node.
 func NewDropUser(ifExists bool, users []UserName) *DropUser {
 	return &DropUser{
@@ -34,8 +36,6 @@ func NewDropUser(ifExists bool, users []UserName) *DropUser {
 		Users:    users,
 	}
 }
-
-var _ sql.Node = (*DropUser)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *DropUser) Schema() sql.Schema {

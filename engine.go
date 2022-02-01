@@ -19,8 +19,6 @@ import (
 	"os"
 
 	"github.com/dolthub/go-mysql-server/memory"
-
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -32,18 +30,32 @@ import (
 type Config struct {
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
-	// Auth used for authentication and authorization.
-	Auth auth.Auth
+	// IsReadOnly sets the engine to disallow modification queries.
+	IsReadOnly bool
+	// IncludeRootAccount adds the root account (with no password) to the list of accounts, and also enables
+	// authentication.
+	IncludeRootAccount bool
+	// TemporaryUsers adds any users that should be included when the engine is created. By default, authentication is
+	// disabled, and including any users here will enable authentication. All users in this list will have full access.
+	// This field is only temporary, and will be removed as development on users and authentication continues.
+	TemporaryUsers []TemporaryUser
+}
+
+// TemporaryUser is a user that will be added to the engine. This is for temporary use while the remaining features
+// are implemented. Replaces the old "auth.New..." functions for adding a user.
+type TemporaryUser struct {
+	Username string
+	Password string
 }
 
 // Engine is a SQL engine.
 type Engine struct {
 	Analyzer          *analyzer.Analyzer
-	Auth              auth.Auth
 	LS                *sql.LockSubsystem
 	ProcessList       sql.ProcessList
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
+	IsReadOnly        bool
 }
 
 type ColumnWithRawDefault struct {
@@ -56,8 +68,16 @@ type ColumnWithRawDefault struct {
 // dependency lifecycles.
 func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	var versionPostfix string
+	var isReadOnly bool
 	if cfg != nil {
 		versionPostfix = cfg.VersionPostfix
+		isReadOnly = cfg.IsReadOnly
+		if cfg.IncludeRootAccount {
+			a.Catalog.GrantTables.AddRootAccount()
+		}
+		for _, tempUser := range cfg.TemporaryUsers {
+			a.Catalog.GrantTables.AddSuperUser(tempUser.Username, tempUser.Password)
+		}
 	}
 
 	ls := sql.NewLockSubsystem()
@@ -69,21 +89,13 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		})
 	a.Catalog.RegisterFunction(function.GetLockingFuncs(ls)...)
 
-	// use auth.None if auth is not specified
-	var au auth.Auth
-	if cfg == nil || cfg.Auth == nil {
-		au = new(auth.None)
-	} else {
-		au = cfg.Auth
-	}
-
 	return &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:       NewProcessList(),
-		Auth:              au,
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
+		IsReadOnly:        isReadOnly,
 	}
 }
 
@@ -146,7 +158,7 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 	}
 
-	err = e.authCheck(ctx, parsed)
+	err = e.readOnlyCheck(parsed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -341,69 +353,19 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 	return transactionDatabase
 }
 
-func (e *Engine) authCheck(ctx *sql.Context, node sql.Node) error {
-	var perm = auth.ReadPerm
-	if plan.IsDDLNode(node) {
-		perm = auth.ReadPerm | auth.WritePerm
+// readOnlyCheck checks to see if the query is valid with the modification setting of the engine.
+func (e *Engine) readOnlyCheck(node sql.Node) error {
+	if plan.IsDDLNode(node) && e.IsReadOnly {
+		return sql.ErrNotAuthorized.New()
 	}
 	switch node.(type) {
 	case
 		*plan.DeleteFrom, *plan.InsertInto, *plan.Update, *plan.LockTables, *plan.UnlockTables:
-		perm = auth.ReadPerm | auth.WritePerm
-	}
-
-	return e.Auth.Allowed(ctx, perm)
-}
-
-// ApplyDefaults applies the default values of the given column indices to the given row, and returns a new row with the updated values.
-// This assumes that the given row has placeholder `nil` values for the default entries, and also that each column in a table is
-// present and in the order as represented by the schema. If no columns are given, then the given row is returned. Column indices should
-// be sorted and in ascending order, however this is not enforced.
-func ApplyDefaults(ctx *sql.Context, tblSch sql.Schema, cols []int, row sql.Row) (sql.Row, error) {
-	if len(cols) == 0 {
-		return row, nil
-	}
-	newRow := row.Copy()
-	if len(tblSch) != len(row) {
-		return nil, fmt.Errorf("any row given to ApplyDefaults must be of the same length as the table it represents")
-	}
-	var secondPass []int
-	for _, col := range cols {
-		if col < 0 || col > len(tblSch) {
-			return nil, fmt.Errorf("column index `%d` is out of bounds, table schema has `%d` number of columns", col, len(tblSch))
-		}
-		if !tblSch[col].Default.IsLiteral() {
-			secondPass = append(secondPass, col)
-			continue
-		} else if tblSch[col].Default == nil && !tblSch[col].Nullable {
-			val := tblSch[col].Type.Zero()
-			var err error
-			newRow[col], err = tblSch[col].Type.Convert(val)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			val, err := tblSch[col].Default.Eval(ctx, newRow)
-			if err != nil {
-				return nil, err
-			}
-			newRow[col], err = tblSch[col].Type.Convert(val)
-			if err != nil {
-				return nil, err
-			}
+		if e.IsReadOnly {
+			return sql.ErrNotAuthorized.New()
 		}
 	}
-	for _, col := range secondPass {
-		val, err := tblSch[col].Default.Eval(ctx, newRow)
-		if err != nil {
-			return nil, err
-		}
-		newRow[col], err = tblSch[col].Type.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return newRow, nil
+	return nil
 }
 
 // ResolveDefaults takes in a schema, along with each column's default value in a string form, and returns the schema

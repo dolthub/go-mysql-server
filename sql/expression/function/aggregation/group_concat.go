@@ -32,10 +32,12 @@ type GroupConcat struct {
 	selectExprs []sql.Expression
 	maxLen      int
 	returnType  sql.Type
+	window      *sql.Window
 }
 
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
+var _ sql.WindowAdaptableExpression = (*GroupConcat)(nil)
 
 func NewEmptyGroupConcat() sql.Expression {
 	return &GroupConcat{}
@@ -55,11 +57,28 @@ func NewGroupConcat(distinct string, orderBy sql.SortFields, separator string, s
 	return &GroupConcat{distinct: distinct, sf: orderBy, separator: separator, selectExprs: selectExprs, maxLen: maxLen}, nil
 }
 
+// WithWindow implements sql.Aggregation
+func (g *GroupConcat) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+	ng := *g
+	ng.window = window
+	return &ng, nil
+}
+
+// Window implements sql.Aggregation
+func (g *GroupConcat) Window() *sql.Window {
+	return g.window
+}
+
 // NewBuffer creates a new buffer for the aggregation.
 func (g *GroupConcat) NewBuffer() (sql.AggregationBuffer, error) {
 	var rows []sql.Row
 	distinctSet := make(map[string]bool)
 	return &groupConcatBuffer{g, rows, distinctSet}, nil
+}
+
+// NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
+func (g *GroupConcat) NewWindowFunction() (sql.WindowFunction, error) {
+	return NewGroupConcatAgg(g), nil
 }
 
 // Eval implements the Expression interface.
@@ -161,7 +180,7 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	sortFieldMarker := len(g.sf)
 	orderByExpr := children[:len(g.sf)]
 
-	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr), g.separator, children[sortFieldMarker:], g.maxLen)
+	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen)
 }
 
 type groupConcatBuffer struct {

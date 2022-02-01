@@ -21,7 +21,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -37,8 +36,6 @@ type Config struct {
 	Protocol string
 	// Address of the server.
 	Address string
-	// Auth of the server.
-	Auth auth.Auth
 	// Tracer to use in the server. By default, a noop tracer will be used if
 	// no tracer is provided.
 	Tracer opentracing.Tracer

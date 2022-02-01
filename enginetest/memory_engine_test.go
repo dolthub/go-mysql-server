@@ -85,6 +85,25 @@ func TestQueries(t *testing.T) {
 	}
 }
 
+func TestSpatialQueries(t *testing.T) {
+	for _, numPartitions := range numPartitionsVals {
+		for _, indexBehavior := range indexBehaviors {
+			for _, parallelism := range parallelVals {
+				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
+					// This case is covered by TestQueriesSimple
+					continue
+				}
+				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
+				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
+
+				t.Run(testName, func(t *testing.T) {
+					enginetest.TestSpatialQueries(t, harness)
+				})
+			}
+		}
+	}
+}
+
 // TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
 func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
@@ -96,7 +115,16 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `show create table two_pk`,
+		Query: `
+CREATE TABLE T2
+(
+  CHECK (c1 = c2),
+  c1 INT CHECK (c1 > 10),
+  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
+  c3 INT CHECK (c3 < 100),
+  CONSTRAINT c1_nonzero CHECK (c1 = 0),
+  CHECK (C1 > C3)
+);`,
 		Expected: []sql.Row{
 			{1, "00"},
 			{2, "11"},
@@ -119,15 +147,17 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "multi column index lookup with lower()",
+			Name: "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
 			SetUpScript: []string{
-				"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 varchar(100), v2 varchar(100), INDEX (v1,v2));",
-				"INSERT INTO test VALUES (1,'happy','birthday'), (2,'HAPPY','BIRTHDAY'), (3,'hello','sailor');",
+				"create table t1 (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+				"create table sequence_table (max_id integer PRIMARY KEY);",
+				"create trigger update_position_id before insert on t1 for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
+				"insert into sequence_table values (1);",
 			},
 			Assertions: []enginetest.ScriptTestAssertion{
 				{
-					Query:    "SELECT pk FROM test where lower(v1) = 'happy' and lower(v2) = 'birthday' order by 1",
-					Expected: []sql.Row{{1}, {2}},
+					Query:    "insert into t1 () values ();",
+					Expected: []sql.Row{{sql.NewOkResult(1)}},
 				},
 			},
 		},
@@ -319,12 +349,19 @@ func TestInsertInto(t *testing.T) {
 }
 
 func TestInsertIgnoreInto(t *testing.T) {
-	t.Skip() // TODO: Missing index checks and FK checks on in memory table
 	enginetest.TestInsertIgnoreInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestInsertIntoErrors(t *testing.T) {
 	enginetest.TestInsertIntoErrors(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestBrokenInsertScripts(t *testing.T) {
+	enginetest.TestBrokenInsertScripts(t, enginetest.NewSkippingMemoryHarness())
+}
+
+func TestSpatialInsertInto(t *testing.T) {
+	enginetest.TestSpatialInsertInto(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestLoadData(t *testing.T) {
@@ -355,12 +392,20 @@ func TestUpdateErrors(t *testing.T) {
 	enginetest.TestUpdateErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestSpatialUpdate(t *testing.T) {
+	enginetest.TestSpatialUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestDeleteFrom(t *testing.T) {
 	enginetest.TestDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestDeleteFromErrors(t *testing.T) {
 	enginetest.TestDeleteErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestSpatialDeleteFrom(t *testing.T) {
+	enginetest.TestSpatialDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestTruncate(t *testing.T) {
@@ -377,6 +422,14 @@ func TestScripts(t *testing.T) {
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
+func TestUserPrivileges(t *testing.T) {
+	enginetest.TestUserPrivileges(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestUserAuthentication(t *testing.T) {
+	enginetest.TestUserAuthentication(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestComplexIndexQueries(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
 	enginetest.TestComplexIndexQueries(t, harness)
@@ -384,6 +437,13 @@ func TestComplexIndexQueries(t *testing.T) {
 
 func TestTriggers(t *testing.T) {
 	enginetest.TestTriggers(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestBrokenTriggers(t *testing.T) {
+	h := enginetest.NewSkippingMemoryHarness()
+	for _, script := range enginetest.BrokenTriggerQueries {
+		enginetest.TestScript(t, h, script)
+	}
 }
 
 func TestStoredProcedures(t *testing.T) {
@@ -454,7 +514,7 @@ func TestChecksOnUpdate(t *testing.T) {
 	enginetest.TestChecksOnUpdate(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTestDisallowedCheckConstraints(t *testing.T) {
+func TestDisallowedCheckConstraints(t *testing.T) {
 	enginetest.TestDisallowedCheckConstraints(t, enginetest.NewDefaultMemoryHarness())
 }
 
@@ -486,8 +546,16 @@ func TestNaturalJoin(t *testing.T) {
 	enginetest.TestNaturalJoin(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestTestWindowAggregations(t *testing.T) {
-	enginetest.TestWindowAgg(t, enginetest.NewDefaultMemoryHarness())
+func TestWindowFunctions(t *testing.T) {
+	enginetest.TestWindowFunctions(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestWindowRowFrames(t *testing.T) {
+	enginetest.TestWindowRowFrames(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestWindowRangeFrames(t *testing.T) {
+	enginetest.TestWindowRangeFrames(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestNaturalJoinEqual(t *testing.T) {

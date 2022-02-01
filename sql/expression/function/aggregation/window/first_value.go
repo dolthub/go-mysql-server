@@ -16,12 +16,11 @@ package window
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 type FirstValue struct {
@@ -32,6 +31,7 @@ type FirstValue struct {
 
 var _ sql.FunctionExpression = (*FirstValue)(nil)
 var _ sql.WindowAggregation = (*FirstValue)(nil)
+var _ sql.WindowAdaptableExpression = (*FirstValue)(nil)
 
 func NewFirstValue(e sql.Expression) sql.Expression {
 	return &FirstValue{nil, expression.UnaryExpression{Child: e}, 0}
@@ -50,10 +50,6 @@ func (f *FirstValue) Window() *sql.Window {
 // IsNullable implements sql.Expression
 func (f *FirstValue) Resolved() bool {
 	return windowResolved(f.window)
-}
-
-func (f *FirstValue) NewBuffer() sql.Row {
-	return sql.NewRow(make([]sql.Row, 0))
 }
 
 func (f *FirstValue) String() string {
@@ -129,63 +125,10 @@ func (f *FirstValue) WithWindow(window *sql.Window) (sql.WindowAggregation, erro
 	return &nr, nil
 }
 
-// Add implements sql.WindowAggregation
-func (f *FirstValue) Add(ctx *sql.Context, buffer, row sql.Row) error {
-	rows := buffer[0].([]sql.Row)
-	// order -> row, firstValueIdx, originalIndex
-	buffer[0] = append(rows, append(row, 0, f.pos))
-	f.pos++
-	return nil
-}
-
-// Finish implements sql.WindowAggregation
-func (f *FirstValue) Finish(ctx *sql.Context, buffer sql.Row) error {
-	rows := buffer[0].([]sql.Row)
-	if len(rows) > 0 && f.window != nil && f.window.OrderBy != nil {
-		sorter := &expression.Sorter{
-			SortFields: append(partitionsToSortFields(f.Window().PartitionBy), f.Window().OrderBy...),
-			Rows:       rows,
-			Ctx:        ctx,
-		}
-		sort.Stable(sorter)
-		if sorter.LastError != nil {
-			return sorter.LastError
-		}
-
-		// Now that we have the rows in sorted order, set the firstValue
-		firstValueIdx := len(rows[0]) - 2
-		originalIdx := len(rows[0]) - 1
-		var last sql.Row
-		var err error
-		var isNew bool
-		var firstValue interface{}
-		for _, row := range rows {
-			// every time we encounter a new partition, reset the firstValue
-			isNew, err = isNewPartition(ctx, f.window.PartitionBy, last, row)
-			if err != nil {
-				return err
-			}
-			if isNew {
-				firstValue, err = f.Child.Eval(ctx, row)
-				if err != nil {
-					return nil
-				}
-			}
-			row[firstValueIdx] = firstValue
-			last = row
-		}
-
-		// And finally sort again by the original order
-		sort.SliceStable(rows, func(i, j int) bool {
-			return rows[i][originalIdx].(int) < rows[j][originalIdx].(int)
-		})
+func (f *FirstValue) NewWindowFunction() (sql.WindowFunction, error) {
+	c, err := expression.Clone(f.Child)
+	if err != nil {
+		return nil, err
 	}
-	return nil
-}
-
-// EvalRow implements sql.WindowAggregation
-func (f *FirstValue) EvalRow(i int, buffer sql.Row) (interface{}, error) {
-	rows := buffer[0].([]sql.Row)
-	firstValueIdx := len(rows[0]) - 2
-	return rows[i][firstValueIdx], nil
+	return aggregation.NewFirstAgg(c).WithWindow(f.window)
 }

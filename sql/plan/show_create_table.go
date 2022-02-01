@@ -29,13 +29,14 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
-	IsView  bool
-	Indexes []sql.Index
-	Checks  sql.CheckConstraints
+	IsView       bool
+	Indexes      []sql.Index
+	Checks       sql.CheckConstraints
+	targetSchema sql.Schema
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
-func NewShowCreateTable(table sql.Node, isView bool) sql.Node {
+func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
@@ -43,11 +44,21 @@ func NewShowCreateTable(table sql.Node, isView bool) sql.Node {
 }
 
 // Resolved implements the Resolvable interface.
-func (n *ShowCreateTable) Resolved() bool {
+func (sc *ShowCreateTable) Resolved() bool {
+	if !sc.Child.Resolved() {
+		return false
+	}
+
+	for _, col := range sc.targetSchema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
 	return true
 }
 
-func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(1, len(children))
 	}
@@ -56,17 +67,34 @@ func (n *ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	switch child.(type) {
 	case *SubqueryAlias, *ResolvedTable, *UnresolvedTable:
 	default:
-		return nil, sql.ErrInvalidChildType.New(n, child, (*SubqueryAlias)(nil))
+		return nil, sql.ErrInvalidChildType.New(sc, child, (*SubqueryAlias)(nil))
 	}
 
-	nc := *n
-	nc.Child = child
-	return &nc, nil
+	sc.Child = child
+	return &sc, nil
+}
+
+func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	sc.targetSchema = schema
+	return &sc, nil
+}
+
+func (sc *ShowCreateTable) Expressions() []sql.Expression {
+	return wrappedColumnDefaults(sc.targetSchema)
+}
+
+func (sc ShowCreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(sc.targetSchema) {
+		return nil, sql.ErrInvalidChildrenNumber.New(sc, len(exprs), len(sc.targetSchema))
+	}
+
+	sc.targetSchema = schemaWithDefaults(sc.targetSchema, exprs)
+	return &sc, nil
 }
 
 // Schema implements the Node interface.
-func (n *ShowCreateTable) Schema() sql.Schema {
-	switch n.Child.(type) {
+func (sc *ShowCreateTable) Schema() sql.Schema {
+	switch sc.Child.(type) {
 	case *SubqueryAlias:
 		return sql.Schema{
 			&sql.Column{Name: "View", Type: sql.LongText, Nullable: false},
@@ -78,29 +106,30 @@ func (n *ShowCreateTable) Schema() sql.Schema {
 			&sql.Column{Name: "Create Table", Type: sql.LongText, Nullable: false},
 		}
 	default:
-		panic(fmt.Sprintf("unexpected type %T", n.Child))
+		panic(fmt.Sprintf("unexpected type %T", sc.Child))
 	}
 }
 
 // RowIter implements the Node interface
-func (n *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (sc *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		table:   n.Child,
-		isView:  n.IsView,
-		indexes: n.Indexes,
-		checks:  n.Checks,
+		table:   sc.Child,
+		isView:  sc.IsView,
+		indexes: sc.Indexes,
+		checks:  sc.Checks,
+		schema:  sc.targetSchema,
 	}, nil
 }
 
 // String implements the fmt.Stringer interface.
-func (n *ShowCreateTable) String() string {
+func (sc *ShowCreateTable) String() string {
 	t := "TABLE"
-	if n.IsView {
+	if sc.IsView {
 		t = "VIEW"
 	}
 
 	name := ""
-	if nameable, ok := n.Child.(sql.Nameable); ok {
+	if nameable, ok := sc.Child.(sql.Nameable); ok {
 		name = nameable.Name()
 	}
 
@@ -109,6 +138,7 @@ func (n *ShowCreateTable) String() string {
 
 type showCreateTablesIter struct {
 	table        sql.Node
+	schema       sql.Schema
 	didIteration bool
 	isView       bool
 	indexes      []sql.Index
@@ -134,7 +164,7 @@ func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		tableName = table.Name()
 		var err error
-		composedCreateTableStatement, err = i.produceCreateTableStatement(ctx, table.Table)
+		composedCreateTableStatement, err = i.produceCreateTableStatement(ctx, table.Table, i.schema)
 		if err != nil {
 			return nil, err
 		}
@@ -156,8 +186,7 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
-func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table) (string, error) {
-	schema := table.Schema()
+func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema) (string, error) {
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
 
@@ -247,7 +276,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK %s", check.Name, check.Expr.String())
+			fmted := fmt.Sprintf("  CONSTRAINT `%s` CHECK (%s)", check.Name, check.Expr.String())
 
 			if !check.Enforced {
 				fmted += " /*!80016 NOT ENFORCED */"

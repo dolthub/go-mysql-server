@@ -162,7 +162,7 @@ func (uf *UnresolvedFunction) DebugString() string {
 		over = fmt.Sprintf(" %s", sql.DebugString(uf.Window))
 	}
 
-	return fmt.Sprintf("%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
+	return fmt.Sprintf("(unresolved)%s(%s)%s", uf.name, strings.Join(exprs, ", "), over)
 }
 
 // Eval implements the Expression interface.

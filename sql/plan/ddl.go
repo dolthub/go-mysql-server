@@ -129,7 +129,7 @@ type CreateTable struct {
 	CreateSchema sql.PrimaryKeySchema
 	ifNotExists  IfNotExistsOption
 	fkDefs       []*sql.ForeignKeyConstraint
-	chDefs       []*sql.CheckConstraint
+	chDefs       sql.CheckConstraints
 	idxDefs      []*IndexDefinition
 	like         sql.Node
 	temporary    TempTableOption
@@ -206,11 +206,29 @@ func (c *CreateTable) PkSchema() sql.PrimaryKeySchema {
 
 // Resolved implements the Resolvable interface.
 func (c *CreateTable) Resolved() bool {
-	resolved := c.ddlNode.Resolved()
-	for _, col := range c.CreateSchema.Schema {
-		resolved = resolved && col.Default.Resolved()
+	if !c.ddlNode.Resolved() {
+		return false
 	}
-	return resolved
+
+	for _, col := range c.CreateSchema.Schema {
+		if !col.Default.Resolved() {
+			return false
+		}
+	}
+
+	for _, chDef := range c.chDefs {
+		if !chDef.Expr.Resolved() {
+			return false
+		}
+	}
+
+	if c.like != nil {
+		if !c.like.Resolved() {
+			return false
+		}
+	}
+
+	return true
 }
 
 // RowIter implements the Node interface.
@@ -376,21 +394,20 @@ func (c *CreateTable) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (c *CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) == 0 {
-		return c, nil
+		return &c, nil
 	} else if len(children) == 1 {
 		child := children[0]
-		nc := *c
 
 		switch child.(type) {
 		case *Project, *Limit:
-			nc.selectNode = child
+			c.selectNode = child
 		default:
-			nc.like = child
+			c.like = child
 		}
 
-		return &nc, nil
+		return &c, nil
 	} else {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
@@ -518,27 +535,33 @@ func (c *CreateTable) Temporary() TempTableOption {
 	return c.temporary
 }
 
-func (c *CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
-	if len(exprs) != len(c.CreateSchema.Schema)+len(c.chDefs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), len(c.CreateSchema.Schema)+len(c.chDefs))
+func (c CreateTable) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	length := len(c.CreateSchema.Schema) + len(c.chDefs)
+	if len(exprs) != length {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), length)
 	}
 
-	nc := *c
+	nc := c
 
+	// Make sure to make a deep copy of any slices here so we aren't modifying the original pointer
+	ns := c.CreateSchema.Schema.Copy()
 	i := 0
 	for ; i < len(c.CreateSchema.Schema); i++ {
 		unwrappedColDefVal, ok := exprs[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 		if ok {
-			nc.CreateSchema.Schema[i].Default = unwrappedColDefVal
+			ns[i].Default = unwrappedColDefVal
 		} else { // nil fails type check
-			nc.CreateSchema.Schema[i].Default = nil
+			ns[i].Default = nil
 		}
 	}
+	nc.CreateSchema = sql.NewPrimaryKeySchema(ns, c.CreateSchema.PkOrdinals...)
 
-	for ; i < len(c.chDefs)+len(c.CreateSchema.Schema); i++ {
-		nc.chDefs[i-len(c.CreateSchema.Schema)].Expr = exprs[i]
+	ncd, err := c.chDefs.FromExpressions(exprs[i:])
+	if err != nil {
+		return nil, err
 	}
 
+	nc.chDefs = ncd
 	return &nc, nil
 }
 

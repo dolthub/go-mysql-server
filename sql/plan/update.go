@@ -170,6 +170,11 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 			}
 
+			err := u.validateNullability(newRow, u.schema)
+			if err != nil {
+				return nil, err
+			}
+
 			err = u.updater.Update(ctx, oldRow, newRow)
 			if err != nil {
 				return nil, err
@@ -198,6 +203,16 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 		}
 	}
 	return prev, nil
+}
+
+func (u *updateIter) validateNullability(row sql.Row, schema sql.Schema) error {
+	for idx, col := range schema {
+		if !col.Nullable && row[idx] == nil {
+			// In the case of an IGNORE we set the nil value to a default and add a warning
+			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
+		}
+	}
+	return nil
 }
 
 func (u *updateIter) Close(ctx *sql.Context) error {

@@ -25,6 +25,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
 // SessionBuilder creates sessions given a MySQL connection and a server address.
@@ -36,7 +37,14 @@ type DoneFunc func()
 
 // DefaultSessionBuilder is a SessionBuilder that returns a base session.
 func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
-	client := sql.Client{Address: c.RemoteAddr().String(), User: c.User, Capabilities: c.Capabilities}
+	host := ""
+	user := ""
+	mysqlConnectionUser, ok := c.UserData.(grant_tables.MysqlConnectionUser)
+	if ok {
+		host = mysqlConnectionUser.Host
+		user = mysqlConnectionUser.User
+	}
+	client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
 	return sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
 }
 
@@ -140,17 +148,19 @@ func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
 
 func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	sess, ok := s.sessions[conn.ConnectionID]
+	// Release this lock immediately. If we call NewSession below, we
+	// cannot hold the lock. We will relock if we need to.
+	s.mu.Unlock()
 
 	if !ok {
-		s.mu.Unlock()
 		err := s.NewSession(ctx, conn)
-		s.mu.Lock()
 		if err != nil {
 			return nil, err
 		}
+		s.mu.Lock()
 		sess = s.sessions[conn.ConnectionID]
+		s.mu.Unlock()
 	}
 
 	return sess.session, nil

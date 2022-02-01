@@ -1128,14 +1128,14 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC`,
 		ExpectedPlan: "Sort(datetime_table.date_col ASC)\n" +
-			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ Table(datetime_table)\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table ORDER BY date_col ASC LIMIT 100`,
 		ExpectedPlan: "Limit(100)\n" +
 			" └─ TopN(Limit: [100]; datetime_table.date_col ASC)\n" +
-			"     └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"     └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"         └─ Table(datetime_table)\n",
 	},
 	{
@@ -1143,43 +1143,43 @@ var PlanTests = []QueryPlanTest{
 		ExpectedPlan: "Limit(100)\n" +
 			" └─ Offset(100)\n" +
 			"     └─ TopN(Limit: [(100 + 100)]; datetime_table.date_col ASC)\n" +
-			"         └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			"         └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"             └─ Table(datetime_table)\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.date_col = \"2020-01-01\")\n" +
-			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table where date_col > '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.date_col > \"2020-01-01\")\n" +
-			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table where datetime_col = '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.datetime_col = \"2020-01-01\")\n" +
-			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.datetime_col])\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table where datetime_col > '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.datetime_col > \"2020-01-01\")\n" +
-			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.datetime_col])\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table where timestamp_col = '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.timestamp_col = \"2020-01-01\")\n" +
-			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
 	},
 	{
 		Query: `SELECT * FROM datetime_table where timestamp_col > '2020-01-01'`,
 		ExpectedPlan: "Filter(datetime_table.timestamp_col > \"2020-01-01\")\n" +
-			" └─ Projected table access on [i date_col datetime_col timestamp_col]\n" +
+			" └─ Projected table access on [i date_col datetime_col timestamp_col time_col]\n" +
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
 	},
 	{
@@ -1207,7 +1207,7 @@ var PlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(datetime_table on [datetime_table.timestamp_col])\n",
 	},
 	{
-		Query: `SELECT dt1.i FROM datetime_table dt1 
+		Query: `SELECT dt1.i FROM datetime_table dt1
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1`,
 		ExpectedPlan: "Sort(dt1.i ASC)\n" +
@@ -1217,6 +1217,33 @@ var PlanTests = []QueryPlanTest{
 			"         │   └─ Table(datetime_table)\n" +
 			"         └─ TableAlias(dt1)\n" +
 			"             └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
+	},
+	{
+		Query: `SELECT dt1.i FROM datetime_table dt1
+			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
+			order by 1 limit 3 offset 0`,
+		ExpectedPlan: "Limit(3)\n" +
+			" └─ Offset(0)\n" +
+			"     └─ TopN(Limit: [(3 + 0)]; dt1.i ASC)\n" +
+			"         └─ Project(dt1.i)\n" +
+			"             └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"                 ├─ TableAlias(dt2)\n" +
+			"                 │   └─ Table(datetime_table)\n" +
+			"                 └─ TableAlias(dt1)\n" +
+			"                     └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
+	},
+	{
+		Query: `SELECT dt1.i FROM datetime_table dt1
+			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
+			order by 1 limit 3`,
+		ExpectedPlan: "Limit(3)\n" +
+			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
+			"     └─ Project(dt1.i)\n" +
+			"         └─ IndexedJoin(dt1.date_col = DATE(DATE_SUB(dt2.timestamp_col, INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table(datetime_table)\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ IndexedTableAccess(datetime_table on [datetime_table.date_col])\n",
 	},
 	{
 		Query: `SELECT pk FROM one_pk
@@ -1902,6 +1929,14 @@ var PlanTests = []QueryPlanTest{
 			"             └─ Window(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC), othertable.i2, othertable.s2)\n" +
 			"                 └─ Projected table access on [i2 s2]\n" +
 			"                     └─ Table(othertable)\n" +
+			"",
+	},
+	{
+		Query: `SELECT t, n, lag(t, 1, t+1) over (partition by n) FROM bigtable`,
+		ExpectedPlan: "Project(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n) as lag(t, 1, t+1) over (partition by n))\n" +
+			" └─ Window(bigtable.t, bigtable.n, lag(bigtable.t, 1, (bigtable.t + 1)) over ( partition by bigtable.n))\n" +
+			"     └─ Projected table access on [t n]\n" +
+			"         └─ Table(bigtable)\n" +
 			"",
 	},
 	{

@@ -32,12 +32,10 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var errConnectionNotFound = errors.NewKind("connection not found: %c")
@@ -329,14 +327,6 @@ func (h *Handler) doQuery(
 		}
 	}
 
-	// TODO: it would be nice to put this logic in the engine itself, not the handler, but we wouldn't get accurate
-	//  timing without some more work
-	defer func() {
-		if q, ok := h.e.Auth.(*auth.Audit); ok {
-			q.Query(ctx, time.Since(start), err)
-		}
-	}()
-
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
@@ -362,7 +352,11 @@ func (h *Handler) doQuery(
 				row, err := rows.Next(ctx)
 				if err != nil {
 					if err == io.EOF {
-						return nil
+						return rows.Close(ctx)
+					}
+					cerr := rows.Close(ctx)
+					if cerr != nil {
+						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
 					}
 					return err
 				}
@@ -447,22 +441,13 @@ func (h *Handler) doQuery(
 	})
 
 	err = eg.Wait()
-	ctx = oCtx
 	if err != nil {
-		rows.Close(ctx)
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
-
-	err = rows.Close(ctx)
-	if err != nil {
-		return remainder, err
-	}
+	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
-		return remainder, err
-	}
-	if err = setResultInfo(ctx, c, r, parsed); err != nil {
 		return remainder, err
 	}
 
@@ -507,35 +492,6 @@ func setConnStatusFlags(ctx *sql.Context, c *mysql.Conn) error {
 	}
 
 	return nil
-}
-
-func setResultInfo(ctx *sql.Context, conn *mysql.Conn, r *sqltypes.Result, parsedQuery sql.Node) error {
-	lastId := ctx.Session.GetLastQueryInfo(sql.LastInsertId)
-	r.InsertID = uint64(lastId)
-
-	// cc. https://dev.mysql.com/doc/internals/en/capability-flags.html
-	// Check if the CLIENT_FOUND_ROWS Compatibility Flag is set
-	if shouldUseFoundRowsOutput(conn, parsedQuery) {
-		r.RowsAffected = uint64(ctx.GetLastQueryInfo(sql.FoundRows))
-	}
-
-	return nil
-}
-
-// When CLIENT_FOUND_ROWS is set we should return the number of rows MATCHED as the number of affected.
-// This should only happen on UPDATE and INSERT ON DUPLICATE queries
-func shouldUseFoundRowsOutput(conn *mysql.Conn, parsedQuery sql.Node) bool {
-	if (conn.Capabilities & mysql.CapabilityClientFoundRows) < 0 {
-		return false
-	}
-
-	// TODO: Add support for INSERT ON DUPLICATE
-	switch parsedQuery.(type) {
-	case *plan.Update:
-		return true
-	default:
-		return false
-	}
 }
 
 func isSessionAutocommit(ctx *sql.Context) (bool, error) {

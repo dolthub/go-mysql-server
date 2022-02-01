@@ -40,7 +40,7 @@ func (sf SortFields) ToExpressions() []Expression {
 	return es
 }
 
-func (sf SortFields) FromExpressions(exprs []Expression) SortFields {
+func (sf SortFields) FromExpressions(exprs ...Expression) SortFields {
 	var fields = make(SortFields, len(sf))
 
 	if len(exprs) != len(fields) {
