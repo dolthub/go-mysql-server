@@ -390,11 +390,26 @@ var (
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
 
+	// ErrRoleCreationFailure is returned when attempting to create a role and it fails for any reason.
+	ErrRoleCreationFailure = errors.NewKind("Operation CREATE ROLE failed for %s")
+
+	// ErrUserDeletionFailure is returned when attempting to create a user and it fails for any reason.
+	ErrUserDeletionFailure = errors.NewKind("Operation DROP USER failed for %s")
+
+	// ErrRoleDeletionFailure is returned when attempting to create a role and it fails for any reason.
+	ErrRoleDeletionFailure = errors.NewKind("Operation DROP ROLE failed for %s")
+
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
 	ErrPrivilegeCheckFailed = errors.NewKind("%s command denied to user %s for table '%s'")
 
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")
+
+	// ErrRevokeUserDoesNotExist is returned when a user does not exist when attempting to revoke privileges from them.
+	ErrRevokeUserDoesNotExist = errors.NewKind("There is no such grant defined for user '%s' on host '%s'")
+
+	// ErrGrantRevokeRoleDoesNotExist is returned when a user or role does not exist when attempting to grant or revoke roles.
+	ErrGrantRevokeRoleDoesNotExist = errors.NewKind("Unknown authorization ID %s")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

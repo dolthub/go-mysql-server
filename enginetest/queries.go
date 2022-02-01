@@ -177,7 +177,7 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{{sql.Point{SRID: 4326, X: 1, Y: 2}}},
 	},
 	{
-		Query: `SELECT ST_SRID(l, 4326) from line_table`,
+		Query: `SELECT ST_SRID(l, 4326) from line_table ORDER BY l`,
 		Expected: []sql.Row{
 			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
 			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
@@ -247,6 +247,44 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_GEOMFROMGEOJSON(ST_ASGEOJSON(p)) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_DIMENSION(p) from point_table`,
+		Expected: []sql.Row{
+			{0},
+		},
+	},
+	{
+		Query: `SELECT ST_DIMENSION(l) from line_table`,
+		Expected: []sql.Row{
+			{1},
+			{1},
+		},
+	},
+	{
+		Query: `SELECT ST_DIMENSION(p) from polygon_table`,
+		Expected: []sql.Row{
+			{2},
+		},
+	},
+	{
+		Query: `SELECT ST_SWAPXY(p) from point_table`,
+		Expected: []sql.Row{
+			{sql.Point{X: 2, Y: 1}},
+		},
+	},
+	{
+		Query: `SELECT ST_SWAPXY(l) from line_table`,
+		Expected: []sql.Row{
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
+		Expected: []sql.Row{
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
 		},
 	},
 }
