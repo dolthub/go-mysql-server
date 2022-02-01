@@ -177,7 +177,7 @@ var SpatialQueryTests = []QueryTest{
 		Expected: []sql.Row{{sql.Point{SRID: 4326, X: 1, Y: 2}}},
 	},
 	{
-		Query: `SELECT ST_SRID(l, 4326) from line_table`,
+		Query: `SELECT ST_SRID(l, 4326) from line_table ORDER BY l`,
 		Expected: []sql.Row{
 			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}},
 			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}, {SRID: 4326, X: 5, Y: 6}}}},
