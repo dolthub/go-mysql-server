@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/oliveagle/jsonpath"
-	"github.com/pkg/errors"
 )
 
 // JSONValue is an integrator specific implementation of a JSON field value.
@@ -95,10 +94,7 @@ func (doc JSONDocument) Extract(ctx *Context, path string) (JSONValue, error) {
 	}
 
 	// TODO(andy) handle error
-	val, err := c.Lookup(doc.Val) // err ignored
-	if err != nil {
-		return nil, errors.Wrap(err, "json extract")
-	}
+	val, _ := c.Lookup(doc.Val) // err ignored
 
 	return JSONDocument{Val: val}, nil
 }

@@ -103,7 +103,7 @@ func TestJsonConvert(t *testing.T) {
 		expectedErr bool
 	}{
 		{`""`, MustJSON(`""`), false},
-		{[]int{1, 2}, JSONDocument{Val: []int{1, 2}}, false},
+		{[]int{1, 2}, MustJSON(`[1, 2]`), false},
 		{`{"a": true, "b": 3}`, MustJSON(`{"a":true,"b":3}`), false},
 		{[]byte(`{"a": true, "b": 3}`), MustJSON(`{"a":true,"b":3}`), false},
 		{testStruct{Field: "test"}, MustJSON(`{"field":"test"}`), false},

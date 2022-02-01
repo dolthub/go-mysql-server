@@ -16,6 +16,7 @@ package function
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -107,18 +108,24 @@ func (j *JSONContains) Type() sql.Type {
 }
 
 func (j *JSONContains) IsNullable() bool {
-	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || j.Path.IsNullable()
+	return j.JSONTarget.IsNullable() || j.JSONCandidate.IsNullable() || (j.Path != nil && j.Path.IsNullable())
 }
 
 func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget)
+	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget, 1)
 	if err != nil {
 		return nil, err
 	}
+	if target == nil {
+		return nil, nil
+	}
 
-	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate)
+	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate, 2)
 	if err != nil {
 		return nil, err
+	}
+	if candidate == nil {
+		return nil, nil
 	}
 
 	// If there's path reevaluate target based off of this path
@@ -149,15 +156,24 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return target.Contains(ctx, candidate)
 }
 
-func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.SearchableJSONValue, error) {
+func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression, argNum int) (sql.SearchableJSONValue, error) {
 	js, err := json.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+	if js == nil {
+		return nil, nil
+	}
 
-	converted, err := sql.JSON.Convert(js)
-	if err != nil {
-		return nil, sql.ErrInvalidJSONText.New(js)
+	var converted interface{}
+	switch js.(type) {
+	case string, []interface{}, map[string]interface{}, JSONValue:
+		converted, err = sql.JSON.Convert(js)
+		if err != nil {
+			return nil, sql.ErrInvalidJSONText.New(js)
+		}
+	default:
+		return nil, errors.NewKind("Invalid data type for JSON data in argument %v to function json_contains; a JSON string or JSON type is required.").New(argNum)
 	}
 
 	searchable, ok := converted.(sql.SearchableJSONValue)

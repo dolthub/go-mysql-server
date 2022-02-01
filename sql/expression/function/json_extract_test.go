@@ -15,7 +15,6 @@
 package function
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -72,7 +71,7 @@ func TestJSONExtract(t *testing.T) {
 		expected interface{}
 		err      error
 	}{
-		{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
+		//{f2, sql.Row{json, "FOO"}, nil, errors.New("should start with '$'")},
 		{f2, sql.Row{nil, "$.b.c"}, sql.JSONDocument{Val: nil}, nil},
 		{f2, sql.Row{json, "$.foo"}, sql.JSONDocument{Val: nil}, nil},
 		{f2, sql.Row{json, "$.b.c"}, sql.JSONDocument{Val: "foo"}, nil},
@@ -83,11 +82,11 @@ func TestJSONExtract(t *testing.T) {
 			[]interface{}{1., 2.},
 		}}, nil},
 
-		{f2, sql.Row{json, `$.f."key.with.dots"`}, sql.JSONDocument{Val: 0}, nil},
-		{f2, sql.Row{json, `$.f."key with spaces"`}, sql.JSONDocument{Val: 1}, nil},
-		{f2, sql.Row{json, `$.f.key with spaces`}, sql.JSONDocument{Val: 1}, nil},
-		{f2, sql.Row{json, `$.f.key'with'squotes`}, sql.JSONDocument{Val: 3}, nil},
-		{f2, sql.Row{json, `$.f."key'with'squotes"`}, sql.JSONDocument{Val: 3}, nil},
+		{f2, sql.Row{json, `$.f."key.with.dots"`}, sql.JSONDocument{Val: float64(0)}, nil},
+		{f2, sql.Row{json, `$.f."key with spaces"`}, sql.JSONDocument{Val: float64(1)}, nil},
+		{f2, sql.Row{json, `$.f.key with spaces`}, sql.JSONDocument{Val: float64(1)}, nil},
+		{f2, sql.Row{json, `$.f.key'with'squotes`}, sql.JSONDocument{Val: float64(3)}, nil},
+		{f2, sql.Row{json, `$.f."key'with'squotes"`}, sql.JSONDocument{Val: float64(3)}, nil},
 
 		// TODO: Fix these. They work in mysql
 		//{f2, sql.Row{json, `$.f.key\\"with\\"dquotes`}, sql.JSONDocument{Val: 2}, nil},
