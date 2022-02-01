@@ -268,6 +268,25 @@ var SpatialQueryTests = []QueryTest{
 			{2},
 		},
 	},
+	{
+		Query: `SELECT ST_SWAPXY(p) from point_table`,
+		Expected: []sql.Row{
+			{sql.Point{X: 2, Y: 1}},
+		},
+	},
+	{
+		Query: `SELECT ST_SWAPXY(l) from line_table`,
+		Expected: []sql.Row{
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}, {X: 6, Y: 5}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
+		Expected: []sql.Row{
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+		},
+	},
 }
 
 var QueryTests = []QueryTest{
@@ -2567,6 +2586,17 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
+		Query: "SELECT DISTINCT * FROM (values row(7,31,27), row(79,17,38), row(78,59,26)) a (col0, col1, col2) WHERE ( + col1 + + col2 ) NOT BETWEEN NULL AND col1",
+		Expected: []sql.Row{{7, 31, 27},
+			{79, 17, 38},
+			{78, 59, 26}},
+	},
+	{
+		Query: "SELECT + tab0.col2 * - tab0.col1 FROM (values row(89,91,82), row(35,97,1), row(24,86,33)) tab0 (col0, col1, col2) " +
+			"WHERE NOT ( + col2 * + col2 * col1 ) BETWEEN col1 * tab0.col0 AND NULL",
+		Expected: []sql.Row{{-97}},
+	},
+	{
 		Query:    "SELECT id FROM typestable WHERE ti > '2019-12-31'",
 		Expected: []sql.Row{{int64(1)}},
 	},
@@ -3654,19 +3684,19 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT USER()`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER()`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 	},
 	{
 		Query: `SELECT CURRENT_USER`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -3678,7 +3708,7 @@ var QueryTests = []QueryTest{
 	{
 		Query: `SELECT CURRENT_user`,
 		Expected: []sql.Row{
-			{"user@client"},
+			{"root@localhost"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
@@ -5796,6 +5826,14 @@ var QueryTests = []QueryTest{
 			{1, 1},
 			{2, 2},
 			{3, 3},
+		},
+	},
+	{
+		Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
+		Expected: []sql.Row{
+			{float64(2)},
+			{float64(4)},
+			{float64(6)},
 		},
 	},
 	{

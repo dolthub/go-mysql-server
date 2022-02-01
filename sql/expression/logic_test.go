@@ -59,9 +59,11 @@ func TestOr(t *testing.T) {
 		expected    interface{}
 	}{
 		{"left is true, right is false", true, false, true},
-		{"left is null, right is not", nil, true, true},
+		{"left is null, right is true", nil, true, true},
+		{"left is null, right is false", nil, false, nil},
 		{"left is false, right is true", false, true, true},
-		{"right is null, left is not", true, nil, true},
+		{"left is true, right is null", true, nil, true},
+		{"left is false, right is null", false, nil, nil},
 		{"both true", true, true, true},
 		{"both false", false, false, false},
 		{"both null", nil, nil, nil},

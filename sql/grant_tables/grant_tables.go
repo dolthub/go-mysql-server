@@ -32,7 +32,8 @@ import (
 type GrantTables struct {
 	Enabled bool
 
-	user *grantTable
+	user       *grantTable
+	role_edges *grantTable
 	//TODO: add the rest of these tables
 	//db               *grantTable
 	//global_grants    *grantTable
@@ -41,7 +42,6 @@ type GrantTables struct {
 	//procs_priv       *grantTable
 	//proxies_priv     *grantTable
 	//default_roles    *grantTable
-	//role_edges       *grantTable
 	//password_history *grantTable
 }
 
@@ -51,7 +51,8 @@ var _ mysql.AuthServer = (*GrantTables)(nil)
 // CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
 func CreateEmptyGrantTables() *GrantTables {
 	grantTables := &GrantTables{
-		user: newGrantTable(userTblName, userTblSchema, UserPrimaryKey{}, UserSecondaryKey{}),
+		user:       newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
+		role_edges: newGrantTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
 	}
 	return grantTables
 }
@@ -59,7 +60,7 @@ func CreateEmptyGrantTables() *GrantTables {
 // AddRootAccount adds the root account to the list of accounts.
 func (g *GrantTables) AddRootAccount() {
 	g.Enabled = true
-	addDefaultRootUser(g.user)
+	addSuperUser(g.user, "root", "localhost", "")
 }
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
@@ -76,7 +77,77 @@ func (g *GrantTables) AddSuperUser(username string, password string) {
 		s2 := hash.Sum(nil)
 		password = "*" + strings.ToUpper(hex.EncodeToString(s2))
 	}
-	addSuperUser(g.user, username, password)
+	addSuperUser(g.user, username, "%", password)
+}
+
+// GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
+// roles, roleSearch changes whether the search matches against user or role rules.
+func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
+	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
+	// For now, this just does another check for localhost if the host is 127.0.0.1
+	//TODO: match on anonymous users, which have an empty username (different for roles)
+	var userEntry *User
+	userEntries := g.user.data.Get(UserPrimaryKey{
+		Host: host,
+		User: user,
+	})
+	if len(userEntries) == 1 {
+		userEntry = userEntries[0].(*User)
+	} else {
+		userEntries = g.user.data.Get(UserSecondaryKey{
+			User: user,
+		})
+		for _, readUserEntry := range userEntries {
+			readUserEntry := readUserEntry.(*User)
+			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
+			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+				(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
+				userEntry = readUserEntry
+				break
+			}
+		}
+	}
+	return userEntry
+}
+
+// UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
+// privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
+// also pulled from the context.
+func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operation) bool {
+	client := ctx.Session.Client()
+	user := g.GetUser(client.User, client.Address, false)
+	if user == nil {
+		return false
+	}
+	globalStaticPrivs := NewUserGlobalStaticPrivileges()
+	globalStaticPrivs.Merge(user.PrivilegeSet)
+	roleEdgeEntries := g.role_edges.data.Get(RoleEdgesToKey{
+		ToHost: user.Host,
+		ToUser: user.User,
+	})
+	//TODO: filter the active roles using the context, rather than using every granted roles
+	//TODO: System variable "activate_all_roles_on_login", if set, will set all roles as active upon logging in
+	for _, roleEdgeEntry := range roleEdgeEntries {
+		roleEdge := roleEdgeEntry.(*RoleEdge)
+		role := g.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
+		if role != nil {
+			globalStaticPrivs.Merge(role.PrivilegeSet)
+		}
+	}
+
+	for _, operation := range operations {
+		for _, operationPriv := range operation.Privileges {
+			if globalStaticPrivs.Has(operationPriv) {
+				//TODO: Handle partial revokes
+				continue
+			}
+			//TODO: Check if there's a database privilege
+			//TODO: Check if there's a table privilege
+			//TODO: Check if there's a column privilege
+			return false
+		}
+	}
+	return true
 }
 
 // Name implements the interface sql.Database.
@@ -87,8 +158,10 @@ func (g *GrantTables) Name() string {
 // GetTableInsensitive implements the interface sql.Database.
 func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	switch strings.ToLower(tblName) {
-	case "user":
+	case userTblName:
 		return g.user, true, nil
+	case roleEdgesTblName:
+		return g.role_edges, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -96,7 +169,7 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 
 // GetTableNames implements the interface sql.Database.
 func (g *GrantTables) GetTableNames(ctx *sql.Context) ([]string, error) {
-	return []string{"user"}, nil
+	return []string{userTblName, roleEdgesTblName}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
@@ -113,40 +186,24 @@ func (g *GrantTables) Salt() ([]byte, error) {
 // ValidateHash implements the interface mysql.AuthServer. This is called when the method used is "mysql_native_password".
 func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
-		return mysqlGetter(user), nil
+		host, _, err := net.SplitHostPort(addr.String())
+		if err != nil {
+			return nil, err
+		}
+		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 
 	host, _, err := net.SplitHostPort(addr.String())
 	if err != nil {
 		return nil, err
 	}
-	//TODO: determine what the localhost is on the machine, then handle the conversion between ip and localhost
-	// For now, this just does another check for localhost if the host is 127.0.0.1
-	var userRow sql.Row
-	userRows := g.user.data.Get(UserPrimaryKey{
-		Host: host,
-		User: user,
-	})
-	if len(userRows) == 1 {
-		userRow = userRows[0]
-	} else {
-		userRows = g.user.data.Get(UserSecondaryKey{
-			User: user,
-		})
-		for _, readUserRow := range userRows {
-			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
-			if host == readUserRow[0] || (host == "127.0.0.1" && readUserRow[0] == "localhost") || readUserRow[0] == "%" {
-				userRow = readUserRow
-				break
-			}
-		}
-	}
-	if len(userRow) == 0 {
+
+	userEntry := g.GetUser(user, host, false)
+	if userEntry == nil || userEntry.Locked {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
-
-	if password, ok := userRows[0][40].(string); ok && len(password) > 0 { // index 40 is the authentication string, see the mysql.user schema
-		if !validateMysqlNativePassword(authResponse, salt, password) {
+	if len(userEntry.Password) > 0 {
+		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
 			return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 		}
 	} else if len(authResponse) > 0 { // password is nil or empty, therefore no password is set
@@ -154,13 +211,17 @@ func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
 
-	return mysqlGetter(user), nil
+	return MysqlConnectionUser{User: userEntry.User, Host: userEntry.Host}, nil
 }
 
 // Negotiate implements the interface mysql.AuthServer. This is called when the method used is not "mysql_native_password".
-func (g *GrantTables) Negotiate(c *mysql.Conn, user string, remoteAddr net.Addr) (mysql.Getter, error) {
+func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.Getter, error) {
 	if !g.Enabled {
-		return mysqlGetter(user), nil
+		host, _, err := net.SplitHostPort(addr.String())
+		if err != nil {
+			return nil, err
+		}
+		return MysqlConnectionUser{User: user, Host: host}, nil
 	}
 	return nil, fmt.Errorf(`the only user login interface currently supported is "mysql_native_password"`)
 }
@@ -171,9 +232,14 @@ func (g *GrantTables) Persist(ctx *sql.Context) error {
 	return nil
 }
 
-// UserTable returns the user table.
+// UserTable returns the "user" table.
 func (g *GrantTables) UserTable() *grantTable {
 	return g.user
+}
+
+// RoleEdgesTable returns the "role_edges" table.
+func (g *GrantTables) RoleEdgesTable() *grantTable {
+	return g.role_edges
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given

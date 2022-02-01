@@ -1,4 +1,4 @@
-// Copyright 2022 Dolthub, Inc.
+// Copyright 2021-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,16 +14,19 @@
 
 package grant_tables
 
-import (
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/vt/proto/query"
-)
+// Operation represents an operation that requires privileges to execute.
+type Operation struct {
+	Database   string
+	Table      string
+	Column     string
+	Privileges []PrivilegeType
+}
 
-type mysqlGetter string
-
-var _ mysql.Getter = mysqlGetter("")
-
-// Get implements the interface mysql.Getter.
-func (m mysqlGetter) Get() *query.VTGateCallerID {
-	return &query.VTGateCallerID{Username: string(m), Groups: nil}
+func NewOperation(dbName string, tblName string, colName string, privs ...PrivilegeType) Operation {
+	return Operation{
+		Database:   dbName,
+		Table:      tblName,
+		Column:     colName,
+		Privileges: privs,
+	}
 }

@@ -374,9 +374,10 @@ func TestWindowedAggFuncs(t *testing.T) {
 				err := tt.Agg.StartPartition(ctx, p, buf)
 				require.NoError(t, err)
 				var framer sql.WindowFramer = NewUnboundedPrecedingToCurrentRowFramer()
-				framer = tt.Agg.DefaultFramer().NewFramer(p)
+				framer, err = tt.Agg.DefaultFramer().NewFramer(p)
+				require.NoError(t, err)
 				for {
-					interval, err := framer.Next()
+					interval, err := framer.Next(ctx, buf)
 					if errors.Is(err, io.EOF) {
 						break
 					}

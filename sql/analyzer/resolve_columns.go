@@ -660,7 +660,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			// to true. If it's not required, there's no need for a reorder if
 			// no other alias is required.
 			_, ok = groupingColumns[name]
-			if ok {
+			if ok && groupingColumns[name].Table() == "" {
 				aliases[name] = len(newSelectedExprs)
 				needsReorder = true
 				delete(groupingColumns, name)

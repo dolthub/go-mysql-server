@@ -86,6 +86,7 @@ var _ VersionedDBHarness = (*MemoryHarness)(nil)
 var _ ForeignKeyHarness = (*MemoryHarness)(nil)
 var _ KeylessTableHarness = (*MemoryHarness)(nil)
 var _ ReadOnlyDatabaseHarness = (*MemoryHarness)(nil)
+var _ ClientHarness = (*MemoryHarness)(nil)
 var _ SkippingHarness = (*SkippingMemoryHarness)(nil)
 
 type SkippingMemoryHarness struct {
@@ -123,6 +124,15 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 	return sql.NewContext(
 		context.Background(),
 		sql.WithSession(m.session),
+	)
+}
+
+func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
+	session := sql.NewBaseSessionWithClientServer("address", client, 1)
+
+	return sql.NewContext(
+		context.Background(),
+		sql.WithSession(session),
 	)
 }
 

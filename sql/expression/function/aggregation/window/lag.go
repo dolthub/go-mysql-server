@@ -18,15 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
-
-var ErrInvalidLagOffset = errors.NewKind("'LAG' offset must be a non-negative integer; found: %v")
-var ErrInvalidLagDefault = errors.NewKind("'LAG' default must be a literal; found: %v")
 
 type Lag struct {
 	window *sql.Window
@@ -39,36 +34,6 @@ var _ sql.FunctionExpression = (*Lag)(nil)
 var _ sql.WindowAggregation = (*Lag)(nil)
 var _ sql.WindowAdaptableExpression = (*Lag)(nil)
 
-// getLagOffset extracts a non-negative integer from an expression.Literal, or errors
-func getLagOffset(e sql.Expression) (int, error) {
-	lit, ok := e.(*expression.Literal)
-	if !ok {
-		return 0, ErrInvalidLagOffset.New(e)
-	}
-	val := lit.Value()
-	var offset int
-	switch e := val.(type) {
-	case int:
-		offset = e
-	case int8:
-		offset = int(e)
-	case int16:
-		offset = int(e)
-	case int32:
-		offset = int(e)
-	case int64:
-		offset = int(e)
-	default:
-		return 0, ErrInvalidLagOffset.New(e)
-	}
-
-	if offset < 0 {
-		return 0, ErrInvalidLagOffset.New(e)
-	}
-
-	return offset, nil
-}
-
 // NewLag accepts variadic arguments to create a new Lag node:
 // If 1 expression, use default values for [default] and [offset]
 // If 2 expressions, use default value for [default]
@@ -80,13 +45,13 @@ func NewLag(e ...sql.Expression) (*Lag, error) {
 	case 1:
 		return &Lag{NaryExpression: expression.NaryExpression{ChildExpressions: e[:1]}, offset: 1}, nil
 	case 2:
-		offset, err := getLagOffset(e[1])
+		offset, err := expression.LiteralToInt(e[1])
 		if err != nil {
 			return nil, err
 		}
 		return &Lag{NaryExpression: expression.NaryExpression{ChildExpressions: e[:1]}, offset: offset}, nil
 	case 3:
-		offset, err := getLagOffset(e[1])
+		offset, err := expression.LiteralToInt(e[1])
 		if err != nil {
 			return nil, err
 		}
