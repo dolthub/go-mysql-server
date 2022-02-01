@@ -15,9 +15,9 @@
 package function
 
 import (
-	"errors"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -85,19 +85,24 @@ func TestJSONContains(t *testing.T) {
 		err      error
 	}{
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("should start with '$'")},
+		{f, sql.Row{1, nil, "$.a"}, nil, errors.New("Invalid argument to 1")},
+		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, errors.New("Invalid argument to 2")},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, json, "$.foo"}, nil, nil},
 		{f, sql.Row{json, `"foo"`, "$.b.c"}, true, nil},
-		{f, sql.Row{json, 1, "$.e[0][*]"}, false, nil},
-		{f, sql.Row{json, []float64{1, 2}, "$.e[0][*]"}, true, nil},
+		{f, sql.Row{json, `1`, "$.e[0][0]"}, true, nil},
+		{f, sql.Row{json, `1`, "$.e[0][*]"}, true, nil},
+		{f, sql.Row{json, `1`, "$.e[0][0]"}, true, nil},
+		{f, sql.Row{json, `[1, 2]`, "$.e[0][*]"}, true, nil},
+		{f, sql.Row{json, `[1, 2]`, "$.e[0]"}, true, nil},
 		{f, sql.Row{json, json, "$"}, true, nil}, // reflexivity
 		{f, sql.Row{json, json["e"], "$.e"}, true, nil},
 		{f, sql.Row{json, badMap, "$"}, false, nil}, // false due to key name difference
 		{f, sql.Row{json, goodMap, "$"}, true, nil},
-		{f2, sql.Row{json, []float64{1, 2}}, false, nil},
-		{f2, sql.Row{"[1,2,3,4]", []float64{1, 2}}, true, nil},
-		{f2, sql.Row{"[1,2,3,4]", float64(1)}, true, nil},
+		{f2, sql.Row{json, `[1, 2]`}, false, nil},
+		{f2, sql.Row{"[1,2,3,4]", `[1, 2]`}, true, nil},
+		{f2, sql.Row{"[1,2,3,4]", `1`}, true, nil},
 		{f2, sql.Row{`["apple", "orange", "banana"]`, `"orange"`}, true, nil},
 		{f2, sql.Row{`"hello"`, `"hello"`}, true, nil},
 		{f2, sql.Row{"{}", "{}"}, true, nil},

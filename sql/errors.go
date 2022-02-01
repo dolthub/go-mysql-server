@@ -275,7 +275,7 @@ var (
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
-	ErrInvalidArgument = errors.NewKind("Incorrect arguments to %s")
+	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
 	// ErrSavepointDoesNotExist is returned when a RELEASE SAVEPOINT or ROLLBACK TO SAVEPOINT statement references a
 	// non-existent savepoint identifier

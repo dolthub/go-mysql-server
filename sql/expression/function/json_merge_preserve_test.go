@@ -55,8 +55,8 @@ func TestJSONMergePreserve(t *testing.T) {
 	jsonObj5 := map[string]interface{}{"a": 5, "d": 6}
 	jsonObj6 := map[string]interface{}{"a": 3, "e": 8}
 	jsonObj7 := map[string]interface{}{"a": map[string]interface{}{"one": false, "two": 2.55}, "e": 8}
-	json3ObjResult := map[string]interface{}{"a": []interface{}{1, 3, 5}, "b": 2, "c": 4, "d": 6}
-	json4ObjResult := map[string]interface{}{"a": []interface{}{1, 3, 5, 3}, "b": 2, "c": 4, "d": 6, "e": 8}
+	json3ObjResult := map[string]interface{}{"a": []interface{}{float64(1), float64(3), float64(5)}, "b": float64(2), "c": float64(4), "d": float64(6)}
+	json4ObjResult := map[string]interface{}{"a": []interface{}{float64(1), float64(3), float64(5), float64(3)}, "b": float64(2), "c": float64(4), "d": float64(6), "e": float64(8)}
 	sData1 := map[string]interface{}{
 		"Suspect": map[string]interface{}{
 			"Name":    "Bart",
@@ -79,14 +79,14 @@ func TestJSONMergePreserve(t *testing.T) {
 	}
 	resultData := map[string]interface{}{
 		"Suspect": map[string]interface{}{
-			"Age":     10,
+			"Age":     float64(10),
 			"Name":    "Bart",
 			"Hobbies": []interface{}{"Skateboarding", "Mischief", "Trouble"},
 			"Parents": []interface{}{"Marge", "Homer"},
 		},
 		"Victim": "Lisa",
 		"Case": map[string]interface{}{
-			"Id":     33845,
+			"Id":     float64(33845),
 			"Date":   "2006-01-02T15:04:05-07:00",
 			"Closed": true,
 		},
@@ -95,14 +95,14 @@ func TestJSONMergePreserve(t *testing.T) {
 	mixedData := []interface{}{
 		map[string]interface{}{
 			"a": []interface{}{
-				1,
+				float64(1),
 				map[string]interface{}{
 					"one": false,
 					"two": 2.55,
 				},
 			},
-			"b": 2,
-			"e": 8,
+			"b": float64(2),
+			"e": float64(8),
 		},
 		"single Value",
 	}
@@ -114,11 +114,11 @@ func TestJSONMergePreserve(t *testing.T) {
 		err      error
 	}{
 		{f2, sql.Row{nil, nil}, sql.JSONDocument{Val: []interface{}{nil, nil}}, nil},
-		{f2, sql.Row{jsonArray1, nil}, sql.JSONDocument{Val: []interface{}{1, 2, nil}}, nil},
-		{f2, sql.Row{jsonArray1, jsonArray2}, sql.JSONDocument{Val: []interface{}{1, 2, true, false}}, nil},
-		{f2, sql.Row{jsonObj1, jsonObj2}, sql.JSONDocument{Val: map[string]interface{}{"name": "x", "id": 47}}, nil},
-		{f2, sql.Row{1, true}, sql.JSONDocument{Val: []interface{}{1, true}}, nil},
-		{f2, sql.Row{jsonArray1, jsonObj2}, sql.JSONDocument{Val: []interface{}{1, 2, map[string]interface{}{"id": 47}}}, nil},
+		{f2, sql.Row{jsonArray1, nil}, sql.JSONDocument{Val: []interface{}{float64(1), float64(2), nil}}, nil},
+		{f2, sql.Row{jsonArray1, jsonArray2}, sql.JSONDocument{Val: []interface{}{float64(1), float64(2), true, false}}, nil},
+		{f2, sql.Row{jsonObj1, jsonObj2}, sql.JSONDocument{Val: map[string]interface{}{"name": "x", "id": float64(47)}}, nil},
+		{f2, sql.Row{1, true}, sql.JSONDocument{Val: []interface{}{float64(1), true}}, nil},
+		{f2, sql.Row{jsonArray1, jsonObj2}, sql.JSONDocument{Val: []interface{}{float64(1), float64(2), map[string]interface{}{"id": float64(47)}}}, nil},
 		{f3, sql.Row{jsonObj3, jsonObj4, jsonObj5}, sql.JSONDocument{Val: json3ObjResult}, nil},
 		{f2, sql.Row{sData1, sData2}, sql.JSONDocument{Val: resultData}, nil},
 		{f4, sql.Row{jsonObj3, jsonObj4, jsonObj5, jsonObj6}, sql.JSONDocument{Val: json4ObjResult}, nil},

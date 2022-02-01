@@ -6209,11 +6209,15 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    "SELECT JSON_CONTAINS(1, NULL)",
+		Query:    "SELECT JSON_CONTAINS('1', NULL)",
 		Expected: []sql.Row{{nil}},
 	},
 	{
-		Query:    "SELECT JSON_CONTAINS(1, NULL, '$.a')",
+		Query:    "SELECT JSON_CONTAINS('1', '1')",
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    "SELECT JSON_CONTAINS('1', NULL, '$.a')",
 		Expected: []sql.Row{{nil}},
 	},
 	{
