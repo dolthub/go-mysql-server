@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// SwapXY is a function that converts a spatial type into WKT format (alias for AsText)
+// SwapXY is a function that returns a spatial type with their X and Y values swapped
 type SwapXY struct {
 	expression.UnaryExpression
 }
