@@ -23,41 +23,41 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-func TestSwapXY(t *testing.T) {
-	t.Run("point swap", func(t *testing.T) {
+func TestDimension(t *testing.T) {
+	t.Run("point is dimension 0", func(t *testing.T) {
 		require := require.New(t)
-		f := NewSwapXY(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
+		f := NewDimension(expression.NewLiteral(sql.Point{X: 1, Y: 2}, sql.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Point{X: 2, Y: 1}, v)
+		require.Equal(0, v)
 	})
 
-	t.Run("linestring swap", func(t *testing.T) {
+	t.Run("linestring is dimension 1", func(t *testing.T) {
 		require := require.New(t)
-		f := NewSwapXY(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, sql.LinestringType{}))
+		f := NewDimension(expression.NewLiteral(sql.Linestring{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}, sql.LinestringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Linestring{Points: []sql.Point{{X: 1, Y: 0}, {X: 3, Y: 2}}}, v)
+		require.Equal(1, v)
 	})
 
-	t.Run("polygon swap", func(t *testing.T) {
+	t.Run("polygon dimension 2", func(t *testing.T) {
 		require := require.New(t)
-		f := NewSwapXY(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, sql.PointType{}))
+		f := NewDimension(expression.NewLiteral(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}, sql.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}, v)
+		require.Equal(2, v)
 	})
 
-	t.Run("swap wrong type", func(t *testing.T) {
+	t.Run("null is null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewSwapXY(expression.NewLiteral(123, sql.Int64))
+		f := NewDimension(expression.NewLiteral(123, sql.Int64))
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
 
 	t.Run("null is null", func(t *testing.T) {
 		require := require.New(t)
-		f := NewSwapXY(expression.NewLiteral(nil, sql.Null))
+		f := NewDimension(expression.NewLiteral(nil, sql.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
