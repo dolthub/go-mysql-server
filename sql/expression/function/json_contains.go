@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -113,7 +111,7 @@ func (j *JSONContains) IsNullable() bool {
 }
 
 func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget, 1)
+	target, err := getSearchableJSONVal(ctx, row, j.JSONTarget)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +119,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 
-	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate, 2)
+	candidate, err := getSearchableJSONVal(ctx, row, j.JSONCandidate)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +155,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return target.Contains(ctx, candidate)
 }
 
-func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression, argNum int) (sql.SearchableJSONValue, error) {
+func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression) (sql.SearchableJSONValue, error) {
 	js, err := json.Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -174,7 +172,7 @@ func getSearchableJSONVal(ctx *sql.Context, row sql.Row, json sql.Expression, ar
 			return nil, sql.ErrInvalidJSONText.New(js)
 		}
 	default:
-		return nil, errors.NewKind("Invalid data type for JSON data in argument %v to function json_contains; a JSON string or JSON type is required.").New(argNum)
+		return nil, sql.ErrInvalidArgument.New(fmt.Sprintf("%v", js))
 	}
 
 	searchable, ok := converted.(sql.SearchableJSONValue)

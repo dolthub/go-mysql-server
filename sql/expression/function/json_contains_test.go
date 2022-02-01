@@ -85,8 +85,8 @@ func TestJSONContains(t *testing.T) {
 		err      error
 	}{
 		{f, sql.Row{json, json, "FOO"}, nil, errors.New("should start with '$'")},
-		{f, sql.Row{1, nil, "$.a"}, nil, errors.New("Invalid data type for JSON data in argument 1 to function json_contains; a JSON string or JSON type is required.")},
-		{f, sql.Row{json, 1, "$.e[0][*]"}, nil, errors.New("Invalid data type for JSON data in argument 2 to function json_contains; a JSON string or JSON type is required.")},
+		{f, sql.Row{1, nil, "$.a"}, nil, errors.New("Invalid argument to 1")},
+		{f, sql.Row{json, 2, "$.e[0][*]"}, nil, errors.New("Invalid argument to 2")},
 		{f, sql.Row{nil, json, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, nil, "$.b.c"}, nil, nil},
 		{f, sql.Row{json, json, "$.foo"}, nil, nil},
