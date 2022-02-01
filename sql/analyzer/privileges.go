@@ -26,42 +26,57 @@ import (
 // to execute it.
 func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	//TODO: add the remaining statements that interact with the grant tables
+	grantTables := a.Catalog.GrantTables
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
 		*plan.Grant, *plan.GrantRole, *plan.GrantProxy, *plan.Revoke, *plan.RevokeRole, *plan.RevokeAll, *plan.RevokeProxy:
-		a.Catalog.GrantTables.Enabled = true
+		grantTables.Enabled = true
 	}
-	if !a.Catalog.GrantTables.Enabled {
+	if !grantTables.Enabled {
 		return n, nil
 	}
 
 	client := ctx.Session.Client()
-	user := a.Catalog.GrantTables.GetUser(client.User, client.Address, false)
+	user := grantTables.GetUser(client.User, client.Address, false)
 	if user == nil {
-		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", client.User)
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
 
 	switch n := n.(type) {
 	case *plan.InsertInto:
 		if n.IsReplace {
-			if !user.PrivilegeSet.Has(grant_tables.PrivilegeType_Insert, grant_tables.PrivilegeType_Delete) {
+			//TODO: get columns
+			if !grantTables.UserHasPrivileges(ctx,
+				grant_tables.NewOperation(n.Database().Name(), getTableName(n.Destination), "", grant_tables.PrivilegeType_Insert, grant_tables.PrivilegeType_Delete),
+			) {
 				return nil, sql.ErrPrivilegeCheckFailed.New("REPLACE", user.UserHostToString("'", `\'`), getTableName(n.Destination))
 			}
-		} else if !user.PrivilegeSet.Has(grant_tables.PrivilegeType_Insert) {
+		} else if !grantTables.UserHasPrivileges(ctx,
+			grant_tables.NewOperation(n.Database().Name(), getTableName(n.Destination), "", grant_tables.PrivilegeType_Insert),
+		) {
 			return nil, sql.ErrPrivilegeCheckFailed.New("INSERT", user.UserHostToString("'", `\'`), getTableName(n.Destination))
 		}
 	case *plan.Update:
-		if !user.PrivilegeSet.Has(grant_tables.PrivilegeType_Update) {
+		//TODO: get columns
+		if !grantTables.UserHasPrivileges(ctx,
+			grant_tables.NewOperation(n.Database(), getTableName(n.Child), "", grant_tables.PrivilegeType_Update),
+		) {
 			return nil, sql.ErrPrivilegeCheckFailed.New("UPDATE", user.UserHostToString("'", `\'`), getTableName(n.Child))
 		}
 	case *plan.DeleteFrom:
-		if !user.PrivilegeSet.Has(grant_tables.PrivilegeType_Delete) {
+		//TODO: get columns
+		if !grantTables.UserHasPrivileges(ctx,
+			grant_tables.NewOperation(n.Database(), getTableName(n.Child), "", grant_tables.PrivilegeType_Delete),
+		) {
 			return nil, sql.ErrPrivilegeCheckFailed.New("DELETE", user.UserHostToString("'", `\'`), getTableName(n.Child))
 		}
 	case *plan.Project:
 		//TODO: a better way to do this would be to inspect the children of some nodes, such as filter nodes, and
 		//recursively inspect their children until we get to a more well-defined node.
-		if !user.PrivilegeSet.Has(grant_tables.PrivilegeType_Select) {
+		//TODO: get database, table, and columns
+		if !grantTables.UserHasPrivileges(ctx,
+			grant_tables.NewOperation("", getTableName(n.Child), "", grant_tables.PrivilegeType_Select),
+		) {
 			return nil, sql.ErrPrivilegeCheckFailed.New("SELECT", user.UserHostToString("'", `\'`), getTableName(n.Child))
 		}
 	default:

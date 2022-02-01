@@ -32,7 +32,8 @@ import (
 type GrantTables struct {
 	Enabled bool
 
-	user *grantTable
+	user       *grantTable
+	role_edges *grantTable
 	//TODO: add the rest of these tables
 	//db               *grantTable
 	//global_grants    *grantTable
@@ -41,7 +42,6 @@ type GrantTables struct {
 	//procs_priv       *grantTable
 	//proxies_priv     *grantTable
 	//default_roles    *grantTable
-	//role_edges       *grantTable
 	//password_history *grantTable
 }
 
@@ -51,7 +51,8 @@ var _ mysql.AuthServer = (*GrantTables)(nil)
 // CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
 func CreateEmptyGrantTables() *GrantTables {
 	grantTables := &GrantTables{
-		user: newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
+		user:       newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
+		role_edges: newGrantTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
 	}
 	return grantTables
 }
@@ -99,13 +100,54 @@ func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
 		for _, readUserEntry := range userEntries {
 			readUserEntry := readUserEntry.(*User)
 			//TODO: use the most specific match first, using "%" only if there isn't a more specific match
-			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") || (readUserEntry.Host == "%" && !roleSearch) {
+			if host == readUserEntry.Host || (host == "127.0.0.1" && readUserEntry.Host == "localhost") ||
+				(readUserEntry.Host == "%" && (!roleSearch || host == "")) {
 				userEntry = readUserEntry
 				break
 			}
 		}
 	}
 	return userEntry
+}
+
+// UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
+// privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
+// also pulled from the context.
+func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operation) bool {
+	client := ctx.Session.Client()
+	user := g.GetUser(client.User, client.Address, false)
+	if user == nil {
+		return false
+	}
+	globalStaticPrivs := NewUserGlobalStaticPrivileges()
+	globalStaticPrivs.Merge(user.PrivilegeSet)
+	roleEdgeEntries := g.role_edges.data.Get(RoleEdgesToKey{
+		ToHost: user.Host,
+		ToUser: user.User,
+	})
+	//TODO: filter the active roles using the context, rather than using every granted roles
+	//TODO: System variable "activate_all_roles_on_login", if set, will set all roles as active upon logging in
+	for _, roleEdgeEntry := range roleEdgeEntries {
+		roleEdge := roleEdgeEntry.(*RoleEdge)
+		role := g.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
+		if role != nil {
+			globalStaticPrivs.Merge(role.PrivilegeSet)
+		}
+	}
+
+	for _, operation := range operations {
+		for _, operationPriv := range operation.Privileges {
+			if globalStaticPrivs.Has(operationPriv) {
+				//TODO: Handle partial revokes
+				continue
+			}
+			//TODO: Check if there's a database privilege
+			//TODO: Check if there's a table privilege
+			//TODO: Check if there's a column privilege
+			return false
+		}
+	}
+	return true
 }
 
 // Name implements the interface sql.Database.
@@ -116,8 +158,10 @@ func (g *GrantTables) Name() string {
 // GetTableInsensitive implements the interface sql.Database.
 func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
 	switch strings.ToLower(tblName) {
-	case "user":
+	case userTblName:
 		return g.user, true, nil
+	case roleEdgesTblName:
+		return g.role_edges, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -125,7 +169,7 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 
 // GetTableNames implements the interface sql.Database.
 func (g *GrantTables) GetTableNames(ctx *sql.Context) ([]string, error) {
-	return []string{"user"}, nil
+	return []string{userTblName, roleEdgesTblName}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.
@@ -155,7 +199,7 @@ func (g *GrantTables) ValidateHash(salt []byte, user string, authResponse []byte
 	}
 
 	userEntry := g.GetUser(user, host, false)
-	if userEntry == nil {
+	if userEntry == nil || userEntry.Locked {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
 	}
 	if len(userEntry.Password) > 0 {
@@ -188,9 +232,14 @@ func (g *GrantTables) Persist(ctx *sql.Context) error {
 	return nil
 }
 
-// UserTable returns the user table.
+// UserTable returns the "user" table.
 func (g *GrantTables) UserTable() *grantTable {
 	return g.user
+}
+
+// RoleEdgesTable returns the "role_edges" table.
+func (g *GrantTables) RoleEdgesTable() *grantTable {
+	return g.role_edges
 }
 
 // columnTemplate takes in a column as a template, and returns a new column with a different name based on the given

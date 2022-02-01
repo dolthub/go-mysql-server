@@ -310,8 +310,8 @@ func (editor *DataEditor) Update(ctx *sql.Context, old sql.Row, new sql.Row) err
 	}
 	oldEntries := editor.data.Get(oldKey)
 	if len(oldEntries) == 1 {
-		// If an entry already exists then we just update it rather than creating a new one. Some entries may have
-		// additional data that cannot be represented in a row, and it is important to keep those fields intact.
+		// Some entries may have additional data that cannot be represented in a row, and it is important to keep those
+		// fields intact.
 		oldEntry := oldEntries[0]
 		newEntry, err := oldEntry.UpdateFromRow(ctx, new)
 		if err != nil {

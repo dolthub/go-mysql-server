@@ -96,8 +96,10 @@ func TestGrantTableData(t *testing.T) {
 	require.NoError(t, testTable.data.Remove(ctx, testSK{15, 14}, nil))
 	require.False(t, testTable.data.Has(ctx, &testEntry{row7}))
 	require.False(t, testTable.data.Has(ctx, &testEntry{row8}))
+	require.NoError(t, testTable.data.Remove(ctx, testSK{15, 14}, nil)) // Removing non-existent key should no-op
 	require.NoError(t, testTable.data.Remove(ctx, nil, &testEntry{row5}))
 	require.False(t, testTable.data.Has(ctx, &testEntry{row5}))
+	require.NoError(t, testTable.data.Remove(ctx, nil, &testEntry{row5})) // Removing non-existent entry should no-op
 }
 
 type testEntry struct {

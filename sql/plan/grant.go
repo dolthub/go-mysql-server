@@ -195,9 +195,11 @@ type GrantRole struct {
 	Roles           []UserName
 	TargetUsers     []UserName
 	WithAdminOption bool
+	GrantTables     sql.Database
 }
 
 var _ sql.Node = (*GrantRole)(nil)
+var _ sql.Databaser = (*GrantRole)(nil)
 
 // NewGrantRole returns a new GrantRole node.
 func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole {
@@ -205,6 +207,7 @@ func NewGrantRole(roles []UserName, users []UserName, withAdmin bool) *GrantRole
 		Roles:           roles,
 		TargetUsers:     users,
 		WithAdminOption: withAdmin,
+		GrantTables:     sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -226,9 +229,22 @@ func (n *GrantRole) String() string {
 	return fmt.Sprintf("GrantRole(Roles: %s, To: %s)", strings.Join(roles, ", "), strings.Join(users, ", "))
 }
 
+// Database implements the interface sql.Databaser.
+func (n *GrantRole) Database() sql.Database {
+	return n.GrantTables
+}
+
+// WithDatabase implements the interface sql.Databaser.
+func (n *GrantRole) WithDatabase(db sql.Database) (sql.Node, error) {
+	nn := *n
+	nn.GrantTables = db
+	return &nn, nil
+}
+
 // Resolved implements the interface sql.Node.
 func (n *GrantRole) Resolved() bool {
-	return true
+	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	return !ok
 }
 
 // Children implements the interface sql.Node.
@@ -246,7 +262,35 @@ func (n *GrantRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // RowIter implements the interface sql.Node.
 func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
+	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	if !ok {
+		return nil, sql.ErrDatabaseNotFound.New("mysql")
+	}
+	roleEdgesData := grantTables.RoleEdgesTable().Data()
+	for _, targetUser := range n.TargetUsers {
+		user := grantTables.GetUser(targetUser.Name, targetUser.Host, false)
+		if user == nil {
+			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.StringWithQuote("`", ""))
+		}
+		for _, targetRole := range n.Roles {
+			role := grantTables.GetUser(targetRole.Name, targetRole.Host, true)
+			if role == nil {
+				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.StringWithQuote("`", ""))
+			}
+			err := roleEdgesData.Put(ctx, &grant_tables.RoleEdge{
+				FromHost:        role.Host,
+				FromUser:        role.User,
+				ToHost:          user.Host,
+				ToUser:          user.User,
+				WithAdminOption: n.WithAdminOption,
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }
 
 // GrantProxy represents the statement GRANT PROXY.
