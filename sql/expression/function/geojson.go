@@ -224,7 +224,7 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	// Only flags 0-7 are valid
 	if _flag < 0 || _flag > 7 {
-		return nil, ErrInvalidArgument.New(g.FunctionName(), _flag)
+		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), _flag)
 	}
 	// TODO: figure out exactly what flags are; only 1,3,5 have bbox
 	if _flag%2 == 1 {
@@ -421,7 +421,7 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	}
 	// Only flags 1-4 are valid
 	if _flag < 1 || _flag > 4 {
-		return nil, ErrInvalidArgument.New(g.FunctionName(), _flag)
+		return nil, sql.ErrInvalidArgumentDetails.New(g.FunctionName(), _flag)
 	}
 	// If flag is 1 and dimension of coordinates is greater than 2, throw error
 	if _flag == 1 {

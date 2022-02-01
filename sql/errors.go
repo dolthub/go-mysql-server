@@ -277,11 +277,14 @@ var (
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
+	// ErrInvalidArgumentDetails is returned when the argument is invalid with details of a specific function
+	ErrInvalidArgumentDetails = errors.NewKind("Invalid argument to %s: %s")
+
 	// ErrSavepointDoesNotExist is returned when a RELEASE SAVEPOINT or ROLLBACK TO SAVEPOINT statement references a
 	// non-existent savepoint identifier
 	ErrSavepointDoesNotExist = errors.NewKind("SAVEPOINT %s does not exist")
 
-	// ErrTableCreatedNotFound is thrown when an integrator attempts to create a temporary tables without temporary table
+	// ErrTemporaryTableNotSupported is thrown when an integrator attempts to create a temporary tables without temporary table
 	// support.
 	ErrTemporaryTableNotSupported = errors.NewKind("database does not support temporary tables")
 

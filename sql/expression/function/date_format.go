@@ -310,7 +310,7 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	formatStr, ok := right.(string)
 
 	if !ok {
-		return nil, ErrInvalidArgument.New("DATE_FORMAT", "format must be a string")
+		return nil, sql.ErrInvalidArgumentDetails.New("DATE_FORMAT", "format must be a string")
 	}
 
 	return formatDate(formatStr, t)

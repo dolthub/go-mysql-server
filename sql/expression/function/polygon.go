@@ -165,7 +165,7 @@ func (p *Polygon) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, errors.New("Invalid GIS data provided to function polygon.")
 			}
 		case sql.Point, sql.Polygon:
-			return nil, ErrInvalidArgument.New(p.FunctionName())
+			return nil, sql.ErrInvalidArgument.New(p.FunctionName())
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}
