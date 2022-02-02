@@ -28,23 +28,18 @@ type UserName struct {
 	AnyHost bool
 }
 
-// String returns the UserName as a formatted string, using "`" to quote each part.
-func (un *UserName) String() string {
-	return un.StringWithQuote("`", "``")
-}
-
-// StringWithQuote returns the UserName as a formatted string using the quotes given. If a replacement is given, then
-// also replaces any existing instances of the quotes with the replacement.
-func (un *UserName) StringWithQuote(quote string, replacement string) string {
-	name := un.Name
+// String returns the UserName as a formatted string using the quotes given. Using the default root
+// account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
+// in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
+// doubling the quote (which also mimics MySQL behavior).
+func (un *UserName) String(quote string) string {
 	host := un.Host
 	if un.AnyHost {
 		host = "%"
 	}
-	if len(replacement) > 0 {
-		name = strings.ReplaceAll(name, quote, replacement)
-		host = strings.ReplaceAll(host, quote, replacement)
-	}
+	replacement := quote+quote
+	name := strings.ReplaceAll(un.Name, quote, replacement)
+	host = strings.ReplaceAll(host, quote, replacement)
 	return fmt.Sprintf("%s%s%s@%s%s%s", quote, name, quote, quote, host, quote)
 }
 

@@ -59,7 +59,7 @@ func (n *Revoke) String() string {
 	}
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
 	return fmt.Sprintf("Revoke(Privileges: %s, On: %s, From: %s)",
 		strings.Join(privileges, ", "), n.PrivilegeLevel.String(), strings.Join(users, ", "))
@@ -166,7 +166,7 @@ func (n *RevokeAll) Schema() sql.Schema {
 func (n *RevokeAll) String() string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
 	return fmt.Sprintf("RevokeAll(From: %s)", strings.Join(users, ", "))
 }
@@ -222,11 +222,11 @@ func (n *RevokeRole) Schema() sql.Schema {
 func (n *RevokeRole) String() string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
-		roles[i] = role.StringWithQuote("", "")
+		roles[i] = role.String("")
 	}
 	users := make([]string, len(n.TargetUsers))
 	for i, user := range n.TargetUsers {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
 	return fmt.Sprintf("RevokeRole(Roles: %s, From: %s)", strings.Join(roles, ", "), strings.Join(users, ", "))
 }
@@ -272,12 +272,12 @@ func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	for _, targetUser := range n.TargetUsers {
 		user := grantTables.GetUser(targetUser.Name, targetUser.Host, false)
 		if user == nil {
-			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.StringWithQuote("`", ""))
+			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
 			role := grantTables.GetUser(targetRole.Name, targetRole.Host, true)
 			if role == nil {
-				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.StringWithQuote("`", ""))
+				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
 			//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be revoked
 			err := roleEdgesData.Remove(ctx, grant_tables.RoleEdgesPrimaryKey{
@@ -320,9 +320,9 @@ func (n *RevokeProxy) Schema() sql.Schema {
 func (n *RevokeProxy) String() string {
 	users := make([]string, len(n.From))
 	for i, user := range n.From {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
-	return fmt.Sprintf("RevokeProxy(On: %s, From: %s)", n.On.StringWithQuote("", ""), strings.Join(users, ", "))
+	return fmt.Sprintf("RevokeProxy(On: %s, From: %s)", n.On.String(""), strings.Join(users, ", "))
 }
 
 // Resolved implements the interface sql.Node.

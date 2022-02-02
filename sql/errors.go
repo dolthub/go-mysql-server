@@ -410,6 +410,9 @@ var (
 
 	// ErrGrantRevokeRoleDoesNotExist is returned when a user or role does not exist when attempting to grant or revoke roles.
 	ErrGrantRevokeRoleDoesNotExist = errors.NewKind("Unknown authorization ID %s")
+
+	// ErrShowGrantsUserDoesNotExist is returned when a user does not exist when attempting to show their grants.
+	ErrShowGrantsUserDoesNotExist = errors.NewKind("There is no such grant defined for user '%s' on host '%s'")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

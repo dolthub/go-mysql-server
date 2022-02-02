@@ -48,7 +48,7 @@ func (n *CreateUser) Schema() sql.Schema {
 func (n *CreateUser) String() string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
-		users[i] = user.UserName.StringWithQuote("", "")
+		users[i] = user.UserName.String("")
 	}
 	ifNotExists := ""
 	if n.IfNotExists {
@@ -105,7 +105,7 @@ func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			if n.IfNotExists {
 				continue
 			}
-			return nil, sql.ErrUserCreationFailure.New(user.UserName.StringWithQuote("'", ""))
+			return nil, sql.ErrUserCreationFailure.New(user.UserName.String("'"))
 		}
 
 		plugin := "mysql_native_password"
