@@ -37,7 +37,7 @@ func (un *UserName) String(quote string) string {
 	if un.AnyHost {
 		host = "%"
 	}
-	replacement := quote+quote
+	replacement := quote + quote
 	name := strings.ReplaceAll(un.Name, quote, replacement)
 	host = strings.ReplaceAll(host, quote, replacement)
 	return fmt.Sprintf("%s%s%s@%s%s%s", quote, name, quote, quote, host, quote)

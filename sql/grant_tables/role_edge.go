@@ -97,7 +97,7 @@ func (r *RoleEdge) FromString(quote string) string {
 // in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
 // doubling the quote (which also mimics MySQL behavior).
 func (r *RoleEdge) stringWithQuote(name string, host string, quote string) string {
-	replacement := quote+quote
+	replacement := quote + quote
 	name = strings.ReplaceAll(name, quote, replacement)
 	host = strings.ReplaceAll(host, quote, replacement)
 	return fmt.Sprintf("%s%s%s@%s%s%s", quote, name, quote, quote, host, quote)
