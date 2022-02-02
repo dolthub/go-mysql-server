@@ -96,7 +96,7 @@ type RowIter2 interface {
 	// Next2 produces the next row, and stores it in the RowFrame provided.
 	// It will return io.EOF if it's the last row. After retrieving the
 	// last row, Close will be automatically called.
-	Next2(*Context, *RowFrame) error
+	Next2(ctx *Context, frame *RowFrame) error
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.

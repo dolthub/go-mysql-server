@@ -27,6 +27,9 @@ type QueryProcess struct {
 	Notify NotifyFunc
 }
 
+var _ sql.Node = (*QueryProcess)(nil)
+var _ sql.Node2 = (*QueryProcess)(nil)
+
 // NotifyFunc is a function to notify about some event.
 type NotifyFunc func()
 
@@ -47,6 +50,23 @@ func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	iter, err := p.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	qType := getQueryType(p.Child)
+
+	return &trackedRowIter{
+		node:               p.Child,
+		iter:               iter,
+		onDone:             p.Notify,
+		queryType:          qType,
+		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
+	}, nil
+}
+
+func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	iter, err := p.Child.(sql.Node2).RowIter2(ctx, f)
 	if err != nil {
 		return nil, err
 	}
@@ -310,6 +330,22 @@ func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return row, nil
+}
+
+func (i *trackedRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	err := i.iter.(sql.RowIter2).Next2(ctx, frame)
+	if err != nil {
+		return err
+	}
+
+	// TODO: revisit this when we put more than one row per frame
+	i.numRows++
+
+	if i.onNext != nil {
+		i.onNext()
+	}
+
+	return nil
 }
 
 func (i *trackedRowIter) Close(ctx *sql.Context) error {
