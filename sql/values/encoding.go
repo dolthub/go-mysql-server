@@ -171,7 +171,7 @@ func ReadString(val []byte, coll Collation) string {
 	return string(val)
 }
 
-func readBytes(val []byte, coll Collation) []byte {
+func ReadBytes(val []byte, coll Collation) []byte {
 	// todo: fix collation
 	return val
 }
@@ -325,7 +325,7 @@ func compare(typ Type, left, right []byte) int {
 	case StringEnc:
 		return compareString(ReadString(left, typ.Coll), ReadString(right, typ.Coll), typ.Coll)
 	case BytesEnc:
-		return compareBytes(readBytes(left, typ.Coll), readBytes(right, typ.Coll), typ.Coll)
+		return compareBytes(ReadBytes(left, typ.Coll), ReadBytes(right, typ.Coll), typ.Coll)
 	default:
 		panic("unknown encoding")
 	}
