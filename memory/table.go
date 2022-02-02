@@ -379,6 +379,16 @@ func convertToValue(v interface{}) sql.Value {
 			Typ: query.Type_FLOAT64,
 			Val: values.WriteFloat64(make([]byte, values.Uint16Size), v),
 		}
+	case string:
+		return sql.Value{
+			Typ: query.Type_VARCHAR,
+			Val: values.WriteString(make([]byte, len(v)), v, values.ByteOrderCollation),
+		}
+	case []byte:
+		return sql.Value{
+			Typ: query.Type_BLOB,
+			Val: values.WriteBytes(make([]byte, len(v)), v, values.ByteOrderCollation),
+		}
 	default:
 		panic(fmt.Sprintf("type %T not implemented", v))
 	}
@@ -1384,5 +1394,10 @@ func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
 }
 
 func (t *Table) PartitionRows2(ctx *sql.Context, partition sql.Partition) (sql.RowIter2, error) {
-	return t.PartitionRows(ctx, partition)
+	iter, err := t.PartitionRows(ctx, partition)
+	if err != nil {
+		return nil, err
+	}
+
+	return iter.(*tableIter), nil
 }

@@ -261,14 +261,14 @@ func WriteFloat64(buf []byte, val float64) []byte {
 	return buf
 }
 
-func writeString(buf []byte, val string, coll Collation) []byte {
+func WriteString(buf []byte, val string, coll Collation) []byte {
 	// todo: fix collation
 	expectSize(buf, ByteSize(len(val)))
 	copy(buf, val)
 	return buf
 }
 
-func writeBytes(buf, val []byte, coll Collation) []byte {
+func WriteBytes(buf, val []byte, coll Collation) []byte {
 	// todo: fix collation
 	expectSize(buf, ByteSize(len(val)))
 	copy(buf, val)
