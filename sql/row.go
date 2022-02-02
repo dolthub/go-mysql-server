@@ -89,7 +89,7 @@ type RowIter interface {
 	Closer
 }
 
-// RowIter2 is an iterator that produces row2s.
+// RowIter2 is an iterator that fills a row frame buffer with rows from its source
 type RowIter2 interface {
 	RowIter
 

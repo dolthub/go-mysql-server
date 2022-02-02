@@ -310,7 +310,7 @@ type Table interface {
 type Table2 interface {
 	Table
 
-	PartitionRows2(*Context, Partition) (RowIter2, error)
+	PartitionRows2(ctx *Context, part Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {
