@@ -23,7 +23,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -61,6 +63,7 @@ type Table struct {
 }
 
 var _ sql.Table = (*Table)(nil)
+var _ sql.Table2 = (*Table)(nil)
 var _ sql.InsertableTable = (*Table)(nil)
 var _ sql.UpdatableTable = (*Table)(nil)
 var _ sql.DeletableTable = (*Table)(nil)
@@ -267,6 +270,7 @@ type tableIter struct {
 }
 
 var _ sql.RowIter = (*tableIter)(nil)
+var _ sql.RowIter2 = (*tableIter)(nil)
 
 func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := i.getRow(ctx)
@@ -293,6 +297,91 @@ func (i *tableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return resultRow, nil
+}
+
+func (i *tableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	r, err := i.Next(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range r {
+		frame.Append(convertToValue(v))
+	}
+
+	return nil
+}
+
+func convertToValue(v interface{}) sql.Value {
+	switch v := v.(type) {
+	case nil:
+		return sql.Value{
+			Typ: query.Type_NULL_TYPE,
+			Val: nil,
+		}
+	case int:
+		return sql.Value{
+			Typ: query.Type_INT64,
+			Val: values.WriteInt64(make([]byte, values.Int64Size), int64(v)),
+		}
+	case int8:
+		return sql.Value{
+			Typ: query.Type_INT8,
+			Val: values.WriteInt8(make([]byte, values.Int8Size), v),
+		}
+	case int16:
+		return sql.Value{
+			Typ: query.Type_INT16,
+			Val: values.WriteInt16(make([]byte, values.Int16Size), v),
+		}
+	case int32:
+		return sql.Value{
+			Typ: query.Type_INT32,
+			Val: values.WriteInt32(make([]byte, values.Int32Size), v),
+		}
+	case int64:
+		return sql.Value{
+			Typ: query.Type_INT64,
+			Val: values.WriteInt64(make([]byte, values.Int64Size), v),
+		}
+	case uint:
+		return sql.Value{
+			Typ: query.Type_UINT64,
+			Val: values.WriteUint64(make([]byte, values.Uint64Size), uint64(v)),
+		}
+	case uint8:
+		return sql.Value{
+			Typ: query.Type_UINT8,
+			Val: values.WriteUint8(make([]byte, values.Uint8Size), v),
+		}
+	case uint16:
+		return sql.Value{
+			Typ: query.Type_UINT16,
+			Val: values.WriteUint16(make([]byte, values.Uint16Size), v),
+		}
+	case uint32:
+		return sql.Value{
+			Typ: query.Type_UINT32,
+			Val: values.WriteUint32(make([]byte, values.Uint32Size), v),
+		}
+	case uint64:
+		return sql.Value{
+			Typ: query.Type_UINT64,
+			Val: values.WriteUint64(make([]byte, values.Uint64Size), v),
+		}
+	case float32:
+		return sql.Value{
+			Typ: query.Type_FLOAT32,
+			Val: values.WriteFloat32(make([]byte, values.Uint16Size), v),
+		}
+	case float64:
+		return sql.Value{
+			Typ: query.Type_FLOAT64,
+			Val: values.WriteFloat64(make([]byte, values.Uint16Size), v),
+		}
+	default:
+		panic(fmt.Sprintf("type %T not implemented", v))
+	}
 }
 
 func (i *tableIter) colIsProjected(idx int) bool {
@@ -1292,4 +1381,8 @@ func (i *indexKeyValueIter) Next(ctx *sql.Context) ([]interface{}, []byte, error
 
 func (i *indexKeyValueIter) Close(ctx *sql.Context) error {
 	return i.iter.Close(ctx)
+}
+
+func (t *Table) PartitionRows2(ctx *sql.Context, partition sql.Partition) (sql.RowIter2, error) {
+	return t.PartitionRows(ctx, partition)
 }
