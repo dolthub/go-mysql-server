@@ -133,7 +133,7 @@ func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 // in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
 // doubling the quote (which also mimics MySQL behavior).
 func (u *User) UserHostToString(quote string) string {
-	replacement := quote+quote
+	replacement := quote + quote
 	user := strings.ReplaceAll(u.User, quote, replacement)
 	host := strings.ReplaceAll(u.Host, quote, replacement)
 	return fmt.Sprintf("%s%s%s@%s%s%s", quote, user, quote, quote, host, quote)
