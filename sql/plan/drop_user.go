@@ -51,7 +51,7 @@ func (n *DropUser) Schema() sql.Schema {
 func (n *DropUser) String() string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
 	ifExists := ""
 	if n.IfExists {
@@ -112,7 +112,7 @@ func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if n.IfExists {
 				continue
 			}
-			return nil, sql.ErrUserDeletionFailure.New(user.StringWithQuote("'", ""))
+			return nil, sql.ErrUserDeletionFailure.New(user.String("'"))
 		}
 		existingUser := existingRows[0].(*grant_tables.User)
 

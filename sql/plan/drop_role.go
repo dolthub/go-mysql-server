@@ -50,7 +50,7 @@ func (n *DropRole) Schema() sql.Schema {
 func (n *DropRole) String() string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
-		roles[i] = role.StringWithQuote("", "")
+		roles[i] = role.String("")
 	}
 	ifExists := ""
 	if n.IfExists {
@@ -111,7 +111,7 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			if n.IfExists {
 				continue
 			}
-			return nil, sql.ErrRoleDeletionFailure.New(role.StringWithQuote("'", ""))
+			return nil, sql.ErrRoleDeletionFailure.New(role.String("'"))
 		}
 		existingUser := existingRows[0].(*grant_tables.User)
 

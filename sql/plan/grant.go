@@ -63,7 +63,7 @@ func (n *Grant) String() string {
 	}
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
 	return fmt.Sprintf("Grant(Privileges: %s, On: %s, To: %s)",
 		strings.Join(privileges, ", "), n.PrivilegeLevel.String(), strings.Join(users, ", "))
@@ -220,11 +220,11 @@ func (n *GrantRole) Schema() sql.Schema {
 func (n *GrantRole) String() string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
-		roles[i] = role.StringWithQuote("", "")
+		roles[i] = role.String("")
 	}
 	users := make([]string, len(n.TargetUsers))
 	for i, user := range n.TargetUsers {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
 	return fmt.Sprintf("GrantRole(Roles: %s, To: %s)", strings.Join(roles, ", "), strings.Join(users, ", "))
 }
@@ -270,12 +270,12 @@ func (n *GrantRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	for _, targetUser := range n.TargetUsers {
 		user := grantTables.GetUser(targetUser.Name, targetUser.Host, false)
 		if user == nil {
-			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.StringWithQuote("`", ""))
+			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 		}
 		for _, targetRole := range n.Roles {
 			role := grantTables.GetUser(targetRole.Name, targetRole.Host, true)
 			if role == nil {
-				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.StringWithQuote("`", ""))
+				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
 			}
 			err := roleEdgesData.Put(ctx, &grant_tables.RoleEdge{
 				FromHost:        role.Host,
@@ -320,9 +320,9 @@ func (n *GrantProxy) Schema() sql.Schema {
 func (n *GrantProxy) String() string {
 	users := make([]string, len(n.To))
 	for i, user := range n.To {
-		users[i] = user.StringWithQuote("", "")
+		users[i] = user.String("")
 	}
-	return fmt.Sprintf("GrantProxy(On: %s, To: %s)", n.On.StringWithQuote("", ""), strings.Join(users, ", "))
+	return fmt.Sprintf("GrantProxy(On: %s, To: %s)", n.On.String(""), strings.Join(users, ", "))
 }
 
 // Resolved implements the interface sql.Node.

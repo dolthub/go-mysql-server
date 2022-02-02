@@ -47,7 +47,7 @@ func (n *RenameUser) String() string {
 	strs := make([]string, len(n.OldName))
 	for i := range n.OldName {
 		strs[i] = fmt.Sprintf("%s->%s",
-			n.OldName[i].StringWithQuote("", ""), n.NewName[i].StringWithQuote("", ""))
+			n.OldName[i].String(""), n.NewName[i].String(""))
 	}
 	return fmt.Sprintf("RenameUser(%s)", strings.Join(strs, ", "))
 }

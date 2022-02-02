@@ -14,6 +14,8 @@
 
 package grant_tables
 
+import "sort"
+
 type UserGlobalStaticPrivileges struct {
 	privSet map[PrivilegeType]struct{}
 }
@@ -125,5 +127,19 @@ func (ugsp UserGlobalStaticPrivileges) ToSlice() []PrivilegeType {
 		privs[i] = priv
 		i++
 	}
+	return privs
+}
+
+// ToSortedSlice returns all of the privileges contained as a slice, sorted by their internal ID.
+func (ugsp UserGlobalStaticPrivileges) ToSortedSlice() []PrivilegeType {
+	privs := make([]PrivilegeType, len(ugsp.privSet))
+	i := 0
+	for priv := range ugsp.privSet {
+		privs[i] = priv
+		i++
+	}
+	sort.Slice(privs, func(i, j int) bool {
+		return privs[i] < privs[j]
+	})
 	return privs
 }

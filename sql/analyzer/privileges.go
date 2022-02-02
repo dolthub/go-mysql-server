@@ -49,26 +49,26 @@ func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 			if !grantTables.UserHasPrivileges(ctx,
 				grant_tables.NewOperation(n.Database().Name(), getTableName(n.Destination), "", grant_tables.PrivilegeType_Insert, grant_tables.PrivilegeType_Delete),
 			) {
-				return nil, sql.ErrPrivilegeCheckFailed.New("REPLACE", user.UserHostToString("'", `\'`), getTableName(n.Destination))
+				return nil, sql.ErrPrivilegeCheckFailed.New("REPLACE", user.UserHostToString("'"), getTableName(n.Destination))
 			}
 		} else if !grantTables.UserHasPrivileges(ctx,
 			grant_tables.NewOperation(n.Database().Name(), getTableName(n.Destination), "", grant_tables.PrivilegeType_Insert),
 		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("INSERT", user.UserHostToString("'", `\'`), getTableName(n.Destination))
+			return nil, sql.ErrPrivilegeCheckFailed.New("INSERT", user.UserHostToString("'"), getTableName(n.Destination))
 		}
 	case *plan.Update:
 		//TODO: get columns
 		if !grantTables.UserHasPrivileges(ctx,
 			grant_tables.NewOperation(n.Database(), getTableName(n.Child), "", grant_tables.PrivilegeType_Update),
 		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("UPDATE", user.UserHostToString("'", `\'`), getTableName(n.Child))
+			return nil, sql.ErrPrivilegeCheckFailed.New("UPDATE", user.UserHostToString("'"), getTableName(n.Child))
 		}
 	case *plan.DeleteFrom:
 		//TODO: get columns
 		if !grantTables.UserHasPrivileges(ctx,
 			grant_tables.NewOperation(n.Database(), getTableName(n.Child), "", grant_tables.PrivilegeType_Delete),
 		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("DELETE", user.UserHostToString("'", `\'`), getTableName(n.Child))
+			return nil, sql.ErrPrivilegeCheckFailed.New("DELETE", user.UserHostToString("'"), getTableName(n.Child))
 		}
 	case *plan.Project:
 		//TODO: a better way to do this would be to inspect the children of some nodes, such as filter nodes, and
@@ -77,7 +77,7 @@ func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		if !grantTables.UserHasPrivileges(ctx,
 			grant_tables.NewOperation("", getTableName(n.Child), "", grant_tables.PrivilegeType_Select),
 		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("SELECT", user.UserHostToString("'", `\'`), getTableName(n.Child))
+			return nil, sql.ErrPrivilegeCheckFailed.New("SELECT", user.UserHostToString("'"), getTableName(n.Child))
 		}
 	default:
 		//TODO: eventually every node possible will be listed here, therefore the default behavior would error as that

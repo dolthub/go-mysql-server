@@ -16,6 +16,9 @@ package plan
 
 import (
 	"fmt"
+	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -25,9 +28,11 @@ type ShowGrants struct {
 	CurrentUser bool
 	For         *UserName
 	Using       []UserName
+	GrantTables sql.Database
 }
 
 var _ sql.Node = (*ShowGrants)(nil)
+var _ sql.Databaser = (*ShowGrants)(nil)
 
 // NewShowGrants returns a new ShowGrants node.
 func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *ShowGrants {
@@ -35,6 +40,7 @@ func NewShowGrants(currentUser bool, targetUser *UserName, using []UserName) *Sh
 		CurrentUser: currentUser,
 		For:         targetUser,
 		Using:       using,
+		GrantTables: sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -44,12 +50,12 @@ func (n *ShowGrants) Schema() sql.Schema {
 	if user == nil {
 		user = &UserName{
 			Name:    "root",
-			Host:    "",
+			Host:    "localhost",
 			AnyHost: true,
 		}
 	}
 	return sql.Schema{{
-		Name: fmt.Sprintf("Grants for %s", user.StringWithQuote("", "")),
+		Name: fmt.Sprintf("Grants for %s", user.String("")),
 		Type: sql.LongText,
 	}}
 }
@@ -60,16 +66,29 @@ func (n *ShowGrants) String() string {
 	if user == nil {
 		user = &UserName{
 			Name:    "root",
-			Host:    "",
+			Host:    "localhost",
 			AnyHost: true,
 		}
 	}
-	return fmt.Sprintf("ShowGrants(%s)", user.StringWithQuote("", ""))
+	return fmt.Sprintf("ShowGrants(%s)", user.String(""))
+}
+
+// Database implements the interface sql.Databaser.
+func (n *ShowGrants) Database() sql.Database {
+	return n.GrantTables
+}
+
+// WithDatabase implements the interface sql.Databaser.
+func (n *ShowGrants) WithDatabase(db sql.Database) (sql.Node, error) {
+	nn := *n
+	nn.GrantTables = db
+	return &nn, nil
 }
 
 // Resolved implements the interface sql.Node.
 func (n *ShowGrants) Resolved() bool {
-	return true
+	_, ok := n.GrantTables.(sql.UnresolvedDatabase)
+	return !ok
 }
 
 // Children implements the interface sql.Node.
@@ -87,15 +106,57 @@ func (n *ShowGrants) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // RowIter implements the interface sql.Node.
 func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	//TODO: actually show grants here
-	user := n.For
-	if user == nil {
-		user = &UserName{
-			Name:    "root",
-			Host:    "",
-			AnyHost: true,
+	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
+	if !ok {
+		return nil, sql.ErrDatabaseNotFound.New("mysql")
+	}
+	if n.For == nil || n.CurrentUser {
+		client := ctx.Session.Client()
+		n.For = &UserName{
+			Name: client.User,
+			Host: client.Address,
 		}
 	}
-	return sql.RowsToRowIter(sql.Row{
-		fmt.Sprintf("GRANT ALL PRIVILEGES ON *.* TO %s WITH GRANT OPTION", user.StringWithQuote("'", ""))}), nil
+	user := grantTables.GetUser(n.For.Name, n.For.Host, false)
+	if user == nil {
+		return nil, sql.ErrShowGrantsUserDoesNotExist.New(n.For.Name, n.For.Host)
+	}
+
+	//TODO: implement USING, perhaps by creating a new context with the chosen roles set as the active roles
+	var rows []sql.Row
+	sb := strings.Builder{}
+	withGrantOption := ""
+	for i, priv := range user.PrivilegeSet.ToSortedSlice() {
+		privStr := priv.String()
+		if privStr == grant_tables.PrivilegeType_Grant.String() {
+			withGrantOption = " WITH GRANT OPTION"
+		} else {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(privStr)
+		}
+	}
+	if sb.Len() == 0 {
+		sb.WriteString("USAGE")
+	}
+	rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s ON *.* TO %s%s", sb.String(), user.UserHostToString("`"), withGrantOption)})
+	//TODO: display the database privileges
+	//TODO: display the table and column privileges
+
+	sb.Reset()
+	roleEdges := grantTables.RoleEdgesTable().Data().Get(grant_tables.RoleEdgesToKey{
+		ToHost: user.Host,
+		ToUser: user.User,
+	})
+	for i, roleEdge := range roleEdges {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(roleEdge.(*grant_tables.RoleEdge).FromString("`"))
+	}
+	if sb.Len() > 0 {
+		rows = append(rows, sql.Row{fmt.Sprintf("GRANT %s TO %s", sb.String(), user.UserHostToString("`"))})
+	}
+	return sql.RowsToRowIter(rows...), nil
 }
