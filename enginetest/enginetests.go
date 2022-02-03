@@ -3995,7 +3995,9 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that adding a primary key with an unknown column causes an error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
+	})
 
+	t.Run("No database selected", func(t *testing.T) {
 		// Create new database and table and alter the table in other database
 		RunQuery(t, e, harness, `CREATE DATABASE newdb`)
 		RunQuery(t, e, harness, `CREATE TABLE newdb.tab1 (pk int, c1 int)`)
