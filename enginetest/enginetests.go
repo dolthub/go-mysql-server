@@ -3987,7 +3987,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		// Assert that a duplicate row causes an alter table error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`, sql.ErrPrimaryKeyViolation)
 
-		// Assert that the scehma of t1 is unchanged
+		// Assert that the schema of t1 is unchanged
 		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
 			{"pk", "text", "NO", "", "", ""},
 			{"v", "text", "NO", "MUL", "", ""},
@@ -3995,6 +3995,26 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that adding a primary key with an unknown column causes an error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
+	})
+
+	t.Run("No database selected", func(t *testing.T) {
+		// Create new database and table and alter the table in other database
+		RunQuery(t, e, harness, `CREATE DATABASE newdb`)
+		RunQuery(t, e, harness, `CREATE TABLE newdb.tab1 (pk int, c1 int)`)
+		RunQuery(t, e, harness, `ALTER TABLE newdb.tab1 ADD PRIMARY KEY (pk)`)
+
+		// Assert that the pk is not primary key
+		TestQuery(t, harness, e, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
+			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		}, nil, nil)
+
+		// Drop all primary key from other database table
+		RunQuery(t, e, harness, `ALTER TABLE newdb.tab1 DROP PRIMARY KEY`)
+
+		// Assert that NOT NULL constraint is kept
+		TestQuery(t, harness, e, `SHOW CREATE TABLE newdb.tab1`, []sql.Row{
+			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		}, nil, nil)
 	})
 }
 
