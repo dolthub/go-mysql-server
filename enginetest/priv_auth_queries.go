@@ -537,6 +537,69 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "Show grants on root account",
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS;",
+				Expected: []sql.Row{{"GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, " +
+					"FILE, REFERENCES, INDEX, ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, " +
+					"EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, " +
+					"ALTER ROUTINE, CREATE USER, EVENT, TRIGGER, CREATE TABLESPACE, CREATE ROLE, DROP ROLE ON *.* TO " +
+					"`root`@`localhost` WITH GRANT OPTION"}},
+			},
+		},
+	},
+	{
+		Name: "Show grants on a user from the root account",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON *.* TO tester@localhost;",
+			"CREATE ROLE test_role1;",
+			"CREATE ROLE test_role2;",
+			"GRANT INSERT ON *.* TO test_role1;",
+			"GRANT REFERENCES ON *.* TO test_role2;",
+			"GRANT test_role1 TO tester@localhost;",
+			"GRANT test_role2 TO tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT ON *.* TO `tester`@`localhost`"},
+					{"GRANT `test_role1`@`%`, `test_role2`@`%` TO `tester`@`localhost`"},
+				},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT UPDATE ON *.* TO tester@localhost WITH GRANT OPTION;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SHOW GRANTS FOR tester@localhost;",
+				Expected: []sql.Row{
+					{"GRANT SELECT, UPDATE ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
+					{"GRANT `test_role1`@`%`, `test_role2`@`%` TO `tester`@`localhost`"},
+				},
+			},
+			{
+				User:  "tester",
+				Host:  "localhost",
+				Query: "SHOW GRANTS;",
+				Expected: []sql.Row{
+					{"GRANT SELECT, UPDATE ON *.* TO `tester`@`localhost` WITH GRANT OPTION"},
+					{"GRANT `test_role1`@`%`, `test_role2`@`%` TO `tester`@`localhost`"},
+				},
+			},
+		},
+	},
 }
 
 // ServerAuthTests test the server authentication system. These tests always have the root account available, and the

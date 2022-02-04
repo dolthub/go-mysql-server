@@ -57,8 +57,8 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	default:
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
-		if _, err = json.Marshal(v); err == nil {
-			return JSONDocument{Val: v}, nil
+		if b, berr := json.Marshal(v); berr == nil {
+			err = json.Unmarshal(b, &doc)
 		}
 	}
 	if err != nil {

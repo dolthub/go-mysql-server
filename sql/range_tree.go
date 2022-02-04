@@ -71,7 +71,7 @@ func NewRangeColumnExprTree(initialRange Range) *RangeColumnExprTree {
 	var parent *RangeColumnExprTree
 	for _, colExpr := range initialRange {
 		innerTree := &RangeColumnExprTree{
-			typ:  colExpr.typ,
+			typ:  colExpr.Typ,
 			size: 1,
 			root: nil,
 		}
@@ -126,7 +126,7 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (Ra
 			connectedColExpr := RangeColumnExpr{
 				LowerBound: node.LowerBound,
 				UpperBound: node.UpperBound,
-				typ:        tree.typ,
+				Typ:        tree.typ,
 			}
 			if node.Inner == nil {
 				rangeCollection = append(rangeCollection, Range{connectedColExpr})
@@ -329,7 +329,7 @@ func (tree *RangeColumnExprTree) GetRangeCollection() (RangeCollection, error) {
 			rangeStack[len(rangeStack)-1] = RangeColumnExpr{
 				LowerBound: node.LowerBound,
 				UpperBound: node.UpperBound,
-				typ:        iter.tree.typ,
+				Typ:        iter.tree.typ,
 			}
 			if node.Inner != nil {
 				iterStack = append(iterStack, node.Inner.Iterator())
@@ -380,7 +380,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 	sb.WriteString(RangeColumnExpr{
 		LowerBound: node.LowerBound,
 		UpperBound: node.UpperBound,
-		typ:        typ,
+		Typ:        typ,
 	}.DebugString())
 	sb.WriteRune('\n')
 	if node.Left != nil {

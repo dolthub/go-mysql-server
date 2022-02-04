@@ -275,7 +275,7 @@ var (
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
-	ErrInvalidArgument = errors.NewKind("Incorrect arguments to %s")
+	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
 	// ErrSavepointDoesNotExist is returned when a RELEASE SAVEPOINT or ROLLBACK TO SAVEPOINT statement references a
 	// non-existent savepoint identifier
@@ -410,6 +410,9 @@ var (
 
 	// ErrGrantRevokeRoleDoesNotExist is returned when a user or role does not exist when attempting to grant or revoke roles.
 	ErrGrantRevokeRoleDoesNotExist = errors.NewKind("Unknown authorization ID %s")
+
+	// ErrShowGrantsUserDoesNotExist is returned when a user does not exist when attempting to show their grants.
+	ErrShowGrantsUserDoesNotExist = errors.NewKind("There is no such grant defined for user '%s' on host '%s'")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

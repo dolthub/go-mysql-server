@@ -51,7 +51,7 @@ func (n *CreateRole) Schema() sql.Schema {
 func (n *CreateRole) String() string {
 	roles := make([]string, len(n.Roles))
 	for i, role := range n.Roles {
-		roles[i] = role.StringWithQuote("", "")
+		roles[i] = role.String("")
 	}
 	ifNotExists := ""
 	if n.IfNotExists {
@@ -111,7 +111,7 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			if n.IfNotExists {
 				continue
 			}
-			return nil, sql.ErrRoleCreationFailure.New(role.StringWithQuote("'", ""))
+			return nil, sql.ErrRoleCreationFailure.New(role.String("'"))
 		}
 
 		//TODO: When password expiration is implemented, make sure that roles have an expired password on creation

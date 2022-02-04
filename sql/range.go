@@ -99,7 +99,7 @@ func (ranges RangeCollection) DebugString() string {
 func (rang Range) AsEmpty() Range {
 	emptyRange := make(Range, len(rang))
 	for i := range rang {
-		emptyRange[i] = EmptyRangeColumnExpr(rang[i].typ)
+		emptyRange[i] = EmptyRangeColumnExpr(rang[i].Typ)
 	}
 	return emptyRange
 }
@@ -146,11 +146,11 @@ func (rang Range) Compare(otherRange Range) (int, error) {
 		return 0, fmt.Errorf("compared ranges must have matching lengths")
 	}
 	for i := range rang {
-		cmp, err := rang[i].LowerBound.Compare(otherRange[i].LowerBound, rang[i].typ)
+		cmp, err := rang[i].LowerBound.Compare(otherRange[i].LowerBound, rang[i].Typ)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
-		cmp, err = rang[i].UpperBound.Compare(otherRange[i].UpperBound, rang[i].typ)
+		cmp, err = rang[i].UpperBound.Compare(otherRange[i].UpperBound, rang[i].Typ)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}

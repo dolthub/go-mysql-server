@@ -328,12 +328,15 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 // to begin. The database is not guaranteed to exist.
 func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 	// For USE DATABASE statements, we consider the transaction database to be the one being USEd
-	var transactionDatabase string
+	transactionDatabase := ctx.GetCurrentDatabase()
 	switch n := parsed.(type) {
 	case *plan.Use:
 		transactionDatabase = n.Database().Name()
-	default:
-		transactionDatabase = ctx.GetCurrentDatabase()
+	case *plan.AlterPK:
+		t, ok := n.Table.(*plan.UnresolvedTable)
+		if ok && t.Database != "" {
+			transactionDatabase = t.Database
+		}
 	}
 
 	switch n := parsed.(type) {

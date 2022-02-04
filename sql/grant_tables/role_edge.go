@@ -15,6 +15,9 @@
 package grant_tables
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/in_mem_table"
 )
@@ -71,4 +74,31 @@ func (r *RoleEdge) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool 
 		return false
 	}
 	return *r == *otherRoleEdge
+}
+
+// ToString returns the "TO" user as a formatted string using the quotes given. Using the default root
+// account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
+// in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
+// doubling the quote (which also mimics MySQL behavior).
+func (r *RoleEdge) ToString(quote string) string {
+	return r.stringWithQuote(r.ToUser, r.ToHost, quote)
+}
+
+// FromString returns the "FROM" user as a formatted string using the quotes given. Using the default root
+// account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
+// in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
+// doubling the quote (which also mimics MySQL behavior).
+func (r *RoleEdge) FromString(quote string) string {
+	return r.stringWithQuote(r.FromUser, r.FromHost, quote)
+}
+
+// stringWithQuote returns the given user as a formatted string using the quotes given. Using the default root
+// account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
+// in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
+// doubling the quote (which also mimics MySQL behavior).
+func (r *RoleEdge) stringWithQuote(name string, host string, quote string) string {
+	replacement := quote + quote
+	name = strings.ReplaceAll(name, quote, replacement)
+	host = strings.ReplaceAll(host, quote, replacement)
+	return fmt.Sprintf("%s%s%s@%s%s%s", quote, name, quote, quote, host, quote)
 }

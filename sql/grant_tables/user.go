@@ -128,15 +128,14 @@ func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 	return true
 }
 
-// UserHostToString returns the user and host as a formatted string using the quotes given. If a replacement is given,
-// then also replaces any existing instances of the quotes with the replacement.
-func (u *User) UserHostToString(quote string, replacement string) string {
-	user := u.User
-	host := u.Host
-	if len(replacement) > 0 {
-		user = strings.ReplaceAll(user, quote, replacement)
-		host = strings.ReplaceAll(host, quote, replacement)
-	}
+// UserHostToString returns the user and host as a formatted string using the quotes given. Using the default root
+// account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
+// in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
+// doubling the quote (which also mimics MySQL behavior).
+func (u *User) UserHostToString(quote string) string {
+	replacement := quote + quote
+	user := strings.ReplaceAll(u.User, quote, replacement)
+	host := strings.ReplaceAll(u.Host, quote, replacement)
 	return fmt.Sprintf("%s%s%s@%s%s%s", quote, user, quote, quote, host, quote)
 }
 
@@ -381,3 +380,43 @@ const (
 	PrivilegeType_CreateRole
 	PrivilegeType_DropRole
 )
+
+// privilegeTypeStrings are in the same order as the enumerations above, so that it's a simple index access.
+var privilegeTypeStrings = []string{
+	"SELECT",
+	"INSERT",
+	"UPDATE",
+	"DELETE",
+	"CREATE",
+	"DROP",
+	"RELOAD",
+	"SHUTDOWN",
+	"PROCESS",
+	"FILE",
+	"GRANT",
+	"REFERENCES",
+	"INDEX",
+	"ALTER",
+	"SHOW DATABASES",
+	"SUPER",
+	"CREATE TEMPORARY TABLES",
+	"LOCK TABLES",
+	"EXECUTE",
+	"REPLICATION SLAVE",
+	"REPLICATION CLIENT",
+	"CREATE VIEW",
+	"SHOW VIEW",
+	"CREATE ROUTINE",
+	"ALTER ROUTINE",
+	"CREATE USER",
+	"EVENT",
+	"TRIGGER",
+	"CREATE TABLESPACE",
+	"CREATE ROLE",
+	"DROP ROLE",
+}
+
+// String returns the PrivilegeType as a string, for display in places such as "SHOW GRANTS".
+func (pt PrivilegeType) String() string {
+	return privilegeTypeStrings[pt]
+}

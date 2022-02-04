@@ -1232,6 +1232,7 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 		for j, currCol := range potentialSchema {
 			if strings.ToLower(currCol.Name) == strings.ToLower(newCol.Name) {
 				currCol.PrimaryKey = true
+				currCol.Nullable = false
 				found = true
 				pkOrdinals[i] = j
 				break
