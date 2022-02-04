@@ -147,7 +147,7 @@ func exprIsCacheable(expr sql.Expression, lowestAlloewdIdx int) bool {
 	cacheable := true
 	sql.Inspect(expr, func(e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {
-			if gf.Index() < lowestAlloewdIdx {
+			if gf.Index() <= lowestAlloewdIdx {
 				cacheable = false
 				return false
 			}
