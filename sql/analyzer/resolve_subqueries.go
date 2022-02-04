@@ -131,6 +131,10 @@ func StripQueryProcess(n sql.Node) sql.Node {
 	nodeIsPassthrough := true
 	for nodeIsPassthrough {
 		switch tn := n.(type) {
+		case RowIter2Node:
+			n = tn.Node2
+		case RowIterNode:
+			n = tn.Node
 		case *plan.QueryProcess:
 			n = tn.Child
 		case *plan.StartTransaction:

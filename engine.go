@@ -191,6 +191,7 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if autoCommit {
+		// TODO: need to make this an analyzer rule or something
 		iter = transactionCommittingIter{iter, transactionDatabase}
 	}
 
@@ -284,6 +285,10 @@ type transactionCommittingIter struct {
 
 func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
+}
+
+func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	return t.childIter.(sql.RowIter2).Next2(ctx, frame)
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {

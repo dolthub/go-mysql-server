@@ -111,24 +111,16 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+//	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
 		Query: `
-CREATE TABLE T2
-(
-  CHECK (c1 = c2),
-  c1 INT CHECK (c1 > 10),
-  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
-  c3 INT CHECK (c3 < 100),
-  CONSTRAINT c1_nonzero CHECK (c1 = 0),
-  CHECK (C1 > C3)
-);`,
+select * from mytable order by 1`,
 		Expected: []sql.Row{
-			{1, "00"},
-			{2, "11"},
-			{3, "22"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
 		},
 	}
 
