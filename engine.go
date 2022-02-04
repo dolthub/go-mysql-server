@@ -337,6 +337,21 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if ok && t.Database != ctx.GetCurrentDatabase() {
 			transactionDatabase = t.Database
 		}
+	case *plan.DropColumn:
+		t, ok := n.UnaryNode.Child.(*plan.UnresolvedTable)
+		if ok && t.Database != ctx.GetCurrentDatabase() {
+			transactionDatabase = t.Database
+		}
+	case *plan.RenameColumn:
+		t, ok := n.UnaryNode.Child.(*plan.UnresolvedTable)
+		if ok && t.Database != ctx.GetCurrentDatabase() {
+			transactionDatabase = t.Database
+		}
+	case *plan.ModifyColumn:
+		t, ok := n.UnaryNode.Child.(*plan.UnresolvedTable)
+		if ok && t.Database != ctx.GetCurrentDatabase() {
+			transactionDatabase = t.Database
+		}
 	}
 
 	switch n := parsed.(type) {
