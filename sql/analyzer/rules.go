@@ -29,6 +29,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_views", resolveViews},
 	{"lift_common_table_expressions", liftCommonTableExpressions},
 	{"resolve_common_table_expressions", resolveCommonTableExpressions},
+	{"lift_recursive_ctes", liftRecursiveCte},
 	{"resolve_databases", resolveDatabases},
 	{"resolve_tables", resolveTables},
 	{"set_target_schemas", setTargetSchemas},

@@ -794,9 +794,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
 	}
 
-	// Finally, if common table expressions were provided, wrap the top-level node in a With node to capture them
-	if len(s.CommonTableExprs) > 0 {
-		node, err = ctesToWith(ctx, s.CommonTableExprs, node)
+	// Build With node if provided
+	if s.With != nil {
+		node, err = ctesToWith(ctx, s.With, node)
 		if err != nil {
 			return nil, err
 		}
@@ -805,9 +805,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
-func ctesToWith(ctx *sql.Context, cteExprs sqlparser.TableExprs, node sql.Node) (sql.Node, error) {
-	ctes := make([]*plan.CommonTableExpression, len(cteExprs))
-	for i, cteExpr := range cteExprs {
+func ctesToWith(ctx *sql.Context, with *sqlparser.With, node sql.Node) (sql.Node, error) {
+	ctes := make([]*plan.CommonTableExpression, len(with.Ctes))
+	for i, cteExpr := range with.Ctes {
 		var err error
 		ctes[i], err = cteExprToCte(ctx, cteExpr)
 		if err != nil {
@@ -815,7 +815,7 @@ func ctesToWith(ctx *sql.Context, cteExprs sqlparser.TableExprs, node sql.Node) 
 		}
 	}
 
-	return plan.NewWith(node, ctes), nil
+	return plan.NewWith(node, ctes, with.Recursive), nil
 }
 
 func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
