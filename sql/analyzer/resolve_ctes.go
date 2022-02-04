@@ -15,7 +15,10 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/expression"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -38,7 +41,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	with, ok := n.(*plan.With)
 	if ok {
 		var err error
-		n, err = stripWith(ctx, a, with, ctes)
+		n, err = stripWith(ctx, a, scope, with, ctes)
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +103,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	return cur, nil
 }
 
-func stripWith(ctx *sql.Context, a *Analyzer, n sql.Node, ctes map[string]sql.Node) (sql.Node, error) {
+func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map[string]sql.Node) (sql.Node, error) {
 	with, ok := n.(*plan.With)
 	if !ok {
 		return n, nil
@@ -119,7 +122,23 @@ func stripWith(ctx *sql.Context, a *Analyzer, n sql.Node, ctes map[string]sql.No
 			subquery = subquery.WithColumns(cte.Columns)
 		}
 
-		ctes[strings.ToLower(cteName)] = subquery
+		if with.Recursive {
+			// TODO this needs to be split into a separate rule
+			rCte, err := newRecursiveCte(subquery)
+			if err != nil {
+				return nil, err
+			}
+			rCte, err = resolveRecursiveCte(ctx, a, rCte, subquery, scope)
+			if err != nil {
+				return nil, err
+			}
+			ctes[strings.ToLower(cteName)] = plan.NewProject(
+				[]sql.Expression{expression.NewQualifiedStar(cte.Subquery.Name())},
+				rCte,
+			)
+		} else {
+			ctes[strings.ToLower(cteName)] = subquery
+		}
 	}
 
 	return with.Child, nil
@@ -194,8 +213,8 @@ func schemaLength(node sql.Node) int {
 func liftCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		if union, isUnion := n.(*plan.Union); isUnion {
-			if cte, isCTE := union.Left().(*plan.With); isCTE {
-				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs), nil
+			if cte, isCTE := union.Left().(*plan.With); isCTE && !cte.Recursive {
+				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs, cte.Recursive), nil
 			}
 			l, err := liftCommonTableExpressions(ctx, a, union.Left(), scope)
 			if err != nil {
@@ -212,9 +231,128 @@ func liftCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		}
 		if distinct, isDistinct := n.(*plan.Distinct); isDistinct {
 			if cte, isCTE := distinct.Child.(*plan.With); isCTE {
-				return plan.NewWith(plan.NewDistinct(cte.Child), cte.CTEs), nil
+				return plan.NewWith(plan.NewDistinct(cte.Child), cte.CTEs, cte.Recursive), nil
 			}
 		}
 		return n, nil
 	})
+}
+
+func liftRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		ta, ok := n.(*plan.TableAlias)
+		if !ok {
+			return n, nil
+		}
+		p, ok := ta.Child.(*plan.Project)
+		if !ok {
+			return n, nil
+		}
+		rCte, ok := p.Child.(*plan.RecursiveCte)
+		if !ok {
+			return n, nil
+		}
+		return plan.NewSubqueryAlias(ta.Name(), "", rCte), nil
+	})
+}
+
+func newRecursiveCte(sq *plan.SubqueryAlias) (sql.Node, error) {
+	// either UNION (deduplicate) or UNION ALL (keep duplicates)
+	var deduplicate bool
+	var union *plan.Union
+	switch n := sq.Child.(type) {
+	case *plan.Distinct:
+		deduplicate = true
+		union = n.Child.(*plan.Union)
+	case *plan.Union:
+		union = n
+	}
+	if union == nil {
+		return nil, sql.ErrInvalidRecursiveCteUnion.New(sq)
+	}
+
+	// TODO: can we support other top-level nodes?
+	// Window, Subquery, RecursiveCte, Cte?
+	switch n := union.Left().(type) {
+	case *plan.Project, *plan.GroupBy:
+	default:
+		return nil, sql.ErrInvalidRecursiveCteInitialQuery.New(n)
+	}
+	switch n := union.Right().(type) {
+	case *plan.Project, *plan.GroupBy:
+	default:
+		return nil, sql.ErrInvalidRecursiveCteRecursiveQuery.New(n)
+	}
+
+	return plan.NewRecursiveCte(union.Left(), union.Right(), sq.Name(), sq.Columns, deduplicate), nil
+}
+
+func resolveRecursiveCte(ctx *sql.Context, a *Analyzer, node sql.Node, sq sql.Node, scope *Scope) (sql.Node, error) {
+	rCte := node.(*plan.RecursiveCte)
+	if rCte == nil {
+		return node, nil
+	}
+
+	newInit, err := a.analyzeThroughBatch(ctx, rCte.Init, scope, "default-rules")
+	if err != nil {
+		return node, err
+	}
+
+	// create recursive schema from initial projection cols and names
+	var outputProj []sql.Expression
+	switch n := newInit.(type) {
+	case *plan.Project:
+		outputProj = n.Projections
+	case *plan.GroupBy:
+		outputProj = n.SelectedExprs
+	}
+
+	schema := make(sql.Schema, len(outputProj))
+	var name string
+	for i, p := range outputProj {
+		switch c := p.(type) {
+		case *expression.Alias, *expression.GetField:
+			name = c.(sql.Nameable).Name()
+		case *expression.Literal, sql.Aggregation:
+			name = c.String()
+		default:
+			return nil, fmt.Errorf("failed to resolve or unsupported field: %v", p)
+		}
+		if i < len(rCte.Columns) {
+			name = rCte.Columns[i]
+		}
+		schema[i] = &sql.Column{
+			Name:     name,
+			Source:   rCte.Name(),
+			Type:     p.Type(),
+			Nullable: p.IsNullable(),
+		}
+	}
+
+	// resolve recursive table with proper schema
+	rTable := plan.NewRecursiveTable(rCte.Name(), schema)
+
+	// replace recursive table refs
+	var foundRecursive bool
+	newRec, err := plan.TransformUp(rCte.Rec, func(n sql.Node) (sql.Node, error) {
+		switch t := n.(type) {
+		case *plan.UnresolvedTable:
+			if t.Name() == rCte.Name() {
+				foundRecursive = true
+				return rTable, nil
+			}
+		}
+		return n, nil
+	})
+	if err != nil {
+		return node, err
+	}
+
+	if foundRecursive {
+		return rCte.WithSchema(schema).WithWorking(rTable).WithChildren(newInit, newRec)
+	}
+
+	// fallback to subquery if no recursive child node
+	return sq, nil
+
 }

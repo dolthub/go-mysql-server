@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,13 +24,15 @@ import (
 // analysis. It is removed during analysis.
 type With struct {
 	UnaryNode
-	CTEs []*CommonTableExpression
+	CTEs      []*CommonTableExpression
+	Recursive bool
 }
 
-func NewWith(child sql.Node, ctes []*CommonTableExpression) *With {
+func NewWith(child sql.Node, ctes []*CommonTableExpression, recursive bool) *With {
 	return &With{
 		UnaryNode: UnaryNode{child},
 		CTEs:      ctes,
+		Recursive: recursive,
 	}
 }
 
@@ -42,7 +43,11 @@ func (w *With) String() string {
 	}
 
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("With(%s)", strings.Join(cteStrings, ", "))
+	if w.Recursive {
+		_ = pr.WriteNode("with recursive (%s)", strings.Join(cteStrings, ", "))
+	} else {
+		_ = pr.WriteNode("with(%s)", strings.Join(cteStrings, ", "))
+	}
 	_ = pr.WriteChildren(w.Child.String())
 	return pr.String()
 }
@@ -68,7 +73,7 @@ func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 1)
 	}
 
-	return NewWith(children[0], w.CTEs), nil
+	return NewWith(children[0], w.CTEs, w.Recursive), nil
 }
 
 type CommonTableExpression struct {
@@ -84,15 +89,23 @@ func NewCommonTableExpression(subquery *SubqueryAlias, columns []string) *Common
 }
 
 func (e *CommonTableExpression) String() string {
+	pr := sql.NewTreePrinter()
 	if len(e.Columns) > 0 {
-		return fmt.Sprintf("%s (%s) AS %s", e.Subquery.name, strings.Join(e.Columns, ","), e.Subquery.Child)
+		_ = pr.WriteNode("%s (%s)", e.Subquery.name, strings.Join(e.Columns, ","))
+	} else {
+		_ = pr.WriteNode("%s", e.Subquery.name)
 	}
-	return fmt.Sprintf("%s AS %s", e.Subquery.name, e.Subquery.Child)
+	_ = pr.WriteChildren(sql.DebugString(e.Subquery.Child))
+	return pr.String()
 }
 
 func (e *CommonTableExpression) DebugString() string {
+	pr := sql.NewTreePrinter()
 	if len(e.Columns) > 0 {
-		return fmt.Sprintf("%s (%s) AS %s", e.Subquery.name, strings.Join(e.Columns, ","), sql.DebugString(e.Subquery))
+		_ = pr.WriteNode("%s (%s)", e.Subquery.name, strings.Join(e.Columns, ","))
+	} else {
+		_ = pr.WriteNode("%s", e.Subquery.name)
 	}
-	return fmt.Sprintf("%s AS %s", e.Subquery.name, e)
+	_ = pr.WriteChildren(e.Subquery.Child.String())
+	return pr.String()
 }

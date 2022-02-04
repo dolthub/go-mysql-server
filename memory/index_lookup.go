@@ -123,5 +123,6 @@ func (u *indexValIter) initValues() error {
 }
 
 func (u *indexValIter) Close(_ *sql.Context) error {
+	u.values = nil
 	return nil
 }

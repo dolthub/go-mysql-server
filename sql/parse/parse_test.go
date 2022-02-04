@@ -3023,164 +3023,163 @@ CREATE TABLE t2
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	// TODO: these pass, after implementing ranges remove error check
-	//`SELECT row_number() over (partition by x RANGE CURRENT ROW) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE CURRENT ROW)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeCurrentRowToCurrentRowFrame(),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE 2 PRECEDING) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE 2 PRECEDING)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeNPrecedingToCurrentRowFrame(
-	//					expression.NewLiteral(int8(2), sql.Int8),
-	//				),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE UNBOUNDED PRECEDING) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE UNBOUNDED PRECEDING)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeUnboundedPrecedingToCurrentRowFrame(),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE interval 5 DAY PRECEDING) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE interval 5 DAY PRECEDING)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeNPrecedingToCurrentRowFrame(
-	//					expression.NewInterval(
-	//						expression.NewLiteral(int8(5), sql.Int8),
-	//						"DAY",
-	//					),
-	//				),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE interval '2:30' MINUTE_SECOND PRECEDING) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE interval '2:30' MINUTE_SECOND PRECEDING)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeNPrecedingToCurrentRowFrame(
-	//					expression.NewInterval(
-	//						expression.NewLiteral("2:30", sql.LongText),
-	//						"MINUTE_SECOND",
-	//					),
-	//				),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeNPrecedingToNFollowingFrame(
-	//					expression.NewLiteral(int8(1), sql.Int8),
-	//					expression.NewLiteral(int8(1), sql.Int8),
-	//				),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND CURRENT ROW) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND CURRENT ROW)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeCurrentRowToCurrentRowFrame(),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeCurrentRowToNFollowingFrame(
-	//					expression.NewLiteral(int8(1), sql.Int8),
-	//				),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE BETWEEN interval 5 DAY PRECEDING AND CURRENT ROW) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE BETWEEN interval 5 DAY PRECEDING AND CURRENT ROW)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeNPrecedingToCurrentRowFrame(
-	//					expression.NewInterval(
-	//						expression.NewLiteral(int8(5), sql.Int8),
-	//						"DAY",
-	//					),
-	//				),
-	//			),
-	//			)),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
-	//`SELECT row_number() over (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW) from foo`: plan.NewWindow(
-	//	[]sql.Expression{
-	//		expression.NewAlias("row_number() over (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW)",
-	//			expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
-	//				expression.NewUnresolvedColumn("x"),
-	//			},
-	//				nil,
-	//				plan.NewRangeNPrecedingToCurrentRowFrame(
-	//					expression.NewInterval(
-	//						expression.NewLiteral("2:30", sql.LongText),
-	//						"MINUTE_SECOND",
-	//					),
-	//				),
-	//			)),
-	//		),
-	//	},
-	//	plan.NewUnresolvedTable("foo", ""),
-	//),
+	`SELECT row_number() over (partition by x RANGE CURRENT ROW) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE CURRENT ROW)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeCurrentRowToCurrentRowFrame(),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE 2 PRECEDING) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE 2 PRECEDING)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeNPrecedingToCurrentRowFrame(
+						expression.NewLiteral(int8(2), sql.Int8),
+					),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE UNBOUNDED PRECEDING) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE UNBOUNDED PRECEDING)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeUnboundedPrecedingToCurrentRowFrame(),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE interval 5 DAY PRECEDING) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE interval 5 DAY PRECEDING)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeNPrecedingToCurrentRowFrame(
+						expression.NewInterval(
+							expression.NewLiteral(int8(5), sql.Int8),
+							"DAY",
+						),
+					),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE interval '2:30' MINUTE_SECOND PRECEDING) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE interval '2:30' MINUTE_SECOND PRECEDING)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeNPrecedingToCurrentRowFrame(
+						expression.NewInterval(
+							expression.NewLiteral("2:30", sql.LongText),
+							"MINUTE_SECOND",
+						),
+					),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeNPrecedingToNFollowingFrame(
+						expression.NewLiteral(int8(1), sql.Int8),
+						expression.NewLiteral(int8(1), sql.Int8),
+					),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND CURRENT ROW) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND CURRENT ROW)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeCurrentRowToCurrentRowFrame(),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeCurrentRowToNFollowingFrame(
+						expression.NewLiteral(int8(1), sql.Int8),
+					),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE BETWEEN interval 5 DAY PRECEDING AND CURRENT ROW) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN interval 5 DAY PRECEDING AND CURRENT ROW)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeNPrecedingToCurrentRowFrame(
+						expression.NewInterval(
+							expression.NewLiteral(int8(5), sql.Int8),
+							"DAY",
+						),
+					),
+				),
+				)),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW) from foo`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				},
+					nil,
+					plan.NewRangeNPrecedingToCurrentRowFrame(
+						expression.NewInterval(
+							expression.NewLiteral("2:30", sql.LongText),
+							"MINUTE_SECOND",
+						),
+					),
+				)),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
 	`with cte1 as (select a from b) select * from cte1`: plan.NewWith(
 		plan.NewProject(
 			[]sql.Expression{
@@ -3200,6 +3199,48 @@ CREATE TABLE t2
 				[]string{},
 			),
 		},
+		false,
+	),
+	`with recursive cte1 as (select 1 union select n+1 from cte1 where n < 10) select * from cte1`: plan.NewWith(
+		plan.NewProject(
+			[]sql.Expression{
+				expression.NewStar(),
+			},
+			plan.NewUnresolvedTable("cte1", "")),
+		[]*plan.CommonTableExpression{
+			plan.NewCommonTableExpression(
+				plan.NewSubqueryAlias("cte1", "select 1 from dual union select n + 1 from cte1 where n < 10",
+					plan.NewDistinct(
+						plan.NewUnion(
+							plan.NewProject(
+								[]sql.Expression{
+									expression.NewLiteral(int8(1), sql.Int8),
+								},
+								plan.NewUnresolvedTable("dual", ""),
+							),
+							plan.NewProject(
+								[]sql.Expression{
+									expression.NewArithmetic(
+										expression.NewUnresolvedColumn("n"),
+										expression.NewLiteral(int8(1), sql.Int8),
+										sqlparser.PlusStr,
+									),
+								},
+								plan.NewFilter(
+									expression.NewLessThan(
+										expression.NewUnresolvedColumn("n"),
+										expression.NewLiteral(int8(10), sql.Int8),
+									),
+									plan.NewUnresolvedTable("cte1", ""),
+								),
+							),
+						),
+					),
+				),
+				[]string{},
+			),
+		},
+		true,
 	),
 	`with cte1 as (select a from b), cte2 as (select c from d) select * from cte1`: plan.NewWith(
 		plan.NewProject(
@@ -3231,6 +3272,7 @@ CREATE TABLE t2
 				[]string{},
 			),
 		},
+		false,
 	),
 	`with cte1 (x) as (select a from b), cte2 (y,z) as (select c from d) select * from cte1`: plan.NewWith(
 		plan.NewProject(
@@ -3262,6 +3304,7 @@ CREATE TABLE t2
 				[]string{"y", "z"},
 			),
 		},
+		false,
 	),
 	`with cte1 as (select a from b) select c, (with cte2 as (select c from d) select e from cte2) from cte1`: plan.NewWith(
 		plan.NewProject(
@@ -3288,6 +3331,7 @@ CREATE TABLE t2
 									[]string{},
 								),
 							},
+							false,
 						),
 						"with cte2 as (select c from d) select e from cte2",
 					),
@@ -3308,6 +3352,7 @@ CREATE TABLE t2
 				[]string{},
 			),
 		},
+		false,
 	),
 	`SELECT -128, 127, 255, -32768, 32767, 65535, -2147483648, 2147483647, 4294967295, -9223372036854775808, 9223372036854775807, 18446744073709551615`: plan.NewProject(
 		[]sql.Expression{
