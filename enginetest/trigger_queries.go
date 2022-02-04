@@ -24,6 +24,36 @@ import (
 var TriggerTests = []ScriptTest{
 	// INSERT triggers
 	{
+		Name: "trigger before inserts, update other table",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"create table b (x int primary key)",
+			"create trigger trig before insert on a for each row begin set new.j = (select coalesce(max(x),1) from b); update b set x = x + 1; end;",
+			"insert into b values (1)",
+			"insert into a values (1,0), (2,0), (3,0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from a order by i",
+				Expected: []sql.Row{
+					{1,1}, {2,2}, {3,3},
+				},
+			},
+			{
+				Query: "select x from b",
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+			{
+				Query: "insert into a values (4,0), (5,0)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+		},
+	},
+	{
 		Name: "trigger after insert, insert into other table",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
