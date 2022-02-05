@@ -76,6 +76,12 @@ func (r *RoleEdge) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool 
 	return *r == *otherRoleEdge
 }
 
+// Copy implements the interface in_mem_table.Entry.
+func (r *RoleEdge) Copy(ctx *sql.Context) in_mem_table.Entry {
+	rr := *r
+	return &rr
+}
+
 // ToString returns the "TO" user as a formatted string using the quotes given. Using the default root
 // account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
 // in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by

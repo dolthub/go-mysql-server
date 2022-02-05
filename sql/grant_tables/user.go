@@ -27,7 +27,7 @@ import (
 type User struct {
 	User                string
 	Host                string
-	PrivilegeSet        UserGlobalStaticPrivileges
+	PrivilegeSet        PrivilegeSet
 	Plugin              string
 	Password            string
 	PasswordLastChanged time.Time
@@ -128,6 +128,14 @@ func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 	return true
 }
 
+// Copy implements the interface in_mem_table.Entry.
+func (u *User) Copy(ctx *sql.Context) in_mem_table.Entry {
+	uu := *u
+	uu.PrivilegeSet = NewPrivilegeSet()
+	uu.PrivilegeSet.UnionWith(u.PrivilegeSet)
+	return &uu
+}
+
 // UserHostToString returns the user and host as a formatted string using the quotes given. Using the default root
 // account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
 // in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
@@ -140,133 +148,133 @@ func (u *User) UserHostToString(quote string) string {
 }
 
 // rowToPrivSet returns a set of privileges for the given row.
-func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) UserGlobalStaticPrivileges {
-	privSet := NewUserGlobalStaticPrivileges()
+func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
+	privSet := NewPrivilegeSet()
 	for i, val := range row {
 		switch i {
 		case userTblColIndex_Select_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Select)
+				privSet.AddGlobalStatic(PrivilegeType_Select)
 			}
 		case userTblColIndex_Insert_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Insert)
+				privSet.AddGlobalStatic(PrivilegeType_Insert)
 			}
 		case userTblColIndex_Update_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Update)
+				privSet.AddGlobalStatic(PrivilegeType_Update)
 			}
 		case userTblColIndex_Delete_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Delete)
+				privSet.AddGlobalStatic(PrivilegeType_Delete)
 			}
 		case userTblColIndex_Create_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Create)
+				privSet.AddGlobalStatic(PrivilegeType_Create)
 			}
 		case userTblColIndex_Drop_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Drop)
+				privSet.AddGlobalStatic(PrivilegeType_Drop)
 			}
 		case userTblColIndex_Reload_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Reload)
+				privSet.AddGlobalStatic(PrivilegeType_Reload)
 			}
 		case userTblColIndex_Shutdown_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Shutdown)
+				privSet.AddGlobalStatic(PrivilegeType_Shutdown)
 			}
 		case userTblColIndex_Process_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Process)
+				privSet.AddGlobalStatic(PrivilegeType_Process)
 			}
 		case userTblColIndex_File_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_File)
+				privSet.AddGlobalStatic(PrivilegeType_File)
 			}
 		case userTblColIndex_Grant_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Grant)
+				privSet.AddGlobalStatic(PrivilegeType_Grant)
 			}
 		case userTblColIndex_References_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_References)
+				privSet.AddGlobalStatic(PrivilegeType_References)
 			}
 		case userTblColIndex_Index_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Index)
+				privSet.AddGlobalStatic(PrivilegeType_Index)
 			}
 		case userTblColIndex_Alter_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Alter)
+				privSet.AddGlobalStatic(PrivilegeType_Alter)
 			}
 		case userTblColIndex_Show_db_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_ShowDB)
+				privSet.AddGlobalStatic(PrivilegeType_ShowDB)
 			}
 		case userTblColIndex_Super_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Super)
+				privSet.AddGlobalStatic(PrivilegeType_Super)
 			}
 		case userTblColIndex_Create_tmp_table_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_CreateTempTable)
+				privSet.AddGlobalStatic(PrivilegeType_CreateTempTable)
 			}
 		case userTblColIndex_Lock_tables_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_LockTables)
+				privSet.AddGlobalStatic(PrivilegeType_LockTables)
 			}
 		case userTblColIndex_Execute_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Execute)
+				privSet.AddGlobalStatic(PrivilegeType_Execute)
 			}
 		case userTblColIndex_Repl_slave_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_ReplicationSlave)
+				privSet.AddGlobalStatic(PrivilegeType_ReplicationSlave)
 			}
 		case userTblColIndex_Repl_client_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_ReplicationClient)
+				privSet.AddGlobalStatic(PrivilegeType_ReplicationClient)
 			}
 		case userTblColIndex_Create_view_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_CreateView)
+				privSet.AddGlobalStatic(PrivilegeType_CreateView)
 			}
 		case userTblColIndex_Show_view_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_ShowView)
+				privSet.AddGlobalStatic(PrivilegeType_ShowView)
 			}
 		case userTblColIndex_Create_routine_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_CreateRoutine)
+				privSet.AddGlobalStatic(PrivilegeType_CreateRoutine)
 			}
 		case userTblColIndex_Alter_routine_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_AlterRoutine)
+				privSet.AddGlobalStatic(PrivilegeType_AlterRoutine)
 			}
 		case userTblColIndex_Create_user_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_CreateUser)
+				privSet.AddGlobalStatic(PrivilegeType_CreateUser)
 			}
 		case userTblColIndex_Event_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Event)
+				privSet.AddGlobalStatic(PrivilegeType_Event)
 			}
 		case userTblColIndex_Trigger_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_Trigger)
+				privSet.AddGlobalStatic(PrivilegeType_Trigger)
 			}
 		case userTblColIndex_Create_tablespace_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_CreateTablespace)
+				privSet.AddGlobalStatic(PrivilegeType_CreateTablespace)
 			}
 		case userTblColIndex_Create_role_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_CreateRole)
+				privSet.AddGlobalStatic(PrivilegeType_CreateRole)
 			}
 		case userTblColIndex_Drop_role_priv:
 			if val.(string) == "Y" {
-				privSet.Add(PrivilegeType_DropRole)
+				privSet.AddGlobalStatic(PrivilegeType_DropRole)
 			}
 		}
 	}

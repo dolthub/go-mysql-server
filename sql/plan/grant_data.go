@@ -36,10 +36,38 @@ type PrivilegeType byte
 
 const (
 	PrivilegeType_All PrivilegeType = iota
+	PrivilegeType_Alter
+	PrivilegeType_AlterRoutine
+	PrivilegeType_Create
+	PrivilegeType_CreateRole
+	PrivilegeType_CreateRoutine
+	PrivilegeType_CreateTablespace
+	PrivilegeType_CreateTemporaryTables
+	PrivilegeType_CreateUser
+	PrivilegeType_CreateView
+	PrivilegeType_Delete
+	PrivilegeType_Drop
+	PrivilegeType_DropRole
+	PrivilegeType_Event
+	PrivilegeType_Execute
+	PrivilegeType_File
+	PrivilegeType_Index
 	PrivilegeType_Insert
+	PrivilegeType_LockTables
+	PrivilegeType_Process
 	PrivilegeType_References
+	PrivilegeType_Reload
+	PrivilegeType_ReplicationClient
+	PrivilegeType_ReplicationSlave
 	PrivilegeType_Select
+	PrivilegeType_ShowDatabases
+	PrivilegeType_ShowView
+	PrivilegeType_Shutdown
+	PrivilegeType_Super
+	PrivilegeType_Trigger
 	PrivilegeType_Update
+	PrivilegeType_Usage
+	PrivilegeType_Dynamic
 )
 
 // ObjectType represents the object type that the GRANT or REVOKE statement will apply to.

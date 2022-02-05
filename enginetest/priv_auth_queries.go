@@ -22,6 +22,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // UserPrivilegeTest is used to define a test on the user and privilege systems. These tests always have the root
@@ -197,6 +198,111 @@ var UserPrivTests = []UserPrivilegeTest{
 				Host:     "localhost",
 				Query:    "SELECT * FROM test;",
 				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+		},
+	},
+	{
+		Name: "Database-level privileges exist",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT, UPDATE, EXECUTE ON mydb.* TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mysql.db;",
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE UPDATE ON mydb.* FROM tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mysql.db;",
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'tester';",
+				Expected: []sql.Row{{sql.OkResult{
+					RowsAffected: 1,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  1,
+						Updated:  1,
+						Warnings: 0,
+					},
+				}}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mysql.db;",
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+			},
+		},
+	},
+	{
+		Name: "Table-level privileges exist",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY);",
+			"CREATE USER tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT, DELETE, DROP ON mydb.test TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mysql.tables_priv;",
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Delete,Drop", ""}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE DELETE ON mydb.test FROM tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mysql.tables_priv;",
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Drop", ""}},
+			},
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "UPDATE mysql.tables_priv SET table_priv = 'References,Index' WHERE User = 'tester';",
+				Expected: []sql.Row{{sql.OkResult{
+					RowsAffected: 1,
+					InsertID:     0,
+					Info: plan.UpdateInfo{
+						Matched:  1,
+						Updated:  1,
+						Warnings: 0,
+					},
+				}}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mysql.tables_priv;",
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "References,Index", ""}},
 			},
 		},
 	},
