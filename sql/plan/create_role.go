@@ -118,7 +118,7 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		err := userTableData.Put(ctx, &grant_tables.User{
 			User:                userPk.User,
 			Host:                userPk.Host,
-			PrivilegeSet:        grant_tables.NewUserGlobalStaticPrivileges(),
+			PrivilegeSet:        grant_tables.NewPrivilegeSet(),
 			Plugin:              "mysql_native_password",
 			Password:            "",
 			PasswordLastChanged: time.Now().UTC(),
