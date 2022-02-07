@@ -65,7 +65,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "select * from a order by j",
 				Expected: []sql.Row{
-					{0,0}, {0,1}, {0,2},
+					{0, 0}, {0, 1}, {0, 2},
 				},
 			},
 			{
@@ -1004,9 +1004,8 @@ var TriggerTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from a order by 1",
-				Expected: []sql.Row{
-				},
+				Query:    "select * from a order by 1",
+				Expected: []sql.Row{},
 			},
 			{
 				Query: "select x from b order by 1",
