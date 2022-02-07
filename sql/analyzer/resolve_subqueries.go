@@ -206,14 +206,7 @@ func isDeterminstic(n sql.Node) bool {
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	if n, ok := n.(*plan.TriggerBeginEndBlock); ok {
-		return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
-			s, ok := e.(*plan.Subquery)
-			if !ok || !s.Resolved() {
-				return e, nil
-			}
-
-			return s, nil
-		})
+		return n, nil
 	}
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
