@@ -752,61 +752,6 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
-	// This test sometimes fails, maybe due to a race condition or something weird happening with references
-	//{
-	//	Name: "trigger before update, begin block with references to other table",
-	//	SetUpScript: []string{
-	//		"CREATE TABLE a (i int primary key, j int)",
-	//		"INSERT INTO a VALUES (0,1),(2,3),(4,5)",
-	//		"CREATE TABLE b (x int)",
-	//		"INSERT INTO b VALUES (1)",
-	//		"CREATE TRIGGER trig BEFORE UPDATE ON a FOR EACH ROW BEGIN SET NEW.i = (SELECT x FROM b); SET NEW.j = OLD.j + NEW.j; UPDATE b SET x = x + 1; END;",
-	//		"UPDATE a SET j = 10;",
-	//	},
-	//	Assertions: []ScriptTestAssertion{
-	//		{
-	//			Query: "SELECT * FROM a ORDER BY 1",
-	//			Expected: []sql.Row{
-	//				{1, 11}, {2, 13}, {3, 15},
-	//			},
-	//		},
-	//		{
-	//			Query: "SELECT * FROM b ORDER BY x",
-	//			Expected: []sql.Row{
-	//				{4},
-	//			},
-	//		},
-	//	},
-	//},
-	// This test is failing due to how trigger logic handles trigger logic with a different database then the one set
-	//{
-	//	Name: "trigger after update, delete from other table",
-	//	SetUpScript: []string{
-	//		"create database test",
-	//		"create table test.a (x int primary key)",
-	//		"create table test.b (y int primary key)",
-	//		"insert into test.a values (0), (2), (4), (6), (8)",
-	//		"insert into test.b values (1), (3), (5), (7), (9)",
-	//		"use test",
-	//		"create trigger insert_into_b after update on a for each row insert into b values (old.x + new.x + 1)",
-	//		"use mydb",
-	//		"update test.a set x = x + 1 where x in (2,4)",
-	//	},
-	//	Assertions: []ScriptTestAssertion{
-	//		{
-	//			Query: "select x from test.a order by 1",
-	//			Expected: []sql.Row{
-	//				{0}, {3}, {5}, {6}, {8},
-	//			},
-	//		},
-	//		{
-	//			Query: "select y from test.b order by 1",
-	//			Expected: []sql.Row{
-	//				{1}, {3}, {7},
-	//			},
-	//		},
-	//	},
-	//},
 	// DELETE triggers
 	{
 		Name: "trigger after delete, insert into other table",
@@ -2189,6 +2134,91 @@ var BrokenTriggerQueries = []ScriptTest{
 				Query: "SELECT * FROM test2 ORDER BY 1",
 				Expected: []sql.Row{
 					{2, -440},
+				},
+			},
+		},
+	},
+	// This test is failing due to how trigger logic handles trigger logic with a different database then the one set
+	{
+		Name: "trigger after update, delete from other table",
+		SetUpScript: []string{
+			"create database test",
+			"create table test.a (x int primary key)",
+			"create table test.b (y int primary key)",
+			"insert into test.a values (0), (2), (4), (6), (8)",
+			"insert into test.b values (1), (3), (5), (7), (9)",
+			"use test",
+			"create trigger insert_into_b after update on a for each row insert into b values (old.x + new.x + 1)",
+			"use mydb",
+			"update test.a set x = x + 1 where x in (2,4)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select x from test.a order by 1",
+				Expected: []sql.Row{
+					{0}, {3}, {5}, {6}, {8},
+				},
+			},
+			{
+				Query: "select y from test.b order by 1",
+				Expected: []sql.Row{
+					{1}, {3}, {7},
+				},
+			},
+		},
+	},
+	// This test SOMETIMES fails, maybe due to a race condition or something weird happening with references
+	{
+		Name: "trigger before update, begin block with references to other table",
+		SetUpScript: []string{
+			"CREATE TABLE a (i int primary key, j int)",
+			"INSERT INTO a VALUES (0,1),(2,3),(4,5)",
+			"CREATE TABLE b (x int)",
+			"INSERT INTO b VALUES (1)",
+			"CREATE TRIGGER trig BEFORE UPDATE ON a FOR EACH ROW BEGIN SET NEW.i = (SELECT x FROM b); SET NEW.j = OLD.j + NEW.j; UPDATE b SET x = x + 1; END;",
+			"UPDATE a SET j = 10;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM a ORDER BY 1",
+				Expected: []sql.Row{
+					{1, 11}, {2, 13}, {3, 15},
+				},
+			},
+			{
+				Query: "SELECT * FROM b ORDER BY x",
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger after inserts, use updated self reference",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"create table b (x int primary key)",
+			"insert into b values (1)",
+			"create trigger trig after insert on a for each row begin update b set x = (select count(*) from a); end;",
+			"insert into a values (1,0), (2,0), (3,0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from a order by i",
+				Expected: []sql.Row{
+					{1, 0}, {2, 0}, {3, 0},
+				},
+			},
+			{
+				Query: "select x from b",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+			{
+				Query: "insert into a values (4,0), (5,0)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
 				},
 			},
 		},
