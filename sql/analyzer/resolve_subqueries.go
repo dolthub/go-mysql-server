@@ -205,6 +205,7 @@ func isDeterminstic(n sql.Node) bool {
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	// No need to inspect for trigger blocks as the Analyzer is recursively invoked on trigger blocks.
 	if n, ok := n.(*plan.TriggerBeginEndBlock); ok {
 		return n, nil
 	}
