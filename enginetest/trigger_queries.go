@@ -278,6 +278,38 @@ var TriggerTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "trigger before insert, updates references to 2 tables",
+		SetUpScript: []string{
+			"create table a (i int, j int, k int)",
+			"create table b (x int)",
+			"create table c (y int)",
+			"insert into b values (0)",
+			"insert into c values (0)",
+			"create trigger trig before insert on a for each row begin set new.j = (select x from b); set new.k = (select y from c); update b set x = x + 1; update c set y = y + 2; end;",
+			"insert into a values (0, 0, 0), (1, 0, 0), (2, 0, 0), (3, 0, 0), (4, 0, 0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from a order by 1",
+				Expected: []sql.Row{
+					{0, 0, 0}, {1, 1, 2}, {2, 2, 4}, {3, 3, 6}, {4, 4, 8},
+				},
+			},
+			{
+				Query: "select x from b order by 1",
+				Expected: []sql.Row{
+					{5},
+				},
+			},
+			{
+				Query: "select y from c order by 1",
+				Expected: []sql.Row{
+					{10},
+				},
+			},
+		},
+	},
+	{
 		Name: "trigger before insert, alter inserted value",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
