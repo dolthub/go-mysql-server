@@ -36,7 +36,7 @@ var TriggerTests = []ScriptTest{
 			{
 				Query: "select * from a order by i",
 				Expected: []sql.Row{
-					{1,1}, {2,2}, {3,3},
+					{1, 1}, {2, 2}, {3, 3},
 				},
 			},
 			{
