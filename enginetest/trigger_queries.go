@@ -24,7 +24,7 @@ import (
 var TriggerTests = []ScriptTest{
 	// INSERT triggers
 	{
-		Name: "trigger before inserts, update other table",
+		Name: "trigger before inserts, use updated reference to other table",
 		SetUpScript: []string{
 			"create table a (i int primary key, j int)",
 			"create table b (x int primary key)",
@@ -47,6 +47,35 @@ var TriggerTests = []ScriptTest{
 			},
 			{
 				Query: "insert into a values (4,0), (5,0)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before inserts, use count updated reference to other table",
+		SetUpScript: []string{
+			"create table a (i int, j int)",
+			"create table b (x int)",
+			"create trigger trig before insert on a for each row begin set new.j = (select count(x) from b); insert into b values (new.i + new.j); end;",
+			"insert into a values (0,0), (0,0), (0,0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from a order by j",
+				Expected: []sql.Row{
+					{0,0}, {0,1}, {0,2},
+				},
+			},
+			{
+				Query: "select x from b",
+				Expected: []sql.Row{
+					{0}, {1}, {2},
+				},
+			},
+			{
+				Query: "insert into a values (0,0), (0,0)",
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 2}},
 				},
@@ -691,6 +720,31 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "trigger before update, begin block with references to other table",
+		SetUpScript: []string{
+			"CREATE TABLE a (i int primary key, j int)",
+			"INSERT INTO a VALUES (0,1),(2,3),(4,5)",
+			"CREATE TABLE b (x int)",
+			"INSERT INTO b VALUES (1)",
+			"CREATE TRIGGER trig BEFORE UPDATE ON a FOR EACH ROW BEGIN SET NEW.i = (SELECT x FROM b); SET NEW.j = OLD.j + NEW.j; UPDATE b SET x = x + 1; END;",
+			"UPDATE a SET j = 10;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM a ORDER BY 1",
+				Expected: []sql.Row{
+					{1, 11}, {2, 13}, {3, 15},
+				},
+			},
+			{
+				Query: "SELECT * FROM b ORDER BY x",
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+		},
+	},
 	// This test is failing due to how trigger logic handles trigger logic with a different database then the one set
 	//{
 	//	Name: "trigger after update, delete from other table",
@@ -901,6 +955,30 @@ var TriggerTests = []ScriptTest{
 				Query: "select y from b order by 1",
 				Expected: []sql.Row{
 					{4}, {8},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before delete, update other table",
+		SetUpScript: []string{
+			"create table a (i int primary key, j int)",
+			"insert into a values (0,1), (2,3), (4,5)",
+			"create table b (x int)",
+			"insert into b values (0)",
+			"create trigger trig before delete on a for each row begin update b set x = x + old.j; end;",
+			"delete from a where true",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from a order by 1",
+				Expected: []sql.Row{
+				},
+			},
+			{
+				Query: "select x from b order by 1",
+				Expected: []sql.Row{
+					{9},
 				},
 			},
 		},
