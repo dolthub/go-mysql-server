@@ -2800,7 +2800,7 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (partition by s order by x)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("s"),
 				}, sql.SortFields{
 					{
@@ -2808,7 +2808,7 @@ CREATE TABLE t2
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
-				}, nil)),
+				}, nil, "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2817,7 +2817,7 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("count(i) over ()",
-				expression.NewUnresolvedFunction("count", true, sql.NewWindow([]sql.Expression{}, nil, nil), expression.NewUnresolvedColumn("i")),
+				expression.NewUnresolvedFunction("count", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""), expression.NewUnresolvedColumn("i")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2826,18 +2826,18 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (order by x)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{}, sql.SortFields{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("x"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
-				}, nil)),
+				}, nil, "", "")),
 			),
 			expression.NewAlias("row_number() over (partition by y)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("y"),
-				}, nil, nil)),
+				}, nil, nil, "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2846,16 +2846,16 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (order by x)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{}, sql.SortFields{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("x"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
-				}, nil)),
+				}, nil, "", "")),
 			),
 			expression.NewAlias("max(b) over ()",
-				expression.NewUnresolvedFunction("max", true, sql.NewWindow([]sql.Expression{}, nil, nil),
+				expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""),
 					expression.NewUnresolvedColumn("b"),
 				),
 			),
@@ -2866,14 +2866,14 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (partition by b)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("b"),
-				}, nil, nil)),
+				}, nil, nil, "", "")),
 			),
 			expression.NewAlias("max(b) over (partition by b)",
-				expression.NewUnresolvedFunction("max", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("b"),
-				}, nil, nil),
+				}, nil, nil, "", ""),
 					expression.NewUnresolvedColumn("b"),
 				),
 			),
@@ -2884,14 +2884,14 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("row_number() over (partition by c)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("c"),
-				}, nil, nil)),
+				}, nil, nil, "", "")),
 			),
 			expression.NewAlias("max(b) over (partition by b)",
-				expression.NewUnresolvedFunction("max", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("b"),
-				}, nil, nil),
+				}, nil, nil, "", ""),
 					expression.NewUnresolvedColumn("b"),
 				),
 			),
@@ -2902,13 +2902,13 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("count(i) over (order by x)",
-				expression.NewUnresolvedFunction("count", true, sql.NewWindow([]sql.Expression{}, sql.SortFields{
+				expression.NewUnresolvedFunction("count", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("x"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
-				}, nil),
+				}, nil, "", ""),
 					expression.NewUnresolvedColumn("i"),
 				),
 			),
@@ -2919,9 +2919,9 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("a"),
 			expression.NewAlias("count(i) over (partition by y)",
-				expression.NewUnresolvedFunction("count", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("count", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("y"),
-				}, nil, nil),
+				}, nil, nil, "", ""),
 					expression.NewUnresolvedColumn("i"),
 				),
 			),
@@ -2932,13 +2932,13 @@ CREATE TABLE t2
 		[]sql.Expression{
 			expression.NewUnresolvedColumn("i"),
 			expression.NewAlias("row_number() over (order by a)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{}, sql.SortFields{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("a"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
-				}, nil)),
+				}, nil, "", "")),
 			),
 			expression.NewAlias("max(b)",
 				expression.NewUnresolvedFunction("max", true, nil,
@@ -2951,12 +2951,9 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x ROWS UNBOUNDED PRECEDING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x ROWS UNBOUNDED PRECEDING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRowsUnboundedPrecedingToCurrentRowFrame(),
-				)),
+				}, nil, plan.NewRowsUnboundedPrecedingToCurrentRowFrame(), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -2964,15 +2961,12 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRowsNPrecedingToNFollowingFrame(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(1), sql.Int8),
-					),
-				),
+				}, nil, plan.NewRowsNPrecedingToNFollowingFrame(
+					expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewLiteral(int8(1), sql.Int8),
+				), "", ""),
 				),
 			),
 		},
@@ -2981,15 +2975,12 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x ROWS BETWEEN 1 FOLLOWING AND 2 FOLLOWING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRowsNFollowingToNFollowingFrame(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(2), sql.Int8),
-					),
-				),
+				}, nil, plan.NewRowsNFollowingToNFollowingFrame(
+					expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewLiteral(int8(2), sql.Int8),
+				), "", ""),
 				),
 			),
 		},
@@ -2998,12 +2989,9 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x ROWS BETWEEN CURRENT ROW AND CURRENT ROW) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x ROWS BETWEEN CURRENT ROW AND CURRENT ROW)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRowsCurrentRowToCurrentRowFrame(),
-				)),
+				}, nil, plan.NewRowsCurrentRowToCurrentRowFrame(), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3011,14 +2999,11 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRowsCurrentRowToNFollowingFrame(
-						expression.NewLiteral(int8(1), sql.Int8),
-					),
-				)),
+				}, nil, plan.NewRowsCurrentRowToNFollowingFrame(
+					expression.NewLiteral(int8(1), sql.Int8),
+				), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3026,12 +3011,9 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE CURRENT ROW) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE CURRENT ROW)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeCurrentRowToCurrentRowFrame(),
-				)),
+				}, nil, plan.NewRangeCurrentRowToCurrentRowFrame(), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3039,14 +3021,11 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE 2 PRECEDING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE 2 PRECEDING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeNPrecedingToCurrentRowFrame(
-						expression.NewLiteral(int8(2), sql.Int8),
-					),
-				)),
+				}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
+					expression.NewLiteral(int8(2), sql.Int8),
+				), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3054,12 +3033,9 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE UNBOUNDED PRECEDING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE UNBOUNDED PRECEDING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeUnboundedPrecedingToCurrentRowFrame(),
-				)),
+				}, nil, plan.NewRangeUnboundedPrecedingToCurrentRowFrame(), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3067,17 +3043,14 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE interval 5 DAY PRECEDING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE interval 5 DAY PRECEDING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeNPrecedingToCurrentRowFrame(
-						expression.NewInterval(
-							expression.NewLiteral(int8(5), sql.Int8),
-							"DAY",
-						),
+				}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
+					expression.NewInterval(
+						expression.NewLiteral(int8(5), sql.Int8),
+						"DAY",
 					),
-				)),
+				), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3085,17 +3058,14 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE interval '2:30' MINUTE_SECOND PRECEDING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE interval '2:30' MINUTE_SECOND PRECEDING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeNPrecedingToCurrentRowFrame(
-						expression.NewInterval(
-							expression.NewLiteral("2:30", sql.LongText),
-							"MINUTE_SECOND",
-						),
+				}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
+					expression.NewInterval(
+						expression.NewLiteral("2:30", sql.LongText),
+						"MINUTE_SECOND",
 					),
-				)),
+				), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3103,15 +3073,12 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN 1 PRECEDING AND 1 FOLLOWING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeNPrecedingToNFollowingFrame(
-						expression.NewLiteral(int8(1), sql.Int8),
-						expression.NewLiteral(int8(1), sql.Int8),
-					),
-				)),
+				}, nil, plan.NewRangeNPrecedingToNFollowingFrame(
+					expression.NewLiteral(int8(1), sql.Int8),
+					expression.NewLiteral(int8(1), sql.Int8),
+				), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3119,12 +3086,9 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND CURRENT ROW) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND CURRENT ROW)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeCurrentRowToCurrentRowFrame(),
-				)),
+				}, nil, plan.NewRangeCurrentRowToCurrentRowFrame(), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3132,14 +3096,11 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN CURRENT ROW AND 1 FOLLOWING)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeCurrentRowToNFollowingFrame(
-						expression.NewLiteral(int8(1), sql.Int8),
-					),
-				)),
+				}, nil, plan.NewRangeCurrentRowToNFollowingFrame(
+					expression.NewLiteral(int8(1), sql.Int8),
+				), "", "")),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3147,17 +3108,14 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE BETWEEN interval 5 DAY PRECEDING AND CURRENT ROW) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN interval 5 DAY PRECEDING AND CURRENT ROW)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeNPrecedingToCurrentRowFrame(
-						expression.NewInterval(
-							expression.NewLiteral(int8(5), sql.Int8),
-							"DAY",
-						),
+				}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
+					expression.NewInterval(
+						expression.NewLiteral(int8(5), sql.Int8),
+						"DAY",
 					),
-				),
+				), "", ""),
 				)),
 		},
 		plan.NewUnresolvedTable("foo", ""),
@@ -3165,17 +3123,73 @@ CREATE TABLE t2
 	`SELECT row_number() over (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW) from foo`: plan.NewWindow(
 		[]sql.Expression{
 			expression.NewAlias("row_number() over (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindow([]sql.Expression{
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
 					expression.NewUnresolvedColumn("x"),
-				},
-					nil,
-					plan.NewRangeNPrecedingToCurrentRowFrame(
-						expression.NewInterval(
-							expression.NewLiteral("2:30", sql.LongText),
-							"MINUTE_SECOND",
-						),
+				}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
+					expression.NewInterval(
+						expression.NewLiteral("2:30", sql.LongText),
+						"MINUTE_SECOND",
 					),
-				)),
+				), "", "")),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT row_number() over (w) from foo WINDOW w as (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW)`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewAlias("row_number() over (w)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
+					expression.NewUnresolvedColumn("x"),
+				}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
+					expression.NewInterval(
+						expression.NewLiteral("2:30", sql.LongText),
+						"MINUTE_SECOND",
+					),
+				), "", "")),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (w1), max(b) over (w2) FROM foo WINDOW w1 as (w2 order by x), w2 as ()`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewAlias("row_number() over (w1)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
+					{
+						Column:       expression.NewUnresolvedColumn("x"),
+						Order:        sql.Ascending,
+						NullOrdering: sql.NullsFirst,
+					},
+				}, nil, "", "")),
+			),
+			expression.NewAlias("max(b) over (w2)",
+				expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""),
+					expression.NewUnresolvedColumn("b"),
+				),
+			),
+		},
+		plan.NewUnresolvedTable("foo", ""),
+	),
+	`SELECT a, row_number() over (w1 partition by y), max(b) over (w2) FROM foo WINDOW w1 as (w2 order by x), w2 as ()`: plan.NewWindow(
+		[]sql.Expression{
+			expression.NewUnresolvedColumn("a"),
+			expression.NewAlias("row_number() over (w1 partition by y)",
+				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition(
+					[]sql.Expression{
+						expression.NewUnresolvedColumn("y"),
+					},
+					sql.SortFields{
+						{
+							Column:       expression.NewUnresolvedColumn("x"),
+							Order:        sql.Ascending,
+							NullOrdering: sql.NullsFirst,
+						},
+					}, nil, "", ""), []sql.Expression{}...),
+			),
+			expression.NewAlias("max(b) over (w2)",
+				expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""),
+					expression.NewUnresolvedColumn("b"),
+				),
 			),
 		},
 		plan.NewUnresolvedTable("foo", ""),

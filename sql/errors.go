@@ -428,6 +428,15 @@ var (
 
 	// ErrGrantRevokeIllegalPrivilege is returned when a GRANT or REVOKE statement is malformed, or attempts to use privilege incorrectly.
 	ErrGrantRevokeIllegalPrivilege = errors.NewKind("Illegal GRANT/REVOKE command")
+
+	// ErrInvalidWindowInheritance is returned when a window and its dependency contains conflicting partitioning, ordering, or framing clauses
+	ErrInvalidWindowInheritance = errors.NewKind("window '%s' cannot inherit '%s' since %s")
+
+	// ErrCircularWindowInheritance is returned when a WINDOW clause has a circular dependency
+	ErrCircularWindowInheritance = errors.NewKind("there is a circularity in the window dependency graph")
+
+	// ErrCannotCopyWindowFrame is returned when we inherit a window frame with a frame clause (replacement without parenthesis is OK)
+	ErrCannotCopyWindowFrame = errors.NewKind("cannot copy window '%s' because it has a frame clause")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

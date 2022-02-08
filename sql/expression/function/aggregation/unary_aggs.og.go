@@ -39,7 +39,7 @@ func (a *Avg) String() string {
 	return fmt.Sprintf("AVG(%s)", a.Child)
 }
 
-func (a *Avg) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Avg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Avg{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -95,7 +95,7 @@ func (a *Count) String() string {
 	return fmt.Sprintf("COUNT(%s)", a.Child)
 }
 
-func (a *Count) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Count) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Count{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -151,7 +151,7 @@ func (a *CountDistinct) String() string {
 	return fmt.Sprintf("COUNTDISTINCT(%s)", a.Child)
 }
 
-func (a *CountDistinct) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &CountDistinct{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -207,7 +207,7 @@ func (a *First) String() string {
 	return fmt.Sprintf("FIRST(%s)", a.Child)
 }
 
-func (a *First) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *First) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &First{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -263,7 +263,7 @@ func (a *Last) String() string {
 	return fmt.Sprintf("LAST(%s)", a.Child)
 }
 
-func (a *Last) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Last) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Last{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -319,7 +319,7 @@ func (a *Max) String() string {
 	return fmt.Sprintf("MAX(%s)", a.Child)
 }
 
-func (a *Max) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Max) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Max{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -375,7 +375,7 @@ func (a *Min) String() string {
 	return fmt.Sprintf("MIN(%s)", a.Child)
 }
 
-func (a *Min) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Min) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Min{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -431,7 +431,7 @@ func (a *Sum) String() string {
 	return fmt.Sprintf("SUM(%s)", a.Child)
 }
 
-func (a *Sum) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *Sum) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &Sum{unaryAggBase: *res.(*unaryAggBase)}, err
 }
@@ -487,7 +487,7 @@ func (a *JsonArray) String() string {
 	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
 }
 
-func (a *JsonArray) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *JsonArray) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	res, err := a.unaryAggBase.WithWindow(window)
 	return &JsonArray{unaryAggBase: *res.(*unaryAggBase)}, err
 }
