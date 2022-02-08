@@ -6687,18 +6687,6 @@ var QueryTests = []QueryTest{
 			{1, 1, 0},
 		},
 	},
-	{
-		Query: `INSERT INTO auto_increment_tbl VALUES ('4', 44)`,
-		Expected: []sql.Row{
-			{sql.OkResult{InsertID: 4, RowsAffected: 1}},
-		},
-	},
-	{
-		Query: `SELECT * from auto_increment_tbl where pk=4`,
-		Expected: []sql.Row{
-			{4, 44},
-		},
-	},
 }
 
 var KeylessQueries = []QueryTest{

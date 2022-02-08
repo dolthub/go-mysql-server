@@ -613,6 +613,16 @@ var InsertQueries = []WriteQueryTest{
 			{"fourth", 0},
 		},
 	},
+	{
+		WriteQuery: `INSERT INTO auto_increment_tbl VALUES ('4', 44)`,
+		ExpectedWriteResult: []sql.Row{
+			{sql.OkResult{InsertID: 4, RowsAffected: 1}},
+		},
+		SelectQuery: `SELECT * from auto_increment_tbl where pk=4`,
+		ExpectedSelect: []sql.Row{
+			{4, 44},
+		},
+	},
 }
 
 var SpatialInsertQueries = []WriteQueryTest{
