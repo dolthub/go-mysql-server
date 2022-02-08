@@ -33,21 +33,24 @@ func applyRowFrameToggle(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return true
 	})
 
-	if allNode2 {
-		return RowIter2Node{n.(sql.Node2)}, nil
-	} else {
-		return RowIterNode{n}, nil
-	}
+	return TypeSelectorNode{Node: n, isNode2: allNode2}, nil
 }
 
-type RowIterNode struct {
+type TypeSelectorNode struct {
 	sql.Node
+	isNode2 bool
 }
 
-var _ sql.Node = RowIterNode{}
+var _ sql.Node = TypeSelectorNode{}
+var _ sql.NodeTypeSelector = TypeSelectorNode{}
 
-type RowIter2Node struct {
-	sql.Node2
+func (r TypeSelectorNode) IsNode2() bool {
+	return r.isNode2
 }
 
-var _ sql.Node2 = RowIter2Node{}
+func (r TypeSelectorNode) DebugString() string {
+	tp := sql.NewTreePrinter()
+	tp.WriteNode("TypeSelector (node2=%v)", r.isNode2)
+	tp.WriteChildren(sql.DebugString(r.Node))
+	return tp.String()
+}

@@ -16,7 +16,6 @@ package sqle
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -163,11 +162,6 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
-	transactionDatabase, err := e.beginTransaction(ctx, parsed)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	if len(bindings) > 0 {
 		parsed, err = plan.ApplyBindings(ctx, parsed, bindings)
 		if err != nil {
@@ -185,62 +179,7 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
-	autoCommit, err := isSessionAutocommit(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if autoCommit {
-		// TODO: need to make this an analyzer rule or something
-		iter = transactionCommittingIter{iter, transactionDatabase}
-	}
-
 	return analyzed.Schema(), iter, nil
-}
-
-const (
-	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-)
-
-var fakeReadCommitted bool
-
-func init() {
-	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
-	if ok {
-		fakeReadCommitted = true
-	}
-}
-
-func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, error) {
-	// Before we begin a transaction, we need to know if the database being operated on is not the one
-	// currently selected
-	transactionDatabase := getTransactionDatabase(ctx, parsed)
-
-	// TODO: this won't work with transactions that cross database boundaries, we need to detect that and error out
-	beginNewTransaction := ctx.GetTransaction() == nil || readCommitted(ctx)
-	if beginNewTransaction {
-		ctx.GetLogger().Tracef("beginning new transaction")
-		if len(transactionDatabase) > 0 {
-			database, err := e.Analyzer.Catalog.Database(transactionDatabase)
-			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
-			if sql.ErrDatabaseNotFound.Is(err) {
-				return "", nil
-			} else if err != nil {
-				return "", err
-			}
-
-			tdb, ok := database.(sql.TransactionDatabase)
-			if ok {
-				tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)
-				if err != nil {
-					return "", err
-				}
-				ctx.SetTransaction(tx)
-			}
-		}
-	}
-
-	return transactionDatabase, nil
 }
 
 func (e *Engine) Close() error {
@@ -253,112 +192,6 @@ func (e *Engine) Close() error {
 func (e *Engine) WithBackgroundThreads(b *sql.BackgroundThreads) *Engine {
 	e.BackgroundThreads = b
 	return e
-}
-
-// Returns whether this session has a transaction isolation level of READ COMMITTED.
-// If so, we always begin a new transaction for every statement, and commit after every statement as well.
-// This is not what the READ COMMITTED isolation level is supposed to do.
-func readCommitted(ctx *sql.Context) bool {
-	if !fakeReadCommitted {
-		return false
-	}
-
-	val, err := ctx.GetSessionVariable(ctx, "transaction_isolation")
-	if err != nil {
-		return false
-	}
-
-	valStr, ok := val.(string)
-	if !ok {
-		return false
-	}
-
-	return valStr == "READ-COMMITTED"
-}
-
-// transactionCommittingIter is a simple RowIter wrapper to allow the engine to conditionally commit a transaction
-// during the Close() operation
-type transactionCommittingIter struct {
-	childIter           sql.RowIter
-	transactionDatabase string
-}
-
-func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return t.childIter.Next(ctx)
-}
-
-func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.childIter.(sql.RowIter2).Next2(ctx, frame)
-}
-
-func (t transactionCommittingIter) Close(ctx *sql.Context) error {
-	err := t.childIter.Close(ctx)
-	if err != nil {
-		return err
-	}
-
-	tx := ctx.GetTransaction()
-	commitTransaction := (tx != nil) && !ctx.GetIgnoreAutoCommit()
-	if commitTransaction {
-		ctx.GetLogger().Tracef("committing transaction %s", tx)
-		if err := ctx.Session.CommitTransaction(ctx, t.transactionDatabase, tx); err != nil {
-			return err
-		}
-
-		// Clearing out the current transaction will tell us to start a new one the next time this session queries
-		ctx.SetTransaction(nil)
-	}
-
-	return nil
-}
-
-func isSessionAutocommit(ctx *sql.Context) (bool, error) {
-	if readCommitted(ctx) {
-		return true, nil
-	}
-
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
-	if err != nil {
-		return false, err
-	}
-	return sql.ConvertToBool(autoCommitSessionVar)
-}
-
-// getTransactionDatabase returns the name of the database that should be considered current for the transaction about
-// to begin. The database is not guaranteed to exist.
-func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
-	// For USE DATABASE statements, we consider the transaction database to be the one being USEd
-	transactionDatabase := ctx.GetCurrentDatabase()
-	switch n := parsed.(type) {
-	case *plan.Use:
-		transactionDatabase = n.Database().Name()
-	case *plan.AlterPK:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
-		}
-	}
-
-	switch n := parsed.(type) {
-	case *plan.CreateTable:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.InsertInto:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.DeleteFrom:
-		if n.Database() != "" {
-			transactionDatabase = n.Database()
-		}
-	case *plan.Update:
-		if n.Database() != "" {
-			transactionDatabase = n.Database()
-		}
-	}
-
-	return transactionDatabase
 }
 
 // readOnlyCheck checks to see if the query is valid with the modification setting of the engine.

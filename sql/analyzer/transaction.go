@@ -72,6 +72,16 @@ type transactionWrappingNode struct {
 	autocommit bool
 }
 
+var _ sql.Node = transactionWrappingNode{}
+var _ sql.Node2 = transactionWrappingNode{}
+
+func (t transactionWrappingNode) DebugString() string {
+	tp := sql.NewTreePrinter()
+	tp.WriteNode("transactionWrapper (start=%v, autocommit=%v)", t.startTx, t.autocommit)
+	tp.WriteChildren(sql.DebugString(t.Node))
+	return tp.String()
+}
+
 func (t transactionWrappingNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	childIter, err := t.Node.RowIter(ctx, row)
 	if err != nil {

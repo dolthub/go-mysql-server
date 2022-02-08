@@ -240,6 +240,11 @@ type Node2 interface {
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
 
+// NodeTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
+type NodeTypeSelector interface {
+	IsNode2() bool
+}
+
 // CommentedNode allows comments to be set and retrieved on it
 type CommentedNode interface {
 	Node
