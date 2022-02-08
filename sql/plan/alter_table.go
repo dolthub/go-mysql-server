@@ -91,8 +91,6 @@ type AddColumn struct {
 }
 
 var _ sql.Node = (*AddColumn)(nil)
-
-//var _ sql.Databaser = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
 func NewAddColumn(table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
@@ -327,8 +325,6 @@ type DropColumn struct {
 }
 
 var _ sql.Node = (*DropColumn)(nil)
-
-//var _ sql.Databaser = (*DropColumn)(nil)
 
 func NewDropColumn(table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
