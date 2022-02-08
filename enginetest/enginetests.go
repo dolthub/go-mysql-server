@@ -1962,8 +1962,6 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		t.Skip("broken")
-
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row(nil), nil, nil)
 
 		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
@@ -2099,8 +2097,6 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
-
-		t.Skip("broken")
 
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row(nil), nil, nil)
 	})
