@@ -116,7 +116,6 @@ var OnceAfterDefault = []Rule{
 // OnceAfterAll contains the rules to be applied just once after all other
 // rules have been applied.
 var OnceAfterAll = []Rule{
-	{"wrap_in_transaction", wrapInTransaction},
 	{"track_process", trackProcess},
 	{"parallelize", parallelize},
 	{"apply_row_frame_toggle", applyRowFrameToggle},
