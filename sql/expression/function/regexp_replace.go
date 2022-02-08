@@ -166,7 +166,7 @@ func (r *RegexpReplace) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	// Non-positive position throws incorrect parameter
 	if _pos <= 0 {
-		return nil, ErrInvalidArgument.New(r.FunctionName(), fmt.Sprintf("%d", _pos))
+		return nil, sql.ErrInvalidArgumentDetails.New(r.FunctionName(), fmt.Sprintf("%d", _pos))
 	}
 
 	// Handle out of bounds

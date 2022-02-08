@@ -585,7 +585,7 @@ func (c *Crc32) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			bytes = []byte{0}
 		}
 	default:
-		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
+		return nil, sql.ErrInvalidArgumentDetails.New("crc32", fmt.Sprint(arg))
 	}
 
 	return crc32.ChecksumIEEE(bytes), nil

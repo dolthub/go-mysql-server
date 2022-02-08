@@ -277,11 +277,14 @@ var (
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
+	// ErrInvalidArgumentDetails is returned when the argument is invalid with details of a specific function
+	ErrInvalidArgumentDetails = errors.NewKind("Invalid argument to %s: %s")
+
 	// ErrSavepointDoesNotExist is returned when a RELEASE SAVEPOINT or ROLLBACK TO SAVEPOINT statement references a
 	// non-existent savepoint identifier
 	ErrSavepointDoesNotExist = errors.NewKind("SAVEPOINT %s does not exist")
 
-	// ErrTableCreatedNotFound is thrown when an integrator attempts to create a temporary tables without temporary table
+	// ErrTemporaryTableNotSupported is thrown when an integrator attempts to create a temporary tables without temporary table
 	// support.
 	ErrTemporaryTableNotSupported = errors.NewKind("database does not support temporary tables")
 
@@ -413,6 +416,21 @@ var (
 
 	// ErrShowGrantsUserDoesNotExist is returned when a user does not exist when attempting to show their grants.
 	ErrShowGrantsUserDoesNotExist = errors.NewKind("There is no such grant defined for user '%s' on host '%s'")
+
+	// ErrInvalidRecursiveCteUnion is returned when a recursive CTE is not a UNION or UNION ALL node.
+	ErrInvalidRecursiveCteUnion = errors.NewKind("recursive cte top-level query must be a union; found: %v")
+
+	// ErrInvalidRecursiveCteInitialQuery is returned when the recursive CTE base clause is not supported.
+	ErrInvalidRecursiveCteInitialQuery = errors.NewKind("recursive cte initial query must be non-recursive projection; found: %v")
+
+	// ErrInvalidRecursiveCteRecursiveQuery is returned when the recursive CTE recursion clause is not supported.
+	ErrInvalidRecursiveCteRecursiveQuery = errors.NewKind("recursive cte recursive query must be a recursive projection; found: %v")
+
+	// ErrCteRecursionLimitExceeded is returned when a recursive CTE's execution stack depth exceeds the static limit.
+	ErrCteRecursionLimitExceeded = errors.NewKind("WITH RECURSIVE iteration limit exceeded")
+
+	// ErrGrantRevokeIllegalPrivilege is returned when a GRANT or REVOKE statement is malformed, or attempts to use privilege incorrectly.
+	ErrGrantRevokeIllegalPrivilege = errors.NewKind("Illegal GRANT/REVOKE command")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {

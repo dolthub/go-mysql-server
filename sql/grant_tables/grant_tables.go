@@ -32,12 +32,12 @@ import (
 type GrantTables struct {
 	Enabled bool
 
-	user       *grantTable
-	role_edges *grantTable
+	user        *grantTable
+	role_edges  *grantTable
+	db          *grantTableShim
+	tables_priv *grantTableShim
 	//TODO: add the rest of these tables
-	//db               *grantTable
 	//global_grants    *grantTable
-	//tables_priv      *grantTable
 	//columns_priv     *grantTable
 	//procs_priv       *grantTable
 	//proxies_priv     *grantTable
@@ -50,10 +50,16 @@ var _ mysql.AuthServer = (*GrantTables)(nil)
 
 // CreateEmptyGrantTables returns a collection of Grant Tables that do not contain any data.
 func CreateEmptyGrantTables() *GrantTables {
+	// original tables
 	grantTables := &GrantTables{
 		user:       newGrantTable(userTblName, userTblSchema, &User{}, UserPrimaryKey{}, UserSecondaryKey{}),
 		role_edges: newGrantTable(roleEdgesTblName, roleEdgesTblSchema, &RoleEdge{}, RoleEdgesPrimaryKey{}, RoleEdgesFromKey{}, RoleEdgesToKey{}),
 	}
+
+	// shims
+	grantTables.db = newGrantTableShim(dbTblName, dbTblSchema, grantTables.user, DbConverter{})
+	grantTables.tables_priv = newGrantTableShim(tablesPrivTblName, tablesPrivTblSchema, grantTables.user, TablesPrivConverter{})
+
 	return grantTables
 }
 
@@ -119,8 +125,7 @@ func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operatio
 	if user == nil {
 		return false
 	}
-	globalStaticPrivs := NewUserGlobalStaticPrivileges()
-	globalStaticPrivs.Merge(user.PrivilegeSet)
+	globalStaticPrivs := user.PrivilegeSet.Copy()
 	roleEdgeEntries := g.role_edges.data.Get(RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
@@ -131,7 +136,7 @@ func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operatio
 		roleEdge := roleEdgeEntry.(*RoleEdge)
 		role := g.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
 		if role != nil {
-			globalStaticPrivs.Merge(role.PrivilegeSet)
+			globalStaticPrivs.UnionWith(role.PrivilegeSet)
 		}
 	}
 
@@ -162,6 +167,10 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 		return g.user, true, nil
 	case roleEdgesTblName:
 		return g.role_edges, true, nil
+	case dbTblName:
+		return g.db, true, nil
+	case tablesPrivTblName:
+		return g.tables_priv, true, nil
 	default:
 		return nil, false, nil
 	}
@@ -169,7 +178,7 @@ func (g *GrantTables) GetTableInsensitive(ctx *sql.Context, tblName string) (sql
 
 // GetTableNames implements the interface sql.Database.
 func (g *GrantTables) GetTableNames(ctx *sql.Context) ([]string, error) {
-	return []string{userTblName, roleEdgesTblName}, nil
+	return []string{userTblName, dbTblName, tablesPrivTblName, roleEdgesTblName}, nil
 }
 
 // AuthMethod implements the interface mysql.AuthServer.

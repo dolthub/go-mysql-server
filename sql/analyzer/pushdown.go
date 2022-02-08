@@ -330,6 +330,10 @@ func convertFiltersToIndexedAccess(
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
 			return false
+		case *plan.RecursiveCte:
+			// TODO: fix memory IndexLookup bugs that are not reproduceable in Dolt
+			// this probably fails for *plan.Union also, we just don't have tests for it
+			return false
 		}
 
 		switch c.Parent.(type) {

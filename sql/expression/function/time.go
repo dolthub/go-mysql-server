@@ -25,8 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-var ErrInvalidArgument = errors.NewKind("invalid argument to function %s. %s.")
-
 // ErrInvalidArgumentType is thrown when a function receives invalid argument types
 var ErrInvalidArgumentType = errors.NewKind("function '%s' received invalid argument types")
 
@@ -493,15 +491,15 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	yyyy, ok := year(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid year")
+		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid year")
 	}
 	mm, ok := month(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid month")
+		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid month")
 	}
 	dd, ok := day(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("YEARWEEK", "invalid day")
+		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid day")
 	}
 
 	mode := int64(0)
@@ -589,15 +587,15 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	yyyy, ok := year(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("WEEK", "invalid year")
+		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid year")
 	}
 	mm, ok := month(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("WEEK", "invalid month")
+		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid month")
 	}
 	dd, ok := day(date).(int32)
 	if !ok {
-		return nil, ErrInvalidArgument.New("WEEK", "invalid day")
+		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid day")
 	}
 
 	mode := int64(0)

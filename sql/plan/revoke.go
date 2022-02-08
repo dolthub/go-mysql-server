@@ -53,16 +53,11 @@ func (n *Revoke) Schema() sql.Schema {
 
 // String implements the interface sql.Node.
 func (n *Revoke) String() string {
-	privileges := make([]string, len(n.Privileges))
-	for i, privilege := range n.Privileges {
-		privileges[i] = privilege.String()
-	}
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
 		users[i] = user.String("")
 	}
-	return fmt.Sprintf("Revoke(Privileges: %s, On: %s, From: %s)",
-		strings.Join(privileges, ", "), n.PrivilegeLevel.String(), strings.Join(users, ", "))
+	return fmt.Sprintf("Revoke(On: %s, From: %s)", n.PrivilegeLevel.String(), strings.Join(users, ", "))
 }
 
 // Database implements the interface sql.Databaser.
@@ -102,45 +97,257 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	//TODO: allow for db and table-level privileges
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		//TODO: return actual errors here that are tested against
 		if n.ObjectType != ObjectType_Any {
-			return nil, fmt.Errorf("global privileges do not have an applicable object type")
+			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
 		}
 		for _, revokeUser := range n.Users {
 			user := grantTables.GetUser(revokeUser.Name, revokeUser.Host, false)
 			if user == nil {
-				return nil, sql.ErrRevokeUserDoesNotExist.New(revokeUser.Name, revokeUser.Host)
+				return nil, sql.ErrGrantUserDoesNotExist.New()
 			}
-			for _, priv := range n.Privileges {
-				if len(priv.Columns) > 0 {
-					//TODO: return actual error here that is tested against
-					return nil, fmt.Errorf("global privileges may not have columns")
-				}
-				//TODO: enforce that, if ALL is present, that no others may be present
-				switch priv.Type {
-				case PrivilegeType_All:
-					user.PrivilegeSet.Clear()
-				case PrivilegeType_Insert:
-					user.PrivilegeSet.Remove(grant_tables.PrivilegeType_Insert)
-				case PrivilegeType_References:
-					user.PrivilegeSet.Remove(grant_tables.PrivilegeType_References)
-				case PrivilegeType_Select:
-					user.PrivilegeSet.Remove(grant_tables.PrivilegeType_Select)
-				case PrivilegeType_Update:
-					user.PrivilegeSet.Remove(grant_tables.PrivilegeType_Update)
-				default:
-					//TODO: implement the rest of the privileges
-					return nil, fmt.Errorf("REVOKE has not yet implemented all global privileges")
-				}
+			if err := n.handleGlobalPrivileges(user); err != nil {
+				return nil, err
+			}
+		}
+	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
+		database := n.PrivilegeLevel.Database
+		if database == "" {
+			database = ctx.GetCurrentDatabase()
+			if database == "" {
+				return nil, sql.ErrNoDatabaseSelected.New()
+			}
+		}
+		if n.ObjectType != ObjectType_Any {
+			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+		for _, revokeUser := range n.Users {
+			user := grantTables.GetUser(revokeUser.Name, revokeUser.Host, false)
+			if user == nil {
+				return nil, sql.ErrGrantUserDoesNotExist.New()
+			}
+			if err := n.handleDatabasePrivileges(user, database); err != nil {
+				return nil, err
 			}
 		}
 	} else {
-		return nil, fmt.Errorf("REVOKE has not yet implemented non-global privileges")
+		database := n.PrivilegeLevel.Database
+		if database == "" {
+			database = ctx.GetCurrentDatabase()
+			if database == "" {
+				return nil, sql.ErrNoDatabaseSelected.New()
+			}
+		}
+		if n.ObjectType != ObjectType_Any {
+			//TODO: implement object types
+			return nil, fmt.Errorf("GRANT has not yet implemented object types")
+		}
+		for _, grantUser := range n.Users {
+			user := grantTables.GetUser(grantUser.Name, grantUser.Host, false)
+			if user == nil {
+				return nil, sql.ErrGrantUserDoesNotExist.New()
+			}
+			if err := n.handleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
+}
+
+// handleGlobalPrivileges handles removing global privileges from a user.
+func (n *Revoke) handleGlobalPrivileges(user *grant_tables.User) error {
+	for i, priv := range n.Privileges {
+		if len(priv.Columns) > 0 {
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+		switch priv.Type {
+		case PrivilegeType_All:
+			// If ALL is present, then no other privileges may be provided.
+			// This should be enforced by the parser, so this is a backup check just in case
+			if i == 0 && len(n.Privileges) == 1 {
+				user.PrivilegeSet.ClearGlobal()
+			} else {
+				return sql.ErrGrantRevokeIllegalPrivilege.New()
+			}
+		case PrivilegeType_Alter:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Alter)
+		case PrivilegeType_AlterRoutine:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_AlterRoutine)
+		case PrivilegeType_Create:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Create)
+		case PrivilegeType_CreateRole:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_CreateRole)
+		case PrivilegeType_CreateRoutine:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_CreateRoutine)
+		case PrivilegeType_CreateTablespace:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_CreateTablespace)
+		case PrivilegeType_CreateTemporaryTables:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_CreateTempTable)
+		case PrivilegeType_CreateUser:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_CreateUser)
+		case PrivilegeType_CreateView:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_CreateView)
+		case PrivilegeType_Delete:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Delete)
+		case PrivilegeType_Drop:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Drop)
+		case PrivilegeType_DropRole:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_DropRole)
+		case PrivilegeType_Event:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Event)
+		case PrivilegeType_Execute:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Execute)
+		case PrivilegeType_File:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_File)
+		case PrivilegeType_Index:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Index)
+		case PrivilegeType_Insert:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Insert)
+		case PrivilegeType_LockTables:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_LockTables)
+		case PrivilegeType_Process:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Process)
+		case PrivilegeType_References:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_References)
+		case PrivilegeType_Reload:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Reload)
+		case PrivilegeType_ReplicationClient:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_ReplicationClient)
+		case PrivilegeType_ReplicationSlave:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_ReplicationSlave)
+		case PrivilegeType_Select:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Select)
+		case PrivilegeType_ShowDatabases:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_ShowDB)
+		case PrivilegeType_ShowView:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_ShowView)
+		case PrivilegeType_Shutdown:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Shutdown)
+		case PrivilegeType_Super:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Super)
+		case PrivilegeType_Trigger:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Trigger)
+		case PrivilegeType_Update:
+			user.PrivilegeSet.RemoveGlobalStatic(grant_tables.PrivilegeType_Update)
+		case PrivilegeType_Usage:
+			// Usage is equal to no privilege
+		case PrivilegeType_Dynamic:
+			return fmt.Errorf("GRANT does not yet support dynamic privileges")
+		default:
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+	}
+	return nil
+}
+
+// handleDatabasePrivileges  handles removing database privileges from a user.
+func (n *Revoke) handleDatabasePrivileges(user *grant_tables.User, dbName string) error {
+	for i, priv := range n.Privileges {
+		if len(priv.Columns) > 0 {
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+		switch priv.Type {
+		case PrivilegeType_All:
+			// If ALL is present, then no other privileges may be provided.
+			// This should be enforced by the parser, so this is a backup check just in case
+			if i == 0 && len(n.Privileges) == 1 {
+				user.PrivilegeSet.ClearDatabase(dbName)
+			} else {
+				return sql.ErrGrantRevokeIllegalPrivilege.New()
+			}
+		case PrivilegeType_Alter:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Alter)
+		case PrivilegeType_AlterRoutine:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_AlterRoutine)
+		case PrivilegeType_Create:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Create)
+		case PrivilegeType_CreateRoutine:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_CreateRoutine)
+		case PrivilegeType_CreateTemporaryTables:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_CreateTempTable)
+		case PrivilegeType_CreateView:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_CreateView)
+		case PrivilegeType_Delete:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Delete)
+		case PrivilegeType_Drop:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Drop)
+		case PrivilegeType_Event:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Event)
+		case PrivilegeType_Execute:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Execute)
+		case PrivilegeType_Index:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Index)
+		case PrivilegeType_Insert:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Insert)
+		case PrivilegeType_LockTables:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_LockTables)
+		case PrivilegeType_References:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_References)
+		case PrivilegeType_Select:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Select)
+		case PrivilegeType_ShowView:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_ShowView)
+		case PrivilegeType_Trigger:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Trigger)
+		case PrivilegeType_Update:
+			user.PrivilegeSet.RemoveDatabase(dbName, grant_tables.PrivilegeType_Update)
+		case PrivilegeType_Usage:
+			// Usage is equal to no privilege
+		default:
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+	}
+	return nil
+}
+
+// handleTablePrivileges  handles removing table privileges from a user.
+func (n *Revoke) handleTablePrivileges(user *grant_tables.User, dbName string, tblName string) error {
+	for i, priv := range n.Privileges {
+		if len(priv.Columns) > 0 {
+			return fmt.Errorf("GRANT has not yet implemented column privileges")
+		}
+		switch priv.Type {
+		case PrivilegeType_All:
+			// If ALL is present, then no other privileges may be provided.
+			// This should be enforced by the parser, so this is a backup check just in case
+			if i == 0 && len(n.Privileges) == 1 {
+				user.PrivilegeSet.ClearTable(dbName, tblName)
+			} else {
+				return sql.ErrGrantRevokeIllegalPrivilege.New()
+			}
+		case PrivilegeType_Alter:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Alter)
+		case PrivilegeType_Create:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Create)
+		case PrivilegeType_CreateView:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_CreateView)
+		case PrivilegeType_Delete:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Delete)
+		case PrivilegeType_Drop:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Drop)
+		case PrivilegeType_Index:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Index)
+		case PrivilegeType_Insert:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Insert)
+		case PrivilegeType_References:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_References)
+		case PrivilegeType_Select:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Select)
+		case PrivilegeType_ShowView:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_ShowView)
+		case PrivilegeType_Trigger:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Trigger)
+		case PrivilegeType_Update:
+			user.PrivilegeSet.RemoveTable(dbName, tblName, grant_tables.PrivilegeType_Update)
+		case PrivilegeType_Usage:
+			// Usage is equal to no privilege
+		default:
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
+	}
+	return nil
 }
 
 // RevokeAll represents the statement REVOKE ALL PRIVILEGES.

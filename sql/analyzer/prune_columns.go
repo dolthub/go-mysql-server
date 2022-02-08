@@ -88,6 +88,18 @@ func pruneColumnsIsSafe(n sql.Node) bool {
 		}
 		return isSafe
 	})
+	if !isSafe {
+		return false
+	}
+	// We cannot eliminate projections in RecursiveCte's,
+	// they are used implicitly in the recursive execution
+	// if not explicitly in the outer scope.
+	plan.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(*plan.RecursiveCte); ok {
+			isSafe = false
+		}
+		return isSafe
+	})
 	return isSafe
 }
 
