@@ -164,7 +164,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return hexForString(string(val)), nil
 
 	default:
-		return nil, ErrInvalidArgument.New("crc32", fmt.Sprint(arg))
+		return nil, sql.ErrInvalidArgumentDetails.New("crc32", fmt.Sprint(arg))
 	}
 }
 
@@ -411,7 +411,7 @@ func (h *Bitlength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 128, nil
 	}
 
-	return nil, ErrInvalidArgument.New("bit_length", fmt.Sprint(arg))
+	return nil, sql.ErrInvalidArgumentDetails.New("bit_length", fmt.Sprint(arg))
 }
 
 // WithChildren implements the sql.Expression interface
