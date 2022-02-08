@@ -581,6 +581,7 @@ func (c *CreateTable) validateDefaultPosition() error {
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
 	ddlNode
+	tables 		 []sql.Node
 	names        []string
 	ifExists     bool
 	triggerNames []string
@@ -590,10 +591,12 @@ var _ sql.Node = (*DropTable)(nil)
 var _ sql.Databaser = (*DropTable)(nil)
 
 // NewDropTable creates a new DropTable node
-func NewDropTable(db sql.Database, ifExists bool, tableNames ...string) *DropTable {
+//func NewDropTable(db sql.Database, ifExists bool, tableNames ...string) *DropTable {
+func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
 	return &DropTable{
-		ddlNode:  ddlNode{db},
-		names:    tableNames,
+		//ddlNode:  ddlNode{db},
+		tables:   tbls,
+		//names:    tableNames,
 		ifExists: ifExists,
 	}
 }
@@ -625,21 +628,24 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	var err error
-	for _, tableName := range d.names {
-		tbl, ok, err := d.db.GetTableInsensitive(ctx, tableName)
+	for _, table := range d.tables {
+		tbl, tOk := table.(*ResolvedTable)
+		if tOk {
+			return nil, ErrUnresolvedTable.New(table.String())
+		}
 
+		t, ok, err := d.db.GetTableInsensitive(ctx, tbl.Name())
 		if err != nil {
 			return nil, err
 		}
-
 		if !ok {
 			if d.ifExists {
 				continue
 			}
-
-			return nil, sql.ErrTableNotFound.New(tableName)
+			return nil, sql.ErrTableNotFound.New(tbl.Name())
 		}
-		err = droppable.DropTable(ctx, tbl.Name())
+
+		err = droppable.DropTable(ctx, t.Name())
 		if err != nil {
 			return nil, err
 		}

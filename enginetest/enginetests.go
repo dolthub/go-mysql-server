@@ -1693,8 +1693,6 @@ func TestDropTable(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		t.Skip("Panics")
-
 		TestQueryWithContext(t, ctx, e, "DROP TABLE IF EXISTS mydb.one_pk", []sql.Row(nil), nil, nil)
 	})
 }

@@ -1377,11 +1377,17 @@ func columnOrderToColumnOrder(order *sqlparser.ColumnOrder) *sql.ColumnOrder {
 }
 
 func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
-	tableNames := make([]string, len(c.FromTables))
+	//tableNames := make([]string, len(c.FromTables))
+	//for i, t := range c.FromTables {
+	//	tableNames[i] = t.Name.String()
+	//}
+	//return plan.NewDropTable(sql.UnresolvedDatabase(""), c.IfExists, tableNames...), nil
+	dropTables := make([]sql.Node, len(c.FromTables))
 	for i, t := range c.FromTables {
-		tableNames[i] = t.Name.String()
+		dropTables[i] = plan.NewUnresolvedTable(t.Name.String(), t.Qualifier.String())
 	}
-	return plan.NewDropTable(sql.UnresolvedDatabase(""), c.IfExists, tableNames...), nil
+
+	return plan.NewDropTable(dropTables, c.IfExists), nil
 }
 
 func convertTruncateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
