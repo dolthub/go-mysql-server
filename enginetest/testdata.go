@@ -676,7 +676,57 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 					sql.NewRow(2, 0, 1),
 				)
 			} else {
-				t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
+				t.Logf("Warning: could not create table %s: %s", "invert_pk", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "parts") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "parts", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "part", Type: sql.Text, Source: "parts", PrimaryKey: true},
+				{Name: "sub_part", Type: sql.Text, Source: "parts", PrimaryKey: true},
+				{Name: "quantity", Type: sql.Int64, Source: "parts"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					[]sql.Row{
+						{"pie", "crust", 1},
+						{"pie", "filling", 2},
+						{"crust", "flour", 20},
+						{"crust", "sugar", 2},
+						{"crust", "butter", 15},
+						{"crust", "salt", 15},
+						{"filling", "sugar", 5},
+						{"filling", "fruit", 9},
+						{"filling", "salt", 3},
+						{"filling", "butter", 3},
+					}...)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "parts", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "bus_routes") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "bus_routes", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "origin", Type: sql.Text, Source: "bus_routes", PrimaryKey: true},
+				{Name: "dst", Type: sql.Text, Source: "bus_routes", PrimaryKey: true},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					[]sql.Row{
+						{"New York", "Boston"},
+						{"Boston", "New York"},
+						{"New York", "Washington"},
+						{"Washington", "Boston"},
+						{"Washington", "Raleigh"},
+					}...)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "bus_routes", err)
 			}
 		})
 	}

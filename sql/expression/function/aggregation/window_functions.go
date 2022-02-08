@@ -505,8 +505,11 @@ func (a *CountAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
 			return nil, err
 		}
 		na.framer = framer
+		return &na, nil
 	}
-	na.orderBy = w.OrderBy.ToExpressions()
+	if w.OrderBy != nil {
+		na.orderBy = w.OrderBy.ToExpressions()
+	}
 	return &na, nil
 }
 
@@ -519,8 +522,18 @@ func (a *CountAgg) DefaultFramer() sql.WindowFramer {
 	if a.framer != nil {
 		return a.framer
 	}
-	// TODO: this should be a NewPeerGroupFramer
-	return NewPartitionFramer()
+
+	if a.orderBy == nil || len(a.orderBy) < 1 {
+		return NewPartitionFramer()
+	}
+
+	return &RangeUnboundedPrecedingToCurrentRowFramer{
+		rangeFramerBase{
+			orderBy:            a.orderBy[0],
+			unboundedPreceding: true,
+			endCurrentRow:      true,
+		},
+	}
 }
 
 func (a *CountAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
@@ -541,16 +554,8 @@ func (a *CountAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 }
 
 func (a *CountAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	// if a.pos >= a.peerGroup.End, find next peerGroup
-	if a.pos >= a.peerGroup.End {
-		var err error
-		a.peerGroup, err = nextPeerGroup(ctx, a.pos, interval.End, a.orderBy, buf)
-		if err != nil {
-			return err
-		}
-	}
 	a.pos++
-	return int64(computePrefixSum(sql.WindowInterval{Start: interval.Start, End: a.peerGroup.End}, a.partitionStart, a.prefixSum))
+	return int64(computePrefixSum(sql.WindowInterval{Start: interval.Start, End: interval.End}, a.partitionStart, a.prefixSum))
 }
 
 func countPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression) ([]float64, error) {
@@ -970,7 +975,7 @@ func (a *PercentRank) Dispose() {
 
 // DefaultFramer returns a NewPartitionFramer
 func (a *PercentRank) DefaultFramer() sql.WindowFramer {
-	return NewPartitionFramer()
+	return NewPeerGroupFramer(a.orderBy)
 }
 
 func (a *PercentRank) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) error {
@@ -988,16 +993,8 @@ func (a *PercentRank) NewSlidingFrameInterval(added, dropped sql.WindowInterval)
 // Compute returns the number of elements before the current peer group (rank),
 // and returns (rank - 1)/(rows - 1).
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
-// there are 4 values less than 3 and (10 - 1) rows in the list
-func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) interface{} {
-	// if a.pos >= a.peerGroup.End, find next peerGroup
-	if a.pos >= a.peerGroup.End {
-		var err error
-		a.peerGroup, err = nextPeerGroup(ctx, a.pos, interval.End, a.orderBy, buffer)
-		if err != nil {
-			return err
-		}
-	}
+// there are 4 values less than 3, and there are (10 - 1) total rows in the list.
+func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
 	if interval.End-interval.Start < 1 {
 		return nil
 	}
@@ -1005,61 +1002,11 @@ func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 	switch {
 	case a.pos == 0:
 		return float64(0)
-	case interval.End-interval.Start == 1:
+	case a.partitionEnd-a.partitionStart == 1:
 		return float64(0)
 	default:
-		return float64(a.peerGroup.Start-a.partitionStart) / float64(interval.End-interval.Start-1)
+		return float64(interval.Start-a.partitionStart) / float64(a.partitionEnd-a.partitionStart-1)
 	}
-}
-
-// nextPeerGroup scans for a sql.WindowInterval of rows with the same value as
-// the current row [a.pos]. This is equivalent to a partitioning algorithm, but
-// we are using the OrderBy fields, and we stream the results.
-// ex: [1, 2, 2, 2, 2, 3, 3, 4, 5, 5, 6] => {0,1}, {1,5}, {5,7}, {8,9}, {9,10}
-func nextPeerGroup(ctx *sql.Context, pos, partitionEnd int, orderBy []sql.Expression, buffer sql.WindowBuffer) (sql.WindowInterval, error) {
-	if pos >= partitionEnd || pos > len(buffer) {
-		return sql.WindowInterval{}, nil
-	}
-	var row sql.Row
-	i := pos + 1
-	last := buffer[pos]
-	for i < partitionEnd {
-		row = buffer[i]
-		if newPeerGroup, err := isNewOrderValue(ctx, orderBy, last, row); err != nil {
-			return sql.WindowInterval{}, err
-		} else if newPeerGroup {
-			break
-		}
-		i++
-		last = row
-	}
-	return sql.WindowInterval{Start: pos, End: i}, nil
-}
-
-// isNewOrderValue compares the order by columns between two rows, returning true when the last row is null or
-// when the next row's orderBy columns are unique
-func isNewOrderValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql.Row, row sql.Row) (bool, error) {
-	if len(last) == 0 {
-		return true, nil
-	}
-
-	lastExp, _, err := evalExprs(ctx, orderByExprs, last)
-	if err != nil {
-		return false, err
-	}
-
-	thisExp, _, err := evalExprs(ctx, orderByExprs, row)
-	if err != nil {
-		return false, err
-	}
-
-	for i := range lastExp {
-		if lastExp[i] != thisExp[i] {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 type Lag struct {

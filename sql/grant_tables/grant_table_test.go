@@ -117,6 +117,9 @@ func (te *testEntry) UpdateFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.
 func (te *testEntry) ToRow(ctx *sql.Context) sql.Row {
 	return te.Row
 }
+func (te *testEntry) Copy(ctx *sql.Context) in_mem_table.Entry {
+	return &testEntry{te.Row}
+}
 func (te *testEntry) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
 	otherRow, ok := otherEntry.(*testEntry)
 	if !ok {

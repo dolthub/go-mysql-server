@@ -1157,6 +1157,118 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(55)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 10) select count(*) from t as t1 join t as t2 on t1.n = t2.n;",
+		Expected: []sql.Row{
+			{int64(10)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select (1) from dual union all select (2) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(3)},
+		},
+	},
+	{
+		Query: ` 
+			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
+				SELECT sub_part, part, quantity FROM parts WHERE part = 'pie'
+			  UNION ALL
+				SELECT p.sub_part, p.part, p.quantity
+				FROM included_parts AS pr, parts AS p
+				WHERE p.part = pr.sub_part
+			)
+			SELECT sub_part, sum(quantity) as total_quantity
+			FROM included_parts
+			GROUP BY sub_part`,
+		Expected: []sql.Row{
+			{"crust", float64(1)},
+			{"filling", float64(2)},
+			{"flour", float64(20)},
+			{"butter", float64(18)},
+			{"salt", float64(18)},
+			{"sugar", float64(7)},
+			{"fruit", float64(9)},
+		},
+	},
+	{
+		Query: ` 
+			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
+				SELECT sub_part, part, quantity FROM parts WHERE lower(part) = 'pie'
+			  UNION ALL
+				SELECT p.sub_part, p.part, p.quantity
+				FROM included_parts AS pr, parts AS p
+				WHERE p.part = pr.sub_part
+			)
+			SELECT sub_part, sum(quantity) as total_quantity
+			FROM included_parts
+			GROUP BY sub_part`,
+		Expected: []sql.Row{
+			{"crust", float64(1)},
+			{"filling", float64(2)},
+			{"flour", float64(20)},
+			{"butter", float64(18)},
+			{"salt", float64(18)},
+			{"sugar", float64(7)},
+			{"fruit", float64(9)},
+		},
+	},
+	{
+		Query: ` 
+			WITH RECURSIVE included_parts(sub_part, part, quantity) AS (
+				SELECT sub_part, part, quantity FROM parts WHERE part = (select part from parts where part = 'pie' and sub_part = 'crust')
+			  UNION ALL
+				SELECT p.sub_part, p.part, p.quantity
+				FROM included_parts AS pr, parts AS p
+				WHERE p.part = pr.sub_part
+			)
+			SELECT sub_part, sum(quantity) as total_quantity
+			FROM included_parts
+			GROUP BY sub_part`,
+		Expected: []sql.Row{
+			{"crust", float64(1)},
+			{"filling", float64(2)},
+			{"flour", float64(20)},
+			{"butter", float64(18)},
+			{"salt", float64(18)},
+			{"sugar", float64(7)},
+			{"fruit", float64(9)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select (2) from dual) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(3)},
+		},
+	},
+	{
+		Query: "with recursive t (n) as (select sum(1) from dual union all select n+1 from t where n < 10) select sum(n) from t;",
+		Expected: []sql.Row{
+			{float64(55)},
+		},
+	},
+	{
+		Query: `
+			WITH RECURSIVE bus_dst as (
+				SELECT origin as dst FROM bus_routes WHERE origin='New York'
+				UNION
+				SELECT bus_routes.dst FROM bus_routes JOIN bus_dst ON bus_dst.dst= bus_routes.origin
+			)
+			SELECT * FROM bus_dst
+			ORDER BY dst`,
+		Expected: []sql.Row{
+			{"Boston"},
+			{"New York"},
+			{"Raleigh"},
+			{"Washington"},
+		},
+	},
+	{
 		Query: "SELECT s, (select i from mytable mt where sub.i = mt.i) as subi FROM (select i,s,'hello' FROM mytable where s = 'first row') as sub;",
 		Expected: []sql.Row{
 			{"first row", int64(1)},
@@ -6901,6 +7013,35 @@ var BrokenQueries = []QueryTest{
 	{
 		Query: "SELECT c AS c, COUNT(*), MIN((SELECT COUNT(*) FROM (SELECT 1 AS d) b WHERE b.d = a.c)) FROM (SELECT 1 AS c) a GROUP BY a.c;",
 	},
+	// TODO: support nested recursive CTEs
+	{
+		Query: `
+			with recursive t1 (sub_part, part, quantity) as (
+				with recursive t2 (sub_part, part, quantity) as (
+					SELECT p2.sub_part, p2.part, p2.quantity FROM parts as p2
+					UNION
+					SELECT p1.sub_part, p1.part, p1.quantity FROM parts as p1
+					JOIN t2
+					ON
+						p1.sub_part = t2.sub_part
+					WHERE p1.part = 'pie' and t2.part = 'crust'
+				) select * from t2
+				UNION
+				SELECT t1.sub_part, t1.part, t1.quantity
+				FROM t1
+				JOIN parts AS p
+				ON p.part = p.part
+			) SELECT t1.sub_part, sum(t1.quantity) as total_quantity FROM t1 GROUP BY t1.sub_part;`,
+		Expected: []sql.Row{
+			{"crust", float64(1)},
+			{"filling", float64(2)},
+			{"flour", float64(20)},
+			{"butter", float64(18)},
+			{"salt", float64(18)},
+			{"sugar", float64(7)},
+			{"fruit", float64(9)},
+		},
+	},
 }
 
 var VersionedQueries = []QueryTest{
@@ -7883,6 +8024,14 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `CREATE TABLE test (pk int primary key auto_increment default 100, col int)`,
 		ExpectedErr: sql.ErrInvalidAutoIncCols,
+	},
+	{
+		Query:       "with recursive t (n) as (select (1) from dual union all select n from t where n < 2) select sum(n) from t",
+		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
+	},
+	{
+		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 1002) select sum(n) from t",
+		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
 }
 

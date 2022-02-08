@@ -1695,7 +1695,7 @@ end;`,
 				},
 			},
 			{
-				Query: "show triggers where event = 'INSERT'",
+				Query: "show triggers where `event` = 'INSERT'",
 				Expected: []sql.Row{
 					{
 						"t1",                    // Trigger

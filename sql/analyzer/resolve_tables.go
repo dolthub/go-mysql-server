@@ -47,53 +47,55 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		if n.Resolved() {
 			return n, nil
 		}
-
 		t, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, nil
 		}
+		return resolveTable(ctx, t, a)
+	})
+}
 
-		name := t.Name()
-		db := t.Database
-		if db == "" {
-			db = ctx.GetCurrentDatabase()
+func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.Node, error) {
+	name := t.Name()
+	db := t.Database
+	if db == "" {
+		db = ctx.GetCurrentDatabase()
+	}
+
+	if t.AsOf != nil {
+		// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
+		// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
+		// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
+		asOfExpr, err := expression.TransformUp(t.AsOf, resolveFunctionsInExpr(ctx, a))
+		if err != nil {
+			return nil, err
 		}
 
-		if t.AsOf != nil {
-			// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
-			// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
-			// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
-			asOfExpr, err := expression.TransformUp(t.AsOf, resolveFunctionsInExpr(ctx, a))
-			if err != nil {
-				return nil, err
-			}
-
-			if !asOfExpr.Resolved() {
-				return nil, sql.ErrInvalidAsOfExpression.New(asOfExpr.String())
-			}
-
-			asOf, err := asOfExpr.Eval(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
-			if err != nil {
-				return handleTableLookupFailure(err, name, db, a, t)
-			}
-
-			a.Log("table resolved: %q as of %s", rt.Name(), asOf)
-			return plan.NewResolvedTable(rt, database, asOf), nil
+		if !asOfExpr.Resolved() {
+			return nil, sql.ErrInvalidAsOfExpression.New(asOfExpr.String())
 		}
 
-		rt, database, err := a.Catalog.Table(ctx, db, name)
+		asOf, err := asOfExpr.Eval(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
 		if err != nil {
 			return handleTableLookupFailure(err, name, db, a, t)
 		}
 
-		a.Log("table resolved: %s", t.Name())
-		return plan.NewResolvedTable(rt, database, nil), nil
-	})
+		a.Log("table resolved: %q as of %s", rt.Name(), asOf)
+		return plan.NewResolvedTable(rt, database, asOf), nil
+	}
+
+	rt, database, err := a.Catalog.Table(ctx, db, name)
+	if err != nil {
+		return handleTableLookupFailure(err, name, db, a, t)
+	}
+
+	a.Log("table resolved: %s", t.Name())
+	return plan.NewResolvedTable(rt, database, nil), nil
 }
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to

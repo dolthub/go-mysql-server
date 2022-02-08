@@ -794,9 +794,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		node = plan.NewLimit(expression.NewLiteral(limit, sql.Int64), node)
 	}
 
-	// Finally, if common table expressions were provided, wrap the top-level node in a With node to capture them
-	if len(s.CommonTableExprs) > 0 {
-		node, err = ctesToWith(ctx, s.CommonTableExprs, node)
+	// Build With node if provided
+	if s.With != nil {
+		node, err = ctesToWith(ctx, s.With, node)
 		if err != nil {
 			return nil, err
 		}
@@ -805,9 +805,9 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 	return node, nil
 }
 
-func ctesToWith(ctx *sql.Context, cteExprs sqlparser.TableExprs, node sql.Node) (sql.Node, error) {
-	ctes := make([]*plan.CommonTableExpression, len(cteExprs))
-	for i, cteExpr := range cteExprs {
+func ctesToWith(ctx *sql.Context, with *sqlparser.With, node sql.Node) (sql.Node, error) {
+	ctes := make([]*plan.CommonTableExpression, len(with.Ctes))
+	for i, cteExpr := range with.Ctes {
 		var err error
 		ctes[i], err = cteExprToCte(ctx, cteExpr)
 		if err != nil {
@@ -815,7 +815,7 @@ func ctesToWith(ctx *sql.Context, cteExprs sqlparser.TableExprs, node sql.Node) 
 		}
 	}
 
-	return plan.NewWith(node, ctes), nil
+	return plan.NewWith(node, ctes, with.Recursive), nil
 }
 
 func cteExprToCte(ctx *sql.Context, expr sqlparser.TableExpr) (*plan.CommonTableExpression, error) {
@@ -1898,17 +1898,73 @@ func convertPrivilege(privileges ...sqlparser.Privilege) []plan.Privilege {
 		switch privilege.Type {
 		case sqlparser.PrivilegeType_All:
 			privType = plan.PrivilegeType_All
+		case sqlparser.PrivilegeType_Alter:
+			privType = plan.PrivilegeType_Alter
+		case sqlparser.PrivilegeType_AlterRoutine:
+			privType = plan.PrivilegeType_AlterRoutine
+		case sqlparser.PrivilegeType_Create:
+			privType = plan.PrivilegeType_Create
+		case sqlparser.PrivilegeType_CreateRole:
+			privType = plan.PrivilegeType_CreateRole
+		case sqlparser.PrivilegeType_CreateRoutine:
+			privType = plan.PrivilegeType_CreateRoutine
+		case sqlparser.PrivilegeType_CreateTablespace:
+			privType = plan.PrivilegeType_CreateTablespace
+		case sqlparser.PrivilegeType_CreateTemporaryTables:
+			privType = plan.PrivilegeType_CreateTemporaryTables
+		case sqlparser.PrivilegeType_CreateUser:
+			privType = plan.PrivilegeType_CreateUser
+		case sqlparser.PrivilegeType_CreateView:
+			privType = plan.PrivilegeType_CreateView
+		case sqlparser.PrivilegeType_Delete:
+			privType = plan.PrivilegeType_Delete
+		case sqlparser.PrivilegeType_Drop:
+			privType = plan.PrivilegeType_Drop
+		case sqlparser.PrivilegeType_DropRole:
+			privType = plan.PrivilegeType_DropRole
+		case sqlparser.PrivilegeType_Event:
+			privType = plan.PrivilegeType_Event
+		case sqlparser.PrivilegeType_Execute:
+			privType = plan.PrivilegeType_Execute
+		case sqlparser.PrivilegeType_File:
+			privType = plan.PrivilegeType_File
+		case sqlparser.PrivilegeType_Index:
+			privType = plan.PrivilegeType_Index
 		case sqlparser.PrivilegeType_Insert:
 			privType = plan.PrivilegeType_Insert
+		case sqlparser.PrivilegeType_LockTables:
+			privType = plan.PrivilegeType_LockTables
+		case sqlparser.PrivilegeType_Process:
+			privType = plan.PrivilegeType_Process
 		case sqlparser.PrivilegeType_References:
 			privType = plan.PrivilegeType_References
+		case sqlparser.PrivilegeType_Reload:
+			privType = plan.PrivilegeType_Reload
+		case sqlparser.PrivilegeType_ReplicationClient:
+			privType = plan.PrivilegeType_ReplicationClient
+		case sqlparser.PrivilegeType_ReplicationSlave:
+			privType = plan.PrivilegeType_ReplicationSlave
 		case sqlparser.PrivilegeType_Select:
 			privType = plan.PrivilegeType_Select
+		case sqlparser.PrivilegeType_ShowDatabases:
+			privType = plan.PrivilegeType_ShowDatabases
+		case sqlparser.PrivilegeType_ShowView:
+			privType = plan.PrivilegeType_ShowView
+		case sqlparser.PrivilegeType_Shutdown:
+			privType = plan.PrivilegeType_Shutdown
+		case sqlparser.PrivilegeType_Super:
+			privType = plan.PrivilegeType_Super
+		case sqlparser.PrivilegeType_Trigger:
+			privType = plan.PrivilegeType_Trigger
 		case sqlparser.PrivilegeType_Update:
 			privType = plan.PrivilegeType_Update
+		case sqlparser.PrivilegeType_Usage:
+			privType = plan.PrivilegeType_Usage
+		case sqlparser.PrivilegeType_Dynamic:
+			privType = plan.PrivilegeType_Dynamic
 		default:
-			// Temporary until everything is added in vitess
-			panic("have yet to implement all privilege types")
+			// all privileges have been implemented, so if we hit the default something bad has happened
+			panic("given privilege type parses but is not implemented")
 		}
 		planPrivs[i] = plan.Privilege{
 			Type:    privType,
