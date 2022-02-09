@@ -207,7 +207,7 @@ func (e *Engine) QueryNodeWithBindings(
 func allNode2(n sql.Node) bool {
 	allNode2 := true
 	plan.Inspect(n, func(n sql.Node) bool {
-		if _, ok := n.(sql.Node2); !ok {
+		if _, ok := n.(sql.Node2); n != nil && !ok {
 			allNode2 = false
 			return false
 		}
@@ -216,11 +216,19 @@ func allNode2(n sql.Node) bool {
 	return allNode2
 }
 
-var _ sql.RowIterTypeSelector = typeSelectorIter{}
-
+// typeSelectorIter is a wrapping row iter that implements RowIterTypeSelector so that clients consuming rows from it
+// know whether it's safe to iterate as RowIter or RowIter2.
 type typeSelectorIter struct {
 	sql.RowIter
 	isNode2 bool
+}
+
+var _ sql.RowIterTypeSelector = typeSelectorIter{}
+var _ sql.RowIter = typeSelectorIter{}
+var _ sql.RowIter2 = typeSelectorIter{}
+
+func (t typeSelectorIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	return t.RowIter.(sql.RowIter2).Next2(ctx, frame)
 }
 
 func (t typeSelectorIter) IsNode2() bool {

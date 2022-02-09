@@ -116,7 +116,7 @@ func TestSingleQuery(t *testing.T) {
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
 		Query: `
-select * from mytable order by 1`,
+select * from mytable`,
 		Expected: []sql.Row{
 			{1, "first row"},
 			{2, "second row"},
@@ -125,7 +125,7 @@ select * from mytable order by 1`,
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
