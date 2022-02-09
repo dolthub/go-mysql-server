@@ -43,12 +43,12 @@ func processTruncate(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		var db sql.Database
 		var err error
 		if truncatePlan.DatabaseName() == "" {
-			db, err = a.Catalog.Database(ctx.GetCurrentDatabase())
+			db, err = a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			db, err = a.Catalog.Database(truncatePlan.DatabaseName())
+			db, err = a.Catalog.Database(ctx, truncatePlan.DatabaseName())
 			if err != nil {
 				return nil, err
 			}
@@ -77,7 +77,7 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 	}
 
 	tblFound := false
-	currentDb, err := a.Catalog.Database(ctx.GetCurrentDatabase())
+	currentDb, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 	if err != nil {
 		return nil, err
 	}

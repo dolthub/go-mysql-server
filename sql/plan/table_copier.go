@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
 // TableCopier is a supporting node that allows for the optimization of copying tables. It should be used in two cases.
@@ -96,7 +97,11 @@ func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 	}
 
 	// If the DB does not implement the TableCopierDatabase interface we cannot copy over the table.
-	if _, ok := tc.db.(sql.TableCopierDatabase); !ok {
+	if privDb, ok := tc.db.(grant_tables.PrivilegedDatabase); ok {
+		if _, ok := privDb.Unwrap().(sql.TableCopierDatabase); !ok {
+			return false
+		}
+	} else if _, ok := tc.db.(sql.TableCopierDatabase); !ok {
 		return false
 	}
 

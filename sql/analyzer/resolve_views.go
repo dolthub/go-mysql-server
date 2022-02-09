@@ -17,6 +17,8 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -41,12 +43,19 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		var view *sql.View
 
 		if dbName != "" {
-			db, err := a.Catalog.Database(dbName)
+			db, err := a.Catalog.Database(ctx, dbName)
 			if err != nil {
+				if sql.ErrDatabaseAccessDeniedForUser.Is(err) || sql.ErrTableAccessDeniedForUser.Is(err) {
+					return n, nil
+				}
 				return nil, err
 			}
 
-			if vdb, ok := db.(sql.ViewDatabase); ok {
+			maybeVdb := db
+			if privilegedDatabase, ok := maybeVdb.(grant_tables.PrivilegedDatabase); ok {
+				maybeVdb = privilegedDatabase.Unwrap()
+			}
+			if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {
 				viewDef, ok, err := vdb.GetView(ctx, viewName)
 				if err != nil {
 					return nil, err

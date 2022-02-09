@@ -59,7 +59,7 @@ type managedSession struct {
 type SessionManager struct {
 	addr        string
 	tracer      opentracing.Tracer
-	hasDBFunc   func(name string) bool
+	hasDBFunc   func(ctx *sql.Context, name string) bool
 	memory      *sql.MemoryManager
 	processlist sql.ProcessList
 	mu          *sync.Mutex
@@ -72,7 +72,7 @@ type SessionManager struct {
 func NewSessionManager(
 	builder SessionBuilder,
 	tracer opentracing.Tracer,
-	hasDBFunc func(name string) bool,
+	hasDBFunc func(ctx *sql.Context, name string) bool,
 	memory *sql.MemoryManager,
 	processlist sql.ProcessList,
 	addr string,
@@ -127,7 +127,7 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 		return err
 	}
 
-	if db != "" && !s.hasDBFunc(db) {
+	if db != "" && !s.hasDBFunc(sql.NewEmptyContext(), db) {
 		return sql.ErrDatabaseNotFound.New(db)
 	}
 
