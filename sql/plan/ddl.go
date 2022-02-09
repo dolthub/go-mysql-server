@@ -582,7 +582,6 @@ func (c *CreateTable) validateDefaultPosition() error {
 type DropTable struct {
 	ddlNode
 	tables []sql.Node
-	//names        []string
 	ifExists     bool
 	triggerNames []string
 }
@@ -591,12 +590,10 @@ var _ sql.Node = (*DropTable)(nil)
 var _ sql.Databaser = (*DropTable)(nil)
 
 // NewDropTable creates a new DropTable node
-//func NewDropTable(db sql.Database, ifExists bool, tableNames ...string) *DropTable {
 func NewDropTable(db sql.Database, tbls []sql.Node, ifExists bool) *DropTable {
 	return &DropTable{
 		ddlNode: ddlNode{db},
 		tables:  tbls,
-		//names:    tableNames,
 		ifExists: ifExists,
 	}
 }
@@ -619,13 +616,13 @@ func (d *DropTable) WithTriggers(triggers []string) sql.Node {
 func (d *DropTable) TableNames() []string {
 	tblNames := make([]string, len(d.tables))
 	for i, t := range d.tables {
-		// EITHER *ResolvedTable OR *UnresolvedTable HERE
+		// either *ResolvedTable OR *UnresolvedTable here
 		if uTable, ok := t.(*UnresolvedTable); ok {
 			tblNames[i] = uTable.Name()
 		} else if rTable, ok := t.(*ResolvedTable); ok {
 			tblNames[i] = rTable.Name()
 		} else {
-			tblNames[i] = ""
+			return []string{}
 		}
 	}
 	return tblNames
