@@ -118,7 +118,6 @@ var OnceAfterDefault = []Rule{
 var OnceAfterAll = []Rule{
 	{"track_process", trackProcess},
 	{"parallelize", parallelize},
-	{"apply_row_frame_toggle", applyRowFrameToggle},
 	{"clear_warnings", clearWarnings},
 }
 

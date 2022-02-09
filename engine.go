@@ -191,11 +191,40 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if autoCommit {
-		// TODO: need to make this an analyzer rule or something
 		iter = transactionCommittingIter{iter, transactionDatabase}
 	}
 
+	allNode2 := allNode2(analyzed)
+	iter = typeSelectorIter{
+		RowIter: iter,
+		isNode2: allNode2,
+	}
+
 	return analyzed.Schema(), iter, nil
+}
+
+// allNode2 returns whether all the nodes in the tree implement Node2 or not.
+func allNode2(n sql.Node) bool {
+	allNode2 := true
+	plan.Inspect(n, func(n sql.Node) bool {
+		if _, ok := n.(sql.Node2); !ok {
+			allNode2 = false
+			return false
+		}
+		return true
+	})
+	return allNode2
+}
+
+var _ sql.RowIterTypeSelector = typeSelectorIter{}
+
+type typeSelectorIter struct {
+	sql.RowIter
+	isNode2 bool
+}
+
+func (t typeSelectorIter) IsNode2() bool {
+	return t.isNode2
 }
 
 const (

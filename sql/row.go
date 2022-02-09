@@ -104,7 +104,7 @@ type RowIter2 interface {
 
 // RowIterToRows converts a row iterator to a slice of rows.
 func RowIterToRows(ctx *Context, sch Schema, i RowIter) ([]Row, error) {
-	if ri2, ok := i.(NodeTypeSelector); ok && ri2.IsNode2() && sch != nil {
+	if ri2, ok := i.(RowIterTypeSelector); ok && ri2.IsNode2() && sch != nil {
 		return RowIter2ToRows(ctx, sch, ri2.(RowIter2))
 	}
 
