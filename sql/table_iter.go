@@ -101,7 +101,7 @@ func (i *TableRowIter) Next2(ctx *Context, frame *RowFrame) error {
 	if i.rows == nil {
 		t2, ok := i.table.(Table2)
 		if !ok {
-			return fmt.Errorf("table does not implement Table2: %s", i.table.Name())
+			return fmt.Errorf("table does not implement Table2: %s (%T)", i.table.Name(), i.table)
 		}
 
 		rows, err := t2.PartitionRows2(ctx, i.partition)

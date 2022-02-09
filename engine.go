@@ -207,6 +207,13 @@ func (e *Engine) QueryNodeWithBindings(
 func allNode2(n sql.Node) bool {
 	allNode2 := true
 	plan.Inspect(n, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			if _, ok := n.Table.(sql.Table2); !ok {
+				allNode2 = false
+				return false
+			}
+		}
 		if _, ok := n.(sql.Node2); n != nil && !ok {
 			allNode2 = false
 			return false

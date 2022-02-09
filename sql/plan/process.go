@@ -195,6 +195,10 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 		return nil, err
 	}
 
+	return t.newPartIter(p, iter)
+}
+
+func (t *ProcessIndexableTable) newPartIter(p sql.Partition, iter sql.RowIter) (sql.RowIter, error) {
 	partitionName := partitionName(p)
 	if t.OnPartitionStart != nil {
 		t.OnPartitionStart(partitionName)
@@ -215,6 +219,20 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 	}
 
 	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+}
+
+func (t *ProcessIndexableTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
+	iter, err := t.DriverIndexableTable.(sql.Table2).PartitionRows2(ctx, part)
+	if err != nil {
+		return nil, err
+	}
+
+	partIter, err := t.newPartIter(part, iter)
+	if err != nil {
+		return nil, err
+	}
+
+	return partIter.(sql.RowIter2), nil
 }
 
 var _ sql.DriverIndexableTable = (*ProcessIndexableTable)(nil)
