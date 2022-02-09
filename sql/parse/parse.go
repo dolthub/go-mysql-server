@@ -1380,7 +1380,7 @@ func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	dropTables := make([]sql.Node, len(c.FromTables))
 	dbName := c.FromTables[0].Qualifier.String()
 	for i, t := range c.FromTables {
-		if t.Qualifier.String() != dbName{
+		if t.Qualifier.String() != dbName {
 			return nil, errors.NewKind("Multiple database tables drop not supported").New()
 		}
 		dropTables[i] = tableNameToUnresolvedTable(t)
