@@ -649,12 +649,12 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		if !tOk {
 			return nil, ErrUnresolvedTable.New(table.String())
 		}
-		//if tbl.Name() == "dual" {
-		//	continue
-		//}
 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
+			if sql.ErrTableNotFound.Is(err) && d.ifExists {
+				continue
+			}
 			return nil, err
 		}
 	}

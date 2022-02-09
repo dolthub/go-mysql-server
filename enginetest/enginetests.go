@@ -1689,11 +1689,15 @@ func TestDropTable(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
 	require.Error(err)
 
+	_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
+	require.NoError(err)
+
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
 		TestQueryWithContext(t, ctx, e, "DROP TABLE IF EXISTS mydb.one_pk", []sql.Row(nil), nil, nil)
+		require.NoError(err)
 	})
 }
 

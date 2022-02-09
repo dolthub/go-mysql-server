@@ -43,16 +43,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	//return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-	//	if n.Resolved() {
-	//		return n, nil
-	//	}
-	//	t, ok := n.(*plan.UnresolvedTable)
-	//	if !ok {
-	//		return n, nil
-	//	}
-	//	return resolveTable(ctx, t, a)
-	//})
 	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
 		if p, ok := c.Node.(*plan.DropTable); ok {
 			var resolvedTables []sql.Node
@@ -65,9 +55,6 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			return n, nil
 		}
 
-		//if c.Node.Resolved() {
-		//	return n, nil
-		//}
 		ignore := false
 		if p, ok := c.Parent.(*plan.DropTable); ok {
 			ignore = p.IfExists()
