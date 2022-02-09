@@ -131,14 +131,10 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 	nodeIsPassthrough := true
 	for nodeIsPassthrough {
 		switch tn := n.(type) {
-		case TypeSelectorNode:
-			n = tn.Node
 		case *plan.QueryProcess:
 			n = tn.Child
 		case *plan.StartTransaction:
 			n = tn.Child
-		case transactionWrappingNode:
-			n = tn.Node
 		default:
 			nodeIsPassthrough = false
 		}
