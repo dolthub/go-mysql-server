@@ -652,9 +652,6 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
-			if sql.ErrTableNotFound.Is(err) && d.ifExists {
-				continue
-			}
 			return nil, err
 		}
 	}
