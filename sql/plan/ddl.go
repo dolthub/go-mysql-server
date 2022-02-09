@@ -582,7 +582,7 @@ func (c *CreateTable) validateDefaultPosition() error {
 type DropTable struct {
 	ddlNode
 	tables 		 []sql.Node
-	names        []string
+	//names        []string
 	ifExists     bool
 	triggerNames []string
 }
@@ -592,9 +592,9 @@ var _ sql.Databaser = (*DropTable)(nil)
 
 // NewDropTable creates a new DropTable node
 //func NewDropTable(db sql.Database, ifExists bool, tableNames ...string) *DropTable {
-func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
+func NewDropTable(db sql.Database, tbls []sql.Node, ifExists bool) *DropTable {
 	return &DropTable{
-		//ddlNode:  ddlNode{db},
+		ddlNode:  ddlNode{db},
 		tables:   tbls,
 		//names:    tableNames,
 		ifExists: ifExists,
@@ -617,7 +617,22 @@ func (d *DropTable) WithTriggers(triggers []string) sql.Node {
 
 // TableNames returns the names of the tables to drop.
 func (d *DropTable) TableNames() []string {
-	return d.names
+	tblNames := make([]string, len(d.tables))
+	for i, t := range d.tables {
+		// EITHER *ResolvedTable OR *UnresolvedTable HERE
+		table, ok := t.(*UnresolvedTable)
+		if !ok {
+			return []string{}
+		}
+
+		tblNames[i] = table.Name()
+	}
+	return tblNames
+}
+
+// IfExists returns ifExists variable.
+func (d *DropTable) IfExists() bool {
+	return d.ifExists
 }
 
 // RowIter implements the Node interface.
@@ -630,22 +645,14 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	var err error
 	for _, table := range d.tables {
 		tbl, tOk := table.(*ResolvedTable)
-		if tOk {
+		if !tOk {
 			return nil, ErrUnresolvedTable.New(table.String())
 		}
+		//if tbl.Name() == "dual" {
+		//	continue
+		//}
 
-		t, ok, err := d.db.GetTableInsensitive(ctx, tbl.Name())
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			if d.ifExists {
-				continue
-			}
-			return nil, sql.ErrTableNotFound.New(tbl.Name())
-		}
-
-		err = droppable.DropTable(ctx, t.Name())
+		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -655,7 +662,7 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		//TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
 		triggerDb, ok := d.db.(sql.TriggerDatabase)
 		if !ok {
-			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, d.names, d.triggerNames)
+			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, d.TableNames(), d.triggerNames)
 		}
 		for _, trigger := range d.triggerNames {
 			err = triggerDb.DropTrigger(ctx, trigger)
@@ -668,14 +675,21 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	return sql.RowsToRowIter(), err
 }
 
+// Children implements the Node interface.
+func (d *DropTable) Children() []sql.Node {
+	return d.tables
+}
+
+
 // WithChildren implements the Node interface.
 func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(d, children...)
+	d.tables = children
+	return d, nil
 }
 
 func (d *DropTable) String() string {
 	ifExists := ""
-	names := strings.Join(d.names, ", ")
+	names := strings.Join(d.TableNames(), ", ")
 	if d.ifExists {
 		ifExists = "if exists "
 	}

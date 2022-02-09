@@ -339,6 +339,10 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if n.Database() != nil && n.Database().Name() != "" {
 			transactionDatabase = n.Database().Name()
 		}
+	case *plan.DropTable:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
 	case *plan.InsertInto:
 		if n.Database() != nil && n.Database().Name() != "" {
 			transactionDatabase = n.Database().Name()

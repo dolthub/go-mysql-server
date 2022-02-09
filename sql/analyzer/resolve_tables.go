@@ -43,19 +43,49 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		if n.Resolved() {
+	//return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	//	if n.Resolved() {
+	//		return n, nil
+	//	}
+	//	t, ok := n.(*plan.UnresolvedTable)
+	//	if !ok {
+	//		return n, nil
+	//	}
+	//	return resolveTable(ctx, t, a)
+	//})
+	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+		if p, ok := c.Node.(*plan.DropTable); ok {
+			var resolvedTables []sql.Node
+			for _, t := range p.Children() {
+				if _, ok := t.(*plan.ResolvedTable); ok {
+					resolvedTables = append(resolvedTables, t)
+				}
+			}
+			c.Node, _ = p.WithChildren(resolvedTables...)
 			return n, nil
 		}
-		t, ok := n.(*plan.UnresolvedTable)
+
+		//if c.Node.Resolved() {
+		//	return n, nil
+		//}
+		ignore := false
+		if p, ok := c.Parent.(*plan.DropTable); ok {
+			ignore = p.IfExists()
+		}
+		t, ok := c.Node.(*plan.UnresolvedTable)
 		if !ok {
-			return n, nil
+			return c.Node, nil
 		}
-		return resolveTable(ctx, t, a)
+
+		r, err := resolveTable(ctx, t, a, ignore)
+		if r == nil && err == nil {
+			return c.Node, nil
+		}
+		return r, err
 	})
 }
 
-func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.Node, error) {
+func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignore bool) (sql.Node, error) {
 	name := t.Name()
 	db := t.Database
 	if db == "" {
@@ -82,7 +112,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 
 		rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
 		if err != nil {
-			return handleTableLookupFailure(err, name, db, a, t)
+			return handleTableLookupFailure(err, name, db, a, t, ignore)
 		}
 
 		a.Log("table resolved: %q as of %s", rt.Name(), asOf)
@@ -91,7 +121,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 
 	rt, database, err := a.Catalog.Table(ctx, db, name)
 	if err != nil {
-		return handleTableLookupFailure(err, name, db, a, t)
+		return handleTableLookupFailure(err, name, db, a, t, ignore)
 	}
 
 	a.Log("table resolved: %s", t.Name())
@@ -119,7 +149,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	})
 }
 
-func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t *plan.UnresolvedTable) (sql.Node, error) {
+func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t *plan.UnresolvedTable, ignore bool) (sql.Node, error) {
 	if sql.ErrDatabaseNotFound.Is(err) {
 		if tableName == dualTableName {
 			a.Log("table resolved: %q", t.Name())
@@ -132,6 +162,9 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 		if tableName == dualTableName {
 			a.Log("table resolved: %s", t.Name())
 			return plan.NewResolvedTable(dualTable, nil, nil), nil
+		}
+		if ignore {
+			return nil, nil
 		}
 	}
 
