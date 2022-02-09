@@ -620,12 +620,13 @@ func (d *DropTable) TableNames() []string {
 	tblNames := make([]string, len(d.tables))
 	for i, t := range d.tables {
 		// EITHER *ResolvedTable OR *UnresolvedTable HERE
-		table, ok := t.(*UnresolvedTable)
-		if !ok {
-			return []string{}
+		if uTable, ok := t.(*UnresolvedTable); ok {
+			tblNames[i] = uTable.Name()
+		} else if rTable, ok := t.(*ResolvedTable); ok {
+			tblNames[i] = rTable.Name()
+		} else {
+			tblNames[i] = ""
 		}
-
-		tblNames[i] = table.Name()
 	}
 	return tblNames
 }
