@@ -116,16 +116,15 @@ func (g *GrantTables) GetUser(user string, host string, roleSearch bool) *User {
 	return userEntry
 }
 
-// UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
-// privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
-// also pulled from the context.
-func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operation) bool {
+// UserActivePrivilegeSet fetches the User, and returns their entire active privilege set. This takes into account the
+// active roles, which are set in the context, therefore the user is also pulled from the context.
+func (g *GrantTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 	client := ctx.Session.Client()
 	user := g.GetUser(client.User, client.Address, false)
 	if user == nil {
-		return false
+		return NewPrivilegeSet()
 	}
-	globalStaticPrivs := user.PrivilegeSet.Copy()
+	privSet := user.PrivilegeSet.Copy()
 	roleEdgeEntries := g.role_edges.data.Get(RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
@@ -136,20 +135,39 @@ func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operatio
 		roleEdge := roleEdgeEntry.(*RoleEdge)
 		role := g.GetUser(roleEdge.FromUser, roleEdge.FromHost, true)
 		if role != nil {
-			globalStaticPrivs.UnionWith(role.PrivilegeSet)
+			privSet.UnionWith(role.PrivilegeSet)
 		}
 	}
+	return privSet
+}
 
+// UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
+// privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
+// also pulled from the context.
+func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operation) bool {
+	privSet := g.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
 		for _, operationPriv := range operation.Privileges {
-			if globalStaticPrivs.Has(operationPriv) {
+			if privSet.Has(operationPriv) {
 				//TODO: Handle partial revokes
 				continue
 			}
-			//TODO: Check if there's a database privilege
-			//TODO: Check if there's a table privilege
-			//TODO: Check if there's a column privilege
-			return false
+			database := operation.Database
+			if database == "" {
+				database = ctx.GetCurrentDatabase()
+			}
+			dbSet := privSet.Database(database)
+			if dbSet.Has(operationPriv) {
+				continue
+			}
+			tblSet := dbSet.Table(operation.Table)
+			if tblSet.Has(operationPriv) {
+				continue
+			}
+			colSet := tblSet.Column(operation.Column)
+			if !colSet.Has(operationPriv) {
+				return false
+			}
 		}
 	}
 	return true

@@ -159,7 +159,7 @@ func (data *Data) Put(ctx *sql.Context, entry Entry) error {
 	if reflect.TypeOf(entry) != data.entryType {
 		return fmt.Errorf("expected Entry of type `%T` but got `%T`", data.entryType, reflect.TypeOf(entry))
 	}
-	isDuplicateEntry := true
+	isDuplicateEntry := false
 	for _, referenceKey := range append(data.otherReferenceKeys, data.primaryReferenceKey) {
 		key, err := referenceKey.KeyFromEntry(ctx, entry)
 		if err != nil {
@@ -183,7 +183,8 @@ func (data *Data) Put(ctx *sql.Context, entry Entry) error {
 			}
 			if !found {
 				indexedData[key] = append(indexedData[key], entry)
-				isDuplicateEntry = false
+			} else {
+				isDuplicateEntry = true
 			}
 		}
 	}

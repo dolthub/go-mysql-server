@@ -23,10 +23,11 @@ import (
 
 const dualTableName = "dual"
 
+var dualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
+	{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
+})
 var dualTable = func() sql.Table {
-	t := memory.NewTable(dualTableName, sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
-	}))
+	t := memory.NewTable(dualTableName, dualTableSchema)
 
 	ctx := sql.NewEmptyContext()
 
@@ -38,6 +39,14 @@ var dualTable = func() sql.Table {
 	_ = inserter.Close(ctx)
 	return t
 }()
+
+// isDualTable returns whether the given table is the "dual" table.
+func isDualTable(t sql.Table) bool {
+	if t == nil {
+		return false
+	}
+	return t.Name() == dualTableName && t.Schema().Equals(dualTableSchema.Schema)
+}
 
 func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_tables")
@@ -128,7 +137,7 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 		if dbName == "" {
 			return nil, sql.ErrNoDatabaseSelected.New()
 		}
-	} else if sql.ErrTableNotFound.Is(err) {
+	} else if sql.ErrTableNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) || sql.ErrTableAccessDeniedForUser.Is(err) {
 		if tableName == dualTableName {
 			a.Log("table resolved: %s", t.Name())
 			return plan.NewResolvedTable(dualTable, nil, nil), nil

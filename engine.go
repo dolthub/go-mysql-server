@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -82,12 +84,12 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	a.Catalog.RegisterFunction(
-		sql.FunctionN{
-			Name: "version",
-			Fn:   function.NewVersion(versionPostfix),
-		})
-	a.Catalog.RegisterFunction(function.GetLockingFuncs(ls)...)
+	emptyCtx := sql.NewEmptyContext()
+	a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
+		Name: "version",
+		Fn:   function.NewVersion(versionPostfix),
+	})
+	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
 	return &Engine{
 		Analyzer:          a,
@@ -220,14 +222,17 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
-			database, err := e.Analyzer.Catalog.Database(transactionDatabase)
+			database, err := e.Analyzer.Catalog.Database(ctx, transactionDatabase)
 			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
-			if sql.ErrDatabaseNotFound.Is(err) {
+			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
 				return "", nil
 			} else if err != nil {
 				return "", err
 			}
 
+			if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+				database = privilegedDatabase.Unwrap()
+			}
 			tdb, ok := database.(sql.TransactionDatabase)
 			if ok {
 				tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)

@@ -66,6 +66,18 @@ var (
 	// ErrColumnExists is returned when an ALTER TABLE statement would create a duplicate column
 	ErrColumnExists = errors.NewKind("Column %q already exists")
 
+	// ErrCreateTableNotSupported is thrown when the database doesn't support table creation
+	ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on database %s")
+
+	// ErrDropTableNotSupported is thrown when the database doesn't support dropping tables
+	ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
+
+	// ErrRenameTableNotSupported is thrown when the database doesn't support renaming tables
+	ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
+
+	// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
+	ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
+
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
 
@@ -401,6 +413,14 @@ var (
 
 	// ErrRoleDeletionFailure is returned when attempting to create a role and it fails for any reason.
 	ErrRoleDeletionFailure = errors.NewKind("Operation DROP ROLE failed for %s")
+
+	// ErrDatabaseAccessDeniedForUser is returned when attempting to access a database that the user does not have
+	// permission for, regardless of whether that database actually exists.
+	ErrDatabaseAccessDeniedForUser = errors.NewKind("Access denied for user %s to database '%s'")
+
+	// ErrTableAccessDeniedForUser is returned when attempting to access a table that the user does not have permission
+	// for, regardless of whether that table actually exists.
+	ErrTableAccessDeniedForUser = errors.NewKind("Access denied for user %s to table '%s'")
 
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
 	ErrPrivilegeCheckFailed = errors.NewKind("%s command denied to user %s for table '%s'")

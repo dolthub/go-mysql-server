@@ -23,6 +23,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
 // returns whether to include the table name given in the test data setup. A nil set of included tables will include
@@ -43,6 +44,9 @@ func includeTable(includedTables []string, tableName string) bool {
 // sql.TransactionDatabase, then the function is simply run and the transaction logic is a no-op.
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
 	ctx := NewContext(harness).WithCurrentDB(db.Name())
+	if privilegedDatabase, ok := db.(grant_tables.PrivilegedDatabase); ok {
+		db = privilegedDatabase.Unwrap()
+	}
 	if tdb, ok := db.(sql.TransactionDatabase); ok {
 		tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)
 		require.NoError(t, err)

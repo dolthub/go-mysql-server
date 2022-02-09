@@ -46,7 +46,7 @@ func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) sql.TransformExprFunc
 		}
 
 		n := uf.Name()
-		f, err := a.Catalog.Function(n)
+		f, err := a.Catalog.Function(ctx, n)
 		if err != nil {
 			return nil, err
 		}
