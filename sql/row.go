@@ -210,7 +210,7 @@ func rowToRow2(sch Schema, r Row2) Row {
 			panic(fmt.Sprintf("unknown type %T", col.Type))
 		}
 	}
-	return nil
+	return row
 }
 
 // NodeToRows converts a node to a slice of rows.
