@@ -945,13 +945,13 @@ CREATE TABLE t2
 		plan.IfNotExistsAbsent,
 		plan.IsTempTable),
 	`DROP TABLE foo;`: plan.NewDropTable(
-		[]sql.Node{plan.NewUnresolvedTable("foo", "")}, false,
+		sql.UnresolvedDatabase(""), []sql.Node{plan.NewUnresolvedTable("foo", "")}, false,
 	),
 	`DROP TABLE IF EXISTS foo;`: plan.NewDropTable(
-		[]sql.Node{plan.NewUnresolvedTable("foo", "")}, true,
+		sql.UnresolvedDatabase(""), []sql.Node{plan.NewUnresolvedTable("foo", "")}, true,
 	),
 	`DROP TABLE IF EXISTS foo, bar, baz;`: plan.NewDropTable(
-		[]sql.Node{plan.NewUnresolvedTable("foo", ""), plan.NewUnresolvedTable("bar", ""), plan.NewUnresolvedTable("baz", "")}, true,
+		sql.UnresolvedDatabase(""), []sql.Node{plan.NewUnresolvedTable("foo", ""), plan.NewUnresolvedTable("bar", ""), plan.NewUnresolvedTable("baz", "")}, true,
 	),
 	`RENAME TABLE foo TO bar`: plan.NewRenameTable(
 		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
