@@ -581,7 +581,7 @@ func (c *CreateTable) validateDefaultPosition() error {
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
 	ddlNode
-	tables 		 []sql.Node
+	tables []sql.Node
 	//names        []string
 	ifExists     bool
 	triggerNames []string
@@ -594,8 +594,8 @@ var _ sql.Databaser = (*DropTable)(nil)
 //func NewDropTable(db sql.Database, ifExists bool, tableNames ...string) *DropTable {
 func NewDropTable(db sql.Database, tbls []sql.Node, ifExists bool) *DropTable {
 	return &DropTable{
-		ddlNode:  ddlNode{db},
-		tables:   tbls,
+		ddlNode: ddlNode{db},
+		tables:  tbls,
 		//names:    tableNames,
 		ifExists: ifExists,
 	}
@@ -680,7 +680,6 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 func (d *DropTable) Children() []sql.Node {
 	return d.tables
 }
-
 
 // WithChildren implements the Node interface.
 func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
