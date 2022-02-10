@@ -754,8 +754,8 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		return nil, err
 	}
 
-	if s.Window != nil {
-		node, err = windowToWindow(ctx, s.Window, node)
+	if window, ok := node.(*plan.Window); ok && s.Window != nil {
+		node, err = windowToWindow(ctx, s.Window, window)
 		if err != nil {
 			return nil, err
 		}
@@ -2434,16 +2434,11 @@ func havingToHaving(ctx *sql.Context, having *sqlparser.Where, node sql.Node) (s
 // replacing named window references with their window definitions.
 // Performs semantic validation of window compatibility/validity.
 // TODO: separate plan building from replacement and semantic validation
-func windowToWindow(ctx *sql.Context, window sqlparser.Window, node sql.Node) (sql.Node, error) {
-	w, ok := node.(*plan.Window)
-	if !ok {
-		return node, nil
-	}
-
-	windowDefs := make(map[string]*sql.WindowDefinition, len(window))
+func windowToWindow(ctx *sql.Context, windowDefs sqlparser.Window, window *plan.Window) (sql.Node, error) {
+	newWindowDefs := make(map[string]*sql.WindowDefinition, len(windowDefs))
 	var err error
-	for _, def := range window {
-		windowDefs[def.Name.Lowered()], err = windowDefToWindow(ctx, def)
+	for _, def := range windowDefs {
+		newWindowDefs[def.Name.Lowered()], err = windowDefToWindow(ctx, def)
 		if err != nil {
 			return nil, err
 		}
@@ -2451,19 +2446,18 @@ func windowToWindow(ctx *sql.Context, window sqlparser.Window, node sql.Node) (s
 
 	// check for circularity
 	var head, tail *sql.WindowDefinition
-	for _, def := range windowDefs {
+	for _, def := range newWindowDefs {
 		if def.Ref == "" {
 			continue
 		}
 		head = def
-		head = windowDefs[head.Ref]
+		head = newWindowDefs[head.Ref]
 		tail = def
 		for head != nil && tail != nil && head != tail {
-			// TODO check Ref name cannot be empty string
-			tail = windowDefs[tail.Ref]
-			head = windowDefs[head.Ref]
+			tail = newWindowDefs[tail.Ref]
+			head = newWindowDefs[head.Ref]
 			if head != nil {
-				head = windowDefs[head.Ref]
+				head = newWindowDefs[head.Ref]
 			}
 		}
 		if head != nil && head == tail {
@@ -2480,7 +2474,7 @@ func windowToWindow(ctx *sql.Context, window sqlparser.Window, node sql.Node) (s
 		}
 
 		// resolve ref before merging
-		ref, ok := windowDefs[n.Ref]
+		ref, ok := newWindowDefs[n.Ref]
 		if !ok {
 			return nil, fmt.Errorf("window def not found")
 		}
@@ -2495,14 +2489,14 @@ func windowToWindow(ctx *sql.Context, window sqlparser.Window, node sql.Node) (s
 
 		if n.Name != "" {
 			// cache lookup
-			windowDefs[n.Name] = n
+			newWindowDefs[n.Name] = n
 		}
 		return n, nil
 	}
 
 	// find and replace over expressions with new window definitions
-	newExprs := make([]sql.Expression, len(w.SelectExprs))
-	for i, expr := range w.SelectExprs {
+	newExprs := make([]sql.Expression, len(window.SelectExprs))
+	for i, expr := range window.SelectExprs {
 		newExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
 			uf, ok := e.(*expression.UnresolvedFunction)
 			if !ok {
@@ -2522,7 +2516,7 @@ func windowToWindow(ctx *sql.Context, window sqlparser.Window, node sql.Node) (s
 		}
 	}
 
-	return plan.NewWindow(newExprs, w.Child), nil
+	return plan.NewWindow(newExprs, window.Child), nil
 }
 
 // mergeWindowDefs combines the attributes of two window definitions or returns
