@@ -22,7 +22,7 @@ import (
 )
 
 type RowNumber struct {
-	window *sql.Window
+	window *sql.WindowDefinition
 	pos    int
 }
 
@@ -40,7 +40,7 @@ func (r *RowNumber) Description() string {
 }
 
 // Window implements sql.WindowExpression
-func (r *RowNumber) Window() *sql.Window {
+func (r *RowNumber) Window() *sql.WindowDefinition {
 	return r.window
 }
 
@@ -105,7 +105,7 @@ func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 // WithWindow implements sql.WindowAggregation
-func (r *RowNumber) WithWindow(window *sql.Window) (sql.WindowAggregation, error) {
+func (r *RowNumber) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
 	nr := *r
 	nr.window = window
 	return &nr, nil
