@@ -111,7 +111,7 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-//	t.Skip()
+	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
@@ -135,7 +135,7 @@ select * from mytable`,
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-//	t.Skip()
+	t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{

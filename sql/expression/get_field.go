@@ -105,8 +105,7 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 
-func (p *GetField) Eval2(ctx *sql.Context, f *sql.RowFrame) (sql.Value, error) {
-	row := f.Row2()
+func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
 		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}

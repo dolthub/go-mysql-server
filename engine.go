@@ -194,16 +194,17 @@ func (e *Engine) QueryNodeWithBindings(
 		iter = transactionCommittingIter{iter, transactionDatabase}
 	}
 
-	allNode2 := allNode2(analyzed)
-	iter = typeSelectorIter{
-		RowIter: iter,
-		isNode2: allNode2,
+	if enableRowIter2 {
+		iter = typeSelectorIter{
+			RowIter: iter,
+			isNode2: allNode2(analyzed),
+		}
 	}
 
 	return analyzed.Schema(), iter, nil
 }
 
-// allNode2 returns whether all the nodes in the tree implement Node2 or not.
+// allNode2 returns whether all the nodes in the tree implement Node2.
 func allNode2(n sql.Node) bool {
 	allNode2 := true
 	plan.Inspect(n, func(n sql.Node) bool {
@@ -224,9 +225,17 @@ func allNode2(n sql.Node) bool {
 		return allNode2
 	}
 
+	// All expressions in the tree must likewise be Expression2, and all types Type2, or we can't use rowFrame iteration
 	// TODO: likely that some nodes rely on expressions but don't implement sql.Expressioner, or implement it incompletely
 	plan.InspectExpressions(n, func(e sql.Expression) bool {
-		if _, ok := e.(sql.Expression2); e != nil && !ok {
+		if e == nil {
+			return false
+		}
+		if _, ok := e.(sql.Expression2); !ok {
+			allNode2 = false
+			return false
+		}
+		if _, ok := e.Type().(sql.Type2); !ok {
 			allNode2 = false
 			return false
 		}
@@ -257,14 +266,20 @@ func (t typeSelectorIter) IsNode2() bool {
 
 const (
 	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
+	enableIter2EnvVar = "ENABLE_ROW_ITER_2"
 )
 
 var fakeReadCommitted bool
+var enableRowIter2 bool
 
 func init() {
 	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
 	if ok {
 		fakeReadCommitted = true
+	}
+	_, ok = os.LookupEnv(enableIter2EnvVar)
+	if ok {
+		enableRowIter2 = true
 	}
 }
 

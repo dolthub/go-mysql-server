@@ -70,7 +70,7 @@ type Expression interface {
 type Expression2 interface {
 	Expression
 	// Eval2 evaluates the given row frame and returns a result.
-	Eval2(ctx *Context, f *RowFrame) (Value, error)
+	Eval2(ctx *Context, row Row2) (Value, error)
 }
 
 // UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
