@@ -19,7 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-func windowResolved(window *sql.Window) bool {
+func windowResolved(window *sql.WindowDefinition) bool {
 	if window == nil {
 		return true
 	}

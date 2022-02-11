@@ -37,7 +37,7 @@ var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 type JSONObjectAgg struct {
 	key    sql.Expression
 	value  sql.Expression
-	window *sql.Window
+	window *sql.WindowDefinition
 }
 
 var _ sql.FunctionExpression = (*JSONObjectAgg)(nil)
@@ -93,14 +93,14 @@ func (j *JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 // WithWindow implements sql.Aggregation
-func (j *JSONObjectAgg) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (j *JSONObjectAgg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	nj := *j
 	nj.window = window
 	return &nj, nil
 }
 
 // Window implements sql.Aggregation
-func (j *JSONObjectAgg) Window() *sql.Window {
+func (j *JSONObjectAgg) Window() *sql.WindowDefinition {
 	return j.window
 }
 

@@ -55,7 +55,7 @@ func (f *RowsUnboundedPrecedingToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsUnboundedPrecedingToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsUnboundedPrecedingToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsUnboundedPrecedingToNPrecedingFramer(f, w)
 }
 
@@ -107,7 +107,7 @@ func (f *RowsUnboundedPrecedingToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsUnboundedPrecedingToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsUnboundedPrecedingToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsUnboundedPrecedingToCurrentRowFramer(f, w)
 }
 
@@ -159,7 +159,7 @@ func (f *RowsUnboundedPrecedingToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsUnboundedPrecedingToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsUnboundedPrecedingToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsUnboundedPrecedingToNFollowingFramer(f, w)
 }
 
@@ -211,7 +211,7 @@ func (f *RowsUnboundedPrecedingToUnboundedFollowingFrame) UnboundedFollowing() b
 	return f.unboundedFollowing
 }
 
-func (f *RowsUnboundedPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsUnboundedPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsUnboundedPrecedingToUnboundedFollowingFramer(f, w)
 }
 
@@ -263,7 +263,7 @@ func (f *RowsNPrecedingToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNPrecedingToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNPrecedingToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNPrecedingToNPrecedingFramer(f, w)
 }
 
@@ -315,7 +315,7 @@ func (f *RowsNPrecedingToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNPrecedingToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNPrecedingToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNPrecedingToCurrentRowFramer(f, w)
 }
 
@@ -367,7 +367,7 @@ func (f *RowsNPrecedingToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNPrecedingToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNPrecedingToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNPrecedingToNFollowingFramer(f, w)
 }
 
@@ -419,7 +419,7 @@ func (f *RowsNPrecedingToUnboundedFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNPrecedingToUnboundedFollowingFramer(f, w)
 }
 
@@ -471,7 +471,7 @@ func (f *RowsCurrentRowToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsCurrentRowToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsCurrentRowToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsCurrentRowToNPrecedingFramer(f, w)
 }
 
@@ -523,7 +523,7 @@ func (f *RowsCurrentRowToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsCurrentRowToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsCurrentRowToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsCurrentRowToCurrentRowFramer(f, w)
 }
 
@@ -575,7 +575,7 @@ func (f *RowsCurrentRowToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsCurrentRowToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsCurrentRowToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsCurrentRowToNFollowingFramer(f, w)
 }
 
@@ -627,7 +627,7 @@ func (f *RowsCurrentRowToUnboundedFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsCurrentRowToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsCurrentRowToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsCurrentRowToUnboundedFollowingFramer(f, w)
 }
 
@@ -679,7 +679,7 @@ func (f *RowsNFollowingToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNFollowingToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNFollowingToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNFollowingToNPrecedingFramer(f, w)
 }
 
@@ -731,7 +731,7 @@ func (f *RowsNFollowingToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNFollowingToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNFollowingToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNFollowingToCurrentRowFramer(f, w)
 }
 
@@ -783,7 +783,7 @@ func (f *RowsNFollowingToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNFollowingToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNFollowingToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNFollowingToNFollowingFramer(f, w)
 }
 
@@ -835,7 +835,7 @@ func (f *RowsNFollowingToUnboundedFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RowsNFollowingToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RowsNFollowingToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRowsNFollowingToUnboundedFollowingFramer(f, w)
 }
 
@@ -887,7 +887,7 @@ func (f *RangeUnboundedPrecedingToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeUnboundedPrecedingToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeUnboundedPrecedingToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeUnboundedPrecedingToNPrecedingFramer(f, w)
 }
 
@@ -939,7 +939,7 @@ func (f *RangeUnboundedPrecedingToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeUnboundedPrecedingToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeUnboundedPrecedingToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeUnboundedPrecedingToCurrentRowFramer(f, w)
 }
 
@@ -991,7 +991,7 @@ func (f *RangeUnboundedPrecedingToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeUnboundedPrecedingToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeUnboundedPrecedingToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeUnboundedPrecedingToNFollowingFramer(f, w)
 }
 
@@ -1043,7 +1043,7 @@ func (f *RangeUnboundedPrecedingToUnboundedFollowingFrame) UnboundedFollowing() 
 	return f.unboundedFollowing
 }
 
-func (f *RangeUnboundedPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeUnboundedPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeUnboundedPrecedingToUnboundedFollowingFramer(f, w)
 }
 
@@ -1095,7 +1095,7 @@ func (f *RangeNPrecedingToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNPrecedingToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNPrecedingToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNPrecedingToNPrecedingFramer(f, w)
 }
 
@@ -1147,7 +1147,7 @@ func (f *RangeNPrecedingToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNPrecedingToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNPrecedingToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNPrecedingToCurrentRowFramer(f, w)
 }
 
@@ -1199,7 +1199,7 @@ func (f *RangeNPrecedingToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNPrecedingToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNPrecedingToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNPrecedingToNFollowingFramer(f, w)
 }
 
@@ -1251,7 +1251,7 @@ func (f *RangeNPrecedingToUnboundedFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNPrecedingToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNPrecedingToUnboundedFollowingFramer(f, w)
 }
 
@@ -1303,7 +1303,7 @@ func (f *RangeCurrentRowToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeCurrentRowToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeCurrentRowToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeCurrentRowToNPrecedingFramer(f, w)
 }
 
@@ -1355,7 +1355,7 @@ func (f *RangeCurrentRowToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeCurrentRowToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeCurrentRowToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeCurrentRowToCurrentRowFramer(f, w)
 }
 
@@ -1407,7 +1407,7 @@ func (f *RangeCurrentRowToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeCurrentRowToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeCurrentRowToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeCurrentRowToNFollowingFramer(f, w)
 }
 
@@ -1459,7 +1459,7 @@ func (f *RangeCurrentRowToUnboundedFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeCurrentRowToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeCurrentRowToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeCurrentRowToUnboundedFollowingFramer(f, w)
 }
 
@@ -1511,7 +1511,7 @@ func (f *RangeNFollowingToNPrecedingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNFollowingToNPrecedingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNFollowingToNPrecedingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNFollowingToNPrecedingFramer(f, w)
 }
 
@@ -1563,7 +1563,7 @@ func (f *RangeNFollowingToCurrentRowFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNFollowingToCurrentRowFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNFollowingToCurrentRowFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNFollowingToCurrentRowFramer(f, w)
 }
 
@@ -1615,7 +1615,7 @@ func (f *RangeNFollowingToNFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNFollowingToNFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNFollowingToNFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNFollowingToNFollowingFramer(f, w)
 }
 
@@ -1667,6 +1667,6 @@ func (f *RangeNFollowingToUnboundedFollowingFrame) UnboundedFollowing() bool {
 	return f.unboundedFollowing
 }
 
-func (f *RangeNFollowingToUnboundedFollowingFrame) NewFramer(w *sql.Window) (sql.WindowFramer, error) {
+func (f *RangeNFollowingToUnboundedFollowingFrame) NewFramer(w *sql.WindowDefinition) (sql.WindowFramer, error) {
 	return agg.NewRangeNFollowingToUnboundedFollowingFramer(f, w)
 }

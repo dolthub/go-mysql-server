@@ -55,7 +55,7 @@ func NewSumAgg(e sql.Expression) *SumAgg {
 	}
 }
 
-func (a *SumAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *SumAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -153,7 +153,7 @@ func NewAvgAgg(e sql.Expression) *AvgAgg {
 	}
 }
 
-func (a *AvgAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *AvgAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -217,7 +217,7 @@ func NewMaxAgg(e sql.Expression) *MaxAgg {
 	}
 }
 
-func (a *MaxAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *MaxAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -289,7 +289,7 @@ func NewMinAgg(e sql.Expression) *MinAgg {
 	}
 }
 
-func (a *MinAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *MinAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -361,7 +361,7 @@ func NewLastAgg(e sql.Expression) *LastAgg {
 	}
 }
 
-func (a *LastAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *LastAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w != nil && w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -418,7 +418,7 @@ func NewFirstAgg(e sql.Expression) *FirstAgg {
 	}
 }
 
-func (a *FirstAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *FirstAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -497,7 +497,7 @@ func NewCountDistinctAgg(e sql.Expression) *CountAgg {
 	}
 }
 
-func (a *CountAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *CountAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -602,7 +602,7 @@ func NewGroupConcatAgg(gc *GroupConcat) *GroupConcatAgg {
 	}
 }
 
-func (a *GroupConcatAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *GroupConcatAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -747,7 +747,7 @@ func NewJsonArrayAgg(expr sql.Expression) *WindowedJSONArrayAgg {
 	}
 }
 
-func (a *WindowedJSONArrayAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *WindowedJSONArrayAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -821,7 +821,7 @@ func NewWindowedJSONObjectAgg(j *JSONObjectAgg) *WindowedJSONObjectAgg {
 	}
 }
 
-func (a *WindowedJSONObjectAgg) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *WindowedJSONObjectAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	if w.Frame != nil {
 		framer, err := w.Frame.NewFramer(w)
@@ -912,7 +912,7 @@ func NewRowNumber() *RowNumber {
 	}
 }
 
-func (a *RowNumber) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *RowNumber) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	return a, nil
 }
 
@@ -963,7 +963,7 @@ func NewPercentRank(orderBy []sql.Expression) *PercentRank {
 	}
 }
 
-func (a *PercentRank) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *PercentRank) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	na := *a
 	na.orderBy = w.OrderBy.ToExpressions()
 	return &na, nil
@@ -1044,7 +1044,7 @@ type leadLagBase struct {
 	pos    int
 }
 
-func (a *leadLagBase) WithWindow(w *sql.Window) (sql.WindowFunction, error) {
+func (a *leadLagBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
 	return a, nil
 }
 

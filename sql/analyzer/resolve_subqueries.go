@@ -143,11 +143,11 @@ func StripPassthroughNodes(n sql.Node) sql.Node {
 	return n
 }
 
-func exprIsCacheable(expr sql.Expression, lowestAlloewdIdx int) bool {
+func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
 	cacheable := true
 	sql.Inspect(expr, func(e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {
-			if gf.Index() < lowestAlloewdIdx {
+			if gf.Index() < lowestAllowedIdx {
 				cacheable = false
 				return false
 			}
@@ -203,8 +203,12 @@ func isDeterminstic(n sql.Node) bool {
 
 // cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
-// and if all expressions in the subquery are deterministic.
+// if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	// No need to inspect for trigger blocks as the Analyzer is recursively invoked on trigger blocks.
+	if n, ok := n.(*plan.TriggerBeginEndBlock); ok {
+		return n, nil
+	}
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
 		if !ok || !s.Resolved() {

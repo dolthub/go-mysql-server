@@ -83,7 +83,7 @@ func (l *Linestring) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		case sql.Point:
 			points[i] = v
 		case sql.Linestring, sql.Polygon: // TODO: eventually add all spatial types
-			return nil, ErrInvalidArgument.New(l.FunctionName())
+			return nil, sql.ErrInvalidArgumentDetails.New(l.FunctionName(), v)
 		default:
 			return nil, sql.ErrIllegalGISValue.New(v)
 		}

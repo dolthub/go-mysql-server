@@ -277,11 +277,14 @@ var (
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 
+	// ErrInvalidArgumentDetails is returned when the argument is invalid with details of a specific function
+	ErrInvalidArgumentDetails = errors.NewKind("Invalid argument to %s: %s")
+
 	// ErrSavepointDoesNotExist is returned when a RELEASE SAVEPOINT or ROLLBACK TO SAVEPOINT statement references a
 	// non-existent savepoint identifier
 	ErrSavepointDoesNotExist = errors.NewKind("SAVEPOINT %s does not exist")
 
-	// ErrTableCreatedNotFound is thrown when an integrator attempts to create a temporary tables without temporary table
+	// ErrTemporaryTableNotSupported is thrown when an integrator attempts to create a temporary tables without temporary table
 	// support.
 	ErrTemporaryTableNotSupported = errors.NewKind("database does not support temporary tables")
 
@@ -428,6 +431,15 @@ var (
 
 	// ErrGrantRevokeIllegalPrivilege is returned when a GRANT or REVOKE statement is malformed, or attempts to use privilege incorrectly.
 	ErrGrantRevokeIllegalPrivilege = errors.NewKind("Illegal GRANT/REVOKE command")
+
+	// ErrInvalidWindowInheritance is returned when a window and its dependency contains conflicting partitioning, ordering, or framing clauses
+	ErrInvalidWindowInheritance = errors.NewKind("window '%s' cannot inherit '%s' since %s")
+
+	// ErrCircularWindowInheritance is returned when a WINDOW clause has a circular dependency
+	ErrCircularWindowInheritance = errors.NewKind("there is a circularity in the window dependency graph")
+
+	// ErrCannotCopyWindowFrame is returned when we inherit a window frame with a frame clause (replacement without parenthesis is OK)
+	ErrCannotCopyWindowFrame = errors.NewKind("cannot copy window '%s' because it has a frame clause")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
