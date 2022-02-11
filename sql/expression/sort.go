@@ -95,7 +95,7 @@ func (s *Sorter) Less2(i, j int) bool {
 
 func (s *Sorter) Less(i, j int) bool {
 	if len(s.Rows2) > 0 {
-		return s.Less2(i,j)
+		return s.Less2(i, j)
 	}
 
 	if s.LastError != nil {

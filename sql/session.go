@@ -829,7 +829,6 @@ func (i *spanIter) Next(ctx *Context) (Row, error) {
 	return row, nil
 }
 
-
 func (i *spanIter) Next2(ctx *Context, frame *RowFrame) error {
 	start := time.Now()
 

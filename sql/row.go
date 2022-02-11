@@ -19,8 +19,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/values"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 // Row is a tuple of values.

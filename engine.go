@@ -266,7 +266,7 @@ func (t typeSelectorIter) IsNode2() bool {
 
 const (
 	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
-	enableIter2EnvVar = "ENABLE_ROW_ITER_2"
+	enableIter2EnvVar       = "ENABLE_ROW_ITER_2"
 )
 
 var fakeReadCommitted bool

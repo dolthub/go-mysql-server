@@ -134,11 +134,11 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type sortIter struct {
-	s          *Sort
-	childIter  sql.RowIter
-	sortedRows []sql.Row
+	s           *Sort
+	childIter   sql.RowIter
+	sortedRows  []sql.Row
 	sortedRows2 []sql.Row2
-	idx        int
+	idx         int
 }
 
 var _ sql.RowIter = (*sortIter)(nil)
