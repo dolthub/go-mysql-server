@@ -127,7 +127,8 @@ func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
 		return err
 	}
 
-	if db != "" && !s.hasDBFunc(sql.NewEmptyContext(), db) {
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	if db != "" && !s.hasDBFunc(ctx, db) {
 		return sql.ErrDatabaseNotFound.New(db)
 	}
 
