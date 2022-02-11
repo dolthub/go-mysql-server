@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -215,7 +217,11 @@ func (c *CreateTable) Resolved() bool {
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
 	if c.temporary == IsTempTable {
-		creatable, ok := c.db.(sql.TemporaryTableCreator)
+		maybePrivDb := c.db
+		if privDb, ok := maybePrivDb.(grant_tables.PrivilegedDatabase); ok {
+			maybePrivDb = privDb.Unwrap()
+		}
+		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
@@ -226,7 +232,11 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 		err = creatable.CreateTemporaryTable(ctx, c.name, c.CreateSchema)
 	} else {
-		creatable, ok := c.db.(sql.TableCreator)
+		maybePrivDb := c.db
+		if privDb, ok := maybePrivDb.(grant_tables.PrivilegedDatabase); ok {
+			maybePrivDb = privDb.Unwrap()
+		}
+		creatable, ok := maybePrivDb.(sql.TableCreator)
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
 		}
