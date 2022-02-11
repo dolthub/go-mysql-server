@@ -220,6 +220,19 @@ func allNode2(n sql.Node) bool {
 		}
 		return true
 	})
+	if !allNode2 {
+		return allNode2
+	}
+
+	// TODO: likely that some nodes rely on expressions but don't implement sql.Expressioner, or implement it incompletely
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if _, ok := e.(sql.Expression2); e != nil && !ok {
+			allNode2 = false
+			return false
+		}
+		return true
+	})
+
 	return allNode2
 }
 
