@@ -172,9 +172,27 @@ func (ps PrivilegeSet) Has(privileges ...PrivilegeType) bool {
 	return true
 }
 
-// Count returns the number of global privileges.
-func (ps PrivilegeSet) Count() int {
+// HasPrivileges returns whether this PrivilegeSet has any privileges at any level.
+func (ps PrivilegeSet) HasPrivileges() bool {
+	if len(ps.globalStatic) > 0 || len(ps.globalDynamic) > 0 {
+		return true
+	}
+	for _, dbSet := range ps.databases {
+		if dbSet.HasPrivileges() {
+			return true
+		}
+	}
+	return false
+}
+
+// GlobalCount returns the combined number of global static and global dynamic privileges.
+func (ps PrivilegeSet) GlobalCount() int {
 	return len(ps.globalStatic) + len(ps.globalDynamic)
+}
+
+// StaticCount returns the number of global static privileges, while not including global dynamic privileges.
+func (ps PrivilegeSet) StaticCount() int {
+	return len(ps.globalStatic)
 }
 
 // Database returns the set of privileges for the given database. Returns an empty set if the database does not exist.
@@ -191,8 +209,12 @@ func (ps PrivilegeSet) GetDatabases() []PrivilegeSetDatabase {
 	dbSets := make([]PrivilegeSetDatabase, len(ps.databases))
 	i := 0
 	for _, dbSet := range ps.databases {
-		dbSets[i] = dbSet
-		i++
+		// Only return databases that have a database-level privilege, or a privilege on an underlying table or column.
+		// Otherwise, there is no difference between the returned database and the zero-value for any database.
+		if dbSet.HasPrivileges() {
+			dbSets[i] = dbSet
+			i++
+		}
 	}
 	return dbSets
 }
@@ -328,6 +350,20 @@ func (ps PrivilegeSetDatabase) Has(privileges ...PrivilegeType) bool {
 	return true
 }
 
+// HasPrivileges returns whether this database has either database-level privileges, or privileges on a table or column
+// contained within this database.
+func (ps PrivilegeSetDatabase) HasPrivileges() bool {
+	if len(ps.privs) > 0 {
+		return true
+	}
+	for _, tblSet := range ps.tables {
+		if tblSet.HasPrivileges() {
+			return true
+		}
+	}
+	return false
+}
+
 // Count returns the number of database privileges.
 func (ps PrivilegeSetDatabase) Count() int {
 	return len(ps.privs)
@@ -347,8 +383,12 @@ func (ps PrivilegeSetDatabase) GetTables() []PrivilegeSetTable {
 	tblSets := make([]PrivilegeSetTable, len(ps.tables))
 	i := 0
 	for _, tblSet := range ps.tables {
-		tblSets[i] = tblSet
-		i++
+		// Only return tables that have a table-level privilege, or a privilege on an underlying column.
+		// Otherwise, there is no difference between the returned table and the zero-value for any table.
+		if tblSet.HasPrivileges() {
+			tblSets[i] = tblSet
+			i++
+		}
 	}
 	return tblSets
 }
@@ -447,6 +487,20 @@ func (ps PrivilegeSetTable) Has(privileges ...PrivilegeType) bool {
 	return true
 }
 
+// HasPrivileges returns whether this table has either table-level privileges, or privileges on a column contained
+// within this table.
+func (ps PrivilegeSetTable) HasPrivileges() bool {
+	if len(ps.privs) > 0 {
+		return true
+	}
+	for _, colSet := range ps.columns {
+		if colSet.Count() > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // Count returns the number of table privileges.
 func (ps PrivilegeSetTable) Count() int {
 	return len(ps.privs)
@@ -466,8 +520,12 @@ func (ps PrivilegeSetTable) GetColumns() []PrivilegeSetColumn {
 	colSets := make([]PrivilegeSetColumn, len(ps.columns))
 	i := 0
 	for _, colSet := range ps.columns {
-		colSets[i] = colSet
-		i++
+		// Only return columns that have privileges. Otherwise, there is no difference between the returned column and
+		// the zero-value for any column.
+		if colSet.Count() > 0 {
+			colSets[i] = colSet
+			i++
+		}
 	}
 	return colSets
 }

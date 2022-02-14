@@ -17,6 +17,8 @@ package plan
 import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -82,6 +84,9 @@ func (dv *SingleDropView) Database() sql.Database {
 // WithDatabase implements the sql.Databaser interface, and it returns a copy of this
 // node with the specified database.
 func (dv *SingleDropView) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	newDrop := *dv
 	newDrop.database = database
 	return &newDrop, nil

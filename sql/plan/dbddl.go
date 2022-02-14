@@ -51,7 +51,7 @@ func (c CreateDB) Children() []sql.Node {
 }
 
 func (c CreateDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	exists := c.Catalog.HasDB(c.dbName)
+	exists := c.Catalog.HasDB(ctx, c.dbName)
 	rows := []sql.Row{{sql.OkResult{RowsAffected: 1}}}
 
 	if exists {
@@ -115,7 +115,7 @@ func (d DropDB) Children() []sql.Node {
 }
 
 func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	exists := d.Catalog.HasDB(d.dbName)
+	exists := d.Catalog.HasDB(ctx, d.dbName)
 	if !exists {
 		if d.IfExists {
 			ctx.Session.Warn(&sql.Warning{

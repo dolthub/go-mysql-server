@@ -42,7 +42,7 @@ func NewDatabaseProvider(dbs ...Database) DatabaseProvider {
 }
 
 // Database returns the Database with the given name if it exists.
-func (d databaseProvider) Database(name string) (Database, error) {
+func (d databaseProvider) Database(ctx *Context, name string) (Database, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -61,7 +61,7 @@ func (d databaseProvider) Database(name string) (Database, error) {
 }
 
 // HasDatabase returns the Database with the given name if it exists.
-func (d databaseProvider) HasDatabase(name string) bool {
+func (d databaseProvider) HasDatabase(ctx *Context, name string) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -70,7 +70,7 @@ func (d databaseProvider) HasDatabase(name string) bool {
 }
 
 // AllDatabases returns the Database with the given name if it exists.
-func (d databaseProvider) AllDatabases() []Database {
+func (d databaseProvider) AllDatabases(*Context) []Database {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 

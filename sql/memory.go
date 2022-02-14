@@ -64,8 +64,9 @@ type RowsCache interface {
 	Get() []Row
 }
 
-// RowsCache is a cache of rows.
+// Rows2Cache is a cache of Row2s.
 type Rows2Cache interface {
+	RowsCache
 	// Add2 a new row to the cache. If there is no memory available, it will try to
 	// free some memory. If after that there is still no memory available, it
 	// will return an error and erase all the content of the cache.

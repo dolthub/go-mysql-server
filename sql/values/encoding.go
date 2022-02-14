@@ -331,7 +331,7 @@ func compare(typ Type, left, right []byte) int {
 	}
 }
 
-// false is less that true
+// false is less than true
 func compareBool(l, r bool) int {
 	if l == r {
 		return 0
@@ -448,28 +448,4 @@ func compareString(l, r string, coll Collation) int {
 
 func compareBytes(l, r []byte, coll Collation) int {
 	return bytes.Compare(l, r)
-}
-
-// rawCmp is an array of indexes used to perform raw Tuple comparisons.
-// Under certain conditions, Tuple comparisons can be optimized by
-// directly comparing Tuples as byte slices, rather than accessing
-// and deserializing each field.
-// If each of these conditions is met, raw comparisons can be used:
-//   (1) All fields in the Tuple must be non-nullable.
-//   (2) All fields in the Tuple must be of constant size
-//  	  (eg Ints, Uints, Floats, Time types, etc.)
-//
-type rawCmp []int
-
-var rawCmpLookup = map[Encoding]rawCmp{
-	Int8Enc:   {0},
-	Uint8Enc:  {0},
-	Int16Enc:  {1, 0},
-	Uint16Enc: {1, 0},
-	Int24Enc:  {2, 1, 0},
-	Uint24Enc: {2, 1, 0},
-	Int32Enc:  {3, 2, 1, 0},
-	Uint32Enc: {3, 2, 1, 0},
-	Int64Enc:  {7, 6, 5, 4, 3, 2, 1, 0},
-	Uint64Enc: {7, 6, 5, 4, 3, 2, 1, 0},
 }

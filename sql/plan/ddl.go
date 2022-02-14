@@ -18,29 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/src-d/go-errors.v1"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
-
-// ErrCreateTable is thrown when the database doesn't support table creation
-var ErrCreateTableNotSupported = errors.NewKind("tables cannot be created on database %s")
-
-// ErrDropTableNotSupported is thrown when the database doesn't support dropping tables
-var ErrDropTableNotSupported = errors.NewKind("tables cannot be dropped on database %s")
-
-// ErrRenameTableNotSupported is thrown when the database doesn't support renaming tables
-var ErrRenameTableNotSupported = errors.NewKind("tables cannot be renamed on database %s")
-
-// ErrAlterTableNotSupported is thrown when the database doesn't support ALTER TABLE statements
-var ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered on database %s")
-
-// ErrNullDefault is thrown when a non-null column is added with a null default
-var ErrNullDefault = errors.NewKind("column declared not null must have a non-null default value")
-
-// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
-var ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
 
 type IfNotExistsOption bool
 
@@ -235,7 +217,11 @@ func (c *CreateTable) Resolved() bool {
 func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
 	if c.temporary == IsTempTable {
-		creatable, ok := c.db.(sql.TemporaryTableCreator)
+		maybePrivDb := c.db
+		if privDb, ok := maybePrivDb.(grant_tables.PrivilegedDatabase); ok {
+			maybePrivDb = privDb.Unwrap()
+		}
+		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
@@ -246,9 +232,13 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 
 		err = creatable.CreateTemporaryTable(ctx, c.name, c.CreateSchema)
 	} else {
-		creatable, ok := c.db.(sql.TableCreator)
+		maybePrivDb := c.db
+		if privDb, ok := maybePrivDb.(grant_tables.PrivilegedDatabase); ok {
+			maybePrivDb = privDb.Unwrap()
+		}
+		creatable, ok := maybePrivDb.(sql.TableCreator)
 		if !ok {
-			return sql.RowsToRowIter(), ErrCreateTableNotSupported.New(c.db.Name())
+			return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(c.db.Name())
 		}
 
 		if err := c.validateDefaultPosition(); err != nil {
@@ -269,7 +259,7 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		return sql.RowsToRowIter(), err
 	}
 	if !ok {
-		return sql.RowsToRowIter(), ErrTableCreatedNotFound.New()
+		return sql.RowsToRowIter(), sql.ErrTableCreatedNotFound.New()
 	}
 
 	var nonPrimaryIdxes []*IndexDefinition
@@ -621,7 +611,7 @@ func (d *DropTable) TableNames() []string {
 func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	droppable, ok := d.db.(sql.TableDropper)
 	if !ok {
-		return nil, ErrDropTableNotSupported.New(d.db.Name())
+		return nil, sql.ErrDropTableNotSupported.New(d.db.Name())
 	}
 
 	var err error

@@ -57,8 +57,12 @@ func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
 	return sql.NewDatabaseProvider(dbs...)
 }
 
-func (c *Catalog) AllDatabases() []sql.Database {
-	return c.provider.AllDatabases()
+func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
+	if c.GrantTables.Enabled {
+		return grant_tables.NewPrivilegedDatabaseProvider(c.GrantTables, c.provider).AllDatabases(ctx)
+	} else {
+		return c.provider.AllDatabases(ctx)
+	}
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
@@ -87,16 +91,21 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	}
 }
 
-func (c *Catalog) HasDB(db string) bool {
-	return c.provider.HasDatabase(db)
+func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
+	if c.GrantTables.Enabled {
+		return grant_tables.NewPrivilegedDatabaseProvider(c.GrantTables, c.provider).HasDatabase(ctx, db)
+	} else {
+		return c.provider.HasDatabase(ctx, db)
+	}
 }
 
 // Database returns the database with the given name.
-func (c *Catalog) Database(db string) (sql.Database, error) {
-	if strings.ToLower(db) == "mysql" {
-		return c.GrantTables, nil
+func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
+	if c.GrantTables.Enabled {
+		return grant_tables.NewPrivilegedDatabaseProvider(c.GrantTables, c.provider).Database(ctx, db)
+	} else {
+		return c.provider.Database(ctx, db)
 	}
-	return c.provider.Database(db)
 }
 
 // LockTable adds a lock for the given table and session client. It is assumed
@@ -128,7 +137,7 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	var errors []string
 	for db, tables := range c.locks[id] {
 		for t := range tables {
-			database, err := c.provider.Database(db)
+			database, err := c.provider.Database(ctx, db)
 			if err != nil {
 				return err
 			}
@@ -159,7 +168,7 @@ func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	db, err := c.Database(dbName)
+	db, err := c.Database(ctx, dbName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -180,7 +189,7 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	db, err := c.Database(dbName)
+	db, err := c.Database(ctx, dbName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -203,7 +212,7 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 
 // RegisterFunction registers the functions given, adding them to the built-in functions.
 // Integrators with custom functions should typically use the FunctionProvider interface instead.
-func (c *Catalog) RegisterFunction(fns ...sql.Function) {
+func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {
 	for _, fn := range fns {
 		err := c.builtInFunctions.Register(fn)
 		if err != nil {
@@ -213,9 +222,9 @@ func (c *Catalog) RegisterFunction(fns ...sql.Function) {
 }
 
 // Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
-func (c *Catalog) Function(name string) (sql.Function, error) {
+func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
 	if fp, ok := c.provider.(sql.FunctionProvider); ok {
-		f, err := fp.Function(name)
+		f, err := fp.Function(ctx, name)
 		if err != nil && !sql.ErrFunctionNotFound.Is(err) {
 			return nil, err
 		} else if f != nil {
@@ -223,7 +232,7 @@ func (c *Catalog) Function(name string) (sql.Function, error) {
 		}
 	}
 
-	return c.builtInFunctions.Function(name)
+	return c.builtInFunctions.Function(ctx, name)
 }
 
 func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {
