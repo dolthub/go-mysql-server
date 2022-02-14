@@ -24,7 +24,7 @@ import (
 )
 
 type Lag struct {
-	window *sql.Window
+	window *sql.WindowDefinition
 	expression.NaryExpression
 	offset int
 	pos    int
@@ -66,7 +66,7 @@ func (l *Lag) Description() string {
 }
 
 // Window implements sql.WindowExpression
-func (l *Lag) Window() *sql.Window {
+func (l *Lag) Window() *sql.WindowDefinition {
 	return l.window
 }
 
@@ -155,7 +155,7 @@ func (l *Lag) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 // WithWindow implements sql.WindowAggregation
-func (l *Lag) WithWindow(window *sql.Window) (sql.WindowAggregation, error) {
+func (l *Lag) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
 	nl := *l
 	nl.window = window
 	return &nl, nil

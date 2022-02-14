@@ -41,6 +41,9 @@ func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	if user == nil {
 		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", ctx.Session.Client().User)
 	}
+	if isDualTable(getTable(n)) {
+		return n, nil
+	}
 
 	switch n := n.(type) {
 	case *plan.InsertInto:

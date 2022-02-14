@@ -35,11 +35,12 @@ type UserPrivilegeTest struct {
 
 // UserPrivilegeTestAssertion is within a UserPrivilegeTest to assert functionality.
 type UserPrivilegeTestAssertion struct {
-	User        string
-	Host        string
-	Query       string
-	Expected    []sql.Row
-	ExpectedErr *errors.Kind
+	User           string
+	Host           string
+	Query          string
+	Expected       []sql.Row
+	ExpectedErr    *errors.Kind
+	ExpectedErrStr string
 }
 
 // ServerAuthenticationTest is used to define a test on the server authentication system. These tests always have the
@@ -63,6 +64,192 @@ type ServerAuthenticationTestAssertion struct {
 // UserPrivTests test the user and privilege systems. These tests always have the root account available, and the root
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
+	{
+		Name: "Basic database and table name visibility",
+		SetUpScript: []string{
+			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
+			"INSERT INTO mydb.test VALUES (1);",
+			"CREATE USER tester@localhost;",
+			"CREATE ROLE test_role;",
+			"GRANT SELECT ON mydb.* TO test_role;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test;/*1*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*1*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON *.* TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mydb.test;/*2*/",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*2*/",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE SELECT ON *.* FROM tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{ // Ensure we've reverted to initial state (all SELECTs after REVOKEs are doing this)
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test;/*3*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*3*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mydb.* TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mydb.test;/*4*/",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*4*/",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE SELECT ON mydb.* FROM tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test;/*5*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*5*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mydb.test TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mydb.test;/*6*/",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*6*/",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE SELECT ON mydb.test FROM tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test;/*7*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*7*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON mydb.test2 TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test;/*8*/",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*8*/",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE SELECT ON mydb.test2 FROM tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test;/*9*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*9*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT test_role TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT * FROM mydb.test;/*10*/",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*10*/",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+		},
+	},
 	{
 		Name: "Basic user creation",
 		SetUpScript: []string{
@@ -150,6 +337,26 @@ var UserPrivTests = []UserPrivilegeTest{
 		},
 	},
 	{
+		Name: "Valid users without privileges may use the dual table",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "SELECT 1+2;",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				User:           "noexist",
+				Host:           "localhost",
+				Query:          "SELECT 1+2;",
+				ExpectedErrStr: "Access denied for user 'noexist' (errno 1045) (sqlstate 28000)",
+			},
+		},
+	},
+	{
 		Name: "Basic SELECT and INSERT privilege checking",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY);",
@@ -161,7 +368,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "INSERT INTO test VALUES (4);",
-				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
 				User:     "root",
@@ -337,7 +544,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "SELECT * FROM test;",
-				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
 				User:     "root",
@@ -384,13 +591,13 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "SELECT * FROM test;",
-				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "INSERT INTO test VALUES (5);",
-				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
 				User:     "root",
@@ -429,7 +636,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "SELECT * FROM test;",
-				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
 				User:     "root",
@@ -497,7 +704,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "SELECT * FROM test;",
-				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
 				User:     "root",
@@ -553,7 +760,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "SELECT * FROM test;",
-				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
 				User:     "root",

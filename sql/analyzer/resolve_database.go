@@ -47,7 +47,7 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			return n, nil
 		}
 
-		db, err := a.Catalog.Database(dbName)
+		db, err := a.Catalog.Database(ctx, dbName)
 		if err != nil {
 			return nil, err
 		}

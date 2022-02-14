@@ -36,7 +36,7 @@ func TestResolvedTable(t *testing.T) {
 	iter, err := table.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 	require.Len(rows, 9)
 

@@ -60,8 +60,19 @@ type RowsCache interface {
 	// free some memory. If after that there is still no memory available, it
 	// will return an error and erase all the content of the cache.
 	Add(Row) error
-	// Get all rows.
+	// Get returns all rows.
 	Get() []Row
+}
+
+// Rows2Cache is a cache of Row2s.
+type Rows2Cache interface {
+	RowsCache
+	// Add2 a new row to the cache. If there is no memory available, it will try to
+	// free some memory. If after that there is still no memory available, it
+	// will return an error and erase all the content of the cache.
+	Add2(Row2) error
+	// Get2 gets all rows.
+	Get2() []Row2
 }
 
 // ErrNoMemoryAvailable is returned when there is no more available memory.
@@ -179,6 +190,17 @@ func (m *MemoryManager) NewHistoryCache() (KeyValueCache, DisposeFunc) {
 // NewRowsCache returns an empty rows cache and a function to dispose it when it's
 // no longer needed.
 func (m *MemoryManager) NewRowsCache() (RowsCache, DisposeFunc) {
+	c := newRowsCache(m, m.reporter)
+	pos := m.addCache(c)
+	return c, func() {
+		c.Dispose()
+		m.removeCache(pos)
+	}
+}
+
+// NewRowsCache returns an empty rows cache and a function to dispose it when it's
+// no longer needed.
+func (m *MemoryManager) NewRows2Cache() (Rows2Cache, DisposeFunc) {
 	c := newRowsCache(m, m.reporter)
 	pos := m.addCache(c)
 	return c, func() {

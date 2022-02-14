@@ -56,7 +56,7 @@ func TestAggGen(t *testing.T) {
             return fmt.Sprintf("TEST(%s)", a.Child)
         }
 
-        func (a *Test) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+        func (a *Test) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
             res, err := a.unaryAggBase.WithWindow(window)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }

@@ -33,8 +33,8 @@ var _ sql.FunctionProvider = (*Catalog)(nil)
 var _ sql.Catalog = (*Catalog)(nil)
 
 // AllDatabases returns all sliceDBProvider in the catalog.
-func (c *Catalog) AllDatabases() []sql.Database {
-	return c.provider.AllDatabases()
+func (c *Catalog) AllDatabases(ctx *sql.Context) []sql.Database {
+	return c.provider.AllDatabases(ctx)
 }
 
 // CreateDatabase creates a new Database and adds it to the catalog.
@@ -57,18 +57,18 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	}
 }
 
-func (c *Catalog) HasDB(db string) bool {
-	return c.provider.HasDatabase(db)
+func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
+	return c.provider.HasDatabase(ctx, db)
 }
 
 // Database returns the database with the given name.
-func (c *Catalog) Database(db string) (sql.Database, error) {
-	return c.provider.Database(db)
+func (c *Catalog) Database(ctx *sql.Context, db string) (sql.Database, error) {
+	return c.provider.Database(ctx, db)
 }
 
 // Table returns the table in the given database with the given name.
 func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, sql.Database, error) {
-	db, err := c.Database(dbName)
+	db, err := c.Database(ctx, dbName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -84,7 +84,7 @@ func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, 
 }
 
 func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
-	db, err := c.Database(dbName)
+	db, err := c.Database(ctx, dbName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -105,9 +105,9 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 	return tbl, versionedDb, nil
 }
 
-func (c *Catalog) RegisterFunction(fns ...sql.Function) {}
+func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {}
 
-func (c *Catalog) Function(name string) (sql.Function, error) {
+func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
 	return nil, sql.ErrFunctionNotFound.New(name)
 }
 

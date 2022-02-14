@@ -32,6 +32,9 @@ type GetField struct {
 	nullable   bool
 }
 
+var _ sql.Expression = (*GetField)(nil)
+var _ sql.Expression2 = (*GetField)(nil)
+
 // NewGetField creates a GetField expression.
 func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool) *GetField {
 	return NewGetFieldWithTable(index, fieldType, "", fieldName, nullable)
@@ -99,6 +102,14 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
 		return nil, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
+	return row[p.fieldIndex], nil
+}
+
+func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
+		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
+	}
+
 	return row[p.fieldIndex], nil
 }
 

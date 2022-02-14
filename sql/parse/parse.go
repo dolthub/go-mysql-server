@@ -754,6 +754,13 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		return nil, err
 	}
 
+	if window, ok := node.(*plan.Window); ok && s.Window != nil {
+		node, err = windowToWindow(ctx, s.Window, window)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if s.Having != nil {
 		node, err = havingToHaving(ctx, s.Having, node)
 		if err != nil {
@@ -2423,6 +2430,141 @@ func havingToHaving(ctx *sql.Context, having *sqlparser.Where, node sql.Node) (s
 	return plan.NewHaving(cond, node), nil
 }
 
+// windowToWindow will apply a WINDOW clause to a plan.Window node,
+// replacing named window references with their window definitions.
+// Performs semantic validation of window compatibility/validity.
+// TODO: separate plan building from replacement and semantic validation
+func windowToWindow(ctx *sql.Context, windowDefs sqlparser.Window, window *plan.Window) (sql.Node, error) {
+	newWindowDefs := make(map[string]*sql.WindowDefinition, len(windowDefs))
+	var err error
+	for _, def := range windowDefs {
+		newWindowDefs[def.Name.Lowered()], err = windowDefToWindow(ctx, def)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// check for circularity
+	var head, tail *sql.WindowDefinition
+	for _, def := range newWindowDefs {
+		if def.Ref == "" {
+			continue
+		}
+		head = def
+		head = newWindowDefs[head.Ref]
+		tail = def
+		for head != nil && tail != nil && head != tail {
+			tail = newWindowDefs[tail.Ref]
+			head = newWindowDefs[head.Ref]
+			if head != nil {
+				head = newWindowDefs[head.Ref]
+			}
+		}
+		if head != nil && head == tail {
+			return nil, sql.ErrCircularWindowInheritance.New()
+		}
+
+	}
+
+	// resolve recursively builds window definitions from nested window refs
+	var resolve func(n *sql.WindowDefinition) (*sql.WindowDefinition, error)
+	resolve = func(n *sql.WindowDefinition) (*sql.WindowDefinition, error) {
+		if n.Ref == "" {
+			return n, nil
+		}
+
+		// resolve ref before merging
+		ref, ok := newWindowDefs[n.Ref]
+		if !ok {
+			return nil, fmt.Errorf("window def not found")
+		}
+		ref, err = resolve(ref)
+		if err != nil {
+			return nil, err
+		}
+		n, err = mergeWindowDefs(n, ref)
+		if err != nil {
+			return nil, err
+		}
+
+		if n.Name != "" {
+			// cache lookup
+			newWindowDefs[n.Name] = n
+		}
+		return n, nil
+	}
+
+	// find and replace over expressions with new window definitions
+	newExprs := make([]sql.Expression, len(window.SelectExprs))
+	for i, expr := range window.SelectExprs {
+		newExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
+			uf, ok := e.(*expression.UnresolvedFunction)
+			if !ok {
+				return e, nil
+			}
+			if uf.Window == nil {
+				return e, nil
+			}
+			newWindow, err := resolve(uf.Window)
+			if err != nil {
+				return nil, err
+			}
+			return uf.WithWindow(newWindow), nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return plan.NewWindow(newExprs, window.Child), nil
+}
+
+// mergeWindowDefs combines the attributes of two window definitions or returns
+// an error if the two are incompatible. [def] should have a reference to
+// [ref] through [def.Ref], and the return value drops the reference to indicate
+// the two were properly combined.
+func mergeWindowDefs(def, ref *sql.WindowDefinition) (*sql.WindowDefinition, error) {
+	if ref.Ref != "" {
+		panic("unreachable; cannot merge unresolved window definition")
+	}
+
+	var orderBy sql.SortFields
+	switch {
+	case len(def.OrderBy) > 0 && len(ref.OrderBy) > 0:
+		return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain order by clause")
+	case len(def.OrderBy) > 0:
+		orderBy = def.OrderBy
+	case len(ref.OrderBy) > 0:
+		orderBy = ref.OrderBy
+	default:
+	}
+
+	var partitionBy []sql.Expression
+	switch {
+	case len(def.PartitionBy) > 0 && len(ref.PartitionBy) > 0:
+		return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain partition by clause")
+	case len(def.PartitionBy) > 0:
+		partitionBy = def.PartitionBy
+	case len(ref.PartitionBy) > 0:
+		partitionBy = ref.PartitionBy
+	default:
+		partitionBy = []sql.Expression{}
+	}
+
+	var frame sql.WindowFrame
+	switch {
+	case def.Frame != nil && ref.Frame != nil:
+		return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain frame clause")
+	case def.Frame != nil:
+		frame = def.Frame
+	case ref.Frame != nil:
+		frame = ref.Frame
+	default:
+	}
+
+	return sql.NewWindowDefinition(partitionBy, orderBy, frame, "", def.Name), nil
+}
+
 func offsetToOffset(
 	ctx *sql.Context,
 	offset sqlparser.Expr,
@@ -2732,7 +2874,7 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 
 			exprs[0] = expression.NewDistinctExpression(exprs[0])
 		}
-		over, err := overToWindow(ctx, v.Over)
+		over, err := windowDefToWindow(ctx, (*sqlparser.WindowDef)(v.Over))
 		if err != nil {
 			return nil, err
 		}
@@ -2884,18 +3026,18 @@ func ExprToExpression(ctx *sql.Context, e sqlparser.Expr) (sql.Expression, error
 	}
 }
 
-func overToWindow(ctx *sql.Context, over *sqlparser.Over) (*sql.Window, error) {
-	if over == nil {
+func windowDefToWindow(ctx *sql.Context, def *sqlparser.WindowDef) (*sql.WindowDefinition, error) {
+	if def == nil {
 		return nil, nil
 	}
 
-	sortFields, err := orderByToSortFields(ctx, over.OrderBy)
+	sortFields, err := orderByToSortFields(ctx, def.OrderBy)
 	if err != nil {
 		return nil, err
 	}
 
-	partitions := make([]sql.Expression, len(over.PartitionBy))
-	for i, expr := range over.PartitionBy {
+	partitions := make([]sql.Expression, len(def.PartitionBy))
+	for i, expr := range def.PartitionBy {
 		var err error
 		partitions[i], err = ExprToExpression(ctx, expr)
 		if err != nil {
@@ -2903,11 +3045,11 @@ func overToWindow(ctx *sql.Context, over *sqlparser.Over) (*sql.Window, error) {
 		}
 	}
 
-	frame, err := NewFrame(ctx, over.Frame)
+	frame, err := NewFrame(ctx, def.Frame)
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewWindow(partitions, sortFields, frame), nil
+	return sql.NewWindowDefinition(partitions, sortFields, frame, def.NameRef.Lowered(), def.Name.Lowered()), nil
 }
 
 func isAggregateFunc(v *sqlparser.FuncExpr) bool {

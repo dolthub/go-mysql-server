@@ -43,7 +43,7 @@ func TestShowColumns(t *testing.T) {
 	iter, err := showColumns.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -98,7 +98,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	iter, err := showColumns.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -138,7 +138,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 	iter, err = showColumns.RowIter(sql.NewEmptyContext(), nil)
 	require.NoError(err)
 
-	rows, err = sql.RowIterToRows(ctx, iter)
+	rows, err = sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	require.Equal(expected, rows)
@@ -161,7 +161,7 @@ func TestShowColumnsFull(t *testing.T) {
 	iter, err := showColumns.RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{

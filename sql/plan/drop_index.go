@@ -57,7 +57,7 @@ func (d *DropIndex) Children() []sql.Node { return []sql.Node{d.Table} }
 
 // RowIter implements the Node interface.
 func (d *DropIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	db, err := d.Catalog.Database(d.CurrentDatabase)
+	db, err := d.Catalog.Database(ctx, d.CurrentDatabase)
 	if err != nil {
 		return nil, err
 	}

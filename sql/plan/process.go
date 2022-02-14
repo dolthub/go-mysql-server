@@ -27,6 +27,9 @@ type QueryProcess struct {
 	Notify NotifyFunc
 }
 
+var _ sql.Node = (*QueryProcess)(nil)
+var _ sql.Node2 = (*QueryProcess)(nil)
+
 // NotifyFunc is a function to notify about some event.
 type NotifyFunc func()
 
@@ -47,6 +50,23 @@ func (p *QueryProcess) WithChildren(children ...sql.Node) (sql.Node, error) {
 // RowIter implements the sql.Node interface.
 func (p *QueryProcess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	iter, err := p.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	qType := getQueryType(p.Child)
+
+	return &trackedRowIter{
+		node:               p.Child,
+		iter:               iter,
+		onDone:             p.Notify,
+		queryType:          qType,
+		shouldSetFoundRows: qType == queryTypeSelect && p.shouldSetFoundRows(),
+	}, nil
+}
+
+func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	iter, err := p.Child.(sql.Node2).RowIter2(ctx, f)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +195,10 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 		return nil, err
 	}
 
+	return t.newPartIter(p, iter)
+}
+
+func (t *ProcessIndexableTable) newPartIter(p sql.Partition, iter sql.RowIter) (sql.RowIter, error) {
 	partitionName := partitionName(p)
 	if t.OnPartitionStart != nil {
 		t.OnPartitionStart(partitionName)
@@ -195,6 +219,20 @@ func (t *ProcessIndexableTable) PartitionRows(ctx *sql.Context, p sql.Partition)
 	}
 
 	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+}
+
+func (t *ProcessIndexableTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
+	iter, err := t.DriverIndexableTable.(sql.Table2).PartitionRows2(ctx, part)
+	if err != nil {
+		return nil, err
+	}
+
+	partIter, err := t.newPartIter(part, iter)
+	if err != nil {
+		return nil, err
+	}
+
+	return partIter.(sql.RowIter2), nil
 }
 
 var _ sql.DriverIndexableTable = (*ProcessIndexableTable)(nil)
@@ -310,6 +348,22 @@ func (i *trackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	return row, nil
+}
+
+func (i *trackedRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	err := i.iter.(sql.RowIter2).Next2(ctx, frame)
+	if err != nil {
+		return err
+	}
+
+	// TODO: revisit this when we put more than one row per frame
+	i.numRows++
+
+	if i.onNext != nil {
+		i.onNext()
+	}
+
+	return nil
 }
 
 func (i *trackedRowIter) Close(ctx *sql.Context) error {

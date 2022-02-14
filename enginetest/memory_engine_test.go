@@ -116,24 +116,16 @@ func TestSingleQuery(t *testing.T) {
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
 		Query: `
-CREATE TABLE T2
-(
-  CHECK (c1 = c2),
-  c1 INT CHECK (c1 > 10),
-  c2 INT CONSTRAINT c2_positive CHECK (c2 > 0),
-  c3 INT CHECK (c3 < 100),
-  CONSTRAINT c1_nonzero CHECK (c1 = 0),
-  CHECK (C1 > C3)
-);`,
+select * from mytable`,
 		Expected: []sql.Row{
-			{1, "00"},
-			{2, "11"},
-			{3, "22"},
+			{1, "first row"},
+			{2, "second row"},
+			{3, "third row"},
 		},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 2, testNumPartitions, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
 	engine := enginetest.NewEngine(t, harness)
 	engine.Analyzer.Debug = true
 	engine.Analyzer.Verbose = true
@@ -147,18 +139,15 @@ func TestSingleScript(t *testing.T) {
 
 	var scripts = []enginetest.ScriptTest{
 		{
-			Name: "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
+			Name: "trigger before insert, alter inserted value",
 			SetUpScript: []string{
-				"create table t1 (id integer PRIMARY KEY DEFAULT 0, sometext text);",
-				"create table sequence_table (max_id integer PRIMARY KEY);",
-				"create trigger update_position_id before insert on t1 for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
-				"insert into sequence_table values (1);",
+				"create table a (x int primary key)",
+				"create trigger insert_into_a before insert on a for each row set new.x = new.x + 1",
+				"insert into a values (1)",
 			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query:    "insert into t1 () values ();",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
+			Query: "select x from a order by 1",
+			Expected: []sql.Row{
+				{2},
 			},
 		},
 	}
@@ -556,6 +545,10 @@ func TestWindowRowFrames(t *testing.T) {
 
 func TestWindowRangeFrames(t *testing.T) {
 	enginetest.TestWindowRangeFrames(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestNamedWindows(t *testing.T) {
+	enginetest.TestNamedWindows(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestNaturalJoinEqual(t *testing.T) {

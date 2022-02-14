@@ -122,7 +122,7 @@ func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error) {
 	partIdToOutputIdxs := make(map[uint64][]int, 0)
 	partIdToBlock := make(map[uint64]*aggregation.WindowPartition, 0)
-	var window *sql.Window
+	var window *sql.WindowDefinition
 	var agg *aggregation.Aggregation
 	var fn sql.WindowFunction
 	var err error
@@ -137,7 +137,7 @@ func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error
 			fn, err = e.NewWindowFunction()
 		default:
 			// non window aggregates resolve to LastAgg with empty over clause
-			window = sql.NewWindow(nil, nil, nil)
+			window = sql.NewWindowDefinition(nil, nil, nil, "", "")
 			fn, err = aggregation.NewLast(e).NewWindowFunction()
 		}
 		if err != nil {
