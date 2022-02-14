@@ -70,7 +70,7 @@ type Expression interface {
 type Expression2 interface {
 	Expression
 	// Eval2 evaluates the given row frame and returns a result.
-	Eval2(ctx *Context, f *RowFrame) (Value, error)
+	Eval2(ctx *Context, row Row2) (Value, error)
 }
 
 // UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
@@ -240,6 +240,12 @@ type Node2 interface {
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
 }
 
+// RowIterTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
+type RowIterTypeSelector interface {
+	RowIter
+	IsNode2() bool
+}
+
 // CommentedNode allows comments to be set and retrieved on it
 type CommentedNode interface {
 	Node
@@ -310,7 +316,7 @@ type Table interface {
 type Table2 interface {
 	Table
 
-	PartitionRows2(*Context, Partition) (RowIter2, error)
+	PartitionRows2(ctx *Context, part Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {

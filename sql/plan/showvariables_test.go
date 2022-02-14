@@ -62,7 +62,7 @@ func TestShowVariablesWithLike(t *testing.T) {
 	it, err := sv.RowIter(context, nil)
 	require.NoError(t, err)
 
-	rows, err := sql.RowIterToRows(context, it)
+	rows, err := sql.RowIterToRows(context, nil, it)
 	require.NoError(t, err)
 
 	expectedRows := []sql.Row{

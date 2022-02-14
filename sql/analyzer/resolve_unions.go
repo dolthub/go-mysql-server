@@ -50,7 +50,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				return nil, err
 			}
 
-			return n.WithChildren(StripQueryProcess(left), StripQueryProcess(right))
+			return n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
 		default:
 			return n, nil
 		}
@@ -79,7 +79,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 				return nil, err
 			}
 
-			return n.WithChildren(StripQueryProcess(left), StripQueryProcess(right))
+			return n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
 		default:
 			return n, nil
 		}

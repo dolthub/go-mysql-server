@@ -18,6 +18,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 // Row is a tuple of values.
@@ -89,18 +93,22 @@ type RowIter interface {
 	Closer
 }
 
-// RowIter2 is an iterator that produces row2s.
+// RowIter2 is an iterator that fills a row frame buffer with rows from its source
 type RowIter2 interface {
 	RowIter
 
 	// Next2 produces the next row, and stores it in the RowFrame provided.
 	// It will return io.EOF if it's the last row. After retrieving the
 	// last row, Close will be automatically called.
-	Next2(*Context, *RowFrame) error
+	Next2(ctx *Context, frame *RowFrame) error
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.
-func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
+func RowIterToRows(ctx *Context, sch Schema, i RowIter) ([]Row, error) {
+	if ri2, ok := i.(RowIterTypeSelector); ok && ri2.IsNode2() && sch != nil {
+		return RowIter2ToRows(ctx, sch, ri2.(RowIter2))
+	}
+
 	var rows []Row
 	for {
 		row, err := i.Next(ctx)
@@ -119,6 +127,93 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	return rows, i.Close(ctx)
 }
 
+func RowIter2ToRows(ctx *Context, sch Schema, i RowIter2) ([]Row, error) {
+	var rows []Row
+
+	for {
+		f := NewRowFrame()
+		err := i.Next2(ctx, f)
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			_ = i.Close(ctx)
+			return nil, err
+		}
+
+		rows = append(rows, rowFromRow2(sch, f.Row2()))
+	}
+
+	return rows, i.Close(ctx)
+}
+
+func rowFromRow2(sch Schema, r Row2) Row {
+	row := make(Row, len(sch))
+	for i, col := range sch {
+		switch col.Type.Type() {
+		case query.Type_INT8:
+			row[i] = values.ReadInt8(r[i].Val)
+		case query.Type_UINT8:
+			row[i] = values.ReadUint8(r[i].Val)
+		case query.Type_INT16:
+			row[i] = values.ReadInt16(r[i].Val)
+		case query.Type_UINT16:
+			row[i] = values.ReadUint16(r[i].Val)
+		case query.Type_INT32:
+			row[i] = values.ReadInt32(r[i].Val)
+		case query.Type_UINT32:
+			row[i] = values.ReadUint32(r[i].Val)
+		case query.Type_INT64:
+			row[i] = values.ReadInt64(r[i].Val)
+		case query.Type_UINT64:
+			row[i] = values.ReadUint64(r[i].Val)
+		case query.Type_FLOAT32:
+			row[i] = values.ReadFloat32(r[i].Val)
+		case query.Type_FLOAT64:
+			row[i] = values.ReadFloat64(r[i].Val)
+		case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR:
+			row[i] = values.ReadString(r[i].Val, values.ByteOrderCollation)
+		case query.Type_BLOB, query.Type_VARBINARY, query.Type_BINARY:
+			row[i] = values.ReadBytes(r[i].Val, values.ByteOrderCollation)
+		case query.Type_BIT:
+			fallthrough
+		case query.Type_ENUM:
+			fallthrough
+		case query.Type_SET:
+			fallthrough
+		case query.Type_TUPLE:
+			fallthrough
+		case query.Type_GEOMETRY:
+			fallthrough
+		case query.Type_JSON:
+			fallthrough
+		case query.Type_EXPRESSION:
+			fallthrough
+		case query.Type_INT24:
+			fallthrough
+		case query.Type_UINT24:
+			fallthrough
+		case query.Type_TIMESTAMP:
+			fallthrough
+		case query.Type_DATE:
+			fallthrough
+		case query.Type_TIME:
+			fallthrough
+		case query.Type_DATETIME:
+			fallthrough
+		case query.Type_YEAR:
+			fallthrough
+		case query.Type_DECIMAL:
+			panic(fmt.Sprintf("Unimplemented type conversion: %T", col.Type))
+		default:
+			panic(fmt.Sprintf("unknown type %T", col.Type))
+		}
+	}
+	return row
+}
+
 // NodeToRows converts a node to a slice of rows.
 func NodeToRows(ctx *Context, n Node) ([]Row, error) {
 	i, err := n.RowIter(ctx, nil)
@@ -126,7 +221,7 @@ func NodeToRows(ctx *Context, n Node) ([]Row, error) {
 		return nil, err
 	}
 
-	return RowIterToRows(ctx, i)
+	return RowIterToRows(ctx, nil, i)
 }
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.

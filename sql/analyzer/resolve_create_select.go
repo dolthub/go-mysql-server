@@ -43,7 +43,7 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return nil, err
 	}
 
-	return plan.NewTableCopier(ct.Database(), StripQueryProcess(analyzedCreate), StripQueryProcess(analyzedSelect), plan.CopierProps{}), nil
+	return plan.NewTableCopier(ct.Database(), StripPassthroughNodes(analyzedCreate), StripPassthroughNodes(analyzedSelect), plan.CopierProps{}), nil
 }
 
 // mergeSchemas takes in the table spec of the CREATE TABLE and merges it with the schema used by the

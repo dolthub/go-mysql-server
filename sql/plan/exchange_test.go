@@ -68,7 +68,7 @@ func TestExchange(t *testing.T) {
 			iter, err := exchange.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, iter)
+			rows, err := sql.RowIterToRows(ctx, nil, iter)
 			require.NoError(err)
 			require.ElementsMatch(expected, rows)
 		})

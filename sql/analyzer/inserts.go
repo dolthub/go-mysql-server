@@ -67,7 +67,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				return nil, err
 			}
 
-			source = StripQueryProcess(source)
+			source = StripPassthroughNodes(source)
 		}
 
 		dstSchema := insertable.Schema()

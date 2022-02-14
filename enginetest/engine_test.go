@@ -108,17 +108,17 @@ func TestLocks(t *testing.T) {
 	engine := sqle.New(analyzer, new(sqle.Config))
 
 	ctx := enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
-	_, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
+	sch, iter, err := engine.Query(ctx, "LOCK TABLES t1 READ, t2 WRITE, t3 READ")
 	require.NoError(err)
 
-	_, err = sql.RowIterToRows(ctx, iter)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err)
 
 	ctx = enginetest.NewContext(enginetest.NewDefaultMemoryHarness()).WithCurrentDB("db")
-	_, iter, err = engine.Query(ctx, "UNLOCK TABLES")
+	sch, iter, err = engine.Query(ctx, "UNLOCK TABLES")
 	require.NoError(err)
 
-	_, err = sql.RowIterToRows(ctx, iter)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err)
 
 	require.Equal(1, t1.readLocks)
@@ -145,10 +145,10 @@ func TestRootSpanFinish(t *testing.T) {
 	ctx := harness.NewContext()
 	sql.WithRootSpan(fakeSpan)(ctx)
 
-	_, iter, err := e.Query(ctx, "SELECT 1")
+	sch, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)
 
-	_, err = sql.RowIterToRows(ctx, iter)
+	_, err = sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(t, err)
 
 	require.True(t, fakeSpan.finished)
@@ -221,7 +221,7 @@ func TestShowProcessList(t *testing.T) {
 
 	iter, err := n.RowIter(ctx, nil)
 	require.NoError(err)
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, n.Schema(), iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -291,7 +291,7 @@ func TestTrackProcess(t *testing.T) {
 
 	iter, err := proc.RowIter(ctx, nil)
 	require.NoError(err)
-	_, err = sql.RowIterToRows(ctx, iter)
+	_, err = sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	require.Len(ctx.ProcessList.Processes(), 0)

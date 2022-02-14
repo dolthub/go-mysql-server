@@ -40,6 +40,8 @@ func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
 }
 
 var _ sql.Expressioner = (*Sort)(nil)
+var _ sql.Node = (*Sort)(nil)
+var _ sql.Node2 = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
@@ -60,6 +62,16 @@ func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, err
 	}
 	return sql.NewSpanIter(span, newSortIter(ctx, s, i)), nil
+}
+
+func (s *Sort) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	span, ctx := ctx.Span("plan.Sort")
+	i, err := s.UnaryNode.Child.(sql.Node2).RowIter2(ctx, f)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+	return sql.NewSpanIter(span, newSortIter(ctx, s, i)).(sql.RowIter2), nil
 }
 
 func (s *Sort) String() string {
@@ -122,11 +134,15 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type sortIter struct {
-	s          *Sort
-	childIter  sql.RowIter
-	sortedRows []sql.Row
-	idx        int
+	s           *Sort
+	childIter   sql.RowIter
+	sortedRows  []sql.Row
+	sortedRows2 []sql.Row2
+	idx         int
 }
+
+var _ sql.RowIter = (*sortIter)(nil)
+var _ sql.RowIter2 = (*sortIter)(nil)
 
 func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
 	return &sortIter{
@@ -151,6 +167,26 @@ func (i *sortIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row := i.sortedRows[i.idx]
 	i.idx++
 	return row, nil
+}
+
+func (i *sortIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	if i.idx == -1 {
+		err := i.computeSortedRows2(ctx)
+		if err != nil {
+			return err
+		}
+		i.idx = 0
+	}
+
+	if i.idx >= len(i.sortedRows) {
+		return io.EOF
+	}
+
+	row := i.sortedRows2[i.idx]
+	i.idx++
+	frame.Append(row...)
+
+	return nil
 }
 
 func (i *sortIter) Close(ctx *sql.Context) error {
@@ -189,6 +225,40 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 		return sorter.LastError
 	}
 	i.sortedRows = rows
+	return nil
+}
+
+func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
+	cache, dispose := ctx.Memory.NewRows2Cache()
+	defer dispose()
+
+	f := sql.NewRowFrame()
+	for {
+		err := i.childIter.(sql.RowIter2).Next2(ctx, f)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := cache.Add2(f.Row2Copy()); err != nil {
+			return err
+		}
+	}
+
+	rows := cache.Get2()
+	sorter := &expression.Sorter{
+		SortFields: i.s.SortFields,
+		Rows2:      rows,
+		LastError:  nil,
+		Ctx:        ctx,
+	}
+	sort.Stable(sorter)
+	if sorter.LastError != nil {
+		return sorter.LastError
+	}
+	i.sortedRows2 = rows
 	return nil
 }
 

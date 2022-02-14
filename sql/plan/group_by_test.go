@@ -181,7 +181,7 @@ func BenchmarkGroupBy(b *testing.B) {
 				iter, err := node.RowIter(ctx, nil)
 				require.NoError(err)
 
-				rows, err := sql.RowIterToRows(ctx, iter)
+				rows, err := sql.RowIterToRows(ctx, nil, iter)
 				require.NoError(err)
 				require.ElementsMatch(expected, rows)
 			}
