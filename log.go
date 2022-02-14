@@ -16,7 +16,6 @@ package sqle
 
 import (
 	vtlog "github.com/dolthub/vitess/go/vt/log"
-	"github.com/golang/glog"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,23 +23,6 @@ const ConnectionIdLogField = "connectionID"
 const ConnectTimeLogKey = "connectTime"
 
 func init() {
-	// V quickly checks if the logging verbosity meets a threshold.
-	vtlog.V = func(level glog.Level) glog.Verbose {
-		lvl := logrus.GetLevel()
-		switch int32(level) {
-		case 0:
-			return glog.Verbose(lvl == logrus.InfoLevel)
-		case 1:
-			return glog.Verbose(lvl == logrus.WarnLevel)
-		case 2:
-			return glog.Verbose(lvl == logrus.ErrorLevel)
-		case 3:
-			return glog.Verbose(lvl == logrus.FatalLevel)
-		default:
-			return glog.Verbose(false)
-		}
-	}
-
 	// Flush ensures any pending I/O is written.
 	vtlog.Flush = func() {}
 
