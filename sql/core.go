@@ -608,13 +608,13 @@ type RowUpdater interface {
 // DatabaseProvider is a collection of Database.
 type DatabaseProvider interface {
 	// Database gets a Database from the provider.
-	Database(name string) (Database, error)
+	Database(ctx *Context, name string) (Database, error)
 
 	// HasDatabase checks if the Database exists in the provider.
-	HasDatabase(name string) bool
+	HasDatabase(ctx *Context, name string) bool
 
 	// AllDatabases returns a slice of all Databases in the provider.
-	AllDatabases() []Database
+	AllDatabases(ctx *Context) []Database
 }
 
 type MutableDatabaseProvider interface {
@@ -630,7 +630,7 @@ type MutableDatabaseProvider interface {
 // FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
 type FunctionProvider interface {
 	// Function returns the function with the name provided, case-insensitive
-	Function(name string) (Function, error)
+	Function(ctx *Context, name string) (Function, error)
 }
 
 // Database represents the database.

@@ -155,7 +155,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 	// TODO: database should be dependent on the table being inserted / updated, but we don't have that info available
 	//  from the table object yet.
-	database, err := a.Catalog.Database(db)
+	database, err := a.Catalog.Database(ctx, db)
 	if err != nil {
 		return nil, err
 	}

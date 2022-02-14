@@ -54,7 +54,7 @@ func (r *RenameTable) String() string {
 func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	renamer, ok := r.db.(sql.TableRenamer)
 	if !ok {
-		return nil, ErrRenameTableNotSupported.New(r.db.Name())
+		return nil, sql.ErrRenameTableNotSupported.New(r.db.Name())
 	}
 
 	var err error

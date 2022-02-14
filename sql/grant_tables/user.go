@@ -140,7 +140,7 @@ func (u *User) Copy(ctx *sql.Context) in_mem_table.Entry {
 // account with the backtick as the quote, root@localhost would become `root`@`localhost`. Different quotes are used
 // in different places in MySQL. In addition, if the quote is used in a section as part of the name, it is escaped by
 // doubling the quote (which also mimics MySQL behavior).
-func (u *User) UserHostToString(quote string) string {
+func (u User) UserHostToString(quote string) string {
 	replacement := quote + quote
 	user := strings.ReplaceAll(u.User, quote, replacement)
 	host := strings.ReplaceAll(u.Host, quote, replacement)

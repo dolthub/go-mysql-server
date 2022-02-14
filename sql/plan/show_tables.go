@@ -17,6 +17,8 @@ package plan
 import (
 	"sort"
 
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
@@ -120,7 +122,11 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	}
 
 	// TODO: currently there is no way to see views AS OF a particular time
-	if vdb, ok := p.db.(sql.ViewDatabase); ok {
+	maybeVdb := p.db
+	if privilegedDatabase, ok := maybeVdb.(grant_tables.PrivilegedDatabase); ok {
+		maybeVdb = privilegedDatabase.Unwrap()
+	}
+	if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {
 		views, err := vdb.AllViews(ctx)
 		if err != nil {
 			return nil, err
@@ -134,7 +140,7 @@ func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 	}
 
-	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(p.db.Name()) {
+	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(maybeVdb.Name()) {
 		row := sql.Row{view.Name()}
 		if p.Full {
 			row = append(row, "VIEW")

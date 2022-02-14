@@ -142,9 +142,8 @@ func TestRootSpanFinish(t *testing.T) {
 	harness := enginetest.NewDefaultMemoryHarness()
 	e := enginetest.NewEngine(t, harness)
 	fakeSpan := &mockSpan{Span: opentracing.NoopTracer{}.StartSpan("")}
-	ctx := sql.NewContext(
-		context.Background(),
-		sql.WithRootSpan(fakeSpan))
+	ctx := harness.NewContext()
+	sql.WithRootSpan(fakeSpan)(ctx)
 
 	sch, iter, err := e.Query(ctx, "SELECT 1")
 	require.NoError(t, err)
@@ -185,7 +184,7 @@ func (l *lockableTable) Unlock(ctx *sql.Context, id uint32) error {
 type analyzerTestCase struct {
 	name          string
 	query         string
-	planGenerator func(*testing.T, *sqle.Engine) sql.Node
+	planGenerator func(*testing.T, *sql.Context, *sqle.Engine) sql.Node
 	err           *errors.Kind
 }
 
@@ -379,8 +378,8 @@ func TestAnalyzer(t *testing.T) {
 		{
 			name:  "show tables as of",
 			query: "SHOW TABLES AS OF 'abc123'",
-			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database("mydb")
+			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
+				db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
 			},
@@ -388,8 +387,8 @@ func TestAnalyzer(t *testing.T) {
 		{
 			name:  "show tables as of, from",
 			query: "SHOW TABLES FROM foo AS OF 'abc123'",
-			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database("foo")
+			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
+				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				return plan.NewShowTables(db, false, expression.NewLiteral("abc123", sql.LongText))
 			},
@@ -397,8 +396,8 @@ func TestAnalyzer(t *testing.T) {
 		{
 			name:  "show tables as of, function call",
 			query: "SHOW TABLES FROM foo AS OF GREATEST('abc123', 'cde456')",
-			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database("foo")
+			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
+				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				greatest, err := function.NewGreatest(
 					expression.NewLiteral("abc123", sql.LongText),
@@ -411,8 +410,8 @@ func TestAnalyzer(t *testing.T) {
 		{
 			name:  "show tables as of, timestamp",
 			query: "SHOW TABLES FROM foo AS OF TIMESTAMP('20200101:120000Z')",
-			planGenerator: func(t *testing.T, engine *sqle.Engine) sql.Node {
-				db, err := engine.Analyzer.Catalog.Database("foo")
+			planGenerator: func(t *testing.T, ctx *sql.Context, engine *sqle.Engine) sql.Node {
+				db, err := engine.Analyzer.Catalog.Database(ctx, "foo")
 				require.NoError(t, err)
 				timestamp, err := function.NewTimestamp(
 					expression.NewLiteral("20200101:120000Z", sql.LongText),
@@ -437,7 +436,7 @@ func TestAnalyzer(t *testing.T) {
 				require.Error(t, err)
 				assert.True(t, tt.err.Is(err))
 			} else {
-				assertNodesEqualWithDiff(t, tt.planGenerator(t, e), analyzed)
+				assertNodesEqualWithDiff(t, tt.planGenerator(t, ctx, e), analyzed)
 			}
 		})
 	}

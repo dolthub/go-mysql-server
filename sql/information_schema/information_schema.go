@@ -26,6 +26,7 @@ import (
 
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -445,7 +446,7 @@ var innoDBTempTableSchema = Schema{
 
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range cat.AllDatabases() {
+	for _, db := range cat.AllDatabases(ctx) {
 		tableType := "BASE TABLE"
 		engine := "INNODB"
 		rowFormat := "Dynamic"
@@ -526,7 +527,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range cat.AllDatabases() {
+	for _, db := range cat.AllDatabases(ctx) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			for i, c := range t.Schema() {
 				var (
@@ -578,7 +579,7 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 }
 
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
-	dbs := c.AllDatabases()
+	dbs := c.AllDatabases(ctx)
 
 	var rows []Row
 	for _, db := range dbs {
@@ -641,7 +642,7 @@ func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range c.AllDatabases() {
+	for _, db := range c.AllDatabases(ctx) {
 		triggerDb, ok := db.(TriggerDatabase)
 		if ok {
 			triggers, err := triggerDb.GetTriggers(ctx)
@@ -741,7 +742,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range c.AllDatabases() {
+	for _, db := range c.AllDatabases(ctx) {
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -772,7 +773,7 @@ func checkConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 func tableConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range c.AllDatabases() {
+	for _, db := range c.AllDatabases(ctx) {
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -858,7 +859,7 @@ func getColumnNamesFromIndex(idx Index, table Table) []string {
 
 func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range c.AllDatabases() {
+	for _, db := range c.AllDatabases(ctx) {
 		tableNames, err := db.GetTableNames(ctx)
 		if err != nil {
 			return nil, err
@@ -927,7 +928,7 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 // TODO: Since Table ids and Space are not yet supported this table is not completely accurate yet.
 func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range c.AllDatabases() {
+	for _, db := range c.AllDatabases(ctx) {
 		tb, ok := db.(TemporaryTableDatabase)
 		if !ok {
 			continue
@@ -1057,12 +1058,12 @@ func NewInformationSchemaDatabase() Database {
 	}
 }
 
-func viewRowIter(context *Context, catalog Catalog) (RowIter, error) {
+func viewRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	var rows []Row
-	for _, db := range catalog.AllDatabases() {
+	for _, db := range catalog.AllDatabases(ctx) {
 		dbName := db.Name()
 
-		views, err := viewsInDatabase(context, db)
+		views, err := viewsInDatabase(ctx, db)
 		if err != nil {
 			return nil, err
 		}
@@ -1093,6 +1094,9 @@ func viewsInDatabase(ctx *Context, db Database) ([]ViewDefinition, error) {
 	var views []ViewDefinition
 	dbName := db.Name()
 
+	if privilegedDatabase, ok := db.(grant_tables.PrivilegedDatabase); ok {
+		db = privilegedDatabase.Unwrap()
+	}
 	if vdb, ok := db.(ViewDatabase); ok {
 		dbViews, err := vdb.AllViews(ctx)
 		if err != nil {
