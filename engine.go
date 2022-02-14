@@ -195,7 +195,7 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if enableRowIter2 {
-		iter = typeSelectorIter{
+		iter = rowFormatSelectorIter{
 			RowIter: iter,
 			isNode2: allNode2(analyzed),
 		}
@@ -245,22 +245,22 @@ func allNode2(n sql.Node) bool {
 	return allNode2
 }
 
-// typeSelectorIter is a wrapping row iter that implements RowIterTypeSelector so that clients consuming rows from it
+// rowFormatSelectorIter is a wrapping row iter that implements RowIterTypeSelector so that clients consuming rows from it
 // know whether it's safe to iterate as RowIter or RowIter2.
-type typeSelectorIter struct {
+type rowFormatSelectorIter struct {
 	sql.RowIter
 	isNode2 bool
 }
 
-var _ sql.RowIterTypeSelector = typeSelectorIter{}
-var _ sql.RowIter = typeSelectorIter{}
-var _ sql.RowIter2 = typeSelectorIter{}
+var _ sql.RowIterTypeSelector = rowFormatSelectorIter{}
+var _ sql.RowIter = rowFormatSelectorIter{}
+var _ sql.RowIter2 = rowFormatSelectorIter{}
 
-func (t typeSelectorIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+func (t rowFormatSelectorIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
 	return t.RowIter.(sql.RowIter2).Next2(ctx, frame)
 }
 
-func (t typeSelectorIter) IsNode2() bool {
+func (t rowFormatSelectorIter) IsNode2() bool {
 	return t.isNode2
 }
 

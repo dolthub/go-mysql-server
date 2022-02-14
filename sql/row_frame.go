@@ -35,7 +35,7 @@ type Value struct {
 
 // IsNull returns whether this value represents NULL
 func (v Value) IsNull() bool {
-	return v.Typ == querypb.Type_NULL_TYPE
+	return v.Val == nil || v.Typ == querypb.Type_NULL_TYPE
 }
 
 type RowFrame struct {

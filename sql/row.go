@@ -143,13 +143,13 @@ func RowIter2ToRows(ctx *Context, sch Schema, i RowIter2) ([]Row, error) {
 			return nil, err
 		}
 
-		rows = append(rows, rowToRow2(sch, f.Row2()))
+		rows = append(rows, rowFromRow2(sch, f.Row2()))
 	}
 
 	return rows, i.Close(ctx)
 }
 
-func rowToRow2(sch Schema, r Row2) Row {
+func rowFromRow2(sch Schema, r Row2) Row {
 	row := make(Row, len(sch))
 	for i, col := range sch {
 		switch col.Type.Type() {
