@@ -116,6 +116,12 @@ func (d *AlterDefaultSet) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewAlterDefaultSet(children[0], d.ColumnName, d.Default), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (d *AlterDefaultSet) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
+}
+
 // Resolved implements the sql.Node interface.
 func (d *AlterDefaultSet) Resolved() bool {
 	return d.UnaryNode.Resolved() && d.Default.Resolved()
@@ -182,4 +188,10 @@ func (d *AlterDefaultDrop) WithChildren(children ...sql.Node) (sql.Node, error) 
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
 	return NewAlterDefaultDrop(children[0], d.ColumnName), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *AlterDefaultDrop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(d.Child), getTableName(d.Child), d.ColumnName, sql.PrivilegeType_Alter))
 }

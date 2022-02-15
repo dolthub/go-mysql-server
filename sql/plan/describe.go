@@ -56,6 +56,11 @@ func (d *Describe) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewDescribe(children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (d *Describe) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return d.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (d Describe) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Describe")
@@ -101,6 +106,11 @@ func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(node), 0)
 	}
 	return d, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return d.child.CheckPrivileges(ctx, opChecker)
 }
 
 // DescribeSchema is the schema returned by a DescribeQuery node.

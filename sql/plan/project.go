@@ -109,6 +109,11 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewProject(p.Projections, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *Project) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(p.Projections) {

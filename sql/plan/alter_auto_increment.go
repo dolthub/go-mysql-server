@@ -70,6 +70,12 @@ func (p *AlterAutoIncrement) WithChildren(children ...sql.Node) (sql.Node, error
 	return NewAlterAutoIncrement(children[0], p.autoVal), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *AlterAutoIncrement) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
+}
+
 func (p *AlterAutoIncrement) Schema() sql.Schema { return nil }
 
 func (p AlterAutoIncrement) String() string {

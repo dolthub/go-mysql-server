@@ -17,6 +17,8 @@ package plan
 import (
 	"fmt"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Privilege specifies a privilege to be used in a GRANT or REVOKE statement.
@@ -69,6 +71,86 @@ const (
 	PrivilegeType_Usage
 	PrivilegeType_Dynamic
 )
+
+// convertToSqlPrivilegeType converts the privilege types used in plan to those used elsewhere.
+func convertToSqlPrivilegeType(addGrant bool, privs ...Privilege) []sql.PrivilegeType {
+	// At most we'll have the number of privileges plus the grant privilege
+	sqlPrivs := make([]sql.PrivilegeType, 0, len(privs)+1)
+	for _, priv := range privs {
+		switch priv.Type {
+		case PrivilegeType_All:
+			// No direct mapping, this should be handled elsewhere
+		case PrivilegeType_Alter:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Alter)
+		case PrivilegeType_AlterRoutine:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_AlterRoutine)
+		case PrivilegeType_Create:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Create)
+		case PrivilegeType_CreateRole:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_CreateRole)
+		case PrivilegeType_CreateRoutine:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_CreateRoutine)
+		case PrivilegeType_CreateTablespace:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_CreateTablespace)
+		case PrivilegeType_CreateTemporaryTables:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_CreateTempTable)
+		case PrivilegeType_CreateUser:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_CreateUser)
+		case PrivilegeType_CreateView:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_CreateView)
+		case PrivilegeType_Delete:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Delete)
+		case PrivilegeType_Drop:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Drop)
+		case PrivilegeType_DropRole:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_DropRole)
+		case PrivilegeType_Event:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Event)
+		case PrivilegeType_Execute:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Execute)
+		case PrivilegeType_File:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_File)
+		case PrivilegeType_Index:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Index)
+		case PrivilegeType_Insert:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Insert)
+		case PrivilegeType_LockTables:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_LockTables)
+		case PrivilegeType_Process:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Process)
+		case PrivilegeType_References:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_References)
+		case PrivilegeType_Reload:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Reload)
+		case PrivilegeType_ReplicationClient:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_ReplicationClient)
+		case PrivilegeType_ReplicationSlave:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_ReplicationSlave)
+		case PrivilegeType_Select:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Select)
+		case PrivilegeType_ShowDatabases:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_ShowDB)
+		case PrivilegeType_ShowView:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_ShowView)
+		case PrivilegeType_Shutdown:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Shutdown)
+		case PrivilegeType_Super:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Super)
+		case PrivilegeType_Trigger:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Trigger)
+		case PrivilegeType_Update:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Update)
+		case PrivilegeType_Usage:
+			// Usage is equal to no privilege
+		case PrivilegeType_Dynamic:
+			//TODO: handle dynamic privileges
+		}
+	}
+	if addGrant {
+		sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Grant)
+	}
+	return sqlPrivs
+}
 
 // ObjectType represents the object type that the GRANT or REVOKE statement will apply to.
 type ObjectType byte

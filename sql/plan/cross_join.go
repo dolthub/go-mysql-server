@@ -89,6 +89,11 @@ func (p *CrossJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewCrossJoin(children[0], children[1]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *CrossJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.left.CheckPrivileges(ctx, opChecker) && p.right.CheckPrivileges(ctx, opChecker)
+}
+
 func (p *CrossJoin) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CrossJoin")

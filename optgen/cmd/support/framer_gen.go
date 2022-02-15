@@ -53,7 +53,7 @@ func (g *FramerGen) genFramerType(def frameDef) {
 
 func (g *FramerGen) genNewFramer(def frameDef) {
 	framerName := fmt.Sprintf("%sFramer", def.Name())
-	fmt.Fprintf(g.w, "func New%sFramer(frame sql.WindowFrame, window *sql.Window) (sql.WindowFramer, error) {\n", def.Name())
+	fmt.Fprintf(g.w, "func New%sFramer(frame sql.WindowFrame, window *sql.WindowDefinition) (sql.WindowFramer, error) {\n", def.Name())
 
 	for _, a := range def.Args() {
 		switch a.argType() {

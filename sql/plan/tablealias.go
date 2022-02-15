@@ -60,6 +60,14 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewTableAlias(t.name, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (t *TableAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	if t.UnaryNode != nil {
+		return t.UnaryNode.Child.CheckPrivileges(ctx, opChecker)
+	}
+	return true
+}
+
 // RowIter implements the Node interface.
 func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var table string

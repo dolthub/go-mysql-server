@@ -86,6 +86,11 @@ func (i *IndexedInSubqueryFilter) WithChildren(children ...sql.Node) (sql.Node, 
 	return NewIndexedInSubqueryFilter(i.subquery, children[0], i.padding, i.getField, i.equals), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (i *IndexedInSubqueryFilter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return i.subquery.Query.CheckPrivileges(ctx, opChecker) && i.child.CheckPrivileges(ctx, opChecker)
+}
+
 func (i *IndexedInSubqueryFilter) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	padded := make(sql.Row, len(row)+i.padding)
 	copy(padded[:], row[:])

@@ -1940,6 +1940,22 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select i, row_number() over (w3) from mytable window w1 as (w2), w2 as (), w3 as (w1)`,
+		ExpectedPlan: "Project(mytable.i, row_number() over () as row_number() over (w3))\n" +
+			" └─ Window(mytable.i, row_number() over ())\n" +
+			"     └─ Projected table access on [i]\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
+		Query: "select i, row_number() over (w1 partition by s) from mytable window w1 as (order by i asc)",
+		ExpectedPlan: "Project(mytable.i, row_number() over ( partition by mytable.s order by [mytable.i, idx=0, type=BIGINT, nullable=false] ASC) as row_number() over (w1 partition by s))\n" +
+			" └─ Window(mytable.i, row_number() over ( partition by mytable.s order by [mytable.i, idx=0, type=BIGINT, nullable=false] ASC))\n" +
+			"     └─ Projected table access on [i s]\n" +
+			"         └─ Table(mytable)\n" +
+			"",
+	},
+	{
 		Query: `DELETE FROM two_pk WHERE c1 > 1`,
 		ExpectedPlan: "Delete\n" +
 			" └─ Filter(two_pk.c1 > 1)\n" +

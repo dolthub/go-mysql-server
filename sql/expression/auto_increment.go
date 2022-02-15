@@ -90,10 +90,15 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = nil
 	}
 
+	converted, err := i.Type().Convert(given)
+	if err != nil {
+		return nil, err
+	}
+
 	// Integrator answer
 	// TODO: This being in Eval could potentially be a problem. If Eval is called multiple times on one row we could
 	// skip keys unexpectedly.
-	next, err := i.autoTbl.GetNextAutoIncrementValue(ctx, given)
+	next, err := i.autoTbl.GetNextAutoIncrementValue(ctx, converted)
 	if err != nil {
 		return nil, err
 	}

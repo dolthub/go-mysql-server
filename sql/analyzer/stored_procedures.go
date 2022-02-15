@@ -51,7 +51,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		a.ProcedureCache.IsPopulating = false
 	}()
 
-	for _, database := range a.Catalog.AllDatabases() {
+	for _, database := range a.Catalog.AllDatabases(ctx) {
 		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
 			procedures, err := pdb.GetStoredProcedures(ctx)
 			if err != nil {
@@ -120,7 +120,7 @@ func analyzeProcedureBodies(ctx *sql.Context, a *Analyzer, node sql.Node, skipCa
 		if err != nil {
 			return nil, err
 		}
-		newChildren[i] = StripQueryProcess(newChild)
+		newChildren[i] = StripPassthroughNodes(newChild)
 	}
 	return node.WithChildren(newChildren...)
 }
@@ -146,7 +146,7 @@ func validateCreateProcedure(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		return nil, err
 	}
 
-	return cp.WithChildren(StripQueryProcess(newProc))
+	return cp.WithChildren(StripPassthroughNodes(newProc))
 }
 
 // validateStoredProcedure handles Procedure nodes, resolving references to the parameters, along with ensuring

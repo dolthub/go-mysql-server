@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -127,6 +129,13 @@ func (cv *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newCreate, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (cv *CreateView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(cv.database.Name(), "", "", sql.PrivilegeType_CreateView)) &&
+		cv.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // Database implements the Databaser interface, and it returns the database in
 // which CreateView will create the view.
 func (cv *CreateView) Database() sql.Database {
@@ -136,6 +145,9 @@ func (cv *CreateView) Database() sql.Database {
 // WithDatabase implements the Databaser interface, and it returns a copy of this
 // node with the specified database.
 func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
+	if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+		database = privilegedDatabase.Unwrap()
+	}
 	newCreate := *cv
 	newCreate.database = database
 	return &newCreate, nil

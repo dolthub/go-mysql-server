@@ -135,6 +135,11 @@ func (e *Exchange) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewExchange(e.Parallelism, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (e *Exchange) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return e.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition) (sql.RowIter, error) {
 	return func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 		node, err := TransformUp(e.Child, func(n sql.Node) (sql.Node, error) {
@@ -209,6 +214,16 @@ func (p *exchangePartition) WithChildren(children ...sql.Node) (sql.Node, error)
 	}
 
 	return p, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *exchangePartition) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	if node, ok := p.table.(sql.Node); ok {
+		return node.CheckPrivileges(ctx, opChecker)
+	}
+	// If the table is not a ResolvedTable or other such node, then I guess we'll return true as to not fail.
+	// This may not be the correct behavior though, as it's just a guess.
+	return true
 }
 
 type rowIterPartitionFunc func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error)

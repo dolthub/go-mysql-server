@@ -158,3 +158,8 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	return NewUpdateSource(children[0], u.UpdateExprs), nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (u *UpdateSource) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return u.Child.CheckPrivileges(ctx, opChecker)
+}

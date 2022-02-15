@@ -34,7 +34,7 @@ func TestAllDatabases(t *testing.T) {
 	}
 
 	c := NewCatalog(sql.NewDatabaseProvider(dbs...))
-	require.Equal(dbs, c.AllDatabases())
+	require.Equal(dbs, c.AllDatabases(sql.NewEmptyContext()))
 }
 
 func TestCatalogDatabase(t *testing.T) {
@@ -43,11 +43,11 @@ func TestCatalogDatabase(t *testing.T) {
 	mydb := memory.NewDatabase("foo")
 	c := NewCatalog(sql.NewDatabaseProvider(mydb))
 
-	db, err := c.Database("flo")
+	db, err := c.Database(sql.NewEmptyContext(), "flo")
 	require.EqualError(err, "database not found: flo, maybe you mean foo?")
 	require.Nil(db)
 
-	db, err = c.Database("foo")
+	db, err = c.Database(sql.NewEmptyContext(), "foo")
 	require.NoError(err)
 	require.Equal(mydb, db)
 }

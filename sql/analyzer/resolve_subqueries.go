@@ -40,7 +40,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				}
 			}
 
-			return n.WithChildren(StripQueryProcess(child))
+			return n.WithChildren(StripPassthroughNodes(child))
 		default:
 			return n, nil
 		}
@@ -67,7 +67,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 				}
 			}
 
-			return n.WithChildren(StripQueryProcess(child))
+			return n.WithChildren(StripPassthroughNodes(child))
 		default:
 			return n, nil
 		}
@@ -119,15 +119,15 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return nil, err
 		}
 
-		return s.WithQuery(StripQueryProcess(analyzed)), nil
+		return s.WithQuery(StripPassthroughNodes(analyzed)), nil
 	})
 }
 
-// If the node given is a QueryProcess, returns its child. Otherwise, returns the node.
-// Something similar happens in the trackProcess analyzer step, but we can't always wait that long to get rid of the
-// QueryProcess node.
+// StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query
+// tracking, transaction logic, etc) from the node tree given and return the first non-passthrough child element. This
+// is useful for when we invoke the analyzer recursively when e.g. analyzing subqueries or triggers
 // TODO: instead of stripping this node off after analysis, it would be better to just not add it in the first place.
-func StripQueryProcess(n sql.Node) sql.Node {
+func StripPassthroughNodes(n sql.Node) sql.Node {
 	nodeIsPassthrough := true
 	for nodeIsPassthrough {
 		switch tn := n.(type) {
@@ -143,11 +143,11 @@ func StripQueryProcess(n sql.Node) sql.Node {
 	return n
 }
 
-func exprIsCacheable(expr sql.Expression, lowestAlloewdIdx int) bool {
+func exprIsCacheable(expr sql.Expression, lowestAllowedIdx int) bool {
 	cacheable := true
 	sql.Inspect(expr, func(e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {
-			if gf.Index() < lowestAlloewdIdx {
+			if gf.Index() < lowestAllowedIdx {
 				cacheable = false
 				return false
 			}
@@ -203,8 +203,12 @@ func isDeterminstic(n sql.Node) bool {
 
 // cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
-// and if all expressions in the subquery are deterministic.
+// if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
 func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	// No need to inspect for trigger blocks as the Analyzer is recursively invoked on trigger blocks.
+	if n, ok := n.(*plan.TriggerBeginEndBlock); ok {
+		return n, nil
+	}
 	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, error) {
 		s, ok := e.(*plan.Subquery)
 		if !ok || !s.Resolved() {

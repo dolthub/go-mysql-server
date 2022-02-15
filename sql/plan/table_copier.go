@@ -4,14 +4,13 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
 // TableCopier is a supporting node that allows for the optimization of copying tables. It should be used in two cases.
 // 1) CREATE TABLE SELECT *
 // 2) INSERT INTO SELECT * where the inserted table is empty. // TODO: Implement this optimization
 type TableCopier struct {
-	sql.Node
-
 	source      sql.Node
 	destination sql.Node
 	db          sql.Database
@@ -96,7 +95,11 @@ func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 	}
 
 	// If the DB does not implement the TableCopierDatabase interface we cannot copy over the table.
-	if _, ok := tc.db.(sql.TableCopierDatabase); !ok {
+	if privDb, ok := tc.db.(grant_tables.PrivilegedDatabase); ok {
+		if _, ok := privDb.Unwrap().(sql.TableCopierDatabase); !ok {
+			return false
+		}
+	} else if _, ok := tc.db.(sql.TableCopierDatabase); !ok {
 		return false
 	}
 
@@ -142,6 +145,14 @@ func (tc *TableCopier) Children() []sql.Node {
 
 func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 	return tc, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: add a new branch when the INSERT optimization is added
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(tc.db.Name(), "", "", sql.PrivilegeType_Create)) &&
+		tc.source.CheckPrivileges(ctx, opChecker)
 }
 
 func (tc *TableCopier) Resolved() bool {

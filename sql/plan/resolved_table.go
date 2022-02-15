@@ -28,6 +28,7 @@ type ResolvedTable struct {
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
+var _ sql.Node2 = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
@@ -63,6 +64,18 @@ func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)), nil
 }
 
+func (t *ResolvedTable) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	span, ctx := ctx.Span("plan.ResolvedTable")
+
+	partitions, err := t.Table.Partitions(ctx)
+	if err != nil {
+		span.Finish()
+		return nil, err
+	}
+
+	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)).(sql.RowIter2), nil
+}
+
 // WithChildren implements the Node interface.
 func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
@@ -70,6 +83,15 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return t, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
+	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
+	// nodes are things such as indexed access, filters, limits, etc.
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
 }
 
 // WithTable returns this Node with the given table. The new table should have the same name as the previous table.

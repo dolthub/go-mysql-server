@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -82,12 +84,12 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	a.Catalog.RegisterFunction(
-		sql.FunctionN{
-			Name: "version",
-			Fn:   function.NewVersion(versionPostfix),
-		})
-	a.Catalog.RegisterFunction(function.GetLockingFuncs(ls)...)
+	emptyCtx := sql.NewEmptyContext()
+	a.Catalog.RegisterFunction(emptyCtx, sql.FunctionN{
+		Name: "version",
+		Fn:   function.NewVersion(versionPostfix),
+	})
+	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
 	return &Engine{
 		Analyzer:          a,
@@ -194,19 +196,92 @@ func (e *Engine) QueryNodeWithBindings(
 		iter = transactionCommittingIter{iter, transactionDatabase}
 	}
 
+	if enableRowIter2 {
+		iter = rowFormatSelectorIter{
+			RowIter: iter,
+			isNode2: allNode2(analyzed),
+		}
+	}
+
 	return analyzed.Schema(), iter, nil
+}
+
+// allNode2 returns whether all the nodes in the tree implement Node2.
+func allNode2(n sql.Node) bool {
+	allNode2 := true
+	plan.Inspect(n, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case *plan.ResolvedTable:
+			if _, ok := n.Table.(sql.Table2); !ok {
+				allNode2 = false
+				return false
+			}
+		}
+		if _, ok := n.(sql.Node2); n != nil && !ok {
+			allNode2 = false
+			return false
+		}
+		return true
+	})
+	if !allNode2 {
+		return allNode2
+	}
+
+	// All expressions in the tree must likewise be Expression2, and all types Type2, or we can't use rowFrame iteration
+	// TODO: likely that some nodes rely on expressions but don't implement sql.Expressioner, or implement it incompletely
+	plan.InspectExpressions(n, func(e sql.Expression) bool {
+		if e == nil {
+			return false
+		}
+		if _, ok := e.(sql.Expression2); !ok {
+			allNode2 = false
+			return false
+		}
+		if _, ok := e.Type().(sql.Type2); !ok {
+			allNode2 = false
+			return false
+		}
+		return true
+	})
+
+	return allNode2
+}
+
+// rowFormatSelectorIter is a wrapping row iter that implements RowIterTypeSelector so that clients consuming rows from it
+// know whether it's safe to iterate as RowIter or RowIter2.
+type rowFormatSelectorIter struct {
+	sql.RowIter
+	isNode2 bool
+}
+
+var _ sql.RowIterTypeSelector = rowFormatSelectorIter{}
+var _ sql.RowIter = rowFormatSelectorIter{}
+var _ sql.RowIter2 = rowFormatSelectorIter{}
+
+func (t rowFormatSelectorIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	return t.RowIter.(sql.RowIter2).Next2(ctx, frame)
+}
+
+func (t rowFormatSelectorIter) IsNode2() bool {
+	return t.isNode2
 }
 
 const (
 	fakeReadCommittedEnvVar = "READ_COMMITTED_HACK"
+	enableIter2EnvVar       = "ENABLE_ROW_ITER_2"
 )
 
 var fakeReadCommitted bool
+var enableRowIter2 bool
 
 func init() {
 	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)
 	if ok {
 		fakeReadCommitted = true
+	}
+	_, ok = os.LookupEnv(enableIter2EnvVar)
+	if ok {
+		enableRowIter2 = true
 	}
 }
 
@@ -220,14 +295,17 @@ func (e *Engine) beginTransaction(ctx *sql.Context, parsed sql.Node) (string, er
 	if beginNewTransaction {
 		ctx.GetLogger().Tracef("beginning new transaction")
 		if len(transactionDatabase) > 0 {
-			database, err := e.Analyzer.Catalog.Database(transactionDatabase)
+			database, err := e.Analyzer.Catalog.Database(ctx, transactionDatabase)
 			// if the database doesn't exist, just don't start a transaction on it, let other layers complain
-			if sql.ErrDatabaseNotFound.Is(err) {
+			if sql.ErrDatabaseNotFound.Is(err) || sql.ErrDatabaseAccessDeniedForUser.Is(err) {
 				return "", nil
 			} else if err != nil {
 				return "", err
 			}
 
+			if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+				database = privilegedDatabase.Unwrap()
+			}
 			tdb, ok := database.(sql.TransactionDatabase)
 			if ok {
 				tx, err := tdb.StartTransaction(ctx, sql.ReadWrite)
@@ -284,6 +362,10 @@ type transactionCommittingIter struct {
 
 func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
+}
+
+func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	return t.childIter.(sql.RowIter2).Next2(ctx, frame)
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {

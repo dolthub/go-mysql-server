@@ -57,7 +57,7 @@ func (d *DropIndex) Children() []sql.Node { return []sql.Node{d.Table} }
 
 // RowIter implements the Node interface.
 func (d *DropIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	db, err := d.Catalog.Database(d.CurrentDatabase)
+	db, err := d.Catalog.Database(ctx, d.CurrentDatabase)
 	if err != nil {
 		return nil, err
 	}
@@ -134,4 +134,10 @@ func (d *DropIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nd := *d
 	nd.Table = children[0]
 	return &nd, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(d.Table), getTableName(d.Table), "", sql.PrivilegeType_Index))
 }

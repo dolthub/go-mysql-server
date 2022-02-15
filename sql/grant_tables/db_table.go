@@ -72,48 +72,48 @@ func (conv DbConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_me
 	if !ok {
 		return nil, errDbRow
 	}
-	var privs []PrivilegeType
+	var privs []sql.PrivilegeType
 	for i, val := range row {
 		if strVal, ok := val.(string); ok && strVal == "Y" {
 			switch i {
 			case dbTblColIndex_Select_priv:
-				privs = append(privs, PrivilegeType_Select)
+				privs = append(privs, sql.PrivilegeType_Select)
 			case dbTblColIndex_Insert_priv:
-				privs = append(privs, PrivilegeType_Insert)
+				privs = append(privs, sql.PrivilegeType_Insert)
 			case dbTblColIndex_Update_priv:
-				privs = append(privs, PrivilegeType_Update)
+				privs = append(privs, sql.PrivilegeType_Update)
 			case dbTblColIndex_Delete_priv:
-				privs = append(privs, PrivilegeType_Delete)
+				privs = append(privs, sql.PrivilegeType_Delete)
 			case dbTblColIndex_Create_priv:
-				privs = append(privs, PrivilegeType_Create)
+				privs = append(privs, sql.PrivilegeType_Create)
 			case dbTblColIndex_Drop_priv:
-				privs = append(privs, PrivilegeType_Drop)
+				privs = append(privs, sql.PrivilegeType_Drop)
 			case dbTblColIndex_Grant_priv:
-				privs = append(privs, PrivilegeType_Grant)
+				privs = append(privs, sql.PrivilegeType_Grant)
 			case dbTblColIndex_References_priv:
-				privs = append(privs, PrivilegeType_References)
+				privs = append(privs, sql.PrivilegeType_References)
 			case dbTblColIndex_Index_priv:
-				privs = append(privs, PrivilegeType_Index)
+				privs = append(privs, sql.PrivilegeType_Index)
 			case dbTblColIndex_Alter_priv:
-				privs = append(privs, PrivilegeType_Alter)
+				privs = append(privs, sql.PrivilegeType_Alter)
 			case dbTblColIndex_Create_tmp_table_priv:
-				privs = append(privs, PrivilegeType_CreateTempTable)
+				privs = append(privs, sql.PrivilegeType_CreateTempTable)
 			case dbTblColIndex_Lock_tables_priv:
-				privs = append(privs, PrivilegeType_LockTables)
+				privs = append(privs, sql.PrivilegeType_LockTables)
 			case dbTblColIndex_Create_view_priv:
-				privs = append(privs, PrivilegeType_CreateView)
+				privs = append(privs, sql.PrivilegeType_CreateView)
 			case dbTblColIndex_Show_view_priv:
-				privs = append(privs, PrivilegeType_ShowView)
+				privs = append(privs, sql.PrivilegeType_ShowView)
 			case dbTblColIndex_Create_routine_priv:
-				privs = append(privs, PrivilegeType_CreateRoutine)
+				privs = append(privs, sql.PrivilegeType_CreateRoutine)
 			case dbTblColIndex_Alter_routine_priv:
-				privs = append(privs, PrivilegeType_AlterRoutine)
+				privs = append(privs, sql.PrivilegeType_AlterRoutine)
 			case dbTblColIndex_Execute_priv:
-				privs = append(privs, PrivilegeType_Execute)
+				privs = append(privs, sql.PrivilegeType_Execute)
 			case dbTblColIndex_Event_priv:
-				privs = append(privs, PrivilegeType_Event)
+				privs = append(privs, sql.PrivilegeType_Event)
 			case dbTblColIndex_Trigger_priv:
-				privs = append(privs, PrivilegeType_Trigger)
+				privs = append(privs, sql.PrivilegeType_Trigger)
 			}
 		}
 	}
@@ -166,43 +166,43 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 
 		for _, priv := range dbSet.ToSlice() {
 			switch priv {
-			case PrivilegeType_Select:
+			case sql.PrivilegeType_Select:
 				row[dbTblColIndex_Select_priv] = "Y"
-			case PrivilegeType_Insert:
+			case sql.PrivilegeType_Insert:
 				row[dbTblColIndex_Insert_priv] = "Y"
-			case PrivilegeType_Update:
+			case sql.PrivilegeType_Update:
 				row[dbTblColIndex_Update_priv] = "Y"
-			case PrivilegeType_Delete:
+			case sql.PrivilegeType_Delete:
 				row[dbTblColIndex_Delete_priv] = "Y"
-			case PrivilegeType_Create:
+			case sql.PrivilegeType_Create:
 				row[dbTblColIndex_Create_priv] = "Y"
-			case PrivilegeType_Drop:
+			case sql.PrivilegeType_Drop:
 				row[dbTblColIndex_Drop_priv] = "Y"
-			case PrivilegeType_Grant:
+			case sql.PrivilegeType_Grant:
 				row[dbTblColIndex_Grant_priv] = "Y"
-			case PrivilegeType_References:
+			case sql.PrivilegeType_References:
 				row[dbTblColIndex_References_priv] = "Y"
-			case PrivilegeType_Index:
+			case sql.PrivilegeType_Index:
 				row[dbTblColIndex_Index_priv] = "Y"
-			case PrivilegeType_Alter:
+			case sql.PrivilegeType_Alter:
 				row[dbTblColIndex_Alter_priv] = "Y"
-			case PrivilegeType_CreateTempTable:
+			case sql.PrivilegeType_CreateTempTable:
 				row[dbTblColIndex_Create_tmp_table_priv] = "Y"
-			case PrivilegeType_LockTables:
+			case sql.PrivilegeType_LockTables:
 				row[dbTblColIndex_Lock_tables_priv] = "Y"
-			case PrivilegeType_CreateView:
+			case sql.PrivilegeType_CreateView:
 				row[dbTblColIndex_Create_view_priv] = "Y"
-			case PrivilegeType_ShowView:
+			case sql.PrivilegeType_ShowView:
 				row[dbTblColIndex_Show_view_priv] = "Y"
-			case PrivilegeType_CreateRoutine:
+			case sql.PrivilegeType_CreateRoutine:
 				row[dbTblColIndex_Create_routine_priv] = "Y"
-			case PrivilegeType_AlterRoutine:
+			case sql.PrivilegeType_AlterRoutine:
 				row[dbTblColIndex_Alter_routine_priv] = "Y"
-			case PrivilegeType_Execute:
+			case sql.PrivilegeType_Execute:
 				row[dbTblColIndex_Execute_priv] = "Y"
-			case PrivilegeType_Event:
+			case sql.PrivilegeType_Event:
 				row[dbTblColIndex_Event_priv] = "Y"
-			case PrivilegeType_Trigger:
+			case sql.PrivilegeType_Trigger:
 				row[dbTblColIndex_Trigger_priv] = "Y"
 			}
 		}

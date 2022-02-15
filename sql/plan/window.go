@@ -87,6 +87,11 @@ func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewWindow(w.SelectExprs, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (w *Window) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return w.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // Expressions implements sql.Expressioner
 func (w *Window) Expressions() []sql.Expression {
 	return w.SelectExprs
@@ -122,7 +127,7 @@ func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error) {
 	partIdToOutputIdxs := make(map[uint64][]int, 0)
 	partIdToBlock := make(map[uint64]*aggregation.WindowPartition, 0)
-	var window *sql.Window
+	var window *sql.WindowDefinition
 	var agg *aggregation.Aggregation
 	var fn sql.WindowFunction
 	var err error
@@ -137,7 +142,7 @@ func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error
 			fn, err = e.NewWindowFunction()
 		default:
 			// non window aggregates resolve to LastAgg with empty over clause
-			window = sql.NewWindow(nil, nil, nil)
+			window = sql.NewWindowDefinition(nil, nil, nil, "", "")
 			fn, err = aggregation.NewLast(e).NewWindowFunction()
 		}
 		if err != nil {

@@ -72,6 +72,11 @@ func (g *Generate) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewGenerate(children[0], g.Column), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (g *Generate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return g.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (g *Generate) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {

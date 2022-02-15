@@ -113,7 +113,7 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 		return nil, err
 	}
 
-	return ct.WithChildren(ct.Table, StripQueryProcess(triggerLogic))
+	return ct.WithChildren(ct.Table, StripPassthroughNodes(triggerLogic))
 }
 
 func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
@@ -155,7 +155,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 	// TODO: database should be dependent on the table being inserted / updated, but we don't have that info available
 	//  from the table object yet.
-	database, err := a.Catalog.Database(db)
+	database, err := a.Catalog.Database(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -307,11 +307,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tr
 		triggerLogic, err = a.Analyze(ctx, trigger.Body, (*Scope)(nil).newScope(scopeNode).withMemos(scope.memo(n).MemoNodes()))
 	}
 
-	if qp, ok := triggerLogic.(*plan.QueryProcess); ok {
-		triggerLogic = qp.Child
-	}
-
-	return triggerLogic, err
+	return StripPassthroughNodes(triggerLogic), err
 }
 
 // validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any

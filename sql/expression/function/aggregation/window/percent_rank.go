@@ -22,7 +22,7 @@ import (
 )
 
 type PercentRank struct {
-	window *sql.Window
+	window *sql.WindowDefinition
 	pos    int
 }
 
@@ -40,7 +40,7 @@ func (p *PercentRank) Description() string {
 }
 
 // Window implements sql.WindowExpression
-func (p *PercentRank) Window() *sql.Window {
+func (p *PercentRank) Window() *sql.WindowDefinition {
 	return p.window
 }
 
@@ -104,7 +104,7 @@ func (p *PercentRank) WithChildren(children ...sql.Expression) (sql.Expression, 
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *PercentRank) WithWindow(window *sql.Window) (sql.WindowAggregation, error) {
+func (p *PercentRank) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
 	nr := *p
 	nr.window = window
 	return &nr, nil

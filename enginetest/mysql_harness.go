@@ -76,7 +76,7 @@ func (m *MySQLHarness) NewDatabases(names ...string) []sql.Database {
 		if err != nil {
 			panic(err)
 		}
-		db, err := m.shim.Database(name)
+		db, err := m.shim.Database(ctx, name)
 		if err != nil {
 			panic(err)
 		}

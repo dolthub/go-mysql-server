@@ -112,3 +112,56 @@ func nodeRepresentsSelect(s sql.Node) bool {
 	})
 	return isSelect
 }
+
+// getTableName attempts to fetch the table name from the node. If not found directly on the node, searches the
+// children. Returns the first table name found, regardless of whether there are more, therefore this is only intended
+// to be used in situations where only a single table is expected to be found.
+func getTableName(nodeToSearch sql.Node) string {
+	nodeStack := []sql.Node{nodeToSearch}
+	for len(nodeStack) > 0 {
+		node := nodeStack[len(nodeStack)-1]
+		nodeStack = nodeStack[:len(nodeStack)-1]
+		switch n := node.(type) {
+		case *TableAlias:
+			if n.UnaryNode != nil {
+				nodeStack = append(nodeStack, n.UnaryNode.Child)
+				continue
+			}
+		case *ResolvedTable:
+			return n.Table.Name()
+		case *UnresolvedTable:
+			return n.name
+		case *IndexedTableAccess:
+			return n.Table.Name()
+		case sql.TableWrapper:
+			return n.Underlying().Name()
+		}
+		nodeStack = append(nodeStack, node.Children()...)
+	}
+	return ""
+}
+
+// getDatabaseName attempts to fetch the database name from the node. If not found directly on the node, searches the
+// children. Returns the first database name found, regardless of whether there are more, therefore this is only
+// intended to be used in situations where only a single database is expected to be found. Unlike how tables are handled
+// in most nodes, databases may be stored as a string field therefore there will be situations where a database name
+// exists on a node, but cannot be found through inspection.
+func getDatabaseName(nodeToSearch sql.Node) string {
+	nodeStack := []sql.Node{nodeToSearch}
+	for len(nodeStack) > 0 {
+		node := nodeStack[len(nodeStack)-1]
+		nodeStack = nodeStack[:len(nodeStack)-1]
+		switch n := node.(type) {
+		case sql.Databaser:
+			return n.Database().Name()
+		case *ResolvedTable:
+			return n.Database.Name()
+		case *UnresolvedTable:
+			return n.Database
+		case *IndexedTableAccess:
+			return n.Database.Name()
+		}
+		nodeStack = append(nodeStack, node.Children()...)
+	}
+	return ""
+}

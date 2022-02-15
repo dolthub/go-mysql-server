@@ -50,6 +50,11 @@ func (sv *ShowVariables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sv, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (sv *ShowVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
 // String implements the fmt.Stringer interface.
 func (sv *ShowVariables) String() string {
 	var like string
