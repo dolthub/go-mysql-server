@@ -117,9 +117,9 @@ func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 // RowIter2 implements the sql.Node2 interface.
 func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	var t sql.Table
+	var t sql.Table2
 	Inspect(e.Child, func(n sql.Node) bool {
-		if table, ok := n.(sql.Table); ok {
+		if table, ok := n.(sql.Table2); ok {
 			t = table
 			return false
 		}
@@ -338,6 +338,7 @@ func sendAllRows2(ctx *sql.Context, iter sql.RowIter2, rows chan<- sql.Row2, f *
 		}
 	}()
 	for {
+		f.Clear()
 		err := iter.Next2(ctx, f)
 		if err == io.EOF {
 			return rowCount, nil
@@ -347,7 +348,7 @@ func sendAllRows2(ctx *sql.Context, iter sql.RowIter2, rows chan<- sql.Row2, f *
 		}
 		rowCount++
 		select {
-		case rows <- f.Row2():
+		case rows <- f.Row2Copy():
 		case <-ctx.Done():
 			return rowCount, ctx.Err()
 		}
