@@ -2181,11 +2181,21 @@ func convertGrantPrivilege(ctx *sql.Context, n *sqlparser.GrantPrivilege) (*plan
 }
 
 func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGrants, error) {
+	var currentUser bool
 	var user *plan.UserName
 	if n.For != nil {
+		currentUser = false
 		user = &convertAccountName(*n.For)[0]
+	} else {
+		currentUser = true
+		client := ctx.Session.Client()
+		user = &plan.UserName{
+			Name:    client.User,
+			Host:    client.Address,
+			AnyHost: client.Address == "%",
+		}
 	}
-	return plan.NewShowGrants(n.CurrentUser, user, convertAccountName(n.Using...)), nil
+	return plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...)), nil
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {

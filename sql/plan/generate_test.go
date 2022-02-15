@@ -99,3 +99,6 @@ func (n *fakeNode) String() string                                     { return 
 func (*fakeNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	panic("placeholder")
 }
+func (*fakeNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}

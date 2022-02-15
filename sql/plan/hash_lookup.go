@@ -72,6 +72,11 @@ func (n *HashLookup) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *HashLookup) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (n *HashLookup) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter, error) {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()

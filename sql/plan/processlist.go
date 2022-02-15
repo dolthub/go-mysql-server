@@ -79,6 +79,12 @@ func (p *ShowProcessList) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *ShowProcessList) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Process))
+}
+
 // Schema implements the Node interface.
 func (p *ShowProcessList) Schema() sql.Schema { return processListSchema }
 

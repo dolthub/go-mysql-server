@@ -266,6 +266,15 @@ func (u *Update) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &np, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: If column values are retrieved then the SELECT privilege is required
+	// For example: "UPDATE table SET x = y + 1 WHERE z > 0"
+	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(u.Database(), getTableName(u.Child), "", sql.PrivilegeType_Update))
+}
+
 func (u *Update) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update")

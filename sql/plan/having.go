@@ -47,6 +47,11 @@ func (h *Having) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewHaving(h.Cond, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (h *Having) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return h.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (h *Having) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {

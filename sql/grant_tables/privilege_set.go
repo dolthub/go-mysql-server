@@ -17,12 +17,14 @@ package grant_tables
 import (
 	"sort"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // PrivilegeSet is a set containing privileges. Due to the nested sets potentially returning empty sets, this also acts
 // as the singular location to modify all nested sets.
 type PrivilegeSet struct {
-	globalStatic  map[PrivilegeType]struct{}
+	globalStatic  map[sql.PrivilegeType]struct{}
 	globalDynamic map[string]struct{}
 	databases     map[string]PrivilegeSetDatabase
 }
@@ -30,7 +32,7 @@ type PrivilegeSet struct {
 // NewPrivilegeSet returns a new PrivilegeSet.
 func NewPrivilegeSet() PrivilegeSet {
 	return PrivilegeSet{
-		make(map[PrivilegeType]struct{}),
+		make(map[sql.PrivilegeType]struct{}),
 		make(map[string]struct{}),
 		make(map[string]PrivilegeSetDatabase),
 	}
@@ -39,38 +41,38 @@ func NewPrivilegeSet() PrivilegeSet {
 // newPrivilegeSetWithAllPrivileges returns a new PrivilegeSet with every global static privilege added.
 func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
 	return PrivilegeSet{
-		map[PrivilegeType]struct{}{
-			PrivilegeType_Select:            {},
-			PrivilegeType_Insert:            {},
-			PrivilegeType_Update:            {},
-			PrivilegeType_Delete:            {},
-			PrivilegeType_Create:            {},
-			PrivilegeType_Drop:              {},
-			PrivilegeType_Reload:            {},
-			PrivilegeType_Shutdown:          {},
-			PrivilegeType_Process:           {},
-			PrivilegeType_File:              {},
-			PrivilegeType_Grant:             {},
-			PrivilegeType_References:        {},
-			PrivilegeType_Index:             {},
-			PrivilegeType_Alter:             {},
-			PrivilegeType_ShowDB:            {},
-			PrivilegeType_Super:             {},
-			PrivilegeType_CreateTempTable:   {},
-			PrivilegeType_LockTables:        {},
-			PrivilegeType_Execute:           {},
-			PrivilegeType_ReplicationSlave:  {},
-			PrivilegeType_ReplicationClient: {},
-			PrivilegeType_CreateView:        {},
-			PrivilegeType_ShowView:          {},
-			PrivilegeType_CreateRoutine:     {},
-			PrivilegeType_AlterRoutine:      {},
-			PrivilegeType_CreateUser:        {},
-			PrivilegeType_Event:             {},
-			PrivilegeType_Trigger:           {},
-			PrivilegeType_CreateTablespace:  {},
-			PrivilegeType_CreateRole:        {},
-			PrivilegeType_DropRole:          {},
+		map[sql.PrivilegeType]struct{}{
+			sql.PrivilegeType_Select:            {},
+			sql.PrivilegeType_Insert:            {},
+			sql.PrivilegeType_Update:            {},
+			sql.PrivilegeType_Delete:            {},
+			sql.PrivilegeType_Create:            {},
+			sql.PrivilegeType_Drop:              {},
+			sql.PrivilegeType_Reload:            {},
+			sql.PrivilegeType_Shutdown:          {},
+			sql.PrivilegeType_Process:           {},
+			sql.PrivilegeType_File:              {},
+			sql.PrivilegeType_Grant:             {},
+			sql.PrivilegeType_References:        {},
+			sql.PrivilegeType_Index:             {},
+			sql.PrivilegeType_Alter:             {},
+			sql.PrivilegeType_ShowDB:            {},
+			sql.PrivilegeType_Super:             {},
+			sql.PrivilegeType_CreateTempTable:   {},
+			sql.PrivilegeType_LockTables:        {},
+			sql.PrivilegeType_Execute:           {},
+			sql.PrivilegeType_ReplicationSlave:  {},
+			sql.PrivilegeType_ReplicationClient: {},
+			sql.PrivilegeType_CreateView:        {},
+			sql.PrivilegeType_ShowView:          {},
+			sql.PrivilegeType_CreateRoutine:     {},
+			sql.PrivilegeType_AlterRoutine:      {},
+			sql.PrivilegeType_CreateUser:        {},
+			sql.PrivilegeType_Event:             {},
+			sql.PrivilegeType_Trigger:           {},
+			sql.PrivilegeType_CreateTablespace:  {},
+			sql.PrivilegeType_CreateRole:        {},
+			sql.PrivilegeType_DropRole:          {},
 		},
 		make(map[string]struct{}),
 		make(map[string]PrivilegeSetDatabase),
@@ -78,7 +80,7 @@ func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
 }
 
 // AddGlobalStatic adds the given global static privilege(s).
-func (ps PrivilegeSet) AddGlobalStatic(privileges ...PrivilegeType) {
+func (ps PrivilegeSet) AddGlobalStatic(privileges ...sql.PrivilegeType) {
 	for _, priv := range privileges {
 		ps.globalStatic[priv] = struct{}{}
 	}
@@ -92,7 +94,7 @@ func (ps PrivilegeSet) AddGlobalDynamic(privileges ...string) {
 }
 
 // AddDatabase adds the given database privilege(s).
-func (ps PrivilegeSet) AddDatabase(dbName string, privileges ...PrivilegeType) {
+func (ps PrivilegeSet) AddDatabase(dbName string, privileges ...sql.PrivilegeType) {
 	dbSet := ps.getUseableDb(dbName)
 	for _, priv := range privileges {
 		dbSet.privs[priv] = struct{}{}
@@ -100,7 +102,7 @@ func (ps PrivilegeSet) AddDatabase(dbName string, privileges ...PrivilegeType) {
 }
 
 // AddTable adds the given table privilege(s).
-func (ps PrivilegeSet) AddTable(dbName string, tblName string, privileges ...PrivilegeType) {
+func (ps PrivilegeSet) AddTable(dbName string, tblName string, privileges ...sql.PrivilegeType) {
 	tblSet := ps.getUseableDb(dbName).getUseableTbl(tblName)
 	for _, priv := range privileges {
 		tblSet.privs[priv] = struct{}{}
@@ -108,7 +110,7 @@ func (ps PrivilegeSet) AddTable(dbName string, tblName string, privileges ...Pri
 }
 
 // AddColumn adds the given column privilege(s).
-func (ps PrivilegeSet) AddColumn(dbName string, tblName string, colName string, privileges ...PrivilegeType) {
+func (ps PrivilegeSet) AddColumn(dbName string, tblName string, colName string, privileges ...sql.PrivilegeType) {
 	colSet := ps.getUseableDb(dbName).getUseableTbl(tblName).getUseableCol(colName)
 	for _, priv := range privileges {
 		colSet.privs[priv] = struct{}{}
@@ -116,7 +118,7 @@ func (ps PrivilegeSet) AddColumn(dbName string, tblName string, colName string, 
 }
 
 // RemoveGlobalStatic removes the given global static privilege(s).
-func (ps PrivilegeSet) RemoveGlobalStatic(privileges ...PrivilegeType) {
+func (ps PrivilegeSet) RemoveGlobalStatic(privileges ...sql.PrivilegeType) {
 	for _, priv := range privileges {
 		delete(ps.globalStatic, priv)
 	}
@@ -130,7 +132,7 @@ func (ps PrivilegeSet) RemoveGlobalDynamic(privileges ...string) {
 }
 
 // RemoveDatabase removes the given database privilege(s).
-func (ps PrivilegeSet) RemoveDatabase(dbName string, privileges ...PrivilegeType) {
+func (ps PrivilegeSet) RemoveDatabase(dbName string, privileges ...sql.PrivilegeType) {
 	// We don't use the getUseableDb function since we don't want to create a new map if it doesn't already exist
 	dbSet := ps.Database(dbName)
 	if len(dbSet.privs) > 0 {
@@ -141,7 +143,7 @@ func (ps PrivilegeSet) RemoveDatabase(dbName string, privileges ...PrivilegeType
 }
 
 // RemoveTable removes the given table privilege(s).
-func (ps PrivilegeSet) RemoveTable(dbName string, tblName string, privileges ...PrivilegeType) {
+func (ps PrivilegeSet) RemoveTable(dbName string, tblName string, privileges ...sql.PrivilegeType) {
 	// We don't use the getUseable functions since we don't want to create new maps if they don't already exist
 	tblSet := ps.Database(dbName).Table(tblName)
 	if len(tblSet.privs) > 0 {
@@ -152,7 +154,7 @@ func (ps PrivilegeSet) RemoveTable(dbName string, tblName string, privileges ...
 }
 
 // RemoveColumn removes the given column privilege(s).
-func (ps PrivilegeSet) RemoveColumn(dbName string, tblName string, colName string, privileges ...PrivilegeType) {
+func (ps PrivilegeSet) RemoveColumn(dbName string, tblName string, colName string, privileges ...sql.PrivilegeType) {
 	// We don't use the getUseable functions since we don't want to create new maps if they don't already exist
 	colSet := ps.Database(dbName).Table(tblName).Column(colName)
 	if len(colSet.privs) > 0 {
@@ -163,7 +165,7 @@ func (ps PrivilegeSet) RemoveColumn(dbName string, tblName string, colName strin
 }
 
 // Has returns whether the given global static privilege(s) exists.
-func (ps PrivilegeSet) Has(privileges ...PrivilegeType) bool {
+func (ps PrivilegeSet) Has(privileges ...sql.PrivilegeType) bool {
 	for _, priv := range privileges {
 		if _, ok := ps.globalStatic[priv]; !ok {
 			return false
@@ -234,7 +236,7 @@ func (ps PrivilegeSet) UnionWith(other PrivilegeSet) {
 
 // ClearGlobal removes all global privileges.
 func (ps *PrivilegeSet) ClearGlobal() {
-	ps.globalStatic = make(map[PrivilegeType]struct{})
+	ps.globalStatic = make(map[sql.PrivilegeType]struct{})
 	ps.globalDynamic = make(map[string]struct{})
 }
 
@@ -255,7 +257,7 @@ func (ps PrivilegeSet) ClearColumn(dbName string, tblName string, colName string
 
 // ClearAll removes all privileges.
 func (ps *PrivilegeSet) ClearAll() {
-	ps.globalStatic = make(map[PrivilegeType]struct{})
+	ps.globalStatic = make(map[sql.PrivilegeType]struct{})
 	ps.globalDynamic = make(map[string]struct{})
 	ps.databases = make(map[string]PrivilegeSetDatabase)
 }
@@ -294,8 +296,8 @@ func (ps PrivilegeSet) Copy() PrivilegeSet {
 
 // ToSlice returns all of the global static privileges contained as a slice. Some operations do not care about sort
 // order, therefore this is presented as an alternative to skip the unnecessary sort operation.
-func (ps PrivilegeSet) ToSlice() []PrivilegeType {
-	privs := make([]PrivilegeType, len(ps.globalStatic))
+func (ps PrivilegeSet) ToSlice() []sql.PrivilegeType {
+	privs := make([]sql.PrivilegeType, len(ps.globalStatic))
 	i := 0
 	for priv := range ps.globalStatic {
 		privs[i] = priv
@@ -305,7 +307,7 @@ func (ps PrivilegeSet) ToSlice() []PrivilegeType {
 }
 
 // ToSortedSlice returns all of the global static privileges contained as a slice, sorted by their internal ID.
-func (ps PrivilegeSet) ToSortedSlice() []PrivilegeType {
+func (ps PrivilegeSet) ToSortedSlice() []sql.PrivilegeType {
 	privs := ps.ToSlice()
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]
@@ -320,7 +322,7 @@ func (ps PrivilegeSet) getUseableDb(dbName string) PrivilegeSetDatabase {
 	if !ok {
 		dbSet = PrivilegeSetDatabase{
 			name:   dbName,
-			privs:  make(map[PrivilegeType]struct{}),
+			privs:  make(map[sql.PrivilegeType]struct{}),
 			tables: make(map[string]PrivilegeSetTable),
 		}
 		ps.databases[lowerDbName] = dbSet
@@ -331,7 +333,7 @@ func (ps PrivilegeSet) getUseableDb(dbName string) PrivilegeSetDatabase {
 // PrivilegeSetDatabase is a set containing database-level privileges.
 type PrivilegeSetDatabase struct {
 	name   string
-	privs  map[PrivilegeType]struct{}
+	privs  map[sql.PrivilegeType]struct{}
 	tables map[string]PrivilegeSetTable
 }
 
@@ -341,7 +343,7 @@ func (ps PrivilegeSetDatabase) Name() string {
 }
 
 // Has returns whether the given database privilege(s) exists.
-func (ps PrivilegeSetDatabase) Has(privileges ...PrivilegeType) bool {
+func (ps PrivilegeSetDatabase) Has(privileges ...sql.PrivilegeType) bool {
 	for _, priv := range privileges {
 		if _, ok := ps.privs[priv]; !ok {
 			return false
@@ -414,8 +416,8 @@ func (ps PrivilegeSetDatabase) Equals(otherPs PrivilegeSetDatabase) bool {
 
 // ToSlice returns all of the database privileges contained as a slice. Some operations do not care about sort order,
 // therefore this is presented as an alternative to skip the unnecessary sort operation.
-func (ps PrivilegeSetDatabase) ToSlice() []PrivilegeType {
-	privs := make([]PrivilegeType, len(ps.privs))
+func (ps PrivilegeSetDatabase) ToSlice() []sql.PrivilegeType {
+	privs := make([]sql.PrivilegeType, len(ps.privs))
 	i := 0
 	for priv := range ps.privs {
 		privs[i] = priv
@@ -425,7 +427,7 @@ func (ps PrivilegeSetDatabase) ToSlice() []PrivilegeType {
 }
 
 // ToSortedSlice returns all of the database privileges contained as a slice, sorted by their internal ID.
-func (ps PrivilegeSetDatabase) ToSortedSlice() []PrivilegeType {
+func (ps PrivilegeSetDatabase) ToSortedSlice() []sql.PrivilegeType {
 	privs := ps.ToSlice()
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]
@@ -440,7 +442,7 @@ func (ps PrivilegeSetDatabase) getUseableTbl(tblName string) PrivilegeSetTable {
 	if !ok {
 		tblSet = PrivilegeSetTable{
 			name:    tblName,
-			privs:   make(map[PrivilegeType]struct{}),
+			privs:   make(map[sql.PrivilegeType]struct{}),
 			columns: make(map[string]PrivilegeSetColumn),
 		}
 		ps.tables[lowerTblName] = tblSet
@@ -468,7 +470,7 @@ func (ps PrivilegeSetDatabase) clear() {
 // PrivilegeSetTable is a set containing table-level privileges.
 type PrivilegeSetTable struct {
 	name    string
-	privs   map[PrivilegeType]struct{}
+	privs   map[sql.PrivilegeType]struct{}
 	columns map[string]PrivilegeSetColumn
 }
 
@@ -478,7 +480,7 @@ func (ps PrivilegeSetTable) Name() string {
 }
 
 // Has returns whether the given table privilege(s) exists.
-func (ps PrivilegeSetTable) Has(privileges ...PrivilegeType) bool {
+func (ps PrivilegeSetTable) Has(privileges ...sql.PrivilegeType) bool {
 	for _, priv := range privileges {
 		if _, ok := ps.privs[priv]; !ok {
 			return false
@@ -551,8 +553,8 @@ func (ps PrivilegeSetTable) Equals(otherPs PrivilegeSetTable) bool {
 
 // ToSlice returns all of the table privileges contained as a slice. Some operations do not care about sort order,
 // therefore this is presented as an alternative to skip the unnecessary sort operation.
-func (ps PrivilegeSetTable) ToSlice() []PrivilegeType {
-	privs := make([]PrivilegeType, len(ps.privs))
+func (ps PrivilegeSetTable) ToSlice() []sql.PrivilegeType {
+	privs := make([]sql.PrivilegeType, len(ps.privs))
 	i := 0
 	for priv := range ps.privs {
 		privs[i] = priv
@@ -562,7 +564,7 @@ func (ps PrivilegeSetTable) ToSlice() []PrivilegeType {
 }
 
 // ToSortedSlice returns all of the table privileges contained as a slice, sorted by their internal ID.
-func (ps PrivilegeSetTable) ToSortedSlice() []PrivilegeType {
+func (ps PrivilegeSetTable) ToSortedSlice() []sql.PrivilegeType {
 	privs := ps.ToSlice()
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]
@@ -577,7 +579,7 @@ func (ps PrivilegeSetTable) getUseableCol(colName string) PrivilegeSetColumn {
 	if !ok {
 		colSet = PrivilegeSetColumn{
 			name:  colName,
-			privs: make(map[PrivilegeType]struct{}),
+			privs: make(map[sql.PrivilegeType]struct{}),
 		}
 		ps.columns[lowerColName] = colSet
 	}
@@ -604,7 +606,7 @@ func (ps PrivilegeSetTable) clear() {
 // PrivilegeSetColumn is a set containing column privileges.
 type PrivilegeSetColumn struct {
 	name  string
-	privs map[PrivilegeType]struct{}
+	privs map[sql.PrivilegeType]struct{}
 }
 
 // Name returns the name of the column that this privilege set belongs to.
@@ -613,7 +615,7 @@ func (ps PrivilegeSetColumn) Name() string {
 }
 
 // Has returns whether the given column privilege(s) exists.
-func (ps PrivilegeSetColumn) Has(privileges ...PrivilegeType) bool {
+func (ps PrivilegeSetColumn) Has(privileges ...sql.PrivilegeType) bool {
 	for _, priv := range privileges {
 		if _, ok := ps.privs[priv]; !ok {
 			return false
@@ -642,8 +644,8 @@ func (ps PrivilegeSetColumn) Equals(otherPs PrivilegeSetColumn) bool {
 
 // ToSlice returns all of the column privileges contained as a slice. Some operations do not care about sort order,
 // therefore this is presented as an alternative to skip the unnecessary sort operation.
-func (ps PrivilegeSetColumn) ToSlice() []PrivilegeType {
-	privs := make([]PrivilegeType, len(ps.privs))
+func (ps PrivilegeSetColumn) ToSlice() []sql.PrivilegeType {
+	privs := make([]sql.PrivilegeType, len(ps.privs))
 	i := 0
 	for priv := range ps.privs {
 		privs[i] = priv
@@ -653,7 +655,7 @@ func (ps PrivilegeSetColumn) ToSlice() []PrivilegeType {
 }
 
 // ToSortedSlice returns all of the column privileges contained as a slice, sorted by their internal ID.
-func (ps PrivilegeSetColumn) ToSortedSlice() []PrivilegeType {
+func (ps PrivilegeSetColumn) ToSortedSlice() []sql.PrivilegeType {
 	privs := ps.ToSlice()
 	sort.Slice(privs, func(i, j int) bool {
 		return privs[i] < privs[j]

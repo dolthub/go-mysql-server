@@ -154,6 +154,12 @@ func (p *Truncate) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nt, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *Truncate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(p.db, getTableName(p.Child), "", sql.PrivilegeType_Drop))
+}
+
 // String implements the Node interface.
 func (p Truncate) String() string {
 	pr := sql.NewTreePrinter()

@@ -74,6 +74,13 @@ func (p *ShowDatabases) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *ShowDatabases) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: Having the "SHOW DATABASES" privilege should allow one to see all databases
+	// Currently, only shows databases that the user has access to
+	return true
+}
+
 func (p ShowDatabases) String() string {
 	return "ShowDatabases"
 }

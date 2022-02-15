@@ -87,6 +87,11 @@ func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, e
 	})
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (t *ProcedureResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return t.ResolvedTable.CheckPrivileges(ctx, opChecker)
+}
+
 // Underlying implements the sql.TableWrapper interface.
 func (t *ProcedureResolvedTable) Underlying() sql.Table {
 	return t.ResolvedTable.Table

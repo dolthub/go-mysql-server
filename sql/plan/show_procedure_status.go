@@ -110,6 +110,12 @@ func (s *ShowProcedureStatus) WithChildren(children ...sql.Node) (sql.Node, erro
 	return NillaryWithChildren(s, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowProcedureStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: procedure visibility should be limited by privileges
+	return true
+}
+
 // Database implements the sql.Databaser interface.
 func (s *ShowProcedureStatus) Database() sql.Database {
 	return s.db

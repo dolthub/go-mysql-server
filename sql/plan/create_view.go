@@ -129,6 +129,13 @@ func (cv *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newCreate, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (cv *CreateView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(cv.database.Name(), "", "", sql.PrivilegeType_CreateView)) &&
+		cv.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // Database implements the Databaser interface, and it returns the database in
 // which CreateView will create the view.
 func (cv *CreateView) Database() sql.Database {

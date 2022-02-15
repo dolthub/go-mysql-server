@@ -130,6 +130,11 @@ func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nl, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (l *Limit) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return l.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (l Limit) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Limit(%s)", l.Limit)

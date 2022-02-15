@@ -88,6 +88,12 @@ func (d *DropProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(d.db.Name(), "", "", sql.PrivilegeType_AlterRoutine))
+}
+
 // Database implements the sql.Databaser interface.
 func (d *DropProcedure) Database() sql.Database {
 	return d.db

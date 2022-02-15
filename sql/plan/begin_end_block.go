@@ -61,3 +61,8 @@ func (b *BeginEndBlock) DebugString() string {
 func (b *BeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewBeginEndBlock(NewBlock(children)), nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (b *BeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return b.Block.CheckPrivileges(ctx, opChecker)
+}

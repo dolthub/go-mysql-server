@@ -55,6 +55,11 @@ func (r *Releaser) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &Releaser{children[0], r.Release}, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r *Releaser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return r.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (r *Releaser) String() string {
 	return r.Child.String()
 }

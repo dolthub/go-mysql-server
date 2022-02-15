@@ -39,6 +39,11 @@ func (n *DecoratedNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewDecoratedNode(n.decoration, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *DecoratedNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // NewDecoratedNode creates a new instance of DecoratedNode wrapping the node given, with the Deocration string given.
 func NewDecoratedNode(decoration string, node sql.Node) *DecoratedNode {
 	return &DecoratedNode{

@@ -144,7 +144,7 @@ func (g *GrantTables) UserActivePrivilegeSet(ctx *sql.Context) PrivilegeSet {
 // UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 // privileged operation. This takes into account the active roles, which are set in the context, therefore the user is
 // also pulled from the context.
-func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...Operation) bool {
+func (g *GrantTables) UserHasPrivileges(ctx *sql.Context, operations ...sql.PrivilegedOperation) bool {
 	privSet := g.UserActivePrivilegeSet(ctx)
 	for _, operation := range operations {
 		for _, operationPriv := range operation.Privileges {

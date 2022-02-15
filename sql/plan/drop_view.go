@@ -76,6 +76,12 @@ func (dv *SingleDropView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return dv, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (dv *SingleDropView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(dv.database.Name(), "", "", sql.PrivilegeType_Drop))
+}
+
 // Database implements the sql.Databaser interface. It returns the node's database.
 func (dv *SingleDropView) Database() sql.Database {
 	return dv.database
@@ -177,4 +183,14 @@ func (dvs *DropView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	newDrop := dvs
 	newDrop.children = children
 	return newDrop, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (dvs *DropView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	for _, child := range dvs.children {
+		if !child.CheckPrivileges(ctx, opChecker) {
+			return false
+		}
+	}
+	return true
 }

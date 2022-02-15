@@ -103,6 +103,12 @@ func (c *CreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nc, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(c.Db.Name(), "", "", sql.PrivilegeType_CreateRoutine))
+}
+
 // String implements the sql.Node interface.
 func (c *CreateProcedure) String() string {
 	definer := ""
@@ -182,7 +188,7 @@ func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if !run {
 		return nil, io.EOF
 	}
-
+	//TODO: if "automatic_sp_privileges" is true then the creator automatically gets EXECUTE and ALTER ROUTINE on this procedure
 	pdb, ok := c.db.(sql.StoredProcedureDatabase)
 	if !ok {
 		return nil, sql.ErrStoredProceduresNotSupported.New(c.db.Name())

@@ -83,6 +83,11 @@ func (n *CachedResults) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *CachedResults) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return n.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (n *CachedResults) getCachedResults() []sql.Row {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()

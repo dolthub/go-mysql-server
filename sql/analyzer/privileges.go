@@ -18,14 +18,12 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // checkPrivileges verifies the given statement (node n) by checking that the calling user has the necessary privileges
 // to execute it.
 func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	//TODO: add the remaining statements that interact with the grant tables
 	grantTables := a.Catalog.GrantTables
 	switch n.(type) {
 	case *plan.CreateUser, *plan.DropUser, *plan.RenameUser, *plan.CreateRole, *plan.DropRole,
@@ -44,47 +42,8 @@ func checkPrivileges(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	if isDualTable(getTable(n)) {
 		return n, nil
 	}
-
-	switch n := n.(type) {
-	case *plan.InsertInto:
-		if n.IsReplace {
-			//TODO: get columns
-			if !grantTables.UserHasPrivileges(ctx,
-				grant_tables.NewOperation(n.Database().Name(), getTableName(n.Destination), "", grant_tables.PrivilegeType_Insert, grant_tables.PrivilegeType_Delete),
-			) {
-				return nil, sql.ErrPrivilegeCheckFailed.New("REPLACE", user.UserHostToString("'"), getTableName(n.Destination))
-			}
-		} else if !grantTables.UserHasPrivileges(ctx,
-			grant_tables.NewOperation(n.Database().Name(), getTableName(n.Destination), "", grant_tables.PrivilegeType_Insert),
-		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("INSERT", user.UserHostToString("'"), getTableName(n.Destination))
-		}
-	case *plan.Update:
-		//TODO: get columns
-		if !grantTables.UserHasPrivileges(ctx,
-			grant_tables.NewOperation(n.Database(), getTableName(n.Child), "", grant_tables.PrivilegeType_Update),
-		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("UPDATE", user.UserHostToString("'"), getTableName(n.Child))
-		}
-	case *plan.DeleteFrom:
-		//TODO: get columns
-		if !grantTables.UserHasPrivileges(ctx,
-			grant_tables.NewOperation(n.Database(), getTableName(n.Child), "", grant_tables.PrivilegeType_Delete),
-		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("DELETE", user.UserHostToString("'"), getTableName(n.Child))
-		}
-	case *plan.Project:
-		//TODO: a better way to do this would be to inspect the children of some nodes, such as filter nodes, and
-		//recursively inspect their children until we get to a more well-defined node.
-		//TODO: get database, table, and columns
-		if !grantTables.UserHasPrivileges(ctx,
-			grant_tables.NewOperation("", getTableName(n.Child), "", grant_tables.PrivilegeType_Select),
-		) {
-			return nil, sql.ErrPrivilegeCheckFailed.New("SELECT", user.UserHostToString("'"), getTableName(n.Child))
-		}
-	default:
-		//TODO: eventually every node possible will be listed here, therefore the default behavior would error as that
-		//would mean a new node is being parsed that doesn't have a specific case here. For now though, just return.
+	if !n.CheckPrivileges(ctx, a.Catalog.GrantTables) {
+		return nil, sql.ErrPrivilegeCheckFailed.New(user.UserHostToString("'"))
 	}
 	return n, nil
 }

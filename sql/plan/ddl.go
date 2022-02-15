@@ -403,6 +403,17 @@ func (c CreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	if c.temporary == IsTempTable {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_CreateTempTable))
+	} else {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(c.db.Name(), "", "", sql.PrivilegeType_Create))
+	}
+}
+
 func (c *CreateTable) String() string {
 	ifNotExists := ""
 	if c.ifNotExists {
@@ -655,6 +666,12 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 // WithChildren implements the Node interface.
 func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(d.db.Name(), "", "", sql.PrivilegeType_Drop))
 }
 
 func (d *DropTable) String() string {

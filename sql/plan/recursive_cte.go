@@ -124,6 +124,11 @@ func (r *RecursiveCte) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r *RecursiveCte) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return r.Init.CheckPrivileges(ctx, opChecker) && r.Rec.CheckPrivileges(ctx, opChecker)
+}
+
 // Resolved implements sql.Node
 func (r *RecursiveCte) Resolved() bool {
 	return r.Init.Resolved() && r.Rec.Resolved()
@@ -318,6 +323,11 @@ func (r *RecursiveTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, er
 
 func (r *RecursiveTable) WithChildren(node ...sql.Node) (sql.Node, error) {
 	return r, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (r *RecursiveTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
 }
 
 var _ sql.Node = (*RecursiveTable)(nil)

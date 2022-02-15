@@ -154,127 +154,127 @@ func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 		switch i {
 		case userTblColIndex_Select_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Select)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Select)
 			}
 		case userTblColIndex_Insert_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Insert)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Insert)
 			}
 		case userTblColIndex_Update_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Update)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Update)
 			}
 		case userTblColIndex_Delete_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Delete)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Delete)
 			}
 		case userTblColIndex_Create_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Create)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Create)
 			}
 		case userTblColIndex_Drop_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Drop)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Drop)
 			}
 		case userTblColIndex_Reload_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Reload)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Reload)
 			}
 		case userTblColIndex_Shutdown_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Shutdown)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Shutdown)
 			}
 		case userTblColIndex_Process_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Process)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Process)
 			}
 		case userTblColIndex_File_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_File)
+				privSet.AddGlobalStatic(sql.PrivilegeType_File)
 			}
 		case userTblColIndex_Grant_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Grant)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Grant)
 			}
 		case userTblColIndex_References_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_References)
+				privSet.AddGlobalStatic(sql.PrivilegeType_References)
 			}
 		case userTblColIndex_Index_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Index)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Index)
 			}
 		case userTblColIndex_Alter_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Alter)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Alter)
 			}
 		case userTblColIndex_Show_db_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_ShowDB)
+				privSet.AddGlobalStatic(sql.PrivilegeType_ShowDB)
 			}
 		case userTblColIndex_Super_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Super)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Super)
 			}
 		case userTblColIndex_Create_tmp_table_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_CreateTempTable)
+				privSet.AddGlobalStatic(sql.PrivilegeType_CreateTempTable)
 			}
 		case userTblColIndex_Lock_tables_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_LockTables)
+				privSet.AddGlobalStatic(sql.PrivilegeType_LockTables)
 			}
 		case userTblColIndex_Execute_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Execute)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Execute)
 			}
 		case userTblColIndex_Repl_slave_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_ReplicationSlave)
+				privSet.AddGlobalStatic(sql.PrivilegeType_ReplicationSlave)
 			}
 		case userTblColIndex_Repl_client_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_ReplicationClient)
+				privSet.AddGlobalStatic(sql.PrivilegeType_ReplicationClient)
 			}
 		case userTblColIndex_Create_view_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_CreateView)
+				privSet.AddGlobalStatic(sql.PrivilegeType_CreateView)
 			}
 		case userTblColIndex_Show_view_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_ShowView)
+				privSet.AddGlobalStatic(sql.PrivilegeType_ShowView)
 			}
 		case userTblColIndex_Create_routine_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_CreateRoutine)
+				privSet.AddGlobalStatic(sql.PrivilegeType_CreateRoutine)
 			}
 		case userTblColIndex_Alter_routine_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_AlterRoutine)
+				privSet.AddGlobalStatic(sql.PrivilegeType_AlterRoutine)
 			}
 		case userTblColIndex_Create_user_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_CreateUser)
+				privSet.AddGlobalStatic(sql.PrivilegeType_CreateUser)
 			}
 		case userTblColIndex_Event_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Event)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Event)
 			}
 		case userTblColIndex_Trigger_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_Trigger)
+				privSet.AddGlobalStatic(sql.PrivilegeType_Trigger)
 			}
 		case userTblColIndex_Create_tablespace_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_CreateTablespace)
+				privSet.AddGlobalStatic(sql.PrivilegeType_CreateTablespace)
 			}
 		case userTblColIndex_Create_role_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_CreateRole)
+				privSet.AddGlobalStatic(sql.PrivilegeType_CreateRole)
 			}
 		case userTblColIndex_Drop_role_priv:
 			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(PrivilegeType_DropRole)
+				privSet.AddGlobalStatic(sql.PrivilegeType_DropRole)
 			}
 		}
 	}
@@ -286,145 +286,68 @@ func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 func (u *User) privSetToRow(ctx *sql.Context, row sql.Row) {
 	for _, priv := range u.PrivilegeSet.ToSlice() {
 		switch priv {
-		case PrivilegeType_Select:
+		case sql.PrivilegeType_Select:
 			row[userTblColIndex_Select_priv] = "Y"
-		case PrivilegeType_Insert:
+		case sql.PrivilegeType_Insert:
 			row[userTblColIndex_Insert_priv] = "Y"
-		case PrivilegeType_Update:
+		case sql.PrivilegeType_Update:
 			row[userTblColIndex_Update_priv] = "Y"
-		case PrivilegeType_Delete:
+		case sql.PrivilegeType_Delete:
 			row[userTblColIndex_Delete_priv] = "Y"
-		case PrivilegeType_Create:
+		case sql.PrivilegeType_Create:
 			row[userTblColIndex_Create_priv] = "Y"
-		case PrivilegeType_Drop:
+		case sql.PrivilegeType_Drop:
 			row[userTblColIndex_Drop_priv] = "Y"
-		case PrivilegeType_Reload:
+		case sql.PrivilegeType_Reload:
 			row[userTblColIndex_Reload_priv] = "Y"
-		case PrivilegeType_Shutdown:
+		case sql.PrivilegeType_Shutdown:
 			row[userTblColIndex_Shutdown_priv] = "Y"
-		case PrivilegeType_Process:
+		case sql.PrivilegeType_Process:
 			row[userTblColIndex_Process_priv] = "Y"
-		case PrivilegeType_File:
+		case sql.PrivilegeType_File:
 			row[userTblColIndex_File_priv] = "Y"
-		case PrivilegeType_Grant:
+		case sql.PrivilegeType_Grant:
 			row[userTblColIndex_Grant_priv] = "Y"
-		case PrivilegeType_References:
+		case sql.PrivilegeType_References:
 			row[userTblColIndex_References_priv] = "Y"
-		case PrivilegeType_Index:
+		case sql.PrivilegeType_Index:
 			row[userTblColIndex_Index_priv] = "Y"
-		case PrivilegeType_Alter:
+		case sql.PrivilegeType_Alter:
 			row[userTblColIndex_Alter_priv] = "Y"
-		case PrivilegeType_ShowDB:
+		case sql.PrivilegeType_ShowDB:
 			row[userTblColIndex_Show_db_priv] = "Y"
-		case PrivilegeType_Super:
+		case sql.PrivilegeType_Super:
 			row[userTblColIndex_Super_priv] = "Y"
-		case PrivilegeType_CreateTempTable:
+		case sql.PrivilegeType_CreateTempTable:
 			row[userTblColIndex_Create_tmp_table_priv] = "Y"
-		case PrivilegeType_LockTables:
+		case sql.PrivilegeType_LockTables:
 			row[userTblColIndex_Lock_tables_priv] = "Y"
-		case PrivilegeType_Execute:
+		case sql.PrivilegeType_Execute:
 			row[userTblColIndex_Execute_priv] = "Y"
-		case PrivilegeType_ReplicationSlave:
+		case sql.PrivilegeType_ReplicationSlave:
 			row[userTblColIndex_Repl_slave_priv] = "Y"
-		case PrivilegeType_ReplicationClient:
+		case sql.PrivilegeType_ReplicationClient:
 			row[userTblColIndex_Repl_client_priv] = "Y"
-		case PrivilegeType_CreateView:
+		case sql.PrivilegeType_CreateView:
 			row[userTblColIndex_Create_view_priv] = "Y"
-		case PrivilegeType_ShowView:
+		case sql.PrivilegeType_ShowView:
 			row[userTblColIndex_Show_view_priv] = "Y"
-		case PrivilegeType_CreateRoutine:
+		case sql.PrivilegeType_CreateRoutine:
 			row[userTblColIndex_Create_routine_priv] = "Y"
-		case PrivilegeType_AlterRoutine:
+		case sql.PrivilegeType_AlterRoutine:
 			row[userTblColIndex_Alter_routine_priv] = "Y"
-		case PrivilegeType_CreateUser:
+		case sql.PrivilegeType_CreateUser:
 			row[userTblColIndex_Create_user_priv] = "Y"
-		case PrivilegeType_Event:
+		case sql.PrivilegeType_Event:
 			row[userTblColIndex_Event_priv] = "Y"
-		case PrivilegeType_Trigger:
+		case sql.PrivilegeType_Trigger:
 			row[userTblColIndex_Trigger_priv] = "Y"
-		case PrivilegeType_CreateTablespace:
+		case sql.PrivilegeType_CreateTablespace:
 			row[userTblColIndex_Create_tablespace_priv] = "Y"
-		case PrivilegeType_CreateRole:
+		case sql.PrivilegeType_CreateRole:
 			row[userTblColIndex_Create_role_priv] = "Y"
-		case PrivilegeType_DropRole:
+		case sql.PrivilegeType_DropRole:
 			row[userTblColIndex_Drop_role_priv] = "Y"
 		}
 	}
-}
-
-// PrivilegeType represents a privilege.
-type PrivilegeType int
-
-const (
-	PrivilegeType_Select PrivilegeType = iota
-	PrivilegeType_Insert
-	PrivilegeType_Update
-	PrivilegeType_Delete
-	PrivilegeType_Create
-	PrivilegeType_Drop
-	PrivilegeType_Reload
-	PrivilegeType_Shutdown
-	PrivilegeType_Process
-	PrivilegeType_File
-	PrivilegeType_Grant
-	PrivilegeType_References
-	PrivilegeType_Index
-	PrivilegeType_Alter
-	PrivilegeType_ShowDB
-	PrivilegeType_Super
-	PrivilegeType_CreateTempTable
-	PrivilegeType_LockTables
-	PrivilegeType_Execute
-	PrivilegeType_ReplicationSlave
-	PrivilegeType_ReplicationClient
-	PrivilegeType_CreateView
-	PrivilegeType_ShowView
-	PrivilegeType_CreateRoutine
-	PrivilegeType_AlterRoutine
-	PrivilegeType_CreateUser
-	PrivilegeType_Event
-	PrivilegeType_Trigger
-	PrivilegeType_CreateTablespace
-	PrivilegeType_CreateRole
-	PrivilegeType_DropRole
-)
-
-// privilegeTypeStrings are in the same order as the enumerations above, so that it's a simple index access.
-var privilegeTypeStrings = []string{
-	"SELECT",
-	"INSERT",
-	"UPDATE",
-	"DELETE",
-	"CREATE",
-	"DROP",
-	"RELOAD",
-	"SHUTDOWN",
-	"PROCESS",
-	"FILE",
-	"GRANT",
-	"REFERENCES",
-	"INDEX",
-	"ALTER",
-	"SHOW DATABASES",
-	"SUPER",
-	"CREATE TEMPORARY TABLES",
-	"LOCK TABLES",
-	"EXECUTE",
-	"REPLICATION SLAVE",
-	"REPLICATION CLIENT",
-	"CREATE VIEW",
-	"SHOW VIEW",
-	"CREATE ROUTINE",
-	"ALTER ROUTINE",
-	"CREATE USER",
-	"EVENT",
-	"TRIGGER",
-	"CREATE TABLESPACE",
-	"CREATE ROLE",
-	"DROP ROLE",
-}
-
-// String returns the PrivilegeType as a string, for display in places such as "SHOW GRANTS".
-func (pt PrivilegeType) String() string {
-	return privilegeTypeStrings[pt]
 }

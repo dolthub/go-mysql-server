@@ -69,6 +69,11 @@ func (d *DeclareCondition) WithChildren(children ...sql.Node) (sql.Node, error) 
 	return NillaryWithChildren(d, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (d *DeclareCondition) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
 // RowIter implements the sql.Node interface.
 func (d *DeclareCondition) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(), nil

@@ -83,6 +83,11 @@ func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (sq *SubqueryAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return sq.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (sq SubqueryAlias) WithName(name string) *SubqueryAlias {
 	sq.name = name
 	return &sq

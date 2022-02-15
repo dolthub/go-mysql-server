@@ -122,6 +122,11 @@ func (j *InnerJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nj, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (j *InnerJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
+}
+
 func (j *InnerJoin) WithScopeLen(i int) JoinNode {
 	nj := *j
 	nj.ScopeLen = i
@@ -216,6 +221,11 @@ func (j *LeftJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nj, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (j *LeftJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (j *LeftJoin) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
@@ -308,6 +318,11 @@ func (j *RightJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nj := *j
 	nj.BinaryNode = BinaryNode{children[0], children[1]}
 	return &nj, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (j *RightJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
 }
 
 // WithExpressions implements the Expressioner interface.

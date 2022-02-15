@@ -48,6 +48,12 @@ func (n *ShowIndexes) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *ShowIndexes) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: figure out what privileges are required
+	return true
+}
+
 // String implements the fmt.Stringer interface.
 func (n *ShowIndexes) String() string {
 	return fmt.Sprintf("ShowIndexes(%s)", n.Child)

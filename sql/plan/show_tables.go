@@ -164,6 +164,12 @@ func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *ShowTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// Some tables won't be visible during the resolution step if the user doesn't have the correct privileges
+	return true
+}
+
 func (p ShowTables) String() string {
 	return "ShowTables"
 }
