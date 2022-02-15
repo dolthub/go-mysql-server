@@ -794,6 +794,9 @@ type spanIter struct {
 	done  bool
 }
 
+var _ RowIter = (*spanIter)(nil)
+var _ RowIter2 = (*spanIter)(nil)
+
 func (i *spanIter) updateTimings(start time.Time) {
 	elapsed := time.Since(start)
 	if i.max < elapsed {
@@ -824,6 +827,25 @@ func (i *spanIter) Next(ctx *Context) (Row, error) {
 	i.count++
 	i.updateTimings(start)
 	return row, nil
+}
+
+func (i *spanIter) Next2(ctx *Context, frame *RowFrame) error {
+	start := time.Now()
+
+	err := i.iter.(RowIter2).Next2(ctx, frame)
+	if err == io.EOF {
+		i.finish()
+		return err
+	}
+
+	if err != nil {
+		i.finishWithError(err)
+		return err
+	}
+
+	i.count++
+	i.updateTimings(start)
+	return nil
 }
 
 func (i *spanIter) finish() {

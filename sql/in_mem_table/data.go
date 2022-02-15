@@ -63,6 +63,10 @@ type Entry interface {
 	Equals(ctx *sql.Context, otherEntry Entry) bool
 	// Copy returns a duplicate of this Entry.
 	Copy(ctx *sql.Context) Entry
+	// FromJson converts the given string to the calling Entry type. Returns a new Entry.
+	FromJson(ctx *sql.Context, jsonStr string) (Entry, error)
+	// ToJson converts the calling Entry to a JSON string.
+	ToJson(ctx *sql.Context) (string, error)
 }
 
 // TODO: Whenever we update to Go 1.18 for generics, make this a generic type with a constraint for types inheriting the Entry interface.
@@ -159,7 +163,7 @@ func (data *Data) Put(ctx *sql.Context, entry Entry) error {
 	if reflect.TypeOf(entry) != data.entryType {
 		return fmt.Errorf("expected Entry of type `%T` but got `%T`", data.entryType, reflect.TypeOf(entry))
 	}
-	isDuplicateEntry := true
+	isDuplicateEntry := false
 	for _, referenceKey := range append(data.otherReferenceKeys, data.primaryReferenceKey) {
 		key, err := referenceKey.KeyFromEntry(ctx, entry)
 		if err != nil {
@@ -183,7 +187,8 @@ func (data *Data) Put(ctx *sql.Context, entry Entry) error {
 			}
 			if !found {
 				indexedData[key] = append(indexedData[key], entry)
-				isDuplicateEntry = false
+			} else {
+				isDuplicateEntry = true
 			}
 		}
 	}

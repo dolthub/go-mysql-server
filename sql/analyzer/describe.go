@@ -31,5 +31,5 @@ func resolveDescribeQuery(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		return nil, err
 	}
 
-	return d.WithQuery(StripQueryProcess(q)), nil
+	return d.WithQuery(StripPassthroughNodes(q)), nil
 }

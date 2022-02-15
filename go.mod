@@ -3,7 +3,7 @@ module github.com/dolthub/go-mysql-server
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20220205072827-9c6acb39686a
+	github.com/dolthub/vitess v0.0.0-20220207220721-35d6793fac38
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
@@ -14,6 +14,7 @@ require (
 	github.com/mitchellh/hashstructure v1.1.0
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852
 	github.com/opentracing/opentracing-go v1.2.0
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/shopspring/decimal v1.2.0
 	github.com/sirupsen/logrus v1.8.1
@@ -30,7 +31,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

@@ -104,6 +104,16 @@ func (n *ShowGrants) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *ShowGrants) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	if n.CurrentUser {
+		return true
+	} else {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Select))
+	}
+}
+
 // RowIter implements the interface sql.Node.
 func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
@@ -128,7 +138,7 @@ func (n *ShowGrants) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	withGrantOption := ""
 	for i, priv := range user.PrivilegeSet.ToSortedSlice() {
 		privStr := priv.String()
-		if privStr == grant_tables.PrivilegeType_Grant.String() {
+		if privStr == sql.PrivilegeType_Grant.String() {
 			withGrantOption = " WITH GRANT OPTION"
 		} else {
 			if i > 0 {

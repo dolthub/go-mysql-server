@@ -77,6 +77,11 @@ func (o *Offset) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewOffset(o.Offset, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (o *Offset) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return o.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (o Offset) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Offset(%s)", o.Offset)

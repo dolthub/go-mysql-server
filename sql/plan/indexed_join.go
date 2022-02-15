@@ -94,6 +94,11 @@ func (ij *IndexedJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewIndexedJoin(children[0], children[1], ij.joinType, ij.Cond, ij.scopeLen), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (ij *IndexedJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return ij.left.CheckPrivileges(ctx, opChecker) && ij.right.CheckPrivileges(ctx, opChecker)
+}
+
 func indexedJoinRowIter(
 	ctx *sql.Context,
 	parentRow sql.Row,

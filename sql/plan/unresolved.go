@@ -74,6 +74,12 @@ func (t *UnresolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (t *UnresolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(t.Database, t.name, "", sql.PrivilegeType_Select))
+}
+
 // WithAsOf returns a copy of this unresolved table with its AsOf field set to the given value. Analagous to
 // WithChildren. This type is the only Node that can take an AS OF expression, so this isn't an interface.
 func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (*UnresolvedTable, error) {

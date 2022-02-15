@@ -44,7 +44,7 @@ func NewMySQLShim(user string, password string, host string, port int) (*MySQLSh
 }
 
 // Database implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) Database(name string) (sql.Database, error) {
+func (m *MySQLShim) Database(ctx *sql.Context, name string) (sql.Database, error) {
 	if dbName, ok := m.databases[strings.ToLower(name)]; ok {
 		return Database{m, dbName}, nil
 	}
@@ -52,13 +52,13 @@ func (m *MySQLShim) Database(name string) (sql.Database, error) {
 }
 
 // HasDatabase implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) HasDatabase(name string) bool {
+func (m *MySQLShim) HasDatabase(ctx *sql.Context, name string) bool {
 	_, ok := m.databases[strings.ToLower(name)]
 	return ok
 }
 
 // AllDatabases implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) AllDatabases() []sql.Database {
+func (m *MySQLShim) AllDatabases(*sql.Context) []sql.Database {
 	var dbStrings []string
 	for _, dbName := range m.databases {
 		dbStrings = append(dbStrings, dbName)
@@ -129,7 +129,7 @@ func (m *MySQLShim) QueryRows(db string, query string) ([]sql.Row, error) {
 	}
 	iter := newMySQLIter(rows)
 	defer iter.Close(ctx)
-	allRows, err := sql.RowIterToRows(ctx, iter)
+	allRows, err := sql.RowIterToRows(ctx, nil, iter)
 	if err != nil {
 		return nil, err
 	}

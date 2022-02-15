@@ -33,6 +33,11 @@ type Value struct {
 	Val []byte
 }
 
+// IsNull returns whether this value represents NULL
+func (v Value) IsNull() bool {
+	return v.Val == nil || v.Typ == querypb.Type_NULL_TYPE
+}
+
 type RowFrame struct {
 
 	// Values are the values this row.
@@ -62,8 +67,30 @@ func makeRowFrame() interface{} {
 	return &RowFrame{}
 }
 
+// Row2 returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
+// further modification to this frame may result in the returned value changing as well.
 func (f *RowFrame) Row2() Row2 {
 	return f.Values
+}
+
+// Row2Copy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
+// rowframe object.
+func (f *RowFrame) Row2Copy() Row2 {
+	r := make(Row2, len(f.Values))
+	for i := range f.Values {
+		v := f.Values[i]
+		v.Val = make([]byte, len(v.Val))
+		copy(v.Val, f.Values[i].Val)
+		r[i] = v
+	}
+	return r
+}
+
+// Clear clears this row frame for reuse. The underlying byte arrays are not zeroed out or discarded, but will be
+// overwritten by future calls to Append.
+func (f *RowFrame) Clear() {
+	f.Values = f.Values[:0]
+	f.off = 0
 }
 
 func (f *RowFrame) Append(vals ...Value) {

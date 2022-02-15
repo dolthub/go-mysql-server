@@ -70,7 +70,7 @@ type Expression interface {
 type Expression2 interface {
 	Expression
 	// Eval2 evaluates the given row frame and returns a result.
-	Eval2(ctx *Context, f *RowFrame) (Value, error)
+	Eval2(ctx *Context, row Row2) (Value, error)
 }
 
 // UnsupportedFunctionStub is a marker interface for function stubs that are unsupported
@@ -104,10 +104,10 @@ type Aggregation interface {
 	WindowAdaptableExpression
 	// NewBuffer creates a new aggregation buffer and returns it as a Row.
 	NewBuffer() (AggregationBuffer, error)
-	// WithWindow returns a version of this aggregation with the window given
-	WithWindow(window *Window) (Aggregation, error)
+	// WithWindow returns a version of this aggregation with the WindowDefinition given
+	WithWindow(window *WindowDefinition) (Aggregation, error)
 	// Window returns this expression's window
-	Window() *Window
+	Window() *WindowDefinition
 }
 
 // WindowBuffer is a type alias for a window materialization
@@ -123,8 +123,8 @@ type WindowInterval struct {
 type WindowFunction interface {
 	Disposable
 
-	// WithWindow passes fields from the parent Window, deferring partial construction of a WindowFunction
-	WithWindow(w *Window) (WindowFunction, error)
+	// WithWindow passes fields from the parent WindowDefinition, deferring partial construction of a WindowFunction
+	WithWindow(w *WindowDefinition) (WindowFunction, error)
 	// StartPartition discards any previous state and initializes the aggregation for a new partition
 	StartPartition(*Context, WindowInterval, WindowBuffer) error
 	// DefaultFramer returns a new instance of the default WindowFramer for a particular aggregation
@@ -174,7 +174,7 @@ type WindowFrame interface {
 	fmt.Stringer
 
 	// NewFramer constructs an executable WindowFramer
-	NewFramer(*Window) (WindowFramer, error)
+	NewFramer(*WindowDefinition) (WindowFramer, error)
 	// UnboundedFollowing returns whether a frame end is unbounded
 	UnboundedFollowing() bool
 	// UnboundedPreceding returns whether a frame start is unbounded
@@ -209,9 +209,9 @@ type AggregationBuffer interface {
 type WindowAggregation interface {
 	WindowAdaptableExpression
 	// Window returns this expression's window
-	Window() *Window
+	Window() *WindowDefinition
 	// WithWindow returns a version of this window aggregation with the window given
-	WithWindow(window *Window) (WindowAggregation, error)
+	WithWindow(window *WindowDefinition) (WindowAggregation, error)
 }
 
 // Node is a node in the execution plan tree.
@@ -230,6 +230,10 @@ type Node interface {
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
 	WithChildren(...Node) (Node, error)
+	// CheckPrivileges passes the operations representative of this Node to the PrivilegedOperationChecker to determine
+	// whether a user (contained in the context, along with their active roles) has the necessary privileges to execute
+	// this node (and its children).
+	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
 }
 
 type Node2 interface {
@@ -238,6 +242,12 @@ type Node2 interface {
 	// RowIter2 produces a row iterator from this node. The current row frame being
 	// evaluated is provided, as well the context of the query.
 	RowIter2(ctx *Context, f *RowFrame) (RowIter2, error)
+}
+
+// RowIterTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
+type RowIterTypeSelector interface {
+	RowIter
+	IsNode2() bool
 }
 
 // CommentedNode allows comments to be set and retrieved on it
@@ -310,7 +320,7 @@ type Table interface {
 type Table2 interface {
 	Table
 
-	PartitionRows2(*Context, Partition) (RowIter2, error)
+	PartitionRows2(ctx *Context, part Partition) (RowIter2, error)
 }
 
 type TemporaryTable interface {
@@ -602,13 +612,13 @@ type RowUpdater interface {
 // DatabaseProvider is a collection of Database.
 type DatabaseProvider interface {
 	// Database gets a Database from the provider.
-	Database(name string) (Database, error)
+	Database(ctx *Context, name string) (Database, error)
 
 	// HasDatabase checks if the Database exists in the provider.
-	HasDatabase(name string) bool
+	HasDatabase(ctx *Context, name string) bool
 
 	// AllDatabases returns a slice of all Databases in the provider.
-	AllDatabases() []Database
+	AllDatabases(ctx *Context) []Database
 }
 
 type MutableDatabaseProvider interface {
@@ -624,7 +634,7 @@ type MutableDatabaseProvider interface {
 // FunctionProvider is an extension of DatabaseProvider that allows custom functions to be provided
 type FunctionProvider interface {
 	// Function returns the function with the name provided, case-insensitive
-	Function(name string) (Function, error)
+	Function(ctx *Context, name string) (Function, error)
 }
 
 // Database represents the database.

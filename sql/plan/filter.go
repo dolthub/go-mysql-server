@@ -59,6 +59,11 @@ func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewFilter(f.Expression, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (f *Filter) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return f.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Expressioner interface.
 func (f *Filter) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {

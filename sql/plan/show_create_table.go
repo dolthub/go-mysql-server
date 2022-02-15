@@ -74,6 +74,12 @@ func (sc ShowCreateTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &sc, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (sc *ShowCreateTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
+	return true
+}
+
 func (sc ShowCreateTable) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	sc.targetSchema = schema
 	return &sc, nil

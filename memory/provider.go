@@ -30,7 +30,7 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 }
 
 // Database returns the Database with the given name if it exists.
-func (d memoryDBProvider) Database(name string) (sql.Database, error) {
+func (d memoryDBProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -49,7 +49,7 @@ func (d memoryDBProvider) Database(name string) (sql.Database, error) {
 }
 
 // HasDatabase returns the Database with the given name if it exists.
-func (d memoryDBProvider) HasDatabase(name string) bool {
+func (d memoryDBProvider) HasDatabase(ctx *sql.Context, name string) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -58,7 +58,7 @@ func (d memoryDBProvider) HasDatabase(name string) bool {
 }
 
 // AllDatabases returns the Database with the given name if it exists.
-func (d memoryDBProvider) AllDatabases() []sql.Database {
+func (d memoryDBProvider) AllDatabases(*sql.Context) []sql.Database {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 

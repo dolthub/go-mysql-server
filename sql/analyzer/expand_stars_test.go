@@ -153,13 +153,13 @@ func TestExpandStars(t *testing.T) {
 					expression.NewStar(),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow([]sql.Expression{
+						sql.NewWindowDefinition([]sql.Expression{
 							expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 						}, sql.SortFields{
 							{
 								Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 							},
-						}, nil),
+						}, nil, "", ""),
 					)),
 				},
 				plan.NewResolvedTable(table, nil, nil),
@@ -170,13 +170,13 @@ func TestExpandStars(t *testing.T) {
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 					expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 					mustExpr(window.NewRowNumber().(*window.RowNumber).WithWindow(
-						sql.NewWindow([]sql.Expression{
+						sql.NewWindowDefinition([]sql.Expression{
 							expression.NewGetFieldWithTable(1, sql.Int32, "mytable", "b", false),
 						}, sql.SortFields{
 							{
 								Column: expression.NewGetFieldWithTable(0, sql.Int32, "mytable", "a", false),
 							},
-						}, nil),
+						}, nil, "", ""),
 					)),
 				},
 				plan.NewResolvedTable(table, nil, nil),

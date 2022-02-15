@@ -29,7 +29,7 @@ var ErrEvalUnsupportedOnAggregation = errors.NewKind("Unimplemented %s.Eval(). T
 // uses to codegen single expression aggregate functions.
 type unaryAggBase struct {
 	expression.UnaryExpression
-	window       *sql.Window
+	window       *sql.WindowDefinition
 	functionName string
 	description  string
 	typ          sql.Type
@@ -46,13 +46,13 @@ func (a *unaryAggBase) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 // WithWindow returns a new unaryAggBase to be embedded in wrapping type
-func (a *unaryAggBase) WithWindow(window *sql.Window) (sql.Aggregation, error) {
+func (a *unaryAggBase) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
 	na := *a
 	na.window = window
 	return &na, nil
 }
 
-func (a *unaryAggBase) Window() *sql.Window {
+func (a *unaryAggBase) Window() *sql.WindowDefinition {
 	return a.window
 }
 
@@ -114,6 +114,6 @@ func (a unaryAggBase) Description() string {
 	return a.description
 }
 
-func windowResolved(w *sql.Window) bool {
+func windowResolved(w *sql.WindowDefinition) bool {
 	return expression.ExpressionsResolved(append(w.OrderBy.ToExpressions(), w.PartitionBy...)...)
 }

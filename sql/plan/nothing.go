@@ -37,3 +37,8 @@ func (n nothing) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	return Nothing, nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (nothing) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}

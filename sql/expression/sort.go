@@ -23,19 +23,81 @@ import (
 type Sorter struct {
 	SortFields []sql.SortField
 	Rows       []sql.Row
+	Rows2      []sql.Row2
 	LastError  error
 	Ctx        *sql.Context
 }
 
 func (s *Sorter) Len() int {
+	if len(s.Rows2) > 0 {
+		return len(s.Rows2)
+	}
 	return len(s.Rows)
 }
 
 func (s *Sorter) Swap(i, j int) {
-	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
+	if len(s.Rows2) > 0 {
+		s.Rows2[i], s.Rows2[j] = s.Rows2[j], s.Rows2[i]
+	} else {
+		s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
+	}
+}
+
+func (s *Sorter) Less2(i, j int) bool {
+	if s.LastError != nil {
+		return false
+	}
+
+	a := s.Rows2[i]
+	b := s.Rows2[j]
+	for _, sf := range s.SortFields {
+		typ := sf.Column.Type()
+		av, err := sf.Column.(sql.Expression2).Eval2(s.Ctx, a)
+		if err != nil {
+			s.LastError = sql.ErrUnableSort.Wrap(err)
+			return false
+		}
+
+		bv, err := sf.Column.(sql.Expression2).Eval2(s.Ctx, b)
+		if err != nil {
+			s.LastError = sql.ErrUnableSort.Wrap(err)
+			return false
+		}
+
+		if sf.Order == sql.Descending {
+			av, bv = bv, av
+		}
+
+		if av.IsNull() && bv.IsNull() {
+			continue
+		} else if av.IsNull() {
+			return sf.NullOrdering == sql.NullsFirst
+		} else if bv.IsNull() {
+			return sf.NullOrdering != sql.NullsFirst
+		}
+
+		cmp, err := typ.(sql.Type2).Compare2(av, bv)
+		if err != nil {
+			s.LastError = err
+			return false
+		}
+
+		switch cmp {
+		case -1:
+			return true
+		case 1:
+			return false
+		}
+	}
+
+	return false
 }
 
 func (s *Sorter) Less(i, j int) bool {
+	if len(s.Rows2) > 0 {
+		return s.Less2(i, j)
+	}
+
 	if s.LastError != nil {
 		return false
 	}

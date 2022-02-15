@@ -68,7 +68,7 @@ func TestExchange(t *testing.T) {
 			iter, err := exchange.RowIter(ctx, nil)
 			require.NoError(err)
 
-			rows, err := sql.RowIterToRows(ctx, iter)
+			rows, err := sql.RowIterToRows(ctx, nil, iter)
 			require.NoError(err)
 			require.ElementsMatch(expected, rows)
 		})
@@ -157,6 +157,11 @@ func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return p, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *partitionable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Node.CheckPrivileges(ctx, opChecker)
 }
 
 func (partitionable) Children() []sql.Node { return nil }

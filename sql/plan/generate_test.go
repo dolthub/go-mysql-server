@@ -45,7 +45,7 @@ func TestGenerateRowIter(t *testing.T) {
 	).RowIter(ctx, nil)
 	require.NoError(err)
 
-	rows, err := sql.RowIterToRows(ctx, iter)
+	rows, err := sql.RowIterToRows(ctx, nil, iter)
 	require.NoError(err)
 
 	expected := []sql.Row{
@@ -98,4 +98,7 @@ func (n *fakeNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return 
 func (n *fakeNode) String() string                                     { return "fakeNode" }
 func (*fakeNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	panic("placeholder")
+}
+func (*fakeNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
 }

@@ -60,6 +60,11 @@ func (n *ShowPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *ShowPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
 // RowIter implements the interface sql.Node.
 func (n *ShowPrivileges) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return sql.RowsToRowIter(

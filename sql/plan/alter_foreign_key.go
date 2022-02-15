@@ -217,9 +217,21 @@ func (p *DropForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewAlterDropForeignKey(children[0], p.Name), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *DropForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
+}
+
 // WithChildren implements the Node interface.
 func (p *CreateForeignKey) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(p, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *CreateForeignKey) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(p.db.Name(), p.ReferencedTable, "", sql.PrivilegeType_References))
 }
 
 func (p *CreateForeignKey) Schema() sql.Schema { return nil }

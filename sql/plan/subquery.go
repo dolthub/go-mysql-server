@@ -107,6 +107,11 @@ func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (srn *StripRowNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return srn.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // prependNode wraps its child by prepending column values onto any result rows
 type prependNode struct {
 	UnaryNode
@@ -161,6 +166,11 @@ func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 		UnaryNode: UnaryNode{Child: children[0]},
 		row:       p.row,
 	}, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *prependNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Child.CheckPrivileges(ctx, opChecker)
 }
 
 // Eval implements the Expression interface.

@@ -28,7 +28,7 @@ import (
 func TestWindowRowFramers(t *testing.T) {
 	tests := []struct {
 		Name     string
-		Framer   func(sql.WindowFrame, *sql.Window) (sql.WindowFramer, error)
+		Framer   func(sql.WindowFrame, *sql.WindowDefinition) (sql.WindowFramer, error)
 		Expected []sql.WindowInterval
 	}{
 		{
@@ -185,7 +185,7 @@ func TestWindowRowFramers(t *testing.T) {
 func TestWindowRangeFramers(t *testing.T) {
 	tests := []struct {
 		Name     string
-		Framer   func(sql.WindowFrame, *sql.Window) (sql.WindowFramer, error)
+		Framer   func(sql.WindowFrame, *sql.WindowDefinition) (sql.WindowFramer, error)
 		OrderBy  []sql.Expression
 		Expected []sql.WindowInterval
 	}{
@@ -278,7 +278,7 @@ func TestWindowRangeFramers(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			frameDef := dummyFrame{}
-			w := &sql.Window{OrderBy: sql.SortFields{{Column: expr, Order: 1}}}
+			w := &sql.WindowDefinition{OrderBy: sql.SortFields{{Column: expr, Order: 1}}}
 			framer, err := tt.Framer(frameDef, w)
 			require.NoError(t, err)
 
@@ -312,7 +312,7 @@ func (d dummyFrame) String() string {
 	panic("implement me")
 }
 
-func (d dummyFrame) NewFramer(*sql.Window) (sql.WindowFramer, error) {
+func (d dummyFrame) NewFramer(*sql.WindowDefinition) (sql.WindowFramer, error) {
 	panic("implement me")
 }
 

@@ -152,3 +152,9 @@ func (a AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, ErrIndexActionNotImplemented.New(a.Action)
 	}
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (a AlterPK) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(a.Table), getTableName(a.Table), "", sql.PrivilegeType_Alter))
+}

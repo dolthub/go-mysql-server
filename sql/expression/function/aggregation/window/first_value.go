@@ -24,7 +24,7 @@ import (
 )
 
 type FirstValue struct {
-	window *sql.Window
+	window *sql.WindowDefinition
 	expression.UnaryExpression
 	pos int
 }
@@ -43,7 +43,7 @@ func (f *FirstValue) Description() string {
 }
 
 // Window implements sql.WindowExpression
-func (f *FirstValue) Window() *sql.Window {
+func (f *FirstValue) Window() *sql.WindowDefinition {
 	return f.window
 }
 
@@ -119,7 +119,7 @@ func (f *FirstValue) WithChildren(children ...sql.Expression) (sql.Expression, e
 }
 
 // WithWindow implements sql.WindowAggregation
-func (f *FirstValue) WithWindow(window *sql.Window) (sql.WindowAggregation, error) {
+func (f *FirstValue) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
 	nr := *f
 	nr.window = window
 	return &nr, nil
