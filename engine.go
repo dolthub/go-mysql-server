@@ -182,7 +182,16 @@ func (e *Engine) QueryNodeWithBindings(
 		return nil, nil, err
 	}
 
-	iter, err = analyzed.RowIter(ctx, nil)
+	useIter2 := false
+	if enableRowIter2 {
+		useIter2 = allNode2(analyzed)
+	}
+
+	if useIter2 {
+		iter, err = analyzed.(sql.Node2).RowIter2(ctx, nil)
+	} else {
+		iter, err = analyzed.RowIter(ctx, nil)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -199,7 +208,7 @@ func (e *Engine) QueryNodeWithBindings(
 	if enableRowIter2 {
 		iter = rowFormatSelectorIter{
 			RowIter: iter,
-			isNode2: allNode2(analyzed),
+			isNode2: useIter2,
 		}
 	}
 
@@ -272,7 +281,7 @@ const (
 )
 
 var fakeReadCommitted bool
-var enableRowIter2 bool
+var enableRowIter2 bool = true
 
 func init() {
 	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)

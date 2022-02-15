@@ -37,6 +37,9 @@ type Exchange struct {
 	Parallelism int
 }
 
+var _ sql.Node = (*Exchange)(nil)
+var _ sql.Node2 = (*Exchange)(nil)
+
 // NewExchange creates a new Exchange node.
 func NewExchange(
 	parallelism int,
@@ -112,13 +115,8 @@ func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &exchangeRowIter{shutdownHook: shutdownHook, waiter: waiter, rows: rowsCh}, nil
 }
 
-type partitionAndFrame struct {
-	part sql.Partition
-	frame *sql.RowFrame
-}
-
 // RowIter2 implements the sql.Node2 interface.
-func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter, error) {
+func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
 	var t sql.Table
 	Inspect(e.Child, func(n sql.Node) bool {
 		if table, ok := n.(sql.Table); ok {
@@ -136,16 +134,9 @@ func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter, err
 		return nil, err
 	}
 
-	// How this is structured is a little subtle. A top-level
-	// errgroup run |iterPartitions| and listens on the shutdown
-	// hook.  A different, dependent, errgroup runs
-	// |e.Parallelism| instances of |iterPartitionRows|. A
-	// goroutine within the top-level errgroup |Wait|s on the
-	// dependent errgroup and closes |rowsCh| once all its
-	// goroutines are completed.
-
+	// See notes on concurrency in RowIter
 	partitionsCh := make(chan sql.Partition)
-	rowsCh := make(chan sql.Row, e.Parallelism*16)
+	rowsCh := make(chan sql.Row2, e.Parallelism*16)
 
 	eg, egCtx := ctx.NewErrgroup()
 	eg.Go(func() error {
@@ -153,13 +144,11 @@ func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter, err
 		return iterPartitions(egCtx, partitions, partitionsCh)
 	})
 
-	// Spawn |iterPartitionRows| goroutines in the dependent
-	// errgroup.
 	getRowIter := e.getRowIter2Func()
 	seg, segCtx := egCtx.NewErrgroup()
 	for i := 0; i < e.Parallelism; i++ {
 		seg.Go(func() error {
-			return iterPartitionRows(segCtx, getRowIter, partitionsCh, rowsCh)
+			return iterPartitionRows2(segCtx, getRowIter, partitionsCh, rowsCh)
 		})
 	}
 
@@ -178,7 +167,7 @@ func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter, err
 
 	waiter := func() error { return eg.Wait() }
 	shutdownHook := newShutdownHook(eg, egCtx)
-	return &exchangeRowIter{shutdownHook: shutdownHook, waiter: waiter, rows: rowsCh}, nil
+	return &exchangeRowIter{shutdownHook: shutdownHook, waiter: waiter, rows2: rowsCh}, nil
 }
 
 func (e *Exchange) String() string {
@@ -283,6 +272,7 @@ type exchangePartition struct {
 }
 
 var _ sql.Node = (*exchangePartition)(nil)
+var _ sql.Node2 = (*exchangePartition)(nil)
 
 func (p *exchangePartition) String() string {
 	return fmt.Sprintf("Partition(%s)", string(p.Key()))
@@ -294,6 +284,10 @@ func (exchangePartition) Resolved() bool { return true }
 
 func (p *exchangePartition) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return p.table.PartitionRows(ctx, p.Partition)
+}
+
+func (p *exchangePartition) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	return p.table.(sql.Table2).PartitionRows2(ctx, p.Partition)
 }
 
 func (p *exchangePartition) Schema() sql.Schema {
@@ -310,7 +304,7 @@ func (p *exchangePartition) WithChildren(children ...sql.Node) (sql.Node, error)
 }
 
 type rowIterPartitionFunc func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error)
-type rowIter2PartitionFunc func(ctx *sql.Context, partition sql.Partition, frame sql.RowFrame) (sql.RowIter2, error)
+type rowIter2PartitionFunc func(ctx *sql.Context, partition sql.Partition, frame *sql.RowFrame) (sql.RowIter2, error)
 
 func sendAllRows(ctx *sql.Context, iter sql.RowIter, rows chan<- sql.Row) (rowCount int, rerr error) {
 	defer func() {
@@ -330,6 +324,30 @@ func sendAllRows(ctx *sql.Context, iter sql.RowIter, rows chan<- sql.Row) (rowCo
 		rowCount++
 		select {
 		case rows <- r:
+		case <-ctx.Done():
+			return rowCount, ctx.Err()
+		}
+	}
+}
+
+func sendAllRows2(ctx *sql.Context, iter sql.RowIter2, rows chan<- sql.Row2, f *sql.RowFrame) (rowCount int, rerr error) {
+	defer func() {
+		cerr := iter.Close(ctx)
+		if rerr == nil {
+			rerr = cerr
+		}
+	}()
+	for {
+		err := iter.Next2(ctx, f)
+		if err == io.EOF {
+			return rowCount, nil
+		}
+		if err != nil {
+			return rowCount, err
+		}
+		rowCount++
+		select {
+		case rows <- f.Row2():
 		case <-ctx.Done():
 			return rowCount, ctx.Err()
 		}
@@ -375,7 +393,7 @@ func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partit
 func iterPartitionRows2(ctx *sql.Context, getRowIter rowIter2PartitionFunc, partitions <-chan sql.Partition, rows chan<- sql.Row2) (rerr error) {
 	defer func() {
 		if r := recover(); r != nil {
-			rerr = fmt.Errorf("panic in ExchangeIterPartitionRows: %v", r)
+			rerr = fmt.Errorf("panic in ExchangeIterPartitionRows2: %v", r)
 		}
 	}()
 	for {
@@ -384,12 +402,14 @@ func iterPartitionRows2(ctx *sql.Context, getRowIter rowIter2PartitionFunc, part
 			if !ok {
 				return nil
 			}
+			f := sql.NewRowFrame()
+
 			span, ctx := ctx.Span("exchange.IterPartition")
-			iter, err := getRowIter(ctx, p, )
+			iter, err := getRowIter(ctx, p, f)
 			if err != nil {
 				return err
 			}
-			count, err := sendAllRows(ctx, iter, rows)
+			count, err := sendAllRows2(ctx, iter, rows, f)
 			span.LogKV("num_rows", count)
 			span.Finish()
 			if err != nil {
@@ -400,7 +420,6 @@ func iterPartitionRows2(ctx *sql.Context, getRowIter rowIter2PartitionFunc, part
 		}
 	}
 }
-
 
 // iterPartitions will call Next() on |iter| and send every result it
 // finds to |partitions|.  Meant to be run as a goroutine in an
