@@ -288,6 +288,12 @@ func (c *CreateIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nc, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Index))
+}
+
 // GetColumnsAndPrepareExpressions extracts the unique columns required by all
 // those expressions and fixes the indexes of the GetFields in the expressions
 // to match a row with only the returned columns in that same order.

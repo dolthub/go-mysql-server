@@ -83,6 +83,16 @@ func (b *Block) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewBlock(children), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (b *Block) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	for _, statement := range b.statements {
+		if !statement.CheckPrivileges(ctx, opChecker) {
+			return false
+		}
+	}
+	return true
+}
+
 // RowIter implements the sql.Node interface.
 func (b *Block) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var returnRows []sql.Row

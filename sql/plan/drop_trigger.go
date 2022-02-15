@@ -88,6 +88,12 @@ func (d *DropTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(d.db.Name(), d.TriggerName, "", sql.PrivilegeType_Trigger))
+}
+
 // Database implements the sql.Databaser interface.
 func (d *DropTrigger) Database() sql.Database {
 	return d.db

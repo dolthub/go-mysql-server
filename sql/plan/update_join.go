@@ -79,6 +79,11 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewUpdateJoin(u.updaters, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (u *UpdateJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return u.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // updateJoinIter wraps the child UpdateSource iter and returns join row in such a way that updates per table row are
 // done once.
 type updateJoinIter struct {

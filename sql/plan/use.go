@@ -80,6 +80,13 @@ func (u *Use) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return u, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (u *Use) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// The given database will not be visible if the user does not have the appropriate privileges, so we can just
+	// return true here.
+	return true
+}
+
 // String implements the sql.Node interface.
 func (u *Use) String() string {
 	return fmt.Sprintf("USE(%s)", u.db.Name())

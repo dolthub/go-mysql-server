@@ -423,7 +423,7 @@ var (
 	ErrTableAccessDeniedForUser = errors.NewKind("Access denied for user %s to table '%s'")
 
 	// ErrPrivilegeCheckFailed is returned when a user does not have the correct privileges to perform an operation.
-	ErrPrivilegeCheckFailed = errors.NewKind("%s command denied to user %s for table '%s'")
+	ErrPrivilegeCheckFailed = errors.NewKind("command denied to user %s")
 
 	// ErrGrantUserDoesNotExist is returned when a user does not exist when attempting to grant them privileges.
 	ErrGrantUserDoesNotExist = errors.NewKind("You are not allowed to create a user with GRANT")

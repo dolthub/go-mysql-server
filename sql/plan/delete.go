@@ -166,6 +166,15 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewDeleteFrom(children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *DeleteFrom) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: If column values are retrieved then the SELECT privilege is required
+	// For example: "DELETE FROM table WHERE z > 0"
+	// We would need SELECT privileges on the "z" column as it's retrieving values
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(p.Database(), getTableName(p.Child), "", sql.PrivilegeType_Delete))
+}
+
 func (p DeleteFrom) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")

@@ -87,6 +87,11 @@ func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewWindow(w.SelectExprs, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (w *Window) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return w.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // Expressions implements sql.Expressioner
 func (w *Window) Expressions() []sql.Expression {
 	return w.SelectExprs

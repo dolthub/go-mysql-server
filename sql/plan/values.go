@@ -149,6 +149,11 @@ func (p *Values) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *Values) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
 // WithExpressions implements the Expressioner interface.
 func (p *Values) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	var expected int

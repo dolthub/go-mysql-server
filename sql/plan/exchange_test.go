@@ -159,6 +159,11 @@ func (p *partitionable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *partitionable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return p.Node.CheckPrivileges(ctx, opChecker)
+}
+
 func (partitionable) Children() []sql.Node { return nil }
 
 func (p partitionable) Partitions(*sql.Context) (sql.PartitionIter, error) {

@@ -77,6 +77,11 @@ func (c *Concat) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewConcat(children[0], children[1]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *Concat) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return c.left.CheckPrivileges(ctx, opChecker) && c.right.CheckPrivileges(ctx, opChecker)
+}
+
 func (c Concat) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Concat")

@@ -364,6 +364,12 @@ func (l *LoadData) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return l, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (l *LoadData) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_File))
+}
+
 func NewLoadData(local bool, file string, destination sql.Node, cols []string, fields *sqlparser.Fields, lines *sqlparser.Lines, ignoreNum int64) *LoadData {
 	return &LoadData{
 		Local:                   local,

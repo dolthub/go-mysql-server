@@ -80,6 +80,12 @@ func (c CreateDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c CreateDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Create))
+}
+
 func NewCreateDatabase(dbName string, ifNotExists bool) *CreateDB {
 	return &CreateDB{
 		dbName:      dbName,
@@ -149,6 +155,12 @@ func (d DropDB) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 func (d DropDB) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d DropDB) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Drop))
 }
 
 func NewDropDatabase(dbName string, ifExists bool) *DropDB {

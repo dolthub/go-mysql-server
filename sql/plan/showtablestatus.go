@@ -126,6 +126,12 @@ func (s *ShowTableStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowTableStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// Some tables won't be visible in RowIter if the user doesn't have the correct privileges
+	return true
+}
+
 // getAutoIncrementValue takes in a ctx and table and returns the next autoincrement value.
 func getAutoIncrementValue(ctx *sql.Context, table sql.Table) (interface{}, error) {
 	if autoTbl, ok := table.(sql.AutoIncrementTable); ok {

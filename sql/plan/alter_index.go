@@ -186,6 +186,12 @@ func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (p *AlterIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(p.Table), getTableName(p.Table), "", sql.PrivilegeType_Alter))
+}
+
 func (p AlterIndex) String() string {
 	pr := sql.NewTreePrinter()
 	switch p.Action {

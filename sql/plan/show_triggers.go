@@ -112,6 +112,12 @@ func (s *ShowTriggers) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowTriggers) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: figure out what privileges are needed here
+	return true
+}
+
 // Database implements the sql.Databaser interface.
 func (s *ShowTriggers) Database() sql.Database {
 	return s.db

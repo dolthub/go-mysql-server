@@ -116,6 +116,11 @@ func (g *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewGroupBy(g.SelectedExprs, g.GroupByExprs, children[0]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (g *GroupBy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return g.Child.CheckPrivileges(ctx, opChecker)
+}
+
 // WithExpressions implements the Node interface.
 func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	expected := len(g.SelectedExprs) + len(g.GroupByExprs)

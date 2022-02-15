@@ -88,6 +88,12 @@ func (n *CreateUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
 // RowIter implements the interface sql.Node.
 func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)

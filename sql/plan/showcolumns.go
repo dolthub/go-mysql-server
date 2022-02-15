@@ -187,6 +187,12 @@ func (s ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &s, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowColumns) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
+	return true
+}
+
 func (s *ShowColumns) String() string {
 	tp := sql.NewTreePrinter()
 	if s.Full {

@@ -83,6 +83,18 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	var operations []sql.PrivilegedOperation
+	for _, oldName := range r.oldNames {
+		operations = append(operations, sql.NewPrivilegedOperation(r.db.Name(), oldName, "", sql.PrivilegeType_Alter, sql.PrivilegeType_Drop))
+	}
+	for _, newName := range r.newNames {
+		operations = append(operations, sql.NewPrivilegedOperation(r.db.Name(), newName, "", sql.PrivilegeType_Create, sql.PrivilegeType_Insert))
+	}
+	return opChecker.UserHasPrivileges(ctx, operations...)
+}
+
 type AddColumn struct {
 	ddlNode
 	UnaryNode
@@ -315,6 +327,12 @@ func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &a, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (a *AddColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(a.db.Name(), getTableName(a.Child), "", sql.PrivilegeType_Alter))
+}
+
 func (a *AddColumn) Children() []sql.Node {
 	return a.UnaryNode.Children()
 }
@@ -418,6 +436,12 @@ func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	d.UnaryNode.Child = children[0]
 	return &d, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(d.db.Name(), getTableName(d.Child), "", sql.PrivilegeType_Alter))
 }
 
 func (d DropColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
@@ -561,6 +585,12 @@ func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &r, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r *RenameColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(r.db.Name(), getTableName(r.Child), "", sql.PrivilegeType_Alter))
+}
+
 type ModifyColumn struct {
 	ddlNode
 	UnaryNode
@@ -663,6 +693,12 @@ func (m ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	m.UnaryNode.Child = children[0]
 	return &m, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (m *ModifyColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(m.db.Name(), getTableName(m.Child), "", sql.PrivilegeType_Alter))
 }
 
 func (m *ModifyColumn) Expressions() []sql.Expression {

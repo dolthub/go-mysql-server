@@ -192,6 +192,11 @@ func (id InsertDestination) WithChildren(children ...sql.Node) (sql.Node, error)
 	return &id, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (id *InsertDestination) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return id.Child.CheckPrivileges(ctx, opChecker)
+}
+
 type insertIter struct {
 	schema              sql.Schema
 	inserter            sql.RowInserter
@@ -653,6 +658,17 @@ func (ii *InsertInto) WithChildren(children ...sql.Node) (sql.Node, error) {
 	np := *ii
 	np.Destination = children[0]
 	return &np, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (ii *InsertInto) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	if ii.IsReplace {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert, sql.PrivilegeType_Delete))
+	} else {
+		return opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation(ii.db.Name(), getTableName(ii.Destination), "", sql.PrivilegeType_Insert))
+	}
 }
 
 // WithSource sets the source node for this insert, which is analyzed separately

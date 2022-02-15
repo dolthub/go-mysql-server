@@ -82,35 +82,35 @@ func (conv TablesPrivConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, ent
 	if !ok {
 		return nil, errTablesPrivRow
 	}
-	var privs []PrivilegeType
+	var privs []sql.PrivilegeType
 	for _, val := range strings.Split(tablePrivs, ",") {
 		switch val {
 		case "Select":
-			privs = append(privs, PrivilegeType_Select)
+			privs = append(privs, sql.PrivilegeType_Select)
 		case "Insert":
-			privs = append(privs, PrivilegeType_Insert)
+			privs = append(privs, sql.PrivilegeType_Insert)
 		case "Update":
-			privs = append(privs, PrivilegeType_Update)
+			privs = append(privs, sql.PrivilegeType_Update)
 		case "Delete":
-			privs = append(privs, PrivilegeType_Delete)
+			privs = append(privs, sql.PrivilegeType_Delete)
 		case "Create":
-			privs = append(privs, PrivilegeType_Create)
+			privs = append(privs, sql.PrivilegeType_Create)
 		case "Drop":
-			privs = append(privs, PrivilegeType_Drop)
+			privs = append(privs, sql.PrivilegeType_Drop)
 		case "Grant":
-			privs = append(privs, PrivilegeType_Grant)
+			privs = append(privs, sql.PrivilegeType_Grant)
 		case "References":
-			privs = append(privs, PrivilegeType_References)
+			privs = append(privs, sql.PrivilegeType_References)
 		case "Index":
-			privs = append(privs, PrivilegeType_Index)
+			privs = append(privs, sql.PrivilegeType_Index)
 		case "Alter":
-			privs = append(privs, PrivilegeType_Alter)
+			privs = append(privs, sql.PrivilegeType_Alter)
 		case "Create View":
-			privs = append(privs, PrivilegeType_CreateView)
+			privs = append(privs, sql.PrivilegeType_CreateView)
 		case "Show view":
-			privs = append(privs, PrivilegeType_ShowView)
+			privs = append(privs, sql.PrivilegeType_ShowView)
 		case "Trigger":
-			privs = append(privs, PrivilegeType_Trigger)
+			privs = append(privs, sql.PrivilegeType_Trigger)
 		case "":
 		default:
 			return nil, errTablesPrivRow
@@ -172,31 +172,31 @@ func (conv TablesPrivConverter) EntryToRows(ctx *sql.Context, entry in_mem_table
 			var privs []string
 			for _, priv := range tblSet.ToSlice() {
 				switch priv {
-				case PrivilegeType_Select:
+				case sql.PrivilegeType_Select:
 					privs = append(privs, "Select")
-				case PrivilegeType_Insert:
+				case sql.PrivilegeType_Insert:
 					privs = append(privs, "Insert")
-				case PrivilegeType_Update:
+				case sql.PrivilegeType_Update:
 					privs = append(privs, "Update")
-				case PrivilegeType_Delete:
+				case sql.PrivilegeType_Delete:
 					privs = append(privs, "Delete")
-				case PrivilegeType_Create:
+				case sql.PrivilegeType_Create:
 					privs = append(privs, "Create")
-				case PrivilegeType_Drop:
+				case sql.PrivilegeType_Drop:
 					privs = append(privs, "Drop")
-				case PrivilegeType_Grant:
+				case sql.PrivilegeType_Grant:
 					privs = append(privs, "Grant")
-				case PrivilegeType_References:
+				case sql.PrivilegeType_References:
 					privs = append(privs, "References")
-				case PrivilegeType_Index:
+				case sql.PrivilegeType_Index:
 					privs = append(privs, "Index")
-				case PrivilegeType_Alter:
+				case sql.PrivilegeType_Alter:
 					privs = append(privs, "Alter")
-				case PrivilegeType_CreateView:
+				case sql.PrivilegeType_CreateView:
 					privs = append(privs, "Create View")
-				case PrivilegeType_ShowView:
+				case sql.PrivilegeType_ShowView:
 					privs = append(privs, "Show view")
-				case PrivilegeType_Trigger:
+				case sql.PrivilegeType_Trigger:
 					privs = append(privs, "Trigger")
 				}
 			}

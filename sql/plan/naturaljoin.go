@@ -57,3 +57,8 @@ func (j *NaturalJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 	return NewNaturalJoin(children[0], children[1]), nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (j *NaturalJoin) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return j.left.CheckPrivileges(ctx, opChecker) && j.right.CheckPrivileges(ctx, opChecker)
+}

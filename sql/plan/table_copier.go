@@ -11,8 +11,6 @@ import (
 // 1) CREATE TABLE SELECT *
 // 2) INSERT INTO SELECT * where the inserted table is empty. // TODO: Implement this optimization
 type TableCopier struct {
-	sql.Node
-
 	source      sql.Node
 	destination sql.Node
 	db          sql.Database
@@ -147,6 +145,14 @@ func (tc *TableCopier) Children() []sql.Node {
 
 func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 	return tc, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: add a new branch when the INSERT optimization is added
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(tc.db.Name(), "", "", sql.PrivilegeType_Create)) &&
+		tc.source.CheckPrivileges(ctx, opChecker)
 }
 
 func (tc *TableCopier) Resolved() bool {

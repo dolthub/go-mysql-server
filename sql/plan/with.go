@@ -76,6 +76,11 @@ func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewWith(children[0], w.CTEs, w.Recursive), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (w *With) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return w.Child.CheckPrivileges(ctx, opChecker)
+}
+
 type CommonTableExpression struct {
 	Subquery *SubqueryAlias
 	Columns  []string
