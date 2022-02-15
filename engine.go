@@ -332,14 +332,14 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
 		}
+	case *plan.DropTable:
+		if n.CurDatabase.Name() != "" {
+			transactionDatabase = n.CurDatabase.Name()
+		}
 	}
 
 	switch n := parsed.(type) {
 	case *plan.CreateTable:
-		if n.Database() != nil && n.Database().Name() != "" {
-			transactionDatabase = n.Database().Name()
-		}
-	case *plan.DropTable:
 		if n.Database() != nil && n.Database().Name() != "" {
 			transactionDatabase = n.Database().Name()
 		}

@@ -1696,8 +1696,52 @@ func TestDropTable(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		TestQueryWithContext(t, ctx, e, "DROP TABLE IF EXISTS mydb.one_pk", []sql.Row(nil), nil, nil)
+		TestQueryWithContext(t, ctx, e, "DROP TABLE mydb.one_pk", []sql.Row(nil), nil, nil)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "mydb.one_pk")
 		require.NoError(err)
+		require.False(ok)
+
+		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer)")
+		otherdb, err := e.Analyzer.Catalog.Database("otherdb")
+
+		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "one_pk_two_idx")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, mydb.one_pk")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "one_pk_two_idx")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, otherdb.table3")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, otherdb.table3")
+		require.NoError(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.False(ok)
 	})
 }
 

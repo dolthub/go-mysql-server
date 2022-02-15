@@ -63,7 +63,11 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 				return nil, err
 			}
 			lowercasedNames := make(map[string]struct{})
-			for _, tableName := range node.TableNames() {
+			tblNames, err := node.TableNames()
+			if err != nil {
+				return nil, err
+			}
+			for _, tableName := range tblNames {
 				lowercasedNames[strings.ToLower(tableName)] = struct{}{}
 			}
 			var triggersForTable []string

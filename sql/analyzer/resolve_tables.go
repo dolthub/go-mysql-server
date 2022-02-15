@@ -66,13 +66,13 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 		r, err := resolveTable(ctx, t, a, ignore)
 		if r == nil && err == nil {
-			return c.Node, nil
+			return t, nil
 		}
 		return r, err
 	})
 }
 
-func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignore bool) (sql.Node, error) {
+func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignoreNonExistent bool) (sql.Node, error) {
 	name := t.Name()
 	db := t.Database
 	if db == "" {
@@ -99,7 +99,10 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignore
 
 		rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
 		if err != nil {
-			return handleTableLookupFailure(err, name, db, a, t, ignore)
+			if sql.ErrTableNotFound.Is(err) && ignoreNonExistent {
+				return nil, nil
+			}
+			return handleTableLookupFailure(err, name, db, a, t)
 		}
 
 		a.Log("table resolved: %q as of %s", rt.Name(), asOf)
@@ -108,7 +111,10 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignore
 
 	rt, database, err := a.Catalog.Table(ctx, db, name)
 	if err != nil {
-		return handleTableLookupFailure(err, name, db, a, t, ignore)
+		if sql.ErrTableNotFound.Is(err) && ignoreNonExistent {
+			return nil, nil
+		}
+		return handleTableLookupFailure(err, name, db, a, t)
 	}
 
 	a.Log("table resolved: %s", t.Name())
@@ -136,7 +142,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	})
 }
 
-func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t *plan.UnresolvedTable, ignore bool) (sql.Node, error) {
+func handleTableLookupFailure(err error, tableName string, dbName string, a *Analyzer, t *plan.UnresolvedTable) (sql.Node, error) {
 	if sql.ErrDatabaseNotFound.Is(err) {
 		if tableName == dualTableName {
 			a.Log("table resolved: %q", t.Name())
@@ -149,9 +155,6 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 		if tableName == dualTableName {
 			a.Log("table resolved: %s", t.Name())
 			return plan.NewResolvedTable(dualTable, nil, nil), nil
-		}
-		if ignore {
-			return nil, nil
 		}
 	}
 

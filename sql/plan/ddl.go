@@ -580,8 +580,8 @@ func (c *CreateTable) validateDefaultPosition() error {
 
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
-	ddlNode
-	tables       []sql.Node
+	CurDatabase  sql.Database
+	Tables       []sql.Node
 	ifExists     bool
 	triggerNames []string
 }
@@ -590,18 +590,28 @@ var _ sql.Node = (*DropTable)(nil)
 var _ sql.Databaser = (*DropTable)(nil)
 
 // NewDropTable creates a new DropTable node
-func NewDropTable(db sql.Database, tbls []sql.Node, ifExists bool) *DropTable {
-	return &DropTable{
-		ddlNode:  ddlNode{db},
-		tables:   tbls,
-		ifExists: ifExists,
+func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
+	var dbName string
+	if tbl, ok := tbls[0].(*UnresolvedTable); ok {
+		dbName = tbl.Database
 	}
+	db := sql.UnresolvedDatabase(dbName)
+	return &DropTable{
+		CurDatabase: db,
+		Tables:      tbls,
+		ifExists:    ifExists,
+	}
+}
+
+// Database implements the sql.Database interface.
+func (d *DropTable) Database() sql.Database {
+	return d.CurDatabase
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (d *DropTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *d
-	nc.db = db
+	nc.CurDatabase = db
 	return &nc, nil
 }
 
@@ -613,19 +623,19 @@ func (d *DropTable) WithTriggers(triggers []string) sql.Node {
 }
 
 // TableNames returns the names of the tables to drop.
-func (d *DropTable) TableNames() []string {
-	tblNames := make([]string, len(d.tables))
-	for i, t := range d.tables {
+func (d *DropTable) TableNames() ([]string, error) {
+	tblNames := make([]string, len(d.Tables))
+	for i, t := range d.Tables {
 		// either *ResolvedTable OR *UnresolvedTable here
 		if uTable, ok := t.(*UnresolvedTable); ok {
 			tblNames[i] = uTable.Name()
 		} else if rTable, ok := t.(*ResolvedTable); ok {
 			tblNames[i] = rTable.Name()
 		} else {
-			return []string{}
+			return []string{}, sql.ErrInvalidType.New(t)
 		}
 	}
-	return tblNames
+	return tblNames, nil
 }
 
 // IfExists returns ifExists variable.
@@ -635,17 +645,18 @@ func (d *DropTable) IfExists() bool {
 
 // RowIter implements the Node interface.
 func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	droppable, ok := d.db.(sql.TableDropper)
-	if !ok {
-		return nil, ErrDropTableNotSupported.New(d.db.Name())
-	}
-
 	var err error
-	for _, table := range d.tables {
+	for _, table := range d.Tables {
 		tbl, tOk := table.(*ResolvedTable)
 		if !tOk {
 			return nil, ErrUnresolvedTable.New(table.String())
 		}
+		droppable, ok := tbl.Database.(sql.TableDropper)
+		if !ok {
+			return nil, ErrDropTableNotSupported.New(tbl.Database.Name())
+		}
+
+		d.CurDatabase = tbl.Database
 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
@@ -654,11 +665,12 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	if len(d.triggerNames) > 0 {
-		//TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
-		triggerDb, ok := d.db.(sql.TriggerDatabase)
+		triggerDb, ok := d.CurDatabase.(sql.TriggerDatabase)
 		if !ok {
-			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, d.TableNames(), d.triggerNames)
+			tblNames, _ := d.TableNames()
+			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, tblNames, d.triggerNames)
 		}
+		//TODO: if dropping any triggers fail, then we'll be left in a state where triggers exist for a table that was dropped
 		for _, trigger := range d.triggerNames {
 			err = triggerDb.DropTrigger(ctx, trigger)
 			if err != nil {
@@ -672,18 +684,41 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 
 // Children implements the Node interface.
 func (d *DropTable) Children() []sql.Node {
-	return d.tables
+	return d.Tables
+}
+
+// Resolved implements the sql.Expression interface.
+func (d *DropTable) Resolved() bool {
+	for _, table := range d.Tables {
+		if !table.Resolved() {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Schema implements the sql.Expression interface.
+func (d *DropTable) Schema() sql.Schema {
+	return sql.OkResultSchema
 }
 
 // WithChildren implements the Node interface.
 func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
-	d.tables = children
+	// Number of children can be smaller than original as the non-existent tables get filtered out in some cases
+	var newChildren = make([]sql.Node, len(children))
+	for i, child := range children {
+		newChildren[i] = child
+	}
+	d.Tables = newChildren
 	return d, nil
 }
 
+// String implements the sql.Node interface.
 func (d *DropTable) String() string {
 	ifExists := ""
-	names := strings.Join(d.TableNames(), ", ")
+	tblNames, _ := d.TableNames()
+	names := strings.Join(tblNames, ", ")
 	if d.ifExists {
 		ifExists = "if exists "
 	}

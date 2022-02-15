@@ -45,6 +45,8 @@ var (
 	ErrFrameEndUnboundedPreceding = errors.NewKind("frame end cannot be unbounded preceding")
 
 	ErrFrameStartUnboundedFollowing = errors.NewKind("frame start cannot be unbounded following")
+
+	ErrMultipleMixedDatabaseNotSupported = errors.NewKind("multiple mixed database %s tables not supported")
 )
 
 var describeSupportedFormats = []string{"tree"}
@@ -1381,12 +1383,12 @@ func convertDropTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	dbName := c.FromTables[0].Qualifier.String()
 	for i, t := range c.FromTables {
 		if t.Qualifier.String() != dbName {
-			return nil, errors.NewKind("Multiple database tables drop not supported").New()
+			return nil, ErrMultipleMixedDatabaseNotSupported.New("drop")
 		}
 		dropTables[i] = tableNameToUnresolvedTable(t)
 	}
 
-	return plan.NewDropTable(sql.UnresolvedDatabase(dbName), dropTables, c.IfExists), nil
+	return plan.NewDropTable(dropTables, c.IfExists), nil
 }
 
 func convertTruncateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {

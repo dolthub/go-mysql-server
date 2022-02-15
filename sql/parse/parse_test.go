@@ -944,14 +944,14 @@ CREATE TABLE t2
 		&plan.TableSpec{},
 		plan.IfNotExistsAbsent,
 		plan.IsTempTable),
-	`DROP TABLE foo;`: plan.NewDropTable(
-		sql.UnresolvedDatabase(""), []sql.Node{plan.NewUnresolvedTable("foo", "")}, false,
+	`DROP TABLE curdb.foo;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb")}, false,
 	),
-	`DROP TABLE IF EXISTS foo;`: plan.NewDropTable(
-		sql.UnresolvedDatabase(""), []sql.Node{plan.NewUnresolvedTable("foo", "")}, true,
+	`DROP TABLE IF EXISTS curdb.foo;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb")}, true,
 	),
-	`DROP TABLE IF EXISTS foo, bar, baz;`: plan.NewDropTable(
-		sql.UnresolvedDatabase(""), []sql.Node{plan.NewUnresolvedTable("foo", ""), plan.NewUnresolvedTable("bar", ""), plan.NewUnresolvedTable("baz", "")}, true,
+	`DROP TABLE IF EXISTS curdb.foo, curdb.bar, curdb.baz;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb"), plan.NewUnresolvedTable("bar", "curdb"), plan.NewUnresolvedTable("baz", "curdb")}, true,
 	),
 	`RENAME TABLE foo TO bar`: plan.NewRenameTable(
 		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
@@ -3687,6 +3687,7 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
 	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
 	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
+	`DROP TABLE IF EXISTS curdb.foo, otherd.bar`:  		 	 	 ErrMultipleMixedDatabaseNotSupported,
 }
 
 func TestParseOne(t *testing.T) {
