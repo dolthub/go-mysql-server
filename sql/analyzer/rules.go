@@ -25,6 +25,7 @@ var OnceBeforeDefault = []Rule{
 	{"validate_create_table", validateCreateTable},
 	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_variables", resolveVariables},
+	{"resolve_named_windows", replaceNamedWindows},
 	{"resolve_set_variables", resolveSetVariables},
 	{"resolve_views", resolveViews},
 	{"lift_common_table_expressions", liftCommonTableExpressions},
