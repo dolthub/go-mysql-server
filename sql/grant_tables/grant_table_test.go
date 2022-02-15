@@ -135,6 +135,12 @@ func (te *testEntry) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) boo
 	}
 	return true
 }
+func (te *testEntry) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+	return nil, nil
+}
+func (te *testEntry) ToJson(ctx *sql.Context) (string, error) {
+	return "", nil
+}
 
 type testPK struct {
 	val int64

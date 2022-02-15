@@ -103,3 +103,44 @@ var privilegeTypeStrings = []string{
 func (pt PrivilegeType) String() string {
 	return privilegeTypeStrings[pt]
 }
+
+// privilegeTypeStringMap map each string (same ones in privilegeTypeStrings) to their appropriate PrivilegeType.
+var privilegeTypeStringMap = map[string]PrivilegeType{
+	"SELECT":                  PrivilegeType_Select,
+	"INSERT":                  PrivilegeType_Insert,
+	"UPDATE":                  PrivilegeType_Update,
+	"DELETE":                  PrivilegeType_Delete,
+	"CREATE":                  PrivilegeType_Create,
+	"DROP":                    PrivilegeType_Drop,
+	"RELOAD":                  PrivilegeType_Reload,
+	"SHUTDOWN":                PrivilegeType_Shutdown,
+	"PROCESS":                 PrivilegeType_Process,
+	"FILE":                    PrivilegeType_File,
+	"GRANT":                   PrivilegeType_Grant,
+	"REFERENCES":              PrivilegeType_References,
+	"INDEX":                   PrivilegeType_Index,
+	"ALTER":                   PrivilegeType_Alter,
+	"SHOW DATABASES":          PrivilegeType_ShowDB,
+	"SUPER":                   PrivilegeType_Super,
+	"CREATE TEMPORARY TABLES": PrivilegeType_CreateTempTable,
+	"LOCK TABLES":             PrivilegeType_LockTables,
+	"EXECUTE":                 PrivilegeType_Execute,
+	"REPLICATION SLAVE":       PrivilegeType_ReplicationSlave,
+	"REPLICATION CLIENT":      PrivilegeType_ReplicationClient,
+	"CREATE VIEW":             PrivilegeType_CreateView,
+	"SHOW VIEW":               PrivilegeType_ShowView,
+	"CREATE ROUTINE":          PrivilegeType_CreateRoutine,
+	"ALTER ROUTINE":           PrivilegeType_AlterRoutine,
+	"CREATE USER":             PrivilegeType_CreateUser,
+	"EVENT":                   PrivilegeType_Event,
+	"TRIGGER":                 PrivilegeType_Trigger,
+	"CREATE TABLESPACE":       PrivilegeType_CreateTablespace,
+	"CREATE ROLE":             PrivilegeType_CreateRole,
+	"DROP ROLE":               PrivilegeType_DropRole,
+}
+
+// PrivilegeTypeFromString returns the matching PrivilegeType for the given string. If there is no match, returns false.
+func PrivilegeTypeFromString(privilegeType string) (PrivilegeType, bool) {
+	match, ok := privilegeTypeStringMap[privilegeType]
+	return match, ok
+}

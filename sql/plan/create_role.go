@@ -139,8 +139,7 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, err
 		}
 	}
-	err := grantTables.Persist(ctx)
-	if err != nil {
+	if err := grantTables.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

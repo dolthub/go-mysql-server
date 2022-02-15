@@ -218,6 +218,9 @@ func (ps PrivilegeSet) GetDatabases() []PrivilegeSetDatabase {
 			i++
 		}
 	}
+	sort.Slice(dbSets, func(i, j int) bool {
+		return dbSets[i].name < dbSets[j].name
+	})
 	return dbSets
 }
 
@@ -392,6 +395,9 @@ func (ps PrivilegeSetDatabase) GetTables() []PrivilegeSetTable {
 			i++
 		}
 	}
+	sort.Slice(tblSets, func(i, j int) bool {
+		return tblSets[i].name < tblSets[j].name
+	})
 	return tblSets
 }
 
@@ -529,6 +535,9 @@ func (ps PrivilegeSetTable) GetColumns() []PrivilegeSetColumn {
 			i++
 		}
 	}
+	sort.Slice(colSets, func(i, j int) bool {
+		return colSets[i].name < colSets[j].name
+	})
 	return colSets
 }
 

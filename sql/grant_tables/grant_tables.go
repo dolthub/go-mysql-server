@@ -20,12 +20,17 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
+// PersistCallback represents the callback that will be called when the Grant Tables have been updated and need to be
+// persisted.
+type PersistCallback func(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error
 
 // GrantTables are the collection of tables that are used with any user or privilege-related operations.
 // https://dev.mysql.com/doc/refman/8.0/en/grant-tables.html
@@ -43,6 +48,8 @@ type GrantTables struct {
 	//proxies_priv     *grantTable
 	//default_roles    *grantTable
 	//password_history *grantTable
+
+	persistFunc PersistCallback
 }
 
 var _ sql.Database = (*GrantTables)(nil)
@@ -61,6 +68,34 @@ func CreateEmptyGrantTables() *GrantTables {
 	grantTables.tables_priv = newGrantTableShim(tablesPrivTblName, tablesPrivTblSchema, grantTables.user, TablesPrivConverter{})
 
 	return grantTables
+}
+
+// LoadData adds the given data to the Grant Tables. It does not remove any current data, but will overwrite any
+// pre-existing data.
+func (g *GrantTables) LoadData(ctx *sql.Context, users []*User, roleConnections []*RoleEdge) error {
+	g.Enabled = true
+	for _, user := range users {
+		if user == nil {
+			continue
+		}
+		if err := g.user.data.Put(ctx, user); err != nil {
+			return err
+		}
+	}
+	for _, role := range roleConnections {
+		if role == nil {
+			continue
+		}
+		if err := g.role_edges.data.Put(ctx, role); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SetPersistCallback sets the callback to be used when the Grant Tables have been updated and need to be persisted.
+func (g *GrantTables) SetPersistCallback(persistFunc PersistCallback) {
+	g.persistFunc = persistFunc
 }
 
 // AddRootAccount adds the root account to the list of accounts.
@@ -255,8 +290,40 @@ func (g *GrantTables) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysq
 
 // Persist passes along all changes to the integrator.
 func (g *GrantTables) Persist(ctx *sql.Context) error {
-	//TODO: add the UserPersist interface, using this as a stand-in so I won't forget to put it where it needs to go
-	return nil
+	persistFunc := g.persistFunc
+	if persistFunc == nil {
+		return nil
+	}
+	userEntries := g.user.data.ToSlice(ctx)
+	users := make([]*User, len(userEntries))
+	for i, userEntry := range userEntries {
+		users[i] = userEntry.(*User)
+	}
+	sort.Slice(users, func(i, j int) bool {
+		if users[i].Host == users[j].Host {
+			return users[i].User < users[j].User
+		}
+		return users[i].Host < users[j].Host
+	})
+
+	roleEntries := g.role_edges.data.ToSlice(ctx)
+	roles := make([]*RoleEdge, len(roleEntries))
+	for i, roleEntry := range roleEntries {
+		roles[i] = roleEntry.(*RoleEdge)
+	}
+	sort.Slice(roles, func(i, j int) bool {
+		if roles[i].FromHost == roles[j].FromHost {
+			if roles[i].FromUser == roles[j].FromUser {
+				if roles[i].ToHost == roles[j].ToHost {
+					return roles[i].ToUser < roles[j].ToUser
+				}
+				return roles[i].ToHost < roles[j].ToHost
+			}
+			return roles[i].FromUser < roles[j].FromUser
+		}
+		return roles[i].FromHost < roles[j].FromHost
+	})
+	return persistFunc(ctx, users, roles)
 }
 
 // UserTable returns the "user" table.

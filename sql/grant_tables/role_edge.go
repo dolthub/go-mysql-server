@@ -15,6 +15,7 @@
 package grant_tables
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -80,6 +81,24 @@ func (r *RoleEdge) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool 
 func (r *RoleEdge) Copy(ctx *sql.Context) in_mem_table.Entry {
 	rr := *r
 	return &rr
+}
+
+// FromJson implements the interface in_mem_table.Entry.
+func (r RoleEdge) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+	newRoleEdge := &RoleEdge{}
+	if err := json.Unmarshal([]byte(jsonStr), newRoleEdge); err != nil {
+		return nil, err
+	}
+	return newRoleEdge, nil
+}
+
+// ToJson implements the interface in_mem_table.Entry.
+func (r *RoleEdge) ToJson(ctx *sql.Context) (string, error) {
+	jsonData, err := json.Marshal(*r)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
 }
 
 // ToString returns the "TO" user as a formatted string using the quotes given. Using the default root
