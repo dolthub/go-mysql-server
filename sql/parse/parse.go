@@ -2440,10 +2440,7 @@ func havingToHaving(ctx *sql.Context, having *sqlparser.Where, node sql.Node) (s
 	return plan.NewHaving(cond, node), nil
 }
 
-// windowToWindow will apply a WINDOW clause to a plan.Window node,
-// replacing named window references with their window definitions.
-// Performs semantic validation of window compatibility/validity.
-// TODO: separate plan building from replacement and semantic validation
+// windowToWindow wraps a plan.Window node in a plan.NamedWindows node.
 func windowToWindow(ctx *sql.Context, windowDefs sqlparser.Window, window *plan.Window) (sql.Node, error) {
 	newWindowDefs := make(map[string]*sql.WindowDefinition, len(windowDefs))
 	var err error
@@ -2453,126 +2450,7 @@ func windowToWindow(ctx *sql.Context, windowDefs sqlparser.Window, window *plan.
 			return nil, err
 		}
 	}
-
-	// check for circularity
-	var head, tail *sql.WindowDefinition
-	for _, def := range newWindowDefs {
-		if def.Ref == "" {
-			continue
-		}
-		head = def
-		head = newWindowDefs[head.Ref]
-		tail = def
-		for head != nil && tail != nil && head != tail {
-			tail = newWindowDefs[tail.Ref]
-			head = newWindowDefs[head.Ref]
-			if head != nil {
-				head = newWindowDefs[head.Ref]
-			}
-		}
-		if head != nil && head == tail {
-			return nil, sql.ErrCircularWindowInheritance.New()
-		}
-
-	}
-
-	// resolve recursively builds window definitions from nested window refs
-	var resolve func(n *sql.WindowDefinition) (*sql.WindowDefinition, error)
-	resolve = func(n *sql.WindowDefinition) (*sql.WindowDefinition, error) {
-		if n.Ref == "" {
-			return n, nil
-		}
-
-		// resolve ref before merging
-		ref, ok := newWindowDefs[n.Ref]
-		if !ok {
-			return nil, fmt.Errorf("window def not found")
-		}
-		ref, err = resolve(ref)
-		if err != nil {
-			return nil, err
-		}
-		n, err = mergeWindowDefs(n, ref)
-		if err != nil {
-			return nil, err
-		}
-
-		if n.Name != "" {
-			// cache lookup
-			newWindowDefs[n.Name] = n
-		}
-		return n, nil
-	}
-
-	// find and replace over expressions with new window definitions
-	newExprs := make([]sql.Expression, len(window.SelectExprs))
-	for i, expr := range window.SelectExprs {
-		newExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
-			uf, ok := e.(*expression.UnresolvedFunction)
-			if !ok {
-				return e, nil
-			}
-			if uf.Window == nil {
-				return e, nil
-			}
-			newWindow, err := resolve(uf.Window)
-			if err != nil {
-				return nil, err
-			}
-			return uf.WithWindow(newWindow), nil
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return plan.NewWindow(newExprs, window.Child), nil
-}
-
-// mergeWindowDefs combines the attributes of two window definitions or returns
-// an error if the two are incompatible. [def] should have a reference to
-// [ref] through [def.Ref], and the return value drops the reference to indicate
-// the two were properly combined.
-func mergeWindowDefs(def, ref *sql.WindowDefinition) (*sql.WindowDefinition, error) {
-	if ref.Ref != "" {
-		panic("unreachable; cannot merge unresolved window definition")
-	}
-
-	var orderBy sql.SortFields
-	switch {
-	case len(def.OrderBy) > 0 && len(ref.OrderBy) > 0:
-		return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain order by clause")
-	case len(def.OrderBy) > 0:
-		orderBy = def.OrderBy
-	case len(ref.OrderBy) > 0:
-		orderBy = ref.OrderBy
-	default:
-	}
-
-	var partitionBy []sql.Expression
-	switch {
-	case len(def.PartitionBy) > 0 && len(ref.PartitionBy) > 0:
-		return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain partition by clause")
-	case len(def.PartitionBy) > 0:
-		partitionBy = def.PartitionBy
-	case len(ref.PartitionBy) > 0:
-		partitionBy = ref.PartitionBy
-	default:
-		partitionBy = []sql.Expression{}
-	}
-
-	var frame sql.WindowFrame
-	switch {
-	case def.Frame != nil && ref.Frame != nil:
-		return nil, sql.ErrInvalidWindowInheritance.New("", "", "both contain frame clause")
-	case def.Frame != nil:
-		frame = def.Frame
-	case ref.Frame != nil:
-		frame = ref.Frame
-	default:
-	}
-
-	return sql.NewWindowDefinition(partitionBy, orderBy, frame, "", def.Name), nil
+	return plan.NewNamedWindows(newWindowDefs, window), nil
 }
 
 func offsetToOffset(
