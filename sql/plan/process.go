@@ -158,6 +158,8 @@ type ProcessIndexableTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
+var _ sql.Table2 = (*ProcessIndexableTable)(nil)
+
 func (t *ProcessIndexableTable) DebugString() string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("ProcessIndexableTable")
@@ -250,6 +252,8 @@ type ProcessTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
+var _ sql.Table2 = (*ProcessTable)(nil)
+
 // NewProcessTable returns a new ProcessTable.
 func NewProcessTable(t sql.Table, onPartitionDone, onPartitionStart, OnRowNext NamedNotifyFunc) *ProcessTable {
 	return &ProcessTable{t, onPartitionDone, onPartitionStart, OnRowNext}
@@ -267,6 +271,24 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 		return nil, err
 	}
 
+	onDone, onNext := t.notifyFuncsForPartition(p)
+
+	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+}
+
+func (t *ProcessTable) PartitionRows2(ctx *sql.Context, p sql.Partition) (sql.RowIter2, error) {
+	iter, err := t.Table.(sql.Table2).PartitionRows2(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+
+	onDone, onNext := t.notifyFuncsForPartition(p)
+
+	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+}
+
+// notifyFuncsForPartition returns the OnDone and OnNext NotifyFuncs for the partition given
+func (t *ProcessTable) notifyFuncsForPartition(p sql.Partition) (NotifyFunc, NotifyFunc) {
 	partitionName := partitionName(p)
 	if t.OnPartitionStart != nil {
 		t.OnPartitionStart(partitionName)
@@ -285,9 +307,9 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 			t.OnRowNext(partitionName)
 		}
 	}
-
-	return &trackedRowIter{iter: iter, onNext: onNext, onDone: onDone}, nil
+	return onDone, onNext
 }
+
 
 type queryType byte
 

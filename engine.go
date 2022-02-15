@@ -221,7 +221,11 @@ func allNode2(n sql.Node) bool {
 	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
-			if _, ok := n.Table.(sql.Table2); !ok {
+			table := n.Table
+			if tw, ok := table.(sql.TableWrapper); ok {
+				table = tw.Underlying()
+			}
+			if _, ok := table.(sql.Table2); !ok {
 				allNode2 = false
 				return false
 			}
