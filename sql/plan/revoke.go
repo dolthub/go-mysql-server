@@ -252,7 +252,9 @@ func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 			}
 		}
 	}
-
+	if err := grantTables.Persist(ctx); err != nil {
+		return nil, err
+	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }
 
@@ -648,7 +650,9 @@ func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			}
 		}
 	}
-
+	if err := grantTables.Persist(ctx); err != nil {
+		return nil, err
+	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }
 

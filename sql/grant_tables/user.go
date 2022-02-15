@@ -15,6 +15,7 @@
 package grant_tables
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -134,6 +135,24 @@ func (u *User) Copy(ctx *sql.Context) in_mem_table.Entry {
 	uu.PrivilegeSet = NewPrivilegeSet()
 	uu.PrivilegeSet.UnionWith(u.PrivilegeSet)
 	return &uu
+}
+
+// FromJson implements the interface in_mem_table.Entry.
+func (u User) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+	newUser := &User{}
+	if err := json.Unmarshal([]byte(jsonStr), newUser); err != nil {
+		return nil, err
+	}
+	return newUser, nil
+}
+
+// ToJson implements the interface in_mem_table.Entry.
+func (u *User) ToJson(ctx *sql.Context) (string, error) {
+	jsonData, err := json.Marshal(*u)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonData), nil
 }
 
 // UserHostToString returns the user and host as a formatted string using the quotes given. Using the default root
