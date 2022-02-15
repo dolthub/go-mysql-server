@@ -1708,7 +1708,7 @@ func TestDropTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
 		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer)")
 		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer)")
-		otherdb, err := e.Analyzer.Catalog.Database("otherdb")
+		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
 		require.Error(err)
