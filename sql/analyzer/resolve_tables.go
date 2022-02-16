@@ -54,7 +54,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
 		ignore := false
-		switch p:= c.Parent.(type) {
+		switch p := c.Parent.(type) {
 		case *plan.DropTable:
 			ignore = p.IfExists()
 		}
