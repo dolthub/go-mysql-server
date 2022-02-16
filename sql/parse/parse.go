@@ -1211,7 +1211,7 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewAddColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewAddColumn(tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		case sqlparser.DropStr:
 			return plan.NewDropColumn(sql.UnresolvedDatabase(""), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
 		case sqlparser.RenameStr:

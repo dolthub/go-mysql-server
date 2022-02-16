@@ -96,7 +96,6 @@ func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 }
 
 type AddColumn struct {
-	ddlNode
 	UnaryNode
 	column    *sql.Column
 	order     *sql.ColumnOrder
@@ -104,12 +103,10 @@ type AddColumn struct {
 }
 
 var _ sql.Node = (*AddColumn)(nil)
-var _ sql.Databaser = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
-func NewAddColumn(db sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+func NewAddColumn(table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	return &AddColumn{
-		ddlNode:   ddlNode{db},
 		UnaryNode: UnaryNode{Child: table},
 		column:    column,
 		order:     order,
@@ -124,11 +121,21 @@ func (a *AddColumn) Order() *sql.ColumnOrder {
 	return a.order
 }
 
-func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	na := *a
-	na.db = db
-	return &na, nil
+func (a *AddColumn) Database() sql.Database {
+	switch t := a.UnaryNode.Child.(type) {
+	case *UnresolvedTable:
+		return sql.UnresolvedDatabase(t.Database)
+	case *ResolvedTable:
+		return t.Database
+	}
+	return nil
 }
+
+//func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
+//	na := *a
+//	na.db = db
+//	return &na, nil
+//}
 
 // Schema implements the sql.Node interface.
 func (a *AddColumn) Schema() sql.Schema {
@@ -268,7 +275,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 // Resolved implements the Resolvable interface.
 func (a *AddColumn) Resolved() bool {
-	if !(a.ddlNode.Resolved() && a.column.Default.Resolved()) {
+	if !(a.UnaryNode.Resolved() && a.column.Default.Resolved()) {
 		return false
 	}
 
@@ -330,7 +337,7 @@ func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (a *AddColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(a.db.Name(), getTableName(a.Child), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(a.Database().Name(), getTableName(a.Child), "", sql.PrivilegeType_Alter))
 }
 
 func (a *AddColumn) Children() []sql.Node {
