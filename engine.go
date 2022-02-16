@@ -411,23 +411,23 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		transactionDatabase = n.Database().Name()
 	case *plan.AlterPK:
 		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != transactionDatabase {
+		if ok && t.Database != "" && t.Database != transactionDatabase {
 			transactionDatabase = t.Database
 		}
 	case *plan.AddColumn:
-		if n.Database().Name() != transactionDatabase {
+		if n.Database().Name() != "" && n.Database().Name() != transactionDatabase {
 			transactionDatabase = n.Database().Name()
 		}
 	case *plan.DropColumn:
-		if n.Database().Name() != transactionDatabase {
+		if n.Database().Name() != "" && n.Database().Name() != transactionDatabase {
 			transactionDatabase = n.Database().Name()
 		}
 	case *plan.RenameColumn:
-		if n.Database().Name() != transactionDatabase {
+		if n.Database().Name() != "" && n.Database().Name() != transactionDatabase {
 			transactionDatabase = n.Database().Name()
 		}
 	case *plan.ModifyColumn:
-		if n.Database().Name() != transactionDatabase {
+		if n.Database().Name() != "" && n.Database().Name() != transactionDatabase {
 			transactionDatabase = n.Database().Name()
 		}
 	}
