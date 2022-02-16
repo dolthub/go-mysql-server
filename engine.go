@@ -414,10 +414,6 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
 		}
-	case *plan.AddColumn:
-		if n.Database().Name() != transactionDatabase {
-			transactionDatabase = n.Database().Name()
-		}
 	}
 
 	switch n := parsed.(type) {

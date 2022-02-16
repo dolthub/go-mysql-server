@@ -975,14 +975,14 @@ CREATE TABLE t2
 		},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -991,7 +991,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -1000,7 +1000,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -1009,7 +1009,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
@@ -1018,7 +1018,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Float32,
 			Nullable: true,
@@ -1027,7 +1027,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE foo ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+		sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("foo", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: true,
