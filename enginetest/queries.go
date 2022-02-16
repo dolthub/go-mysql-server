@@ -6483,7 +6483,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `SHOW SESSION STATUS LIKE '%Ssl' where Value > 5`,
+		Query:    `SHOW SESSION STATUS WHERE Value > 5`,
 		Expected: []sql.Row{},
 	},
 	{
