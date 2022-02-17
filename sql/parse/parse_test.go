@@ -968,21 +968,24 @@ CREATE TABLE t2
 	`ALTER TABLE foo RENAME COLUMN bar TO baz`: plan.NewRenameColumn(
 		plan.NewUnresolvedTable("foo", ""), "bar", "baz",
 	),
-	`ALTER TABLE foo RENAME COLUMN bar TO baz, rename column abc to xyz`: plan.NewBlock(
+	`ALTER TABLE otherdb.mytable RENAME COLUMN i TO s`: plan.NewRenameColumn(
+		plan.NewUnresolvedTable("mytable", "otherdb"), "i", "s",
+	),
+	`ALTER TABLE mytable RENAME COLUMN bar TO baz, RENAME COLUMN abc TO xyz`: plan.NewBlock(
 		[]sql.Node{
-			plan.NewRenameColumn(plan.NewUnresolvedTable("foo", ""), "bar", "baz"),
-			plan.NewRenameColumn(plan.NewUnresolvedTable("foo", ""), "abc", "xyz"),
+			plan.NewRenameColumn(plan.NewUnresolvedTable("mytable", ""), "bar", "baz"),
+			plan.NewRenameColumn(plan.NewUnresolvedTable("mytable", ""), "abc", "xyz"),
 		},
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
 		}, nil,
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -990,8 +993,8 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "42", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -999,8 +1002,8 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "-42.0", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: false,
@@ -1008,8 +1011,8 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "(2+2)/2", nil, true),
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
-	`ALTER TABLE foo ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+	`ALTER TABLE mytable ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
@@ -1017,8 +1020,8 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
 		}, nil,
 	),
-	`ALTER TABLE foo ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+	`ALTER TABLE mytable ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Float32,
 			Nullable: true,
@@ -1026,27 +1029,39 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "32.0", nil, true),
 		}, nil,
 	),
-	`ALTER TABLE foo ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
-		plan.NewUnresolvedTable("foo", ""), &sql.Column{
+	`ALTER TABLE mytable ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
 			Nullable: true,
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "1", nil, true),
 		}, &sql.ColumnOrder{First: true},
 	),
-	`ALTER TABLE foo ADD INDEX (v1)`: plan.NewAlterCreateIndex(
-		plan.NewUnresolvedTable("foo", ""),
+	`ALTER TABLE mydb.mytable ADD COLUMN bar INT DEFAULT 1 COMMENT 'otherdb'`: plan.NewAddColumn(
+		plan.NewUnresolvedTable("mytable", "mydb"), &sql.Column{
+			Name:     "bar",
+			Type:     sql.Int32,
+			Nullable: true,
+			Comment:  "otherdb",
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), "1", nil, true),
+		}, nil,
+	),
+	`ALTER TABLE mytable ADD INDEX (v1)`: plan.NewAlterCreateIndex(
+		plan.NewUnresolvedTable("mytable", ""),
 		"",
 		sql.IndexUsing_BTree,
 		sql.IndexConstraint_None,
 		[]sql.IndexColumn{{"v1", 0}},
 		"",
 	),
-	`ALTER TABLE foo DROP COLUMN bar`: plan.NewDropColumn(
-		plan.NewUnresolvedTable("foo", ""), "bar",
+	`ALTER TABLE mytable DROP COLUMN bar`: plan.NewDropColumn(
+		plan.NewUnresolvedTable("mytable", ""), "bar",
 	),
-	`ALTER TABLE foo MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
-		plan.NewUnresolvedTable("foo", ""), "bar", &sql.Column{
+	`ALTER TABLE otherdb.mytable DROP COLUMN bar`: plan.NewDropColumn(
+		plan.NewUnresolvedTable("mytable", "otherdb"), "bar",
+	),
+	`ALTER TABLE tabletest MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
@@ -1054,14 +1069,23 @@ CREATE TABLE t2
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
 		}, &sql.ColumnOrder{First: true},
 	),
-	`ALTER TABLE foo CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
-		plan.NewUnresolvedTable("foo", ""), "bar", &sql.Column{
+	`ALTER TABLE tabletest CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "baz",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
 			Nullable: true,
 			Comment:  "hello",
 			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
 		}, &sql.ColumnOrder{First: true},
+	),
+	`ALTER TABLE mydb.mytable MODIFY COLUMN col1 VARCHAR(20) NULL DEFAULT 'string' COMMENT 'changed'`: plan.NewModifyColumn(
+		plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
+			Name:     "col1",
+			Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default),
+			Nullable: true,
+			Comment:  "changed",
+			Default:  MustStringToColumnDefaultValue(sql.NewEmptyContext(), `"string"`, nil, true),
+		}, nil,
 	),
 	`ALTER TABLE t1 ADD FOREIGN KEY (b_id) REFERENCES t0(b)`: plan.NewAlterAddForeignKey(
 		sql.UnresolvedDatabase(""),
