@@ -414,6 +414,11 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
 		}
+	case *plan.AlterAutoIncrement:
+		t, ok := n.Child.(*plan.UnresolvedTable)
+		if ok && t.Database != "" {
+			transactionDatabase = t.Database
+		}
 	case *plan.CreateIndex:
 		t, ok := n.Table.(*plan.UnresolvedTable)
 		if ok && t.Database != "" {
@@ -424,9 +429,19 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
 		}
+	case *plan.DropIndex:
+		t, ok := n.Table.(*plan.UnresolvedTable)
+		if ok && t.Database != "" {
+			transactionDatabase = t.Database
+		}
 	case *plan.CreateForeignKey:
 		if n.Database().Name() != "" {
 			transactionDatabase = n.Database().Name()
+		}
+	case *plan.DropForeignKey:
+		t, ok := n.Child.(*plan.UnresolvedTable)
+		if ok && t.Database != "" {
+			transactionDatabase = t.Database
 		}
 	case *plan.AddColumn:
 		t, ok := n.Child.(*plan.UnresolvedTable)
@@ -444,6 +459,11 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 			transactionDatabase = t.Database
 		}
 	case *plan.ModifyColumn:
+		t, ok := n.Child.(*plan.UnresolvedTable)
+		if ok && t.Database != "" {
+			transactionDatabase = t.Database
+		}
+	case *plan.Truncate:
 		t, ok := n.Child.(*plan.UnresolvedTable)
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
