@@ -1882,6 +1882,24 @@ func TestRenameColumn(t *testing.T, harness Harness) {
 		require.Equal("test_check", checks[0].Name)
 		require.Equal("(i2 < 12345)", checks[0].CheckExpression)
 	})
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		beforeDropTbl, _, _ := db.GetTableInsensitive(NewContext(harness), "tabletest")
+
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest RENAME COLUMN s TO i1", []sql.Row(nil), nil, nil)
+
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "tabletest")
+		require.NoError(err)
+		require.True(ok)
+		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
+			{Name: "i1", Type: sql.Text, Source: "tabletest"},
+		}, tbl.Schema())
+	})
 }
 
 func assertSchemasEqualWithDefaults(t *testing.T, expected, actual sql.Schema) bool {
@@ -2011,8 +2029,6 @@ func TestAddColumn(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		t.Skip("broken")
-
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable ADD COLUMN s10 VARCHAR(26)", []sql.Row(nil), nil, nil)
 
 		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
@@ -2028,7 +2044,6 @@ func TestAddColumn(t *testing.T, harness Harness) {
 			{Name: "s5", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 27), Source: "mytable", Nullable: true},
 			{Name: "s10", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 26), Source: "mytable", Nullable: true},
 		}, tbl.Schema())
-
 	})
 }
 
@@ -2115,7 +2130,16 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed'", []sql.Row(nil), nil, nil)
+		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.Row(nil), nil, nil)
+
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 21), Nullable: true, Source: "mytable", Comment: "changed again"},
+			{Name: "i2", Type: sql.Int64, Source: "mytable", Nullable: true},
+		}, tbl.Schema())
 	})
 }
 
@@ -2149,9 +2173,17 @@ func TestDropColumn(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		t.Skip("broken")
+		beforeDropTbl, _, _ := db.GetTableInsensitive(NewContext(harness), "tabletest")
 
 		TestQueryWithContext(t, ctx, e, "ALTER TABLE mydb.tabletest DROP COLUMN s", []sql.Row(nil), nil, nil)
+
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "tabletest")
+		require.NoError(err)
+		require.True(ok)
+		assert.NotEqual(t, beforeDropTbl, tbl.Schema())
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int32, Source: "tabletest", PrimaryKey: true},
+		}, tbl.Schema())
 	})
 
 	t.Run("drop column preserves table check constraints", func(t *testing.T) {
