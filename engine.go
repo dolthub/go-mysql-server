@@ -285,7 +285,7 @@ const (
 )
 
 var fakeReadCommitted bool
-var enableRowIter2 bool = true
+var enableRowIter2 bool
 
 func init() {
 	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)

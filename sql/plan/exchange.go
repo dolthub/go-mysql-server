@@ -240,6 +240,9 @@ var _ sql.RowIter = (*exchangeRowIter)(nil)
 var _ sql.RowIter2 = (*exchangeRowIter)(nil)
 
 func (i *exchangeRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.rows == nil {
+		panic("Next called for a Next2 iterator")
+	}
 	r, ok := <-i.rows
 	if !ok {
 		return nil, i.waiter()
@@ -248,6 +251,9 @@ func (i *exchangeRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *exchangeRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	if i.rows2 == nil {
+		panic("Next2 called for a Next iterator")
+	}
 	r, ok := <-i.rows2
 	if !ok {
 		return i.waiter()
