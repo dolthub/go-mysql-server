@@ -591,8 +591,8 @@ var _ sql.Node = (*DropTable)(nil)
 // NewDropTable creates a new DropTable node
 func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
 	return &DropTable{
-		Tables:      tbls,
-		ifExists:    ifExists,
+		Tables:   tbls,
+		ifExists: ifExists,
 	}
 }
 
@@ -628,7 +628,7 @@ func (d *DropTable) IfExists() bool {
 func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
 	var curdb sql.Database
-	
+
 	for _, table := range d.Tables {
 		tbl, tOk := table.(*ResolvedTable)
 		if !tOk {
