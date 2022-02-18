@@ -947,6 +947,9 @@ CREATE TABLE t2
 	`DROP TABLE curdb.foo;`: plan.NewDropTable(
 		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb")}, false,
 	),
+	`DROP TABLE t1, t2;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("t1", ""), plan.NewUnresolvedTable("t2", "")}, false,
+	),
 	`DROP TABLE IF EXISTS curdb.foo;`: plan.NewDropTable(
 		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb")}, true,
 	),
@@ -3725,7 +3728,8 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
 	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
 	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
-	`DROP TABLE IF EXISTS curdb.foo, otherd.bar`:                ErrMultipleMixedDatabaseNotSupported,
+	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               ErrMultipleMixedDatabaseNotSupported,
+	`DROP TABLE curdb.t1, t2`:									 ErrMultipleMixedDatabaseNotSupported,
 }
 
 func TestParseOne(t *testing.T) {

@@ -70,8 +70,8 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			c.Node, _ = p.WithChildren(resolvedTables...)
 			return n, nil
 		case *plan.UnresolvedTable:
-			r, err := resolveTable(ctx, p, a, ignore)
-			if r == nil && err == nil {
+			r, err := resolveTable(ctx, p, a)
+			if sql.ErrTableNotFound.Is(err) && ignore {
 				return p, nil
 			}
 			return r, err
@@ -81,7 +81,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	})
 }
 
-func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignoreNonExistent bool) (sql.Node, error) {
+func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.Node, error) {
 	name := t.Name()
 	db := t.Database
 	if db == "" {
@@ -108,9 +108,6 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignore
 
 		rt, database, err := a.Catalog.TableAsOf(ctx, db, name, asOf)
 		if err != nil {
-			if sql.ErrTableNotFound.Is(err) && ignoreNonExistent {
-				return nil, nil
-			}
 			return handleTableLookupFailure(err, name, db, a, t)
 		}
 
@@ -120,9 +117,6 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer, ignore
 
 	rt, database, err := a.Catalog.Table(ctx, db, name)
 	if err != nil {
-		if sql.ErrTableNotFound.Is(err) && ignoreNonExistent {
-			return nil, nil
-		}
 		return handleTableLookupFailure(err, name, db, a, t)
 	}
 

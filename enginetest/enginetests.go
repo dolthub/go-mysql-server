@@ -1695,6 +1695,9 @@ func TestDropTable(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
 	require.NoError(err)
 
+	RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+	otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
+
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
@@ -1705,10 +1708,8 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.False(ok)
 
-		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
 		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer)")
 		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer)")
-		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
 		require.Error(err)
@@ -1743,6 +1744,43 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 
 		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.False(ok)
+	})
+
+	t.Run("cur database selected, drop tables in other db", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("mydb")
+
+		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer, c1 text)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab2 (other_pk2 integer)")
+
+		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
+		require.NoError(err)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "tab1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab1")
+		require.NoError(err)
+		require.False(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE nonExistentTable, otherdb.tab2")
+		require.Error(err)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS nonExistentTable, otherdb.tab2")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab2")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.tab3, otherdb.tab2")
+		require.NoError(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab2")
 		require.NoError(err)
 		require.False(ok)
 	})

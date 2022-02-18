@@ -581,39 +581,19 @@ func (c *CreateTable) validateDefaultPosition() error {
 
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
-	CurDatabase  sql.Database
 	Tables       []sql.Node
 	ifExists     bool
 	triggerNames []string
 }
 
 var _ sql.Node = (*DropTable)(nil)
-var _ sql.Databaser = (*DropTable)(nil)
 
 // NewDropTable creates a new DropTable node
 func NewDropTable(tbls []sql.Node, ifExists bool) *DropTable {
-	var dbName string
-	if tbl, ok := tbls[0].(*UnresolvedTable); ok {
-		dbName = tbl.Database
-	}
-	db := sql.UnresolvedDatabase(dbName)
 	return &DropTable{
-		CurDatabase: db,
 		Tables:      tbls,
 		ifExists:    ifExists,
 	}
-}
-
-// Database implements the sql.Database interface.
-func (d *DropTable) Database() sql.Database {
-	return d.CurDatabase
-}
-
-// WithDatabase implements the sql.Databaser interface.
-func (d *DropTable) WithDatabase(db sql.Database) (sql.Node, error) {
-	nc := *d
-	nc.CurDatabase = db
-	return &nc, nil
 }
 
 // WithTriggers returns this node but with the given triggers.
@@ -647,17 +627,19 @@ func (d *DropTable) IfExists() bool {
 // RowIter implements the Node interface.
 func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var err error
+	var curdb sql.Database
+	
 	for _, table := range d.Tables {
 		tbl, tOk := table.(*ResolvedTable)
 		if !tOk {
 			return nil, ErrUnresolvedTable.New(table.String())
 		}
+		curdb = tbl.Database
+
 		droppable, ok := tbl.Database.(sql.TableDropper)
 		if !ok {
 			return nil, sql.ErrDropTableNotSupported.New(tbl.Database.Name())
 		}
-
-		d.CurDatabase = tbl.Database
 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
@@ -666,7 +648,7 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	}
 
 	if len(d.triggerNames) > 0 {
-		triggerDb, ok := d.CurDatabase.(sql.TriggerDatabase)
+		triggerDb, ok := curdb.(sql.TriggerDatabase)
 		if !ok {
 			tblNames, _ := d.TableNames()
 			return nil, fmt.Errorf(`tables %v are referenced in triggers %v, but database does not support triggers`, tblNames, d.triggerNames)
@@ -717,8 +699,12 @@ func (d *DropTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *DropTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	dbName := ctx.GetCurrentDatabase()
+	if len(d.Tables) > 0 {
+		dbName = getDatabaseName(d.Tables[0])
+	}
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.CurDatabase.Name(), "", "", sql.PrivilegeType_Drop))
+		sql.NewPrivilegedOperation(dbName, "", "", sql.PrivilegeType_Drop))
 }
 
 // String implements the sql.Node interface.

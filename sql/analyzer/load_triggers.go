@@ -58,7 +58,18 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 			}
 			return node, nil
 		case *plan.DropTable:
-			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database())
+			// if there is no table left after filtering out non-existent tables, no need to load triggers
+			if len(node.Tables) == 0 {
+				return node, nil
+			}
+
+			// the table has to be ResolvedTable as this rule is executed after resolve-table rule
+			var dropTableDb sql.Database
+			if t, ok := node.Tables[0].(*plan.ResolvedTable); ok {
+				dropTableDb = t.Database
+			}
+
+			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb)
 			if err != nil {
 				return nil, err
 			}
