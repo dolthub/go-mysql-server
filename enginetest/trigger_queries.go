@@ -508,7 +508,7 @@ var TriggerTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -518,7 +518,7 @@ var TriggerTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "insert into a values (4), (1), (2)",
+				Query:       "insert into a values (4), (1), (2)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{

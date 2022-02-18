@@ -555,7 +555,7 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sq
 		return nil, nil
 	} else {
 		// there is trigger from insertion, remove transaction
-		if _, ok := i.rowSource.(*triggerIter); ok && ctx.GetTransaction() != nil{
+		if _, ok := i.rowSource.(*triggerIter); ok && ctx.GetTransaction() != nil {
 			ctx.SetTransaction(nil)
 		}
 		i.rowSource.Close(ctx)
