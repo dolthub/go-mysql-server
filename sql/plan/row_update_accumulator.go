@@ -63,6 +63,11 @@ func (r RowUpdateAccumulator) WithChildren(children ...sql.Node) (sql.Node, erro
 	return NewRowUpdateAccumulator(children[0], r.RowUpdateType), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r RowUpdateAccumulator) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return r.Child.CheckPrivileges(ctx, opChecker)
+}
+
 func (r RowUpdateAccumulator) String() string {
 	return r.Child.String()
 }

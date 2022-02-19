@@ -73,3 +73,8 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 func (s *ShowStatus) WithChildren(node ...sql.Node) (sql.Node, error) {
 	return NewShowStatus(s.modifier), nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}

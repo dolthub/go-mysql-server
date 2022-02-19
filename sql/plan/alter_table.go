@@ -83,8 +83,19 @@ func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r *RenameTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	var operations []sql.PrivilegedOperation
+	for _, oldName := range r.oldNames {
+		operations = append(operations, sql.NewPrivilegedOperation(r.db.Name(), oldName, "", sql.PrivilegeType_Alter, sql.PrivilegeType_Drop))
+	}
+	for _, newName := range r.newNames {
+		operations = append(operations, sql.NewPrivilegedOperation(r.db.Name(), newName, "", sql.PrivilegeType_Create, sql.PrivilegeType_Insert))
+	}
+	return opChecker.UserHasPrivileges(ctx, operations...)
+}
+
 type AddColumn struct {
-	ddlNode
 	UnaryNode
 	column    *sql.Column
 	order     *sql.ColumnOrder
@@ -92,12 +103,10 @@ type AddColumn struct {
 }
 
 var _ sql.Node = (*AddColumn)(nil)
-var _ sql.Databaser = (*AddColumn)(nil)
 var _ sql.Expressioner = (*AddColumn)(nil)
 
-func NewAddColumn(db sql.Database, table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
+func NewAddColumn(table *UnresolvedTable, column *sql.Column, order *sql.ColumnOrder) *AddColumn {
 	return &AddColumn{
-		ddlNode:   ddlNode{db},
 		UnaryNode: UnaryNode{Child: table},
 		column:    column,
 		order:     order,
@@ -113,9 +122,10 @@ func (a *AddColumn) Order() *sql.ColumnOrder {
 }
 
 func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	na := *a
-	na.db = db
-	return &na, nil
+	//na := *a
+	//na.db = db
+	//return &na, nil
+	return a, nil
 }
 
 // Schema implements the sql.Node interface.
@@ -256,7 +266,7 @@ func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 
 // Resolved implements the Resolvable interface.
 func (a *AddColumn) Resolved() bool {
-	if !(a.ddlNode.Resolved() && a.column.Default.Resolved()) {
+	if !(a.UnaryNode.Resolved() && a.column.Default.Resolved()) {
 		return false
 	}
 
@@ -315,12 +325,17 @@ func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &a, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (a *AddColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(a.Child), getTableName(a.Child), "", sql.PrivilegeType_Alter))
+}
+
 func (a *AddColumn) Children() []sql.Node {
 	return a.UnaryNode.Children()
 }
 
 type DropColumn struct {
-	ddlNode
 	UnaryNode
 	Column       string
 	Checks       sql.CheckConstraints
@@ -328,20 +343,19 @@ type DropColumn struct {
 }
 
 var _ sql.Node = (*DropColumn)(nil)
-var _ sql.Databaser = (*DropColumn)(nil)
 
-func NewDropColumn(db sql.Database, table *UnresolvedTable, column string) *DropColumn {
+func NewDropColumn(table *UnresolvedTable, column string) *DropColumn {
 	return &DropColumn{
-		ddlNode:   ddlNode{db},
 		UnaryNode: UnaryNode{Child: table},
 		Column:    column,
 	}
 }
 
 func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	nd := *d
-	nd.db = db
-	return &nd, nil
+	//nd := *d
+	//nd.db = db
+	//return &nd, nil
+	return d, nil
 }
 
 func (d *DropColumn) String() string {
@@ -395,7 +409,7 @@ func (d *DropColumn) Schema() sql.Schema {
 }
 
 func (d *DropColumn) Resolved() bool {
-	if !(d.UnaryNode.Resolved() && d.ddlNode.Resolved()) {
+	if !d.UnaryNode.Resolved() {
 		return false
 	}
 
@@ -418,6 +432,12 @@ func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	d.UnaryNode.Child = children[0]
 	return &d, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
 }
 
 func (d DropColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
@@ -443,7 +463,6 @@ func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 type RenameColumn struct {
-	ddlNode
 	UnaryNode
 	ColumnName    string
 	NewColumnName string
@@ -452,11 +471,9 @@ type RenameColumn struct {
 }
 
 var _ sql.Node = (*RenameColumn)(nil)
-var _ sql.Databaser = (*RenameColumn)(nil)
 
-func NewRenameColumn(db sql.Database, table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
+func NewRenameColumn(table *UnresolvedTable, columnName string, newColumnName string) *RenameColumn {
 	return &RenameColumn{
-		ddlNode:       ddlNode{db},
 		UnaryNode:     UnaryNode{Child: table},
 		ColumnName:    columnName,
 		NewColumnName: newColumnName,
@@ -464,9 +481,10 @@ func NewRenameColumn(db sql.Database, table *UnresolvedTable, columnName string,
 }
 
 func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	nr := *r
-	nr.db = db
-	return &nr, nil
+	//nr := *r
+	//nr.db = db
+	//return &nr, nil
+	return r, nil
 }
 
 func (r RenameColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
@@ -496,7 +514,7 @@ func (r *RenameColumn) DebugString() string {
 }
 
 func (r *RenameColumn) Resolved() bool {
-	if !r.UnaryNode.Resolved() || !r.ddlNode.Resolved() {
+	if !r.UnaryNode.Resolved() {
 		return false
 	}
 
@@ -561,8 +579,13 @@ func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &r, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (r *RenameColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(r.Child), getTableName(r.Child), "", sql.PrivilegeType_Alter))
+}
+
 type ModifyColumn struct {
-	ddlNode
 	UnaryNode
 	columnName   string
 	column       *sql.Column
@@ -571,12 +594,10 @@ type ModifyColumn struct {
 }
 
 var _ sql.Node = (*ModifyColumn)(nil)
-var _ sql.Databaser = (*ModifyColumn)(nil)
 var _ sql.Expressioner = (*ModifyColumn)(nil)
 
-func NewModifyColumn(db sql.Database, table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
+func NewModifyColumn(table *UnresolvedTable, columnName string, column *sql.Column, order *sql.ColumnOrder) *ModifyColumn {
 	return &ModifyColumn{
-		ddlNode: ddlNode{db},
 		UnaryNode: UnaryNode{
 			table,
 		},
@@ -587,9 +608,10 @@ func NewModifyColumn(db sql.Database, table *UnresolvedTable, columnName string,
 }
 
 func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	nm := *m
-	nm.db = db
-	return &nm, nil
+	//nm := *m
+	//nm.db = db
+	//return &nm, nil
+	return m, nil
 }
 
 func (m *ModifyColumn) Column() string {
@@ -663,6 +685,12 @@ func (m ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	m.UnaryNode.Child = children[0]
 	return &m, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (m *ModifyColumn) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(m.Child), getTableName(m.Child), "", sql.PrivilegeType_Alter))
 }
 
 func (m *ModifyColumn) Expressions() []sql.Expression {

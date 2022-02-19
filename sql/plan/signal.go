@@ -149,6 +149,11 @@ func (s *Signal) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (s *Signal) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
 // RowIter implements the sql.Node interface.
 func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	//TODO: implement CLASS_ORIGIN
@@ -208,6 +213,11 @@ func (s *SignalName) Children() []sql.Node {
 // WithChildren implements the sql.Node interface.
 func (s *SignalName) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (s *SignalName) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return true
 }
 
 // RowIter implements the sql.Node interface.

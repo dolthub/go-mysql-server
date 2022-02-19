@@ -151,6 +151,12 @@ func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewAlterAddCheck(children[0], c.Check), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *CreateCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(c.Child), getTableName(c.Child), "", sql.PrivilegeType_Alter))
+}
+
 func (c *CreateCheck) Schema() sql.Schema { return nil }
 
 func (c *CreateCheck) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
@@ -196,6 +202,13 @@ func (p *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	return NewAlterDropCheck(children[0], p.Name), nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (p *DropCheck) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(p.Child), getTableName(p.Child), "", sql.PrivilegeType_Alter))
+}
+
 func (p *DropCheck) Schema() sql.Schema { return nil }
 
 func (p DropCheck) String() string {
@@ -253,6 +266,12 @@ func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
 	nd := &d
 	nd.UnaryNode = UnaryNode{children[0]}
 	return nd, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (d *DropConstraint) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(d.Child), getTableName(d.Child), "", sql.PrivilegeType_Alter))
 }
 
 // NewDropConstraint returns a new DropConstraint node

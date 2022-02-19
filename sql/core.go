@@ -230,6 +230,10 @@ type Node interface {
 	// the current number of children. They must be given in the same order
 	// as they are returned by Children.
 	WithChildren(...Node) (Node, error)
+	// CheckPrivileges passes the operations representative of this Node to the PrivilegedOperationChecker to determine
+	// whether a user (contained in the context, along with their active roles) has the necessary privileges to execute
+	// this node (and its children).
+	CheckPrivileges(ctx *Context, opChecker PrivilegedOperationChecker) bool
 }
 
 type Node2 interface {

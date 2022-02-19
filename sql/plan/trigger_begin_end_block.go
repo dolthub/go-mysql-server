@@ -43,6 +43,11 @@ func (b *TriggerBeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, err
 	return NewTriggerBeginEndBlock(NewBeginEndBlock(NewBlock(children))), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (b *TriggerBeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return b.Block.CheckPrivileges(ctx, opChecker)
+}
+
 // RowIter implements the sql.Node interface.
 func (b *TriggerBeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &triggerBlockIter{

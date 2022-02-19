@@ -6475,6 +6475,18 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    `SHOW SESSION STATUS`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW SESSION STATUS LIKE 'Ssl_cipher'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SHOW SESSION STATUS WHERE Value > 5`,
+		Expected: []sql.Row{},
+	},
+	{
 		Query: `SELECT a.* FROM mytable a, mytable b where a.i = b.i`,
 		Expected: []sql.Row{
 			{1, "first row"},

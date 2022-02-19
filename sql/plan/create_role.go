@@ -91,6 +91,15 @@ func (n *CreateRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// Both CREATE ROLE and CREATE USER are valid privileges, so we use an OR
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateRole)) ||
+		opChecker.UserHasPrivileges(ctx,
+			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+}
+
 // RowIter implements the interface sql.Node.
 func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	grantTables, ok := n.GrantTables.(*grant_tables.GrantTables)
@@ -130,8 +139,7 @@ func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 			return nil, err
 		}
 	}
-	err := grantTables.Persist(ctx)
-	if err != nil {
+	if err := grantTables.Persist(ctx); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil

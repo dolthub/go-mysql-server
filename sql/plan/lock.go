@@ -118,6 +118,16 @@ func (t *LockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &LockTables{t.Catalog, locks}, nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (t *LockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	operations := make([]sql.PrivilegedOperation, len(t.Locks))
+	for i, tableLock := range t.Locks {
+		operations[i] = sql.NewPrivilegedOperation(getDatabaseName(tableLock.Table),
+			getTableName(tableLock.Table), "", sql.PrivilegeType_Select, sql.PrivilegeType_LockTables)
+	}
+	return opChecker.UserHasPrivileges(ctx, operations...)
+}
+
 // ErrTableNotLockable is returned whenever a lockable table can't be found.
 var ErrTableNotLockable = errors.NewKind("table %s is not lockable")
 
@@ -187,4 +197,10 @@ func (t *UnlockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return t, nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (t *UnlockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: Can't quite figure out the privileges for this one, needs more testing
+	return true
 }

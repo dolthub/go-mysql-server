@@ -102,3 +102,9 @@ func (s *ShowCreateDatabase) WithChildren(children ...sql.Node) (sql.Node, error
 
 	return s, nil
 }
+
+// CheckPrivileges implements the interface sql.Node.
+func (s *ShowCreateDatabase) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// The database won't be visible during the resolution step if the user doesn't have the correct privileges
+	return true
+}

@@ -77,6 +77,11 @@ func (u *Union) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewUnion(children[0], children[1]), nil
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (u *Union) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return u.left.CheckPrivileges(ctx, opChecker) && u.right.CheckPrivileges(ctx, opChecker)
+}
+
 func (u Union) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Union")

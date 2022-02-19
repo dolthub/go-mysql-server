@@ -67,6 +67,13 @@ func (c *Call) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
+// CheckPrivileges implements the interface sql.Node.
+func (c *Call) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	//TODO: CALL needs to know which database it is referencing rather than assuming the current one, and add that db here
+	return opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Execute))
+}
+
 // Expressions implements the sql.Expressioner interface.
 func (c *Call) Expressions() []sql.Expression {
 	return c.Params
