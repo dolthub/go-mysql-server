@@ -777,9 +777,12 @@ func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
 	if (span.Tracer() == opentracing.NoopTracer{}) {
 		return iter
 	} else {
+		var iter2 RowIter2
+		iter2, _ = iter.(RowIter2)
 		return &spanIter{
 			span: span,
 			iter: iter,
+			iter2: iter2,
 		}
 	}
 }
@@ -787,6 +790,7 @@ func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
 type spanIter struct {
 	span  opentracing.Span
 	iter  RowIter
+	iter2  RowIter2
 	count int
 	max   time.Duration
 	min   time.Duration
@@ -832,7 +836,7 @@ func (i *spanIter) Next(ctx *Context) (Row, error) {
 func (i *spanIter) Next2(ctx *Context, frame *RowFrame) error {
 	start := time.Now()
 
-	err := i.iter.(RowIter2).Next2(ctx, frame)
+	err := i.iter2.Next2(ctx, frame)
 	if err == io.EOF {
 		i.finish()
 		return err

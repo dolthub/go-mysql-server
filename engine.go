@@ -150,6 +150,7 @@ func (e *Engine) QueryNodeWithBindings(
 	var (
 		analyzed sql.Node
 		iter     sql.RowIter
+		iter2    sql.RowIter2
 		err      error
 	)
 
@@ -188,7 +189,8 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if useIter2 {
-		iter, err = analyzed.(sql.Node2).RowIter2(ctx, nil)
+		iter2, err = analyzed.(sql.Node2).RowIter2(ctx, nil)
+		iter = iter2
 	} else {
 		iter, err = analyzed.RowIter(ctx, nil)
 	}
@@ -202,12 +204,17 @@ func (e *Engine) QueryNodeWithBindings(
 	}
 
 	if autoCommit {
-		iter = transactionCommittingIter{iter, transactionDatabase}
+		iter = transactionCommittingIter{
+			childIter: iter,
+			childIter2: iter2,
+			transactionDatabase: transactionDatabase,
+		}
 	}
 
 	if enableRowIter2 {
 		iter = rowFormatSelectorIter{
-			RowIter: iter,
+			iter: iter,
+			iter2: iter2,
 			isNode2: useIter2,
 		}
 	}
@@ -263,7 +270,8 @@ func allNode2(n sql.Node) bool {
 // rowFormatSelectorIter is a wrapping row iter that implements RowIterTypeSelector so that clients consuming rows from it
 // know whether it's safe to iterate as RowIter or RowIter2.
 type rowFormatSelectorIter struct {
-	sql.RowIter
+	iter sql.RowIter
+	iter2 sql.RowIter2
 	isNode2 bool
 }
 
@@ -271,8 +279,19 @@ var _ sql.RowIterTypeSelector = rowFormatSelectorIter{}
 var _ sql.RowIter = rowFormatSelectorIter{}
 var _ sql.RowIter2 = rowFormatSelectorIter{}
 
+func (t rowFormatSelectorIter) Next(context *sql.Context) (sql.Row, error) {
+	return t.iter.Next(context)
+}
+
+func (t rowFormatSelectorIter) Close(context *sql.Context) error {
+	if t.iter2 != nil {
+		return t.iter2.Close(context)
+	}
+	return t.iter.Close(context)
+}
+
 func (t rowFormatSelectorIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.RowIter.(sql.RowIter2).Next2(ctx, frame)
+	return t.iter2.Next2(ctx, frame)
 }
 
 func (t rowFormatSelectorIter) IsNode2() bool {
@@ -370,6 +389,7 @@ func readCommitted(ctx *sql.Context) bool {
 // during the Close() operation
 type transactionCommittingIter struct {
 	childIter           sql.RowIter
+	childIter2           sql.RowIter2
 	transactionDatabase string
 }
 
@@ -378,7 +398,7 @@ func (t transactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (t transactionCommittingIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	return t.childIter.(sql.RowIter2).Next2(ctx, frame)
+	return t.childIter2.Next2(ctx, frame)
 }
 
 func (t transactionCommittingIter) Close(ctx *sql.Context) error {

@@ -104,88 +104,88 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
-	if includeTable(includedTables, "point_table") {
-		wrapInTransaction(t, myDb, harness, func() {
-			table, err = harness.NewTable(myDb, "point_table", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "point_table", PrimaryKey: true},
-				{Name: "p", Type: sql.PointType{}, Source: "point_table"},
-			}))
-
-			if err == nil {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(5, sql.Point{X: 1, Y: 2}),
-				)
-			} else {
-				t.Logf("Warning: could not create table %s: %s", "point_table", err)
-			}
-		})
-	}
-
-	if includeTable(includedTables, "line_table") {
-		wrapInTransaction(t, myDb, harness, func() {
-			table, err = harness.NewTable(myDb, "line_table", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "line_table", PrimaryKey: true},
-				{Name: "l", Type: sql.LinestringType{}, Source: "line_table"},
-			}))
-
-			if err == nil {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
-					sql.NewRow(1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
-				)
-			} else {
-				t.Logf("Warning: could not create table %s: %s", "line_table", err)
-			}
-		})
-	}
-
-	if includeTable(includedTables, "polygon_table") {
-		wrapInTransaction(t, myDb, harness, func() {
-			table, err = harness.NewTable(myDb, "polygon_table", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "polygon_table", PrimaryKey: true},
-				{Name: "p", Type: sql.PolygonType{}, Source: "polygon_table"},
-			}))
-
-			if err == nil {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
-				)
-			} else {
-				t.Logf("Warning: could not create table %s: %s", "polygon_table", err)
-			}
-		})
-	}
-
-	if includeTable(includedTables, "specialtable") {
-		wrapInTransaction(t, myDb, harness, func() {
-			table, err = harness.NewTable(myDb, "specialtable", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "id", Type: sql.Int64, Source: "specialtable", PrimaryKey: true},
-				{Name: "name", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "specialtable"},
-			}))
-
-			if err == nil {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(1, "first_row"),
-					sql.NewRow(2, "second_row"),
-					sql.NewRow(3, "third_row"),
-					sql.NewRow(4, `%`),
-					sql.NewRow(5, `'`),
-					sql.NewRow(6, `"`),
-					sql.NewRow(7, "\t"),
-					sql.NewRow(8, "\n"),
-					sql.NewRow(9, "\v"),
-					sql.NewRow(10, `test%test`),
-					sql.NewRow(11, `test'test`),
-					sql.NewRow(12, `test"test`),
-					sql.NewRow(13, "test\ttest"),
-					sql.NewRow(14, "test\ntest"),
-					sql.NewRow(15, "test\vtest"),
-				)
-			} else {
-				t.Logf("Warning: could not create table %s: %s", "specialtable", err)
-			}
-		})
-	}
+	// if includeTable(includedTables, "point_table") {
+	// 	wrapInTransaction(t, myDb, harness, func() {
+	// 		table, err = harness.NewTable(myDb, "point_table", sql.NewPrimaryKeySchema(sql.Schema{
+	// 			{Name: "i", Type: sql.Int64, Source: "point_table", PrimaryKey: true},
+	// 			{Name: "p", Type: sql.PointType{}, Source: "point_table"},
+	// 		}))
+	//
+	// 		if err == nil {
+	// 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+	// 				sql.NewRow(5, sql.Point{X: 1, Y: 2}),
+	// 			)
+	// 		} else {
+	// 			t.Logf("Warning: could not create table %s: %s", "point_table", err)
+	// 		}
+	// 	})
+	// }
+	//
+	// if includeTable(includedTables, "line_table") {
+	// 	wrapInTransaction(t, myDb, harness, func() {
+	// 		table, err = harness.NewTable(myDb, "line_table", sql.NewPrimaryKeySchema(sql.Schema{
+	// 			{Name: "i", Type: sql.Int64, Source: "line_table", PrimaryKey: true},
+	// 			{Name: "l", Type: sql.LinestringType{}, Source: "line_table"},
+	// 		}))
+	//
+	// 		if err == nil {
+	// 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+	// 				sql.NewRow(0, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+	// 				sql.NewRow(1, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}, {X: 5, Y: 6}}}),
+	// 			)
+	// 		} else {
+	// 			t.Logf("Warning: could not create table %s: %s", "line_table", err)
+	// 		}
+	// 	})
+	// }
+	//
+	// if includeTable(includedTables, "polygon_table") {
+	// 	wrapInTransaction(t, myDb, harness, func() {
+	// 		table, err = harness.NewTable(myDb, "polygon_table", sql.NewPrimaryKeySchema(sql.Schema{
+	// 			{Name: "i", Type: sql.Int64, Source: "polygon_table", PrimaryKey: true},
+	// 			{Name: "p", Type: sql.PolygonType{}, Source: "polygon_table"},
+	// 		}))
+	//
+	// 		if err == nil {
+	// 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+	// 				sql.NewRow(0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+	// 			)
+	// 		} else {
+	// 			t.Logf("Warning: could not create table %s: %s", "polygon_table", err)
+	// 		}
+	// 	})
+	// }
+	//
+	// if includeTable(includedTables, "specialtable") {
+	// 	wrapInTransaction(t, myDb, harness, func() {
+	// 		table, err = harness.NewTable(myDb, "specialtable", sql.NewPrimaryKeySchema(sql.Schema{
+	// 			{Name: "id", Type: sql.Int64, Source: "specialtable", PrimaryKey: true},
+	// 			{Name: "name", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "specialtable"},
+	// 		}))
+	//
+	// 		if err == nil {
+	// 			InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+	// 				sql.NewRow(1, "first_row"),
+	// 				sql.NewRow(2, "second_row"),
+	// 				sql.NewRow(3, "third_row"),
+	// 				sql.NewRow(4, `%`),
+	// 				sql.NewRow(5, `'`),
+	// 				sql.NewRow(6, `"`),
+	// 				sql.NewRow(7, "\t"),
+	// 				sql.NewRow(8, "\n"),
+	// 				sql.NewRow(9, "\v"),
+	// 				sql.NewRow(10, `test%test`),
+	// 				sql.NewRow(11, `test'test`),
+	// 				sql.NewRow(12, `test"test`),
+	// 				sql.NewRow(13, "test\ttest"),
+	// 				sql.NewRow(14, "test\ntest"),
+	// 				sql.NewRow(15, "test\vtest"),
+	// 			)
+	// 		} else {
+	// 			t.Logf("Warning: could not create table %s: %s", "specialtable", err)
+	// 		}
+	// 	})
+	// }
 
 	if includeTable(includedTables, "mytable") {
 		wrapInTransaction(t, myDb, harness, func() {
