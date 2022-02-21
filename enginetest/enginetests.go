@@ -1695,12 +1695,12 @@ func TestDropTable(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
 	require.NoError(err)
 
-	RunQuery(t, e, harness, "CREATE DATABASE otherdb")
-	otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
-
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
+
+		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
 		TestQueryWithContext(t, ctx, e, "DROP TABLE mydb.one_pk", []sql.Row(nil), nil, nil)
 
@@ -1751,6 +1751,10 @@ func TestDropTable(t *testing.T, harness Harness) {
 	t.Run("cur database selected, drop tables in other db", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("mydb")
+
+		RunQuery(t, e, harness, "DROP DATABASE IF EXISTS otherdb")
+		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
 		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer, c1 text)")
 		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer)")
