@@ -3159,64 +3159,79 @@ CREATE TABLE t2
 		},
 		plan.NewUnresolvedTable("foo", ""),
 	),
-	`SELECT row_number() over (w) from foo WINDOW w as (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW)`: plan.NewWindow(
-		[]sql.Expression{
-			expression.NewAlias("row_number() over (w)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{
-					expression.NewUnresolvedColumn("x"),
-				}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
-					expression.NewInterval(
-						expression.NewLiteral("2:30", sql.LongText),
-						"MINUTE_SECOND",
+	`SELECT row_number() over (w) from foo WINDOW w as (partition by x RANGE BETWEEN interval '2:30' MINUTE_SECOND PRECEDING AND CURRENT ROW)`: plan.NewNamedWindows(
+		map[string]*sql.WindowDefinition{
+			"w": sql.NewWindowDefinition([]sql.Expression{
+				expression.NewUnresolvedColumn("x"),
+			}, nil, plan.NewRangeNPrecedingToCurrentRowFrame(
+				expression.NewInterval(
+					expression.NewLiteral("2:30", sql.LongText),
+					"MINUTE_SECOND",
+				),
+			), "", "w"),
+		},
+		plan.NewWindow(
+			[]sql.Expression{
+				expression.NewAlias("row_number() over (w)",
+					expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w", "")),
+				),
+			},
+			plan.NewUnresolvedTable("foo", ""),
+		)),
+	`SELECT a, row_number() over (w1), max(b) over (w2) FROM foo WINDOW w1 as (w2 order by x), w2 as ()`: plan.NewNamedWindows(
+		map[string]*sql.WindowDefinition{
+			"w1": sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
+				{
+					Column:       expression.NewUnresolvedColumn("x"),
+					Order:        sql.Ascending,
+					NullOrdering: sql.NullsFirst,
+				},
+			}, nil, "w2", "w1"),
+			"w2": sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", "w2"),
+		},
+		plan.NewWindow(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("a"),
+				expression.NewAlias("row_number() over (w1)",
+					expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w1", "")),
+				),
+				expression.NewAlias("max(b) over (w2)",
+					expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w2", ""),
+						expression.NewUnresolvedColumn("b"),
 					),
-				), "", "")),
-			),
-		},
-		plan.NewUnresolvedTable("foo", ""),
-	),
-	`SELECT a, row_number() over (w1), max(b) over (w2) FROM foo WINDOW w1 as (w2 order by x), w2 as ()`: plan.NewWindow(
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("a"),
-			expression.NewAlias("row_number() over (w1)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
-					{
-						Column:       expression.NewUnresolvedColumn("x"),
-						Order:        sql.Ascending,
-						NullOrdering: sql.NullsFirst,
-					},
-				}, nil, "", "")),
-			),
-			expression.NewAlias("max(b) over (w2)",
-				expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""),
-					expression.NewUnresolvedColumn("b"),
 				),
-			),
-		},
-		plan.NewUnresolvedTable("foo", ""),
+			},
+			plan.NewUnresolvedTable("foo", ""),
+		),
 	),
-	`SELECT a, row_number() over (w1 partition by y), max(b) over (w2) FROM foo WINDOW w1 as (w2 order by x), w2 as ()`: plan.NewWindow(
-		[]sql.Expression{
-			expression.NewUnresolvedColumn("a"),
-			expression.NewAlias("row_number() over (w1 partition by y)",
-				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition(
-					[]sql.Expression{
-						expression.NewUnresolvedColumn("y"),
-					},
-					sql.SortFields{
-						{
-							Column:       expression.NewUnresolvedColumn("x"),
-							Order:        sql.Ascending,
-							NullOrdering: sql.NullsFirst,
+	`SELECT a, row_number() over (w1 partition by y), max(b) over (w2) FROM foo WINDOW w1 as (w2 order by x), w2 as ()`: plan.NewNamedWindows(
+		map[string]*sql.WindowDefinition{
+			"w1": sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
+				{
+					Column:       expression.NewUnresolvedColumn("x"),
+					Order:        sql.Ascending,
+					NullOrdering: sql.NullsFirst,
+				},
+			}, nil, "w2", "w1"),
+			"w2": sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", "w2"),
+		}, plan.NewWindow(
+			[]sql.Expression{
+				expression.NewUnresolvedColumn("a"),
+				expression.NewAlias("row_number() over (w1 partition by y)",
+					expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition(
+						[]sql.Expression{
+							expression.NewUnresolvedColumn("y"),
 						},
-					}, nil, "", ""), []sql.Expression{}...),
-			),
-			expression.NewAlias("max(b) over (w2)",
-				expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", ""),
-					expression.NewUnresolvedColumn("b"),
+						nil, nil, "w1", "")),
 				),
-			),
-		},
-		plan.NewUnresolvedTable("foo", ""),
+				expression.NewAlias("max(b) over (w2)",
+					expression.NewUnresolvedFunction("max", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "w2", ""),
+						expression.NewUnresolvedColumn("b"),
+					),
+				),
+			},
+			plan.NewUnresolvedTable("foo", ""),
+		),
 	),
 	`with cte1 as (select a from b) select * from cte1`: plan.NewWith(
 		plan.NewProject(
