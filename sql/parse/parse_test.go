@@ -3728,8 +3728,8 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
 	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
 	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
-	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               ErrMultipleMixedDatabaseNotSupported,
-	`DROP TABLE curdb.t1, t2`:                                   ErrMultipleMixedDatabaseNotSupported,
+	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               sql.ErrUnsupportedFeature,
+	`DROP TABLE curdb.t1, t2`:                                   sql.ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {

@@ -630,10 +630,10 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	var curdb sql.Database
 
 	for _, table := range d.Tables {
-		tbl, _ := table.(*ResolvedTable)
+		tbl := table.(*ResolvedTable)
 		curdb = tbl.Database
 
-		droppable, _ := tbl.Database.(sql.TableDropper)
+		droppable := tbl.Database.(sql.TableDropper)
 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
