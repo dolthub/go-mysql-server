@@ -944,14 +944,17 @@ CREATE TABLE t2
 		&plan.TableSpec{},
 		plan.IfNotExistsAbsent,
 		plan.IsTempTable),
-	`DROP TABLE foo;`: plan.NewDropTable(
-		sql.UnresolvedDatabase(""), false, "foo",
+	`DROP TABLE curdb.foo;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb")}, false,
 	),
-	`DROP TABLE IF EXISTS foo;`: plan.NewDropTable(
-		sql.UnresolvedDatabase(""), true, "foo",
+	`DROP TABLE t1, t2;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("t1", ""), plan.NewUnresolvedTable("t2", "")}, false,
 	),
-	`DROP TABLE IF EXISTS foo, bar, baz;`: plan.NewDropTable(
-		sql.UnresolvedDatabase(""), true, "foo", "bar", "baz",
+	`DROP TABLE IF EXISTS curdb.foo;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb")}, true,
+	),
+	`DROP TABLE IF EXISTS curdb.foo, curdb.bar, curdb.baz;`: plan.NewDropTable(
+		[]sql.Node{plan.NewUnresolvedTable("foo", "curdb"), plan.NewUnresolvedTable("bar", "curdb"), plan.NewUnresolvedTable("baz", "curdb")}, true,
 	),
 	`RENAME TABLE foo TO bar`: plan.NewRenameTable(
 		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
@@ -3740,6 +3743,8 @@ var fixturesErrors = map[string]*errors.Kind{
 	`SHOW VARIABLES WHERE Variable_name = 'autocommit'`:         sql.ErrUnsupportedFeature,
 	`SHOW SESSION VARIABLES WHERE Variable_name IS NOT NULL`:    sql.ErrUnsupportedFeature,
 	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
+	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               sql.ErrUnsupportedFeature,
+	`DROP TABLE curdb.t1, t2`:                                   sql.ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {

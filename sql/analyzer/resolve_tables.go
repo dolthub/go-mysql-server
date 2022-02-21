@@ -52,15 +52,32 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		if n.Resolved() {
-			return n, nil
+	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+		ignore := false
+		switch p := c.Parent.(type) {
+		case *plan.DropTable:
+			ignore = p.IfExists()
 		}
-		t, ok := n.(*plan.UnresolvedTable)
-		if !ok {
+
+		switch p := c.Node.(type) {
+		case *plan.DropTable:
+			var resolvedTables []sql.Node
+			for _, t := range p.Children() {
+				if _, ok := t.(*plan.ResolvedTable); ok {
+					resolvedTables = append(resolvedTables, t)
+				}
+			}
+			c.Node, _ = p.WithChildren(resolvedTables...)
 			return n, nil
+		case *plan.UnresolvedTable:
+			r, err := resolveTable(ctx, p, a)
+			if sql.ErrTableNotFound.Is(err) && ignore {
+				return p, nil
+			}
+			return r, err
+		default:
+			return p, nil
 		}
-		return resolveTable(ctx, t, a)
 	})
 }
 
@@ -145,4 +162,27 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 	}
 
 	return nil, err
+}
+
+// validateDropTables returns an error if the database is not droppable.
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	dt, ok := n.(*plan.DropTable)
+	if !ok {
+		return n, nil
+	}
+
+	// validates that each table in DropTable is ResolvedTable and each database of
+	// each table is TableDropper (each table can be of different database later on)
+	for _, table := range dt.Tables {
+		rt, ok := table.(*plan.ResolvedTable)
+		if !ok {
+			return nil, plan.ErrUnresolvedTable.New(rt.String())
+		}
+		_, ok = rt.Database.(sql.TableDropper)
+		if !ok {
+			return nil, sql.ErrDropTableNotSupported.New(rt.Database.Name())
+		}
+	}
+
+	return n, nil
 }
