@@ -7179,6 +7179,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"people"},
 			{"datetime_table"},
 			{"invert_pk"},
+			{"mytbl"},
 		},
 	},
 	{
@@ -7199,6 +7200,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"people", "BASE TABLE"},
 			{"datetime_table", "BASE TABLE"},
 			{"invert_pk", "BASE TABLE"},
+			{"mytbl", "BASE TABLE"},
 		},
 	},
 	{
@@ -7320,6 +7322,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable"},
 			{"invert_pk"},
 			{"mytable"},
+			{"mytbl"},
 			{"myview"},
 			{"newlinetable"},
 			{"niltable"},
@@ -7471,6 +7474,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable", nil},
 			{"invert_pk", nil},
 			{"mytable", nil},
+			{"mytbl", nil},
 			{"newlinetable", nil},
 			{"niltable", nil},
 			{"one_pk_three_idx", nil},
@@ -7498,6 +7502,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "mydb", "invert_pk", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
+			{"def", "mydb", "PRIMARY", "mydb", "mytbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "one_pk_three_idx", "PRIMARY KEY", "YES"},
@@ -7528,6 +7533,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "x", 3, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "mytable_s", "def", "mydb", "mytable", "s", 1, nil, nil, nil, nil},
+			{"def", "mydb", "PRIMARY", "def", "mydb", "mytbl", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "newlinetable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "niltable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "one_pk_three_idx", "pk", 1, nil, nil, nil, nil},
@@ -7562,10 +7568,10 @@ var InfoSchemaQueries = []QueryTest{
 				group by the_table, col.column_name
 				`,
 		Expected: []sql.Row{
-			{"mydb.one_pk_two_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
-			{"mydb.one_pk_three_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
-			{"mydb.auto_increment_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
-			{"mydb.fk_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.one_pk_two_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.one_pk_three_idx", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.auto_increment_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
+			{"mydb.fk_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
 		},
 	},
 }
