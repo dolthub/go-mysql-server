@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"github.com/dolthub/dolt/go/store/constants"
 	"os"
 	"strconv"
 
