@@ -150,7 +150,6 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
-
 	// TODO: Somehow move this to triggercloser
 	defer func() {
 		err := logicIter.Close(t.ctx)
@@ -244,8 +243,8 @@ type TriggerCloser struct {
 }
 
 func NewTriggerCloser(child sql.Node) *TriggerCloser {
-	return &TriggerCloser {
-		UnaryNode: UnaryNode {
+	return &TriggerCloser{
+		UnaryNode: UnaryNode{
 			Child: child,
 		},
 	}
