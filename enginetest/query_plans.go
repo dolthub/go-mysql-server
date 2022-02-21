@@ -2058,6 +2058,13 @@ var PlanTests = []QueryPlanTest{
 			"     └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
+	{
+		Query: `SELECT * FROM mytbl WHERE i > 0`,
+		ExpectedPlan: "Filter(mytbl.i > 0)\n" +
+			" └─ Projected table access on [i]\n" +
+			"     └─ IndexedTableAccess(mytbl on [mytbl.i])\n" +
+			"",
+	},
 }
 
 // Queries where the query planner produces a correct (results) but suboptimal plan.
