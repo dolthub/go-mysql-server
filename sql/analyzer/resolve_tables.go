@@ -163,3 +163,26 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 
 	return nil, err
 }
+
+// validateDropTables returns an error if the database is not droppable.
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	dt, ok := n.(*plan.DropTable)
+	if !ok {
+		return n, nil
+	}
+
+	// validates that each table in DropTable is ResolvedTable and each database of
+	// each table is TableDropper (each table can be of different database later on)
+	for _, table := range dt.Tables {
+		rt, ok := table.(*plan.ResolvedTable)
+		if !ok {
+			return nil, plan.ErrUnresolvedTable.New(rt.String())
+		}
+		_, ok = rt.Database.(sql.TableDropper)
+		if !ok {
+			return nil, sql.ErrDropTableNotSupported.New(rt.Database.Name())
+		}
+	}
+
+	return n, nil
+}

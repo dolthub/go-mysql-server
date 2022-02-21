@@ -32,6 +32,7 @@ var OnceBeforeDefault = []Rule{
 	{"lift_recursive_ctes", liftRecursiveCte},
 	{"resolve_databases", resolveDatabases},
 	{"resolve_tables", resolveTables},
+	{"validate_drop_tables", validateDropTables},
 	{"set_target_schemas", setTargetSchemas},
 	{"resolve_create_like", resolveCreateLike},
 	{"parse_column_defaults", parseColumnDefaults},

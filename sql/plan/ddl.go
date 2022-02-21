@@ -630,16 +630,10 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 	var curdb sql.Database
 
 	for _, table := range d.Tables {
-		tbl, tOk := table.(*ResolvedTable)
-		if !tOk {
-			return nil, ErrUnresolvedTable.New(table.String())
-		}
+		tbl, _ := table.(*ResolvedTable)
 		curdb = tbl.Database
 
-		droppable, ok := tbl.Database.(sql.TableDropper)
-		if !ok {
-			return nil, sql.ErrDropTableNotSupported.New(tbl.Database.Name())
-		}
+		droppable, _ := tbl.Database.(sql.TableDropper)
 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {
