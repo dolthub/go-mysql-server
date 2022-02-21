@@ -29,6 +29,7 @@ type ResolvedTable struct {
 
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
+
 // Can't embed Table2 like we do Table1 as it's an extension not everyone implements
 var _ sql.Table2 = (*ResolvedTable)(nil)
 

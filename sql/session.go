@@ -780,8 +780,8 @@ func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
 		var iter2 RowIter2
 		iter2, _ = iter.(RowIter2)
 		return &spanIter{
-			span: span,
-			iter: iter,
+			span:  span,
+			iter:  iter,
 			iter2: iter2,
 		}
 	}
@@ -790,7 +790,7 @@ func NewSpanIter(span opentracing.Span, iter RowIter) RowIter {
 type spanIter struct {
 	span  opentracing.Span
 	iter  RowIter
-	iter2  RowIter2
+	iter2 RowIter2
 	count int
 	max   time.Duration
 	min   time.Duration

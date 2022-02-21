@@ -205,16 +205,16 @@ func (e *Engine) QueryNodeWithBindings(
 
 	if autoCommit {
 		iter = transactionCommittingIter{
-			childIter: iter,
-			childIter2: iter2,
+			childIter:           iter,
+			childIter2:          iter2,
 			transactionDatabase: transactionDatabase,
 		}
 	}
 
 	if enableRowIter2 {
 		iter = rowFormatSelectorIter{
-			iter: iter,
-			iter2: iter2,
+			iter:    iter,
+			iter2:   iter2,
 			isNode2: useIter2,
 		}
 	}
@@ -270,8 +270,8 @@ func allNode2(n sql.Node) bool {
 // rowFormatSelectorIter is a wrapping row iter that implements RowIterTypeSelector so that clients consuming rows from it
 // know whether it's safe to iterate as RowIter or RowIter2.
 type rowFormatSelectorIter struct {
-	iter sql.RowIter
-	iter2 sql.RowIter2
+	iter    sql.RowIter
+	iter2   sql.RowIter2
 	isNode2 bool
 }
 
@@ -389,7 +389,7 @@ func readCommitted(ctx *sql.Context) bool {
 // during the Close() operation
 type transactionCommittingIter struct {
 	childIter           sql.RowIter
-	childIter2           sql.RowIter2
+	childIter2          sql.RowIter2
 	transactionDatabase string
 }
 

@@ -311,7 +311,6 @@ func (t *ProcessTable) notifyFuncsForPartition(p sql.Partition) (NotifyFunc, Not
 	return onDone, onNext
 }
 
-
 type queryType byte
 
 const (
@@ -332,10 +331,10 @@ type trackedRowIter struct {
 }
 
 func newTrackedRowIter(
-		node sql.Node,
-		iter sql.RowIter,
-		onNext NotifyFunc,
-		onDone NotifyFunc,
+	node sql.Node,
+	iter sql.RowIter,
+	onNext NotifyFunc,
+	onDone NotifyFunc,
 ) *trackedRowIter {
 	iter2, _ := iter.(sql.RowIter2)
 	return &trackedRowIter{node: node, iter: iter, iter2: iter2, onDone: onDone, onNext: onNext}
