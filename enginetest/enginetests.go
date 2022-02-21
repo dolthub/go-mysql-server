@@ -1210,8 +1210,8 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 		} else if assertion.ExpectedWarning != 0 {
 			t.Run(assertion.Query, func(t *testing.T) {
 				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
-					assertion.Expected, nil, assertion.ExpectedWarning,
-					assertion.ExpectedWarningsCount, assertion.ExpectedWarningMessageSubstring)
+					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
 			})
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
@@ -1260,8 +1260,9 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 			} else if assertion.ExpectedErrStr != "" {
 				AssertErrWithCtx(t, e, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
 			} else if assertion.ExpectedWarning != 0 {
-				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil,
-					assertion.ExpectedWarning, assertion.ExpectedWarningsCount, assertion.ExpectedWarningMessageSubstring)
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
+					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+					assertion.ExpectedWarningMessageSubstring, false)
 			} else {
 				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 			}
@@ -2241,7 +2242,8 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
 
 		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists, -1, "")
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists,
+			-1, "", false)
 	})
 }
 
@@ -2408,7 +2410,8 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists, -1, "")
+			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists,
+			-1, "", false)
 
 		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
@@ -2425,7 +2428,8 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		require.True(t, sql.ErrDatabaseNotFound.Is(err), "Expected error of type %s but got %s", sql.ErrDatabaseNotFound, err)
 
 		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS testdb",
-			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists, -1, "")
+			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists,
+			-1, "", false)
 	})
 }
 
@@ -4174,6 +4178,7 @@ func AssertWarningAndTestQuery(
 	expectedCode int,
 	expectedWarningsCount int,
 	expectedWarningMessageSubstring string,
+	skipResultsCheck bool,
 ) {
 	require := require.New(t)
 	if ctx == nil {
@@ -4203,7 +4208,9 @@ func AssertWarningAndTestQuery(
 		}
 	}
 
-	checkResults(t, require, expected, expectedCols, sch, rows, query)
+	if !skipResultsCheck {
+		checkResults(t, require, expected, expectedCols, sch, rows, query)
+	}
 }
 
 type customFunc struct {
@@ -4906,12 +4913,10 @@ func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row,
 	}
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
-	if expected != nil {
-		if orderBy || len(expected) <= 1 {
-			require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
-		} else {
-			require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
-		}
+	if orderBy || len(expected) <= 1 {
+		require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+	} else {
+		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
 	}
 
 	// If the expected schema was given, test it as well
