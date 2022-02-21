@@ -37,6 +37,9 @@ type Exchange struct {
 	Parallelism int
 }
 
+var _ sql.Node = (*Exchange)(nil)
+var _ sql.Node2 = (*Exchange)(nil)
+
 // NewExchange creates a new Exchange node.
 func NewExchange(
 	parallelism int,
@@ -109,7 +112,62 @@ func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 
 	waiter := func() error { return eg.Wait() }
 	shutdownHook := newShutdownHook(eg, egCtx)
-	return &exchangeRowIter{shutdownHook, waiter, rowsCh}, nil
+	return &exchangeRowIter{shutdownHook: shutdownHook, waiter: waiter, rows: rowsCh}, nil
+}
+
+// RowIter2 implements the sql.Node2 interface.
+func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	var t sql.Table2
+	Inspect(e.Child, func(n sql.Node) bool {
+		if table, ok := n.(sql.Table2); ok {
+			t = table
+			return false
+		}
+		return true
+	})
+	if t == nil {
+		return nil, ErrNoPartitionable.New()
+	}
+
+	partitions, err := t.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// See notes on concurrency in RowIter
+	partitionsCh := make(chan sql.Partition)
+	rowsCh := make(chan sql.Row2, e.Parallelism*16)
+
+	eg, egCtx := ctx.NewErrgroup()
+	eg.Go(func() error {
+		defer close(partitionsCh)
+		return iterPartitions(egCtx, partitions, partitionsCh)
+	})
+
+	getRowIter := e.getRowIter2Func()
+	seg, segCtx := egCtx.NewErrgroup()
+	for i := 0; i < e.Parallelism; i++ {
+		seg.Go(func() error {
+			return iterPartitionRows2(segCtx, getRowIter, partitionsCh, rowsCh)
+		})
+	}
+
+	eg.Go(func() error {
+		defer close(rowsCh)
+		err := seg.Wait()
+		if err != nil {
+			return err
+		}
+		// If everything in |seg| returned |nil|,
+		// |iterPartitions| is done, |partitionsCh| is closed,
+		// and every partition RowIter returned |EOF|. That
+		// means we're EOF here.
+		return io.EOF
+	})
+
+	waiter := func() error { return eg.Wait() }
+	shutdownHook := newShutdownHook(eg, egCtx)
+	return &exchangeRowIter{shutdownHook: shutdownHook, waiter: waiter, rows2: rowsCh}, nil
 }
 
 func (e *Exchange) String() string {
@@ -155,6 +213,21 @@ func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition)
 	}
 }
 
+func (e *Exchange) getRowIter2Func() func(*sql.Context, sql.Partition, *sql.RowFrame) (sql.RowIter2, error) {
+	return func(ctx *sql.Context, partition sql.Partition, frame *sql.RowFrame) (sql.RowIter2, error) {
+		node, err := TransformUp(e.Child, func(n sql.Node) (sql.Node, error) {
+			if t, ok := n.(sql.Table); ok {
+				return &exchangePartition{partition, t}, nil
+			}
+			return n, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return node.(sql.Node2).RowIter2(ctx, frame)
+	}
+}
+
 // exchangeRowIter implements sql.RowIter for an exchange
 // node. Calling |Next| reads off of |rows|, while calling |Close|
 // calls |shutdownHook| and waits for exchange node workers to
@@ -165,14 +238,34 @@ type exchangeRowIter struct {
 	shutdownHook func()
 	waiter       func() error
 	rows         <-chan sql.Row
+	rows2        <-chan sql.Row2
 }
 
+var _ sql.RowIter = (*exchangeRowIter)(nil)
+var _ sql.RowIter2 = (*exchangeRowIter)(nil)
+
 func (i *exchangeRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.rows == nil {
+		panic("Next called for a Next2 iterator")
+	}
 	r, ok := <-i.rows
 	if !ok {
 		return nil, i.waiter()
 	}
 	return r, nil
+}
+
+func (i *exchangeRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
+	if i.rows2 == nil {
+		panic("Next2 called for a Next iterator")
+	}
+	r, ok := <-i.rows2
+	if !ok {
+		return i.waiter()
+	}
+
+	frame.Append(r...)
+	return nil
 }
 
 func (i *exchangeRowIter) Close(ctx *sql.Context) error {
@@ -190,6 +283,7 @@ type exchangePartition struct {
 }
 
 var _ sql.Node = (*exchangePartition)(nil)
+var _ sql.Node2 = (*exchangePartition)(nil)
 
 func (p *exchangePartition) String() string {
 	return fmt.Sprintf("Partition(%s)", string(p.Key()))
@@ -201,6 +295,10 @@ func (exchangePartition) Resolved() bool { return true }
 
 func (p *exchangePartition) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return p.table.PartitionRows(ctx, p.Partition)
+}
+
+func (p *exchangePartition) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	return p.table.(sql.Table2).PartitionRows2(ctx, p.Partition)
 }
 
 func (p *exchangePartition) Schema() sql.Schema {
@@ -227,6 +325,7 @@ func (p *exchangePartition) CheckPrivileges(ctx *sql.Context, opChecker sql.Priv
 }
 
 type rowIterPartitionFunc func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error)
+type rowIter2PartitionFunc func(ctx *sql.Context, partition sql.Partition, frame *sql.RowFrame) (sql.RowIter2, error)
 
 func sendAllRows(ctx *sql.Context, iter sql.RowIter, rows chan<- sql.Row) (rowCount int, rerr error) {
 	defer func() {
@@ -246,6 +345,31 @@ func sendAllRows(ctx *sql.Context, iter sql.RowIter, rows chan<- sql.Row) (rowCo
 		rowCount++
 		select {
 		case rows <- r:
+		case <-ctx.Done():
+			return rowCount, ctx.Err()
+		}
+	}
+}
+
+func sendAllRows2(ctx *sql.Context, iter sql.RowIter2, rows chan<- sql.Row2, f *sql.RowFrame) (rowCount int, rerr error) {
+	defer func() {
+		cerr := iter.Close(ctx)
+		if rerr == nil {
+			rerr = cerr
+		}
+	}()
+	for {
+		f.Clear()
+		err := iter.Next2(ctx, f)
+		if err == io.EOF {
+			return rowCount, nil
+		}
+		if err != nil {
+			return rowCount, err
+		}
+		rowCount++
+		select {
+		case rows <- f.Row2Copy():
 		case <-ctx.Done():
 			return rowCount, ctx.Err()
 		}
@@ -277,6 +401,37 @@ func iterPartitionRows(ctx *sql.Context, getRowIter rowIterPartitionFunc, partit
 				return err
 			}
 			count, err := sendAllRows(ctx, iter, rows)
+			span.LogKV("num_rows", count)
+			span.Finish()
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func iterPartitionRows2(ctx *sql.Context, getRowIter rowIter2PartitionFunc, partitions <-chan sql.Partition, rows chan<- sql.Row2) (rerr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			rerr = fmt.Errorf("panic in ExchangeIterPartitionRows2: %v", r)
+		}
+	}()
+	for {
+		select {
+		case p, ok := <-partitions:
+			if !ok {
+				return nil
+			}
+			f := sql.NewRowFrame()
+
+			span, ctx := ctx.Span("exchange.IterPartition")
+			iter, err := getRowIter(ctx, p, f)
+			if err != nil {
+				return err
+			}
+			count, err := sendAllRows2(ctx, iter, rows, f)
 			span.LogKV("num_rows", count)
 			span.Finish()
 			if err != nil {

@@ -25,6 +25,7 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
+	rows2      RowIter2
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -98,7 +99,7 @@ func (i *TableRowIter) Next2(ctx *Context, frame *RowFrame) error {
 		i.partition = partition
 	}
 
-	if i.rows == nil {
+	if i.rows2 == nil {
 		t2, ok := i.table.(Table2)
 		if !ok {
 			return fmt.Errorf("table does not implement Table2: %s (%T)", i.table.Name(), i.table)
@@ -109,17 +110,17 @@ func (i *TableRowIter) Next2(ctx *Context, frame *RowFrame) error {
 			return err
 		}
 
-		i.rows = rows
+		i.rows2 = rows
 	}
 
-	err := i.rows.(RowIter2).Next2(ctx, frame)
+	err := i.rows2.Next2(ctx, frame)
 	if err != nil && err == io.EOF {
-		if err = i.rows.Close(ctx); err != nil {
+		if err = i.rows2.Close(ctx); err != nil {
 			return err
 		}
 
 		i.partition = nil
-		i.rows = nil
+		i.rows2 = nil
 		return i.Next2(ctx, frame)
 	}
 

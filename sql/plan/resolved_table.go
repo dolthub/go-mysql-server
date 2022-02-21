@@ -30,6 +30,9 @@ type ResolvedTable struct {
 var _ sql.Node = (*ResolvedTable)(nil)
 var _ sql.Node2 = (*ResolvedTable)(nil)
 
+// Can't embed Table2 like we do Table1 as it's an extension not everyone implements
+var _ sql.Table2 = (*ResolvedTable)(nil)
+
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
 	return &ResolvedTable{table, db, asOf}
@@ -74,6 +77,11 @@ func (t *ResolvedTable) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter
 	}
 
 	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)).(sql.RowIter2), nil
+}
+
+// PartitionRows2 implements sql.Table2. sql.Table methods are embedded in the type.
+func (t *ResolvedTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
+	return t.Table.(sql.Table2).PartitionRows2(ctx, part)
 }
 
 // WithChildren implements the Node interface.
