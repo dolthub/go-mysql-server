@@ -1208,7 +1208,11 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 			})
 		} else if assertion.ExpectedWarning != 0 {
-			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
+					assertion.Expected, nil, assertion.ExpectedWarning,
+					assertion.ExpectedWarningsCount, assertion.ExpectedWarningMessageSubstring)
+			})
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
 		}
@@ -1256,7 +1260,8 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 			} else if assertion.ExpectedErrStr != "" {
 				AssertErrWithCtx(t, e, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
 			} else if assertion.ExpectedWarning != 0 {
-				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil,
+					assertion.ExpectedWarning, assertion.ExpectedWarningsCount, assertion.ExpectedWarningMessageSubstring)
 			} else {
 				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 			}
@@ -2235,7 +2240,8 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
 
-		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists)
+		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists, -1, "")
 	})
 }
 
@@ -2401,7 +2407,8 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		// The test setup sets a database name, which interferes with DROP DATABASE tests
 		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists, -1, "")
 
 		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
@@ -2417,7 +2424,8 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		require.Error(t, err)
 		require.True(t, sql.ErrDatabaseNotFound.Is(err), "Expected error of type %s but got %s", sql.ErrDatabaseNotFound, err)
 
-		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists, -1, "")
 	})
 }
 
@@ -4164,26 +4172,36 @@ func AssertWarningAndTestQuery(
 	expected []sql.Row,
 	expectedCols []*sql.Column,
 	expectedCode int,
+	expectedWarningsCount int,
+	expectedWarningMessageSubstring string,
 ) {
 	require := require.New(t)
 	if ctx == nil {
 		ctx = NewContext(harness)
 	}
+	ctx.ClearWarnings()
+
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(err, "Unexpected error for query %s", query)
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err, "Unexpected error for query %s", query)
 
-	condition := false
-	for _, warning := range ctx.Warnings() {
-		if warning.Code == expectedCode {
-			condition = true
-			break
+	if expectedWarningsCount > 0 {
+		assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
+	}
+
+	if expectedCode > 0 {
+		for _, warning := range ctx.Warnings() {
+			assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
 		}
 	}
 
-	assert.True(t, condition)
+	if len(expectedWarningMessageSubstring) > 0 {
+		for _, warning := range ctx.Warnings() {
+			assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
+		}
+	}
 
 	checkResults(t, require, expected, expectedCols, sch, rows, query)
 }
@@ -4888,10 +4906,12 @@ func checkResults(t *testing.T, require *require.Assertions, expected []sql.Row,
 	}
 
 	// .Equal gives better error messages than .ElementsMatch, so use it when possible
-	if orderBy || len(expected) <= 1 {
-		require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
-	} else {
-		require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+	if expected != nil {
+		if orderBy || len(expected) <= 1 {
+			require.Equal(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+		} else {
+			require.ElementsMatch(widenedExpected, widenedRows, "Unexpected result for query %s", q)
+		}
 	}
 
 	// If the expected schema was given, test it as well
