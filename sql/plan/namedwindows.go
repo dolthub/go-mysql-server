@@ -21,6 +21,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// NamedWindows is a list of WINDOW clause definitions
+// to be resolved and merged into OVER clause sql.Window
+// nodes.
 type NamedWindows struct {
 	UnaryNode
 	WindowDefs map[string]*sql.WindowDefinition
@@ -63,7 +66,7 @@ func (n *NamedWindows) DebugString() string {
 	pr := sql.NewTreePrinter()
 	sb.WriteString(")")
 	_ = pr.WriteNode(sb.String())
-	_ = pr.WriteChildren(n.Child.String())
+	_ = pr.WriteChildren(sql.DebugString(n.Child))
 	return pr.String()
 }
 
