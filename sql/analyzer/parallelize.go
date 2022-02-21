@@ -15,6 +15,8 @@
 package analyzer
 
 import (
+	"github.com/dolthub/dolt/go/store/constants"
+	"os"
 	"strconv"
 
 	"github.com/go-kit/kit/metrics/discard"
@@ -23,13 +25,30 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+func init() {
+	// check for single-threaded feature flag
+	if v, ok := os.LookupEnv(singleThreadedFeatureFlag); ok && v != "" {
+		SingleThreadFeatureFlag = true
+	}
+}
+
+const (
+	singleThreadedFeatureFlag = "SINGLE_THREAD_FEATURE_FLAG"
+)
+
 var (
 	// ParallelQueryCounter describes a metric that accumulates
 	// number of parallel queries monotonically.
 	ParallelQueryCounter = discard.NewCounter()
+
+	SingleThreadFeatureFlag = false
 )
 
 func shouldParallelize(node sql.Node, scope *Scope) bool {
+	if SingleThreadFeatureFlag {
+		return false
+	}
+
 	// Don't parallelize subqueries, this can blow up the execution graph quickly
 	if len(scope.Schema()) > 0 {
 		return false
