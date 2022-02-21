@@ -483,52 +483,6 @@ var TriggerTests = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name: "trigger before inserts, table reverts when insert fails",
-		SetUpScript: []string{
-			"create table a (i int primary key)",
-			"create table b (x int)",
-			"insert into b values (0)",
-			"create trigger trig before insert on a for each row update b set x = x + 1;",
-			"insert into a values (1), (2), (3)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from a order by i",
-				Expected: []sql.Row{
-					{1},
-					{2},
-					{3},
-				},
-			},
-			{
-				Query: "select * from b",
-				Expected: []sql.Row{
-					{3},
-				},
-			},
-			{
-				Query: "insert into a values (1)",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query: "select * from b",
-				Expected: []sql.Row{
-					{3},
-				},
-			},
-			{
-				Query: "insert into a values (4), (1), (2)",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
-			},
-			{
-				Query: "select * from b",
-				Expected: []sql.Row{
-					{3},
-				},
-			},
-		},
-	},
 	// UPDATE triggers
 	{
 		Name: "trigger after update, insert into other table",
@@ -2123,6 +2077,55 @@ end;`,
 					{3, "goodbye"},
 					{4, nil},
 					{5, nil},
+				},
+			},
+		},
+	},
+}
+
+var TriggerTests2 = []ScriptTest {
+	{
+		Name: "trigger before inserts, table reverts when insert fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"insert into b values (0)",
+			"create trigger trig before insert on a for each row update b set x = x + 1;",
+			"insert into a values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from a order by i",
+				Expected: []sql.Row{
+					{1},
+					{2},
+					{3},
+				},
+			},
+			{
+				Query: "select * from b order by x",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+			{
+				Query: "insert into a values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b order by x",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+			{
+				Query: "insert into a values (4), (1), (2)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{3},
 				},
 			},
 		},

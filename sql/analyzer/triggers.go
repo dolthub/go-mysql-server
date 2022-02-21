@@ -229,6 +229,8 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 			}
 		}
 
+		// Declare resulting node
+		resNode := c.Node
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -236,12 +238,12 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithSource(triggerExecutor), nil
+				resNode = n.WithSource(triggerExecutor)
 			} else {
-				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
+				resNode = plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				})
 			}
 		case *plan.Update:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -249,12 +251,12 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithChildren(triggerExecutor)
+				resNode, err = n.WithChildren(triggerExecutor)
 			} else {
-				return plan.NewTriggerExecutor(n, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
+				resNode = plan.NewTriggerExecutor(n, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				})
 			}
 		case *plan.DeleteFrom:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -262,16 +264,25 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithChildren(triggerExecutor)
+				resNode, err = n.WithChildren(triggerExecutor)
 			} else {
-				return plan.NewTriggerExecutor(n, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
+				resNode = plan.NewTriggerExecutor(n, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				})
 			}
+		default:
+			// Do nothing
+			return c.Node, nil
 		}
 
-		return c.Node, nil
+		// Check for errors one last time
+		if err != nil {
+			return nil, err
+		}
+
+		// Wrap Insert, Update, and Delete into a Closer node
+		return plan.NewTriggerCloser(resNode), nil
 	})
 }
 
