@@ -15,10 +15,11 @@
 package analyzer
 
 import (
+	"testing"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"testing"
 )
 
 func TestReplaceWindowNames(t *testing.T) {
