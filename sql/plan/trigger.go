@@ -98,7 +98,7 @@ type triggerIter struct {
 	triggerTime    TriggerTime
 	triggerEvent   TriggerEvent
 	ctx            *sql.Context
-	logicIter	   sql.RowIter
+	logicIter      sql.RowIter
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
