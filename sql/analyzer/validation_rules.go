@@ -286,11 +286,11 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 		case *expression.GetField:
 			for _, groupBy := range groupBys {
 				if strings.Contains(groupBy, ".") {
-					if groupBy == expr.Name() {
+					if groupBy == expr.String() {
 						return true
 					}
 				} else {
-					if groupBy == expr.String() {
+					if groupBy == expr.Name() {
 						return true
 					}
 				}
