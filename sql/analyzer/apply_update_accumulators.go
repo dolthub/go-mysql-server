@@ -32,7 +32,7 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 	}
 
 	switch n := n.(type) {
-	case *plan.TriggerCloser, *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
+	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 		accumulatorType, err := getUpdateAccumulatorType(n)
 		if err != nil {
 			return nil, err
@@ -46,8 +46,6 @@ func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *S
 // getUpdateAccumulatorType returns the type of accumulator needed for the node given, or an error if there's no match.
 func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
 	switch n := n.(type) {
-	case *plan.TriggerCloser:
-		return getUpdateAccumulatorType(n.Child)
 	case *plan.TriggerExecutor:
 		return getUpdateAccumulatorType(n.Left())
 	case *plan.InsertInto:

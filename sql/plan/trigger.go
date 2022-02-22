@@ -98,6 +98,7 @@ type triggerIter struct {
 	triggerTime    TriggerTime
 	triggerEvent   TriggerEvent
 	ctx            *sql.Context
+	logicIter	   sql.RowIter
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
@@ -150,14 +151,8 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
-
-	// TODO: Somehow move this to triggercloser
-	defer func() {
-		err := logicIter.Close(t.ctx)
-		if returnErr == nil {
-			returnErr = err
-		}
-	}()
+	// Save for later
+	t.logicIter = logicIter
 
 	var logicRow sql.Row
 	for {
@@ -236,46 +231,4 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		executionLogic: t.right,
 		ctx:            ctx,
 	}, nil
-}
-
-type TriggerCloser struct {
-	UnaryNode // TODO: Just wrap the node for now
-	//BinaryNode        // Left = wrapped node, Right = trigger execution logic
-}
-
-func NewTriggerCloser(child sql.Node) *TriggerCloser {
-	return &TriggerCloser {
-		UnaryNode: UnaryNode {
-			Child: child,
-		},
-	}
-}
-
-func (t *TriggerCloser) String() string {
-	return "TODO"
-}
-
-func (t *TriggerCloser) DebugString() string {
-	return "TODO"
-}
-
-func (t *TriggerCloser) Schema() sql.Schema {
-	return t.Child.Schema()
-}
-
-func (t *TriggerCloser) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
-	}
-
-	return NewTriggerCloser(children[0]), nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (t *TriggerCloser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return t.Child.CheckPrivileges(ctx, opChecker)
-}
-
-func (t *TriggerCloser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return t.Child.RowIter(ctx, row)
 }

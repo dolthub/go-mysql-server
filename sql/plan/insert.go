@@ -415,6 +415,11 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	i.updateLastInsertId(ctx, row)
 
+	// Inserted without error, so close logicIter left open by any before triggers
+	if ti, ok := i.rowSource.(*triggerIter); ok {
+		ti.logicIter.Close(ti.ctx)
+	}
+
 	return row, nil
 }
 
@@ -554,6 +559,11 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sq
 		}
 		return nil, nil
 	} else {
+		// don't close if unignorable error and rowSource is triggerIter
+		if _, ok := i.rowSource.(*triggerIter); ok {
+			i.rowSource = nil
+			return nil, sql.NewWrappedInsertError(row, err)
+		}
 		i.rowSource.Close(ctx)
 		i.rowSource = nil
 		return nil, sql.NewWrappedInsertError(row, err)
