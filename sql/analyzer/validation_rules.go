@@ -250,13 +250,16 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		if p, ok := n.Child.(*plan.Project); ok {
 			for _, projection := range p.Projections {
 				if a, ok := projection.(*expression.Alias); ok {
-					curAliases[a.String()] = a.Child
+					curAliases[a.Name()] = a.Child
 				}
 			}
 		}
 
 		for _, expr := range n.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
+				if e, ok := curAliases[expr.String()]; ok {
+					expr = e
+				}
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
 					return nil, ErrValidationGroupBy.New(expr.String())
 				}
@@ -279,6 +282,25 @@ func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bo
 			if stringContains(groupBys, expr.String()) {
 				return false
 			}
+			return true
+		case *expression.GetField:
+			for _, groupBy := range groupBys {
+				if strings.Contains(groupBy, ".") {
+					if groupBy == expr.Name() {
+						return true
+					}
+				} else {
+					if groupBy == expr.String() {
+						return true
+					}
+				}
+			}
+
+			if len(expr.Children()) == 0 {
+				valid = false
+				return false
+			}
+
 			return true
 		// cc: https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html
 		// Each part of the SelectExpr must refer to the aggregated columns in some way
