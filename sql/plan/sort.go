@@ -189,7 +189,7 @@ func (i *sortIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
 
 	row := i.sortedRows2[i.idx]
 	i.idx++
-	frame.Append(row...)
+	frame.AppendMany(row.Types, row.Values)
 
 	return nil
 }

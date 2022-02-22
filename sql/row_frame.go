@@ -32,6 +32,19 @@ type Row2 struct {
 	Values []ValueBytes
 }
 
+// GetField returns the Value for the ith field in this row.
+func (r Row2) GetField(i int) Value {
+	return Value{
+		Typ: r.Types[i],
+		Val: r.Values[i],
+	}
+}
+
+// Len returns the number of fields of this row
+func (r Row2) Len() int {
+	return len(r.Types)
+}
+
 // Value is a logical index into a Row2. For efficiency reasons, use sparingly.
 type Value struct {
 	Typ querypb.Type
