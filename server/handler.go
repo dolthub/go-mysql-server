@@ -436,34 +436,67 @@ func (h *Handler) doQuery(
 				continue
 			}
 
-			select {
-			case <-ctx.Done():
-				return nil
-			case row, ok := <-rowChan:
-				if !ok {
+			if rowIter2 != nil {
+				select {
+				case <-ctx.Done():
 					return nil
-				}
-				if sql.IsOkResult(row) {
-					if len(r.Rows) > 0 {
-						panic("Got OkResult mixed with RowResult")
+				case row, ok := <-row2Chan:
+					if !ok {
+						return nil
 					}
-					r = resultFromOkResult(row[0].(sql.OkResult))
-					continue
-				}
+					// if sql.IsOkResult(row) {
+					// 	if len(r.Rows) > 0 {
+					// 		panic("Got OkResult mixed with RowResult")
+					// 	}
+					// 	r = resultFromOkResult(row[0].(sql.OkResult))
+					// 	continue
+					// }
 
-				outputRow, err := rowToSQL(schema, row)
-				if err != nil {
-					return err
-				}
+					outputRow, err := row2ToSQL(schema, row)
+					if err != nil {
+						return err
+					}
 
-				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-				r.Rows = append(r.Rows, outputRow)
-				r.RowsAffected++
-			case <-timer.C:
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Tracef("connection timeout")
-					return ErrRowTimeout.New()
+					ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+					r.Rows = append(r.Rows, outputRow)
+					r.RowsAffected++
+				case <-timer.C:
+					if h.readTimeout != 0 {
+						// Cancel and return so Vitess can call the CloseConnection callback
+						ctx.GetLogger().Tracef("connection timeout")
+						return ErrRowTimeout.New()
+					}
+				}
+			} else {
+				select {
+				case <-ctx.Done():
+					return nil
+				case row, ok := <-rowChan:
+					if !ok {
+						return nil
+					}
+					if sql.IsOkResult(row) {
+						if len(r.Rows) > 0 {
+							panic("Got OkResult mixed with RowResult")
+						}
+						r = resultFromOkResult(row[0].(sql.OkResult))
+						continue
+					}
+
+					outputRow, err := rowToSQL(schema, row)
+					if err != nil {
+						return err
+					}
+
+					ctx.GetLogger().Tracef("spooling result row %s", outputRow)
+					r.Rows = append(r.Rows, outputRow)
+					r.RowsAffected++
+				case <-timer.C:
+					if h.readTimeout != 0 {
+						// Cancel and return so Vitess can call the CloseConnection callback
+						ctx.GetLogger().Tracef("connection timeout")
+						return ErrRowTimeout.New()
+					}
 				}
 			}
 			if !timer.Stop() {
@@ -662,6 +695,25 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 		}
 
 		o[i], err = s[i].Type.SQL(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return o, nil
+}
+
+func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
+	o := make([]sqltypes.Value, len(row.Values))
+	var err error
+	for i := 0; i < row.Len(); i++ {
+		v := row.GetField(i)
+		if v.IsNull() {
+			o[i] = sqltypes.NULL
+			continue
+		}
+
+		o[i], err = s[i].Type.(sql.Type2).SQL2(v)
 		if err != nil {
 			return nil, err
 		}
