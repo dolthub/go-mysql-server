@@ -1208,7 +1208,11 @@ func TestScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script 
 				AssertErr(t, e, harness, assertion.Query, nil, assertion.ExpectedErrStr)
 			})
 		} else if assertion.ExpectedWarning != 0 {
-			AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
+					assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+					assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
+			})
 		} else {
 			TestQuery(t, harness, e, assertion.Query, assertion.Expected, nil, nil)
 		}
@@ -1256,7 +1260,9 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 			} else if assertion.ExpectedErrStr != "" {
 				AssertErrWithCtx(t, e, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
 			} else if assertion.ExpectedWarning != 0 {
-				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected, nil, assertion.ExpectedWarning)
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
+					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+					assertion.ExpectedWarningMessageSubstring, false)
 			} else {
 				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
 			}
@@ -1692,13 +1698,101 @@ func TestDropTable(t *testing.T, harness Harness) {
 	_, _, err = e.Query(NewContext(harness), "DROP TABLE not_exist")
 	require.Error(err)
 
+	_, _, err = e.Query(NewContext(harness), "DROP TABLE IF EXISTS not_exist")
+	require.NoError(err)
+
 	t.Run("no database selected", func(t *testing.T) {
 		ctx := NewContext(harness)
 		ctx.SetCurrentDatabase("")
 
-		t.Skip("Panics")
+		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
-		TestQueryWithContext(t, ctx, e, "DROP TABLE IF EXISTS mydb.one_pk", []sql.Row(nil), nil, nil)
+		TestQueryWithContext(t, ctx, e, "DROP TABLE mydb.one_pk", []sql.Row(nil), nil, nil)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "mydb.one_pk")
+		require.NoError(err)
+		require.False(ok)
+
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer)")
+
+		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "one_pk_two_idx")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, mydb.one_pk")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "one_pk_two_idx")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, otherdb.table3")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.table1, otherdb.table3")
+		require.NoError(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "table1")
+		require.NoError(err)
+		require.False(ok)
+	})
+
+	t.Run("cur database selected, drop tables in other db", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("mydb")
+
+		RunQuery(t, e, harness, "DROP DATABASE IF EXISTS otherdb")
+		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
+		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
+
+		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer, c1 text)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab2 (other_pk2 integer)")
+
+		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
+		require.NoError(err)
+
+		_, ok, err = db.GetTableInsensitive(ctx, "tab1")
+		require.NoError(err)
+		require.True(ok)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab1")
+		require.NoError(err)
+		require.False(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE nonExistentTable, otherdb.tab2")
+		require.Error(err)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS nonExistentTable, otherdb.tab2")
+		require.Error(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab2")
+		require.NoError(err)
+		require.True(ok)
+
+		_, _, err = e.Query(ctx, "DROP TABLE IF EXISTS otherdb.tab3, otherdb.tab2")
+		require.NoError(err)
+
+		_, ok, err = otherdb.GetTableInsensitive(ctx, "tab2")
+		require.NoError(err)
+		require.False(ok)
 	})
 }
 
@@ -2235,7 +2329,9 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
 
-		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists)
+		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, mysql.ERDbCreateExists,
+			-1, "", false)
 	})
 }
 
@@ -2401,7 +2497,9 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		// The test setup sets a database name, which interferes with DROP DATABASE tests
 		ctx := NewContext(harness)
 		TestQueryWithContext(t, ctx, e, "DROP DATABASE mydb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
-		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS mydb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists,
+			-1, "", false)
 
 		TestQueryWithContext(t, ctx, e, "CREATE DATABASE testdb", []sql.Row{{sql.OkResult{RowsAffected: 1}}}, nil, nil)
 
@@ -2417,7 +2515,9 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 		require.Error(t, err)
 		require.True(t, sql.ErrDatabaseNotFound.Is(err), "Expected error of type %s but got %s", sql.ErrDatabaseNotFound, err)
 
-		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS testdb", []sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "DROP DATABASE IF EXISTS testdb",
+			[]sql.Row{{sql.OkResult{RowsAffected: 0}}}, nil, mysql.ERDbDropExists,
+			-1, "", false)
 	})
 }
 
@@ -4164,28 +4264,41 @@ func AssertWarningAndTestQuery(
 	expected []sql.Row,
 	expectedCols []*sql.Column,
 	expectedCode int,
+	expectedWarningsCount int,
+	expectedWarningMessageSubstring string,
+	skipResultsCheck bool,
 ) {
 	require := require.New(t)
 	if ctx == nil {
 		ctx = NewContext(harness)
 	}
+	ctx.ClearWarnings()
+
 	sch, iter, err := e.Query(ctx, query)
 	require.NoError(err, "Unexpected error for query %s", query)
 
 	rows, err := sql.RowIterToRows(ctx, sch, iter)
 	require.NoError(err, "Unexpected error for query %s", query)
 
-	condition := false
-	for _, warning := range ctx.Warnings() {
-		if warning.Code == expectedCode {
-			condition = true
-			break
+	if expectedWarningsCount > 0 {
+		assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
+	}
+
+	if expectedCode > 0 {
+		for _, warning := range ctx.Warnings() {
+			assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
 		}
 	}
 
-	assert.True(t, condition)
+	if len(expectedWarningMessageSubstring) > 0 {
+		for _, warning := range ctx.Warnings() {
+			assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
+		}
+	}
 
-	checkResults(t, require, expected, expectedCols, sch, rows, query)
+	if !skipResultsCheck {
+		checkResults(t, require, expected, expectedCols, sch, rows, query)
+	}
 }
 
 type customFunc struct {
