@@ -125,6 +125,26 @@ func ReadUint16(val []byte) uint16 {
 	return binary.LittleEndian.Uint16(val)
 }
 
+func ReadInt24(val []byte) (i int32) {
+	expectSize(val, int24Size)
+	var tmp [4]byte
+	// copy |val| to |tmp|
+	tmp[3], tmp[2] = val[3], val[2]
+	tmp[1], tmp[0] = val[1], val[0]
+	i = int32(binary.LittleEndian.Uint32(tmp[:]))
+	return
+}
+
+func ReadUint24(val []byte) (u uint32) {
+	expectSize(val, int24Size)
+	var tmp [4]byte
+	// copy |val| to |tmp|
+	tmp[3], tmp[2] = val[3], val[2]
+	tmp[1], tmp[0] = val[1], val[0]
+	u = binary.LittleEndian.Uint32(tmp[:])
+	return
+}
+
 func ReadInt32(val []byte) int32 {
 	expectSize(val, Int32Size)
 	return int32(binary.LittleEndian.Uint32(val))
@@ -133,6 +153,17 @@ func ReadInt32(val []byte) int32 {
 func ReadUint32(val []byte) uint32 {
 	expectSize(val, Uint32Size)
 	return binary.LittleEndian.Uint32(val)
+}
+
+func ReadInt48(val []byte) (i int64) {
+	expectSize(val, int48Size)
+	var tmp [8]byte
+	// copy |val| to |tmp|
+	tmp[5], tmp[4] = val[5], val[4]
+	tmp[3], tmp[2] = val[3], val[2]
+	tmp[1], tmp[0] = val[1], val[0]
+	i = int64(binary.LittleEndian.Uint64(tmp[:]))
+	return
 }
 
 func ReadUint48(val []byte) (u uint64) {

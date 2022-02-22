@@ -88,6 +88,13 @@ func makeRowFrame() interface{} {
 	return &RowFrame{}
 }
 
+// Recycle returns this row frame to the shared pool. Further use will result in concurrency errors. All RowFrames
+// should be recycled when they are no longer being used to prevent resource leaks.
+func (f *RowFrame) Recycle() {
+	f.Clear()
+	framePool.Put(f)
+}
+
 // Row2 returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
 // further modification to this frame may result in the returned value changing as well.
 func (f *RowFrame) Row2() Row2 {
@@ -98,7 +105,7 @@ func (f *RowFrame) Row2() Row2 {
 }
 
 // Row2Copy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
-// rowframe object.
+// RowFrame object via Clear()
 func (f *RowFrame) Row2Copy() Row2 {
 	vs := make([]ValueBytes, len(f.Values))
 	// TODO: it would be faster here to just copy the entire value backing array in one pass

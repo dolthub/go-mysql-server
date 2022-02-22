@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -86,6 +87,9 @@ type NumberType interface {
 type numberTypeImpl struct {
 	baseType query.Type
 }
+
+var _ Type = numberTypeImpl{}
+var _ Type2 = numberTypeImpl{}
 
 // CreateNumberType creates a NumberType.
 func CreateNumberType(baseType query.Type) (NumberType, error) {
@@ -351,6 +355,69 @@ func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
 		val = []byte(strconv.FormatFloat(float64(v.(float32)), 'f', -1, 32))
 	case sqltypes.Float64:
 		val = []byte(strconv.FormatFloat(v.(float64), 'f', -1, 64))
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+	}
+
+	return sqltypes.MakeTrusted(t.baseType, val), nil
+}
+
+func (t numberTypeImpl) Compare2(value Value, value2 Value) (int, error) {
+	panic("implement me")
+}
+
+func (t numberTypeImpl) Convert2(value Value) (Value, error) {
+	panic("implement me")
+}
+
+func (t numberTypeImpl) Zero2() Value {
+	panic("implement me")
+}
+
+// SQL2 implements Type2 interface.
+func (t numberTypeImpl) SQL2(v Value) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+
+	var val []byte
+	switch t.baseType {
+	case sqltypes.Int8:
+	  x := values.ReadInt8(v.Val)
+		val = []byte(strconv.FormatInt(int64(x), 10))
+	case sqltypes.Int16:
+	  x := values.ReadInt16(v.Val)
+		val = []byte(strconv.FormatInt(int64(x), 10))
+	case sqltypes.Int24:
+	  x := values.ReadInt24(v.Val)
+		val = []byte(strconv.FormatInt(int64(x), 10))
+	case sqltypes.Int32:
+	  x := values.ReadInt32(v.Val)
+		val = []byte(strconv.FormatInt(int64(x), 10))
+	case sqltypes.Int64:
+	  x := values.ReadInt64(v.Val)
+		val = []byte(strconv.FormatInt(x, 10))
+	case sqltypes.Uint8:
+	  x := values.ReadUint8(v.Val)
+		val = []byte(strconv.FormatUint(uint64(x), 10))
+	case sqltypes.Uint16:
+		x := values.ReadUint16(v.Val)
+		val = []byte(strconv.FormatUint(uint64(x), 10))
+	case sqltypes.Uint24:
+		x := values.ReadUint24(v.Val)
+		val = []byte(strconv.FormatUint(uint64(x), 10))
+	case sqltypes.Uint32:
+		x := values.ReadUint32(v.Val)
+		val = []byte(strconv.FormatUint(uint64(x), 10))
+	case sqltypes.Uint64:
+		x := values.ReadUint64(v.Val)
+		val = []byte(strconv.FormatUint(x, 10))
+	case sqltypes.Float32:
+		x := values.ReadFloat32(v.Val)
+		val = []byte(strconv.FormatFloat(float64(x), 'f', -1, 32))
+	case sqltypes.Float64:
+		x := values.ReadFloat64(v.Val)
+		val = []byte(strconv.FormatFloat(x, 'f', -1, 64))
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}

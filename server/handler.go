@@ -330,40 +330,70 @@ func (h *Handler) doQuery(
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
-	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
+	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
 
-	var r *sqltypes.Result
-	var proccesedAtLeastOneBatch bool
+	var rowIter2 sql.RowIter2
+	if ri2, ok := rowIter.(sql.RowIterTypeSelector); ok && ri2.IsNode2() {
+		rowIter2 = rowIter.(sql.RowIter2)
+	}
 
-	// Reads rows from the row reading goroutine
 	rowChan := make(chan sql.Row)
+	row2Chan := make(chan sql.Row2)
 
+	// Read rows from the iterator and send them to the row channel for processing
 	eg.Go(func() error {
+		var frame *sql.RowFrame
+		if rowIter2 != nil {
+			frame = sql.NewRowFrame()
+			defer frame.Recycle()
+		}
+
 		defer close(rowChan)
+		defer close(row2Chan)
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			default:
-				row, err := rows.Next(ctx)
-				if err != nil {
-					if err == io.EOF {
-						return rows.Close(ctx)
+				if rowIter2 != nil {
+					frame.Clear()
+					err := rowIter2.Next2(ctx, frame)
+					if err != nil {
+						if err == io.EOF {
+							return rowIter2.Close(ctx)
+						}
+						cerr := rowIter2.Close(ctx)
+						if cerr != nil {
+							ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
+						}
+						return err
 					}
-					cerr := rows.Close(ctx)
-					if cerr != nil {
-						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
+					select {
+					case row2Chan <- frame.Row2Copy():
+					case <-ctx.Done():
+						return nil
 					}
-					return err
-				}
-				select {
-				case rowChan <- row:
-				case <-ctx.Done():
-					return nil
+				} else {
+					row, err := rowIter.Next(ctx)
+					if err != nil {
+						if err == io.EOF {
+							return rowIter.Close(ctx)
+						}
+						cerr := rowIter.Close(ctx)
+						if cerr != nil {
+							ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
+						}
+						return err
+					}
+					select {
+					case rowChan <- row:
+					case <-ctx.Done():
+						return nil
+					}
 				}
 			}
 		}
@@ -386,7 +416,10 @@ func (h *Handler) doQuery(
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// Read rows off the row iterator and send them to the row channel.
+	var r *sqltypes.Result
+	var proccesedAtLeastOneBatch bool
+
+	// Read rows off the row channel and send them to the callback
 	eg.Go(func() error {
 		defer cancelF()
 		for {
