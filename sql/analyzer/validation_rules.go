@@ -246,6 +246,15 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 			groupBys = append(groupBys, expr.String())
 		}
 
+		var curAliases = make(map[string]sql.Expression)
+		if p, ok := n.Child.(*plan.Project); ok {
+			for _, projection := range p.Projections {
+				if a, ok := projection.(*expression.Alias); ok {
+					curAliases[a.String()] = a.Child
+				}
+			}
+		}
+
 		for _, expr := range n.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
