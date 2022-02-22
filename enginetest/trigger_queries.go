@@ -2083,7 +2083,7 @@ end;`,
 	},
 }
 
-var TriggerTests2 = []ScriptTest {
+var TriggerTests2 = []ScriptTest{
 	{
 		Name: "trigger before inserts, table reverts when insert fails",
 		SetUpScript: []string{
@@ -2109,7 +2109,7 @@ var TriggerTests2 = []ScriptTest {
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
