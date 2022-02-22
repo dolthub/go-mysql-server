@@ -123,6 +123,7 @@ func (f *RowFrame) Row2Copy() Row2 {
 // Clear clears this row frame for reuse. The underlying byte arrays are not zeroed out or discarded, but will be
 // overwritten by future calls to Append.
 func (f *RowFrame) Clear() {
+	f.Types = f.Types[:0]
 	f.Values = f.Values[:0]
 	f.off = 0
 }
