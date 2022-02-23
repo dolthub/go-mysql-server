@@ -2095,7 +2095,7 @@ var TriggerTests2 = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into a values (1), (2), (1)",
+				Query:       "insert into a values (1), (2), (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -2116,7 +2116,7 @@ var TriggerTests2 = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into a values (1), (2), (1)",
+				Query:       "insert into a values (1), (2), (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{

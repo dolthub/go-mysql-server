@@ -252,7 +252,7 @@ type TriggerCloser struct {
 
 func NewTriggerCloser(child sql.Node) *TriggerCloser {
 	return &TriggerCloser{
-		UnaryNode {
+		UnaryNode{
 			Child: child,
 		},
 	}
@@ -284,7 +284,7 @@ func (t *TriggerCloser) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileg
 }
 
 type triggerCloserIter struct {
-	child          sql.RowIter
+	child sql.RowIter
 }
 
 func (t *triggerCloserIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
