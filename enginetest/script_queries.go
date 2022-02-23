@@ -1673,9 +1673,9 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 			"CREATE INDEX test_idx2 on test (i)",
 			"INSERT INTO test values (1), (2), (3)",
 		},
-		Assertions: []ScriptTestAssertion {
+		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM test ORDER BY i",
+				Query:    "SELECT * FROM test ORDER BY i",
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
 			{
