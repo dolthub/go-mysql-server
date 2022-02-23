@@ -257,12 +257,17 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 		for _, expr := range n.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
+
 				if e, ok := curAliases[expr.String()]; ok {
-					expr = e
+					if !expressionReferencesOnlyGroupBys(groupBys, e) {
+						return nil, ErrValidationGroupBy.New(expr.String())
+					}
+				} else {
+					if !expressionReferencesOnlyGroupBys(groupBys, expr) {
+						return nil, ErrValidationGroupBy.New(expr.String())
+					}
 				}
-				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					return nil, ErrValidationGroupBy.New(expr.String())
-				}
+
 			}
 		}
 
