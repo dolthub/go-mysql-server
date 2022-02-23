@@ -346,12 +346,6 @@ func (r RangeColumnExpr) DebugString() string {
 // intersection result is not the empty RangeColumnExpr, however a valid RangeColumnExpr is always returned if the error
 // is nil.
 func (r RangeColumnExpr) TryIntersect(other RangeColumnExpr) (RangeColumnExpr, bool, error) {
-	if other.Type() == RangeType_Null || r.Type() == RangeType_Null {
-		if other.Type() == RangeType_Null && r.Type() == RangeType_Null {
-			return NullRangeColumnExpr(), true, nil
-		}
-		return EmptyRangeColumnExpr(r.Typ), false, nil
-	}
 	_, l, err := OrderedCuts(r.LowerBound, other.LowerBound, r.Typ)
 	if err != nil {
 		return RangeColumnExpr{}, false, err

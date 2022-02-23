@@ -2195,6 +2195,11 @@ var QueryTests = []QueryTest{
 		Query:    "select i from datetime_table where date_col > '2019/12/31' order by 1",
 		Expected: []sql.Row{{2}, {3}},
 	},
+	//{
+	//	// TODO truncate date outputs
+	//	Query:    "select i, date_col from datetime_table",
+	//	Expected: []sql.Row{{1,"2019-12-31"}},
+	//},
 	{
 		Query:    "select i from datetime_table where date_col > '2019-12-31T00:00:01' order by 1",
 		Expected: []sql.Row{{2}, {3}},

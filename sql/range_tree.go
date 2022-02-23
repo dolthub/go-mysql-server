@@ -18,6 +18,7 @@ package sql
 // Referenced https://en.wikipedia.org/wiki/Interval_tree#Augmented_tree
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -64,14 +65,49 @@ type rangeColumnExprTreeNode struct {
 	Parent *rangeColumnExprTreeNode
 }
 
-// NewRangeColumnExprTree creates a new RangeColumnExprTree constructed from an initial range. Panics if the Range has
-// a length of zero.
-func NewRangeColumnExprTree(initialRange Range) *RangeColumnExprTree {
+func GetColExprTypes(ranges []Range) []Type {
+	if len(ranges) == 0 {
+		return []Type{}
+	}
+	colExprTypes := make([]Type, len(ranges[0]))
+	var colTypesSet int
+	for _, rang := range ranges {
+		for i, e := range rang {
+			if e.Type() != RangeType_Null && colExprTypes[i] == nil {
+				colExprTypes[i] = e.Typ
+				colTypesSet++
+			}
+			if colTypesSet == len(ranges[0]) {
+				return colExprTypes
+			}
+		}
+	}
+	for i, t := range colExprTypes {
+		if t == nil {
+			colExprTypes[i] = Null
+		}
+	}
+	return colExprTypes
+}
+
+// NewRangeColumnExprTree creates a new RangeColumnExprTree constructed from an initial range. As the initial Range may
+// contain column expressions that have a NULL type, the expected non-NULL type for each column expression is given
+// separately. If all column expressions for a specific column will be NULL, then it is valid to use the NULL type.
+// Returns an error if the number of column expressions do not equal the number of types, or if the Range has a length
+// of zero.
+func NewRangeColumnExprTree(initialRange Range, columnExprTypes []Type) (*RangeColumnExprTree, error) {
+	if len(initialRange) != len(columnExprTypes) {
+		return nil, fmt.Errorf("number of types given do not correspond to the number of column expressions")
+	}
+	if len(initialRange) == 0 {
+		return nil, fmt.Errorf("a RangeColumnExprTree cannot be created from a Range of length 0")
+	}
+
 	var tree *RangeColumnExprTree
 	var parent *RangeColumnExprTree
-	for _, colExpr := range initialRange {
+	for i, colExpr := range initialRange {
 		innerTree := &RangeColumnExprTree{
-			typ:  colExpr.Typ,
+			typ:  columnExprTypes[i],
 			size: 1,
 			root: nil,
 		}
@@ -93,7 +129,7 @@ func NewRangeColumnExprTree(initialRange Range) *RangeColumnExprTree {
 			parent = innerTree
 		}
 	}
-	return tree
+	return tree, nil
 }
 
 // FindConnections returns all connecting Ranges found in the tree. They may or may not be mergeable or overlap.
@@ -170,10 +206,14 @@ func (tree *RangeColumnExprTree) Insert(rang Range) error {
 func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 	colExpr := rang[colExprIdx]
 	var insertedNode *rangeColumnExprTreeNode
+	var inner *RangeColumnExprTree
+	var err error
 	if tree.root == nil {
-		var inner *RangeColumnExprTree
 		if len(rang)-colExprIdx > 1 {
-			inner = NewRangeColumnExprTree(rang[colExprIdx+1:])
+			inner, err = NewRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]Range{rang[colExprIdx+1:]}))
+			if err != nil {
+				return err
+			}
 		}
 		tree.root = &rangeColumnExprTreeNode{
 			color:         black,
@@ -204,7 +244,10 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 				if node.Left == nil {
 					var inner *RangeColumnExprTree
 					if len(rang)-colExprIdx > 1 {
-						inner = NewRangeColumnExprTree(rang[colExprIdx+1:])
+						inner, err = NewRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]Range{rang[colExprIdx+1:]}))
+						if err != nil {
+							return err
+						}
 					}
 					node.Left = &rangeColumnExprTreeNode{
 						color:         red,
@@ -225,7 +268,10 @@ func (tree *RangeColumnExprTree) insert(rang Range, colExprIdx int) error {
 				if node.Right == nil {
 					var inner *RangeColumnExprTree
 					if len(rang)-colExprIdx > 1 {
-						inner = NewRangeColumnExprTree(rang[colExprIdx+1:])
+						inner, err = NewRangeColumnExprTree(rang[colExprIdx+1:], GetColExprTypes([]Range{rang[colExprIdx+1:]}))
+						if err != nil {
+							return err
+						}
 					}
 					node.Right = &rangeColumnExprTreeNode{
 						color:         red,

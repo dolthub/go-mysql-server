@@ -429,26 +429,11 @@ func RemoveOverlappingRanges(ranges ...Range) (RangeCollection, error) {
 		return nil, nil
 	}
 
-	var firstNonNull int
-	var foundNull bool
-	for i, rang := range ranges {
-		foundNull = false
-		for _, e := range rang {
-			if e.Type() == RangeType_Null {
-				foundNull = true
-				break
-			}
-		}
-		if !foundNull {
-			firstNonNull = i
-			break
-		}
+	colExprTypes := GetColExprTypes(ranges)
+	rangeTree, err := NewRangeColumnExprTree(ranges[0], colExprTypes)
+	if err != nil {
+		return nil, err
 	}
-
-	// RB-tree can't compare ranges with null base type.
-	ranges[0], ranges[firstNonNull] = ranges[firstNonNull], ranges[0]
-
-	rangeTree := NewRangeColumnExprTree(ranges[0])
 	for i := 1; i < len(ranges); i++ {
 		rang := ranges[i]
 		connectingRanges, err := rangeTree.FindConnections(rang, 0)

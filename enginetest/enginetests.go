@@ -4641,7 +4641,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(
 			t, harness, e,
 			"select * from t11 order by 1",
-			[]sql.Row{{1, now.UTC(), now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)}},
+			[]sql.Row{{1, now.UTC().Truncate(time.Hour * 24), now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)}},
 			nil,
 			nil,
 		)
