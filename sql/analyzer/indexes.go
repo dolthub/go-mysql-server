@@ -68,6 +68,7 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 		filterExpression := convertIsNullForIndexes(ctx, filter.Expression)
 		result, err = getIndexes(ctx, a, indexAnalyzer, filterExpression, tableAliases)
 		if err != nil {
+			errInAnalysis = err
 			return false
 		}
 
