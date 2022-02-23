@@ -2119,7 +2119,7 @@ end;`,
 		SetUpScript: []string{
 			"create table a (i int primary key)",
 			"create table b (x int)",
-			"create trigger trig before insert on a for each row insert into b values (new.i);",
+			"create trigger trig after insert on a for each row insert into b values (new.i);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2185,7 +2185,7 @@ end;`,
 			"create table a (i int primary key)",
 			"create table b (x int)",
 			"insert into b values (0)",
-			"create trigger trig before insert on a for each row update b set x = x + 1;",
+			"create trigger trig after insert on a for each row update b set x = x + 1;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
