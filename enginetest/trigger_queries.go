@@ -2084,24 +2084,40 @@ end;`,
 }
 
 var TriggerTests2 = []ScriptTest{
-	// INSERT triggers
 	{
-		Name: "will triggers ever work?",
+		Name: "multiple triggers before and after update",
 		SetUpScript: []string{
-			"create table a (i int primary key)",
-			"create table b (x int)",
-			"insert into b values (0)",
-			"create trigger trig before insert on a for each row update b set x = x + 1;",
+			"create table a (x int primary key)",
+			"create table b (y int primary key)",
+			"create trigger a1 before update on a for each row insert into b values (old.x * 7)",
+			"create trigger a2 after update on a for each row insert into b values (old.x * 11)",
+			"create trigger a3 before update on a for each row insert into b values (old.x * 13)",
+			"create trigger a4 after update on a for each row insert into b values (old.x * 17)",
+			"insert into a values (2), (3), (5)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into a values (1), (2), (1)",
-				ExpectedErr: sql.ErrPrimaryKeyViolation,
+				Query: "update a set x = x * 2",
+				Expected: []sql.Row{
+					{sql.OkResult{
+						RowsAffected: 3,
+						Info: plan.UpdateInfo{
+							Matched: 3,
+							Updated: 3,
+						},
+					}},
+				},
 			},
 			{
-				Query: "select * from b",
+				Query: "select x from a order by 1",
 				Expected: []sql.Row{
-					{2},
+					{4}, {6}, {10},
+				},
+			},
+			{
+				Query: "select y from b order by 1",
+				Expected: []sql.Row{
+					{14}, {21}, {22}, {26}, {33}, {34}, {35}, {39}, {51}, {55}, {65}, {85},
 				},
 			},
 		},

@@ -99,6 +99,7 @@ type triggerIter struct {
 	triggerEvent   TriggerEvent
 	ctx            *sql.Context
 	logicIter      sql.RowIter
+	//logicIters     []sql.RowIter
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
@@ -151,6 +152,12 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
+	// Save logicIters to be closed later for any before triggers
+	if t.triggerTime == "before" {
+		t.logicIter = logicIter
+		//t.logicIters = append(t.logicIters, logicIter)
+	}
+
 	defer func() {
 		// Only close on after triggers
 		if t.triggerTime == "after" {
@@ -171,12 +178,6 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 			return nil, err
 		}
 		logicRow = row
-	}
-
-	// Save logicIterator to be closed later for before triggers
-
-	if t.triggerTime == "before" {
-		t.logicIter = logicIter
 	}
 
 	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
@@ -225,6 +226,16 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 	default:
 		return false, nil
 	}
+}
+
+func (t *triggerIter) CloseLogic(ctx *sql.Context) error {
+	if ti, ok := t.child.(*triggerIter); ok {
+		err := ti.CloseLogic(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return t.logicIter.Close(ctx)
 }
 
 func (t *triggerIter) Close(ctx *sql.Context) error {

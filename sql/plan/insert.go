@@ -417,8 +417,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 
 	// Insert successful, if there was a before trigger, close its execution logic
-	if ti, ok := i.rowSource.(*triggerIter); ok && ti.logicIter != nil {
-		err = ti.logicIter.Close(ctx)
+	if ti, ok := i.rowSource.(*triggerIter); ok {
+		err = ti.CloseLogic(ctx)
 		if err != nil {
 			return nil, err
 		}

@@ -142,9 +142,9 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return row, err
 	}
 
-	// Update successful, if there was a before trigger, close its execution logic
-	if ti, ok := d.childIter.(*triggerIter); ok && ti.logicIter != nil {
-		err = ti.logicIter.Close(ctx)
+	// Delete successful, if there was a before trigger, close its execution logic
+	if ti, ok := d.childIter.(*triggerIter); ok {
+		err = ti.CloseLogic(ctx)
 		if err != nil {
 			return nil, err
 		}
