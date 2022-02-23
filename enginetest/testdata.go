@@ -187,23 +187,6 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		})
 	}
 
-	if includeTable(includedTables, "mytbl") {
-		wrapInTransaction(t, myDb, harness, func() {
-			table, err = harness.NewTable(myDb, "mytbl", sql.NewPrimaryKeySchema(sql.Schema{
-				{Name: "i", Type: sql.Int64, Source: "mytbl", PrimaryKey: true},
-				{Name: "j", Type: sql.Int64, Source: "mytbl"},
-			}))
-			if err == nil {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
-					sql.NewRow(int64(1), int64(1)),
-					sql.NewRow(int64(2), int64(2)),
-					sql.NewRow(int64(3), int64(3)))
-			} else {
-				t.Logf("Warning: could not create table %s: %s", "mytbl", err)
-			}
-		})
-	}
-
 	if includeTable(includedTables, "mytable") {
 		wrapInTransaction(t, myDb, harness, func() {
 			table, err = harness.NewTable(myDb, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
@@ -908,8 +891,6 @@ func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {
 		"create index one_pk_two_idx_1 on one_pk_two_idx (v1)",
 		"create index one_pk_two_idx_2 on one_pk_two_idx (v1, v2)",
 		"create index one_pk_three_idx_idx on one_pk_three_idx (v1, v2, v3)",
-		"create index mytbl_idx1 on mytbl (j)",
-		"create index mytbl_idx2 on mytbl (j)",
 	}
 
 	for _, q := range createIndexes {

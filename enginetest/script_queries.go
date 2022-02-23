@@ -51,6 +51,26 @@ type ScriptTestAssertion struct {
 	ExpectedWarning int
 }
 
+var ScriptQueryPlanTest = []ScriptTest {
+	{
+		Name: "query plan",
+		SetUpScript: []string {
+			"create table test (i int primary key, j int)",
+			"create index test_idx1 on test (j)",
+			"create index test_idx2 on test (j)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM test where j > 0`,
+				ExpectedErrStr: "Filter(test.j > 0)\n" +
+					" └─ Projected table access on [i j]\n" +
+					"     └─ IndexedTableAccess(test on [test.j])\n" +
+					"",
+			},
+		},
+	},
+}
+
 // ScriptTests are a set of test scripts to run.
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
