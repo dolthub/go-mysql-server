@@ -7179,7 +7179,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"people"},
 			{"datetime_table"},
 			{"invert_pk"},
-			{"mytbl"},
 		},
 	},
 	{
@@ -7200,7 +7199,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"people", "BASE TABLE"},
 			{"datetime_table", "BASE TABLE"},
 			{"invert_pk", "BASE TABLE"},
-			{"mytbl", "BASE TABLE"},
 		},
 	},
 	{
@@ -7322,7 +7320,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable"},
 			{"invert_pk"},
 			{"mytable"},
-			{"mytbl"},
 			{"myview"},
 			{"newlinetable"},
 			{"niltable"},
@@ -7474,7 +7471,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"floattable", nil},
 			{"invert_pk", nil},
 			{"mytable", nil},
-			{"mytbl", nil},
 			{"newlinetable", nil},
 			{"niltable", nil},
 			{"one_pk_three_idx", nil},
@@ -7502,7 +7498,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "mydb", "invert_pk", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
-			{"def", "mydb", "PRIMARY", "mydb", "mytbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "newlinetable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "niltable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "one_pk_three_idx", "PRIMARY KEY", "YES"},
@@ -7533,7 +7528,6 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "def", "mydb", "invert_pk", "x", 3, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "mytable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "mytable_s", "def", "mydb", "mytable", "s", 1, nil, nil, nil, nil},
-			{"def", "mydb", "PRIMARY", "def", "mydb", "mytbl", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "newlinetable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "niltable", "i", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "one_pk_three_idx", "pk", 1, nil, nil, nil, nil},
@@ -8265,7 +8259,6 @@ var ShowTableStatusQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"mytbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_two_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(24), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
@@ -8309,7 +8302,6 @@ var ShowTableStatusQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"mytbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_two_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(24), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(65540), uint64(196620), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},

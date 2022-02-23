@@ -103,7 +103,6 @@ var infoSchemaTables = []string{
 	"one_pk_two_idx",
 	"one_pk_three_idx",
 	"invert_pk",
-	"mytbl",
 }
 
 // TestInfoSchema runs tests of the information_schema database
