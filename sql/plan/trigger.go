@@ -155,7 +155,6 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	// Save logicIters to be closed later for any before triggers
 	if t.triggerTime == "before" {
 		t.logicIter = logicIter
-		//t.logicIters = append(t.logicIters, logicIter)
 	}
 
 	defer func() {
