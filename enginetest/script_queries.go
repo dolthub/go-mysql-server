@@ -51,10 +51,10 @@ type ScriptTestAssertion struct {
 	ExpectedWarning int
 }
 
-var ScriptQueryPlanTest = []ScriptTest {
+var ScriptQueryPlanTest = []ScriptTest{
 	{
 		Name: "query plan",
-		SetUpScript: []string {
+		SetUpScript: []string{
 			"create table test (i int primary key, j int)",
 			"create index test_idx1 on test (j)",
 			"create index test_idx2 on test (j)",
