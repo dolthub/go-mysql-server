@@ -1023,21 +1023,25 @@ func TestScriptQueryPlan(t *testing.T, harness Harness) {
 					RunQuery(t, e, harness, statement)
 				}
 
-				// Parse last query
+				// Get context
 				ctx := NewContextWithEngine(harness, e)
-				parsed, err := parse.Parse(ctx, script.Assertions[0].Query)
-				require.NoError(t, err)
 
-				node, err := e.Analyzer.Analyze(ctx, parsed, nil)
-				require.NoError(t, err)
+				// Run queries
+				for _, assertion := range script.Assertions {
+					parsed, err := parse.Parse(ctx, assertion.Query)
+					require.NoError(t, err)
 
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(script.Assertions[0].Query) {
-						t.Skipf("Skipping query plan for %s", script.Assertions[0].Query)
+					node, err := e.Analyzer.Analyze(ctx, parsed, nil)
+					require.NoError(t, err)
+
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(assertion.Query) {
+							t.Skipf("Skipping query plan for %s", assertion.Query)
+						}
 					}
-				}
 
-				assert.Equal(t, script.Assertions[0].ExpectedErrStr, extractQueryNode(node).String(), "Unexpected result for query: "+script.Assertions[0].Query)
+					assert.Equal(t, assertion.ExpectedErrStr, extractQueryNode(node).String(), "Unexpected result for query: "+assertion.Query)
+				}
 			})
 		}()
 	}
