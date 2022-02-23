@@ -184,6 +184,14 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	// Update successful, if there was a before trigger, close its execution logic
+	if ti, ok := u.childIter.(*triggerIter); ok && ti.logicIter != nil {
+		err = ti.logicIter.Close(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return oldAndNewRow, nil
 }
 

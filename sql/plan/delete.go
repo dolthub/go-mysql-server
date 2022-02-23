@@ -136,7 +136,21 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 		row = row[len(row)-len(d.schema):]
 	}
 
-	return row, d.deleter.Delete(ctx, row)
+	// Run delete
+	err = d.deleter.Delete(ctx, row)
+	if err != nil {
+		return row, err
+	}
+
+	// Update successful, if there was a before trigger, close its execution logic
+	if ti, ok := d.childIter.(*triggerIter); ok && ti.logicIter != nil {
+		err = ti.logicIter.Close(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return row, nil
 }
 
 func (d *deleteIter) Close(ctx *sql.Context) error {
