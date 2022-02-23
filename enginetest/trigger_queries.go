@@ -2103,7 +2103,7 @@ end;`,
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -2135,7 +2135,7 @@ end;`,
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -2168,7 +2168,7 @@ end;`,
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -2201,7 +2201,7 @@ end;`,
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -2235,7 +2235,7 @@ end;`,
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
@@ -2269,7 +2269,7 @@ end;`,
 				},
 			},
 			{
-				Query: "insert into a values (1)",
+				Query:       "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
