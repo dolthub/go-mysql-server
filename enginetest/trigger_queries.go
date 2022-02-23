@@ -2309,7 +2309,7 @@ end;`,
 				},
 			},
 			{
-				Query: "update a set i = 'not int'",
+				Query:          "update a set i = 'not int'",
 				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
 			},
 			{
@@ -2348,7 +2348,7 @@ end;`,
 				},
 			},
 			{
-				Query: "update a set i = 'not int'",
+				Query:          "update a set i = 'not int'",
 				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
 			},
 			{
@@ -2388,7 +2388,7 @@ end;`,
 				},
 			},
 			{
-				Query: "update a set i = 'not int'",
+				Query:          "update a set i = 'not int'",
 				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
 			},
 			{
@@ -2428,7 +2428,7 @@ end;`,
 				},
 			},
 			{
-				Query: "update a set i = 'not int'",
+				Query:          "update a set i = 'not int'",
 				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
 			},
 			{
@@ -2468,7 +2468,7 @@ end;`,
 				},
 			},
 			{
-				Query: "update a set i = 'not int'",
+				Query:          "update a set i = 'not int'",
 				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
 			},
 			{
@@ -2508,7 +2508,7 @@ end;`,
 				},
 			},
 			{
-				Query: "update a set i = 'not int'",
+				Query:          "update a set i = 'not int'",
 				ExpectedErrStr: "error: 'not int' is not a valid value for 'INT'",
 			},
 			{
@@ -2542,7 +2542,7 @@ end;`,
 				},
 			},
 			{
-				Query: "delete from a where j = 2",
+				Query:          "delete from a where j = 2",
 				ExpectedErrStr: `column "j" could not be found in any table in scope`,
 			},
 			{
@@ -2575,7 +2575,7 @@ end;`,
 				},
 			},
 			{
-				Query: "delete from a where j = 2",
+				Query:          "delete from a where j = 2",
 				ExpectedErrStr: `column "j" could not be found in any table in scope`,
 			},
 			{
@@ -2609,7 +2609,7 @@ end;`,
 				},
 			},
 			{
-				Query: "delete from a where j = 2",
+				Query:          "delete from a where j = 2",
 				ExpectedErrStr: `column "j" could not be found in any table in scope`,
 			},
 			{
@@ -2643,7 +2643,7 @@ end;`,
 				},
 			},
 			{
-				Query: "delete from a where j = 2",
+				Query:          "delete from a where j = 2",
 				ExpectedErrStr: `column "j" could not be found in any table in scope`,
 			},
 			{
@@ -2677,7 +2677,7 @@ end;`,
 				},
 			},
 			{
-				Query: "delete from a where j = 2",
+				Query:          "delete from a where j = 2",
 				ExpectedErrStr: `column "j" could not be found in any table in scope`,
 			},
 			{
@@ -2711,7 +2711,7 @@ end;`,
 				},
 			},
 			{
-				Query: "delete from a where j = 2",
+				Query:          "delete from a where j = 2",
 				ExpectedErrStr: `column "j" could not be found in any table in scope`,
 			},
 			{
