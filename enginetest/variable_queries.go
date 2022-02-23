@@ -276,6 +276,30 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "eval string user var",
+		SetUpScript: []string{
+			"set @stringVar = 'abc'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT @stringVar='abc'",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT @stringVar='abcd';",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT @stringVar=123;",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT @stringVar is null;",
+				Expected: []sql.Row{{false}},
+			},
+		},
+	},
+	{
 		Name: "set transaction",
 		Assertions: []ScriptTestAssertion{
 			{
