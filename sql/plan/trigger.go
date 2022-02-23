@@ -98,6 +98,7 @@ type triggerIter struct {
 	triggerTime    TriggerTime
 	triggerEvent   TriggerEvent
 	ctx            *sql.Context
+	logicIter      sql.RowIter
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
@@ -151,9 +152,12 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	}
 
 	defer func() {
-		err := logicIter.Close(t.ctx)
-		if returnErr == nil {
-			returnErr = err
+		// Only close on after triggers
+		if t.triggerTime == "after" {
+			err := logicIter.Close(t.ctx)
+			if returnErr == nil {
+				returnErr = err
+			}
 		}
 	}()
 
@@ -167,6 +171,12 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 			return nil, err
 		}
 		logicRow = row
+	}
+
+	// Save logicIterator to be closed later for before triggers
+
+	if t.triggerTime == "before" {
+		t.logicIter = logicIter
 	}
 
 	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
@@ -233,5 +243,64 @@ func (t *TriggerExecutor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 		triggerEvent:   t.TriggerEvent,
 		executionLogic: t.right,
 		ctx:            ctx,
+	}, nil
+}
+
+type TriggerCloser struct {
+	UnaryNode
+}
+
+func NewTriggerCloser(child sql.Node) *TriggerCloser {
+	return &TriggerCloser{
+		UnaryNode {
+			Child: child,
+		},
+	}
+}
+
+func (t *TriggerCloser) String() string {
+	return "TODO"
+}
+
+func (t *TriggerCloser) DebugString() string {
+	return "TODO"
+}
+
+func (t *TriggerCloser) Schema() sql.Schema {
+	return t.Child.Schema()
+}
+
+func (t *TriggerCloser) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
+	}
+	return NewTriggerCloser(children[0]), nil
+}
+
+// CheckPrivileges implements the interface sql.Node.
+func (t *TriggerCloser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return t.Child.CheckPrivileges(ctx, opChecker) && opChecker.UserHasPrivileges(ctx,
+		sql.NewPrivilegedOperation(getDatabaseName(t.Child), getTableName(t.Child), "", sql.PrivilegeType_Trigger))
+}
+
+type triggerCloserIter struct {
+	child          sql.RowIter
+}
+
+func (t *triggerCloserIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
+	return t.child.Next(ctx)
+}
+
+func (t *triggerCloserIter) Close(ctx *sql.Context) error {
+	return t.child.Close(ctx)
+}
+
+func (t *TriggerCloser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	childIter, err := t.Child.RowIter(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	return &triggerCloserIter{
+		child: childIter,
 	}, nil
 }

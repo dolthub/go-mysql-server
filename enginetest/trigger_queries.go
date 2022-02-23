@@ -2091,6 +2091,27 @@ var TriggerTests2 = []ScriptTest{
 			"create table a (i int primary key)",
 			"create table b (x int)",
 			"insert into b values (0)",
+			"create trigger trig before insert on a for each row update b set x = x + 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (2), (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "will triggers ever work?",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"insert into b values (0)",
 			"create trigger trig after insert on a for each row update b set x = x + 1;",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2101,7 +2122,7 @@ var TriggerTests2 = []ScriptTest{
 			{
 				Query: "select * from b",
 				Expected: []sql.Row{
-					{0},
+					{2},
 				},
 			},
 		},

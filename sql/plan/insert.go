@@ -415,6 +415,15 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	i.updateLastInsertId(ctx, row)
 
+
+	// Insert successful, if there was a before trigger, close its execution logic
+	if ti, ok := i.rowSource.(*triggerIter); ok && ti.logicIter != nil {
+		err = ti.logicIter.Close(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return row, nil
 }
 
