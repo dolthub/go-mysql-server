@@ -2081,64 +2081,201 @@ end;`,
 			},
 		},
 	},
-}
-
-var TriggerTests2 = []ScriptTest{
+	// Insert Queries that fail, test trigger reverts
 	{
-		Name: "multiple triggers before and after update",
+		Name: "trigger before insert, reverts insert when query fails",
 		SetUpScript: []string{
-			"create table a (x int primary key)",
-			"create table b (y int primary key)",
-			"create trigger a1 before update on a for each row insert into b values (old.x * 7)",
-			"create trigger a2 after update on a for each row insert into b values (old.x * 11)",
-			"create trigger a3 before update on a for each row insert into b values (old.x * 13)",
-			"create trigger a4 after update on a for each row insert into b values (old.x * 17)",
-			"insert into a values (2), (3), (5)",
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig before insert on a for each row insert into b values (new.i);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "update a set x = x * 2",
+				Query: "insert into a values (1), (2)",
 				Expected: []sql.Row{
-					{sql.OkResult{
-						RowsAffected: 3,
-						Info: plan.UpdateInfo{
-							Matched: 3,
-							Updated: 3,
-						},
-					}},
+					{sql.OkResult{RowsAffected: 2}},
 				},
 			},
 			{
-				Query: "select x from a order by 1",
+				Query: "select x from b order by x",
 				Expected: []sql.Row{
-					{4}, {6}, {10},
+					{1}, {2},
 				},
 			},
 			{
-				Query: "select y from b order by 1",
+				Query: "insert into a values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
 				Expected: []sql.Row{
-					{14}, {21}, {22}, {26}, {33}, {34}, {35}, {39}, {51}, {55}, {65}, {85},
+					{1}, {2},
 				},
 			},
 		},
 	},
 	{
-		Name: "will triggers ever work?",
+		Name: "trigger after insert, reverts insert when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig before insert on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (2)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select x from b order by x",
+				Expected: []sql.Row{
+					{1}, {2},
+				},
+			},
+			{
+				Query: "insert into a values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{1}, {2},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before insert, reverts update when query fails",
 		SetUpScript: []string{
 			"create table a (i int primary key)",
 			"create table b (x int)",
 			"insert into b values (0)",
-			"create trigger trig after insert on a for each row update b set x = x + 1;",
+			"create trigger trig before insert on a for each row update b set x = x + 1;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into a values (1), (2), (1)",
+				Query: "insert into a values (1), (2)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "insert into a values (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
 				Query: "select * from b",
 				Expected: []sql.Row{
 					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger after insert, reverts update when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"insert into b values (0)",
+			"create trigger trig before insert on a for each row update b set x = x + 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (2)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 2}},
+				},
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: "insert into a values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger before insert, reverts delete when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"insert into a values (1)",
+			"insert into b values (1), (2)",
+			"create trigger trig before insert on a for each row delete from b where x = new.i;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (2)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select x from b order by x",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "insert into a values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name: "trigger after insert, reverts delete when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"insert into a values (1)",
+			"insert into b values (1), (2)",
+			"create trigger trig after insert on a for each row delete from b where x = new.i;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (2)",
+				Expected: []sql.Row{
+					{sql.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select x from b order by x",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "insert into a values (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{
+					{1},
 				},
 			},
 		},

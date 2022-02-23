@@ -1143,12 +1143,6 @@ func TestTriggers(t *testing.T, harness Harness) {
 	}
 }
 
-func TestTriggers2(t *testing.T, harness Harness) {
-	for _, script := range TriggerTests2 {
-		TestScript(t, harness, script)
-	}
-}
-
 func TestStoredProcedures(t *testing.T, harness Harness) {
 	for _, script := range ProcedureLogicTests {
 		TestScript(t, harness, script)
