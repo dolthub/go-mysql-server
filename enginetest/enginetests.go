@@ -4141,9 +4141,8 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		}, nil, nil)
 
 		// Assert that query plan this follows correctly uses an IndexedTableAccess
-		expectedPlan := "Filter(t1.v = \"a3\")\n" +
-			" └─ Projected table access on [pk v]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v])\n" +
+		expectedPlan := "Projected table access on [pk v]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v])\n" +
 			""
 
 		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
@@ -4195,6 +4194,122 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		}, nil, nil)
 	})
+}
+
+func TestNullRanges(t *testing.T, harness Harness) {
+	tests := []struct {
+		query string
+		exp   []sql.Row
+	}{
+		{
+			query: "select * from a where y IS NULL or y < 1",
+			exp: []sql.Row{
+				{0, 0},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL and y < 1",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y IS NULL or y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL or y = 0 or y = 1",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL or y < 1 or y > 1",
+			exp: []sql.Row{
+				{0, 0},
+				{2, 2},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NOT NULL and x > 1",
+			exp: []sql.Row{
+				{2, 2},
+			},
+		}, {
+			query: "select * from a where y IS NULL and x = 4",
+			exp: []sql.Row{
+				{4, nil},
+			},
+		}, {
+			query: "select * from a where y IS NULL and x > 1",
+			exp: []sql.Row{
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL and y IS NOT NULL",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y is NULL and y > -1 and y > -2",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y > -1 and y < 7 and y IS NULL",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y > -1 and y > -2 and y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+			},
+		},
+		{
+			query: "select * from a where y > -1 and y > 1 and y IS NOT NULL",
+			exp: []sql.Row{
+				{2, 2},
+			},
+		},
+		{
+			query: "select * from a where y < 6 and y > -1 and y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+			},
+		},
+	}
+
+	db := harness.NewDatabase("mydb")
+	e := sqle.NewDefault(harness.NewDatabaseProvider(db))
+	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
+	RunQuery(t, e, harness, `CREATE INDEX idx1 ON a (y);`)
+	RunQuery(t, e, harness, `INSERT INTO a VALUES (0,0), (1,1), (2,2), (3,null), (4,null)`)
+	for _, tt := range tests {
+		TestQuery(t, harness, e, tt.query, tt.exp, nil, nil)
+	}
 }
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.
@@ -4526,7 +4641,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		TestQuery(
 			t, harness, e,
 			"select * from t11 order by 1",
-			[]sql.Row{{1, now.UTC().Truncate(time.Hour * 24), now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)}},
+			[]sql.Row{{1, now.UTC(), now.Truncate(time.Second).Format(sql.TimestampDatetimeLayout)}},
 			nil,
 			nil,
 		)

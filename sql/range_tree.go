@@ -123,10 +123,14 @@ func (tree *RangeColumnExprTree) FindConnections(rang Range, colExprIdx int) (Ra
 		}
 		if cmp1 <= 0 && cmp2 <= 0 {
 			// We have a connection here, so we need to see if any inner column expressions also have a connection
+			typ := tree.typ
+			if typ == Null {
+				typ = colExpr.Typ
+			}
 			connectedColExpr := RangeColumnExpr{
 				LowerBound: node.LowerBound,
 				UpperBound: node.UpperBound,
-				Typ:        tree.typ,
+				Typ:        typ,
 			}
 			if node.Inner == nil {
 				rangeCollection = append(rangeCollection, Range{connectedColExpr})

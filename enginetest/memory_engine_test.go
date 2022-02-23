@@ -587,6 +587,10 @@ func TestAddDropPks(t *testing.T) {
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestNullRanges(t *testing.T) {
+	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestPersist(t *testing.T) {
 	newSess := func(ctx *sql.Context) sql.PersistableSession {
 		persistedGlobals := memory.GlobalsMap{}

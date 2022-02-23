@@ -109,7 +109,7 @@ func TestConvert(t *testing.T) {
 			row:         nil,
 			castTo:      ConvertToDate,
 			expression:  NewLiteral("2017-12-12 11:12:13", sql.Int32),
-			expected:    time.Date(2017, time.December, 12, 0, 0, 0, 0, time.UTC),
+			expected:    time.Date(2017, time.December, 12, 11, 12, 13, 0, time.UTC),
 			expectedErr: false,
 		},
 		{

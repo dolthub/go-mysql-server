@@ -273,9 +273,6 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		return zeroTime, ErrConvertToSQL.New(t)
 	}
 
-	if t.baseType == sqltypes.Date {
-		res = res.Truncate(24 * time.Hour)
-	}
 	return res, nil
 }
 
