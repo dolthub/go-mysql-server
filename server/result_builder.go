@@ -21,7 +21,7 @@ import (
 
 const (
 	defaultResultBufferSize = 1024 * 16
-	rowsBatch = 1024
+	rowsBatch = 512
 )
 
 type resultBuilder struct {
