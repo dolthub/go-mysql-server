@@ -20,12 +20,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/values"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (
@@ -386,16 +386,16 @@ func (t numberTypeImpl) SQL2(dst []byte, v Value) (sqltypes.Value, error) {
 		x := values.ReadInt8(v.Val)
 		extended = strconv.AppendInt(dst, int64(x), 10)
 	case sqltypes.Int16:
-	  	x := values.ReadInt16(v.Val)
+		x := values.ReadInt16(v.Val)
 		extended = strconv.AppendInt(dst, int64(x), 10)
 	case sqltypes.Int24:
-	  	x := values.ReadInt24(v.Val)
+		x := values.ReadInt24(v.Val)
 		extended = strconv.AppendInt(dst, int64(x), 10)
 	case sqltypes.Int32:
-	  	x := values.ReadInt32(v.Val)
+		x := values.ReadInt32(v.Val)
 		extended = strconv.AppendInt(dst, int64(x), 10)
 	case sqltypes.Int64:
-	  	x := values.ReadInt64(v.Val)
+		x := values.ReadInt64(v.Val)
 		extended = strconv.AppendInt(dst, x, 10)
 	case sqltypes.Uint8:
 		x := values.ReadUint8(v.Val)

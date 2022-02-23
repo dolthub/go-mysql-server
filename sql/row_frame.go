@@ -28,7 +28,7 @@ const (
 // Row2 is a tuple of values. It consists of two parallel slices which define the types and the bytes of the values in
 // the row.
 type Row2 struct {
-	Types []querypb.Type
+	Types  []querypb.Type
 	Values []ValueBytes
 }
 

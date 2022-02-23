@@ -15,13 +15,14 @@
 package server
 
 import (
-	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 const (
 	defaultResultBufferSize = 1024 * 16
-	rowsBatch = 512
+	rowsBatch               = 512
 )
 
 type resultBuilder struct {
@@ -31,8 +32,8 @@ type resultBuilder struct {
 	rows [][]sqltypes.Value
 	cnt  int
 
-	buf  []byte
-	pos  int
+	buf []byte
+	pos int
 }
 
 func newResultBuilder(sch sql.Schema) (bld *resultBuilder) {
