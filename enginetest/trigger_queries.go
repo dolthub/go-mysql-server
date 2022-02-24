@@ -2834,6 +2834,7 @@ var BrokenTriggerQueries = []ScriptTest{
 			},
 		},
 	},
+	// This test is failing due to not flushing aggressively enough
 	{
 		Name: "trigger after inserts, use updated self reference",
 		SetUpScript: []string{
@@ -2861,6 +2862,53 @@ var BrokenTriggerQueries = []ScriptTest{
 				Expected: []sql.Row{
 					{sql.OkResult{RowsAffected: 2}},
 				},
+			},
+		},
+	},
+	// Insert multiple rows second row fails, we want to revert all rows inserted
+	// This also fails for triggers that update or delete
+	// Since transactions for failing inserts are dropped, this works using a dolt harness, but not without one.
+	{
+		Name: "trigger before insert, reverts multiple inserts when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig before insert on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "trigger after insert, reverts multiple inserts when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig after insert on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into a values (1), (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query: "select * from a",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from b",
+				Expected: []sql.Row{},
 			},
 		},
 	},
