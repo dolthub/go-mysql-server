@@ -277,7 +277,9 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 			newRange, ok, err := currentRange.TryIntersect(potentialRange)
 			if err != nil {
 				b.isInvalid = true
-				b.err = err
+				if !ErrInvalidValue.Is(err) {
+					b.err = err
+				}
 				return
 			}
 			if ok {
