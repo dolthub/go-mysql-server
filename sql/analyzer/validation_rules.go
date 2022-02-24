@@ -258,12 +258,16 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		for _, expr := range n.SelectedExprs {
 			if _, ok := expr.(sql.Aggregation); !ok {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					someExpr := expressionReferencesAlias(expr)
-					if e, ok := curAliases[someExpr.String()]; ok {
-						if expressionReferencesOnlyGroupBys(groupBys, e) {
-							continue
+					depExprs := expressionReferencesAlias(expr)
+					for _, dep := range depExprs {
+						if !expressionReferencesOnlyGroupBys(groupBys, dep) {
+							if e, ok := curAliases[dep.String()]; ok {
+								if expressionReferencesOnlyGroupBys(groupBys, e) {
+									continue
+								}
+							}
+							return nil, ErrValidationGroupBy.New(dep.String())
 						}
-						return nil, ErrValidationGroupBy.New(someExpr.String())
 					}
 				}
 			}
@@ -275,25 +279,24 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	return n, nil
 }
 
-func expressionReferencesAlias(expr sql.Expression) sql.Expression {
-	child := expr
+func expressionReferencesAlias(expr sql.Expression) map[string]sql.Expression {
+	var children = make(map[string]sql.Expression)
 	sql.Inspect(expr, func(expr sql.Expression) bool {
 		switch expr := expr.(type) {
 		case nil, sql.Aggregation, *expression.Literal:
 			return false
 		case *expression.GetField:
-			child = expr
+			children[expr.String()] = expr
 			return false
 		default:
 			if len(expr.Children()) == 0 {
-				child = nil
 				return false
 			}
 			return true
 		}
 	})
 
-	return child
+	return children
 }
 
 func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {

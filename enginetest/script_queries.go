@@ -623,10 +623,6 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT 9 * col2 + col2 + 30 * - col0 col1, col0 + - 1 * + 0 * - ( - col0 ) AS col0 FROM tab1 cor0 GROUP BY col0, col2",
 				Expected: []sql.Row{{-580, 22}, {-390, 28}, {-1750, 82}},
 			},
-			{
-				Query:    "SELECT ALL col0 * - - ( ( - + 20 ) ) * + COALESCE ( + 88, + + col2 ) + col0, col0 AS col2 FROM tab1 GROUP BY col0",
-				Expected: []sql.Row{{-144238, 82}, {-38698, 22}, {-49252, 28}},
-			},
 		},
 	},
 	{
