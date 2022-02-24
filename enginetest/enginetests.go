@@ -191,6 +191,26 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	}
 }
 
+func TestIndexQueryPlans(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	defer engine.Close()
+
+	CreateIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+	for i, script := range ComplexIndexQueries {
+		for _, statement := range script.SetUpScript {
+			statement = strings.Replace(statement, "test", fmt.Sprintf("t%d", i), -1)
+			RunQuery(t, engine, harness, statement)
+		}
+	}
+
+	for _, tt := range IndexPlanTests {
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
+		})
+	}
+}
+
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueries(t *testing.T, harness Harness) {
 	if _, ok := harness.(VersionedDBHarness); !ok {

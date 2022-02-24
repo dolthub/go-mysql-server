@@ -238,6 +238,20 @@ func TestQueryPlans(t *testing.T) {
 			enginetest.TestQueryPlans(t, harness)
 		})
 	}
+} 
+
+func TestIndexQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+		{"nativeAndMergable", mergableIndexDriver, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestIndexQueryPlans(t, harness)
+		})
+	}
 }
 
 // This test will write a new set of query plan expected results to a file that you can copy and paste over the existing

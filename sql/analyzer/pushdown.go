@@ -231,7 +231,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if _, ok := table.(sql.IndexAddressableTable); ok {
 					lookup := indexes[table.Name()]
 					if lookup != nil {
-						filters.markFiltersHandled(lookup.expr)
+						filters.markFiltersHandled(splitConjunction(lookup.expr)...)
 					}
 				}
 				return node, nil
