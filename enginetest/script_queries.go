@@ -1677,4 +1677,25 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "duplicate indexes still returns correct results",
+		SetUpScript: []string{
+			"CREATE TABLE test (i int)",
+			"CREATE INDEX test_idx1 on test (i)",
+			"CREATE INDEX test_idx2 on test (i)",
+			"INSERT INTO test values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test ORDER BY i",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query: "SELECT * FROM test where i = 2",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
 }

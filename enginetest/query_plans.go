@@ -2060,6 +2060,26 @@ var PlanTests = []QueryPlanTest{
 	},
 }
 
+var ScriptQueryPlanTest = []ScriptTest{
+	{
+		Name: "query plan",
+		SetUpScript: []string{
+			"create table test (i int primary key, j int)",
+			"create index test_idx1 on test (j)",
+			"create index test_idx2 on test (j)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT * FROM test where j > 0`,
+				ExpectedErrStr: "Filter(test.j > 0)\n" +
+					" └─ Projected table access on [i j]\n" +
+					"     └─ IndexedTableAccess(test on [test.j])\n" +
+					"",
+			},
+		},
+	},
+}
+
 // Queries where the query planner produces a correct (results) but suboptimal plan.
 var QueryPlanTODOs = []QueryPlanTest{
 	{

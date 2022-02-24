@@ -1002,6 +1002,51 @@ func TestScripts(t *testing.T, harness Harness) {
 	}
 }
 
+func TestScriptQueryPlan(t *testing.T, harness Harness) {
+	// TEST SCRIPTS
+	for _, script := range ScriptQueryPlanTest {
+		// TEST SCRIPT
+		func() bool {
+			return t.Run(script.Name, func(t *testing.T) {
+				myDb := harness.NewDatabase("mydb")
+				databases := []sql.Database{myDb}
+				e := NewEngineWithDbs(t, harness, databases)
+				defer e.Close()
+
+				// Run Setup script
+				for _, statement := range script.SetUpScript {
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(statement) {
+							t.Skip()
+						}
+					}
+					RunQuery(t, e, harness, statement)
+				}
+
+				// Get context
+				ctx := NewContextWithEngine(harness, e)
+
+				// Run queries
+				for _, assertion := range script.Assertions {
+					parsed, err := parse.Parse(ctx, assertion.Query)
+					require.NoError(t, err)
+
+					node, err := e.Analyzer.Analyze(ctx, parsed, nil)
+					require.NoError(t, err)
+
+					if sh, ok := harness.(SkippingHarness); ok {
+						if sh.SkipQueryTest(assertion.Query) {
+							t.Skipf("Skipping query plan for %s", assertion.Query)
+						}
+					}
+
+					assert.Equal(t, assertion.ExpectedErrStr, extractQueryNode(node).String(), "Unexpected result for query: "+assertion.Query)
+				}
+			})
+		}()
+	}
+}
+
 func TestUserPrivileges(t *testing.T, h Harness) {
 	harness, ok := h.(ClientHarness)
 	if !ok {
