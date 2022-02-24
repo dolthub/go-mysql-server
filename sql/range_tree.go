@@ -65,6 +65,9 @@ type rangeColumnExprTreeNode struct {
 	Parent *rangeColumnExprTreeNode
 }
 
+// GetColExprTypes returns a list of RangeColumnExpr
+// type fields, defaulting to Null types if all
+// columns expressions are Null.
 func GetColExprTypes(ranges []Range) []Type {
 	if len(ranges) == 0 {
 		return []Type{}
