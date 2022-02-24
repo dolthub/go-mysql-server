@@ -102,12 +102,6 @@ var DeleteTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
-		WriteQuery:          "DELETE FROM mytable WHERE i = 'invalid';",
-		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(0)}},
-		SelectQuery:         "SELECT * FROM mytable;",
-		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
-	},
-	{
 		WriteQuery:          "DELETE FROM mytable ORDER BY i ASC LIMIT 2;",
 		ExpectedWriteResult: []sql.Row{{sql.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
@@ -192,5 +186,9 @@ var DeleteErrorTests = []GenericErrorQueryTest{
 	{
 		Name:  "targets subquery alias",
 		Query: "DELETE FROM (SELECT * FROM mytable) mytable WHERE id = 1;",
+	},
+	{
+		Name:  "invalid value for int type",
+		Query: "DELETE FROM mytable WHERE i = 'invalid';",
 	},
 }

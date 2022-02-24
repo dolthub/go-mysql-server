@@ -91,6 +91,8 @@ func (idx *Index) NewLookup(ctx *sql.Context, ranges ...sql.Range) (sql.IndexLoo
 				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(2, sql.Int8))
 			case sql.RangeType_All:
 				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, sql.Int8), expression.NewLiteral(1, sql.Int8))
+			case sql.RangeType_Null:
+				rangeColumnExpr = expression.NewIsNull(idx.Exprs[i])
 			case sql.RangeType_GreaterThan:
 				lit, typ := getType(sql.GetRangeCutKey(rce.LowerBound))
 				rangeColumnExpr = expression.NewNullSafeGreaterThan(idx.Exprs[i], expression.NewLiteral(lit, typ))
