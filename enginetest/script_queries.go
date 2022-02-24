@@ -1679,10 +1679,10 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
 			{
-				Query: "EXPLAIN SELECT * FROM test where i = 2",
-				Expected: []sql.Row{{"Filter(test.i = 2)"},
-					{" └─ Projected table access on [i]"},
-					{"     └─ IndexedTableAccess(test on [test.i])"}},
+				Query: "SELECT * FROM test where i = 2",
+				Expected: []sql.Row{
+					{2},
+				},
 			},
 		},
 	},
