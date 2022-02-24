@@ -2877,15 +2877,15 @@ var BrokenTriggerQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into a values (1), (1)",
+				Query:       "insert into a values (1), (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
-				Query: "select * from a",
+				Query:    "select * from a",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "select * from b",
+				Query:    "select * from b",
 				Expected: []sql.Row{},
 			},
 		},
@@ -2899,15 +2899,15 @@ var BrokenTriggerQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into a values (1), (1)",
+				Query:       "insert into a values (1), (1)",
 				ExpectedErr: sql.ErrPrimaryKeyViolation,
 			},
 			{
-				Query: "select * from a",
+				Query:    "select * from a",
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "select * from b",
+				Query:    "select * from b",
 				Expected: []sql.Row{},
 			},
 		},
