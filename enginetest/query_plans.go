@@ -2047,9 +2047,8 @@ var ScriptQueryPlanTest = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `SELECT * FROM test where j > 0`,
-				ExpectedErrStr: "Filter(test.j > 0)\n" +
-					" └─ Projected table access on [i j]\n" +
-					"     └─ IndexedTableAccess(test on [test.j])\n" +
+				ExpectedErrStr: "Projected table access on [i j]\n" +
+					" └─ IndexedTableAccess(test on [test.j])\n" +
 					"",
 			},
 		},
