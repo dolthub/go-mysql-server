@@ -238,7 +238,7 @@ func TestQueryPlans(t *testing.T) {
 			enginetest.TestQueryPlans(t, harness)
 		})
 	}
-} 
+}
 
 func TestIndexQueryPlans(t *testing.T) {
 	indexBehaviors := []*indexBehaviorTestParams{
