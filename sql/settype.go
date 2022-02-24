@@ -203,7 +203,7 @@ func (t setType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t setType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}

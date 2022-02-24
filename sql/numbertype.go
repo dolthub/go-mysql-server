@@ -336,24 +336,26 @@ func (t numberTypeImpl) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
+func (t numberTypeImpl) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
 
-	var val []byte
+	stop := len(dest)
 	switch t.baseType {
 	case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
-		val = []byte(strconv.FormatInt(mustInt64(v), 10))
+		dest = strconv.AppendInt(dest, mustInt64(v), 10)
 	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-		val = []byte(strconv.FormatUint(mustUint64(v), 10))
+		dest = strconv.AppendUint(dest, mustUint64(v), 10)
 	case sqltypes.Float32:
-		val = []byte(strconv.FormatFloat(float64(v.(float32)), 'f', -1, 32))
+		dest = strconv.AppendFloat(dest, float64(v.(float32)), 'f', -1, 32)
 	case sqltypes.Float64:
-		val = []byte(strconv.FormatFloat(v.(float64), 'f', -1, 64))
+		dest = strconv.AppendFloat(dest, v.(float64), 'f', -1, 64)
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}
+
+	val := dest[stop:]
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }

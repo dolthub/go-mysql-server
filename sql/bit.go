@@ -174,7 +174,7 @@ func (t bitType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t bitType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t bitType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -182,7 +182,12 @@ func (t bitType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Bit, strconv.AppendUint(nil, value.(uint64), 10)), nil
+
+	stop := len(dest)
+	dest = strconv.AppendUint(dest, value.(uint64), 10)
+	val := dest[stop:]
+
+	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
 }
 
 // String implements Type interface.

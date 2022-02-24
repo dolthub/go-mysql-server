@@ -296,7 +296,7 @@ func (t datetimeType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t datetimeType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t datetimeType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -307,43 +307,38 @@ func (t datetimeType) SQL(v interface{}) (sqltypes.Value, error) {
 	}
 	vt := v.(time.Time)
 
+	var typ query.Type
+	var val []byte
+
 	switch t.baseType {
 	case sqltypes.Date:
+		typ = sqltypes.Date
 		if vt.Equal(zeroTime) {
-			return sqltypes.MakeTrusted(
-				sqltypes.Date,
-				[]byte(vt.Format(zeroDateStr)),
-			), nil
+			val = []byte(vt.Format(zeroDateStr))
+		} else {
+			val = []byte(vt.Format(DateLayout))
 		}
-		return sqltypes.MakeTrusted(
-			sqltypes.Date,
-			[]byte(vt.Format(DateLayout)),
-		), nil
 	case sqltypes.Datetime:
+		typ = sqltypes.Datetime
 		if vt.Equal(zeroTime) {
-			return sqltypes.MakeTrusted(
-				sqltypes.Datetime,
-				[]byte(vt.Format(zeroTimestampDatetimeStr)),
-			), nil
+			val = []byte(vt.Format(zeroTimestampDatetimeStr))
+		} else {
+			val = []byte(vt.Format(TimestampDatetimeLayout))
 		}
-		return sqltypes.MakeTrusted(
-			sqltypes.Datetime,
-			[]byte(vt.Format(TimestampDatetimeLayout)),
-		), nil
 	case sqltypes.Timestamp:
+		typ = sqltypes.Timestamp
 		if vt.Equal(zeroTime) {
-			return sqltypes.MakeTrusted(
-				sqltypes.Timestamp,
-				[]byte(vt.Format(zeroTimestampDatetimeStr)),
-			), nil
+			val = []byte(vt.Format(zeroTimestampDatetimeStr))
+		} else {
+			val = []byte(vt.Format(TimestampDatetimeLayout))
 		}
-		return sqltypes.MakeTrusted(
-			sqltypes.Timestamp,
-			[]byte(vt.Format(TimestampDatetimeLayout)),
-		), nil
 	default:
 		panic(ErrInvalidBaseType.New(t.baseType.String(), "datetime"))
 	}
+
+	val = appendAndSlice(dest, val)
+
+	return sqltypes.MakeTrusted(typ, val), nil
 }
 
 func (t datetimeType) String() string {

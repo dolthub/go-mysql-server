@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-// rangeTreeColor is a node's color for balancing a RangeColumnExprTree.
+// rangeTreeColor is a node's color for balancing a .
 type rangeTreeColor uint8
 
 const (
@@ -40,7 +40,7 @@ const (
 
 // RangeColumnExprTree represents a red-black tree over a range column expression. To represent an entire range, each
 // node has both an upper bound and lower bound that represents a single column expression. If the Range has another
-// dimension, then the node will have an inner tree representing the nested dimension ad infinitum. This implicitly
+// dimension, then the node will have an inner tree represeRangeColumnExprTreenting the nested dimension ad infinitum. This implicitly
 // means that all column expressions on the lower dimension share the same column expression in the higher dimensions.
 // This way, a Range is deconstructed and sorted by its column expressions, but may easily be retrieved by walking down
 // a tree and all of its inner trees.
