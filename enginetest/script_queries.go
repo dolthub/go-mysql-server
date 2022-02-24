@@ -603,6 +603,33 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "same alias names for result column name and existing column name used for group by column name",
+		SetUpScript: []string{
+			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
+			"INSERT INTO tab1 VALUES(22,6,8)",
+			"INSERT INTO tab1 VALUES(28,57,45)",
+			"INSERT INTO tab1 VALUES(82,44,71)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT col1, col1 AS col1 FROM tab1 GROUP BY col1",
+				Expected: []sql.Row{{6, 6}, {57, 57}, {44, 44}},
+			},
+			{
+				Query: "SELECT - col2, - col2 * - + col2 + col2 AS col2 FROM tab1 GROUP BY col2",
+				Expected: []sql.Row{{-8, 72}, {-45, 2070}, {-71, 5112}},
+			},
+			{
+				Query: "SELECT 9 * col2 + col2 + 30 * - col0 col1, col0 + - 1 * + 0 * - ( - col0 ) AS col0 FROM tab1 cor0 GROUP BY col0, col2",
+				Expected: []sql.Row{{-580, 22}, {-390, 28}, {-1750, 82}},
+			},
+			{
+				Query: "SELECT ALL col0 * - - ( ( - + 20 ) ) * + COALESCE ( + 88, + + col2 ) + col0, col0 AS col2 FROM tab1 GROUP BY col0",
+				Expected: []sql.Row{{-144238, 82}, {-38698, 22}, {-49252, 28}},
+			},
+		},
+	},
+	{
 		Name: "same alias names for result column name and alias table column name",
 		SetUpScript: []string{
 			"CREATE TABLE tab0(col0 INTEGER, col1 INTEGER, col2 INTEGER)",

@@ -263,8 +263,8 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 						if expressionReferencesOnlyGroupBys(groupBys, e) {
 							continue
 						}
+						return nil, ErrValidationGroupBy.New(someExpr.String())
 					}
-					return nil, ErrValidationGroupBy.New(someExpr.String())
 				}
 			}
 		}
