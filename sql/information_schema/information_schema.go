@@ -641,7 +641,6 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return nil, err
 			}
 
-			// Get UNIQUEs, PRIMARY KEYs
 			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
 			indexTable, ok := tbl.(IndexedTable)
 			if ok {
@@ -651,11 +650,6 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				for _, index := range indexes {
-					// In this case we have a multi-index which is not represented in this table
-					if index.ID() != "PRIMARY" {
-						continue
-					}
-
 					// Create a Row for each column this index refers too.
 					i := 0
 					for _, expr := range index.Expressions() {
