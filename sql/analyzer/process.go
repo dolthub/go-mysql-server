@@ -15,9 +15,21 @@
 package analyzer
 
 import (
+	"os"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
+
+var updateQueryProgressEachRow bool
+
+const updateQueryProcessEachRowEnvKey = "DETAILED_QUERY_PROGRESS"
+
+func init() {
+	if v, ok := os.LookupEnv(updateQueryProcessEachRowEnvKey); ok && len(v) > 0 {
+		updateQueryProgressEachRow = true
+	}
+}
 
 // trackProcess will wrap the query in a process node and add progress items
 // to the already existing process.
@@ -67,8 +79,12 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 				processList.AddPartitionProgress(ctx.Pid(), name, partitionName, -1)
 			}
 
-			onRowNext := func(partitionName string) {
-				processList.UpdatePartitionProgress(ctx.Pid(), name, partitionName, 1)
+			var onRowNext plan.NamedNotifyFunc
+			// TODO: coarser default for row updates (like updating every 100 rows) that doesn't kill performance
+			if updateQueryProgressEachRow {
+				onRowNext = func(partitionName string) {
+					processList.UpdatePartitionProgress(ctx.Pid(), name, partitionName, 1)
+				}
 			}
 
 			var t sql.Table
