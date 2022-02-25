@@ -333,34 +333,74 @@ func (h *Handler) doQuery(
 		return remainder, err
 	}
 
-	var r *sqltypes.Result
-	var proccesedAtLeastOneBatch bool
+	resChan := make(chan recyclableResult)
+	builder := newResultBuilder(schema)
 
-	// Reads rows from the row reading goroutine
-	rowChan := make(chan sql.Row)
+	eg.Go(func() (err error) {
 
-	eg.Go(func() error {
-		defer close(rowChan)
+		defer close(resChan)
+		defer func() {
+			cerr := rows.Close(ctx)
+			if cerr != nil {
+				l := ctx.GetLogger().WithError(cerr)
+				l.Warn("error closing row iter")
+			}
+			if err == nil {
+				err = cerr
+			}
+		}()
+
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
+
 			default:
-				row, err := rows.Next(ctx)
+				var row sql.Row
+				row, err = rows.Next(ctx)
+				if err == io.EOF {
+					if builder.isEmpty() {
+						return nil
+					}
+					select {
+					case resChan <- builder.build():
+						return nil
+					case <-ctx.Done():
+						return nil
+					}
+				}
 				if err != nil {
-					if err == io.EOF {
-						return rows.Close(ctx)
-					}
-					cerr := rows.Close(ctx)
-					if cerr != nil {
-						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
-					}
 					return err
 				}
-				select {
-				case rowChan <- row:
-				case <-ctx.Done():
-					return nil
+
+				if sql.IsOkResult(row) {
+					if !builder.isEmpty() {
+						panic("Got OkResult mixed with RowResult")
+					}
+					r := recyclableResult{
+						res: resultFromOkResult(row[0].(sql.OkResult)),
+						buf: nil,
+					}
+
+					select {
+					case resChan <- r:
+						continue
+					case <-ctx.Done():
+						return nil
+					}
+				}
+
+				if err = builder.writeRow(row); err != nil {
+					return err
+				}
+
+				if builder.isFull() {
+					select {
+					case resChan <- builder.build():
+						continue
+					case <-ctx.Done():
+						return nil
+					}
 				}
 			}
 		}
@@ -387,42 +427,22 @@ func (h *Handler) doQuery(
 	eg.Go(func() error {
 		defer cancelF()
 		for {
-			if r == nil {
-				r = &sqltypes.Result{Fields: schemaToFields(schema)}
-			}
-
-			if r.RowsAffected == rowsBatch {
-				if err := callback(r, more); err != nil {
-					return err
-				}
-				r = nil
-				proccesedAtLeastOneBatch = true
-				continue
-			}
-
 			select {
 			case <-ctx.Done():
 				return nil
-			case row, ok := <-rowChan:
+			case r, ok := <-resChan:
 				if !ok {
-					return nil
-				}
-				if sql.IsOkResult(row) {
-					if len(r.Rows) > 0 {
-						panic("Got OkResult mixed with RowResult")
-					}
-					r = resultFromOkResult(row[0].(sql.OkResult))
-					continue
+					return nil // channel closed
 				}
 
-				outputRow, err := rowToSQL(schema, row)
-				if err != nil {
+				debugLogResultSet(ctx, r.res)
+
+				// send the result set to the server
+				if err := callback(r.res, more); err != nil {
 					return err
 				}
+				r.recycle()
 
-				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-				r.Rows = append(r.Rows, outputRow)
-				r.RowsAffected++
 			case <-timer.C:
 				if h.readTimeout != 0 {
 					// Cancel and return so Vitess can call the CloseConnection callback
@@ -448,26 +468,9 @@ func (h *Handler) doQuery(
 		return remainder, err
 	}
 
-	switch len(r.Rows) {
-	case 0:
-		if len(r.Info) > 0 {
-			ctx.GetLogger().Debugf("returning result %s", r.Info)
-		} else {
-			ctx.GetLogger().Debugf("returning empty result")
-		}
-	case 1:
-		ctx.GetLogger().Debugf("returning result %v", r)
-	}
-
 	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
 
-	// processedAtLeastOneBatch means we already called callback() at least
-	// once, so no need to call it if RowsAffected == 0.
-	if r != nil && (r.RowsAffected == 0 && proccesedAtLeastOneBatch) {
-		return remainder, nil
-	}
-
-	return remainder, callback(r, more)
+	return remainder, nil
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
@@ -616,42 +619,6 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 	return 0
 }
 
-func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row))
-	var err error
-	for i, v := range row {
-		if v == nil {
-			o[i] = sqltypes.NULL
-			continue
-		}
-
-		o[i], err = s[i].Type.SQL(nil, v)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return o, nil
-}
-
-func schemaToFields(s sql.Schema) []*query.Field {
-	fields := make([]*query.Field, len(s))
-	for i, c := range s {
-		var charset uint32 = mysql.CharacterSetUtf8
-		if sql.IsBlob(c.Type) {
-			charset = mysql.CharacterSetBinary
-		}
-
-		fields[i] = &query.Field{
-			Name:    c.Name,
-			Type:    c.Type.Type(),
-			Charset: charset,
-		}
-	}
-
-	return fields
-}
-
 var (
 	// QueryCounter describes a metric that accumulates number of queries monotonically.
 	QueryCounter = discard.NewCounter()
@@ -676,5 +643,18 @@ func observeQuery(ctx *sql.Context, query string) func(err error) {
 		}
 
 		span.Finish()
+	}
+}
+
+func debugLogResultSet(ctx *sql.Context, res *sqltypes.Result) {
+	switch len(res.Rows) {
+	case 0:
+		if len(res.Info) > 0 {
+			ctx.GetLogger().Debugf("returning result %s", res.Info)
+		} else {
+			ctx.GetLogger().Debugf("returning empty result")
+		}
+	case 1:
+		ctx.GetLogger().Debugf("returning result %v", res)
 	}
 }

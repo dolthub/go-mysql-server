@@ -15,6 +15,9 @@
 package server
 
 import (
+	"sync"
+
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -49,6 +52,12 @@ const (
 	yearCapRequirement      capRequirement = uint16CapRequirement
 )
 
+var resultBuilderPool = sync.Pool{New: newResultByteBuffer}
+
+func newResultByteBuffer() interface{} {
+	return make([]byte, defaultResultBufferSize)
+}
+
 // resultBuilder builds a sqltypes.Result
 type resultBuilder struct {
 	sch sql.Schema
@@ -60,27 +69,40 @@ type resultBuilder struct {
 	pos int
 }
 
-func newResultBuilder(sch sql.Schema) (bld *resultBuilder) {
-	rows := make([][]sqltypes.Value, rowsBatch)
-	for i := range rows {
-		rows[i] = make([]sqltypes.Value, len(sch))
+type recyclableResult struct {
+	res *sqltypes.Result
+	buf []byte
+}
+
+func (r recyclableResult) recycle() {
+	if r.buf != nil {
+		resultBuilderPool.Put(r.buf)
 	}
+}
+
+func newResultBuilder(sch sql.Schema) *resultBuilder {
+	rows := valuesSliceFromSchema(sch)
 
 	types := make([]sql.Type, len(sch))
 	for i := range types {
 		types[i] = sch[i].Type
 	}
 
-	bld = &resultBuilder{
+	buf := resultBuilderPool.New().([]byte)
+
+	return &resultBuilder{
 		sch:  sch,
 		rows: rows,
-		buf:  make([]byte, defaultResultBufferSize),
+		buf:  buf,
 	}
-	return
 }
 
 func (rb *resultBuilder) isFull() bool {
 	return rb.cnt >= rowsBatch
+}
+
+func (rb *resultBuilder) isEmpty() bool {
+	return rb.cnt == 0
 }
 
 func (rb *resultBuilder) writeRow(row sql.Row) error {
@@ -109,6 +131,25 @@ func (rb *resultBuilder) writeRow(row sql.Row) error {
 	return nil
 }
 
+func (rb *resultBuilder) build() (r recyclableResult) {
+	r = recyclableResult{
+		res: &sqltypes.Result{
+			Fields:       schemaToFields(rb.sch),
+			Rows:         rb.rows[:rb.cnt],
+			RowsAffected: uint64(rb.cnt),
+		},
+		buf: rb.buf,
+	}
+
+	// reset builder
+	rb.buf = resultBuilderPool.New().([]byte)
+	rb.rows = valuesSliceFromSchema(rb.sch)
+	rb.pos = 0
+	rb.cnt = 0
+
+	return
+}
+
 func (rb *resultBuilder) ensureCapacity(row sql.Row) error {
 	req, err := capRequirementForRow(rb.sch, row)
 	if err != nil {
@@ -123,17 +164,30 @@ func (rb *resultBuilder) ensureCapacity(row sql.Row) error {
 	return nil
 }
 
-func (rb *resultBuilder) result() *sqltypes.Result {
-	return &sqltypes.Result{
-		Fields:       schemaToFields(rb.sch),
-		Rows:         rb.rows[:rb.cnt],
-		RowsAffected: uint64(rb.cnt),
+func valuesSliceFromSchema(sch sql.Schema) (rows [][]sqltypes.Value) {
+	rows = make([][]sqltypes.Value, rowsBatch)
+	for i := range rows {
+		rows[i] = make([]sqltypes.Value, len(sch))
 	}
+	return
 }
 
-func (rb *resultBuilder) reset() {
-	rb.cnt = 0
-	rb.pos = 0
+func schemaToFields(s sql.Schema) []*query.Field {
+	fields := make([]*query.Field, len(s))
+	for i, c := range s {
+		var charset uint32 = mysql.CharacterSetUtf8
+		if sql.IsBlob(c.Type) {
+			charset = mysql.CharacterSetBinary
+		}
+
+		fields[i] = &query.Field{
+			Name:    c.Name,
+			Type:    c.Type.Type(),
+			Charset: charset,
+		}
+	}
+
+	return fields
 }
 
 func capRequirementForRow(sch sql.Schema, row sql.Row) (capRequirement, error) {
@@ -178,13 +232,19 @@ func capRequirementForRow(sch sql.Schema, row sql.Row) (capRequirement, error) {
 			r += yearCapRequirement
 
 		default:
-			// default to serializing and measuring
-			// we can do better for some fixed-sized types
-			v, err := col.Type.SQL(nil, row[i])
-			if err != nil {
-				return 0, err
+			switch t := row[i].(type) {
+			case string:
+				r += capRequirement(len(t))
+			case []byte:
+				r += capRequirement(len(t))
+			default:
+				// todo: we can do better for some types
+				v, err := col.Type.SQL(nil, t)
+				if err != nil {
+					return 0, err
+				}
+				r += capRequirement(v.Len())
 			}
-			r += capRequirement(v.Len())
 		}
 	}
 	return r, nil
