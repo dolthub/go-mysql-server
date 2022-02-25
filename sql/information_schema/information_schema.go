@@ -663,14 +663,14 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						if col != nil {
 							i += 1
 							var (
-								nonUnique int
-								collation string
-								nullable string
-								comment string
+								nonUnique    int
+								collation    string
+								nullable     string
+								comment      string
 								indexComment string
-								isVisible string
-								cardinality uint64
-								indexName string
+								isVisible    string
+								cardinality  uint64
+								indexName    string
 							)
 
 							if index.IsUnique() {
@@ -705,24 +705,24 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							isVisible = "YES"
 
 							rows = append(rows, Row{
-								"def",                          // table_catalog
-								db.Name(),                      // table_schema
-								tbl.Name(),                     // table_name
-								nonUnique,                      // non_unique		NOT NULL
-								db.Name(),                      // index_schema
-								indexName,             			// index_name
-								seqInIndex, 					// seq_in_index		NOT NULL
-								colName, 						// column_name
-								collation, 						// collation
-								cardinality, 					// cardinality
-								nil, 							// sub_part
-								nil, 							// packed
-								nullable,                       // is_nullable		NOT NULL
-								indexType, 						// index_type		NOT NULL
-								comment, 						// comment			NOT NULL
-								indexComment, 					// index_comment	NOT NULL
-								isVisible, 					 	// is_visible		NOT NULL
-								nil, 							// expression
+								"def",        // table_catalog
+								db.Name(),    // table_schema
+								tbl.Name(),   // table_name
+								nonUnique,    // non_unique		NOT NULL
+								db.Name(),    // index_schema
+								indexName,    // index_name
+								seqInIndex,   // seq_in_index		NOT NULL
+								colName,      // column_name
+								collation,    // collation
+								cardinality,  // cardinality
+								nil,          // sub_part
+								nil,          // packed
+								nullable,     // is_nullable		NOT NULL
+								indexType,    // index_type		NOT NULL
+								comment,      // comment			NOT NULL
+								indexComment, // index_comment	NOT NULL
+								isVisible,    // is_visible		NOT NULL
+								nil,          // expression
 							})
 						}
 					}
