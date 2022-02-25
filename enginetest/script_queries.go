@@ -1430,6 +1430,7 @@ var ScriptTests = []ScriptTest{
 			"create table t2(c int primary key, d varchar(10))",
 			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
 			"alter table t2 add constraint t2du unique (d)",
+			"create table t3 (a int, b varchar(100), c datetime, primary key (b,a))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1453,6 +1454,17 @@ var ScriptTests = []ScriptTest{
 						"  PRIMARY KEY (`c`),\n" +
 						"  UNIQUE KEY `t2.d` (`d`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+				},
+			},
+			{
+				Query: "show create table t3",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `a` int NOT NULL,\n" +
+						"  `b` varchar(100) NOT NULL,\n" +
+						"  `c` datetime,\n" +
+						"  PRIMARY KEY (`b`,`a`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 				},
 			},
