@@ -655,7 +655,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						indexComment string
 						indexName    string
 						comment      = ""
-						isVisible	 string
+						isVisible    string
 					)
 					indexName = index.ID()
 					if index.IsUnique() {
@@ -675,10 +675,10 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						if col != nil {
 							i += 1
 							var (
-								collation    string
-								nullable     string
+								collation string
+								nullable  string
 
-								cardinality  uint64
+								cardinality uint64
 							)
 
 							seqInIndex := i
