@@ -652,7 +652,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 				for _, index := range indexes {
 					// In this case we have a multi-index which is not represented in this table
-					if index.ID() != "PRIMARY" && !index.IsUnique() {
+					if index.ID() != "PRIMARY" {
 						continue
 					}
 
@@ -711,15 +711,15 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								nonUnique,    // non_unique		NOT NULL
 								db.Name(),    // index_schema
 								indexName,    // index_name
-								seqInIndex,   // seq_in_index		NOT NULL
+								seqInIndex,   // seq_in_index	NOT NULL
 								colName,      // column_name
 								collation,    // collation
 								cardinality,  // cardinality
 								nil,          // sub_part
 								nil,          // packed
-								nullable,     // is_nullable		NOT NULL
+								nullable,     // is_nullable	NOT NULL
 								indexType,    // index_type		NOT NULL
-								comment,      // comment			NOT NULL
+								comment,      // comment		NOT NULL
 								indexComment, // index_comment	NOT NULL
 								isVisible,    // is_visible		NOT NULL
 								nil,          // expression
