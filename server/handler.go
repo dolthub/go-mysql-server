@@ -359,9 +359,6 @@ func (h *Handler) doQuery(
 				var row sql.Row
 				row, err = rows.Next(ctx)
 				if err == io.EOF {
-					if builder.isEmpty() {
-						return nil
-					}
 					select {
 					case resChan <- builder.build():
 						return nil
@@ -384,7 +381,7 @@ func (h *Handler) doQuery(
 
 					select {
 					case resChan <- r:
-						continue
+						return nil
 					case <-ctx.Done():
 						return nil
 					}
