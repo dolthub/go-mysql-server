@@ -650,6 +650,24 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				}
 
 				for _, index := range indexes {
+					var (
+						nonUnique    int
+						indexComment string
+						indexName    string
+						comment      = ""
+						isVisible	 string
+					)
+					indexName = index.ID()
+					if index.IsUnique() {
+						nonUnique = 1
+					} else {
+						nonUnique = 0
+					}
+					indexType := index.IndexType()
+					indexComment = index.Comment()
+					// setting `VISIBLE` is not supported, so defaulting it to "YES"
+					isVisible = "YES"
+
 					// Create a Row for each column this index refers too.
 					i := 0
 					for _, expr := range index.Expressions() {
@@ -657,22 +675,12 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						if col != nil {
 							i += 1
 							var (
-								nonUnique    int
 								collation    string
 								nullable     string
-								comment      string
-								indexComment string
-								isVisible    string
+
 								cardinality  uint64
-								indexName    string
 							)
 
-							if index.IsUnique() {
-								nonUnique = 0
-							} else {
-								nonUnique = 1
-							}
-							indexName = index.ID()
 							seqInIndex := i
 							colName := strings.Replace(col.Name, "`", "", -1) // get rid of backticks
 
@@ -691,12 +699,6 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							} else {
 								nullable = ""
 							}
-
-							indexType := index.IndexType()
-							comment = col.Comment
-							indexComment = index.Comment()
-							// setting `VISIBLE` is not supported, so defaulting it to "YES"
-							isVisible = "YES"
 
 							rows = append(rows, Row{
 								"def",        // table_catalog
