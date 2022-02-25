@@ -625,6 +625,110 @@ func charsetRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	dbs := c.AllDatabases(ctx)
+
+	for _, db := range dbs {
+		tableNames, err := db.GetTableNames(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			// Get UNIQUEs, PRIMARY KEYs
+			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
+			indexTable, ok := tbl.(IndexedTable)
+			if ok {
+				indexes, err := indexTable.GetIndexes(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, index := range indexes {
+					// In this case we have a multi-index which is not represented in this table
+					if index.ID() != "PRIMARY" && !index.IsUnique() {
+						continue
+					}
+
+					// Create a Row for each column this index refers too.
+					i := 0
+					for _, expr := range index.Expressions() {
+						col := plan.GetColumnFromIndexExpr(expr, tbl)
+						if col != nil {
+							i += 1
+							var (
+								nonUnique int
+								collName interface{}
+								nullable string
+								comment = ""
+								indexComment = ""
+								//isVisible = "YES"
+								//cardinality int
+								indexName string
+							)
+
+							if index.IsUnique() {
+								nonUnique = 0
+							} else {
+								nonUnique = 1
+							}
+							indexName = index.ID()
+							seqInIndex := i
+							colName := strings.Replace(col.Name, "`", "", -1) // get rid of backticks
+							if IsText(col.Type) {
+								collName = Collation_Default.String()
+							}
+
+							if col.Nullable {  // change into NULLABLE
+								nullable = "YES"
+							} else {
+								nullable = "NO"
+							}
+
+							indexType := index.IndexType()
+							comment = col.Comment
+							indexComment = index.Comment()
+
+							rows = append(rows, Row{
+								"def",                          // table_catalog
+								db.Name(),                      // table_schema
+								tbl.Name(),                     // table_name
+								nonUnique,                      // non_unique		NOT NULL
+								db.Name(),                      // index_schema
+								indexName,             			// index_name
+								seqInIndex, 					// seq_in_index		NOT NULL
+								colName, 						// column_name
+								collName, 						// collation
+								nil, 							// cardinality
+								nil, 							// sub_part
+								nil, 							// packed
+								nullable,                       // is_nullable		NOT NULL
+								indexType, 						// index_type		NOT NULL
+								comment, 						// comment			NOT NULL
+								indexComment, 					// index_comment	NOT NULL
+								"", 							// is_visible		NOT NULL
+								nil, 							// expression
+							})
+						}
+					}
+				}
+			}
+		}
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
@@ -992,7 +1096,7 @@ func NewInformationSchemaDatabase() Database {
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
 				schema:  statisticsSchema,
-				rowIter: emptyRowIter,
+				rowIter: statisticsRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:    TableConstraintsTableName,
