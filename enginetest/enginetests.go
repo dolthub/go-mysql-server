@@ -3972,6 +3972,9 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	AssertErrWithCtx(t, e, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
 	AssertErrWithCtx(t, e, ctx, "show tables", sql.ErrNoDatabaseSelected)
 	AssertErrWithCtx(t, e, ctx, "show triggers", sql.ErrNoDatabaseSelected)
+
+	_, _, err := e.Query(ctx, "ROLLBACK")
+	require.NoError(t, err)
 }
 
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
