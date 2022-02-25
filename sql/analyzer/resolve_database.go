@@ -62,7 +62,7 @@ func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	plan.Inspect(n, func(node sql.Node) bool {
 		switch n.(type) {
 		// TODO: there are probably other kinds of nodes that need this too
-		case *plan.ShowTables, *plan.ShowTriggers, *plan.CreateTable:
+		case *plan.ShowTables, *plan.ShowTriggers, *plan.CreateTable, *plan.Rollback:
 			n := n.(sql.Databaser)
 			if _, ok := n.Database().(sql.UnresolvedDatabase); ok {
 				err = sql.ErrNoDatabaseSelected.New()
