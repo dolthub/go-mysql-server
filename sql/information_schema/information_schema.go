@@ -664,12 +664,12 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							i += 1
 							var (
 								nonUnique int
-								collName interface{}
+								collation string
 								nullable string
-								comment = ""
-								indexComment = ""
-								//isVisible = "YES"
-								//cardinality int
+								comment string
+								indexComment string
+								isVisible string
+								cardinality uint64
 								indexName string
 							)
 
@@ -681,19 +681,26 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							indexName = index.ID()
 							seqInIndex := i
 							colName := strings.Replace(col.Name, "`", "", -1) // get rid of backticks
-							if IsText(col.Type) {
-								collName = Collation_Default.String()
+
+							// collation is "A" for ASC ; "D" for DESC ; "NULL" for not sorted
+							collation = "A"
+
+							if st, ok := tbl.(StatisticsTable); ok {
+								cardinality, _ = st.NumRows(ctx)
 							}
 
-							if col.Nullable {  // change into NULLABLE
+							// if nullable, 'YES'; if not, ''
+							if col.Nullable {
 								nullable = "YES"
 							} else {
-								nullable = "NO"
+								nullable = ""
 							}
 
 							indexType := index.IndexType()
 							comment = col.Comment
 							indexComment = index.Comment()
+							// setting `VISIBLE` is not supported, so defaulting it to "YES"
+							isVisible = "YES"
 
 							rows = append(rows, Row{
 								"def",                          // table_catalog
@@ -704,15 +711,15 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 								indexName,             			// index_name
 								seqInIndex, 					// seq_in_index		NOT NULL
 								colName, 						// column_name
-								collName, 						// collation
-								nil, 							// cardinality
+								collation, 						// collation
+								cardinality, 					// cardinality
 								nil, 							// sub_part
 								nil, 							// packed
 								nullable,                       // is_nullable		NOT NULL
 								indexType, 						// index_type		NOT NULL
 								comment, 						// comment			NOT NULL
 								indexComment, 					// index_comment	NOT NULL
-								"", 							// is_visible		NOT NULL
+								isVisible, 					 	// is_visible		NOT NULL
 								nil, 							// expression
 							})
 						}
