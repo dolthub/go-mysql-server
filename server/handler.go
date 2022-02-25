@@ -48,9 +48,6 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
 var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
-// TODO parametrize
-const rowsBatch = 100
-
 var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
 type MultiStmtMode int

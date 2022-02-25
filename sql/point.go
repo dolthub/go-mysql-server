@@ -97,6 +97,7 @@ func (t PointType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, nil
 	}
 
+	// todo(andy): this is broken
 	return sqltypes.MakeTrusted(sqltypes.Geometry, []byte(pv.(string))), nil
 }
 
