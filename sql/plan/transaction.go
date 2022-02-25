@@ -311,8 +311,9 @@ func (r *Rollback) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 // Resolved implements the sql.Node interface.
 func (r *Rollback) Resolved() bool {
-	_, ok := r.db.(sql.UnresolvedDatabase)
-	return !ok
+	return true
+	//_, ok := r.db.(sql.UnresolvedDatabase)
+	//return !ok
 }
 
 // Children implements the sql.Node interface.
