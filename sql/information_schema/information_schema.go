@@ -685,6 +685,8 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// collation is "A" for ASC ; "D" for DESC ; "NULL" for not sorted
 							collation = "A"
 
+							// TODO : cardinality should be an estimate of the number of unique values in the index.
+							// it is currently set to total number of rows in the table
 							if st, ok := tbl.(StatisticsTable); ok {
 								cardinality, _ = st.NumRows(ctx)
 							}
