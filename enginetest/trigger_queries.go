@@ -2722,6 +2722,29 @@ end;`,
 			},
 		},
 	},
+	// TODO: might be bug with in memory table; get rid of all closes and see if behavior continues
+	{
+		Name: "trigger before insert, reverts multiple inserts when query fails",
+		SetUpScript: []string{
+			"create table a (i int primary key)",
+			"create table b (x int)",
+			"create trigger trig before insert on a for each row insert into b values (new.i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into a values (1), (1)",
+				ExpectedErr: sql.ErrPrimaryKeyViolation,
+			},
+			{
+				Query:    "select * from a",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from b",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 // BrokenTriggerQueries contains trigger queries that should work but do not yet
