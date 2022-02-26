@@ -29,10 +29,10 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
 	*UnaryNode
-	IsView       bool
-	Indexes      []sql.Index
-	Checks       sql.CheckConstraints
-	targetSchema sql.Schema
+	IsView           bool
+	Indexes          []sql.Index
+	Checks           sql.CheckConstraints
+	targetSchema     sql.Schema
 	primaryKeySchema sql.PrimaryKeySchema
 }
 
@@ -125,11 +125,11 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 // RowIter implements the Node interface
 func (sc *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		table:   sc.Child,
-		isView:  sc.IsView,
-		indexes: sc.Indexes,
-		checks:  sc.Checks,
-		schema:  sc.targetSchema,
+		table:    sc.Child,
+		isView:   sc.IsView,
+		indexes:  sc.Indexes,
+		checks:   sc.Checks,
+		schema:   sc.targetSchema,
 		pkSchema: sc.primaryKeySchema,
 	}, nil
 }
