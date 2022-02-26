@@ -7054,6 +7054,11 @@ var BrokenQueries = []QueryTest{
 			{"fruit", float64(9)},
 		},
 	},
+	{
+		// TODO truncate date outputs
+		Query:    "select i, date_col from datetime_table",
+		Expected: []sql.Row{{1, "2019-12-31"}},
+	},
 }
 
 var VersionedQueries = []QueryTest{

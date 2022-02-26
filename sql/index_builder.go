@@ -160,6 +160,38 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 	return b
 }
 
+// IsNull represents colExpr = nil
+func (b *IndexBuilder) IsNull(ctx *Context, colExpr string) *IndexBuilder {
+	if b.isInvalid {
+		return b
+	}
+	_, ok := b.colExprTypes[colExpr]
+	if !ok {
+		b.isInvalid = true
+		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
+		return b
+	}
+	b.updateNullCol(ctx, colExpr)
+
+	return b
+}
+
+// IsNotNull represents colExpr != nil
+func (b *IndexBuilder) IsNotNull(ctx *Context, colExpr string) *IndexBuilder {
+	if b.isInvalid {
+		return b
+	}
+	typ, ok := b.colExprTypes[colExpr]
+	if !ok {
+		b.isInvalid = true
+		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
+		return b
+	}
+	b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+
+	return b
+}
+
 // Ranges returns all ranges for this index builder. If the builder is in an error state then this returns nil.
 func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	if b.err != nil {
@@ -245,7 +277,9 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 			newRange, ok, err := currentRange.TryIntersect(potentialRange)
 			if err != nil {
 				b.isInvalid = true
-				b.err = err
+				if !ErrInvalidValue.Is(err) {
+					b.err = err
+				}
 				return
 			}
 			if ok {
@@ -260,4 +294,28 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 		return
 	}
 	b.ranges[colExpr] = newRanges
+}
+
+// updateNullCol is an escape hatch for manually merging an isNull expression
+// with the base RangeType_All, because their intrinsics do not intersect.
+// The "ALL" base range should include Null and handle intersection.
+func (b *IndexBuilder) updateNullCol(ctx *Context, colExpr string) {
+	currentRanges, ok := b.ranges[colExpr]
+	if !ok {
+		b.ranges[colExpr] = []RangeColumnExpr{NullRangeColumnExpr()}
+		return
+	}
+
+	var newRanges []RangeColumnExpr
+	for _, currentRange := range currentRanges {
+		switch currentRange.Type() {
+		case RangeType_All, RangeType_Null:
+		default:
+			b.isInvalid = true
+			b.ranges[colExpr] = newRanges
+			return
+		}
+	}
+	b.ranges[colExpr] = []RangeColumnExpr{NullRangeColumnExpr()}
+	return
 }
