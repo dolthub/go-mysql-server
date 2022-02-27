@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -177,3 +179,43 @@ func ProjectRow(
 	}
 	return sql.NewRow(fields...), nil
 }
+
+type SelectForUpdate struct {
+	UnaryNode
+	lm locks.LockManager
+}
+
+func NewSelectForUpdate(child sql.Node) *SelectForUpdate {
+	return &SelectForUpdate{
+		UnaryNode: UnaryNode{Child: child},
+	}
+}
+
+func (s *SelectForUpdate) String() string {
+	return fmt.Sprintf("SelectForUpdate(%s)", s.Child.String())
+}
+
+func (s *SelectForUpdate) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	table := getTableName(s.Child)
+
+	err := s.lm.LockTable(ctx, ctx.GetCurrentDatabase(), table)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.Child.RowIter(ctx, row)
+}
+
+func (s *SelectForUpdate) WithChildren(node ...sql.Node) (sql.Node, error) {
+	if len(node) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(node), 1)
+	}
+
+	return NewLockWrapper(node[0]), nil
+}
+
+func (s *SelectForUpdate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return s.Child.CheckPrivileges(ctx, opChecker)
+}
+
+var _ sql.Node = (*SelectForUpdate)(nil)

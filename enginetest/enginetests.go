@@ -15,7 +15,9 @@
 package enginetest
 
 import (
+	"context"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -1291,6 +1293,87 @@ func TestTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harne
 	assertions := script.Assertions
 
 	for _, assertion := range assertions {
+		client := getClient(assertion.Query)
+
+		clientSession, ok := clientSessions[client]
+		if !ok {
+			clientSession = NewSession(harness)
+			clientSessions[client] = clientSession
+		}
+
+		t.Run(assertion.Query, func(t *testing.T) {
+			if assertion.ExpectedErr != nil {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, assertion.ExpectedErr)
+			} else if assertion.ExpectedErrStr != "" {
+				AssertErrWithCtx(t, e, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
+			} else if assertion.ExpectedWarning != 0 {
+				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
+					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+					assertion.ExpectedWarningMessageSubstring, false)
+			} else {
+				TestQueryWithContext(t, clientSession, e, assertion.Query, assertion.Expected, nil, nil)
+			}
+		})
+	}
+}
+
+func TestConcurrentTests(t *testing.T, harness Harness) {
+	for _, script := range ConcurrentTests {
+		TestConcurrentScript(t, harness, script)
+	}
+}
+
+func TestConcurrentScript(t *testing.T, harness Harness, script ConcurrentTransactionTest) bool {
+	return t.Run(script.Name, func(t *testing.T) {
+		myDb := harness.NewDatabase("mydb")
+		e := NewEngineWithDbs(t, harness, []sql.Database{myDb})
+		defer e.Close()
+		TestConcurrentTransactionScriptWithEngine(t, e, harness, script)
+	})
+}
+
+func TestConcurrentTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, harness Harness, script ConcurrentTransactionTest) {
+	setupSession := NewSession(harness)
+	for _, statement := range script.SetUpScript {
+		RunQueryWithContext(t, e, setupSession, statement)
+	}
+
+	clientSessions := make(map[string]*sql.Context)
+
+	executeClientQueries := func(clientCtx *sql.Context, queries []string) error {
+		for _, query := range queries {
+			_, _, err := e.QueryWithBindings(clientCtx, query, nil)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	g, ctx := errgroup.WithContext(context.Background())
+
+	for _, clientQueries := range script.ConcurrentTransactions {
+		client := getClient(clientQueries[0]) // TODO: Get a more robust way to get queries
+
+		clientSession, ok := clientSessions[client]
+		if !ok {
+			clientSession = NewSession(harness)
+			clientSessions[client] = clientSession
+		}
+
+		clientSession = clientSession.WithContext(ctx)
+		clientSessions[client] = clientSession
+
+		g.Go(func() error {
+			return executeClientQueries(clientSession, clientQueries)
+		})
+	}
+
+	err := g.Wait()
+	require.NoError(t, err)
+
+	for _, assertion := range script.Assertion {
 		client := getClient(assertion.Query)
 
 		clientSession, ok := clientSessions[client]

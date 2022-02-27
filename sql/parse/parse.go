@@ -754,6 +754,10 @@ func convertSelect(ctx *sql.Context, s *sqlparser.Select) (sql.Node, error) {
 		return nil, err
 	}
 
+	if s.Lock != "" {
+		return plan.NewSelectForUpdate(node), nil
+	}
+
 	if window, ok := node.(*plan.Window); ok && s.Window != nil {
 		node, err = windowToWindow(ctx, s.Window, window)
 		if err != nil {

@@ -26,44 +26,47 @@ type ExclusiveLock struct {
 }
 
 type LockManager interface {
-	LockTable(ctx *sql.Context, tableName string) error
-	UnlockTable(ctx *sql.Context, tableNames string) error
+	LockTable(ctx *sql.Context, databaseName, tableName string) error
+	UnlockTable(ctx *sql.Context, databaseName, tableName string) error
+	ReleaseLocksHeldByClient(ctx *sql.Context, id uint32) error
 }
 
-// TODO: Need this to work for muliple databases
 type lockManagerImpl struct {
-	tables map[string]*ExclusiveLock // we will need to update this
+	locksMap map[string]map[string]*ExclusiveLock // we will need to update this
+	catalog  sql.Catalog
+	mu       sync.RWMutex
 }
 
 var _ LockManager = &lockManagerImpl{}
 
 // TODO: Need to update internal state when tables are added and dropped
-func NewLockManager(ctx *sql.Context, c sql.Catalog) (*lockManagerImpl, error) {
-	dbName := ctx.GetCurrentDatabase()
-	db, err := c.Database(ctx, dbName)
-	if err != nil {
-		return nil, err
-	}
+func NewLockManager(c sql.Catalog) *lockManagerImpl {
+	dbMap := make(map[string]map[string]*ExclusiveLock)
 
-	tables, err := db.GetTableNames(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	tableMap := make(map[string]*ExclusiveLock)
-	for _, table := range tables {
-		tableMap[table] = &ExclusiveLock{clientId: ctx.ID(), mu: &sync.Mutex{}}
-	}
-
-	return &lockManagerImpl{tables: tableMap}, nil
+	return &lockManagerImpl{locksMap: dbMap, catalog: c}
 }
 
-func (l *lockManagerImpl) LockTable(ctx *sql.Context, tableName string) error {
+func (l *lockManagerImpl) LockTable(ctx *sql.Context, databaseName, tableName string) error {
+	// Validate that the table exists in the catalog
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_, _, err := l.catalog.Table(ctx, databaseName, tableName)
+	if err != nil {
+		return err
+	}
+
 	clientId := ctx.ID()
 
-	lock, ok := l.tables[tableName]
+	tableMap, ok := l.locksMap[databaseName]
 	if !ok {
-		return fmt.Errorf("Lock called on table not found")
+		tableMap = make(map[string]*ExclusiveLock)
+		l.locksMap[databaseName] = tableMap
+	}
+
+	lock, ok := tableMap[tableName]
+	if !ok {
+		lock = &ExclusiveLock{clientId: 0, mu: &sync.Mutex{}}
+		tableMap[tableName] = lock
 	}
 
 	lock.mu.Lock()
@@ -72,14 +75,38 @@ func (l *lockManagerImpl) LockTable(ctx *sql.Context, tableName string) error {
 	return nil
 }
 
-func (l *lockManagerImpl) UnlockTable(ctx *sql.Context, tableName string) error {
-	lock, ok := l.tables[tableName]
-	if !ok {
-		return fmt.Errorf("Unlock called on table that does not exist")
+func (l *lockManagerImpl) UnlockTable(ctx *sql.Context, databaseName, tableName string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	// Validate that the table exists in the catalog
+	_, _, err := l.catalog.Table(ctx, databaseName, tableName)
+	if err != nil {
+		return err
 	}
 
+	tableMap, ok := l.locksMap[databaseName]
+	if !ok {
+		return fmt.Errorf("database not found")
+	}
+
+	lock, ok := tableMap[tableName]
+	if !ok {
+		return fmt.Errorf("table not found")
+	}
 	lock.mu.Unlock()
 	lock.clientId = 0
+
+	return nil
+}
+
+func (l *lockManagerImpl) ReleaseLocksHeldByClient(ctx *sql.Context, id uint32) error {
+	for _, tableMap := range l.locksMap {
+		for _, lock := range tableMap {
+			if lock.clientId == id {
+				lock.mu.Unlock()
+			}
+		}
+	}
 
 	return nil
 }

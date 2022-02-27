@@ -91,6 +91,7 @@ var OnceAfterDefault = []Rule{
 	{"validate_alter_column", validateAlterColumn},
 	{"resolve_generators", resolveGenerators},
 	{"remove_unnecessary_converts", removeUnnecessaryConverts},
+	{"assign_lock_manager", assignLockManager},
 	{"assign_catalog", assignCatalog},
 	{"prune_columns", pruneColumns},
 	{"optimize_joins", constructJoinPlan},
@@ -113,6 +114,7 @@ var OnceAfterDefault = []Rule{
 	{"apply_procedures", applyProcedures},
 	{"modify_update_expressions_for_join", modifyUpdateExpressionsForJoin},
 	{"apply_row_update_accumulators", applyUpdateAccumulators},
+	{"acquire_row_locks", acquireLocks},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

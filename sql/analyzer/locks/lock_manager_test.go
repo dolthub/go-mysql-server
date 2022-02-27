@@ -52,25 +52,25 @@ func TestLockBehavior(t *testing.T) {
 	c2.SetCurrentDatabase(dbName)
 
 	// Initialize the lock manager
-	lm, err := locks.NewLockManager(c1, getCatalog())
-	require.NoError(t, err)
+	lm := locks.NewLockManager(getCatalog())
 
 	sleepDelta := 5 * time.Second
 	startTime := time.Now()
 
+	var err error
 	go func() {
-		err = lm.LockTable(c1, "foo")
+		err = lm.LockTable(c1, dbName, "foo")
 		require.NoError(t, err)
 
 		time.Sleep(sleepDelta)
 
-		err = lm.UnlockTable(c1, "foo")
+		err = lm.UnlockTable(c1, dbName, "foo")
 		require.NoError(t, err)
 	}()
 
 	time.Sleep(10 * time.Millisecond) // sleep for 10 milliseconds for the other routine
 
-	err = lm.LockTable(c2, "foo")
+	err = lm.LockTable(c2, dbName, "foo")
 	require.NoError(t, err)
 
 	delta := time.Since(startTime)

@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
 	"os"
 	"reflect"
 	"strings"
@@ -241,13 +242,18 @@ func (ab *Builder) Build() *Analyzer {
 		},
 	}
 
+	catalog := NewCatalog(ab.provider)
+
+	lm := locks.NewLockManager(catalog)
+
 	return &Analyzer{
 		Debug:          debug || ab.debug,
 		contextStack:   make([]string, 0),
 		Batches:        batches,
-		Catalog:        NewCatalog(ab.provider),
+		Catalog:        catalog,
 		Parallelism:    ab.parallelism,
 		ProcedureCache: NewProcedureCache(),
+		LockManager:    lm,
 	}
 }
 
@@ -267,6 +273,8 @@ type Analyzer struct {
 	Catalog *Catalog
 	// ProcedureCache is a cache of stored procedures.
 	ProcedureCache *ProcedureCache
+	// LockManager handles the locking and unlocking of table and row level locks
+	LockManager locks.LockManager
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

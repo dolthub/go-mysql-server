@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
 
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 
@@ -161,7 +162,8 @@ func (s *StartTransaction) Schema() sql.Schema {
 // Commit commits the changes performed in a transaction. This is provided just for compatibility with SQL clients and
 // is a no-op.
 type Commit struct {
-	db sql.Database
+	db          sql.Database
+	LockManager locks.LockManager
 }
 
 var _ sql.Databaser = (*Commit)(nil)
@@ -207,6 +209,11 @@ func (c *Commit) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	ctx.SetIgnoreAutoCommit(false)
 	ctx.SetTransaction(nil)
 
+	err = c.LockManager.ReleaseLocksHeldByClient(ctx, ctx.ID())
+	if err != nil {
+		return nil, err
+	}
+
 	return sql.RowsToRowIter(), nil
 }
 
@@ -243,7 +250,8 @@ func (*Commit) Schema() sql.Schema { return nil }
 // Rollback undoes the changes performed in the current transaction. For compatibility, databases that don't implement
 // sql.TransactionDatabase treat this as a no-op.
 type Rollback struct {
-	db sql.Database
+	db          sql.Database
+	LockManager locks.LockManager
 }
 
 var _ sql.Databaser = (*Rollback)(nil)
@@ -277,6 +285,11 @@ func (r *Rollback) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	// Like Commit, Rollback ends the current transaction and a new one begins with the next statement
 	ctx.SetIgnoreAutoCommit(false)
 	ctx.SetTransaction(nil)
+
+	err = r.LockManager.ReleaseLocksHeldByClient(ctx, ctx.ID())
+	if err != nil {
+		return nil, err
+	}
 
 	return sql.RowsToRowIter(), nil
 }
