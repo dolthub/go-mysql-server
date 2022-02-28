@@ -211,7 +211,10 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Set, []byte(value.(string))), nil
+
+	val := append(dest, []byte(value.(string))...)
+
+	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
 
 // String implements Type interface.
