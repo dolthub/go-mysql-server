@@ -76,11 +76,11 @@ func TestArrayType(t *testing.T) {
 
 	expected := []byte("[1,2,3]")
 
-	v, err := CreateArray(Int64).SQL([]interface{}{1, 2, 3})
+	v, err := CreateArray(Int64).SQL(nil, []interface{}{1, 2, 3})
 	require.NoError(err)
 	require.Equal(expected, v.Raw())
 
-	v, err = CreateArray(Int64).SQL(NewArrayGenerator([]interface{}{1, 2, 3}))
+	v, err = CreateArray(Int64).SQL(nil, NewArrayGenerator([]interface{}{1, 2, 3}))
 	require.NoError(err)
 	require.Equal(expected, v.Raw())
 }
@@ -92,7 +92,7 @@ func TestArraySQL(t *testing.T) {
 	}
 
 	require := require.New(t)
-	val, err := CreateArray(JSON).SQL(MustJSON(`[{"A":1,"B":"foo"},{"A":2,"B":"bar"}]`))
+	val, err := CreateArray(JSON).SQL(nil, MustJSON(`[{"A":1,"B":"foo"},{"A":2,"B":"bar"}]`))
 	require.NoError(err)
 	expected := `[{"A":1,"B":"foo"},{"A":2,"B":"bar"}]`
 	require.Equal(expected, string(val.Raw()))

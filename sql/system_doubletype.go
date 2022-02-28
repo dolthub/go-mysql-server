@@ -107,7 +107,7 @@ func (t systemDoubleType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t systemDoubleType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemDoubleType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -117,7 +117,11 @@ func (t systemDoubleType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), strconv.AppendFloat(nil, v.(float64), 'f', -1, 64)), nil
+	stop := len(dest)
+	dest = strconv.AppendFloat(dest, v.(float64), 'f', -1, 64)
+	val := dest[stop:]
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.

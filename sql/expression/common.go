@@ -139,6 +139,16 @@ func LiteralToInt(e sql.Expression) (int, error) {
 		offset = int(e)
 	case int64:
 		offset = int(e)
+	case uint:
+		offset = int(e)
+	case uint8:
+		offset = int(e)
+	case uint16:
+		offset = int(e)
+	case uint32:
+		offset = int(e)
+	case uint64:
+		offset = int(e)
 	default:
 		return 0, ErrInvalidOffset.New(e)
 	}

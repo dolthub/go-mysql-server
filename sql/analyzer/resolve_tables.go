@@ -141,7 +141,23 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			return n, nil
 		}
 
-		return t.WithTargetSchema(table.Schema())
+		var err error
+		n, err = t.WithTargetSchema(table.Schema())
+		if err != nil {
+			return nil, err
+		}
+
+		pkst, ok := n.(sql.PrimaryKeySchemaTarget)
+		if !ok {
+			return n, nil
+		}
+
+		pkt, ok := table.Table.(sql.PrimaryKeyTable)
+		if !ok {
+			return n, nil
+		}
+
+		return pkst.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
 	})
 }
 

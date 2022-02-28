@@ -276,6 +276,52 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "uninitialized user vars",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT @doesNotExist;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT @doesNotExist is NULL;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT @doesNotExist='';",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT @doesNotExist < 123;",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+
+	{
+		Name: "eval string user var",
+		SetUpScript: []string{
+			"set @stringVar = 'abc'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT @stringVar='abc'",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT @stringVar='abcd';",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT @stringVar=123;",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT @stringVar is null;",
+				Expected: []sql.Row{{false}},
+			},
+		},
+	},
+	{
 		Name: "set transaction",
 		Assertions: []ScriptTestAssertion{
 			{

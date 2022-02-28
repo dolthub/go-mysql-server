@@ -203,7 +203,7 @@ func (t setType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t setType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -211,7 +211,10 @@ func (t setType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Set, []byte(value.(string))), nil
+
+	val := append(dest, []byte(value.(string))...)
+
+	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
 
 // String implements Type interface.
