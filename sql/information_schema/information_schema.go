@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -961,13 +962,33 @@ func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
 }
 
 func processListIter(ctx *Context, c Catalog) (RowIter, error) {
-	plRowIter, err := plan.NewShowProcessList().RowIter(ctx, nil)
-	if err != nil {
-		return nil, err
+	processes := ctx.ProcessList.Processes()
+	var rows = make([]Row, len(processes))
+
+	db := ctx.GetCurrentDatabase()
+	if db == "" {
+		db = "NULL"
 	}
-	rows, err := RowIterToRows(ctx, processListSchema, plRowIter)
-	if err != nil {
-		return nil, err
+
+	for i, proc := range processes {
+		var status []string
+		for name, progress := range proc.Progress {
+			status = append(status, fmt.Sprintf("%s(%s)", name, progress))
+		}
+		if len(status) == 0 {
+			status = []string{"running"}
+		}
+		sort.Strings(status)
+		rows[i] = Row{
+			int64(proc.Connection), 			// id
+			proc.User,							// user
+			ctx.Session.Client().Address,		// host
+			db,									// db
+			"Query",							// command
+			int64(proc.Seconds()),				// time
+			strings.Join(status, ", "),	// state
+			proc.Query,							// info
+		}
 	}
 
 	return RowsToRowIter(rows...), nil
