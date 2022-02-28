@@ -58,6 +58,7 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrForeignKeyParentViolation,
 	sql.ErrDuplicateEntry,
 	sql.ErrUniqueKeyViolation,
+	sql.ErrCheckConstraintViolated,
 }
 
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
@@ -349,7 +350,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		}
 
 		if sql.IsFalse(res) {
-			return nil, sql.NewWrappedInsertError(row, sql.ErrCheckConstraintViolated.New(check.Name))
+			return nil, i.warnOnIgnorableError(ctx, row, sql.ErrCheckConstraintViolated.New(check.Name))
 		}
 	}
 
