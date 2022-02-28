@@ -308,6 +308,12 @@ type SchemaTarget interface {
 	WithTargetSchema(Schema) (Node, error)
 }
 
+// PrimaryKeySchemaTarget is a node that has a primary key target schema that can be set
+type PrimaryKeySchemaTarget interface {
+	SchemaTarget
+	WithPrimaryKeySchema(schema PrimaryKeySchema) (Node, error)
+}
+
 // Table represents the backend of a SQL table.
 type Table interface {
 	Nameable

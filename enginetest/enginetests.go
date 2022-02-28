@@ -191,6 +191,26 @@ func TestQueryPlans(t *testing.T, harness Harness) {
 	}
 }
 
+func TestIndexQueryPlans(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	defer engine.Close()
+
+	CreateIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+	for i, script := range ComplexIndexQueries {
+		for _, statement := range script.SetUpScript {
+			statement = strings.Replace(statement, "test", fmt.Sprintf("t%d", i), -1)
+			RunQuery(t, engine, harness, statement)
+		}
+	}
+
+	for _, tt := range IndexPlanTests {
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
+		})
+	}
+}
+
 // Tests a variety of queries against databases and tables provided by the given harness.
 func TestVersionedQueries(t *testing.T, harness Harness) {
 	if _, ok := harness.(VersionedDBHarness); !ok {
@@ -3952,6 +3972,9 @@ func TestNoDatabaseSelected(t *testing.T, harness Harness) {
 	AssertErrWithCtx(t, e, ctx, "create table a (b int primary key)", sql.ErrNoDatabaseSelected)
 	AssertErrWithCtx(t, e, ctx, "show tables", sql.ErrNoDatabaseSelected)
 	AssertErrWithCtx(t, e, ctx, "show triggers", sql.ErrNoDatabaseSelected)
+
+	_, _, err := e.Query(ctx, "ROLLBACK")
+	require.NoError(t, err)
 }
 
 func TestSessionSelectLimit(t *testing.T, harness Harness) {
@@ -4186,9 +4209,8 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		}, nil, nil)
 
 		// Assert that query plan this follows correctly uses an IndexedTableAccess
-		expectedPlan := "Filter(t1.v = \"a3\")\n" +
-			" └─ Projected table access on [pk v]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v])\n" +
+		expectedPlan := "Projected table access on [pk v]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v])\n" +
 			""
 
 		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
@@ -4240,6 +4262,122 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 			{"tab1", "CREATE TABLE `tab1` (\n  `pk` int NOT NULL,\n  `c1` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		}, nil, nil)
 	})
+}
+
+func TestNullRanges(t *testing.T, harness Harness) {
+	tests := []struct {
+		query string
+		exp   []sql.Row
+	}{
+		{
+			query: "select * from a where y IS NULL or y < 1",
+			exp: []sql.Row{
+				{0, 0},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL and y < 1",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y IS NULL or y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL or y = 0 or y = 1",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL or y < 1 or y > 1",
+			exp: []sql.Row{
+				{0, 0},
+				{2, 2},
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NOT NULL and x > 1",
+			exp: []sql.Row{
+				{2, 2},
+			},
+		}, {
+			query: "select * from a where y IS NULL and x = 4",
+			exp: []sql.Row{
+				{4, nil},
+			},
+		}, {
+			query: "select * from a where y IS NULL and x > 1",
+			exp: []sql.Row{
+				{3, nil},
+				{4, nil},
+			},
+		},
+		{
+			query: "select * from a where y IS NULL and y IS NOT NULL",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y is NULL and y > -1 and y > -2",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y > -1 and y < 7 and y IS NULL",
+			exp:   []sql.Row{},
+		},
+		{
+			query: "select * from a where y > -1 and y > -2 and y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+			},
+		},
+		{
+			query: "select * from a where y > -1 and y > 1 and y IS NOT NULL",
+			exp: []sql.Row{
+				{2, 2},
+			},
+		},
+		{
+			query: "select * from a where y < 6 and y > -1 and y IS NOT NULL",
+			exp: []sql.Row{
+				{0, 0},
+				{1, 1},
+				{2, 2},
+			},
+		},
+	}
+
+	db := harness.NewDatabase("mydb")
+	e := sqle.NewDefault(harness.NewDatabaseProvider(db))
+	RunQuery(t, e, harness, `CREATE TABLE a (x int primary key, y int)`)
+	RunQuery(t, e, harness, `CREATE INDEX idx1 ON a (y);`)
+	RunQuery(t, e, harness, `INSERT INTO a VALUES (0,0), (1,1), (2,2), (3,null), (4,null)`)
+	for _, tt := range tests {
+		TestQuery(t, harness, e, tt.query, tt.exp, nil, nil)
+	}
 }
 
 // RunQuery runs the query given and asserts that it doesn't result in an error.

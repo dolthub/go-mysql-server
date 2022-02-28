@@ -276,6 +276,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 	if t.baseType == sqltypes.Date {
 		res = res.Truncate(24 * time.Hour)
 	}
+
 	return res, nil
 }
 
@@ -289,10 +290,7 @@ func (t datetimeType) MustConvert(v interface{}) interface{} {
 
 // Promote implements the Type interface.
 func (t datetimeType) Promote() Type {
-	if t.baseType == sqltypes.Timestamp {
-		return Datetime
-	}
-	return t
+	return Datetime
 }
 
 // SQL implements Type interface.

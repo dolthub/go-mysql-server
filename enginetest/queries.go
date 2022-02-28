@@ -2698,6 +2698,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{int64(3)}},
 	},
 	{
+		Query:    "SELECT 2 BETWEEN NULL AND 2",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT NOT 2 BETWEEN NULL AND 2",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query: "SELECT DISTINCT * FROM (values row(7,31,27), row(79,17,38), row(78,59,26)) a (col0, col1, col2) WHERE ( + col1 + + col2 ) NOT BETWEEN NULL AND col1",
 		Expected: []sql.Row{{7, 31, 27},
 			{79, 17, 38},
@@ -7053,6 +7061,11 @@ var BrokenQueries = []QueryTest{
 			{"sugar", float64(7)},
 			{"fruit", float64(9)},
 		},
+	},
+	{
+		// TODO truncate date outputs
+		Query:    "select i, date_col from datetime_table",
+		Expected: []sql.Row{{1, "2019-12-31"}},
 	},
 }
 
