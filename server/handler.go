@@ -333,6 +333,10 @@ func (h *Handler) doQuery(
 		return remainder, err
 	}
 
+	if err = setConnStatusFlags(ctx, c); err != nil {
+		return remainder, err
+	}
+
 	resChan := make(chan recyclableResult)
 	builder := newResultBuilder(schema)
 
@@ -460,10 +464,6 @@ func (h *Handler) doQuery(
 		return remainder, err
 	}
 	ctx = oCtx
-
-	if err = setConnStatusFlags(ctx, c); err != nil {
-		return remainder, err
-	}
 
 	ctx.GetLogger().Debugf("Query took %dms", time.Since(start).Milliseconds())
 
