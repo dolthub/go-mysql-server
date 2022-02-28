@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultResultBufferSize = 1024 * 16
-	rowsBatch               = 512 // TODO parametrize
+	rowsBatch               = 128 // TODO parametrize
 )
 
 type capRequirement uint
