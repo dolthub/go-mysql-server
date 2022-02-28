@@ -20,12 +20,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/values"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (
@@ -383,22 +383,22 @@ func (t numberTypeImpl) SQL2(v Value) (sqltypes.Value, error) {
 	var val []byte
 	switch t.baseType {
 	case sqltypes.Int8:
-	  x := values.ReadInt8(v.Val)
+		x := values.ReadInt8(v.Val)
 		val = []byte(strconv.FormatInt(int64(x), 10))
 	case sqltypes.Int16:
-	  x := values.ReadInt16(v.Val)
+		x := values.ReadInt16(v.Val)
 		val = []byte(strconv.FormatInt(int64(x), 10))
 	case sqltypes.Int24:
-	  x := values.ReadInt24(v.Val)
+		x := values.ReadInt24(v.Val)
 		val = []byte(strconv.FormatInt(int64(x), 10))
 	case sqltypes.Int32:
-	  x := values.ReadInt32(v.Val)
+		x := values.ReadInt32(v.Val)
 		val = []byte(strconv.FormatInt(int64(x), 10))
 	case sqltypes.Int64:
-	  x := values.ReadInt64(v.Val)
+		x := values.ReadInt64(v.Val)
 		val = []byte(strconv.FormatInt(x, 10))
 	case sqltypes.Uint8:
-	  x := values.ReadUint8(v.Val)
+		x := values.ReadUint8(v.Val)
 		val = []byte(strconv.FormatUint(uint64(x), 10))
 	case sqltypes.Uint16:
 		x := values.ReadUint16(v.Val)
