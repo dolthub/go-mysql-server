@@ -980,14 +980,14 @@ func processListIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 		sort.Strings(status)
 		rows[i] = Row{
-			int64(proc.Connection), 			// id
-			proc.User,							// user
-			ctx.Session.Client().Address,		// host
-			db,									// db
-			"Query",							// command
-			int64(proc.Seconds()),				// time
-			strings.Join(status, ", "),	// state
-			proc.Query,							// info
+			int64(proc.Connection),       // id
+			proc.User,                    // user
+			ctx.Session.Client().Address, // host
+			db,                           // db
+			"Query",                      // command
+			int64(proc.Seconds()),        // time
+			strings.Join(status, ", "),   // state
+			proc.Query,                   // info
 		}
 	}
 
