@@ -228,12 +228,15 @@ func (t timespanType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t timespanType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t timespanType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	ti, err := t.ConvertToTimespanImpl(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Time, []byte(ti.String())), nil
+
+	val := appendAndSlice(dest, []byte(ti.String()))
+
+	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
 
 // String implements Type interface.

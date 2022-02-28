@@ -100,7 +100,7 @@ func (t PolygonType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t PolygonType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t PolygonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
