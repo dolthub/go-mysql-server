@@ -145,11 +145,8 @@ func TestResolveBarewordSetVariables(t *testing.T) {
 func TestResolveColumnsSession(t *testing.T) {
 	require := require.New(t)
 
-	fooBarValue := int64(42)
-	fooBarType := sql.ApproximateTypeFromValue(fooBarValue)
-
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
-	err := ctx.SetUserVariable(ctx, "foo_bar", fooBarValue)
+	err := ctx.SetUserVariable(ctx, "foo_bar", int64(42))
 	require.NoError(err)
 	err = ctx.SetSessionVariable(ctx, "autocommit", true)
 	require.NoError(err)
@@ -169,7 +166,7 @@ func TestResolveColumnsSession(t *testing.T) {
 
 	expected := plan.NewProject(
 		[]sql.Expression{
-			expression.NewUserVarWithType("foo_bar", fooBarType),
+			expression.NewUserVar("foo_bar"),
 			expression.NewUserVar("bar_baz"),
 			expression.NewSystemVar("autocommit", sql.SystemVariableScope_Session),
 			expression.NewUserVar("myvar"),

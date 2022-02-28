@@ -231,12 +231,8 @@ func resolveSystemOrUserVariable(ctx *sql.Context, a *Analyzer, col column) (sql
 		a.Log("resolved column %s to session system variable", col)
 		return expression.NewSystemVar(varName, sql.SystemVariableScope_Session), true, nil
 	case sqlparser.SetScope_User:
-		t, _, err := ctx.GetUserVariable(ctx, varName)
-		if err != nil {
-			return nil, false, err
-		}
 		a.Log("resolved column %s to user variable", col)
-		return expression.NewUserVarWithType(varName, t), true, nil
+		return expression.NewUserVar(varName), true, nil
 	default: // shouldn't happen
 		return nil, false, fmt.Errorf("unknown set scope %v", scope)
 	}
