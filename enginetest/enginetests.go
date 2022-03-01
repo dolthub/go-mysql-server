@@ -17,7 +17,6 @@ package enginetest
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -30,6 +29,7 @@ import (
 	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"

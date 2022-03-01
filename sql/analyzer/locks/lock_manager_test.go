@@ -15,13 +15,15 @@
 package locks_test
 
 import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 const dbName = "db"

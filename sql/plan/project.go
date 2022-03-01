@@ -16,12 +16,12 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 

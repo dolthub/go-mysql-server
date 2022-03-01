@@ -16,11 +16,10 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
-
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
 // StartTransaction explicitly starts a transaction. Transactions also start before any statement execution that doesn't have a
