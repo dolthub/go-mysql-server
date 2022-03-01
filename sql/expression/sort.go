@@ -51,14 +51,14 @@ func (s *Sorter) Less2(i, j int) bool {
 	a := s.Rows2[i]
 	b := s.Rows2[j]
 	for _, sf := range s.SortFields {
-		typ := sf.Column.Type()
-		av, err := sf.Column.(sql.Expression2).Eval2(s.Ctx, a)
+		typ := sf.Column2.Type2()
+		av, err := sf.Column2.Eval2(s.Ctx, a)
 		if err != nil {
 			s.LastError = sql.ErrUnableSort.Wrap(err)
 			return false
 		}
 
-		bv, err := sf.Column.(sql.Expression2).Eval2(s.Ctx, b)
+		bv, err := sf.Column2.Eval2(s.Ctx, b)
 		if err != nil {
 			s.LastError = sql.ErrUnableSort.Wrap(err)
 			return false
@@ -76,7 +76,7 @@ func (s *Sorter) Less2(i, j int) bool {
 			return sf.NullOrdering != sql.NullsFirst
 		}
 
-		cmp, err := typ.(sql.Type2).Compare2(av, bv)
+		cmp, err := typ.Compare2(av, bv)
 		if err != nil {
 			s.LastError = err
 			return false

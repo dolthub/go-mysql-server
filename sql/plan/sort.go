@@ -28,7 +28,7 @@ import (
 // Sort is the sort node.
 type Sort struct {
 	UnaryNode
-	SortFields []sql.SortField
+	SortFields sql.SortFields
 }
 
 // NewSort creates a new Sort node.
@@ -126,21 +126,14 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.SortFields))
 	}
 
-	var fields = make([]sql.SortField, len(s.SortFields))
-	for i, expr := range exprs {
-		fields[i] = sql.SortField{
-			Column:       expr,
-			NullOrdering: s.SortFields[i].NullOrdering,
-			Order:        s.SortFields[i].Order,
-		}
-	}
-
+	fields := s.SortFields.FromExpressions(exprs...)
 	return NewSort(fields, s.Child), nil
 }
 
 type sortIter struct {
 	s           *Sort
 	childIter   sql.RowIter
+	childIter2   sql.RowIter2
 	sortedRows  []sql.Row
 	sortedRows2 []sql.Row2
 	idx         int
@@ -150,9 +143,11 @@ var _ sql.RowIter = (*sortIter)(nil)
 var _ sql.RowIter2 = (*sortIter)(nil)
 
 func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
+	childIter2, _ := child.(sql.RowIter2)
 	return &sortIter{
 		s:         s,
 		childIter: child,
+		childIter2: childIter2,
 		idx:       -1,
 	}
 }
@@ -183,7 +178,7 @@ func (i *sortIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
 		i.idx = 0
 	}
 
-	if i.idx >= len(i.sortedRows) {
+	if i.idx >= len(i.sortedRows2) {
 		return io.EOF
 	}
 
@@ -239,7 +234,7 @@ func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
 
 	f := sql.NewRowFrame()
 	for {
-		err := i.childIter.(sql.RowIter2).Next2(ctx, f)
+		err := i.childIter2.Next2(ctx, f)
 		if err == io.EOF {
 			break
 		}

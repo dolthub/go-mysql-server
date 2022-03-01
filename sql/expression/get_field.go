@@ -94,6 +94,10 @@ func (p *GetField) Type() sql.Type {
 	return p.fieldType
 }
 
+func (p *GetField) Type2() sql.Type2 {
+	return p.fieldType.(sql.Type2)
+}
+
 // ErrIndexOutOfBounds is returned when the field index is out of the bounds.
 var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns")
 

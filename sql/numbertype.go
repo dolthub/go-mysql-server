@@ -362,8 +362,60 @@ func (t numberTypeImpl) SQL(v interface{}) (sqltypes.Value, error) {
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
 
-func (t numberTypeImpl) Compare2(value Value, value2 Value) (int, error) {
-	panic("implement me")
+func (t numberTypeImpl) Compare2(a Value, b Value) (int, error) {
+	switch t.baseType {
+	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
+		ca, err := convertValueToUint64(t, a)
+		if err != nil {
+			return 0, err
+		}
+		cb, err := convertValueToUint64(t, b)
+		if err != nil {
+			return 0, err
+		}
+
+		if ca == cb {
+			return 0, nil
+		}
+		if ca < cb {
+			return -1, nil
+		}
+		return +1, nil
+	case sqltypes.Float32, sqltypes.Float64:
+		ca, err := convertValueToFloat64(t, a)
+		if err != nil {
+			return 0, err
+		}
+		cb, err := convertValueToFloat64(t, b)
+		if err != nil {
+			return 0, err
+		}
+
+		if ca == cb {
+			return 0, nil
+		}
+		if ca < cb {
+			return -1, nil
+		}
+		return +1, nil
+	default:
+		ca, err := convertValueToInt64(t, a)
+		if err != nil {
+			return 0, err
+		}
+		cb, err := convertValueToInt64(t, b)
+		if err != nil {
+			return 0, err
+		}
+
+		if ca == cb {
+			return 0, nil
+		}
+		if ca < cb {
+			return -1, nil
+		}
+		return +1, nil
+	}
 }
 
 func (t numberTypeImpl) Convert2(value Value) (Value, error) {
@@ -371,7 +423,82 @@ func (t numberTypeImpl) Convert2(value Value) (Value, error) {
 }
 
 func (t numberTypeImpl) Zero2() Value {
-	panic("implement me")
+	switch t.baseType {
+	case sqltypes.Int8:
+		x := values.WriteInt8(make([]byte, values.Int8Size), 0)
+		return Value{
+			Typ: query.Type_INT8,
+			Val: x,
+		}
+	case sqltypes.Int16:
+		x := values.WriteInt16(make([]byte, values.Int16Size), 0)
+		return Value{
+			Typ: query.Type_INT16,
+			Val: x,
+		}
+	case sqltypes.Int24:
+		x := values.WriteInt24(make([]byte, values.Int24Size), 0)
+		return Value{
+			Typ: query.Type_INT24,
+			Val: x,
+		}
+	case sqltypes.Int32:
+		x := values.WriteInt32(make([]byte, values.Int32Size), 0)
+		return Value{
+			Typ: query.Type_INT32,
+			Val: x,
+		}
+	case sqltypes.Int64:
+		x := values.WriteInt64(make([]byte, values.Int64Size), 0)
+		return Value{
+			Typ: query.Type_INT64,
+			Val: x,
+		}
+	case sqltypes.Uint8:
+		x := values.WriteUint8(make([]byte, values.Uint8Size), 0)
+		return Value{
+			Typ: query.Type_UINT8,
+			Val: x,
+		}
+	case sqltypes.Uint16:
+		x := values.WriteUint16(make([]byte, values.Uint16Size), 0)
+		return Value{
+			Typ: query.Type_UINT16,
+			Val: x,
+		}
+	case sqltypes.Uint24:
+		x := values.WriteUint24(make([]byte, values.Uint24Size), 0)
+		return Value{
+			Typ: query.Type_UINT24,
+			Val: x,
+		}
+	case sqltypes.Uint32:
+		x := values.WriteUint32(make([]byte, values.Uint32Size), 0)
+		return Value{
+			Typ: query.Type_UINT32,
+			Val: x,
+		}
+	case sqltypes.Uint64:
+		x := values.WriteUint64(make([]byte, values.Uint64Size), 0)
+		return Value{
+			Typ: query.Type_UINT64,
+			Val: x,
+		}
+	case sqltypes.Float32:
+		x := values.WriteFloat32(make([]byte, values.Float32Size), 0)
+		return Value{
+			Typ: query.Type_FLOAT32,
+			Val: x,
+		}
+	case sqltypes.Float64:
+		x := values.WriteUint64(make([]byte, values.Uint64Size), 0)
+		return Value{
+			Typ: query.Type_UINT64,
+			Val: x,
+		}
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+	}
 }
 
 // SQL2 implements Type2 interface.
@@ -582,6 +709,90 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 	}
 }
 
+func convertValueToInt64(t numberTypeImpl, v Value) (int64, error) {
+	switch v.Typ {
+	case query.Type_INT8:
+		return int64(values.ReadInt8(v.Val)), nil
+	case query.Type_INT16:
+		return int64(values.ReadInt16(v.Val)), nil
+	case query.Type_INT24:
+		return int64(values.ReadInt24(v.Val)), nil
+	case query.Type_INT32:
+		return int64(values.ReadInt32(v.Val)), nil
+	case query.Type_INT64:
+		return values.ReadInt64(v.Val), nil
+	case query.Type_UINT8:
+		return int64(values.ReadUint8(v.Val)), nil
+	case query.Type_UINT16:
+		return int64(values.ReadUint16(v.Val)), nil
+	case query.Type_UINT24:
+		return int64(values.ReadUint24(v.Val)), nil
+	case query.Type_UINT32:
+		return int64(values.ReadUint32(v.Val)), nil
+	case query.Type_UINT64:
+		v := values.ReadUint64(v.Val)
+		if v > math.MaxInt64 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
+		return int64(v), nil
+	case query.Type_FLOAT32:
+		v := values.ReadFloat32(v.Val)
+		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
+			return int64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+	case query.Type_FLOAT64:
+		v := values.ReadFloat64(v.Val)
+		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
+			return int64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+		// TODO: add more conversions
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+	}
+}
+
+func convertValueToUint64(t numberTypeImpl, v Value) (uint64, error) {
+	switch v.Typ {
+	case query.Type_INT8:
+		return uint64(values.ReadInt8(v.Val)), nil
+	case query.Type_INT16:
+		return uint64(values.ReadInt16(v.Val)), nil
+	case query.Type_INT24:
+		return uint64(values.ReadInt24(v.Val)), nil
+	case query.Type_INT32:
+		return uint64(values.ReadInt32(v.Val)), nil
+	case query.Type_INT64:
+		return uint64(values.ReadInt64(v.Val)), nil
+	case query.Type_UINT8:
+		return uint64(values.ReadUint8(v.Val)), nil
+	case query.Type_UINT16:
+		return uint64(values.ReadUint16(v.Val)), nil
+	case query.Type_UINT24:
+		return uint64(values.ReadUint24(v.Val)), nil
+	case query.Type_UINT32:
+		return uint64(values.ReadUint32(v.Val)), nil
+	case query.Type_UINT64:
+		return values.ReadUint64(v.Val), nil
+	case query.Type_FLOAT32:
+		v := values.ReadFloat32(v.Val)
+		if float32(math.MaxUint64) >= v {
+			return uint64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+	case query.Type_FLOAT64:
+		v := values.ReadFloat64(v.Val)
+		if float64(math.MaxUint64) >= v {
+			return uint64(v), nil
+		}
+		return 0, ErrOutOfRange.New(v, t)
+		// TODO: add more conversions
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+	}
+}
+
 func convertToUint64(t numberTypeImpl, v interface{}) (uint64, error) {
 	switch v := v.(type) {
 	case int:
@@ -710,6 +921,37 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 		return 0, nil
 	default:
 		return 0, ErrInvalidValueType.New(v, t.String())
+	}
+}
+
+func convertValueToFloat64(t numberTypeImpl, v Value) (float64, error) {
+	switch v.Typ {
+	case query.Type_INT8:
+		return float64(values.ReadInt8(v.Val)), nil
+	case query.Type_INT16:
+		return float64(values.ReadInt16(v.Val)), nil
+	case query.Type_INT24:
+		return float64(values.ReadInt24(v.Val)), nil
+	case query.Type_INT32:
+		return float64(values.ReadInt32(v.Val)), nil
+	case query.Type_INT64:
+		return float64(values.ReadInt64(v.Val)), nil
+	case query.Type_UINT8:
+		return float64(values.ReadUint8(v.Val)), nil
+	case query.Type_UINT16:
+		return float64(values.ReadUint16(v.Val)), nil
+	case query.Type_UINT24:
+		return float64(values.ReadUint24(v.Val)), nil
+	case query.Type_UINT32:
+		return float64(values.ReadUint32(v.Val)), nil
+	case query.Type_UINT64:
+		return float64(values.ReadUint64(v.Val)), nil
+	case query.Type_FLOAT32:
+		return float64(values.ReadFloat32(v.Val)), nil
+	case query.Type_FLOAT64:
+		return values.ReadFloat64(v.Val), nil
+	default:
+		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}
 }
 
