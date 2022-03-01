@@ -208,7 +208,7 @@ func (c *Commit) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	ctx.SetIgnoreAutoCommit(false)
 	ctx.SetTransaction(nil)
 
-	err = c.LockManager.ReleaseLocksHeldByClient(ctx, ctx.ID())
+	err = c.LockManager.ReleaseTableLocksHeldByClient(ctx, ctx.ID())
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +285,7 @@ func (r *Rollback) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	ctx.SetIgnoreAutoCommit(false)
 	ctx.SetTransaction(nil)
 
-	err = r.LockManager.ReleaseLocksHeldByClient(ctx, ctx.ID())
+	err = r.LockManager.ReleaseTableLocksHeldByClient(ctx, ctx.ID())
 	if err != nil {
 		return nil, err
 	}

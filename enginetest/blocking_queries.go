@@ -25,7 +25,6 @@ var ConcurrentTests = []ConcurrentTransactionTest{
 		},
 		ConcurrentTransactions: [][]string{
 			{
-				"/* client a */ SELECT SLEEP(3)",
 				"/* client a */ SET AUTOCOMMIT = 0",
 				"/* client a */ BEGIN",
 				"/* client a */ SELECT * from keyed FOR UPDATE",
@@ -93,6 +92,56 @@ var ConcurrentTests = []ConcurrentTransactionTest{
 				"/* client a */ SELECT * from keyed FOR UPDATE",
 				"/* client a */ SELECT * from keyed FOR UPDATE",
 				"/* client a */ COMMIT",
+			},
+		},
+	},
+	{
+		Name: "Calling select for update and insert on the same transaction works.",
+		SetUpScript: []string{
+			"CREATE TABLE keyed(pk int primary key, val int)",
+			"INSERT INTO keyed values (1, 1), (2, 2), (3, 3), (4, 4), (5,5)",
+		},
+		ConcurrentTransactions: [][]string{
+			{
+				"/* client a */ SET AUTOCOMMIT = 0",
+				"/* client a */ BEGIN",
+				"/* client a */ SELECT * from keyed FOR UPDATE",
+				"/* client a */ INSERT INTO keyed values (6,6)",
+				"/* client a */ COMMIT",
+			},
+		},
+		Assertion: []ScriptTestAssertion{
+			{
+				Query:    "/* client b */ SELECT COUNT(*) from keyed where pk = 6",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		Name: "Rollback correctly drops locks.",
+		SetUpScript: []string{
+			"CREATE TABLE keyed(pk int primary key, val int)",
+			"INSERT INTO keyed values (1, 1), (2, 2), (3, 3), (4, 4), (5,5)",
+		},
+		ConcurrentTransactions: [][]string{
+			{
+				"/* client a */ SET AUTOCOMMIT = 0",
+				"/* client a */ BEGIN",
+				"/* client a */ SELECT * from keyed FOR UPDATE",
+				"/* client a */ ROLLBACK",
+			},
+			{
+				"/* client b */ SELECT SLEEP(1)",
+				"/* client b */ SET AUTOCOMMIT = 0",
+				"/* client b */ BEGIN",
+				"/* client b */ INSERT INTO keyed VALUES (6, 6)",
+				"/* client b */ COMMIT",
+			},
+		},
+		Assertion: []ScriptTestAssertion{
+			{
+				Query:    "/* client b */ SELECT COUNT(*) from keyed where pk = 6",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},

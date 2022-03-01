@@ -15,7 +15,6 @@
 package enginetest
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -1374,19 +1373,16 @@ func TestConcurrentTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, har
 		return nil
 	}
 
-	g, _ := errgroup.WithContext(context.Background())
+	var g errgroup.Group
 
 	for _, clientQueries := range script.ConcurrentTransactions {
-		client := getClient(clientQueries[0]) // TODO: Get a more robust way to get queries
+		client := getClient(clientQueries[0])
 
 		clientSession, ok := clientSessions[client]
 		if !ok {
 			clientSession = NewSession(harness)
 			clientSessions[client] = clientSession
 		}
-
-		//clientSession = clientSession.WithContext(ctx)
-		//clientSessions[client] = clientSession
 
 		g.Go(func() error {
 			return executeClientQueries(clientSession, clientQueries)

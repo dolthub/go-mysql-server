@@ -53,7 +53,7 @@ type wrappedIter struct {
 var _ sql.RowIter = (*wrappedIter)(nil)
 
 func newLockedWrappedIter(ctx *sql.Context, tableName string, ri sql.RowIter, lm locks.LockManager) (*wrappedIter, error) {
-	err := lm.LockTable(ctx, ctx.GetCurrentDatabase(), tableName)
+	err := lm.PollTableLock(ctx, ctx.GetCurrentDatabase(), tableName)
 	if err != nil {
 		return nil, err
 	}

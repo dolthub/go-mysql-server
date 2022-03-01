@@ -198,25 +198,32 @@ func (s *SelectForUpdate) String() string {
 func (s *SelectForUpdate) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	table := getTableName(s.Child)
 
-	// do nothing if autocommit is off
-	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	// do nothing if autocommit is on
+	autcommit, err := hasAutocommit(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	hasAutocommit, err := sql.ConvertToBool(autoCommitSessionVar)
-	if err != nil {
-		return nil, err
+	if autcommit {
+		return s.Child.RowIter(ctx, row)
 	}
 
-	if !hasAutocommit {
-		err = s.LockManager.LockTable(ctx, ctx.GetCurrentDatabase(), table)
-		if err != nil {
-			return nil, err
-		}
+	// Ask the lock manager to acquire write locks on the
+	err = s.LockManager.HoldTableLock(ctx, ctx.GetCurrentDatabase(), table)
+	if err != nil {
+		return nil, err
 	}
 
 	return s.Child.RowIter(ctx, row)
+}
+
+func hasAutocommit(ctx *sql.Context) (bool, error) {
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
+	if err != nil {
+		return false, err
+	}
+
+	return sql.ConvertToBool(autoCommitSessionVar)
 }
 
 func (s *SelectForUpdate) WithChildren(node ...sql.Node) (sql.Node, error) {

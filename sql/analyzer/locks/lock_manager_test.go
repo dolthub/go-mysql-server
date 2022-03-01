@@ -61,18 +61,18 @@ func TestLockBehavior(t *testing.T) {
 
 	var err error
 	go func() {
-		err = lm.LockTable(c1, dbName, "foo")
+		err = lm.HoldTableLock(c1, dbName, "foo")
 		require.NoError(t, err)
 
 		time.Sleep(sleepDelta)
 
-		err = lm.UnlockTable(c1, dbName, "foo")
+		err = lm.ReleaseTableLocksHeldByClient(c1, c1.ID())
 		require.NoError(t, err)
 	}()
 
 	time.Sleep(10 * time.Millisecond) // sleep for 10 milliseconds for the other routine
 
-	err = lm.LockTable(c2, dbName, "foo")
+	err = lm.HoldTableLock(c2, dbName, "foo")
 	require.NoError(t, err)
 
 	delta := time.Since(startTime)

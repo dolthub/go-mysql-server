@@ -47,12 +47,14 @@ func assignLockNode(n sql.Node, lm locks.LockManager) (sql.Node, error) {
 			return n, nil
 		}
 
+		// TODO: Add support for Delete, DDL, FK Tables, etc.
 		switch t := n.(type) {
 		case *plan.InsertInto:
-			lw := plan.NewLockWrapper(t.Source)
-			lw = lw.WithTableName(getTableName(t.Destination))
-			lw = lw.WithLockManager(lm)
+			lw := plan.NewLockWrapper(t.Source).WithTableName(getTableName(t.Destination)).WithLockManager(lm)
 			return t.WithSource(lw), nil
+		case *plan.Update:
+			lw := plan.NewLockWrapper(t.Child).WithLockManager(lm)
+			return t.WithChildren(lw)
 		}
 
 		return n, nil
@@ -74,10 +76,6 @@ func assignLockManager(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			nc.LockManager = a.LockManager
 			return &nc, nil
 		case *plan.Rollback:
-			nc := *node
-			nc.LockManager = a.LockManager
-			return &nc, nil
-		case *plan.LockWrapper:
 			nc := *node
 			nc.LockManager = a.LockManager
 			return &nc, nil

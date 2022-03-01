@@ -15,7 +15,6 @@
 package locks
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,9 +26,15 @@ type ExclusiveLock struct {
 }
 
 type LockManager interface {
-	LockTable(ctx *sql.Context, databaseName, tableName string) error
-	UnlockTable(ctx *sql.Context, databaseName, tableName string) error
-	ReleaseLocksHeldByClient(ctx *sql.Context, id uint32) error
+	// HoldTableLock informs the LockManager to reserve a table lock by the called client.
+	HoldTableLock(ctx *sql.Context, databaseName, tableName string) error
+
+	// PollTableLock polls the status of a table and exits when the table lock is not held by any other client except the
+	// current client.
+	PollTableLock(ctx *sql.Context, databaseName, tableName string) error
+
+	// ReleaseTableLocksHeldByClient release all held locks by the given client id.
+	ReleaseTableLocksHeldByClient(ctx *sql.Context, id uint32) error
 }
 
 type lockManagerImpl struct {
@@ -40,14 +45,13 @@ type lockManagerImpl struct {
 
 var _ LockManager = &lockManagerImpl{}
 
-// TODO: Need to update internal state when tables are added and dropped
 func NewLockManager(c sql.Catalog) *lockManagerImpl {
 	dbMap := make(map[string]map[string]*ExclusiveLock)
 
 	return &lockManagerImpl{locksMap: dbMap, catalog: c}
 }
 
-func (l *lockManagerImpl) LockTable(ctx *sql.Context, databaseName, tableName string) error {
+func (l *lockManagerImpl) HoldTableLock(ctx *sql.Context, databaseName, tableName string) error {
 	// Validate that the table exists in the catalog
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -58,16 +62,13 @@ func (l *lockManagerImpl) LockTable(ctx *sql.Context, databaseName, tableName st
 
 	clientId := ctx.ID()
 
-	tableMap, ok := l.locksMap[databaseName]
-	if !ok {
-		tableMap = make(map[string]*ExclusiveLock)
-		l.locksMap[databaseName] = tableMap
+	if _, ok := l.locksMap[databaseName]; !ok {
+		l.locksMap[databaseName] = make(map[string]*ExclusiveLock)
 	}
 
-	lock, ok := tableMap[tableName]
+	lock, ok := l.locksMap[databaseName][tableName]
 	if !ok {
 		lock = &ExclusiveLock{clientId: 0, mu: &sync.Mutex{}}
-		tableMap[tableName] = lock
 	}
 
 	// Don't lock the node again if the current client already has access to it. Otherwise, we will have a deadlock.
@@ -75,37 +76,44 @@ func (l *lockManagerImpl) LockTable(ctx *sql.Context, databaseName, tableName st
 		return nil
 	}
 
-	lock.mu.Lock()
+	lock.mu.Lock() // block on the lock
 	lock.clientId = clientId
+	l.locksMap[databaseName][tableName] = lock
 
 	return nil
 }
 
-func (l *lockManagerImpl) UnlockTable(ctx *sql.Context, databaseName, tableName string) error {
+func (l *lockManagerImpl) PollTableLock(ctx *sql.Context, databaseName, tableName string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	// Validate that the table exists in the catalog
+
 	_, _, err := l.catalog.Table(ctx, databaseName, tableName)
 	if err != nil {
 		return err
 	}
 
-	tableMap, ok := l.locksMap[databaseName]
+	_, ok := l.locksMap[databaseName]
 	if !ok {
-		return fmt.Errorf("database not found")
+		return nil
 	}
 
-	lock, ok := tableMap[tableName]
+	lock, ok := l.locksMap[databaseName][tableName]
 	if !ok {
-		return fmt.Errorf("table not found")
+		return nil
 	}
+
+	if lock.clientId == ctx.ID() {
+		return nil
+	}
+
+	lock.mu.Lock() // TODO: Probably not the right thing to do here. We should be intentional about who can ever actually
+	// lock the mu.
 	lock.mu.Unlock()
-	lock.clientId = 0
 
 	return nil
 }
 
-func (l *lockManagerImpl) ReleaseLocksHeldByClient(ctx *sql.Context, id uint32) error {
+func (l *lockManagerImpl) ReleaseTableLocksHeldByClient(ctx *sql.Context, id uint32) error {
 	for _, tableMap := range l.locksMap {
 		for _, lock := range tableMap {
 			if lock.clientId == id {
