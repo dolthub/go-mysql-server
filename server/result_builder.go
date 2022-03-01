@@ -15,6 +15,7 @@
 package server
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -26,7 +27,7 @@ import (
 
 const (
 	defaultResultBufferSize = 1024 * 16
-	rowsBatch               = 128 // TODO parametrize
+	rowsBatch               = 256 // TODO parametrize
 )
 
 type capRequirement uint
@@ -125,6 +126,10 @@ func (rb *resultBuilder) writeRow(row sql.Row) error {
 			return err
 		}
 		rb.pos += r[i].Len()
+
+		if rb.pos >= len(rb.buf) {
+			return fmt.Errorf("failed to ensure capacity")
+		}
 	}
 	rb.cnt++
 
@@ -156,7 +161,7 @@ func (rb *resultBuilder) ensureCapacity(row sql.Row) error {
 		return err
 	}
 
-	if (rb.pos + int(req)) > cap(rb.buf) {
+	if (rb.pos + int(req)) >= cap(rb.buf) {
 		nb := make([]byte, cap(rb.buf)*2)
 		copy(nb, rb.buf)
 		rb.buf = nb
