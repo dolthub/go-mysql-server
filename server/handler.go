@@ -436,12 +436,12 @@ func (h *Handler) doQuery(
 	})
 
 	err = eg.Wait()
+	// always close the RowIter
+	if cerr := rows.Close(ctx); err == nil {
+		err = cerr
+	}
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
-		return remainder, err
-	}
-	if err = rows.Close(ctx); err != nil {
-		ctx.GetLogger().WithError(err).Warn("error closing row iter")
 		return remainder, err
 	}
 
