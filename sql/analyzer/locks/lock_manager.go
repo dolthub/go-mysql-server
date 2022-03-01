@@ -114,6 +114,9 @@ func (l *lockManagerImpl) PollTableLock(ctx *sql.Context, databaseName, tableNam
 }
 
 func (l *lockManagerImpl) ReleaseTableLocksHeldByClient(ctx *sql.Context, id uint32) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	for _, tableMap := range l.locksMap {
 		for _, lock := range tableMap {
 			if lock.clientId == id {
