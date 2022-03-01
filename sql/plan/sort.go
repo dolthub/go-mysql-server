@@ -233,7 +233,10 @@ func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
 	defer dispose()
 
 	f := sql.NewRowFrame()
+	defer f.Recycle()
+
 	for {
+		f.Clear()
 		err := i.childIter2.Next2(ctx, f)
 		if err == io.EOF {
 			break
