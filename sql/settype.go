@@ -212,7 +212,7 @@ func (t setType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	val := append(dest, []byte(value.(string))...)
+	val := appendAndSlice(dest, []byte(value.(string)))
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
