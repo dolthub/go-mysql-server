@@ -277,6 +277,16 @@ func (r Registry) Function(ctx *sql.Context, name string) (sql.Function, error) 
 	return nil, sql.ErrFunctionNotFound.New(name + similar)
 }
 
+func (r Registry) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+	// TODO: Currently Registry is just a typedef for a map of function name to sql.Function.
+	//       Supporting TableFunctions will require either:
+	//       1) Changing Registry to be a more complex type
+	//       2) Separating TableFunction out of the existing FunctionProvider interface
+	panic("implement me")
+
+	return nil, sql.ErrTableFunctionNotFound.New(name)
+}
+
 func (r Registry) mustRegister(fn ...sql.Function) {
 	if err := r.Register(fn...); err != nil {
 		panic(err)

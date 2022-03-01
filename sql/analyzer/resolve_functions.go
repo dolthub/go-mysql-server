@@ -17,8 +17,45 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
+
+func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	span, _ := ctx.Span("resolve_table_functions")
+	defer span.Finish()
+
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if n.Resolved() {
+			return n, nil
+		}
+
+		utf, ok := n.(*expression.UnresolvedTableFunction)
+		if !ok {
+			return n, nil
+		}
+
+		tableFunction, err := a.Catalog.TableFunction(ctx, utf.TableFunctionName())
+		if err != nil {
+			return nil, err
+		}
+
+		database, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
+		if err != nil {
+			return nil, err
+		}
+
+		if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
+			database = privilegedDatabase.Unwrap()
+		}
+
+		tableFunction.WithChildren(utf.Children()...)
+		tableFunction.WithExpressions(utf.Arguments...)
+		tableFunction.WithDatabase(database)
+
+		return tableFunction, nil
+	})
+}
 
 // resolveFunctions replaces UnresolvedFunction nodes with equivalent functions from the Catalog.
 func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {

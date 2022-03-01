@@ -111,6 +111,10 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 	return nil, sql.ErrFunctionNotFound.New(name)
 }
 
+func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+	return nil, sql.ErrTableFunctionNotFound.New(name)
+}
+
 func (c *Catalog) LockTable(ctx *sql.Context, table string) {}
 
 func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {

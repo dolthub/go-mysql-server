@@ -337,6 +337,9 @@ var (
 	// ErrFunctionNotFound is thrown when a function is not found
 	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
 
+	// ErrTableFunctionNotFound is thrown when a table function is not found
+	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
+
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
 	ErrInvalidArgumentNumber = errors.NewKind("function '%s' expected %v arguments, %v received")

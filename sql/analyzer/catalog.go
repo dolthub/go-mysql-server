@@ -235,6 +235,19 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 	return c.builtInFunctions.Function(ctx, name)
 }
 
+func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+	if fp, ok := c.provider.(sql.FunctionProvider); ok {
+		tf, err := fp.TableFunction(ctx, name)
+		if err != nil {
+			return nil, err
+		} else if tf != nil {
+			return tf, nil
+		}
+	}
+
+	return nil, sql.ErrTableFunctionNotFound.New(name)
+}
+
 func suggestSimilarTables(db sql.Database, ctx *sql.Context, tableName string) error {
 	tableNames, err := db.GetTableNames(ctx)
 	if err != nil {
