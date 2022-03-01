@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/opentracing/opentracing-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -136,9 +137,9 @@ func TestHandlerOutput(t *testing.T) {
 			})
 
 			require.NoError(t, err)
-			require.Equal(t, test.expected.callsToCallback, callsToCallback)
-			require.Equal(t, test.expected.lenLastBatch, lenLastBatch)
-			require.Equal(t, test.expected.lastRowsAffected, lastRowsAffected)
+			assert.Equal(t, test.expected.callsToCallback, callsToCallback)
+			assert.Equal(t, test.expected.lenLastBatch, lenLastBatch)
+			assert.Equal(t, test.expected.lastRowsAffected, lastRowsAffected)
 
 		})
 	}

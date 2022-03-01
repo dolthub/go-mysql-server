@@ -48,8 +48,7 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
 var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
-// TODO parametrize
-const rowsBatch = 100
+const rowsBatch = 128
 
 var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
@@ -340,7 +339,7 @@ func (h *Handler) doQuery(
 	var proccesedAtLeastOneBatch bool
 
 	// Reads rows from the row reading goroutine
-	rowChan := make(chan sql.Row)
+	rowChan := make(chan sql.Row, 512)
 
 	eg.Go(func() error {
 		defer close(rowChan)
@@ -350,14 +349,10 @@ func (h *Handler) doQuery(
 				return nil
 			default:
 				row, err := rows.Next(ctx)
+				if err == io.EOF {
+					return nil
+				}
 				if err != nil {
-					if err == io.EOF {
-						return rows.Close(ctx)
-					}
-					cerr := rows.Close(ctx)
-					if cerr != nil {
-						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
-					}
 					return err
 				}
 				select {
@@ -445,6 +440,11 @@ func (h *Handler) doQuery(
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
+	if err = rows.Close(ctx); err != nil {
+		ctx.GetLogger().WithError(err).Warn("error closing row iter")
+		return remainder, err
+	}
+
 	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
