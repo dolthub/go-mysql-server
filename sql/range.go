@@ -429,7 +429,11 @@ func RemoveOverlappingRanges(ranges ...Range) (RangeCollection, error) {
 		return nil, nil
 	}
 
-	rangeTree := NewRangeColumnExprTree(ranges[0])
+	colExprTypes := GetColExprTypes(ranges)
+	rangeTree, err := NewRangeColumnExprTree(ranges[0], colExprTypes)
+	if err != nil {
+		return nil, err
+	}
 	for i := 1; i < len(ranges); i++ {
 		rang := ranges[i]
 		connectingRanges, err := rangeTree.FindConnections(rang, 0)

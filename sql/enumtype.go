@@ -223,7 +223,7 @@ func (t enumType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t enumType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t enumType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -231,7 +231,10 @@ func (t enumType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Enum, []byte(value.(string))), nil
+
+	val := appendAndSlice(dest, []byte(value.(string)))
+
+	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }
 
 // String implements Type interface.

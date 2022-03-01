@@ -92,12 +92,21 @@ func (v *SystemVar) WithChildren(children ...sql.Expression) (sql.Expression, er
 // UserVar is an expression that returns the value of a user variable. It's also used as the expression on the left hand
 // side of a SET statement for a user var.
 type UserVar struct {
-	Name string
+	Name     string
+	exprType sql.Type
 }
 
-// NewUserVar creates a new UserVar expression.
+// NewUserVar creates a UserVar with a name, but no type information, for use as the left-hand value
+// in a SetField assignment Expression. This method should not be used when the user variable is
+// being used as a value, since the correct type information will not be available.
 func NewUserVar(name string) *UserVar {
-	return &UserVar{name}
+	return &UserVar{name, sql.Null}
+}
+
+// NewUserVarWithType creates a UserVar with its type resolved, so that it can be used as a value
+// in other expressions.
+func NewUserVarWithType(name string, t sql.Type) *UserVar {
+	return &UserVar{name, t}
 }
 
 // Children implements the sql.Expression interface.
@@ -109,12 +118,14 @@ func (v *UserVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return val, nil
 }
 
 // Type implements the sql.Expression interface.
-// TODO: type checking based on type of user var
-func (v *UserVar) Type() sql.Type { return sql.Boolean }
+func (v *UserVar) Type() sql.Type {
+	return v.exprType
+}
 
 // IsNullable implements the sql.Expression interface.
 func (v *UserVar) IsNullable() bool { return true }
