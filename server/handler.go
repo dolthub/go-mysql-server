@@ -333,10 +333,6 @@ func (h *Handler) doQuery(
 		return remainder, err
 	}
 
-	if err = setConnStatusFlags(ctx, c); err != nil {
-		return remainder, err
-	}
-
 	resChan := make(chan recyclableResult)
 	builder := newResultBuilder(schema)
 
@@ -363,8 +359,9 @@ func (h *Handler) doQuery(
 				var row sql.Row
 				row, err = rows.Next(ctx)
 				if err == io.EOF {
+					r := builder.build()
 					select {
-					case resChan <- builder.build():
+					case resChan <- r:
 						return nil
 					case <-ctx.Done():
 						return nil
@@ -433,13 +430,13 @@ func (h *Handler) doQuery(
 				return nil
 			case r, ok := <-resChan:
 				if !ok {
-					return nil // channel closed
+					return setConnStatusFlags(ctx, c) // channel closed
 				}
 
 				debugLogResultSet(ctx, r.res)
 
 				// send the result set to the server
-				if err := callback(r.res, more); err != nil {
+				if err = callback(r.res, more); err != nil {
 					return err
 				}
 				r.recycle()

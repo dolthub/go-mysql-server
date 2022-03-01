@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/opentracing/opentracing-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	sqle "github.com/dolthub/go-mysql-server"
@@ -71,9 +72,9 @@ func TestHandlerOutput(t *testing.T) {
 			conn:    dummyConn,
 			query:   "SELECT * FROM test",
 			expected: expectedValues{
-				callsToCallback:  11,
-				lenLastBatch:     10,
-				lastRowsAffected: uint64(10),
+				callsToCallback:  8,
+				lenLastBatch:     114,
+				lastRowsAffected: uint64(114),
 			},
 		},
 		{
@@ -105,8 +106,8 @@ func TestHandlerOutput(t *testing.T) {
 			query:   "SELECT * FROM test limit 200",
 			expected: expectedValues{
 				callsToCallback:  2,
-				lenLastBatch:     100,
-				lastRowsAffected: uint64(100),
+				lenLastBatch:     72,
+				lastRowsAffected: uint64(72),
 			},
 		},
 		{
@@ -115,9 +116,9 @@ func TestHandlerOutput(t *testing.T) {
 			conn:    dummyConn,
 			query:   "SELECT * FROM test limit 530",
 			expected: expectedValues{
-				callsToCallback:  6,
-				lenLastBatch:     30,
-				lastRowsAffected: uint64(30),
+				callsToCallback:  5,
+				lenLastBatch:     18,
+				lastRowsAffected: uint64(18),
 			},
 		},
 	}
@@ -136,9 +137,9 @@ func TestHandlerOutput(t *testing.T) {
 			})
 
 			require.NoError(t, err)
-			require.Equal(t, test.expected.callsToCallback, callsToCallback)
-			require.Equal(t, test.expected.lenLastBatch, lenLastBatch)
-			require.Equal(t, test.expected.lastRowsAffected, lastRowsAffected)
+			assert.Equal(t, test.expected.callsToCallback, callsToCallback)
+			assert.Equal(t, test.expected.lenLastBatch, lenLastBatch)
+			assert.Equal(t, test.expected.lastRowsAffected, lastRowsAffected)
 
 		})
 	}
