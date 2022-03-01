@@ -99,7 +99,7 @@ type triggerIter struct {
 	triggerEvent   TriggerEvent
 	ctx            *sql.Context
 	logicIter      sql.RowIter
-	//logicIters     []sql.RowIter
+	logicIters     []sql.RowIter
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
@@ -152,14 +152,15 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		return nil, err
 	}
 
-	// Save logicIters to be closed later for any before triggers
-	if t.triggerTime == "before" {
+	// Save logicIter to be closed later for any before triggers
+	if t.triggerTime == BeforeTrigger {
 		t.logicIter = logicIter
 	}
 
 	defer func() {
 		// Only close on after triggers
-		if t.triggerTime == "after" {
+		// TODO: don't do this for multiple insert statements
+		if t.triggerTime == AfterTrigger {
 			err := logicIter.Close(t.ctx)
 			if returnErr == nil {
 				returnErr = err

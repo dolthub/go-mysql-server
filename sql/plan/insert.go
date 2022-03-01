@@ -563,7 +563,7 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) (sq
 		}
 		return nil, nil
 	} else {
-		ctx.SetTransaction(nil)
+		// TODO: ctx.SetTransaction(nil)
 		i.rowSource.Close(ctx)
 		i.rowSource = nil
 		return nil, sql.NewWrappedInsertError(row, err)
