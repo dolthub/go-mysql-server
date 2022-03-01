@@ -2944,6 +2944,13 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 
 	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) select a - 2, b - 1 from t2", sql.ErrCheckConstraintViolated)
 	RunQuery(t, e, harness, "INSERT INTO t1 (a,b) select a, b from t2")
+
+	// Check that INSERT IGNORE correctly drops errors with check constraints and does not update the actual table.
+	RunQuery(t, e, harness, "INSERT IGNORE INTO t1 VALUES (5,2, 'abc')")
+	TestQuery(t, harness, e, `SELECT count(*) FROM t1 where a = 5`, []sql.Row{{0}}, nil, nil)
+
+	RunQuery(t, e, harness, "INSERT IGNORE INTO t1 VALUES (2,2, 'abc') ON DUPLICATE KEY UPDATE b = 1000") // violates b > 10 constraint
+	TestQuery(t, harness, e, `SELECT * FROM t1 where a = 2`, []sql.Row{{2, 2, nil}}, nil, nil)
 }
 
 func TestChecksOnUpdate(t *testing.T, harness Harness) {
