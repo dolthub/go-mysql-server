@@ -251,10 +251,9 @@ func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
 	}
 
 	rows := cache.Get2()
-	sorter := &expression.Sorter{
+	sorter := &expression.Sorter2{
 		SortFields: i.s.SortFields,
-		Rows2:      rows,
-		LastError:  nil,
+		Rows:      rows,
 		Ctx:        ctx,
 	}
 	sort.Stable(sorter)
