@@ -382,15 +382,21 @@ func (h *Handler) doQuery(
 	defer timer.Stop()
 
 	// Read rows off the row iterator and send them to the row channel.
-	eg.Go(func() error {
+	eg.Go(func() (err error) {
 		defer cancelF()
+		defer func() {
+			if cerr := rows.Close(ctx); err == nil {
+				err = cerr
+			}
+		}()
+
 		for {
 			if r == nil {
 				r = &sqltypes.Result{Fields: schemaToFields(schema)}
 			}
 
 			if r.RowsAffected == rowsBatch {
-				if err := callback(r, more); err != nil {
+				if err = callback(r, more); err != nil {
 					return err
 				}
 				r = nil
@@ -401,6 +407,7 @@ func (h *Handler) doQuery(
 			select {
 			case <-ctx.Done():
 				return nil
+
 			case row, ok := <-rowChan:
 				if !ok {
 					return nil
@@ -413,14 +420,15 @@ func (h *Handler) doQuery(
 					continue
 				}
 
-				outputRow, err := rowToSQL(schema, row)
+				var outputRow []sqltypes.Value
+				outputRow, err = rowToSQL(schema, row)
 				if err != nil {
 					return err
 				}
-
 				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
 				r.Rows = append(r.Rows, outputRow)
 				r.RowsAffected++
+
 			case <-timer.C:
 				if h.readTimeout != 0 {
 					// Cancel and return so Vitess can call the CloseConnection callback
@@ -436,10 +444,6 @@ func (h *Handler) doQuery(
 	})
 
 	err = eg.Wait()
-	// always close the RowIter
-	if cerr := rows.Close(ctx); err == nil {
-		err = cerr
-	}
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
