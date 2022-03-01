@@ -36,6 +36,7 @@ const (
 	RangeType_OpenOpen              // This range covers a finite set of values with the lower and upperbounds exclusive.
 	RangeType_OpenClosed            // This range covers a finite set of values with the lowerbound exclusive and upperbound inclusive.
 	RangeType_ClosedOpen            // This range covers a finite set of values with the lowerbound inclusive and upperbound exclusive.
+	RangeType_Null                  // This range covers the set of NULL values.
 )
 
 // RangeColumnExpr represents the contiguous set of values on a specific column.
@@ -138,6 +139,24 @@ func EmptyRangeColumnExpr(typ Type) RangeColumnExpr {
 	}
 }
 
+// NullRangeColumnExpr returns the null RangeColumnExpr for the given type.
+func NullRangeColumnExpr() RangeColumnExpr {
+	return RangeColumnExpr{
+		LowerBound: NullBound{},
+		UpperBound: NullBound{},
+		Typ:        Null,
+	}
+}
+
+// NotNullRangeColumnExpr returns the not null RangeColumnExpr for the given type.
+func NotNullRangeColumnExpr(typ Type) RangeColumnExpr {
+	return RangeColumnExpr{
+		BelowAll{},
+		AboveAll{},
+		typ,
+	}
+}
+
 // Equals checks for equality with the given RangeColumnExpr.
 func (r RangeColumnExpr) Equals(other RangeColumnExpr) (bool, error) {
 	cmpLower, err := r.LowerBound.Compare(other.LowerBound, r.Typ)
@@ -153,16 +172,19 @@ func (r RangeColumnExpr) Equals(other RangeColumnExpr) (bool, error) {
 
 // HasLowerBound returns whether this RangeColumnExpr has a value for the lower bound.
 func (r RangeColumnExpr) HasLowerBound() bool {
-	return r.LowerBound != BelowAll{} && r.LowerBound != AboveAll{}
+	return r.LowerBound != BelowAll{} && r.LowerBound != AboveAll{} && r.LowerBound != NullBound{}
 }
 
 // HasUpperBound returns whether this RangeColumnExpr has a value for the upper bound.
 func (r RangeColumnExpr) HasUpperBound() bool {
-	return r.UpperBound != BelowAll{} && r.UpperBound != AboveAll{}
+	return r.UpperBound != BelowAll{} && r.UpperBound != AboveAll{} && r.UpperBound != NullBound{}
 }
 
 // IsEmpty returns whether this RangeColumnExpr is empty.
 func (r RangeColumnExpr) IsEmpty() (bool, error) {
+	if r.Type() == RangeType_Null {
+		return false, nil
+	}
 	cmp, err := r.LowerBound.Compare(r.UpperBound, r.Typ)
 	return cmp == 0, err
 }
@@ -303,6 +325,8 @@ func (r RangeColumnExpr) DebugString() string {
 		sb.WriteString("[" + fmt.Sprint(GetRangeCutKey(r.LowerBound)))
 	case AboveAll, BelowAll:
 		sb.WriteString("(-∞")
+	case NullBound:
+		sb.WriteString("(NULL")
 	}
 	sb.WriteString(", ")
 	switch r.UpperBound.(type) {
@@ -312,6 +336,8 @@ func (r RangeColumnExpr) DebugString() string {
 		sb.WriteString(fmt.Sprint(GetRangeCutKey(r.UpperBound)) + ")")
 	case AboveAll, BelowAll:
 		sb.WriteString("∞)")
+	case NullBound:
+		sb.WriteString("NULL)")
 	}
 	return sb.String()
 }
@@ -372,6 +398,8 @@ func (r RangeColumnExpr) TryUnion(other RangeColumnExpr) (RangeColumnExpr, bool,
 // Type returns this RangeColumnExpr's RangeType.
 func (r RangeColumnExpr) Type() RangeType {
 	switch r.LowerBound.(type) {
+	case NullBound:
+		return RangeType_Null
 	case Above:
 		switch r.UpperBound.(type) {
 		case Above:

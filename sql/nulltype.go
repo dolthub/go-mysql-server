@@ -63,7 +63,7 @@ func (t nullType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t nullType) SQL(interface{}) (sqltypes.Value, error) {
+func (t nullType) SQL([]byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.NULL, nil
 }
 

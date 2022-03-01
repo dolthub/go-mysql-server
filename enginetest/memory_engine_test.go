@@ -240,6 +240,20 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
+func TestIndexQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+		{"nativeAndMergable", mergableIndexDriver, true},
+	}
+
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			enginetest.TestIndexQueryPlans(t, harness)
+		})
+	}
+}
+
 // This test will write a new set of query plan expected results to a file that you can copy and paste over the existing
 // query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
 // how query plans have changed without a lot of manual copying and pasting.
@@ -409,6 +423,10 @@ func TestScripts(t *testing.T) {
 		}
 	}
 	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestScriptQueryPlan(t *testing.T) {
+	enginetest.TestScriptQueryPlan(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestUserPrivileges(t *testing.T) {
@@ -585,6 +603,10 @@ func TestShowTableStatus(t *testing.T) {
 
 func TestAddDropPks(t *testing.T) {
 	enginetest.TestAddDropPks(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestNullRanges(t *testing.T) {
+	enginetest.TestNullRanges(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestPersist(t *testing.T) {

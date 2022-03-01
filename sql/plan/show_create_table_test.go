@@ -74,6 +74,87 @@ func TestShowCreateTable(t *testing.T) {
 	require.True(ErrNotView.Is(err), "wrong error kind")
 }
 
+func TestShowCreateTableWithNoPrimaryKey(t *testing.T) {
+	var require = require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	schema := sql.Schema{
+		&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false},
+		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
+		&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
+		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true},
+	}
+	pkSchema := sql.NewPrimaryKeySchema(schema)
+	table := memory.NewTable(
+		"test-table",
+		pkSchema)
+
+	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
+	require.NoError(err)
+	showCreateTable, err = showCreateTable.(*ShowCreateTable).WithPrimaryKeySchema(pkSchema)
+	require.NoError(err)
+
+	rowIter, _ := showCreateTable.RowIter(ctx, nil)
+
+	row, err := rowIter.Next(ctx)
+
+	require.NoError(err)
+
+	expected := sql.NewRow(
+		table.Name(),
+		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
+			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `foo` varchar(123),\n"+
+			"  `pok` char(123),\n"+
+			"  `zab` int DEFAULT 0\n"+
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+	)
+
+	require.Equal(expected, row)
+}
+
+func TestShowCreateTableWithPrimaryKey(t *testing.T) {
+	var require = require.New(t)
+	ctx := sql.NewEmptyContext()
+
+	schema := sql.Schema{
+		&sql.Column{Name: "baz", Type: sql.Text, Default: nil, Nullable: false, PrimaryKey: true},
+		&sql.Column{Name: "bza", Type: sql.Uint64, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Uint64, true), Nullable: true, Comment: "hello"},
+		&sql.Column{Name: "foo", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 123), Default: nil, Nullable: true},
+		&sql.Column{Name: "pok", Type: sql.MustCreateStringWithDefaults(sqltypes.Char, 123), Default: nil, Nullable: true},
+		&sql.Column{Name: "zab", Type: sql.Int32, Default: parse.MustStringToColumnDefaultValue(ctx, "0", sql.Int32, true), Nullable: true, PrimaryKey: true},
+	}
+	pkSchema := sql.NewPrimaryKeySchema(schema, 4, 0)
+	table := memory.NewTable(
+		"test-table",
+		pkSchema)
+
+	showCreateTable, err := NewShowCreateTable(NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
+	require.NoError(err)
+	showCreateTable, err = showCreateTable.(*ShowCreateTable).WithPrimaryKeySchema(pkSchema)
+	require.NoError(err)
+
+	rowIter, _ := showCreateTable.RowIter(ctx, nil)
+
+	row, err := rowIter.Next(ctx)
+
+	require.NoError(err)
+
+	expected := sql.NewRow(
+		table.Name(),
+		"CREATE TABLE `test-table` (\n  `baz` text NOT NULL,\n"+
+			"  `bza` bigint unsigned DEFAULT 0 COMMENT 'hello',\n"+
+			"  `foo` varchar(123),\n"+
+			"  `pok` char(123),\n"+
+			"  `zab` int DEFAULT 0,\n"+
+			"  PRIMARY KEY (`zab`,`baz`)\n"+
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+	)
+
+	require.Equal(expected, row)
+}
+
 func TestShowCreateTableWithIndexAndForeignKeysAndChecks(t *testing.T) {
 	var require = require.New(t)
 	ctx := sql.NewEmptyContext()

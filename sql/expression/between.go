@@ -115,14 +115,14 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if lower != nil && upper == nil {
-		if cmpLower > 0 {
+		if cmpLower >= 0 {
 			return nil, nil
 		} else {
 			return false, nil
 		}
 	}
 	if upper != nil && lower == nil {
-		if cmpUpper < 0 {
+		if cmpUpper <= 0 {
 			return nil, nil
 		} else {
 			return false, nil

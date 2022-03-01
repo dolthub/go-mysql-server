@@ -73,7 +73,7 @@ func (t jsonType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -89,7 +89,9 @@ func (t jsonType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, err
 	}
 
-	return sqltypes.MakeTrusted(sqltypes.TypeJSON, []byte(s)), nil
+	val := appendAndSlice(dest, []byte(s))
+
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
 
 // String implements Type interface.

@@ -95,7 +95,7 @@ func (t TupleType) Promote() Type {
 	return t
 }
 
-func (t TupleType) SQL(interface{}) (sqltypes.Value, error) {
+func (t TupleType) SQL([]byte, interface{}) (sqltypes.Value, error) {
 	return sqltypes.Value{}, fmt.Errorf("unable to convert tuple type to SQL")
 }
 
