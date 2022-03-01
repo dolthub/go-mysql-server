@@ -119,7 +119,7 @@ func (t arrayType) Promote() Type {
 	return t
 }
 
-func (t arrayType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t arrayType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -144,6 +144,8 @@ func (t arrayType) SQL(v interface{}) (sqltypes.Value, error) {
 			return sqltypes.Value{}, err
 		}
 	}
+
+	val = appendAndSlice(dest, val)
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }

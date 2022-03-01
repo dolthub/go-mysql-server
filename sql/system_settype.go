@@ -109,7 +109,7 @@ func (t systemSetType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t systemSetType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t systemSetType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -119,7 +119,9 @@ func (t systemSetType) SQL(v interface{}) (sqltypes.Value, error) {
 		return sqltypes.Value{}, err
 	}
 
-	return sqltypes.MakeTrusted(t.Type(), []byte(v.(string))), nil
+	val := appendAndSlice(dest, []byte(v.(string)))
+
+	return sqltypes.MakeTrusted(t.Type(), val), nil
 }
 
 // String implements Type interface.

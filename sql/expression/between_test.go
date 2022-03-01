@@ -36,8 +36,10 @@ func TestBetween(t *testing.T) {
 		err      bool
 	}{
 		{"val is null", sql.NewRow(nil, 1, 2), nil, false},
-		{"lower is null", sql.NewRow(1, nil, 2), nil, false},
-		{"upper is null", sql.NewRow(1, 2, nil), false, false},
+		{"lower is null, out of range", sql.NewRow(1, nil, 2), nil, false},
+		{"lower is null, in range", sql.NewRow(2, nil, 2), nil, false},
+		{"upper is null, out of range", sql.NewRow(1, 2, nil), false, false},
+		{"upper is null, in range", sql.NewRow(2, 2, nil), nil, false},
 		{"val is lower", sql.NewRow(1, 1, 3), true, false},
 		{"val is upper", sql.NewRow(3, 1, 3), true, false},
 		{"val is between lower and upper", sql.NewRow(2, 1, 3), true, false},
@@ -177,8 +179,10 @@ func TestNotBetween(t *testing.T) {
 		err      bool
 	}{
 		{"val is null", sql.NewRow(nil, 1, 2), nil, false},
-		{"lower is null", sql.NewRow(1, nil, 2), nil, false},
-		{"upper is null", sql.NewRow(1, 2, nil), true, false},
+		{"lower is null, out of range", sql.NewRow(1, nil, 2), nil, false},
+		{"lower is null, in range", sql.NewRow(2, nil, 2), nil, false},
+		{"upper is null, out of range", sql.NewRow(1, 2, nil), true, false},
+		{"upper is null, in range", sql.NewRow(2, 2, nil), nil, false},
 		{"val is lower", sql.NewRow(1, 1, 3), false, false},
 		{"val is upper", sql.NewRow(3, 1, 3), false, false},
 		{"val is between lower and upper", sql.NewRow(2, 1, 3), false, false},

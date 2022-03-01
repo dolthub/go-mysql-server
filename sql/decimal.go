@@ -215,7 +215,7 @@ func (t decimalType) Promote() Type {
 }
 
 // SQL implements Type interface.
-func (t decimalType) SQL(v interface{}) (sqltypes.Value, error) {
+func (t decimalType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -223,7 +223,10 @@ func (t decimalType) SQL(v interface{}) (sqltypes.Value, error) {
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	return sqltypes.MakeTrusted(sqltypes.Decimal, []byte(value.(string))), nil
+
+	val := appendAndSlice(dest, []byte(value.(string)))
+
+	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 
 // String implements Type interface.

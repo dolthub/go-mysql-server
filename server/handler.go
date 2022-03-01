@@ -628,7 +628,7 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 			continue
 		}
 
-		o[i], err = s[i].Type.SQL(v)
+		o[i], err = s[i].Type.SQL(nil, v)
 		if err != nil {
 			return nil, err
 		}
