@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/locks"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -35,28 +36,27 @@ func acquireLocks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, nil
 	}
 
-	// TODO: Assign LockNode here :-)
+	// Validate that we have a select for update mode
 
-	// Validate that we have a select for update mnode
-	// TODO: Understand how to parse SelectForUpdate for now
-	_, ok := n.(*plan.SelectForUpdate)
-	if !ok {
+	return assignLockNode(n, a.LockManager)
+}
+
+func assignLockNode(n sql.Node, lm locks.LockManager) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+		if !n.Resolved() {
+			return n, nil
+		}
+
+		switch t := n.(type) {
+		case *plan.InsertInto:
+			lw := plan.NewLockWrapper(t.Source)
+			lw = lw.WithTableName(getTableName(t.Destination))
+			lw = lw.WithLockManager(lm)
+			return t.WithSource(lw), nil
+		}
+
 		return n, nil
-	}
-
-	//if !p.ForUpdate {
-	//	return n, nil
-	//}
-
-	rt := getResolvedTable(n)
-
-	err = a.LockManager.LockTable(ctx, ctx.GetCurrentDatabase(), rt.Name())
-	if err != nil {
-		return nil, err
-	}
-
-	// where does the lock manager live!
-	return n, nil
+	})
 }
 
 func assignLockManager(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
@@ -74,6 +74,14 @@ func assignLockManager(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			nc.LockManager = a.LockManager
 			return &nc, nil
 		case *plan.Rollback:
+			nc := *node
+			nc.LockManager = a.LockManager
+			return &nc, nil
+		case *plan.LockWrapper:
+			nc := *node
+			nc.LockManager = a.LockManager
+			return &nc, nil
+		case *plan.SelectForUpdate:
 			nc := *node
 			nc.LockManager = a.LockManager
 			return &nc, nil

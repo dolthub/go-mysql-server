@@ -182,7 +182,7 @@ func ProjectRow(
 
 type SelectForUpdate struct {
 	UnaryNode
-	lm locks.LockManager
+	LockManager locks.LockManager
 }
 
 func NewSelectForUpdate(child sql.Node) *SelectForUpdate {
@@ -198,9 +198,22 @@ func (s *SelectForUpdate) String() string {
 func (s *SelectForUpdate) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	table := getTableName(s.Child)
 
-	err := s.lm.LockTable(ctx, ctx.GetCurrentDatabase(), table)
+	// do nothing if autocommit is off
+	autoCommitSessionVar, err := ctx.GetSessionVariable(ctx, sql.AutoCommitSessionVar)
 	if err != nil {
 		return nil, err
+	}
+
+	hasAutocommit, err := sql.ConvertToBool(autoCommitSessionVar)
+	if err != nil {
+		return nil, err
+	}
+
+	if !hasAutocommit {
+		err = s.LockManager.LockTable(ctx, ctx.GetCurrentDatabase(), table)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return s.Child.RowIter(ctx, row)
@@ -211,7 +224,8 @@ func (s *SelectForUpdate) WithChildren(node ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(node), 1)
 	}
 
-	return NewLockWrapper(node[0]), nil
+	s.UnaryNode.Child = node[0]
+	return s, nil
 }
 
 func (s *SelectForUpdate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {

@@ -60,6 +60,7 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (s *tableEditorIter) Close(ctx *sql.Context) error {
 	var err error
 	if s.errorEncountered != nil {
+		// TODO: need to support lock removal at rollback time?
 		err = s.editor.DiscardChanges(ctx, s.errorEncountered)
 	} else {
 		err = s.editor.StatementComplete(ctx)

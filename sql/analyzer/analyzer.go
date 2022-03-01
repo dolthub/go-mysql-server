@@ -336,14 +336,14 @@ func (a *Analyzer) LogDiff(prev, next sql.Node) {
 
 // PushDebugContext pushes the given context string onto the context stack, to use when logging debug messages.
 func (a *Analyzer) PushDebugContext(msg string) {
-	if a != nil {
+	if a != nil && a.Debug {
 		a.contextStack = append(a.contextStack, msg)
 	}
 }
 
 // PopDebugContext pops a context message off the context stack.
 func (a *Analyzer) PopDebugContext() {
-	if a != nil && len(a.contextStack) > 0 {
+	if a != nil && a.Debug && len(a.contextStack) > 0 {
 		a.contextStack = a.contextStack[:len(a.contextStack)-1]
 	}
 }

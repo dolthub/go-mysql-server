@@ -69,6 +69,11 @@ func (l *lockManagerImpl) LockTable(ctx *sql.Context, databaseName, tableName st
 		tableMap[tableName] = lock
 	}
 
+	// Don't lock the node again if the current client already has access to it. Otherwise, we will have a deadlock.
+	if lock.clientId == clientId {
+		return nil
+	}
+
 	lock.mu.Lock()
 	lock.clientId = clientId
 
@@ -104,6 +109,7 @@ func (l *lockManagerImpl) ReleaseLocksHeldByClient(ctx *sql.Context, id uint32) 
 		for _, lock := range tableMap {
 			if lock.clientId == id {
 				lock.mu.Unlock()
+				lock.clientId = 0 // reset the client id
 			}
 		}
 	}

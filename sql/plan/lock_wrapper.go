@@ -23,6 +23,7 @@ import (
 type LockWrapper struct {
 	UnaryNode
 	LockManager locks.LockManager // probs an import loop
+	TableName   string
 }
 
 func NewLockWrapper(child sql.Node) *LockWrapper {
@@ -31,6 +32,9 @@ func NewLockWrapper(child sql.Node) *LockWrapper {
 
 func (l *LockWrapper) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	tableName := getTableName(l.Child) // gets the name of the child. Typically is a row source
+	if l.TableName != "" {
+		tableName = l.TableName
+	}
 
 	ri, err := l.Child.RowIter(ctx, row)
 	if err != nil {
@@ -72,7 +76,8 @@ func (l *LockWrapper) WithChildren(node ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(node), 1)
 	}
 
-	return NewLockWrapper(node[0]), nil
+	l.UnaryNode.Child = node[0]
+	return l, nil
 }
 
 func (l *LockWrapper) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
@@ -81,6 +86,18 @@ func (l *LockWrapper) CheckPrivileges(ctx *sql.Context, opChecker sql.Privileged
 
 func (l *LockWrapper) String() string {
 	return fmt.Sprintf("LOCKWrapper(%s)", l.Child.String())
+}
+
+func (l *LockWrapper) WithLockManager(lm locks.LockManager) *LockWrapper {
+	nc := *l
+	nc.LockManager = lm
+	return &nc
+}
+
+func (l *LockWrapper) WithTableName(tableName string) *LockWrapper {
+	nc := *l
+	nc.TableName = tableName
+	return &nc
 }
 
 var _ sql.Node = (*LockWrapper)(nil)

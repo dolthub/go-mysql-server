@@ -1362,16 +1362,19 @@ func TestConcurrentTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, har
 
 	executeClientQueries := func(clientCtx *sql.Context, queries []string) error {
 		for _, query := range queries {
-			_, _, err := e.QueryWithBindings(clientCtx, query, nil)
+			sch, ri, err := e.Query(clientCtx, query)
 			if err != nil {
 				return err
 			}
+
+			_, err = sql.RowIterToRows(clientCtx, sch, ri)
+			require.NoError(t, err)
 		}
 
 		return nil
 	}
 
-	g, ctx := errgroup.WithContext(context.Background())
+	g, _ := errgroup.WithContext(context.Background())
 
 	for _, clientQueries := range script.ConcurrentTransactions {
 		client := getClient(clientQueries[0]) // TODO: Get a more robust way to get queries
@@ -1382,8 +1385,8 @@ func TestConcurrentTransactionScriptWithEngine(t *testing.T, e *sqle.Engine, har
 			clientSessions[client] = clientSession
 		}
 
-		clientSession = clientSession.WithContext(ctx)
-		clientSessions[client] = clientSession
+		//clientSession = clientSession.WithContext(ctx)
+		//clientSessions[client] = clientSession
 
 		g.Go(func() error {
 			return executeClientQueries(clientSession, clientQueries)
