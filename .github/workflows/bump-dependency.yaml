@@ -1,6 +1,9 @@
 name: Bump Deps
 
 on:
+  pull_request:
+    branches:
+      - main
   repository_dispatch:
     types: [ bump-dependency ]
 
