@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -174,24 +173,6 @@ func valuesSliceFromSchema(sch sql.Schema) (rows [][]sqltypes.Value) {
 		rows[i] = make([]sqltypes.Value, len(sch))
 	}
 	return
-}
-
-func schemaToFields(s sql.Schema) []*query.Field {
-	fields := make([]*query.Field, len(s))
-	for i, c := range s {
-		var charset uint32 = mysql.CharacterSetUtf8
-		if sql.IsBlob(c.Type) {
-			charset = mysql.CharacterSetBinary
-		}
-
-		fields[i] = &query.Field{
-			Name:    c.Name,
-			Type:    c.Type.Type(),
-			Charset: charset,
-		}
-	}
-
-	return fields
 }
 
 func capRequirementForRow(sch sql.Schema, row sql.Row) (capRequirement, error) {
