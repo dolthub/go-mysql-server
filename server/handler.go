@@ -436,6 +436,10 @@ func (h *Handler) doQuery(
 	})
 
 	err = eg.Wait()
+
+	// errGroup context is now canceled
+	ctx = oCtx
+
 	// always close the RowIter
 	if cerr := rows.Close(ctx); err == nil {
 		err = cerr
@@ -444,8 +448,6 @@ func (h *Handler) doQuery(
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
-
-	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
 		return remainder, err
