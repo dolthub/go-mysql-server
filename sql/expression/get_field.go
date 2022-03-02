@@ -29,6 +29,7 @@ type GetField struct {
 	fieldIndex int
 	name       string
 	fieldType  sql.Type
+	fieldType2 sql.Type2
 	nullable   bool
 }
 
@@ -42,10 +43,12 @@ func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool)
 
 // NewGetFieldWithTable creates a GetField expression with table name. The table name may be an alias.
 func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string, nullable bool) *GetField {
+	fieldType2, _ := fieldType.(sql.Type2)
 	return &GetField{
 		table:      table,
 		fieldIndex: index,
 		fieldType:  fieldType,
+		fieldType2: fieldType2,
 		name:       fieldName,
 		nullable:   nullable,
 	}
@@ -94,8 +97,9 @@ func (p *GetField) Type() sql.Type {
 	return p.fieldType
 }
 
+// Type2 returns the type of the field, if this field has a sql.Type2.
 func (p *GetField) Type2() sql.Type2 {
-	return p.fieldType.(sql.Type2)
+	return p.fieldType2
 }
 
 // ErrIndexOutOfBounds is returned when the field index is out of the bounds.
