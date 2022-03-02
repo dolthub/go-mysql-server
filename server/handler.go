@@ -48,8 +48,7 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
 var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
-// TODO parametrize
-const rowsBatch = 100
+const rowsBatch = 128
 
 var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
@@ -301,15 +300,6 @@ func (h *Handler) doQuery(
 	finish := observeQuery(ctx, query)
 	defer finish(err)
 
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
-	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
-	defer func() {
-		if err != nil && ctx != nil {
-			ctx.ProcessList.Done(ctx.Pid())
-		}
-	}()
-
 	start := time.Now()
 
 	if parsed == nil {
@@ -330,63 +320,75 @@ func (h *Handler) doQuery(
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
+	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
+	//  marked done until we're done spooling rows over the wire
+	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
+	defer func() {
+		if err != nil && ctx != nil {
+			ctx.ProcessList.Done(ctx.Pid())
+		}
+	}()
+
 	schema, rowIter, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
 
+	var rowChan chan sql.Row
+	var row2Chan chan sql.Row2
+
 	var rowIter2 sql.RowIter2
 	if ri2, ok := rowIter.(sql.RowIterTypeSelector); ok && ri2.IsNode2() {
 		rowIter2 = rowIter.(sql.RowIter2)
+		row2Chan = make(chan sql.Row2, 512)
+	} else {
+		rowChan = make(chan sql.Row, 512)
 	}
 
-	rowChan := make(chan sql.Row)
-	row2Chan := make(chan sql.Row2)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-	// Read rows from the iterator and send them to the row channel for processing
+	// Read rows off the row iterator and send them to the row channel.
 	eg.Go(func() error {
-		var frame *sql.RowFrame
+		defer wg.Done()
 		if rowIter2 != nil {
-			frame = sql.NewRowFrame()
-			defer frame.Recycle()
-		}
+			defer close(row2Chan)
 
-		defer close(rowChan)
-		defer close(row2Chan)
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				if rowIter2 != nil {
-					frame.Clear()
-					err := rowIter2.Next2(ctx, frame)
-					if err != nil {
-						if err == io.EOF {
-							return rowIter2.Close(ctx)
-						}
-						cerr := rowIter2.Close(ctx)
-						if cerr != nil {
-							ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
-						}
-						return err
+			frame := sql.NewRowFrame()
+			defer frame.Recycle()
+
+			for {
+				frame.Clear()
+				err := rowIter2.Next2(ctx, frame)
+				if err != nil {
+					if err == io.EOF {
+						return rowIter2.Close(ctx)
 					}
-					select {
-					case row2Chan <- frame.Row2Copy():
-					case <-ctx.Done():
+					cerr := rowIter2.Close(ctx)
+					if cerr != nil {
+						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
+					}
+					return err
+				}
+				select {
+				case row2Chan <- frame.Row2Copy():
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		} else {
+			defer close(rowChan)
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				default:
+					row, err := rowIter.Next(ctx)
+					if err == io.EOF {
 						return nil
 					}
-				} else {
-					row, err := rowIter.Next(ctx)
 					if err != nil {
-						if err == io.EOF {
-							return rowIter.Close(ctx)
-						}
-						cerr := rowIter.Close(ctx)
-						if cerr != nil {
-							ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
-						}
 						return err
 					}
 					select {
@@ -409,7 +411,6 @@ func (h *Handler) doQuery(
 	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
 	// call Handler.CloseConnection()
 	waitTime := 1 * time.Minute
-
 	if h.readTimeout > 0 {
 		waitTime = h.readTimeout
 	}
@@ -419,9 +420,11 @@ func (h *Handler) doQuery(
 	var r *sqltypes.Result
 	var proccesedAtLeastOneBatch bool
 
-	// Read rows off the row channel and send them to the callback
+	// reads rows from the channel, converts them to wire format,
+	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
 		defer cancelF()
+		defer wg.Done()
 		for {
 			if r == nil {
 				r = &sqltypes.Result{Fields: schemaToFields(schema)}
@@ -444,6 +447,7 @@ func (h *Handler) doQuery(
 					if !ok {
 						return nil
 					}
+					// TODO: OK result for Row2
 					// if sql.IsOkResult(row) {
 					// 	if len(r.Rows) > 0 {
 					// 		panic("Got OkResult mixed with RowResult")
@@ -506,11 +510,20 @@ func (h *Handler) doQuery(
 		}
 	})
 
+	// Close() kills this PID in the process list,
+	// wait until all rows have be sent over the wire
+	eg.Go(func() error {
+		wg.Wait()
+		return rowIter.Close(ctx)
+	})
+
 	err = eg.Wait()
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
+
+	// errGroup context is now canceled
 	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
