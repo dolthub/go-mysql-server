@@ -48,8 +48,7 @@ var ErrConnectionWasClosed = errors.NewKind("connection was closed")
 
 var ErrUnsupportedOperation = errors.NewKind("unsupported operation")
 
-// TODO parametrize
-const rowsBatch = 100
+const rowsBatch = 128
 
 var tcpCheckerSleepDuration time.Duration = 1 * time.Second
 
@@ -301,15 +300,6 @@ func (h *Handler) doQuery(
 	finish := observeQuery(ctx, query)
 	defer finish(err)
 
-	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
-	//  marked done until we're done spooling rows over the wire
-	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
-	defer func() {
-		if err != nil && ctx != nil {
-			ctx.ProcessList.Done(ctx.Pid())
-		}
-	}()
-
 	start := time.Now()
 
 	if parsed == nil {
@@ -330,6 +320,15 @@ func (h *Handler) doQuery(
 	oCtx := ctx
 	eg, ctx := ctx.NewErrgroup()
 
+	// TODO: it would be nice to put this logic in the engine, not the handler, but we don't want the process to be
+	//  marked done until we're done spooling rows over the wire
+	ctx, err = ctx.ProcessList.AddProcess(ctx, query)
+	defer func() {
+		if err != nil && ctx != nil {
+			ctx.ProcessList.Done(ctx.Pid())
+		}
+	}()
+
 	schema, rows, err := h.e.QueryNodeWithBindings(ctx, query, parsed, sqlBindings)
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
@@ -340,24 +339,24 @@ func (h *Handler) doQuery(
 	var proccesedAtLeastOneBatch bool
 
 	// Reads rows from the row reading goroutine
-	rowChan := make(chan sql.Row)
+	rowChan := make(chan sql.Row, 512)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
+	// Read rows off the row iterator and send them to the row channel.
 	eg.Go(func() error {
 		defer close(rowChan)
+		defer wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			default:
 				row, err := rows.Next(ctx)
+				if err == io.EOF {
+					return nil
+				}
 				if err != nil {
-					if err == io.EOF {
-						return rows.Close(ctx)
-					}
-					cerr := rows.Close(ctx)
-					if cerr != nil {
-						ctx.GetLogger().WithError(cerr).Warn("error closing row iter")
-					}
 					return err
 				}
 				select {
@@ -379,16 +378,17 @@ func (h *Handler) doQuery(
 	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
 	// call Handler.CloseConnection()
 	waitTime := 1 * time.Minute
-
 	if h.readTimeout > 0 {
 		waitTime = h.readTimeout
 	}
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// Read rows off the row iterator and send them to the row channel.
+	// reads rows from the channel, converts them to wire format,
+	// and calls |callback| to give them to vitess.
 	eg.Go(func() error {
 		defer cancelF()
+		defer wg.Done()
 		for {
 			if r == nil {
 				r = &sqltypes.Result{Fields: schemaToFields(schema)}
@@ -440,11 +440,20 @@ func (h *Handler) doQuery(
 		}
 	})
 
+	// Close() kills this PID in the process list,
+	// wait until all rows have be sent over the wire
+	eg.Go(func() error {
+		wg.Wait()
+		return rows.Close(ctx)
+	})
+
 	err = eg.Wait()
 	if err != nil {
 		ctx.GetLogger().WithError(err).Warn("error running query")
 		return remainder, err
 	}
+
+	// errGroup context is now canceled
 	ctx = oCtx
 
 	if err = setConnStatusFlags(ctx, c); err != nil {
