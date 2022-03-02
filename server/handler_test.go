@@ -47,7 +47,7 @@ func TestHandlerOutput(t *testing.T) {
 			sqle.NewProcessList(),
 			"foo",
 		),
-		0,
+		time.Second,
 		false,
 		nil,
 	)
@@ -119,6 +119,17 @@ func TestHandlerOutput(t *testing.T) {
 				callsToCallback:  5,
 				lenLastBatch:     18,
 				lastRowsAffected: uint64(18),
+			},
+		},
+		{
+			name:    "with limit zero",
+			handler: handler,
+			conn:    dummyConn,
+			query:   "SELECT * FROM test limit 0",
+			expected: expectedValues{
+				callsToCallback:  1,
+				lenLastBatch:     0,
+				lastRowsAffected: uint64(0),
 			},
 		},
 	}
