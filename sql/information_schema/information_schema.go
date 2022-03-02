@@ -630,9 +630,9 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases(ctx)
 
 	for _, db := range dbs {
-		tableNames, err := db.GetTableNames(ctx)
-		if err != nil {
-			return nil, err
+		tableNames, tErr := db.GetTableNames(ctx)
+		if tErr != nil {
+			return nil, tErr
 		}
 
 		for _, tableName := range tableNames {
@@ -641,12 +641,11 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				return nil, err
 			}
 
-			// TODO: Doesn't correctly consider primary keys from table implementations that don't implement sql.IndexedTable
 			indexTable, ok := tbl.(IndexedTable)
 			if ok {
-				indexes, err := indexTable.GetIndexes(ctx)
-				if err != nil {
-					return nil, err
+				indexes, iErr := indexTable.GetIndexes(ctx)
+				if iErr != nil {
+					return nil, iErr
 				}
 
 				for _, index := range indexes {
@@ -690,7 +689,10 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// TODO : cardinality should be an estimate of the number of unique values in the index.
 							// it is currently set to total number of rows in the table
 							if st, ok := tbl.(StatisticsTable); ok {
-								cardinality, _ = st.NumRows(ctx)
+								cardinality, err = st.NumRows(ctx)
+								if err != nil {
+									return nil, err
+								}
 							}
 
 							// if nullable, 'YES'; if not, ''
@@ -724,10 +726,6 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					}
 				}
 			}
-		}
-
-		if err != nil {
-			return nil, err
 		}
 	}
 
