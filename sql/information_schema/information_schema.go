@@ -625,6 +625,113 @@ func charsetRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	dbs := c.AllDatabases(ctx)
+
+	for _, db := range dbs {
+		tableNames, tErr := db.GetTableNames(ctx)
+		if tErr != nil {
+			return nil, tErr
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			indexTable, ok := tbl.(IndexedTable)
+			if ok {
+				indexes, iErr := indexTable.GetIndexes(ctx)
+				if iErr != nil {
+					return nil, iErr
+				}
+
+				for _, index := range indexes {
+					var (
+						nonUnique    int
+						indexComment string
+						indexName    string
+						comment      = ""
+						isVisible    string
+					)
+					indexName = index.ID()
+					if index.IsUnique() {
+						nonUnique = 1
+					} else {
+						nonUnique = 0
+					}
+					indexType := index.IndexType()
+					indexComment = index.Comment()
+					// setting `VISIBLE` is not supported, so defaulting it to "YES"
+					isVisible = "YES"
+
+					// Create a Row for each column this index refers too.
+					i := 0
+					for _, expr := range index.Expressions() {
+						col := plan.GetColumnFromIndexExpr(expr, tbl)
+						if col != nil {
+							i += 1
+							var (
+								collation string
+								nullable  string
+
+								cardinality uint64
+							)
+
+							seqInIndex := i
+							colName := strings.Replace(col.Name, "`", "", -1) // get rid of backticks
+
+							// collation is "A" for ASC ; "D" for DESC ; "NULL" for not sorted
+							collation = "A"
+
+							// TODO : cardinality should be an estimate of the number of unique values in the index.
+							// it is currently set to total number of rows in the table
+							if st, ok := tbl.(StatisticsTable); ok {
+								cardinality, err = st.NumRows(ctx)
+								if err != nil {
+									return nil, err
+								}
+							}
+
+							// if nullable, 'YES'; if not, ''
+							if col.Nullable {
+								nullable = "YES"
+							} else {
+								nullable = ""
+							}
+
+							rows = append(rows, Row{
+								"def",        // table_catalog
+								db.Name(),    // table_schema
+								tbl.Name(),   // table_name
+								nonUnique,    // non_unique		NOT NULL
+								db.Name(),    // index_schema
+								indexName,    // index_name
+								seqInIndex,   // seq_in_index	NOT NULL
+								colName,      // column_name
+								collation,    // collation
+								cardinality,  // cardinality
+								nil,          // sub_part
+								nil,          // packed
+								nullable,     // is_nullable	NOT NULL
+								indexType,    // index_type		NOT NULL
+								comment,      // comment		NOT NULL
+								indexComment, // index_comment	NOT NULL
+								isVisible,    // is_visible		NOT NULL
+								nil,          // expression
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, c := range SupportedEngines {
@@ -992,7 +1099,7 @@ func NewInformationSchemaDatabase() Database {
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
 				schema:  statisticsSchema,
-				rowIter: emptyRowIter,
+				rowIter: statisticsRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:    TableConstraintsTableName,

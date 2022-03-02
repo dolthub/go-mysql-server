@@ -7661,6 +7661,23 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "information_schema.statistics shows non unique index",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
+			"CREATE INDEX myindex on mytable(test_score)",
+			"INSERT INTO mytable VALUES (2,23,25), (3,24,26)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM information_schema.statistics where table_name='mytable'",
+				Expected: []sql.Row{
+					{"def", "mydb", "mytable", 0, "mydb", "myindex", 1, "test_score", "A", uint64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "mytable", 1, "mydb", "PRIMARY", 1, "pk", "A", uint64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+				},
+			},
+		},
+	},
 }
 
 var ExplodeQueries = []QueryTest{
