@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -119,6 +120,21 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	for _, script := range InfoSchemaScripts {
 		TestScript(t, harness, script)
 	}
+
+	p := sqle.NewProcessList()
+	sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
+
+	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	require.NoError(t, err)
+
+	TestQueryWithContext(t, ctx, engine,
+		"SELECT * FROM information_schema.processlist",
+		[]sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}},
+		nil,
+		nil,
+	)
+	require.NoError(t, err)
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {

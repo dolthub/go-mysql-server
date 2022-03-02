@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -74,6 +75,8 @@ const (
 	PartitionsTableName = "partitions"
 	// InnoDBTempTableName is the name of the INNODB_TEMP_TABLE_INFO table
 	InnoDBTempTableName = "innodb_temp_table_info"
+	// ProcessListTableName is the name of PROCESSLIST table
+	ProcessListTableName = "processlist"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -442,6 +445,17 @@ var innoDBTempTableSchema = Schema{
 	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBTempTableName},
 	{Name: "n_cols", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
 	{Name: "space", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
+}
+
+var processListSchema = Schema{
+	{Name: "id", Type: Int64, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "user", Type: LongText, Default: nil, Nullable: true, Source: ProcessListTableName},
+	{Name: "host", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "db", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "command", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "time", Type: Int64, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "state", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "info", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
 }
 
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
@@ -1054,6 +1068,39 @@ func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+func processListIter(ctx *Context, c Catalog) (RowIter, error) {
+	processes := ctx.ProcessList.Processes()
+	var rows = make([]Row, len(processes))
+
+	db := ctx.GetCurrentDatabase()
+	if db == "" {
+		db = "NULL"
+	}
+
+	for i, proc := range processes {
+		var status []string
+		for name, progress := range proc.Progress {
+			status = append(status, fmt.Sprintf("%s(%s)", name, progress))
+		}
+		if len(status) == 0 {
+			status = []string{"running"}
+		}
+		sort.Strings(status)
+		rows[i] = Row{
+			int64(proc.Connection),       // id
+			proc.User,                    // user
+			ctx.Session.Client().Address, // host
+			db,                           // db
+			"Query",                      // command
+			int64(proc.Seconds()),        // time
+			strings.Join(status, ", "),   // state
+			proc.Query,                   // info
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
@@ -1160,6 +1207,11 @@ func NewInformationSchemaDatabase() Database {
 				name:    InnoDBTempTableName,
 				schema:  innoDBTempTableSchema,
 				rowIter: innoDBTempTableIter,
+			},
+			ProcessListTableName: &informationSchemaTable{
+				name:    ProcessListTableName,
+				schema:  processListSchema,
+				rowIter: processListIter,
 			},
 		},
 	}
