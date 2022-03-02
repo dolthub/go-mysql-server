@@ -25,24 +25,17 @@ const (
 	fieldArrSize = 2048
 )
 
-// Row2 is a tuple of values. It consists of two parallel slices which define the types and the bytes of the values in
-// the row.
-type Row2 struct {
-	Types []querypb.Type
-	Values []ValueBytes
-}
+// Row2 is a slice of values
+type Row2 []Value
 
 // GetField returns the Value for the ith field in this row.
 func (r Row2) GetField(i int) Value {
-	return Value{
-		Typ: r.Types[i],
-		Val: r.Values[i],
-	}
+	return r[i]
 }
 
 // Len returns the number of fields of this row
 func (r Row2) Len() int {
-	return len(r.Types)
+	return len(r)
 }
 
 // Value is a logical index into a Row2. For efficiency reasons, use sparingly.
@@ -98,26 +91,30 @@ func (f *RowFrame) Recycle() {
 // Row2 returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
 // further modification to this frame may result in the returned value changing as well.
 func (f *RowFrame) Row2() Row2 {
-	return Row2{
-		Types:  f.Types,
-		Values: f.Values,
+	rs := make(Row2, len(f.Values))
+	for i := range f.Values {
+		rs[i] = Value{
+			Typ: f.Types[i],
+			Val: f.Values[i],
+		}
 	}
+	return rs
 }
 
 // Row2Copy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
 // RowFrame object via Clear()
 func (f *RowFrame) Row2Copy() Row2 {
-	vs := make([]ValueBytes, len(f.Values))
+	rs := make(Row2, len(f.Values))
 	// TODO: it would be faster here to just copy the entire value backing array in one pass
 	for i := range f.Values {
 		v := make(ValueBytes, len(f.Values[i]))
 		copy(v, f.Values[i])
-		vs[i] = v
+		rs[i] = Value{
+			Typ: f.Types[i],
+			Val: v,
+		}
 	}
-	return Row2{
-		Types:  f.Types,
-		Values: vs,
-	}
+	return rs
 }
 
 // Clear clears this row frame for reuse. The underlying byte arrays are not zeroed out or discarded, but will be

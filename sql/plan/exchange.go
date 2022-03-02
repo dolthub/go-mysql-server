@@ -264,7 +264,7 @@ func (i *exchangeRowIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
 		return i.waiter()
 	}
 
-	frame.AppendMany(r.Types, r.Values)
+	frame.Append(r...)
 	return nil
 }
 

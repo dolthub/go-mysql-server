@@ -704,7 +704,7 @@ func rowToSQL(s sql.Schema, row sql.Row) ([]sqltypes.Value, error) {
 }
 
 func row2ToSQL(s sql.Schema, row sql.Row2) ([]sqltypes.Value, error) {
-	o := make([]sqltypes.Value, len(row.Values))
+	o := make([]sqltypes.Value, len(row))
 	var err error
 	for i := 0; i < row.Len(); i++ {
 		v := row.GetField(i)
