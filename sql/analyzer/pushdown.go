@@ -224,17 +224,15 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return FixFieldIndexesForExpressions(ctx, a, n, scope)
 			case *plan.IndexedTableAccess:
-				table := getTable(node)
-				if table == nil {
-					return n, nil
+				lookup, ok := indexes[node.Name()]
+				if !ok || lookup.expr == nil {
+					return node, nil
 				}
-				if _, ok := table.(sql.IndexAddressableTable); ok {
-					lookup := indexes[table.Name()]
-					if lookup != nil {
-						filters.markFiltersHandled(splitConjunction(lookup.expr)...)
-					}
+				table, err := pushdownFiltersToIndex(ctx, a, node, scope, lookup, filters, tableAliases)
+				if err != nil {
+					return nil, err
 				}
-				return node, nil
+				return FixFieldIndexesForExpressions(ctx, a, table, scope)
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				table, err := pushdownFiltersToTable(ctx, a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
@@ -418,6 +416,51 @@ func convertFiltersToIndexedAccess(
 	}
 
 	return node, nil
+}
+
+// pushdownFiltersToTable attempts to push filters to tables that can accept them
+func pushdownFiltersToIndex(
+	ctx *sql.Context,
+	a *Analyzer,
+	idxTable *plan.IndexedTableAccess,
+	scope *Scope,
+	lookup *indexLookup,
+	filters *filterSet,
+	tableAliases TableAliases,
+) (sql.Node, error) {
+	filteredIdx, ok := idxTable.Index().(sql.FilteredIndex)
+	if !ok {
+		return idxTable, nil
+	}
+
+	idxFilters := splitConjunction(lookup.expr)
+	if len(idxFilters) == 0 {
+		return idxTable, nil
+	}
+	idxFilters = normalizeExpressions(ctx, tableAliases, idxFilters...)
+
+	handled := filteredIdx.HandledFilters(idxFilters)
+	if len(handled) == 0 {
+		return idxTable, nil
+	}
+
+	var err error
+	handled, err = FixFieldIndexesOnExpressions(ctx, scope, a, idxTable.Schema(), handled...)
+	if err != nil {
+		return nil, err
+	}
+	filters.markFiltersHandled(handled...)
+
+	a.Log(
+		"table %q transformed with pushdown of filters to index %s, %d filters handled of %d",
+		idxTable.Name(),
+		idxTable.Index().ID(),
+		len(handled),
+		len(idxFilters),
+	)
+
+	annotation := fmt.Sprintf("Filtered index access on %v", handled)
+	return plan.NewDecoratedNode(annotation, idxTable), nil
 }
 
 // pushdownFiltersToTable attempts to push filters to tables that can accept them

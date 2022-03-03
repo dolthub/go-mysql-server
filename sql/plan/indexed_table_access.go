@@ -60,6 +60,10 @@ func NewStaticIndexedTableAccess(resolvedTable *ResolvedTable, lookup sql.IndexL
 	}
 }
 
+func (i *IndexedTableAccess) Index() sql.Index {
+	return i.index
+}
+
 func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
 	if !ok {
