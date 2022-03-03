@@ -743,10 +743,12 @@ func getMultiColumnIndexForExpressions(
 						return nil, err
 					}
 					values, ok := value.([]interface{})
-					if !ok {
-						return nil, errInvalidInRightEvaluation.New(value)
+					if ok {
+						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), values...)
+					} else {
+						// For single length tuples, we don't return []interface{}, just the first element
+						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), value)
 					}
-					indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), values...)
 				} else {
 					return nil, nil
 				}
