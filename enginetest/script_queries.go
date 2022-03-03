@@ -1303,9 +1303,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
-				Expected: []sql.Row{{"Filter(test.v3 = 8)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
@@ -1313,9 +1313,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
-				Expected: []sql.Row{{"Filter(test.v3 >= 6)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
@@ -1323,9 +1323,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
-				Expected: []sql.Row{{"Filter(test.v3 = 7)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
@@ -1342,9 +1342,9 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
-				Expected: []sql.Row{{"Filter(test.v1 = 2)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
@@ -1352,9 +1352,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
-				Expected: []sql.Row{{"Filter(test.v3 > 1)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
@@ -1362,9 +1362,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
-				Expected: []sql.Row{{"Filter(test.v1 > 1)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
@@ -1372,9 +1372,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
-				Expected: []sql.Row{{"Filter((test.v1 = 5) AND (test.v2 >= 1))"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
