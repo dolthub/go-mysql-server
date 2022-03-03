@@ -680,9 +680,10 @@ func getMultiColumnIndexForExpressions(
 	indexBuilder := sql.NewIndexBuilder(ctx, index)
 
 	var expressions []sql.Expression
-	var matchedExprs joinColExprs
+	var allMatches joinColExprs
 	for _, selectedExpr := range normalizedExpressions {
-		matchedExprs = findColumns(exprs, selectedExpr.String())
+		matchedExprs := findColumns(exprs, selectedExpr.String())
+		allMatches = append(allMatches, matchedExprs...)
 
 		for _, expr := range matchedExprs {
 			switch expr.comparison.(type) {
@@ -781,7 +782,7 @@ func getMultiColumnIndexForExpressions(
 		return nil, nil
 	}
 	var lookupExpr sql.Expression
-	for _, m := range matchedExprs {
+	for _, m := range allMatches {
 		if lookupExpr == nil {
 			lookupExpr = m.comparison
 		} else {
