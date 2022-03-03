@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -119,6 +120,21 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	for _, script := range InfoSchemaScripts {
 		TestScript(t, harness, script)
 	}
+
+	p := sqle.NewProcessList()
+	sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
+
+	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	require.NoError(t, err)
+
+	TestQueryWithContext(t, ctx, engine,
+		"SELECT * FROM information_schema.processlist",
+		[]sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}},
+		nil,
+		nil,
+	)
+	require.NoError(t, err)
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
@@ -1127,6 +1143,95 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 						TestQueryWithContext(t, ctx, engine, assertion.Query, assertion.Expected, nil, nil)
 					})
 				}
+			}
+		})
+	}
+
+	// These tests are functionally identical to UserPrivTests, hence their inclusion in the same testing function.
+	// They're just written a little differently to ease the developer's ability to produce as many as possible.
+	for _, script := range QuickPrivTests {
+		t.Run(strings.Join(script.Queries, "\n > "), func(t *testing.T) {
+			provider := harness.NewDatabaseProvider(
+				harness.NewDatabase("mydb"),
+				harness.NewDatabase("otherdb"),
+				information_schema.NewInformationSchemaDatabase(),
+			)
+			engine := sqle.New(analyzer.NewDefault(provider), new(sqle.Config))
+			defer engine.Close()
+
+			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+			rootCtx := harness.NewContextWithClient(sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			rootCtx.SetCurrentDatabase("mydb")
+			for _, setupQuery := range []string{
+				"CREATE USER tester@localhost;",
+				"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"CREATE TABLE otherdb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"CREATE TABLE otherdb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"INSERT INTO mydb.test VALUES (0, 0), (1, 1);",
+				"INSERT INTO mydb.test2 VALUES (0, 1), (1, 2);",
+				"INSERT INTO otherdb.test VALUES (1, 1), (2, 2);",
+				"INSERT INTO otherdb.test2 VALUES (1, 1), (2, 2);",
+			} {
+				RunQueryWithContext(t, engine, rootCtx, setupQuery)
+			}
+
+			for i := 0; i < len(script.Queries)-1; i++ {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(script.Queries[i]) {
+						t.Skipf("Skipping query %s", script.Queries[i])
+					}
+				}
+				RunQueryWithContext(t, engine, rootCtx, script.Queries[i])
+			}
+			lastQuery := script.Queries[len(script.Queries)-1]
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(lastQuery) {
+					t.Skipf("Skipping query %s", lastQuery)
+				}
+			}
+			ctx := harness.NewContextWithClient(sql.Client{
+				User:    "tester",
+				Address: "localhost",
+			})
+			ctx.SetCurrentDatabase(rootCtx.GetCurrentDatabase())
+			if script.ExpectedErr != nil {
+				t.Run(lastQuery, func(t *testing.T) {
+					AssertErrWithCtx(t, engine, ctx, lastQuery, script.ExpectedErr)
+				})
+			} else if script.ExpectingErr {
+				t.Run(lastQuery, func(t *testing.T) {
+					sch, iter, err := engine.Query(ctx, lastQuery)
+					if err == nil {
+						_, err = sql.RowIterToRows(ctx, sch, iter)
+					}
+					require.Error(t, err)
+					for _, errKind := range []*errors.Kind{
+						sql.ErrPrivilegeCheckFailed,
+						sql.ErrDatabaseAccessDeniedForUser,
+						sql.ErrTableAccessDeniedForUser,
+					} {
+						if errKind.Is(err) {
+							return
+						}
+					}
+					t.Fatalf("Not a standard privilege-check error: %s", err.Error())
+				})
+			} else {
+				t.Run(lastQuery, func(t *testing.T) {
+					sch, iter, err := engine.Query(ctx, lastQuery)
+					require.NoError(t, err)
+					rows, err := sql.RowIterToRows(ctx, sch, iter)
+					require.NoError(t, err)
+					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
+					// nil in script.Expected as matching "any" non-error result.
+					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
+						checkResults(t, require.New(t), script.Expected, nil, sch, rows, lastQuery)
+					}
+				})
 			}
 		})
 	}

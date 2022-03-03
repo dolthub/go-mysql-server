@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -74,6 +75,8 @@ const (
 	PartitionsTableName = "partitions"
 	// InnoDBTempTableName is the name of the INNODB_TEMP_TABLE_INFO table
 	InnoDBTempTableName = "innodb_temp_table_info"
+	// ProcessListTableName is the name of PROCESSLIST table
+	ProcessListTableName = "processlist"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -444,6 +447,17 @@ var innoDBTempTableSchema = Schema{
 	{Name: "space", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
 }
 
+var processListSchema = Schema{
+	{Name: "id", Type: Int64, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "user", Type: LongText, Default: nil, Nullable: true, Source: ProcessListTableName},
+	{Name: "host", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "db", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "command", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "time", Type: Int64, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "state", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "info", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+}
+
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases(ctx) {
@@ -622,6 +636,113 @@ func charsetRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			uint64(c.MaxLength()),
 		})
 	}
+	return RowsToRowIter(rows...), nil
+}
+
+func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	dbs := c.AllDatabases(ctx)
+
+	for _, db := range dbs {
+		tableNames, tErr := db.GetTableNames(ctx)
+		if tErr != nil {
+			return nil, tErr
+		}
+
+		for _, tableName := range tableNames {
+			tbl, _, err := c.Table(ctx, db.Name(), tableName)
+			if err != nil {
+				return nil, err
+			}
+
+			indexTable, ok := tbl.(IndexedTable)
+			if ok {
+				indexes, iErr := indexTable.GetIndexes(ctx)
+				if iErr != nil {
+					return nil, iErr
+				}
+
+				for _, index := range indexes {
+					var (
+						nonUnique    int
+						indexComment string
+						indexName    string
+						comment      = ""
+						isVisible    string
+					)
+					indexName = index.ID()
+					if index.IsUnique() {
+						nonUnique = 1
+					} else {
+						nonUnique = 0
+					}
+					indexType := index.IndexType()
+					indexComment = index.Comment()
+					// setting `VISIBLE` is not supported, so defaulting it to "YES"
+					isVisible = "YES"
+
+					// Create a Row for each column this index refers too.
+					i := 0
+					for _, expr := range index.Expressions() {
+						col := plan.GetColumnFromIndexExpr(expr, tbl)
+						if col != nil {
+							i += 1
+							var (
+								collation string
+								nullable  string
+
+								cardinality uint64
+							)
+
+							seqInIndex := i
+							colName := strings.Replace(col.Name, "`", "", -1) // get rid of backticks
+
+							// collation is "A" for ASC ; "D" for DESC ; "NULL" for not sorted
+							collation = "A"
+
+							// TODO : cardinality should be an estimate of the number of unique values in the index.
+							// it is currently set to total number of rows in the table
+							if st, ok := tbl.(StatisticsTable); ok {
+								cardinality, err = st.NumRows(ctx)
+								if err != nil {
+									return nil, err
+								}
+							}
+
+							// if nullable, 'YES'; if not, ''
+							if col.Nullable {
+								nullable = "YES"
+							} else {
+								nullable = ""
+							}
+
+							rows = append(rows, Row{
+								"def",        // table_catalog
+								db.Name(),    // table_schema
+								tbl.Name(),   // table_name
+								nonUnique,    // non_unique		NOT NULL
+								db.Name(),    // index_schema
+								indexName,    // index_name
+								seqInIndex,   // seq_in_index	NOT NULL
+								colName,      // column_name
+								collation,    // collation
+								cardinality,  // cardinality
+								nil,          // sub_part
+								nil,          // packed
+								nullable,     // is_nullable	NOT NULL
+								indexType,    // index_type		NOT NULL
+								comment,      // comment		NOT NULL
+								indexComment, // index_comment	NOT NULL
+								isVisible,    // is_visible		NOT NULL
+								nil,          // expression
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return RowsToRowIter(rows...), nil
 }
 
@@ -947,6 +1068,39 @@ func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
+func processListIter(ctx *Context, c Catalog) (RowIter, error) {
+	processes := ctx.ProcessList.Processes()
+	var rows = make([]Row, len(processes))
+
+	db := ctx.GetCurrentDatabase()
+	if db == "" {
+		db = "NULL"
+	}
+
+	for i, proc := range processes {
+		var status []string
+		for name, progress := range proc.Progress {
+			status = append(status, fmt.Sprintf("%s(%s)", name, progress))
+		}
+		if len(status) == 0 {
+			status = []string{"running"}
+		}
+		sort.Strings(status)
+		rows[i] = Row{
+			int64(proc.Connection),       // id
+			proc.User,                    // user
+			ctx.Session.Client().Address, // host
+			db,                           // db
+			"Query",                      // command
+			int64(proc.Seconds()),        // time
+			strings.Join(status, ", "),   // state
+			proc.Query,                   // info
+		}
+	}
+
+	return RowsToRowIter(rows...), nil
+}
+
 func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
@@ -992,7 +1146,7 @@ func NewInformationSchemaDatabase() Database {
 			StatisticsTableName: &informationSchemaTable{
 				name:    StatisticsTableName,
 				schema:  statisticsSchema,
-				rowIter: emptyRowIter,
+				rowIter: statisticsRowIter,
 			},
 			TableConstraintsTableName: &informationSchemaTable{
 				name:    TableConstraintsTableName,
@@ -1053,6 +1207,11 @@ func NewInformationSchemaDatabase() Database {
 				name:    InnoDBTempTableName,
 				schema:  innoDBTempTableSchema,
 				rowIter: innoDBTempTableIter,
+			},
+			ProcessListTableName: &informationSchemaTable{
+				name:    ProcessListTableName,
+				schema:  processListSchema,
+				rowIter: processListIter,
 			},
 		},
 	}
