@@ -261,6 +261,7 @@ func TestWriteQueryPlans(t *testing.T) {
 
 	harness := enginetest.NewDefaultMemoryHarness()
 	engine := enginetest.NewEngine(t, harness)
+	enginetest.CreateIndexes(t, harness, engine)
 
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {
