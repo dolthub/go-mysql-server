@@ -323,9 +323,9 @@ var UserPrivTests = []UserPrivilegeTest{
 			//	ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			//},
 			{
-				User:     "tester",
-				Host:     "localhost",
-				Query:    "FLUSH PRIVILEGES;",
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "FLUSH PRIVILEGES;",
 				ExpectedErr: sql.ErrPrivilegeCheckFailed,
 			},
 			{

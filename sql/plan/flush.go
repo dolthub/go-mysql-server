@@ -16,16 +16,18 @@ package plan
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // Flush handles all flush statements. https://dev.mysql.com/doc/refman/8.0/en/flush.html
 type Flush struct {
-	option *sqlparser.FlushOption
+	option    *sqlparser.FlushOption
 	flushType string
-	gt grant_tables.GrantTables
+	gt        grant_tables.GrantTables
 }
 
 var _ sql.Node = (*Flush)(nil)
@@ -33,7 +35,7 @@ var _ sql.Node = (*Flush)(nil)
 // NewFlush creates a new Flush node.
 func NewFlush(opt *sqlparser.FlushOption, ft string) *Flush {
 	return &Flush{
-		option: opt,
+		option:    opt,
 		flushType: ft,
 	}
 }
