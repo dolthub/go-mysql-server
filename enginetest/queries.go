@@ -1779,6 +1779,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    "SELECT * FROM one_pk where pk in (1) and c1 = 10",
+		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
+	},
+	{
+		Query:    "SELECT * FROM one_pk where pk in (1)",
+		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
+	},
+	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6))",
 		Expected: []sql.Row{{1}},
 	},
