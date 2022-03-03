@@ -258,7 +258,6 @@ func TestIndexQueryPlans(t *testing.T) {
 // query plan results. Handy when you've made a large change to the analyzer or node formatting, and you want to examine
 // how query plans have changed without a lot of manual copying and pasting.
 func TestWriteQueryPlans(t *testing.T) {
-	t.Skip()
 
 	harness := enginetest.NewDefaultMemoryHarness()
 	engine := enginetest.NewEngine(t, harness)
@@ -275,6 +274,68 @@ func TestWriteQueryPlans(t *testing.T) {
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var PlanTests = []QueryPlanTest{\n")
 	for _, tt := range enginetest.PlanTests {
+		_, _ = w.WriteString("\t{\n")
+		ctx := enginetest.NewContextWithEngine(harness, engine)
+		parsed, err := parse.Parse(ctx, tt.Query)
+		require.NoError(t, err)
+
+		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		planString := extractQueryNode(node).String()
+
+		if strings.Contains(tt.Query, "`") {
+			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
+		} else {
+			_, _ = w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
+		}
+		_, _ = w.WriteString("\n")
+
+		_, _ = w.WriteString(`ExpectedPlan: `)
+		for i, line := range strings.Split(planString, "\n") {
+			if i > 0 {
+				_, _ = w.WriteString(" + \n")
+			}
+			if len(line) > 0 {
+				_, _ = w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
+			} else {
+				// final line with comma
+				_, _ = w.WriteString("\"\",\n")
+			}
+		}
+		_, _ = w.WriteString("\t},\n")
+	}
+	_, _ = w.WriteString("}")
+
+	_ = w.Flush()
+
+	t.Logf("Query plans in %s", outputPath)
+}
+
+func TestWriteIndexQueryPlans(t *testing.T) {
+
+	harness := enginetest.NewDefaultMemoryHarness()
+	engine := enginetest.NewEngine(t, harness)
+
+	enginetest.CreateIndexes(t, harness, engine)
+	for i, script := range enginetest.ComplexIndexQueries {
+		for _, statement := range script.SetUpScript {
+			statement = strings.Replace(statement, "test", fmt.Sprintf("t%d", i), -1)
+			enginetest.RunQuery(t, engine, harness, statement)
+		}
+	}
+
+	tmp, err := ioutil.TempDir("", "*")
+	if err != nil {
+		return
+	}
+
+	outputPath := filepath.Join(tmp, "indexQueryPlans.txt")
+	f, err := os.Create(outputPath)
+	require.NoError(t, err)
+
+	w := bufio.NewWriter(f)
+	_, _ = w.WriteString("var IndexPlanTests = []QueryPlanTest{\n")
+	for _, tt := range enginetest.IndexPlanTests {
 		_, _ = w.WriteString("\t{\n")
 		ctx := enginetest.NewContextWithEngine(harness, engine)
 		parsed, err := parse.Parse(ctx, tt.Query)
