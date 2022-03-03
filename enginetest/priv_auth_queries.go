@@ -913,6 +913,54 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "Basic usage of flush privileges",
+		SetUpScript: []string{
+			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
+			"INSERT INTO mydb.test VALUES (1);",
+			"CREATE USER tester@localhost;",
+			"GRANT SELECT ON mydb.* TO test_role;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test;/*1*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "SELECT * FROM mydb.test2;/*1*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "GRANT SELECT ON *.* TO tester@localhost;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			// TODO: Any grant table modification persist immediately for now. MySql requires a server restart in order to persist grant table changes
+			//{
+			//	User:     "tester",
+			//	Host:     "localhost",
+			//	Query:    "SELECT * FROM mydb.test;/*2*/",
+			//	ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			//},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "FLUSH PRIVILEGES;",
+				ExpectedErr: sql.ErrRevokeUserDoesNotExist,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "FLUSH PRIVILEGES;",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+		},
+	},
 }
 
 // ServerAuthTests test the server authentication system. These tests always have the root account available, and the

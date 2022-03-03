@@ -252,6 +252,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			convertAccountName(n.To...),
 			n.WithGrantOption,
 		), nil
+	case *sqlparser.Flush:
+		return plan.NewFlush(n.Option, n.Type), nil
 	case *sqlparser.RevokePrivilege:
 		return plan.NewRevoke(
 			convertPrivilege(n.Privileges...),
