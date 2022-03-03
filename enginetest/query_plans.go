@@ -507,6 +507,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where upper(s) IN ('FIRST ROW', 'SECOND ROW')`,
 		ExpectedPlan: "Filter(UPPER(mytable.s) HASH IN (\"FIRST ROW\", \"SECOND ROW\"))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -514,6 +515,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where cast(i as CHAR) IN ('a', 'b')`,
 		ExpectedPlan: "Filter(convert(mytable.i, char) HASH IN (\"a\", \"b\"))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -521,6 +523,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where cast(i as CHAR) IN ('1', '2')`,
 		ExpectedPlan: "Filter(convert(mytable.i, char) HASH IN (\"1\", \"2\"))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -528,6 +531,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where (i > 2) IN (true)`,
 		ExpectedPlan: "Filter((mytable.i > 2) HASH IN (true))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -535,6 +539,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where (i + 6) IN (7, 8)`,
 		ExpectedPlan: "Filter((mytable.i + 6) HASH IN (7, 8))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -542,6 +547,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where (i + 40) IN (7, 8)`,
 		ExpectedPlan: "Filter((mytable.i + 40) HASH IN (7, 8))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -549,6 +555,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where (i = 1 | false) IN (true)`,
 		ExpectedPlan: "Filter((mytable.i = 1) HASH IN (true))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -556,6 +563,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: indexed access
 		Query: `SELECT * from mytable where (i = 1 & false) IN (true)`,
 		ExpectedPlan: "Filter((mytable.i = 0) HASH IN (true))\n" +
 			" └─ Projected table access on [i s]\n" +
@@ -1893,6 +1901,7 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		// TODO: In theory it is fine to use the index here, but we currently do not.
 		Query: `SELECT ROW_NUMBER() OVER (ORDER BY s2 ASC) idx, i2, s2 FROM othertable WHERE i2 < 2 OR i2 > 2 ORDER BY i2 ASC`,
 		ExpectedPlan: "Sort(othertable.i2 ASC)\n" +
 			" └─ Project(row_number() over ( order by [othertable.s2, idx=0, type=TEXT, nullable=false] ASC) as idx, othertable.i2, othertable.s2)\n" +
