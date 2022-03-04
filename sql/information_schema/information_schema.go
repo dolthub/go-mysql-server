@@ -93,6 +93,14 @@ type informationSchemaTable struct {
 	rowIter func(*Context, Catalog) (RowIter, error)
 }
 
+type routineTable struct {
+	name    string
+	schema  Schema
+	catalog Catalog
+	procedures []*plan.Procedure
+	rowIter func(*Context, Catalog, []*plan.Procedure) (RowIter, error)
+}
+
 type informationSchemaPartition struct {
 	key []byte
 }
@@ -105,6 +113,7 @@ type informationSchemaPartitionIter struct {
 var (
 	_ Database      = (*informationSchemaDatabase)(nil)
 	_ Table         = (*informationSchemaTable)(nil)
+	_ Table		    = (*routineTable)(nil)
 	_ Partition     = (*informationSchemaPartition)(nil)
 	_ PartitionIter = (*informationSchemaPartitionIter)(nil)
 )
@@ -1173,10 +1182,10 @@ func NewInformationSchemaDatabase() Database {
 				schema:  eventsSchema,
 				rowIter: emptyRowIter,
 			},
-			RoutinesTableName: &informationSchemaTable{
+			RoutinesTableName: &routineTable{
 				name:    RoutinesTableName,
 				schema:  routinesSchema,
-				rowIter: emptyRowIter,
+				rowIter: routinesRowIter,
 			},
 			ViewsTableName: &informationSchemaTable{
 				name:    ViewsTableName,
@@ -1242,6 +1251,105 @@ func viewRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 			})
 		}
 	}
+
+	return RowsToRowIter(rows...), nil
+}
+
+func routinesRowIter(ctx *Context, c Catalog, p []*plan.Procedure) (RowIter, error) {
+	var rows []Row
+	var (
+		securityType = "DEFINER"
+		isDeterministic = "" // YES or NO
+		sqlMode = "SQL" // SQL, NO SQL, READS SQL DATA, or MODIFIES SQL DATA.
+	)
+
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+	if err != nil {
+		return nil, err
+	}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
+	}
+	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, procedure := range p {
+		if procedure.SecurityContext == plan.ProcedureSecurityContext_Invoker {
+			securityType = "INVOKER"
+		}
+		rows = append(rows, Row{
+			procedure.Name,          	// specific_name NOT NULL
+			"def",                   	// routine_catalog
+			"sys",                      // routine_schema
+			procedure.Name,             // routine_name NOT NULL
+			"PROCEDURE", 				// routine_type NOT NULL
+			"",    						// data_type
+			nil,               			// character_maximum_length
+			nil,               			// character_octet_length
+			nil,               			// numeric_precision
+			nil,               			// numeric_scale
+			nil,               			// datetime_precision
+			nil,                      	// character_set_name
+			nil,                      	// collation_name
+			"",                      	// dtd_identifier
+			"SQL",                   	// routine_body NOT NULL
+			procedure.Body.String(),	// routine_definition
+			nil,                     	// external_name
+			"SQL",                   	// external_language NOT NULL
+			"SQL",                   	// parameter_style NOT NULL
+			isDeterministic,            // is_deterministic NOT NULL
+			"",                      	// sql_data_access NOT NULL
+			nil,                     	// sql_path
+			securityType,				// security_type NOT NULL
+			procedure.CreatedAt.UTC(),	// created NOT NULL
+			procedure.ModifiedAt.UTC(),	// last_altered NOT NULL
+			sqlMode,                    // sql_mode NOT NULL
+			procedure.Comment,          // routine_comment NOT NULL
+			procedure.Definer,          // definer NOT NULL
+			characterSetClient, 	 	// character_set_client NOT NULL
+			collationConnection,     	// collation_connection NOT NULL
+			collationServer,         	// database_collation NOT NULL
+		})
+	}
+
+	//for _, function := range functions {
+	//		rows = append(rows, Row{
+	//		"",          // specific_name NOT NULL
+	//		"def",                   // routine_catalog
+	//		"",                      // routine_schema
+	//		"",              // routine_name NOT NULL
+	//		"FUNCTION OR PROCEDURE", // routine_type NOT NULL
+	//		"data type OR empty",    // data_type  OR "" for procedure DATA_TYPE OR DTD_IDENTIFIER
+	//		int64(64),               // character_maximum_length OR NULL for procedure
+	//		int64(64),               // character_octet_length OR NULL for procedure
+	//		int64(64),               // numeric_precision OR NULL for procedure
+	//		int64(64),               // numeric_scale OR NULL for procedure
+	//		int64(64),               // datetime_precision OR NULL for procedure
+	//		"",                      // character_set_name OR NULL for procedure
+	//		"",                      // collation_name OR NULL for procedure
+	//		"",                      // dtd_identifier OR "" for procedure DATA_TYPE OR DTD_IDENTIFIER
+	//		"SQL",                   // routine_body NOT NULL
+	//		"",                      // routine_definition - The text of the SQL statement executed by the routine.
+	//		nil,                     // external_name
+	//		"SQL",                   // external_language NOT NULL
+	//		"SQL",                   // parameter_style NOT NULL
+	//		"",                      // is_deterministic NOT NULL - YES or NO
+	//		"",                      // sql_data_access NOT NULL - CONTAINS SQL, NO SQL, READS SQL DATA, or MODIFIES SQL DATA.
+	//		nil,                     // sql_path
+	//		"",                      // security_type NOT NULL - DEFINER or INVOKER
+	//		int64(64),               // created NOT NULL Timestamp
+	//		int64(64),               // last_altered NOT NULL Timestamp
+	//		"",                      // sql_mode NOT NULL
+	//		"",                      // routine_comment NOT NULL
+	//		"",                      // definer NOT NULL
+	//		characterSetClient, 	 // character_set_client NOT NULL
+	//		collationConnection,     // collation_connection NOT NULL
+	//		collationServer,         // database_collation NOT NULL
+	//	})
+	//}
 
 	return RowsToRowIter(rows...), nil
 }
@@ -1353,6 +1461,49 @@ func (pit *informationSchemaPartitionIter) Next(ctx *Context) (Partition, error)
 func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	pit.pos = 0
 	return nil
+}
+
+func (t *routineTable) AssignCatalog(cat Catalog) Table {
+	t.catalog = cat
+	return t
+}
+
+func (r *routineTable) AssignRoutines(p []*plan.Procedure) Table {
+	// TODO: should also assign functions
+	r.procedures = p
+	return r
+}
+
+// Name implements the sql.Table interface.
+func (r *routineTable) Name() string {
+	return r.name
+}
+
+// Schema implements the sql.Table interface.
+func (r *routineTable) Schema() Schema {
+	return r.schema
+}
+
+func (r *routineTable) String() string {
+	return printTable(r.Name(), r.Schema())
+}
+
+func (r *routineTable) Partitions(context *Context) (PartitionIter, error) {
+	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(r.Name())}}, nil
+}
+
+func (r *routineTable) PartitionRows(context *Context, partition Partition) (RowIter, error) {
+	if !bytes.Equal(partition.Key(), partitionKey(r.Name())) {
+		return nil, ErrPartitionNotFound.New(partition.Key())
+	}
+	if r.rowIter == nil {
+		return RowsToRowIter(), nil
+	}
+	if r.catalog == nil {
+		return nil, fmt.Errorf("nil catalog for info schema table %s", r.name)
+	}
+
+	return r.rowIter(context, r.catalog, r.procedures)
 }
 
 func printTable(name string, tableSchema Schema) string {

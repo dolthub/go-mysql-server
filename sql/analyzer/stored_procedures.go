@@ -39,6 +39,12 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		} else if _, ok := n.(*plan.ShowProcedureStatus); ok {
 			referencesProcedures = true
 			return false
+		} else if rt, ok := n.(*plan.ResolvedTable); ok {
+			_, rOk := rt.Table.(RoutineTable)
+			if rOk {
+				referencesProcedures = true
+				return false
+			}
 		}
 		return true
 	})

@@ -7686,6 +7686,35 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "information_schema.routines",
+		SetUpScript: []string{
+			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
+			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
+			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT specific_name, routine_catalog, routine_schema, routine_name, routine_type, " +
+					"data_type, character_maximum_length, character_octet_length, numeric_precision, numeric_scale, " +
+					"datetime_precision, character_set_name, collation_name, dtd_identifier, routine_body, " +
+					"routine_definition, external_name, external_language, parameter_style, is_deterministic, " +
+					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
+					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
+				Expected: []sql.Row{
+					{"p1", "def", "sys", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						"Project(6)\n └─ Table(dual)\n", nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hi", "",
+						"utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"p2", "def", "sys", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						"Project(7)\n └─ Table(dual)\n", nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "user",
+						"utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"p21", "def", "sys", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						"Project(8)\n └─ Table(dual)\n", nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "",
+						"utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var ExplodeQueries = []QueryTest{
