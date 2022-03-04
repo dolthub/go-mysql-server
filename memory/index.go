@@ -37,6 +37,7 @@ type Index struct {
 }
 
 var _ sql.Index = (*Index)(nil)
+var _ sql.FilteredIndex = (*Index)(nil)
 
 func (idx *Index) Database() string                    { return idx.DB }
 func (idx *Index) Driver() string                      { return idx.DriverName }
@@ -182,6 +183,10 @@ func (idx *Index) ID() string {
 }
 
 func (idx *Index) Table() string { return idx.TableName }
+
+func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
+	return filters
+}
 
 // ExpressionsIndex is an index made out of one or more expressions (usually field expressions), linked to a Table.
 type ExpressionsIndex interface {

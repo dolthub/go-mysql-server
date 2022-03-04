@@ -115,20 +115,16 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `
-select * from mytable`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
+		Query:    `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
+		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	enginetest.CreateIndexes(t, harness, engine)
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil, test.Bindings)
 }

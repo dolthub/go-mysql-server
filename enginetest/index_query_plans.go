@@ -74,9 +74,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1=86 AND v2>41) OR (v1<>6 AND v2>16));`,
-		ExpectedPlan: "Filter(((t0.v1 = 86) AND (t0.v2 > 41)) OR ((NOT((t0.v1 = 6))) AND (t0.v2 > 16)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -94,9 +93,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1<>45 AND v2>37) OR (v1<98 AND v2<=35));`,
-		ExpectedPlan: "Filter(((NOT((t0.v1 = 45))) AND (t0.v2 > 37)) OR ((t0.v1 < 98) AND (t0.v2 <= 35)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -107,9 +105,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE (((v1<=98) OR (v1<85 AND v2>60)) OR (v1<>53 AND v2 BETWEEN 82 AND 89));`,
-		ExpectedPlan: "Filter(((t0.v1 <= 98) OR ((t0.v1 < 85) AND (t0.v2 > 60))) OR ((NOT((t0.v1 = 53))) AND (t0.v2 BETWEEN 82 AND 89)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -145,9 +142,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((((v1<>45 AND v2=70) OR (v1 BETWEEN 40 AND 96 AND v2 BETWEEN 48 AND 96)) OR (v1<>87 AND v2<31)) OR (v1<>62 AND v2=51)) AND (v1>=47 AND v2<29);`,
-		ExpectedPlan: "Filter(((((NOT((t0.v1 = 45))) AND (t0.v2 = 70)) OR ((t0.v1 BETWEEN 40 AND 96) AND (t0.v2 BETWEEN 48 AND 96))) OR ((NOT((t0.v1 = 87))) AND (t0.v2 < 31))) OR ((NOT((t0.v1 = 62))) AND (t0.v2 = 51)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -190,9 +186,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE (((v1<>23 AND v2>64) OR (v1>73 AND v2<=66)) OR (v1 BETWEEN 39 AND 69 AND v2>84));`,
-		ExpectedPlan: "Filter((((NOT((t0.v1 = 23))) AND (t0.v2 > 64)) OR ((t0.v1 > 73) AND (t0.v2 <= 66))) OR ((t0.v1 BETWEEN 39 AND 69) AND (t0.v2 > 84)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -203,9 +198,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1<>44 AND v2>12) OR (v1<=5 AND v2>27));`,
-		ExpectedPlan: "Filter(((NOT((t0.v1 = 44))) AND (t0.v2 > 12)) OR ((t0.v1 <= 5) AND (t0.v2 > 27)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -280,9 +274,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE (((v1<>18 AND v2<>8) OR (v1>=10 AND v2>3)) OR (v1=53));`,
-		ExpectedPlan: "Filter((((NOT((t0.v1 = 18))) AND (NOT((t0.v2 = 8)))) OR ((t0.v1 >= 10) AND (t0.v2 > 3))) OR (t0.v1 = 53))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -299,9 +292,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1<>57 AND v2 BETWEEN 2 AND 93) OR (v1=52));`,
-		ExpectedPlan: "Filter(((NOT((t0.v1 = 57))) AND (t0.v2 BETWEEN 2 AND 93)) OR (t0.v1 = 52))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -319,9 +311,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1<>52 AND v2<90) OR (v1 BETWEEN 27 AND 77 AND v2 BETWEEN 49 AND 83));`,
-		ExpectedPlan: "Filter(((NOT((t0.v1 = 52))) AND (t0.v2 < 90)) OR ((t0.v1 BETWEEN 27 AND 77) AND (t0.v2 BETWEEN 49 AND 83)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -344,9 +335,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1<>30 AND v2 BETWEEN 20 AND 41) OR (v1>=69 AND v2=51));`,
-		ExpectedPlan: "Filter(((NOT((t0.v1 = 30))) AND (t0.v2 BETWEEN 20 AND 41)) OR ((t0.v1 >= 69) AND (t0.v2 = 51)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -358,9 +348,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE (((v1<20 AND v2<=46) OR (v1<>4 AND v2=26)) OR (v1>36 AND v2<>13));`,
-		ExpectedPlan: "Filter((((t0.v1 < 20) AND (t0.v2 <= 46)) OR ((NOT((t0.v1 = 4))) AND (t0.v2 = 26))) OR ((t0.v1 > 36) AND (NOT((t0.v2 = 13)))))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -468,9 +457,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE (((v1 BETWEEN 48 AND 86 AND v2>=29) OR (v1<>82 AND v2<=93)) OR (v1 BETWEEN 79 AND 87 AND v2 BETWEEN 13 AND 69));`,
-		ExpectedPlan: "Filter((((t0.v1 BETWEEN 48 AND 86) AND (t0.v2 >= 29)) OR ((NOT((t0.v1 = 82))) AND (t0.v2 <= 93))) OR ((t0.v1 BETWEEN 79 AND 87) AND (t0.v2 BETWEEN 13 AND 69)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -507,16 +495,14 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE (((v1 BETWEEN 5 AND 19) OR (v1<>50 AND v2>=51)) OR (v1>55));`,
-		ExpectedPlan: "Filter(((t0.v1 BETWEEN 5 AND 19) OR ((NOT((t0.v1 = 50))) AND (t0.v2 >= 51))) OR (t0.v1 > 55))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE (((v1 BETWEEN 16 AND 65) OR (v1<>18 AND v2>=81)) OR (v1 BETWEEN 6 AND 48));`,
-		ExpectedPlan: "Filter(((t0.v1 BETWEEN 16 AND 65) OR ((NOT((t0.v1 = 18))) AND (t0.v2 >= 81))) OR (t0.v1 BETWEEN 6 AND 48))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -553,16 +539,14 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1<>56 AND v2<93) OR (v1<73 AND v2<=70));`,
-		ExpectedPlan: "Filter(((NOT((t0.v1 = 56))) AND (t0.v2 < 93)) OR ((t0.v1 < 73) AND (t0.v2 <= 70)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((((v1>=85) OR (v1=91)) OR (v1<88 AND v2<42)) OR (v1<>42 AND v2<=10));`,
-		ExpectedPlan: "Filter((((t0.v1 >= 85) OR (t0.v1 = 91)) OR ((t0.v1 < 88) AND (t0.v2 < 42))) OR ((NOT((t0.v1 = 42))) AND (t0.v2 <= 10)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -615,9 +599,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t0 WHERE ((v1 BETWEEN 45 AND 74 AND v2<=74) OR (v1<>48 AND v2>58));`,
-		ExpectedPlan: "Filter(((t0.v1 BETWEEN 45 AND 74) AND (t0.v2 <= 74)) OR ((NOT((t0.v1 = 48))) AND (t0.v2 > 58)))\n" +
-			" └─ Projected table access on [pk v1 v2]\n" +
-			"     └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2]\n" +
+			" └─ IndexedTableAccess(t0 on [t0.v1,t0.v2])\n" +
 			"",
 	},
 	{
@@ -678,9 +661,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1<>59 AND v2<=15) OR (v1 BETWEEN 2 AND 51)) OR (v1>15 AND v2 BETWEEN 31 AND 81));`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 59))) AND (t1.v2 <= 15)) OR (t1.v1 BETWEEN 2 AND 51)) OR ((t1.v1 > 15) AND (t1.v2 BETWEEN 31 AND 81)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -861,23 +843,20 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((v1<>29 AND v2>93 AND v3<64) OR (v1<>54 AND v2>35));`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 29))) AND (t1.v2 > 93)) AND (t1.v3 < 64)) OR ((NOT((t1.v1 = 54))) AND (t1.v2 > 35)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((v1<88) OR (v1<>45 AND v2<89)) AND (v1=98 AND v2<=81 AND v3 BETWEEN 34 AND 77);`,
-		ExpectedPlan: "Filter((t1.v1 < 88) OR ((NOT((t1.v1 = 45))) AND (t1.v2 < 89)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((v1>65 AND v2<>86 AND v3<=2) OR (v1<>37 AND v2<=96));`,
-		ExpectedPlan: "Filter((((t1.v1 > 65) AND (NOT((t1.v2 = 86)))) AND (t1.v3 <= 2)) OR ((NOT((t1.v1 = 37))) AND (t1.v2 <= 96)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -947,9 +926,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((v1<>43 AND v2<53 AND v3<=20) OR (v1<7 AND v2<>79));`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 43))) AND (t1.v2 < 53)) AND (t1.v3 <= 20)) OR ((t1.v1 < 7) AND (NOT((t1.v2 = 79)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -980,16 +958,14 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((((v1<>40 AND v2>1) OR (v1>3 AND v2<=42)) OR (v1=99 AND v2>62)) OR (v1<17 AND v2<>75 AND v3=6));`,
-		ExpectedPlan: "Filter(((((NOT((t1.v1 = 40))) AND (t1.v2 > 1)) OR ((t1.v1 > 3) AND (t1.v2 <= 42))) OR ((t1.v1 = 99) AND (t1.v2 > 62))) OR (((t1.v1 < 17) AND (NOT((t1.v2 = 75)))) AND (t1.v3 = 6)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((((v1=39) OR (v1=40 AND v2<>49)) OR (v1<>35 AND v2>4 AND v3>26)) OR (v1=32 AND v2<>55));`,
-		ExpectedPlan: "Filter((((t1.v1 = 39) OR ((t1.v1 = 40) AND (NOT((t1.v2 = 49))))) OR (((NOT((t1.v1 = 35))) AND (t1.v2 > 4)) AND (t1.v3 > 26))) OR ((t1.v1 = 32) AND (NOT((t1.v2 = 55)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1057,9 +1033,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((v1<>26 AND v2 BETWEEN 66 AND 79 AND v3<=94) OR (v1 BETWEEN 16 AND 55));`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 26))) AND (t1.v2 BETWEEN 66 AND 79)) AND (t1.v3 <= 94)) OR (t1.v1 BETWEEN 16 AND 55))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1140,9 +1115,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((((v1<=21 AND v2<>95) OR (v1<>23 AND v2 BETWEEN 15 AND 22)) OR (v1<=53 AND v2>=6)) OR (v1<=13 AND v2<>93 AND v3<15));`,
-		ExpectedPlan: "Filter(((((t1.v1 <= 21) AND (NOT((t1.v2 = 95)))) OR ((NOT((t1.v1 = 23))) AND (t1.v2 BETWEEN 15 AND 22))) OR ((t1.v1 <= 53) AND (t1.v2 >= 6))) OR (((t1.v1 <= 13) AND (NOT((t1.v2 = 93)))) AND (t1.v3 < 15)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1153,9 +1127,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1<27 AND v2<=43) OR (v1<62 AND v2<=99)) OR (v1<>48 AND v2<29 AND v3<>69));`,
-		ExpectedPlan: "Filter((((t1.v1 < 27) AND (t1.v2 <= 43)) OR ((t1.v1 < 62) AND (t1.v2 <= 99))) OR (((NOT((t1.v1 = 48))) AND (t1.v2 < 29)) AND (NOT((t1.v3 = 69)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1209,9 +1182,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1>2) OR (v1<=30)) OR (v1<>35 AND v2 BETWEEN 6 AND 61 AND v3>=16));`,
-		ExpectedPlan: "Filter(((t1.v1 > 2) OR (t1.v1 <= 30)) OR (((NOT((t1.v1 = 35))) AND (t1.v2 BETWEEN 6 AND 61)) AND (t1.v3 >= 16)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1279,9 +1251,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1<>34 AND v2<=62) OR (v1>5 AND v2 BETWEEN 59 AND 98 AND v3<69)) OR (v1>34));`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 34))) AND (t1.v2 <= 62)) OR (((t1.v1 > 5) AND (t1.v2 BETWEEN 59 AND 98)) AND (t1.v3 < 69))) OR (t1.v1 > 34))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1305,9 +1276,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1<>71 AND v2>44) OR (v1<76 AND v2>=10)) OR (v1>=44 AND v2=66));`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 71))) AND (t1.v2 > 44)) OR ((t1.v1 < 76) AND (t1.v2 >= 10))) OR ((t1.v1 >= 44) AND (t1.v2 = 66)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1319,9 +1289,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1>=99 AND v2<66) OR (v1 BETWEEN 1 AND 47)) OR (v1<>2 AND v2<30));`,
-		ExpectedPlan: "Filter((((t1.v1 >= 99) AND (t1.v2 < 66)) OR (t1.v1 BETWEEN 1 AND 47)) OR ((NOT((t1.v1 = 2))) AND (t1.v2 < 30)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1392,9 +1361,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((((v1 BETWEEN 21 AND 53 AND v2=0 AND v3>32) OR (v1=93 AND v2>=94 AND v3<1)) OR (v1<26)) OR (v1<>11 AND v2<>32 AND v3=6)) AND (v1>=45);`,
-		ExpectedPlan: "Filter((((((t1.v1 BETWEEN 21 AND 53) AND (t1.v2 = 0)) AND (t1.v3 > 32)) OR (((t1.v1 = 93) AND (t1.v2 >= 94)) AND (t1.v3 < 1))) OR (t1.v1 < 26)) OR (((NOT((t1.v1 = 11))) AND (NOT((t1.v2 = 32)))) AND (t1.v3 = 6)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1451,9 +1419,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1<>98 AND v2<52) OR (v1 BETWEEN 65 AND 67)) OR (v1 BETWEEN 18 AND 54)) AND (v1>=14 AND v2=27);`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 98))) AND (t1.v2 < 52)) OR (t1.v1 BETWEEN 65 AND 67)) OR (t1.v1 BETWEEN 18 AND 54))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1508,9 +1475,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1>39 AND v2 BETWEEN 53 AND 73 AND v3<=11) OR (v1<=31 AND v2=68 AND v3>=71)) OR (v1<>18 AND v2<=51));`,
-		ExpectedPlan: "Filter(((((t1.v1 > 39) AND (t1.v2 BETWEEN 53 AND 73)) AND (t1.v3 <= 11)) OR (((t1.v1 <= 31) AND (t1.v2 = 68)) AND (t1.v3 >= 71))) OR ((NOT((t1.v1 = 18))) AND (t1.v2 <= 51)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1577,9 +1543,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((v1=40 AND v2<>18) OR (v1<>97 AND v2<>17 AND v3<>48));`,
-		ExpectedPlan: "Filter(((t1.v1 = 40) AND (NOT((t1.v2 = 18)))) OR (((NOT((t1.v1 = 97))) AND (NOT((t1.v2 = 17)))) AND (NOT((t1.v3 = 48)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1686,9 +1651,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((((v1<=90 AND v2<=17) OR (v1=2)) OR (v1<>70 AND v2>=84 AND v3<>42)) OR (v1<11 AND v2<>47 AND v3<55));`,
-		ExpectedPlan: "Filter(((((t1.v1 <= 90) AND (t1.v2 <= 17)) OR (t1.v1 = 2)) OR (((NOT((t1.v1 = 70))) AND (t1.v2 >= 84)) AND (NOT((t1.v3 = 42))))) OR (((t1.v1 < 11) AND (NOT((t1.v2 = 47)))) AND (t1.v3 < 55)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1741,9 +1705,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE ((v1<>15 AND v2>=22 AND v3<=51) OR (v1<>40 AND v2>26 AND v3<95));`,
-		ExpectedPlan: "Filter((((NOT((t1.v1 = 15))) AND (t1.v2 >= 22)) AND (t1.v3 <= 51)) OR (((NOT((t1.v1 = 40))) AND (t1.v2 > 26)) AND (t1.v3 < 95)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1863,9 +1826,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1=47 AND v2=7) OR (v1>=7 AND v2<>87)) OR (v1<>6 AND v2<=84));`,
-		ExpectedPlan: "Filter((((t1.v1 = 47) AND (t1.v2 = 7)) OR ((t1.v1 >= 7) AND (NOT((t1.v2 = 87))))) OR ((NOT((t1.v1 = 6))) AND (t1.v2 <= 84)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1923,9 +1885,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t1 WHERE (((v1>=2 AND v2 BETWEEN 32 AND 59 AND v3 BETWEEN 50 AND 52) OR (v1<26)) OR (v1<>2 AND v2>11)) AND (v1>32 AND v2<=92) AND (v1>45 AND v2<>5 AND v3<>49);`,
-		ExpectedPlan: "Filter(((((t1.v1 >= 2) AND (t1.v2 BETWEEN 32 AND 59)) AND (t1.v3 BETWEEN 50 AND 52)) OR (t1.v1 < 26)) OR ((NOT((t1.v1 = 2))) AND (t1.v2 > 11)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3]\n" +
-			"     └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3]\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v1,t1.v2,t1.v3])\n" +
 			"",
 	},
 	{
@@ -1999,9 +1960,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1<=80 AND v2=72 AND v3>19) OR (v1<>38 AND v2>=86 AND v3=7)) OR (v1<=52 AND v2=25 AND v3 BETWEEN 7 AND 32 AND v4<=31));`,
-		ExpectedPlan: "Filter(((((t2.v1 <= 80) AND (t2.v2 = 72)) AND (t2.v3 > 19)) OR (((NOT((t2.v1 = 38))) AND (t2.v2 >= 86)) AND (t2.v3 = 7))) OR ((((t2.v1 <= 52) AND (t2.v2 = 25)) AND (t2.v3 BETWEEN 7 AND 32)) AND (t2.v4 <= 31)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2045,9 +2005,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<=20 AND v2<=29 AND v3<52 AND v4<>34) OR (v1<>46 AND v2<>98));`,
-		ExpectedPlan: "Filter(((((t2.v1 <= 20) AND (t2.v2 <= 29)) AND (t2.v3 < 52)) AND (NOT((t2.v4 = 34)))) OR ((NOT((t2.v1 = 46))) AND (NOT((t2.v2 = 98)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2177,9 +2136,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1>64) OR (v1<>55 AND v2=85 AND v3<=88));`,
-		ExpectedPlan: "Filter((t2.v1 > 64) OR (((NOT((t2.v1 = 55))) AND (t2.v2 = 85)) AND (t2.v3 <= 88)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2365,9 +2323,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1 BETWEEN 13 AND 40 AND v2>=0) OR (v1<>3 AND v2>47 AND v3<44 AND v4>49)) OR (v1=23));`,
-		ExpectedPlan: "Filter((((t2.v1 BETWEEN 13 AND 40) AND (t2.v2 >= 0)) OR ((((NOT((t2.v1 = 3))) AND (t2.v2 > 47)) AND (t2.v3 < 44)) AND (t2.v4 > 49))) OR (t2.v1 = 23))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2418,9 +2375,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((((v1<>12 AND v2<=6) OR (v1>99 AND v2<>51 AND v3=38)) OR (v1>60)) OR (v1 BETWEEN 69 AND 77 AND v2>=49 AND v3>=43));`,
-		ExpectedPlan: "Filter(((((NOT((t2.v1 = 12))) AND (t2.v2 <= 6)) OR (((t2.v1 > 99) AND (NOT((t2.v2 = 51)))) AND (t2.v3 = 38))) OR (t2.v1 > 60)) OR (((t2.v1 BETWEEN 69 AND 77) AND (t2.v2 >= 49)) AND (t2.v3 >= 43)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2465,9 +2421,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1<>21 AND v2>27 AND v3>=97 AND v4 BETWEEN 25 AND 67) OR (v1>=66 AND v2<=56)) OR (v1=37));`,
-		ExpectedPlan: "Filter((((((NOT((t2.v1 = 21))) AND (t2.v2 > 27)) AND (t2.v3 >= 97)) AND (t2.v4 BETWEEN 25 AND 67)) OR ((t2.v1 >= 66) AND (t2.v2 <= 56))) OR (t2.v1 = 37))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2537,9 +2492,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<2 AND v2<>94) OR (v1<>76 AND v2=27 AND v3<=31 AND v4<38));`,
-		ExpectedPlan: "Filter(((t2.v1 < 2) AND (NOT((t2.v2 = 94)))) OR ((((NOT((t2.v1 = 76))) AND (t2.v2 = 27)) AND (t2.v3 <= 31)) AND (t2.v4 < 38)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2617,7 +2571,7 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((((v1<>12 AND v2 BETWEEN 27 AND 46 AND v3 BETWEEN 19 AND 27 AND v4>=50) OR (v1 BETWEEN 17 AND 88)) OR (v1<=36 AND v2<=37 AND v3<64)) OR (v1<>82 AND v2>84 AND v3>=90)) AND (v1>34 AND v3>4);`,
-		ExpectedPlan: "Filter((((((((NOT((t2.v1 = 12))) AND (t2.v2 BETWEEN 27 AND 46)) AND (t2.v3 BETWEEN 19 AND 27)) AND (t2.v4 >= 50)) OR (t2.v1 BETWEEN 17 AND 88)) OR (((t2.v1 <= 36) AND (t2.v2 <= 37)) AND (t2.v3 < 64))) OR (((NOT((t2.v1 = 82))) AND (t2.v2 > 84)) AND (t2.v3 >= 90))) AND (t2.v3 > 4))\n" +
+		ExpectedPlan: "Filter(t2.v3 > 4)\n" +
 			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
 			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
@@ -2725,9 +2679,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1>=69 AND v2=61 AND v3=87 AND v4 BETWEEN 63 AND 87) OR (v1 BETWEEN 48 AND 62)) OR (v1<>81 AND v2<=67 AND v3<>43));`,
-		ExpectedPlan: "Filter((((((t2.v1 >= 69) AND (t2.v2 = 61)) AND (t2.v3 = 87)) AND (t2.v4 BETWEEN 63 AND 87)) OR (t2.v1 BETWEEN 48 AND 62)) OR (((NOT((t2.v1 = 81))) AND (t2.v2 <= 67)) AND (NOT((t2.v3 = 43)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -2807,16 +2760,14 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<>96 AND v2<=2 AND v3=17 AND v4<79) OR (v1=67 AND v2=30 AND v3=38 AND v4=53));`,
-		ExpectedPlan: "Filter(((((NOT((t2.v1 = 96))) AND (t2.v2 <= 2)) AND (t2.v3 = 17)) AND (t2.v4 < 79)) OR ((((t2.v1 = 67) AND (t2.v2 = 30)) AND (t2.v3 = 38)) AND (t2.v4 = 53)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<>45 AND v2>76) OR (v1=30 AND v2=53));`,
-		ExpectedPlan: "Filter(((NOT((t2.v1 = 45))) AND (t2.v2 > 76)) OR ((t2.v1 = 30) AND (t2.v2 = 53)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3040,16 +2991,14 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1>62 AND v2>0) OR (v1<>80 AND v2>55 AND v3=10 AND v4=91));`,
-		ExpectedPlan: "Filter(((t2.v1 > 62) AND (t2.v2 > 0)) OR ((((NOT((t2.v1 = 80))) AND (t2.v2 > 55)) AND (t2.v3 = 10)) AND (t2.v4 = 91)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<=7 AND v2 BETWEEN 55 AND 81) OR (v1<>56 AND v2<=76 AND v3<>36)) AND (v1<56 AND v2<>69 AND v3=25);`,
-		ExpectedPlan: "Filter(((t2.v1 <= 7) AND (t2.v2 BETWEEN 55 AND 81)) OR (((NOT((t2.v1 = 56))) AND (t2.v2 <= 76)) AND (NOT((t2.v3 = 36)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3132,9 +3081,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((((v1>6 AND v2>61 AND v3=0 AND v4>=76) OR (v1<23)) OR (v1<>46 AND v2=29 AND v3>4)) OR (v1>=59)) OR (v1=87 AND v2<=98 AND v3>=47));`,
-		ExpectedPlan: "Filter((((((((t2.v1 > 6) AND (t2.v2 > 61)) AND (t2.v3 = 0)) AND (t2.v4 >= 76)) OR (t2.v1 < 23)) OR (((NOT((t2.v1 = 46))) AND (t2.v2 = 29)) AND (t2.v3 > 4))) OR (t2.v1 >= 59)) OR (((t2.v1 = 87) AND (t2.v2 <= 98)) AND (t2.v3 >= 47)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3211,9 +3159,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<>10 AND v2=20 AND v3<=21 AND v4<>88) OR (v1<28 AND v2 BETWEEN 38 AND 59 AND v3<>98 AND v4>=26));`,
-		ExpectedPlan: "Filter(((((NOT((t2.v1 = 10))) AND (t2.v2 = 20)) AND (t2.v3 <= 21)) AND (NOT((t2.v4 = 88)))) OR ((((t2.v1 < 28) AND (t2.v2 BETWEEN 38 AND 59)) AND (NOT((t2.v3 = 98)))) AND (t2.v4 >= 26)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3238,9 +3185,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<=13 AND v2<=52 AND v3=28 AND v4>88) OR (v1<>5 AND v2<=42));`,
-		ExpectedPlan: "Filter(((((t2.v1 <= 13) AND (t2.v2 <= 52)) AND (t2.v3 = 28)) AND (t2.v4 > 88)) OR ((NOT((t2.v1 = 5))) AND (t2.v2 <= 42)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3258,9 +3204,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<11) OR (v1<>9 AND v2 BETWEEN 51 AND 62 AND v3=98));`,
-		ExpectedPlan: "Filter((t2.v1 < 11) OR (((NOT((t2.v1 = 9))) AND (t2.v2 BETWEEN 51 AND 62)) AND (t2.v3 = 98)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3318,9 +3263,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1=55 AND v2>50) OR (v1<>51 AND v2>=37));`,
-		ExpectedPlan: "Filter(((t2.v1 = 55) AND (t2.v2 > 50)) OR ((NOT((t2.v1 = 51))) AND (t2.v2 >= 37)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3518,9 +3462,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1<>54 AND v2>23 AND v3 BETWEEN 28 AND 48 AND v4>=37) OR (v1>93 AND v2>=51 AND v3<9 AND v4<>49)) OR (v1>=71 AND v2<>33));`,
-		ExpectedPlan: "Filter((((((NOT((t2.v1 = 54))) AND (t2.v2 > 23)) AND (t2.v3 BETWEEN 28 AND 48)) AND (t2.v4 >= 37)) OR ((((t2.v1 > 93) AND (t2.v2 >= 51)) AND (t2.v3 < 9)) AND (NOT((t2.v4 = 49))))) OR ((t2.v1 >= 71) AND (NOT((t2.v2 = 33)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3695,9 +3638,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((((v1 BETWEEN 13 AND 36 AND v2>40) OR (v1<>28 AND v2<29)) OR (v1 BETWEEN 36 AND 89 AND v2>=92 AND v3>39 AND v4<16)) OR (v1<=1));`,
-		ExpectedPlan: "Filter(((((t2.v1 BETWEEN 13 AND 36) AND (t2.v2 > 40)) OR ((NOT((t2.v1 = 28))) AND (t2.v2 < 29))) OR ((((t2.v1 BETWEEN 36 AND 89) AND (t2.v2 >= 92)) AND (t2.v3 > 39)) AND (t2.v4 < 16))) OR (t2.v1 <= 1))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3749,9 +3691,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<>45 AND v2<=55 AND v3>=2 AND v4<46) OR (v1>=0 AND v2<>6));`,
-		ExpectedPlan: "Filter(((((NOT((t2.v1 = 45))) AND (t2.v2 <= 55)) AND (t2.v3 >= 2)) AND (t2.v4 < 46)) OR ((t2.v1 >= 0) AND (NOT((t2.v2 = 6)))))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3790,9 +3731,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1 BETWEEN 29 AND 37) OR (v1<>54 AND v2<=65 AND v3<=1 AND v4<>10)) OR (v1<>55 AND v2 BETWEEN 49 AND 56 AND v3>=25 AND v4<=8));`,
-		ExpectedPlan: "Filter(((t2.v1 BETWEEN 29 AND 37) OR ((((NOT((t2.v1 = 54))) AND (t2.v2 <= 65)) AND (t2.v3 <= 1)) AND (NOT((t2.v4 = 10))))) OR ((((NOT((t2.v1 = 55))) AND (t2.v2 BETWEEN 49 AND 56)) AND (t2.v3 >= 25)) AND (t2.v4 <= 8)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -3857,9 +3797,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<87 AND v2 BETWEEN 2 AND 34 AND v3=87 AND v4>=76) OR (v1<>77 AND v2<=44 AND v3>34));`,
-		ExpectedPlan: "Filter(((((t2.v1 < 87) AND (t2.v2 BETWEEN 2 AND 34)) AND (t2.v3 = 87)) AND (t2.v4 >= 76)) OR (((NOT((t2.v1 = 77))) AND (t2.v2 <= 44)) AND (t2.v3 > 34)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4042,9 +3981,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<>10 AND v2<=75 AND v3>=70) OR (v1<89 AND v2<=32));`,
-		ExpectedPlan: "Filter((((NOT((t2.v1 = 10))) AND (t2.v2 <= 75)) AND (t2.v3 >= 70)) OR ((t2.v1 < 89) AND (t2.v2 <= 32)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4095,9 +4033,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1>38 AND v2>98) OR (v1<>29 AND v2=75)) OR (v1>58 AND v2<>49 AND v3 BETWEEN 25 AND 58));`,
-		ExpectedPlan: "Filter((((t2.v1 > 38) AND (t2.v2 > 98)) OR ((NOT((t2.v1 = 29))) AND (t2.v2 = 75))) OR (((t2.v1 > 58) AND (NOT((t2.v2 = 49)))) AND (t2.v3 BETWEEN 25 AND 58)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4134,9 +4071,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<>31 AND v2<=37 AND v3>56 AND v4 BETWEEN 10 AND 31) OR (v1>8)) AND (v1>=27 AND v2<>44);`,
-		ExpectedPlan: "Filter(((((NOT((t2.v1 = 31))) AND (t2.v2 <= 37)) AND (t2.v3 > 56)) AND (t2.v4 BETWEEN 10 AND 31)) OR (t2.v1 > 8))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4200,9 +4136,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((((v1 BETWEEN 25 AND 59 AND v2=1 AND v3<93 AND v4<=16) OR (v1<40 AND v2 BETWEEN 14 AND 37 AND v3>62 AND v4<58)) OR (v1<>17 AND v2<>36)) OR (v1 BETWEEN 7 AND 99 AND v2<>6 AND v3=43 AND v4<89));`,
-		ExpectedPlan: "Filter(((((((t2.v1 BETWEEN 25 AND 59) AND (t2.v2 = 1)) AND (t2.v3 < 93)) AND (t2.v4 <= 16)) OR ((((t2.v1 < 40) AND (t2.v2 BETWEEN 14 AND 37)) AND (t2.v3 > 62)) AND (t2.v4 < 58))) OR ((NOT((t2.v1 = 17))) AND (NOT((t2.v2 = 36))))) OR ((((t2.v1 BETWEEN 7 AND 99) AND (NOT((t2.v2 = 6)))) AND (t2.v3 = 43)) AND (t2.v4 < 89)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4437,16 +4372,14 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1=24 AND v2<>33 AND v3=77 AND v4<>63) OR (v1<>22 AND v2<=58 AND v3>71 AND v4>=87)) OR (v1<=85 AND v2>18 AND v3<=40));`,
-		ExpectedPlan: "Filter((((((t2.v1 = 24) AND (NOT((t2.v2 = 33)))) AND (t2.v3 = 77)) AND (NOT((t2.v4 = 63)))) OR ((((NOT((t2.v1 = 22))) AND (t2.v2 <= 58)) AND (t2.v3 > 71)) AND (t2.v4 >= 87))) OR (((t2.v1 <= 85) AND (t2.v2 > 18)) AND (t2.v3 <= 40)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1<72 AND v2>=67) OR (v1<>88 AND v2<>23 AND v3=23));`,
-		ExpectedPlan: "Filter(((t2.v1 < 72) AND (t2.v2 >= 67)) OR (((NOT((t2.v1 = 88))) AND (NOT((t2.v2 = 23)))) AND (t2.v3 = 23)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4552,9 +4485,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1<>19 AND v2>46 AND v3=26 AND v4>=47) OR (v1>18 AND v2<=79 AND v3=45 AND v4<=7)) OR (v1 BETWEEN 2 AND 21 AND v2>32));`,
-		ExpectedPlan: "Filter((((((NOT((t2.v1 = 19))) AND (t2.v2 > 46)) AND (t2.v3 = 26)) AND (t2.v4 >= 47)) OR ((((t2.v1 > 18) AND (t2.v2 <= 79)) AND (t2.v3 = 45)) AND (t2.v4 <= 7))) OR ((t2.v1 BETWEEN 2 AND 21) AND (t2.v2 > 32)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4571,9 +4503,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE ((v1>29) OR (v1<>94 AND v2>=56 AND v3=14));`,
-		ExpectedPlan: "Filter((t2.v1 > 29) OR (((NOT((t2.v1 = 94))) AND (t2.v2 >= 56)) AND (t2.v3 = 14)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 	{
@@ -4584,9 +4515,8 @@ var IndexPlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `SELECT * FROM t2 WHERE (((v1<>15 AND v2>1) OR (v1<46)) OR (v1>47 AND v2>=9 AND v3 BETWEEN 39 AND 87 AND v4>=10));`,
-		ExpectedPlan: "Filter((((NOT((t2.v1 = 15))) AND (t2.v2 > 1)) OR (t2.v1 < 46)) OR ((((t2.v1 > 47) AND (t2.v2 >= 9)) AND (t2.v3 BETWEEN 39 AND 87)) AND (t2.v4 >= 10)))\n" +
-			" └─ Projected table access on [pk v1 v2 v3 v4]\n" +
-			"     └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
+		ExpectedPlan: "Projected table access on [pk v1 v2 v3 v4]\n" +
+			" └─ IndexedTableAccess(t2 on [t2.v1,t2.v2,t2.v3,t2.v4])\n" +
 			"",
 	},
 }
