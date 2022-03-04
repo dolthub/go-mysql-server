@@ -1315,41 +1315,7 @@ func routinesRowIter(ctx *Context, c Catalog, p []*plan.Procedure) (RowIter, err
 		})
 	}
 
-	//for _, function := range functions {
-	//	rows = append(rows, Row{
-	//		"",          		     // specific_name NOT NULL
-	//		"def",                   // routine_catalog
-	//		"",                      // routine_schema
-	//		"",              		 // routine_name NOT NULL
-	//		"FUNCTION OR PROCEDURE", // routine_type NOT NULL
-	//		"data type OR empty",    // data_type  OR "" for procedure DATA_TYPE OR DTD_IDENTIFIER
-	//		int64(64),               // character_maximum_length OR NULL for procedure
-	//		int64(64),               // character_octet_length OR NULL for procedure
-	//		int64(64),               // numeric_precision OR NULL for procedure
-	//		int64(64),               // numeric_scale OR NULL for procedure
-	//		int64(64),               // datetime_precision OR NULL for procedure
-	//		"",                      // character_set_name OR NULL for procedure
-	//		"",                      // collation_name OR NULL for procedure
-	//		"",                      // dtd_identifier OR "" for procedure DATA_TYPE OR DTD_IDENTIFIER
-	//		"SQL",                   // routine_body NOT NULL
-	//		"",                      // routine_definition - The text of the SQL statement executed by the routine.
-	//		nil,                     // external_name
-	//		"SQL",                   // external_language NOT NULL
-	//		"SQL",                   // parameter_style NOT NULL
-	//		"",                      // is_deterministic NOT NULL - YES or NO
-	//		"",                      // sql_data_access NOT NULL - CONTAINS SQL, NO SQL, READS SQL DATA, or MODIFIES SQL DATA.
-	//		nil,                     // sql_path
-	//		"",                      // security_type NOT NULL - DEFINER or INVOKER
-	//		int64(64),               // created NOT NULL Timestamp
-	//		int64(64),               // last_altered NOT NULL Timestamp
-	//		"",                      // sql_mode NOT NULL
-	//		"",                      // routine_comment NOT NULL
-	//		"",                      // definer NOT NULL
-	//		characterSetClient, 	 // character_set_client NOT NULL
-	//		collationConnection,     // collation_connection NOT NULL
-	//		collationServer,         // database_collation NOT NULL
-	//	})
-	//}
+	// TODO: need to add FUNCTIONS routine_type
 
 	return RowsToRowIter(rows...), nil
 }
