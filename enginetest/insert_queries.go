@@ -1237,6 +1237,7 @@ var InsertIgnoreScripts = []ScriptTest{
 			"CREATE TABLE t1 (id INT PRIMARY KEY, v int);",
 			"INSERT INTO t1 VALUES (1,1)",
 			"CREATE TABLE t2 (pk int primary key, v2 varchar(1))",
+			"ALTER TABLE t2 ADD CONSTRAINT cx CHECK (pk < 100)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1258,6 +1259,16 @@ var InsertIgnoreScripts = []ScriptTest{
 					{sql.OkResult{RowsAffected: 1}},
 				},
 				ExpectedWarning: mysql.ERUnknownError,
+			},
+			{
+				Query: "SELECT * FROM t2",
+				Expected: []sql.Row{
+					{1, "a"},
+				},
+			},
+			{
+				Query:    "INSERT IGNORE INTO t2 VALUES (1, 's') ON DUPLICATE KEY UPDATE pk = 1000", // violates constraint
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 0}}},
 			},
 			{
 				Query: "SELECT * FROM t2",
