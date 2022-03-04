@@ -44,7 +44,10 @@ func TestReorderProjection(t *testing.T) {
 				},
 				plan.NewSort(
 					[]sql.SortField{
-						{Column: uc("foo")},
+						{
+							Column: uc("foo"),
+							Column2: uc("foo"),
+						},
 					},
 					plan.NewFilter(
 						expression.NewEquals(
@@ -62,7 +65,12 @@ func TestReorderProjection(t *testing.T) {
 					gf(2, "", "bar"),
 				},
 				plan.NewSort(
-					[]sql.SortField{{Column: gf(3, "", "foo")}},
+					[]sql.SortField{
+						{
+							Column: gf(3, "", "foo"),
+							Column2: gf(3, "", "foo"),
+						},
+					},
 					plan.NewProject(
 						[]sql.Expression{
 							gf(0, "mytable", "i"),
