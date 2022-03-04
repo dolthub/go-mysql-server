@@ -7589,6 +7589,15 @@ var InfoSchemaQueries = []QueryTest{
 			{"mydb.fk_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
 		},
 	},
+	{
+		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
+		Expected: []sql.Row{
+			{"armscii8_bin", "armscii8"},
+			{"armscii8_general_ci", "armscii8"},
+			{"ascii_bin", "ascii"},
+			{"ascii_general_ci", "ascii"},
+		},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{

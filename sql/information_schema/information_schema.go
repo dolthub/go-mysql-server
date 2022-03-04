@@ -77,6 +77,8 @@ const (
 	InnoDBTempTableName = "innodb_temp_table_info"
 	// ProcessListTableName is the name of PROCESSLIST table
 	ProcessListTableName = "processlist"
+	// CollationCharSetApplicabilityTableName is the name of COLLATION_CHARACTER_SET_APPLICABILITY
+	CollationCharSetApplicabilityTableName = "collation_character_set_applicability"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
@@ -456,6 +458,11 @@ var processListSchema = Schema{
 	{Name: "time", Type: Int64, Default: nil, Nullable: false, Source: ProcessListTableName},
 	{Name: "state", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
 	{Name: "info", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+}
+
+var collationCharSetApplicabilitySchema = Schema{
+	{Name: "collation_name", Type: LongText, Default: nil, Nullable: true, Source: CollationCharSetApplicabilityTableName},
+	{Name: "character_set_name", Type: LongText, Default: nil, Nullable: false, Source: CollationCharSetApplicabilityTableName},
 }
 
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
@@ -1045,9 +1052,9 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// innoDBTempTableIter returns info on the temporary tables stored in the session.
+// innoDBTempTableRowIter returns info on the temporary tables stored in the session.
 // TODO: Since Table ids and Space are not yet supported this table is not completely accurate yet.
-func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
+func innoDBTempTableRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range c.AllDatabases(ctx) {
 		tb, ok := db.(TemporaryTableDatabase)
@@ -1068,7 +1075,8 @@ func innoDBTempTableIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func processListIter(ctx *Context, c Catalog) (RowIter, error) {
+// processListRowIter returns info on all processes in the session
+func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	processes := ctx.ProcessList.Processes()
 	var rows = make([]Row, len(processes))
 
@@ -1098,6 +1106,18 @@ func processListIter(ctx *Context, c Catalog) (RowIter, error) {
 		}
 	}
 
+	return RowsToRowIter(rows...), nil
+}
+
+func collationCharSetApplicabilityRowIter(ctx *Context, c Catalog) (RowIter, error) {
+	var rows []Row
+	for cName := range CollationToMySQLVals {
+		c := Collations[cName]
+		rows = append(rows, Row{
+			c.String(),
+			c.CharacterSet().String(),
+		})
+	}
 	return RowsToRowIter(rows...), nil
 }
 
@@ -1206,12 +1226,17 @@ func NewInformationSchemaDatabase() Database {
 			InnoDBTempTableName: &informationSchemaTable{
 				name:    InnoDBTempTableName,
 				schema:  innoDBTempTableSchema,
-				rowIter: innoDBTempTableIter,
+				rowIter: innoDBTempTableRowIter,
 			},
 			ProcessListTableName: &informationSchemaTable{
 				name:    ProcessListTableName,
 				schema:  processListSchema,
-				rowIter: processListIter,
+				rowIter: processListRowIter,
+			},
+			CollationCharSetApplicabilityTableName: &informationSchemaTable{
+				name: CollationCharSetApplicabilityTableName,
+				schema: collationCharSetApplicabilitySchema,
+				rowIter: collationCharSetApplicabilityRowIter,
 			},
 		},
 	}
