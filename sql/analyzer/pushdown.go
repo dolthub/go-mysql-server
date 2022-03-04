@@ -228,8 +228,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if !ok || lookup.expr == nil {
 					return node, nil
 				}
-				// TODO: expression tree built up in |lookup.expr| contains nils
-				handled, err := pushdownFiltersToIndex(ctx, a, node, scope, lookup, tableAliases)
+				handled, err := pushdownFiltersToIndex(ctx, a, node, lookup, tableAliases)
 				if err != nil {
 					return nil, err
 				}
@@ -423,14 +422,7 @@ func convertFiltersToIndexedAccess(
 }
 
 // pushdownFiltersToTable attempts to push down filters to indexes that can accept them.
-func pushdownFiltersToIndex(
-	ctx *sql.Context,
-	a *Analyzer,
-	idxTable *plan.IndexedTableAccess,
-	scope *Scope,
-	lookup *indexLookup,
-	tableAliases TableAliases,
-) (handled []sql.Expression, err error) {
+func pushdownFiltersToIndex(ctx *sql.Context, a *Analyzer, idxTable *plan.IndexedTableAccess, lookup *indexLookup, tableAliases TableAliases) (handled []sql.Expression, err error) {
 	filteredIdx, ok := idxTable.Index().(sql.FilteredIndex)
 	if !ok {
 		return nil, nil
@@ -440,6 +432,7 @@ func pushdownFiltersToIndex(
 	if len(idxFilters) == 0 {
 		return nil, nil
 	}
+	idxFilters = normalizeExpressions(ctx, tableAliases, idxFilters...)
 
 	handled = filteredIdx.HandledFilters(idxFilters)
 	if len(handled) == 0 {

@@ -142,7 +142,11 @@ func getIndexes(
 						return nil, err
 					}
 					leftIdx.lookup = newLookup
-					leftIdx.expr = expression.NewOr(leftIdx.expr, rightIdx.expr)
+					if leftIdx.expr == nil {
+						leftIdx.expr = rightIdx.expr
+					} else if rightIdx.expr != nil {
+						leftIdx.expr = expression.NewOr(leftIdx.expr, rightIdx.expr)
+					}
 					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
 					result[table] = leftIdx
 					foundRightIdx = true
@@ -570,7 +574,11 @@ func indexesIntersection(ctx *sql.Context, left, right indexLookupsByTable) (ind
 				return nil, err
 			}
 			idx.indexes = append(idx.indexes, idx2.indexes...)
-			idx.expr = expression.NewAnd(idx.expr, idx2.expr)
+			if idx.expr == nil {
+				idx.expr = idx2.expr
+			} else if idx2.expr != nil {
+				idx.expr = expression.NewAnd(idx.expr, idx2.expr)
+			}
 		}
 
 		result[table] = idx
