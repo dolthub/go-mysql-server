@@ -133,7 +133,7 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 type sortIter struct {
 	s           *Sort
 	childIter   sql.RowIter
-	childIter2   sql.RowIter2
+	childIter2  sql.RowIter2
 	sortedRows  []sql.Row
 	sortedRows2 []sql.Row2
 	idx         int
@@ -145,10 +145,10 @@ var _ sql.RowIter2 = (*sortIter)(nil)
 func newSortIter(ctx *sql.Context, s *Sort, child sql.RowIter) *sortIter {
 	childIter2, _ := child.(sql.RowIter2)
 	return &sortIter{
-		s:         s,
-		childIter: child,
+		s:          s,
+		childIter:  child,
 		childIter2: childIter2,
-		idx:       -1,
+		idx:        -1,
 	}
 }
 
@@ -253,7 +253,7 @@ func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
 	rows := cache.Get2()
 	sorter := &expression.Sorter2{
 		SortFields: i.s.SortFields,
-		Rows:      rows,
+		Rows:       rows,
 		Ctx:        ctx,
 	}
 	sort.Stable(sorter)
