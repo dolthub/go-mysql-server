@@ -228,7 +228,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if !ok || lookup.expr == nil {
 					return node, nil
 				}
-				// TODO: |lookup.expr| contains nils
+				// TODO: expression tree built up in |lookup.expr| contains nils
 				handled, err := pushdownFiltersToIndex(ctx, a, node, scope, lookup, tableAliases)
 				if err != nil {
 					return nil, err
@@ -330,6 +330,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 }
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
+// TODO: this function doesn't actually remove filters that have been converted to index lookups,
+//   that optimization is handled in transformPushdownFilters.
 func convertFiltersToIndexedAccess(
 	ctx *sql.Context,
 	a *Analyzer,
@@ -420,7 +422,7 @@ func convertFiltersToIndexedAccess(
 	return node, nil
 }
 
-// pushdownFiltersToTable attempts to push filters to tables that can accept them
+// pushdownFiltersToTable attempts to push down filters to indexes that can accept them.
 func pushdownFiltersToIndex(
 	ctx *sql.Context,
 	a *Analyzer,
