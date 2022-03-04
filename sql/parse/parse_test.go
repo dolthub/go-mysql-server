@@ -1474,9 +1474,9 @@ CREATE TABLE t2
 	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
 		[]sql.SortField{
 			{
-				Column: expression.NewUnresolvedColumn("baz"),
-				Column2: expression.NewUnresolvedColumn("baz"),
-				Order: sql.Descending,
+				Column:       expression.NewUnresolvedColumn("baz"),
+				Column2:      expression.NewUnresolvedColumn("baz"),
+				Order:        sql.Descending,
 				NullOrdering: sql.NullsFirst,
 			},
 		},
@@ -1507,9 +1507,9 @@ CREATE TABLE t2
 		plan.NewSort(
 			[]sql.SortField{
 				{
-					Column: expression.NewUnresolvedColumn("baz"),
-					Column2: expression.NewUnresolvedColumn("baz"),
-					Order: sql.Descending,
+					Column:       expression.NewUnresolvedColumn("baz"),
+					Column2:      expression.NewUnresolvedColumn("baz"),
+					Order:        sql.Descending,
 					NullOrdering: sql.NullsFirst,
 				},
 			},
@@ -1526,9 +1526,9 @@ CREATE TABLE t2
 		plan.NewSort(
 			[]sql.SortField{
 				{
-					Column: expression.NewUnresolvedColumn("baz"),
-					Column2: expression.NewUnresolvedColumn("baz"),
-					Order: sql.Descending,
+					Column:       expression.NewUnresolvedColumn("baz"),
+					Column2:      expression.NewUnresolvedColumn("baz"),
+					Order:        sql.Descending,
 					NullOrdering: sql.NullsFirst,
 				},
 			},

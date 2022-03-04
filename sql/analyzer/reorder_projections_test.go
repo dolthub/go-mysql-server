@@ -45,7 +45,7 @@ func TestReorderProjection(t *testing.T) {
 				plan.NewSort(
 					[]sql.SortField{
 						{
-							Column: uc("foo"),
+							Column:  uc("foo"),
 							Column2: uc("foo"),
 						},
 					},
@@ -67,7 +67,7 @@ func TestReorderProjection(t *testing.T) {
 				plan.NewSort(
 					[]sql.SortField{
 						{
-							Column: gf(3, "", "foo"),
+							Column:  gf(3, "", "foo"),
 							Column2: gf(3, "", "foo"),
 						},
 					},

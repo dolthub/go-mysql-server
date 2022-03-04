@@ -355,11 +355,11 @@ func TestResolveOrderByLiterals(t *testing.T) {
 		plan.NewSort(
 			[]sql.SortField{
 				{
-					Column: expression.NewUnresolvedQualifiedColumn("t", "b"),
+					Column:  expression.NewUnresolvedQualifiedColumn("t", "b"),
 					Column2: expression.NewUnresolvedQualifiedColumn("t", "b"),
 				},
 				{
-					Column: expression.NewUnresolvedQualifiedColumn("t", "a"),
+					Column:  expression.NewUnresolvedQualifiedColumn("t", "a"),
 					Column2: expression.NewUnresolvedQualifiedColumn("t", "a"),
 				},
 			},
