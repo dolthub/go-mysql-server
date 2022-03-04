@@ -228,11 +228,13 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if !ok || lookup.expr == nil {
 					return node, nil
 				}
-				table, err := pushdownFiltersToIndex(ctx, a, node, scope, lookup, filters, tableAliases)
+				// TODO: |lookup.expr| contains nils
+				handled, err := pushdownFiltersToIndex(ctx, a, node, scope, lookup, tableAliases)
 				if err != nil {
 					return nil, err
 				}
-				return FixFieldIndexesForExpressions(ctx, a, table, scope)
+				filters.markFiltersHandled(handled...)
+				return node, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				table, err := pushdownFiltersToTable(ctx, a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
@@ -425,31 +427,22 @@ func pushdownFiltersToIndex(
 	idxTable *plan.IndexedTableAccess,
 	scope *Scope,
 	lookup *indexLookup,
-	filters *filterSet,
 	tableAliases TableAliases,
-) (sql.Node, error) {
+) (handled []sql.Expression, err error) {
 	filteredIdx, ok := idxTable.Index().(sql.FilteredIndex)
 	if !ok {
-		return idxTable, nil
+		return nil, nil
 	}
 
 	idxFilters := splitConjunction(lookup.expr)
 	if len(idxFilters) == 0 {
-		return idxTable, nil
+		return nil, nil
 	}
-	idxFilters = normalizeExpressions(ctx, tableAliases, idxFilters...)
 
-	handled := filteredIdx.HandledFilters(idxFilters)
+	handled = filteredIdx.HandledFilters(idxFilters)
 	if len(handled) == 0 {
-		return idxTable, nil
+		return nil, nil
 	}
-
-	var err error
-	handled, err = FixFieldIndexesOnExpressions(ctx, scope, a, idxTable.Schema(), handled...)
-	if err != nil {
-		return nil, err
-	}
-	filters.markFiltersHandled(handled...)
 
 	a.Log(
 		"table %q transformed with pushdown of filters to index %s, %d filters handled of %d",
@@ -458,9 +451,7 @@ func pushdownFiltersToIndex(
 		len(handled),
 		len(idxFilters),
 	)
-
-	annotation := fmt.Sprintf("Filtered index access on %v", handled)
-	return plan.NewDecoratedNode(annotation, idxTable), nil
+	return handled, nil
 }
 
 // pushdownFiltersToTable attempts to push filters to tables that can accept them
