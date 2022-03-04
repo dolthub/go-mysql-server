@@ -1234,8 +1234,8 @@ func NewInformationSchemaDatabase() Database {
 				rowIter: processListRowIter,
 			},
 			CollationCharSetApplicabilityTableName: &informationSchemaTable{
-				name: CollationCharSetApplicabilityTableName,
-				schema: collationCharSetApplicabilitySchema,
+				name:    CollationCharSetApplicabilityTableName,
+				schema:  collationCharSetApplicabilitySchema,
 				rowIter: collationCharSetApplicabilityRowIter,
 			},
 		},
