@@ -1316,11 +1316,11 @@ func routinesRowIter(ctx *Context, c Catalog, p []*plan.Procedure) (RowIter, err
 	}
 
 	//for _, function := range functions {
-	//		rows = append(rows, Row{
-	//		"",          // specific_name NOT NULL
+	//	rows = append(rows, Row{
+	//		"",          		     // specific_name NOT NULL
 	//		"def",                   // routine_catalog
 	//		"",                      // routine_schema
-	//		"",              // routine_name NOT NULL
+	//		"",              		 // routine_name NOT NULL
 	//		"FUNCTION OR PROCEDURE", // routine_type NOT NULL
 	//		"data type OR empty",    // data_type  OR "" for procedure DATA_TYPE OR DTD_IDENTIFIER
 	//		int64(64),               // character_maximum_length OR NULL for procedure
