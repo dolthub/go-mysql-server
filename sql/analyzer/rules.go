@@ -32,7 +32,7 @@ var OnceBeforeDefault = []Rule{
 	{"lift_recursive_ctes", liftRecursiveCte},
 	{"resolve_databases", resolveDatabases},
 	{"resolve_tables", resolveTables},
-	{"load_stored_procedures", loadStoredProcedures},
+	{"load_stored_procedures", loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{"validate_drop_tables", validateDropTables},
 	{"set_target_schemas", setTargetSchemas},
 	{"resolve_create_like", resolveCreateLike},
