@@ -3,6 +3,7 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
+
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -13,13 +14,12 @@ type routineTable struct {
 	catalog    Catalog
 	procedures []*plan.Procedure
 	// functions
-	rowIter    func(*Context, Catalog, []*plan.Procedure) (RowIter, error)
+	rowIter func(*Context, Catalog, []*plan.Procedure) (RowIter, error)
 }
 
 var (
-	_ Table         = (*routineTable)(nil)
+	_ Table = (*routineTable)(nil)
 )
-
 
 func (t *routineTable) AssignCatalog(cat Catalog) Table {
 	t.catalog = cat
