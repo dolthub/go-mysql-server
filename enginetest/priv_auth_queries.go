@@ -1664,7 +1664,7 @@ var QuickPrivTests = []QuickPrivilegeTest{
 	},
 	{
 		Queries: []string{
-			"FLUSH PRIVILEGS;",
+			"FLUSH PRIVILEGES;",
 		},
 		ExpectingErr: true,
 	},
