@@ -15,50 +15,46 @@
 package plan
 
 import (
-	"fmt"
-
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 )
 
-// Flush handles all flush statements. https://dev.mysql.com/doc/refman/8.0/en/flush.html
-type Flush struct {
-	option    *sqlparser.FlushOption
-	flushType string
-	gt        grant_tables.GrantTables
+// FlushPrivileges reads privileges from grant tables and registers any unregistered privileges found.
+type FlushPrivileges struct {
+	flushType	string
+	grantTables sql.Database
 }
 
-var _ sql.Node = (*Flush)(nil)
+var _ sql.Node = (*FlushPrivileges)(nil)
+var _ sql.Databaser = (*FlushPrivileges)(nil)
 
-// NewFlush creates a new Flush node.
-func NewFlush(opt *sqlparser.FlushOption, ft string) *Flush {
-	return &Flush{
-		option:    opt,
+// NewFlushPrivileges creates a new FlushPrivileges node.
+func NewFlushPrivileges(ft string) *FlushPrivileges {
+	return &FlushPrivileges{
 		flushType: ft,
+		grantTables: sql.UnresolvedDatabase("mysql"),
 	}
 }
 
-// RowIter implements the sql.Node interface.
-func (f *Flush) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	switch f.option.Name {
-	case "PRIVILEGES":
-		err := f.gt.Persist(ctx)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("%s not supported", f.option.Name)
+// RowIter implements the interface sql.Node.
+func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	gts, ok := f.grantTables.(*grant_tables.GrantTables)
+	if !ok {
+		return nil, sql.ErrDatabaseNotFound.New("mysql")
+	}
+	err := gts.Persist(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return sql.RowsToRowIter(sql.Row{sql.NewOkResult(0)}), nil
 }
 
-func (*Flush) String() string { return "FLUSH PRIVILEGES" }
+// String implements the interface sql.Node.
+func (*FlushPrivileges) String() string { return "FLUSH PRIVILEGES" }
 
-// WithChildren implements the Node interface.
-func (f *Flush) WithChildren(children ...sql.Node) (sql.Node, error) {
+// WithChildren implements the interface sql.Node.
+func (f *FlushPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 0)
 	}
@@ -67,8 +63,7 @@ func (f *Flush) WithChildren(children ...sql.Node) (sql.Node, error) {
 }
 
 // CheckPrivileges implements the interface sql.Node.
-func (f *Flush) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-
+func (f *FlushPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Reload)) {
 		// TODO: some options require additional privileges
@@ -77,13 +72,26 @@ func (f *Flush) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 	return false
 }
 
-// Resolved implements the sql.Node interface.
-func (f *Flush) Resolved() bool {
-	return true
+// Resolved implements the interface sql.Node.
+func (f *FlushPrivileges) Resolved() bool {
+	_, ok := f.grantTables.(sql.UnresolvedDatabase)
+	return !ok
 }
 
 // Children implements the sql.Node interface.
-func (*Flush) Children() []sql.Node { return nil }
+func (*FlushPrivileges) Children() []sql.Node { return nil }
 
 // Schema implements the sql.Node interface.
-func (*Flush) Schema() sql.Schema { return nil }
+func (*FlushPrivileges) Schema() sql.Schema { return sql.OkResultSchema }
+
+// Database implements the sql.Databaser interface.
+func (f *FlushPrivileges) Database() sql.Database {
+	return f.grantTables
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (f *FlushPrivileges) WithDatabase(db sql.Database) (sql.Node, error) {
+	fp := *f
+	fp.grantTables = db
+	return &fp, nil
+}

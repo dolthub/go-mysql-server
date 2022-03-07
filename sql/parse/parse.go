@@ -227,7 +227,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertLockTables(ctx, n)
 	case *sqlparser.UnlockTables:
 		return convertUnlockTables(ctx, n)
-
 	case *sqlparser.CreateUser:
 		return convertCreateUser(ctx, n)
 	case *sqlparser.RenameUser:
@@ -252,8 +251,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 			convertAccountName(n.To...),
 			n.WithGrantOption,
 		), nil
-	case *sqlparser.Flush:
-		return plan.NewFlush(n.Option, n.Type), nil
 	case *sqlparser.RevokePrivilege:
 		return plan.NewRevoke(
 			convertPrivilege(n.Privileges...),
@@ -271,6 +268,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertShowGrants(ctx, n)
 	case *sqlparser.ShowPrivileges:
 		return plan.NewShowPrivileges(), nil
+	case *sqlparser.Flush:
+		return convertFlush(ctx, n)
 	}
 }
 
@@ -2203,6 +2202,15 @@ func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGra
 		}
 	}
 	return plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...)), nil
+}
+
+func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
+	switch f.Option.Name {
+	case "PRIVILEGES":
+		return plan.NewFlushPrivileges(f.Type), nil
+	default:
+		return nil, fmt.Errorf("%s not supported", f.Option.Name)
+	}
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {
