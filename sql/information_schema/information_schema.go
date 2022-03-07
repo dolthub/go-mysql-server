@@ -93,14 +93,6 @@ type informationSchemaTable struct {
 	rowIter func(*Context, Catalog) (RowIter, error)
 }
 
-type routineTable struct {
-	name       string
-	schema     Schema
-	catalog    Catalog
-	procedures []*plan.Procedure
-	rowIter    func(*Context, Catalog, []*plan.Procedure) (RowIter, error)
-}
-
 type informationSchemaPartition struct {
 	key []byte
 }
@@ -113,7 +105,6 @@ type informationSchemaPartitionIter struct {
 var (
 	_ Database      = (*informationSchemaDatabase)(nil)
 	_ Table         = (*informationSchemaTable)(nil)
-	_ Table         = (*routineTable)(nil)
 	_ Partition     = (*informationSchemaPartition)(nil)
 	_ PartitionIter = (*informationSchemaPartitionIter)(nil)
 )
@@ -1427,49 +1418,6 @@ func (pit *informationSchemaPartitionIter) Next(ctx *Context) (Partition, error)
 func (pit *informationSchemaPartitionIter) Close(_ *Context) error {
 	pit.pos = 0
 	return nil
-}
-
-func (t *routineTable) AssignCatalog(cat Catalog) Table {
-	t.catalog = cat
-	return t
-}
-
-func (r *routineTable) AssignRoutines(p []*plan.Procedure) Table {
-	// TODO: should also assign functions
-	r.procedures = p
-	return r
-}
-
-// Name implements the sql.Table interface.
-func (r *routineTable) Name() string {
-	return r.name
-}
-
-// Schema implements the sql.Table interface.
-func (r *routineTable) Schema() Schema {
-	return r.schema
-}
-
-func (r *routineTable) String() string {
-	return printTable(r.Name(), r.Schema())
-}
-
-func (r *routineTable) Partitions(context *Context) (PartitionIter, error) {
-	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(r.Name())}}, nil
-}
-
-func (r *routineTable) PartitionRows(context *Context, partition Partition) (RowIter, error) {
-	if !bytes.Equal(partition.Key(), partitionKey(r.Name())) {
-		return nil, ErrPartitionNotFound.New(partition.Key())
-	}
-	if r.rowIter == nil {
-		return RowsToRowIter(), nil
-	}
-	if r.catalog == nil {
-		return nil, fmt.Errorf("nil catalog for info schema table %s", r.name)
-	}
-
-	return r.rowIter(context, r.catalog, r.procedures)
 }
 
 func printTable(name string, tableSchema Schema) string {

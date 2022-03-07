@@ -23,8 +23,8 @@ import (
 type RoutineTable interface {
 	sql.Table
 
-	// AssignRoutines assigns an array of procedures to the routines table.
-	AssignRoutines(p []*plan.Procedure) sql.Table
+	// AssignProcedures assigns an array of procedures to the routines table.
+	AssignProcedures(p []*plan.Procedure) sql.Table
 	// TODO: also should assign FUNCTIONS
 }
 
@@ -43,7 +43,7 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			nc := *node
 			ct, ok := nc.Table.(RoutineTable)
 			if ok {
-				nc.Table = ct.AssignRoutines(a.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase()))
+				nc.Table = ct.AssignProcedures(a.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase()))
 			}
 			return &nc, nil
 		default:
