@@ -35,50 +35,116 @@ import (
 const (
 	// InformationSchemaDatabaseName is the name of the information schema database.
 	InformationSchemaDatabaseName = "information_schema"
-	// FilesTableName is the name of the files table.
-	FilesTableName = "files"
-	// ColumnStatisticsTableName is the name of the column statistics table.
+	// AdministrableRoleAuthorizationsTableName is the name of the ADMINISTRABLE_ROLE_AUTHORIZATIONS table.
+	AdministrableRoleAuthorizationsTableName = "administrable_role_authorizations"
+	// ApplicableRolesTableName is the name of the APPLICABLE_ROLES table.
+	ApplicableRolesTableName = "applicable_roles"
+	// CharacterSetsTableName is the name of the CHARACTER_SETS table
+	CharacterSetsTableName = "character_sets"
+	// CheckConstraintsTableName is the name of CHECK_CONSTRAINTS table
+	CheckConstraintsTableName = "check_constraints"
+	// CollationCharSetApplicabilityTableName is the name of COLLATION_CHARACTER_SET_APPLICABILITY table.
+	CollationCharSetApplicabilityTableName = "collation_character_set_applicability"
+	// CollationsTableName is the name of the COLLATIONS table.
+	CollationsTableName = "collations"
+	// ColumnPrivilegesTableName is the name of the COLUMN_PRIVILEGES table.
+	ColumnPrivilegesTableName = "column_privileges"
+	// ColumnStatisticsTableName is the name of the COLUMN_STATISTICS table.
 	ColumnStatisticsTableName = "column_statistics"
-	// TablesTableName is the name of tables table.
-	TablesTableName = "tables"
 	// ColumnsTableName is the name of columns table.
 	ColumnsTableName = "columns"
-	// SchemataTableName is the name of the schemata table.
-	SchemataTableName = "schemata"
-	// CollationsTableName is the name of the collations table.
-	CollationsTableName = "collations"
-	// StatisticsTableName is the name of the statistics table.
-	StatisticsTableName = "statistics"
-	// TableConstraintsTableName is the name of the table_constraints table.
-	TableConstraintsTableName = "table_constraints"
-	// ReferentialConstraintsTableName is the name of the table_constraints table.
-	ReferentialConstraintsTableName = "referential_constraints"
-	// KeyColumnUsageTableName is the name of the key_column_usage table.
-	KeyColumnUsageTableName = "key_column_usage"
-	// TriggersTableName is the name of the triggers table.
-	TriggersTableName = "triggers"
-	// EventsTableName is the name of the events table.
-	EventsTableName = "events"
-	// RoutinesTableName is the name of the routines table.
-	RoutinesTableName = "routines"
-	// ViewsTableName is the name of the views table.
-	ViewsTableName = "views"
-	// UserPrivilegesTableName is the name of the user_privileges table
-	UserPrivilegesTableName = "user_privileges"
-	// CharacterSetsTableName is the name of the character_sets table
-	CharacterSetsTableName = "character_sets"
-	// EnginesTableName is the name of the engines table
+	// ColumnsExtensionsTableName is the name of the COLUMN_EXTENSIONS table.
+	ColumnsExtensionsTableName = "columns_extensions"
+	// ConnectionControlFailedLoginAttemptsTableName is the name of the CONNECTION_CONTROL_FAILED_LOGIN_ATTEMPTS.
+	ConnectionControlFailedLoginAttemptsTableName = "connection_control_failed_login_attempts"
+	// EnabledRolesTablesName is the name of the ENABLED_ROLES table.
+	EnabledRolesTablesName = "enabled_roles"
+	// EnginesTableName is the name of the ENGINES table
 	EnginesTableName = "engines"
-	// CheckConstraintsTableName is the name of check_constraints table
-	CheckConstraintsTableName = "check_constraints"
-	// PartitionsTableName is the name of the partitions table
-	PartitionsTableName = "partitions"
+	// EventsTableName is the name of the EVENTS table.
+	EventsTableName = "events"
+	// FilesTableName is the name of the FILES table.
+	FilesTableName = "files"
 	// InnoDBTempTableName is the name of the INNODB_TEMP_TABLE_INFO table
 	InnoDBTempTableName = "innodb_temp_table_info"
+	// KeyColumnUsageTableName is the name of the KEY_COLUMN_USAGE table.
+	KeyColumnUsageTableName = "key_column_usage"
+	// KeywordsTableName is the name of the KEYWORDS table.
+	KeywordsTableName = "keywords"
+	// MysqlFireballWhitelistTableName is the name of the MYSQL_FIREWALL_WHITELIST table.
+	MysqlFireballWhitelistTableName = "mysql_firewall_whitelist"
+	// MysqlFirewallUsersTableName is the name of the MYSQL_FIREWALL_USERS table.
+	MysqlFirewallUsersTableName = "mysql_firewall_users"
+	// NdbTransidMysqlConnectionMapTableName is the name of NDB_TRANSID_MYSQL_CONNECTION_MAP table.
+	NdbTransidMysqlConnectionMapTableName = "ndb_transid_mysql"
+	// OptimizerTraceTableName is the name of the OPTIMIZER_TRACE table.
+	OptimizerTraceTableName = "optimizer_trace"
+	// PartitionsTableName is the name of the PARTITIONS table
+	PartitionsTableName = "partitions"
+	// PluginsTableName is the name of the PLUGINS table.
+	PluginsTableName = "plugins"
 	// ProcessListTableName is the name of PROCESSLIST table
 	ProcessListTableName = "processlist"
-	// CollationCharSetApplicabilityTableName is the name of COLLATION_CHARACTER_SET_APPLICABILITY
-	CollationCharSetApplicabilityTableName = "collation_character_set_applicability"
+	// ProfilingTableName is the name of PROFILING table.
+	ProfilingTableName = "profiling"
+	// ReferentialConstraintsTableName is the name of the TABLE_CONSTRAINTS table.
+	ReferentialConstraintsTableName = "referential_constraints"
+	// ResourceGroupsTableName is the name of the RESOURCE_GROUPS table.
+	ResourceGroupsTableName = "resource_groups"
+	// RoleColumnsGrantsTableName is the name of the ROLE_COLUMNS_GRANTS table.
+	RoleColumnsGrantsTableName = "role_columns_grants"
+	// RoleRoutineGrantsTableName is the name of the ROLE_ROUTINE_GRANTS table.
+	RoleRoutineGrantsTableName = "role_routine_grants"
+	// RoleTableGrantsTableName is the name of the ROLE_TABLE_GRANTS table.
+	RoleTableGrantsTableName = "role_table_grants"
+	// RoutinesTableName is the name of the routines table.
+	RoutinesTableName = "routines"
+	// SchemaPrivilegesTableName is the name of the schema_privileges table.
+	SchemaPrivilegesTableName = "schema_privileges"
+	// SchemataTableName is the name of the SCHEMATA table.
+	SchemataTableName = "schemata"
+	// SchemataExtensionsTableName is the name of the SCHEMATA_EXTENSIONS table.
+	SchemataExtensionsTableName = "schemata_extensions"
+	// StGeometryColumnsTableName is the name of the ST_GEOMETRY_COLUMNS table.
+	StGeometryColumnsTableName = "st_geometry_columns"
+	// StSpatialReferenceSystemsTableName is the name of ST_SPATIAL_REFERENCE_SYSTEMS table.
+	StSpatialReferenceSystemsTableName = "st_spatial_reference_systems"
+	// StUnitsOfMeasureTableName is the name of the ST_UNITS_OF_MEASURE
+	StUnitsOfMeasureTableName = "st_units_of_measure"
+	// StatisticsTableName is the name of the STATISTICS table.
+	StatisticsTableName = "statistics"
+	// TableConstraintsTableName is the name of the TABLE_CONSTRAINTS table.
+	TableConstraintsTableName = "table_constraints"
+	// TableConstraintsExtensionsTableName is the name of the TABLE_CONSTRAINTS_EXTENSIONS table.
+	TableConstraintsExtensionsTableName = "table_constraints_extensions"
+	// TablePrivilegesTableName is the name of TABLE_PRIVILEGES table.
+	TablePrivilegesTableName = "table_privileges"
+	// TablesTableName is the name of TABLES table.
+	TablesTableName = "tables"
+	// TableExtensionsTableName is the name of TABLE_EXTENSIONS table.
+	TableExtensionsTableName = "table_extensions"
+	// TablespacesTableName is the names of the TABLESPACES table.
+	TablespacesTableName = "tablespaces"
+	// TablespacesExtensionsTableName is the name of the TABLESPACES_EXTENSIONS table.
+	TablespacesExtensionsTableName = "tablespaces_extensions"
+	// TpThreadGroupStateTableName is the name of the TP_THREAD_GROUP_STATE table.
+	TpThreadGroupStateTableName = "tp_thread_group_state"
+	// TpThreadGroupStatsTableName is the name of TP_THREAD_GROUP_STATS table.
+	TpThreadGroupStatsTableName = "tp_thread_group_stats"
+	// TpThreadStateTableName is the name of the TP_THREAD_STATE table.
+	TpThreadStateTableName = "tp_thread_state"
+	// TriggersTableName is the name of the TRIGGERS table.
+	TriggersTableName = "triggers"
+	// UserAttributesTableName is the name of the USER_ATTRIBUTES table.
+	UserAttributesTableName = "user_attributes"
+	// UserPrivilegesTableName is the name of the USER_PRIVILEGES table
+	UserPrivilegesTableName = "user_privileges"
+	// ViewRoutineUsageTableName is the name of VIEW_ROUTINE_USAGE table.
+	ViewRoutineUsageTableName = "view_routine_usage"
+	// ViewTableUsageTableName is the name of the VIEW_TABLE_USAGE table.
+	ViewTableUsageTableName = "view_table_usage"
+	// ViewsTableName is the name of the VIEWS table.
+	ViewsTableName = "views"
 )
 
 var _ Database = (*informationSchemaDatabase)(nil)
