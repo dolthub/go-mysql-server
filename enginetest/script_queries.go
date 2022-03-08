@@ -1496,8 +1496,8 @@ var ScriptTests = []ScriptTest{
 	{
 		Name: "delete from table with misordered pks",
 		SetUpScript: []string{
-			"create table a (x int, y int, primary key (y,x))",
-			"insert into a values (0,1), (2,3)",
+			"create table a (x int, y int, z int, primary key (z,x))",
+			"insert into a values (0,1,2), (3,4,5)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
