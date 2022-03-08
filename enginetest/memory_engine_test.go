@@ -115,20 +115,16 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query: `
-select * from mytable`,
-		Expected: []sql.Row{
-			{1, "first row"},
-			{2, "second row"},
-			{3, "third row"},
-		},
+		Query:    `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
+		Expected: []sql.Row{},
 	}
 
 	fmt.Sprintf("%v", test)
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
-	engine.Analyzer.Debug = true
-	engine.Analyzer.Verbose = true
+	enginetest.CreateIndexes(t, harness, engine)
+	//engine.Analyzer.Debug = true
+	//engine.Analyzer.Verbose = true
 
 	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil, test.Bindings)
 }
@@ -262,6 +258,7 @@ func TestWriteQueryPlans(t *testing.T) {
 
 	harness := enginetest.NewDefaultMemoryHarness()
 	engine := enginetest.NewEngine(t, harness)
+	enginetest.CreateIndexes(t, harness, engine)
 
 	tmp, err := ioutil.TempDir("", "*")
 	if err != nil {
@@ -275,6 +272,69 @@ func TestWriteQueryPlans(t *testing.T) {
 	w := bufio.NewWriter(f)
 	_, _ = w.WriteString("var PlanTests = []QueryPlanTest{\n")
 	for _, tt := range enginetest.PlanTests {
+		_, _ = w.WriteString("\t{\n")
+		ctx := enginetest.NewContextWithEngine(harness, engine)
+		parsed, err := parse.Parse(ctx, tt.Query)
+		require.NoError(t, err)
+
+		node, err := engine.Analyzer.Analyze(ctx, parsed, nil)
+		require.NoError(t, err)
+		planString := extractQueryNode(node).String()
+
+		if strings.Contains(tt.Query, "`") {
+			_, _ = w.WriteString(fmt.Sprintf(`Query: "%s",`, tt.Query))
+		} else {
+			_, _ = w.WriteString(fmt.Sprintf("Query: `%s`,", tt.Query))
+		}
+		_, _ = w.WriteString("\n")
+
+		_, _ = w.WriteString(`ExpectedPlan: `)
+		for i, line := range strings.Split(planString, "\n") {
+			if i > 0 {
+				_, _ = w.WriteString(" + \n")
+			}
+			if len(line) > 0 {
+				_, _ = w.WriteString(fmt.Sprintf(`"%s\n"`, strings.ReplaceAll(line, `"`, `\"`)))
+			} else {
+				// final line with comma
+				_, _ = w.WriteString("\"\",\n")
+			}
+		}
+		_, _ = w.WriteString("\t},\n")
+	}
+	_, _ = w.WriteString("}")
+
+	_ = w.Flush()
+
+	t.Logf("Query plans in %s", outputPath)
+}
+
+func TestWriteIndexQueryPlans(t *testing.T) {
+	t.Skip()
+
+	harness := enginetest.NewDefaultMemoryHarness()
+	engine := enginetest.NewEngine(t, harness)
+
+	enginetest.CreateIndexes(t, harness, engine)
+	for i, script := range enginetest.ComplexIndexQueries {
+		for _, statement := range script.SetUpScript {
+			statement = strings.Replace(statement, "test", fmt.Sprintf("t%d", i), -1)
+			enginetest.RunQuery(t, engine, harness, statement)
+		}
+	}
+
+	tmp, err := ioutil.TempDir("", "*")
+	if err != nil {
+		return
+	}
+
+	outputPath := filepath.Join(tmp, "indexQueryPlans.txt")
+	f, err := os.Create(outputPath)
+	require.NoError(t, err)
+
+	w := bufio.NewWriter(f)
+	_, _ = w.WriteString("var IndexPlanTests = []QueryPlanTest{\n")
+	for _, tt := range enginetest.IndexPlanTests {
 		_, _ = w.WriteString("\t{\n")
 		ctx := enginetest.NewContextWithEngine(harness, engine)
 		parsed, err := parse.Parse(ctx, tt.Query)
@@ -487,6 +547,10 @@ func TestModifyColumn(t *testing.T) {
 
 func TestDropColumn(t *testing.T) {
 	enginetest.TestDropColumn(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestAddAndDropColumn(t *testing.T) {
+	enginetest.TestAddAndDropColumn(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestCreateDatabase(t *testing.T) {

@@ -51,6 +51,13 @@ type Index interface {
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
 }
 
+type FilteredIndex interface {
+	Index
+	// HandledFilters returns a subset of |filters| that are satisfied
+	// by index lookups to this index.
+	HandledFilters(filters []Expression) (handled []Expression)
+}
+
 // IndexLookup is the implementation-specific definition of an index lookup. The IndexLookup must contain all necessary
 // information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.

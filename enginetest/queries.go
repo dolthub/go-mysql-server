@@ -1779,6 +1779,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query:    "SELECT * FROM one_pk where pk in (1) and c1 = 10",
+		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
+	},
+	{
+		Query:    "SELECT * FROM one_pk where pk in (1)",
+		Expected: []sql.Row{{1, 10, 11, 12, 13, 14}},
+	},
+	{
 		Query:    "SELECT 1 FROM DUAL WHERE (1, 2) not in ((3, 4), (5, 6))",
 		Expected: []sql.Row{{1}},
 	},
@@ -7581,6 +7589,15 @@ var InfoSchemaQueries = []QueryTest{
 			{"mydb.fk_tbl", "pk", "pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk,pk"},
 		},
 	},
+	{
+		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
+		Expected: []sql.Row{
+			{"armscii8_bin", "armscii8"},
+			{"armscii8_general_ci", "armscii8"},
+			{"ascii_bin", "ascii"},
+			{"ascii_general_ci", "ascii"},
+		},
+	},
 }
 
 var InfoSchemaScripts = []ScriptTest{
@@ -7674,6 +7691,35 @@ var InfoSchemaScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"def", "mydb", "mytable", 0, "mydb", "myindex", 1, "test_score", "A", uint64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
 					{"def", "mydb", "mytable", 1, "mydb", "PRIMARY", 1, "pk", "A", uint64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.routines",
+		SetUpScript: []string{
+			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
+			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
+			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT specific_name, routine_catalog, routine_schema, routine_name, routine_type, " +
+					"data_type, character_maximum_length, character_octet_length, numeric_precision, numeric_scale, " +
+					"datetime_precision, character_set_name, collation_name, dtd_identifier, " +
+					"routine_body, external_name, external_language, parameter_style, is_deterministic, " +
+					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
+					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
+				Expected: []sql.Row{
+					{"p1", "def", "sys", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hi", "", "utf8mb4", "utf8mb4_0900_bin",
+						"utf8mb4_0900_bin"},
+					{"p2", "def", "sys", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "user", "utf8mb4", "utf8mb4_0900_bin",
+						"utf8mb4_0900_bin"},
+					{"p21", "def", "sys", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "", "utf8mb4", "utf8mb4_0900_bin",
+						"utf8mb4_0900_bin"},
 				},
 			},
 		},

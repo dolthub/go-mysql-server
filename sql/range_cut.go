@@ -57,6 +57,17 @@ func GetRangeCutKey(c RangeCut) interface{} {
 	}
 }
 
+func RangeCutIsBinding(c RangeCut) bool {
+	switch c.(type) {
+	case Below, Above:
+		return true
+	case AboveAll, BelowAll, NullBound:
+		return false
+	default:
+		panic(fmt.Errorf("unknown range cut %v", c))
+	}
+}
+
 // GetRangeCutMax returns the RangeCut with the highest value.
 func GetRangeCutMax(typ Type, cuts ...RangeCut) (RangeCut, error) {
 	i := 0
