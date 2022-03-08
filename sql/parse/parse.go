@@ -2205,7 +2205,7 @@ func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGra
 }
 
 func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
-	switch f.Option.Name {
+	switch strings.ToLower(f.Option.Name) {
 	case "privileges":
 		return plan.NewFlushPrivileges(f.Type), nil
 	default:
