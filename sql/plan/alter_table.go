@@ -161,6 +161,11 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		return nil, err
 	}
 
+	// Prevents an iter of the full table when adding a new column with no default.
+	if a.column.Default == nil {
+		return sql.RowsToRowIter(), nil
+	}
+
 	return sql.RowsToRowIter(), a.updateRowsWithDefaults(ctx, row)
 }
 

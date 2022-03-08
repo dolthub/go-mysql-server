@@ -2425,6 +2425,20 @@ func TestDropColumn(t *testing.T, harness Harness) {
 	})
 }
 
+func TestAddAndDropColumn(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	t.Run("column does not retain values after being dropped and re-added", func(t *testing.T) {
+		TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN i2 INT;", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "UPDATE mytable SET i2 = 1;", []sql.Row{{sql.OkResult{RowsAffected: 3, Info: plan.UpdateInfo{Matched: 3, Updated: 3}}}}, nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE mytable DROP COLUMN i2;", []sql.Row(nil), nil, nil)
+		TestQuery(t, harness, e, "ALTER TABLE mytable ADD COLUMN i2 INT;", []sql.Row(nil), nil, nil)
+
+		TestQuery(t, harness, e, "SELECT * FROM mytable WHERE i2 = 1", []sql.Row{}, nil, nil)
+	})
+}
+
 func TestCreateDatabase(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
