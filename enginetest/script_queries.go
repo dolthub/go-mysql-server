@@ -1493,6 +1493,29 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "delete from table with misordered pks",
+		SetUpScript: []string{
+			"create table a (x int, y int, z int, primary key (z,x))",
+			"insert into a values (0,1,2), (3,4,5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT count(*) FROM a where x = 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "delete from a where x = 0",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM a where x = 0",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{
