@@ -549,10 +549,6 @@ func TestDropColumn(t *testing.T) {
 	enginetest.TestDropColumn(t, enginetest.NewDefaultMemoryHarness())
 }
 
-func TestAddAndDropColumn(t *testing.T) {
-	enginetest.TestAddAndDropColumn(t, enginetest.NewDefaultMemoryHarness())
-}
-
 func TestCreateDatabase(t *testing.T) {
 	enginetest.TestCreateDatabase(t, enginetest.NewDefaultMemoryHarness())
 }
