@@ -180,7 +180,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	// MySQL will let you drop the column iff the checks referencing that column ONLY reference that column (and not any other columns)
 	// Dropping column j with check (j = 0) is ok
 	// Dropping column j with check (i = j) is NOT ok
-	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
+	err := validateDroppingColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
 	if err != nil {
 		return nil, err
 	}
@@ -191,9 +191,9 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	return newSch, nil
 }
 
-// validateColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
-// the specified table check constraints.
-func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+// validateDroppingColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
+// the specified table check constraints that reference any other columns.
+func validateDroppingColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
 	for _, check := range checks {
 		hasOtherColumn := false
 		var err error
@@ -210,6 +210,26 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 
 		// Only prevent dropping column due to checks iff any check that's referencing this column references other columns
 		if err != nil && hasOtherColumn {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
+// the specified table check constraints.
+func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	for _, check := range checks {
+		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
+				if columnName == unresolvedColumn.Name() {
+					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+				}
+			}
+			return e, nil
+		})
+
+		if err != nil {
 			return err
 		}
 	}
