@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -39,6 +38,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -5471,6 +5471,7 @@ type privDataJson struct {
 	Users []*grant_tables.User
 	Roles []*grant_tables.RoleEdge
 }
+
 func temporaryLoadPrivileges() ([]*grant_tables.User, []*grant_tables.RoleEdge, error) {
 	if len(jsonData) == 0 {
 		return nil, nil, nil
@@ -5525,7 +5526,7 @@ func TestPersistPrivileges(t *testing.T, h Harness) {
 	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(temporarySavePrivileges)
 	engine.Analyzer.Catalog.GrantTables.LoadData(ctx, users, roles)
 
-	for _, script := range PersistPrivilegesTests{
+	for _, script := range PersistPrivilegesTests {
 		t.Run(script.Name, func(t *testing.T) {
 
 			for _, statement := range script.SetUpScript {
