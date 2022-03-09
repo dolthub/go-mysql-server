@@ -573,6 +573,13 @@ var connectionControlFailedLoginAttemptsSchema = Schema{
 	{Name: "failed_attempts", Type: Uint64, Default: nil, Nullable: false, Source: ConnectionControlFailedLoginAttemptsTableName},
 }
 
+var enabledRolesSchema = Schema{
+	{Name: "role_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: true, Source: EnabledRolesTablesName},
+	{Name: "role_host", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: true, Source: EnabledRolesTablesName},
+	{Name: "is_default", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: EnabledRolesTablesName},
+	{Name: "is_mandatory", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnabledRolesTablesName},
+}
+
 var keywordsSchema = Schema{
 	{Name: "word", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 128), Default: nil, Nullable: true, Source: KeywordsTableName},
 	{Name: "reserved", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: KeywordsTableName},
@@ -1579,6 +1586,11 @@ func NewInformationSchemaDatabase() Database {
 			ConnectionControlFailedLoginAttemptsTableName: &informationSchemaTable{
 				name:    ConnectionControlFailedLoginAttemptsTableName,
 				schema:  connectionControlFailedLoginAttemptsSchema,
+				rowIter: emptyRowIter,
+			},
+			EnabledRolesTablesName: &informationSchemaTable{
+				name:    EnabledRolesTablesName,
+				schema:  enabledRolesSchema,
 				rowIter: emptyRowIter,
 			},
 			KeywordsTableName: &informationSchemaTable{
