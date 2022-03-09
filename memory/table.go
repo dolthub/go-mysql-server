@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/parse"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"sort"
 	"strconv"
@@ -27,10 +25,12 @@ import (
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
