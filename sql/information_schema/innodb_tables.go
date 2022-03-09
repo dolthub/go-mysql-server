@@ -240,12 +240,12 @@ var innoDBColumnsSchema = Schema{
 }
 
 var innoDBDatafilesSchema = Schema{
-	{Name: "space_id", Type: MustCreateStringWithDefaults(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBDatafilesName},
+	{Name: "space_id", Type: MustCreateBinary(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBDatafilesName},
 	{Name: "path", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: InnoDBDatafilesName},
 }
 
 var innoDBFieldsSchema = Schema{
-	{Name: "index_id", Type: MustCreateStringWithDefaults(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBFieldsName},
+	{Name: "index_id", Type: MustCreateBinary(sqltypes.VarBinary, 256), Default: nil, Nullable: true, Source: InnoDBFieldsName},
 	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBFieldsName},
 	{Name: "pos", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBFieldsName},
 }
