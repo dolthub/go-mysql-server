@@ -186,7 +186,6 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	}
 
 	newSch := removeInSchema(sch, dc.Column, nameable.Name())
-	// TODO: remove dangling checks
 
 	return newSch, nil
 }
