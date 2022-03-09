@@ -177,12 +177,16 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 	table := dc.Child
 	nameable := table.(sql.Nameable)
 
+	// MySQL will let you drop the column iff the checks referencing that column ONLY reference that column (and not any other columns)
+	// Dropping column j with check (j = 0) is ok
+	// Dropping column j with check (i = j) is NOT ok
 	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
 	if err != nil {
 		return nil, err
 	}
 
 	newSch := removeInSchema(sch, dc.Column, nameable.Name())
+	// TODO: remove dangling checks
 
 	return newSch, nil
 }
@@ -191,16 +195,21 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 // the specified table check constraints.
 func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
 	for _, check := range checks {
-		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+		hasOtherColumn := false
+		var err error
+		expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
-					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+				} else {
+					hasOtherColumn = true
 				}
 			}
 			return e, nil
 		})
 
-		if err != nil {
+		// Only prevent dropping column due to checks iff any check that's referencing this column references other columns
+		if err != nil && hasOtherColumn {
 			return err
 		}
 	}
