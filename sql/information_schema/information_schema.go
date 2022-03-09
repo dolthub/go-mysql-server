@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,8 +73,6 @@ const (
 	CheckConstraintsTableName = "check_constraints"
 	// PartitionsTableName is the name of the partitions table
 	PartitionsTableName = "partitions"
-	// InnoDBTempTableName is the name of the INNODB_TEMP_TABLE_INFO table
-	InnoDBTempTableName = "innodb_temp_table_info"
 	// ProcessListTableName is the name of PROCESSLIST table
 	ProcessListTableName = "processlist"
 	// CollationCharSetApplicabilityTableName is the name of COLLATION_CHARACTER_SET_APPLICABILITY
@@ -402,9 +400,9 @@ var enginesSchema = Schema{
 	{Name: "engine", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: EnginesTableName},
 	{Name: "support", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 8), Default: nil, Nullable: false, Source: EnginesTableName},
 	{Name: "comment", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 80), Default: nil, Nullable: false, Source: EnginesTableName},
-	{Name: "transactions", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
-	{Name: "xa", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
-	{Name: "savepoints", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: EnginesTableName},
+	{Name: "transactions", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: EnginesTableName},
+	{Name: "xa", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: EnginesTableName},
+	{Name: "savepoints", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: EnginesTableName},
 }
 
 var checkConstraintsSchema = Schema{
@@ -442,26 +440,19 @@ var partitionSchema = Schema{
 	{Name: "tablespace_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 258), Default: nil, Nullable: true, Source: PartitionsTableName},
 }
 
-var innoDBTempTableSchema = Schema{
-	{Name: "table_id", Type: Int64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
-	{Name: "name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: InnoDBTempTableName},
-	{Name: "n_cols", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
-	{Name: "space", Type: Uint64, Default: nil, Nullable: false, Source: InnoDBTempTableName},
-}
-
 var processListSchema = Schema{
 	{Name: "id", Type: Int64, Default: nil, Nullable: false, Source: ProcessListTableName},
-	{Name: "user", Type: LongText, Default: nil, Nullable: true, Source: ProcessListTableName},
+	{Name: "user", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
 	{Name: "host", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
-	{Name: "db", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "db", Type: LongText, Default: nil, Nullable: true, Source: ProcessListTableName},
 	{Name: "command", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
 	{Name: "time", Type: Int64, Default: nil, Nullable: false, Source: ProcessListTableName},
-	{Name: "state", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
-	{Name: "info", Type: LongText, Default: nil, Nullable: false, Source: ProcessListTableName},
+	{Name: "state", Type: LongText, Default: nil, Nullable: true, Source: ProcessListTableName},
+	{Name: "info", Type: LongText, Default: nil, Nullable: true, Source: ProcessListTableName},
 }
 
 var collationCharSetApplicabilitySchema = Schema{
-	{Name: "collation_name", Type: LongText, Default: nil, Nullable: true, Source: CollationCharSetApplicabilityTableName},
+	{Name: "collation_name", Type: LongText, Default: nil, Nullable: false, Source: CollationCharSetApplicabilityTableName},
 	{Name: "character_set_name", Type: LongText, Default: nil, Nullable: false, Source: CollationCharSetApplicabilityTableName},
 }
 
@@ -1052,29 +1043,6 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-// innoDBTempTableRowIter returns info on the temporary tables stored in the session.
-// TODO: Since Table ids and Space are not yet supported this table is not completely accurate yet.
-func innoDBTempTableRowIter(ctx *Context, c Catalog) (RowIter, error) {
-	var rows []Row
-	for _, db := range c.AllDatabases(ctx) {
-		tb, ok := db.(TemporaryTableDatabase)
-		if !ok {
-			continue
-		}
-
-		tables, err := tb.GetAllTemporaryTables(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		for i, table := range tables {
-			rows = append(rows, Row{i, table.String(), len(table.Schema()), 0})
-		}
-	}
-
-	return RowsToRowIter(rows...), nil
-}
-
 // processListRowIter returns info on all processes in the session
 func processListRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	processes := ctx.ProcessList.Processes()
@@ -1223,11 +1191,6 @@ func NewInformationSchemaDatabase() Database {
 				schema:  partitionSchema,
 				rowIter: emptyRowIter,
 			},
-			InnoDBTempTableName: &informationSchemaTable{
-				name:    InnoDBTempTableName,
-				schema:  innoDBTempTableSchema,
-				rowIter: innoDBTempTableRowIter,
-			},
 			ProcessListTableName: &informationSchemaTable{
 				name:    ProcessListTableName,
 				schema:  processListSchema,
@@ -1237,6 +1200,161 @@ func NewInformationSchemaDatabase() Database {
 				name:    CollationCharSetApplicabilityTableName,
 				schema:  collationCharSetApplicabilitySchema,
 				rowIter: collationCharSetApplicabilityRowIter,
+			},
+			InnoDBBufferPageName: &informationSchemaTable{
+				name:    InnoDBBufferPageName,
+				schema:  innoDBBufferPageSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBBufferPageLRUName: &informationSchemaTable{
+				name:    InnoDBBufferPageLRUName,
+				schema:  innoDBBufferPageLRUSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBBufferPoolStatsName: &informationSchemaTable{
+				name:    InnoDBBufferPoolStatsName,
+				schema:  innoDBBufferPoolStatsSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBCachedIndexesName: &informationSchemaTable{
+				name:    InnoDBCachedIndexesName,
+				schema:  innoDBCachedIndexesSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBCmpName: &informationSchemaTable{
+				name:    InnoDBCmpName,
+				schema:  innoDBCmpSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBCmpResetName: &informationSchemaTable{
+				name:    InnoDBCmpResetName,
+				schema:  innoDBCmpResetSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBCmpmemName: &informationSchemaTable{
+				name:    InnoDBCmpmemName,
+				schema:  innoDBCmpmemSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBCmpmemResetName: &informationSchemaTable{
+				name:    InnoDBCmpmemResetName,
+				schema:  innoDBCmpmemResetSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBCmpPerIndexName: &informationSchemaTable{
+				name:    InnoDBCmpPerIndexName,
+				schema:  innoDBCmpPerIndexSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBCmpPerIndexResetName: &informationSchemaTable{
+				name:    InnoDBCmpPerIndexResetName,
+				schema:  innoDBCmpPerIndexResetSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBColumnsName: &informationSchemaTable{
+				name:    InnoDBColumnsName,
+				schema:  innoDBColumnsSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBDatafilesName: &informationSchemaTable{
+				name:    InnoDBDatafilesName,
+				schema:  innoDBDatafilesSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBFieldsName: &informationSchemaTable{
+				name:    InnoDBFieldsName,
+				schema:  innoDBFieldsSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBForeignName: &informationSchemaTable{
+				name:    InnoDBForeignName,
+				schema:  innoDBForeignSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBForeignColsName: &informationSchemaTable{
+				name:    InnoDBForeignColsName,
+				schema:  innoDBForeignColsSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBFtBeingDeletedName: &informationSchemaTable{
+				name:    InnoDBFtBeingDeletedName,
+				schema:  innoDBFtBeingDeletedSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBFtConfigName: &informationSchemaTable{
+				name:    InnoDBFtConfigName,
+				schema:  innoDBFtConfigSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBFtDefaultStopwordName: &informationSchemaTable{
+				name:    InnoDBFtDefaultStopwordName,
+				schema:  innoDBFtDefaultStopwordSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBFtDeletedName: &informationSchemaTable{
+				name:    InnoDBFtDeletedName,
+				schema:  innoDBFtDeletedSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBFtIndexCacheName: &informationSchemaTable{
+				name:    InnoDBFtIndexCacheName,
+				schema:  innoDBFtIndexCacheSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBFtIndexTableName: &informationSchemaTable{
+				name:    InnoDBFtIndexTableName,
+				schema:  innoDBFtIndexTableSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBIndexesName: &informationSchemaTable{
+				name:    InnoDBIndexesName,
+				schema:  innoDBIndexesSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBMetricsName: &informationSchemaTable{
+				name:    InnoDBMetricsName,
+				schema:  innoDBMetricsSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBSessionTempTablespacesName: &informationSchemaTable{
+				name:    InnoDBSessionTempTablespacesName,
+				schema:  innoDBSessionTempTablespacesSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBTablesName: &informationSchemaTable{
+				name:    InnoDBTablesName,
+				schema:  innoDBTablesSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBTablespacesName: &informationSchemaTable{
+				name:    InnoDBTablespacesName,
+				schema:  innoDBTablespacesSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBTablespacesBriefName: &informationSchemaTable{
+				name:    InnoDBTablespacesBriefName,
+				schema:  innoDBTablespacesBriefSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBTablestatsName: &informationSchemaTable{
+				name:    InnoDBTablestatsName,
+				schema:  innoDBTablestatsSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBTempTableInfoName: &informationSchemaTable{
+				name:    InnoDBTempTableInfoName,
+				schema:  innoDBTempTableSchema,
+				rowIter: innoDBTempTableRowIter,
+			},
+			InnoDBTrxName: &informationSchemaTable{
+				name:    InnoDBTrxName,
+				schema:  innoDBTrxSchema,
+				rowIter: emptyRowIter,
+			},
+			InnoDBVirtualName: &informationSchemaTable{
+				name:    InnoDBVirtualName,
+				schema:  innoDBVirtualSchema,
+				rowIter: emptyRowIter,
 			},
 		},
 	}
