@@ -24,7 +24,7 @@ import (
 // tableEditor manages the edits that a table receives.
 type tableEditor struct {
 	table             *Table
-	initialAutoIncVal interface{}
+	initialAutoIncVal uint64
 	initialPartitions map[string][]sql.Row
 	ea                tableEditAccumulator
 	initialInsert     int
@@ -97,9 +97,13 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			return err
 		}
 		if cmp > 0 {
-			t.table.autoIncVal = row[idx]
+			v, err := uint64Type.Convert(row[idx])
+			if err != nil {
+				return err
+			}
+			t.table.autoIncVal = v.(uint64)
 		}
-		t.table.autoIncVal = increment(t.table.autoIncVal)
+		t.table.autoIncVal++
 	}
 
 	return nil
@@ -158,7 +162,7 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 }
 
 // SetAutoIncrementValue sets a new AUTO_INCREMENT value
-func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val interface{}) error {
+func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error {
 	t.table.autoIncVal = val
 	return nil
 }
