@@ -16,7 +16,9 @@ package enginetest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -5458,4 +5460,142 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 		wide[i] = widenJSON(v)
 	}
 	return
+}
+
+var (
+	jsonData []byte
+)
+
+// privDataJson is used to marshal/unmarshal the privilege data to/from JSON.
+type privDataJson struct {
+	Users []*grant_tables.User
+	Roles []*grant_tables.RoleEdge
+}
+func temporaryLoadPrivileges() ([]*grant_tables.User, []*grant_tables.RoleEdge, error) {
+	if len(jsonData) == 0 {
+		return nil, nil, nil
+	}
+	data := &privDataJson{}
+	err := json.Unmarshal(jsonData, data)
+	if err != nil {
+		return nil, nil, err
+	}
+	return data.Users, data.Roles, nil
+}
+
+var _ grant_tables.PersistCallback = temporarySavePrivileges
+
+func temporarySavePrivileges(ctx *sql.Context, users []*grant_tables.User, roles []*grant_tables.RoleEdge) error {
+	data := &privDataJson{
+		Users: users,
+		Roles: roles,
+	}
+	jd, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	jsonData = jd
+	return nil
+}
+
+func TestPersistPrivileges(t *testing.T, h Harness) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestUserPrivileges as the harness must implement ClientHarness")
+	}
+
+	port := getEmptyPort(t)
+	ctx := NewContextWithClient(harness, sql.Client{
+		User:    "root",
+		Address: "localhost",
+	})
+	serverConfig := server.Config{
+		Protocol:       "tcp",
+		Address:        fmt.Sprintf("localhost:%d", port),
+		MaxConnections: 1000,
+	}
+
+	users, roles, _ := temporaryLoadPrivileges()
+
+	myDb := harness.NewDatabase("mydb")
+	databases := []sql.Database{myDb}
+	engine := NewEngineWithDbs(t, harness, databases)
+	defer engine.Close()
+	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(temporarySavePrivileges)
+	engine.Analyzer.Catalog.GrantTables.LoadData(ctx, users, roles)
+
+	for _, script := range PersistPrivilegesTests{
+		t.Run(script.Name, func(t *testing.T) {
+
+			for _, statement := range script.SetUpScript {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(statement) {
+						t.Skip()
+					}
+				}
+				RunQueryWithContext(t, engine, ctx, statement)
+			}
+
+			for _, assertion := range script.InOneServer {
+				runTestsInOneServer(t, harness, ctx, serverConfig, assertion)
+			}
+		})
+	}
+}
+
+func runTestsInOneServer(t *testing.T, harness ClientHarness, ctx *sql.Context, sc server.Config, script PersistPrivilegesTestInOneServer) {
+	users, roles, _ := temporaryLoadPrivileges()
+	myDb := harness.NewDatabase("mydb")
+	databases := []sql.Database{myDb}
+	engine := NewEngineWithDbs(t, harness, databases)
+	defer engine.Close()
+	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(temporarySavePrivileges)
+	engine.Analyzer.Catalog.GrantTables.LoadData(ctx, users, roles)
+
+	s, err := server.NewDefaultServer(sc, engine)
+	require.NoError(t, err)
+	go func() {
+		err := s.Start()
+		require.NoError(t, err)
+	}()
+	defer func() {
+		require.NoError(t, s.Close())
+	}()
+
+	for _, assertion := range script.Assertions {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(assertion.Query) {
+				t.Skipf("Skipping query %s", assertion.Query)
+			}
+		}
+
+		user := assertion.User
+		host := assertion.Host
+		if user == "" {
+			user = "root"
+		}
+		if host == "" {
+			host = "localhost"
+		}
+		ctx = NewContextWithClient(harness, sql.Client{
+			User:    user,
+			Address: host,
+		})
+
+		if assertion.ExpectedErr != nil {
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertErrWithCtx(t, engine, ctx, assertion.Query, assertion.ExpectedErr)
+			})
+		} else if assertion.ExpectedErrStr != "" {
+			t.Run(assertion.Query, func(t *testing.T) {
+				AssertErrWithCtx(t, engine, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
+			})
+		} else {
+			t.Run(assertion.Query, func(t *testing.T) {
+				TestQueryWithContext(t, ctx, engine, assertion.Query, assertion.Expected, nil, nil)
+			})
+		}
+	}
 }

@@ -1675,3 +1675,129 @@ var QuickPrivTests = []QuickPrivilegeTest{
 		},
 	},
 }
+
+// PersistPrivilegesTest test the persist function in the grant tables, and we'll run an INSERT, UPDATE,
+// or DELETE on one of the privilege tables (mysql.user, mysql.db, etc.), modifying the privileges in some way.
+type PersistPrivilegesTest struct {
+	Name        string
+	SetUpScript []string
+	InOneServer []PersistPrivilegesTestInOneServer
+}
+
+// PersistPrivilegesTestInOneServer test persist assertions with restarting the server with the same privileges file
+type PersistPrivilegesTestInOneServer struct {
+	Assertions []PersistPrivilegesTestAssertion
+}
+
+// PersistPrivilegesTestAssertion is within a PersistPrivilegesTestInOneServer to assert functionality.
+type PersistPrivilegesTestAssertion struct {
+	User           string
+	Host           string
+	Query          string
+	Expected       []sql.Row
+	ExpectedErr    *errors.Kind
+	ExpectedErrStr string
+}
+
+var PersistPrivilegesTests = []PersistPrivilegesTest{
+	{
+		Name: "Database-level privileges exist",
+		SetUpScript: []string{
+			"CREATE USER tester@localhost;",
+		},
+		InOneServer: []PersistPrivilegesTestInOneServer{
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "GRANT SELECT, UPDATE, EXECUTE ON mydb.* TO tester@localhost;",
+						Expected: []sql.Row{{sql.NewOkResult(0)}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "SELECT * FROM mysql.db;",
+						Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+					},
+				},
+			},
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "SELECT * FROM mysql.db;",
+						Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+					},
+					{
+						User:  "root",
+						Host:  "localhost",
+						Query: "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'tester';",
+						Expected: []sql.Row{{sql.OkResult{
+							RowsAffected: 1,
+							InsertID:     0,
+							Info: plan.UpdateInfo{
+								Matched:  1,
+								Updated:  1,
+								Warnings: 0,
+							},
+						}}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "SELECT * FROM mysql.db;",
+						Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+					},
+				},
+			},
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "SELECT * FROM mysql.db;",
+						Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+					},
+					{
+						User:  "root",
+						Host:  "localhost",
+						Query: "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'tester';",
+						Expected: []sql.Row{{sql.OkResult{
+							RowsAffected: 1,
+							InsertID:     0,
+							Info: plan.UpdateInfo{
+								Matched:  1,
+								Updated:  1,
+								Warnings: 0,
+							},
+						}}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "SELECT * FROM mysql.db;",
+						Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "FLUSH PRIVILEGES;",
+						Expected: []sql.Row{{sql.NewOkResult(0)}},
+					},
+				},
+			},
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "SELECT * FROM mysql.db;",
+						Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+					},
+				},
+			},
+		},
+	},
+}
