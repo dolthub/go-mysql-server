@@ -401,7 +401,7 @@ var innoDBTempTableSchema = Schema{
 var innoDBTrxSchema = Schema{
 	{Name: "trx_id", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_state", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 13), Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `""`, MustCreateStringWithDefaults(sqltypes.VarChar, 13), false), Nullable: false, Source: InnoDBTrxName},
-	{Name: "trx_started", Type: Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0000-00-00 00:00:00", Datetime, false), Nullable: false, Source: InnoDBTrxName},
+	{Name: "trx_started", Type: Datetime, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), `"0000-00-00 00:00:00"`, Datetime, false), Nullable: false, Source: InnoDBTrxName},
 	{Name: "trx_requested_lock_id", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 105), Default: nil, Nullable: true, Source: InnoDBTrxName},
 	{Name: "trx_wait_started", Type: Datetime, Default: nil, Nullable: true, Source: InnoDBTrxName},
 	{Name: "trx_weight", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTrxName},
