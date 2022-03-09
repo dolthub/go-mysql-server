@@ -523,8 +523,6 @@ var collationCharSetApplicabilitySchema = Schema{
 	{Name: "character_set_name", Type: LongText, Default: nil, Nullable: false, Source: CollationCharSetApplicabilityTableName},
 }
 
-// TODO: Explicit Defaults of NULL?
-
 var administrableRoleAuthorizationsSchema = Schema{
 	{Name: "user", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 97), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
 	{Name: "host", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: AdministrableRoleAuthorizationsTableName},
