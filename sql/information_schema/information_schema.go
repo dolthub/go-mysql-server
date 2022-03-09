@@ -550,8 +550,8 @@ var applicableRolesSchema = Schema{
 }
 
 var columnPrivilegesSchema = Schema{
-	{Name: "grantee", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 292), Default: nil, Nullable: true, Source: ColumnPrivilegesTableName},
-	{Name: "table_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: true, Source: ColumnPrivilegesTableName},
+	{Name: "grantee", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 292), Default: nil, Nullable: false, Source: ColumnPrivilegesTableName},
+	{Name: "table_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 512), Default: nil, Nullable: false, Source: ColumnPrivilegesTableName},
 	{Name: "table_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnPrivilegesTableName},
 	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnPrivilegesTableName},
 	{Name: "column_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnPrivilegesTableName},
@@ -563,9 +563,9 @@ var columnExtensionsSchema = Schema{
 	{Name: "table_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
 	{Name: "table_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
 	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
-	{Name: "column_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
-	{Name: "engine_attribute", Type: JSON, Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
-	{Name: "secondary_engine_attribute", Type: JSON, Default: nil, Nullable: false, Source: ColumnsExtensionsTableName},
+	{Name: "column_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
+	{Name: "engine_attribute", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
+	{Name: "secondary_engine_attribute", Type: JSON, Default: nil, Nullable: true, Source: ColumnsExtensionsTableName},
 }
 
 var connectionControlFailedLoginAttemptsSchema = Schema{
@@ -599,7 +599,7 @@ var optimizerTraceSchema = Schema{
 	{Name: "query", Type: Text, Default: nil, Nullable: false, Source: OptimizerTraceTableName},
 	{Name: "trace", Type: Text, Default: nil, Nullable: false, Source: OptimizerTraceTableName},
 	{Name: "missing_bytes_beyond_max_mem_size", Type: Int64, Default: nil, Nullable: false, Source: OptimizerTraceTableName},
-	{Name: "insufficient_privileges", Type: Int8, Default: nil, Nullable: false, Source: OptimizerTraceTableName},
+	{Name: "insufficient_privileges", Type: MustCreateBitType(1), Default: nil, Nullable: false, Source: OptimizerTraceTableName},
 }
 
 var pluginsSchema = Schema{
@@ -678,11 +678,11 @@ var roleTableGrantsSchema = Schema{
 	{Name: "grantor_host", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: RoleTableGrantsTableName},
 	{Name: "grantee", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 32), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
 	{Name: "grantee_host", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
-	{Name: "table_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: RoleTableGrantsTableName},
-	{Name: "table_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: RoleTableGrantsTableName},
-	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: RoleTableGrantsTableName},
-	{Name: "privilege_type", Type: MustCreateSetType([]string{"Select", "Insert", "Update", "Delete", "Create", "Drop", "Grant", "References", "Index", "Alter", "Create View", "Show view", "Trigger"}, Collation_Default), Default: nil, Nullable: true, Source: RoleTableGrantsTableName},
-	{Name: "is_grantable", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: true, Source: RoleTableGrantsTableName},
+	{Name: "table_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
+	{Name: "table_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
+	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
+	{Name: "privilege_type", Type: MustCreateSetType([]string{"Select", "Insert", "Update", "Delete", "Create", "Drop", "Grant", "References", "Index", "Alter", "Create View", "Show view", "Trigger"}, Collation_Default), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
+	{Name: "is_grantable", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 3), Default: nil, Nullable: false, Source: RoleTableGrantsTableName},
 }
 
 var schemaPrivilegesTableName = Schema{
@@ -694,9 +694,9 @@ var schemaPrivilegesTableName = Schema{
 }
 
 var schemataExtensionTableName = Schema{
-	{Name: "catalog_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: SchemataExtensionsTableName},
-	{Name: "schema_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: SchemataExtensionsTableName},
-	{Name: "options", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: false, Source: SchemataExtensionsTableName},
+	{Name: "catalog_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
+	{Name: "schema_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
+	{Name: "options", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 256), Default: nil, Nullable: true, Source: SchemataExtensionsTableName},
 }
 
 var stGeometryColumnsSchema = Schema{
@@ -726,10 +726,12 @@ var stUnitsOfMeasureSchema = Schema{
 }
 
 var tableConstraintsExtensionsSchema = Schema{
-	{Name: "unit_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
-	{Name: "unit_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 7), Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
-	{Name: "conversion_factor", Type: Float64, Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
-	{Name: "description", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
+	{Name: "constraint_catalog", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TableConstraintsExtensionsTableName},
+	{Name: "constraint_schema", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TableConstraintsExtensionsTableName},
+	{Name: "constraint_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TableConstraintsExtensionsTableName},
+	{Name: "table_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TableConstraintsExtensionsTableName},
+	{Name: "engine_attribute", Type: JSON, Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
+	{Name: "secondary_engine_attribute", Type: JSON, Default: nil, Nullable: true, Source: TableConstraintsExtensionsTableName},
 }
 
 var tablePrivilegesSchema = Schema{
@@ -752,7 +754,7 @@ var tablesExtensionsSchema = Schema{
 var tablespacesSchema = Schema{
 	{Name: "tablespace_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TablespacesTableName},
 	{Name: "engine", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TablespacesTableName},
-	{Name: "tablespace_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: TablespacesTableName},
+	{Name: "tablespace_type", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: TablespacesTableName},
 	{Name: "logfile_group_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: TablespacesTableName},
 	{Name: "extent_size", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: true, Source: TablespacesTableName},
 	{Name: "autoextend_size", Type: Int64, Default: nil, Nullable: true, Source: TablespacesTableName},
@@ -769,7 +771,7 @@ var tablespacesExtensionsSchema = Schema{
 var userAttributesSchema = Schema{
 	{Name: "user", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 32), Default: nil, Nullable: false, Source: UserAttributesTableName},
 	{Name: "host", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false, Source: UserAttributesTableName},
-	{Name: "attribute", Type: LongText, Default: nil, Nullable: false, Source: UserAttributesTableName},
+	{Name: "attribute", Type: LongText, Default: nil, Nullable: true, Source: UserAttributesTableName},
 }
 
 var viewRoutineUsageSchema = Schema{
