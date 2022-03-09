@@ -7590,6 +7590,123 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
+		Expected: []sql.Row{
+			{"armscii8_bin", "armscii8"},
+			{"armscii8_general_ci", "armscii8"},
+			{"ascii_bin", "ascii"},
+			{"ascii_general_ci", "ascii"},
+		},
+	},
+	{
+		Query:    `SELECT * from information_schema.administrable_role_authorizations`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.applicable_roles`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.column_privileges`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.columns_extensions`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.connection_control_failed_login_attempts`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.keywords`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.mysql_firewall_users`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.mysql_firewall_whitelist`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.optimizer_trace`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.plugins`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.profiling`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.resource_groups`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.role_column_grants`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.role_routine_grants`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.schema_privileges`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.schemata_extensions`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.st_geometry_columns`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.st_spatial_reference_systems`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.st_units_of_measure`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.table_constraints_extensions`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.table_privileges`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.tables_extensions`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.tablespaces`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.tablespaces_extensions`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.user_attributes`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.view_routine_usage`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * FROM information_schema.view_table_usage`,
+		Expected: []sql.Row{},
+	},
+	{
 		Query:    `SELECT * from information_schema.innodb_buffer_page`,
 		Expected: []sql.Row{},
 	},
@@ -7712,15 +7829,6 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query:    `SELECT * from information_schema.innodb_virtual`,
 		Expected: []sql.Row{},
-	},
-	{
-		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
-		Expected: []sql.Row{
-			{"armscii8_bin", "armscii8"},
-			{"armscii8_general_ci", "armscii8"},
-			{"ascii_bin", "ascii"},
-			{"ascii_general_ci", "ascii"},
-		},
 	},
 }
 
