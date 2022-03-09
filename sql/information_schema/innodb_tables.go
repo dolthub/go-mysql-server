@@ -15,9 +15,10 @@
 package information_schema
 
 import (
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 const (
@@ -30,13 +31,13 @@ const (
 	// InnoDBCachedIndexesName is the name of the INNODB_CACHED_INDEXES Table
 	InnoDBCachedIndexesName = "innodb_cached_indexes"
 	// InnoDBCmpName is the name of the INNODB_CMP and INNODB_CMP_RESET Tables
-	InnoDBCmpName = "innodb_cmp"
+	InnoDBCmpName      = "innodb_cmp"
 	InnoDBCmpResetName = "innodb_cmp_reset"
 	// InnoDBCmpmemName is the name of the INNODB_CMPMEM and INNODB_CMPMEM_RESET Tables
-	InnoDBCmpmemName = "innodb_cmpmem"
+	InnoDBCmpmemName      = "innodb_cmpmem"
 	InnoDBCmpmemResetName = "innodb_cmpmem_reset"
 	// InnoDBCmpPerIndexName is the name of the INNODB_CMP_PER_INDEX and INNODB_CMP_PER_INDEX_RESET Table
-	InnoDBCmpPerIndexName = "innodb_cmp_per_index"
+	InnoDBCmpPerIndexName      = "innodb_cmp_per_index"
 	InnoDBCmpPerIndexResetName = "innodb_cmp_per_index_reset"
 	// InnoDBColumnsName is the name of the INNODB_COLUMNS Table
 	InnoDBColumnsName = "innodb_columns"
@@ -388,7 +389,6 @@ var innoDBTablestatsSchema = Schema{
 	{Name: "modified_counter", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablestatsName},
 	{Name: "autoinc", Type: Uint64, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Uint64, false), Nullable: false, Source: InnoDBTablestatsName},
 	{Name: "ref_count", Type: Int32, Default: parse.MustStringToColumnDefaultValue(NewEmptyContext(), "0", Int32, false), Nullable: false, Source: InnoDBTablestatsName},
-
 }
 
 var innoDBTempTableSchema = Schema{
