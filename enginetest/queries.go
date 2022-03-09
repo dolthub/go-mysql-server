@@ -7590,6 +7590,130 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
+		Query:    `SELECT * from information_schema.innodb_buffer_page`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_buffer_page_lru`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_buffer_pool_stats`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_cached_indexes`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_cmp`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_cmp_reset`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_cmpmem`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_cmpmem_reset`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_cmp_per_index`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_cmp_per_index_reset`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_columns`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_datafiles`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_fields`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_foreign`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_foreign_cols`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_ft_being_deleted`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_ft_config`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_ft_default_stopword`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_ft_deleted`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_ft_index_cache`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_ft_index_table`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_indexes`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_metrics`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_session_temp_tablespaces`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_tables`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_tablespaces`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_tablespaces_brief`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_tablestats`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_temp_table_info`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_trx`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `SELECT * from information_schema.innodb_virtual`,
+		Expected: []sql.Row{},
+	},
+	{
 		Query: `SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ORDER BY collation_name LIMIT 4 `,
 		Expected: []sql.Row{
 			{"armscii8_bin", "armscii8"},
