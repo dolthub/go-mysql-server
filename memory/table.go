@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"sort"
 	"strconv"
@@ -737,6 +739,45 @@ func (t *Table) dropColumnFromSchema(ctx *sql.Context, columnName string) int {
 	}
 
 	t.schema = sql.NewPrimaryKeySchema(newSch, newPkOrds...)
+
+	// Drop any checks that reference this column
+	var newChks []sql.CheckDefinition
+	for _, check := range t.checks {
+		// Convert CheckExpression from string to Expression by parsing
+		// Has already made it past analyzer to get here, so it should be safe right?
+		parseStr := fmt.Sprintf("select %s", check.CheckExpression)
+		parsed, _ := sqlparser.Parse(parseStr)
+		selectStmt := parsed.(*sqlparser.Select)
+		expr := selectStmt.SelectExprs[0]
+		ae := expr.(*sqlparser.AliasedExpr)
+		c, _ := parse.ExprToExpression(ctx, ae.Expr)
+
+		// Look for any column references in the evaluated Expression
+		var cols []string
+		sql.Inspect(c, func(expr sql.Expression) bool {
+			if c, ok := expr.(*expression.UnresolvedColumn); ok {
+				cols = append(cols, c.Name())
+				return false
+			}
+			return true
+		})
+
+		// Only keep checks that don't contain removed column
+		// Has made it past analyzer check for multiple column references, so should be safe right?
+		containsColumn := false
+		for _, col := range cols {
+			if col == columnName {
+				containsColumn = true
+				break
+			}
+		}
+		if !containsColumn {
+			newChks = append(newChks, check)
+		}
+	}
+
+	t.checks = newChks
+
 	return droppedCol
 }
 

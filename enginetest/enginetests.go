@@ -2418,10 +2418,7 @@ func TestDropColumn(t *testing.T, harness Harness) {
 		checks, err := checkTable.GetChecks(harness.NewContext())
 		require.NoError(err)
 
-		// TODO: check needs to be dropped in engine??
-		require.Equal(1, len(checks))
-		require.Equal("test_check", checks[0].Name)
-		require.Equal("(j < 12345)", checks[0].CheckExpression)
+		require.Equal(0, len(checks))
 	})
 
 	t.Run("drop column preserves table check constraints", func(t *testing.T) {
