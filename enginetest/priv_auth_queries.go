@@ -1699,9 +1699,11 @@ type PersistPrivilegesTestAssertion struct {
 	ExpectedErrStr string
 }
 
+// PersistPrivilegesTests test persistence of privilege systems. These tests always have the root account available, and the root
+// account is used with any queries in the SetUpScript.
 var PersistPrivilegesTests = []PersistPrivilegesTest{
 	{
-		Name: "Database-level privileges exist",
+		Name: "Privilege testing on mysql.db table of FLUSH PRIVILEGES",
 		SetUpScript: []string{
 			"CREATE USER tester@localhost;",
 		},
@@ -1795,6 +1797,105 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 						Host:     "localhost",
 						Query:    "SELECT * FROM mysql.db;",
 						Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
+					},
+				},
+			},
+		},
+	},
+	{
+		Name: "Privilege testing on mysql.user table of FLUSH PRIVILEGES",
+		SetUpScript: []string{
+		},
+		InOneServer: []PersistPrivilegesTestInOneServer{
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester2');",
+						Expected: []sql.Row{{sql.NewOkResult(1)}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Expected: []sql.Row{{"localhost", "root"}, {"localhost", "tester2"}},
+					},
+				},
+			},
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Expected: []sql.Row{{"localhost", "root"}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester2');",
+						Expected: []sql.Row{{sql.NewOkResult(1)}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "FLUSH PRIVILEGES;",
+						Expected: []sql.Row{{sql.NewOkResult(0)}},
+					},
+				},
+			},
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Expected: []sql.Row{{"localhost", "root"}, {"localhost", "tester2"}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "DELETE FROM mysql.user WHERE User = 'tester2';",
+						Expected: []sql.Row{{sql.NewOkResult(1)}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Expected: []sql.Row{{"localhost", "root"}},
+					},
+				},
+			},
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Expected: []sql.Row{{"localhost", "root"}, {"localhost", "tester2"}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query:    "DELETE FROM mysql.user WHERE User = 'tester2';",
+						Expected: []sql.Row{{sql.NewOkResult(1)}},
+					},
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "FLUSH PRIVILEGES;",
+						Expected: []sql.Row{{sql.NewOkResult(0)}},
+					},
+				},
+			},
+			{
+				Assertions: []PersistPrivilegesTestAssertion{
+					{
+						User:     "root",
+						Host:     "localhost",
+						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Expected: []sql.Row{{"localhost", "root"}},
 					},
 				},
 			},

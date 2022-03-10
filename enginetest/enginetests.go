@@ -5527,8 +5527,10 @@ func TestPersistPrivileges(t *testing.T, h Harness) {
 	engine.Analyzer.Catalog.GrantTables.LoadData(ctx, users, roles)
 
 	for _, script := range PersistPrivilegesTests {
-		t.Run(script.Name, func(t *testing.T) {
+		// start test with empty `privileges file`
+		jsonData = []byte{}
 
+		t.Run(script.Name, func(t *testing.T) {
 			for _, statement := range script.SetUpScript {
 				if sh, ok := harness.(SkippingHarness); ok {
 					if sh.SkipQueryTest(statement) {
