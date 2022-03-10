@@ -65,8 +65,6 @@ const (
 	EventsTableName = "events"
 	// FilesTableName is the name of the FILES table.
 	FilesTableName = "files"
-	// InnoDBTempTableName is the name of the INNODB_TEMP_TABLE_INFO table
-	InnoDBTempTableName = "innodb_temp_table_info"
 	// KeyColumnUsageTableName is the name of the KEY_COLUMN_USAGE table.
 	KeyColumnUsageTableName = "key_column_usage"
 	// KeywordsTableName is the name of the KEYWORDS table.
