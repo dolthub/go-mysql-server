@@ -1803,9 +1803,8 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 		},
 	},
 	{
-		Name: "Privilege testing on mysql.user table of FLUSH PRIVILEGES",
-		SetUpScript: []string{
-		},
+		Name:        "Privilege testing on mysql.user table of FLUSH PRIVILEGES",
+		SetUpScript: []string{},
 		InOneServer: []PersistPrivilegesTestInOneServer{
 			{
 				Assertions: []PersistPrivilegesTestAssertion{
@@ -1818,7 +1817,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Query:    "SELECT Host, User FROM mysql.user;",
 						Expected: []sql.Row{{"localhost", "root"}, {"localhost", "tester2"}},
 					},
 				},
@@ -1828,7 +1827,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Query:    "SELECT Host, User FROM mysql.user;",
 						Expected: []sql.Row{{"localhost", "root"}},
 					},
 					{
@@ -1840,7 +1839,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "FLUSH PRIVILEGES;",
+						Query:    "FLUSH PRIVILEGES;",
 						Expected: []sql.Row{{sql.NewOkResult(0)}},
 					},
 				},
@@ -1850,7 +1849,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Query:    "SELECT Host, User FROM mysql.user;",
 						Expected: []sql.Row{{"localhost", "root"}, {"localhost", "tester2"}},
 					},
 					{
@@ -1862,7 +1861,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Query:    "SELECT Host, User FROM mysql.user;",
 						Expected: []sql.Row{{"localhost", "root"}},
 					},
 				},
@@ -1872,7 +1871,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Query:    "SELECT Host, User FROM mysql.user;",
 						Expected: []sql.Row{{"localhost", "root"}, {"localhost", "tester2"}},
 					},
 					{
@@ -1884,7 +1883,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "FLUSH PRIVILEGES;",
+						Query:    "FLUSH PRIVILEGES;",
 						Expected: []sql.Row{{sql.NewOkResult(0)}},
 					},
 				},
@@ -1894,7 +1893,7 @@ var PersistPrivilegesTests = []PersistPrivilegesTest{
 					{
 						User:     "root",
 						Host:     "localhost",
-						Query: 	  "SELECT Host, User FROM mysql.user;",
+						Query:    "SELECT Host, User FROM mysql.user;",
 						Expected: []sql.Row{{"localhost", "root"}},
 					},
 				},
