@@ -97,7 +97,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			return err
 		}
 		if cmp > 0 {
-			v, err := uint64Type.Convert(row[idx])
+			v, err := sql.Uint64.Convert(row[idx])
 			if err != nil {
 				return err
 			}

@@ -32,14 +32,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
-var uint64Type sql.Type
-
-func init() {
-	if uint64Type, _ = sql.CreateNumberType(sqltypes.Uint64); uint64Type == nil {
-		panic("cannot create auto increment type")
-	}
-}
-
 // Table represents an in-memory database table.
 type Table struct {
 	// Schema and related info
@@ -586,14 +578,13 @@ func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (uint64, error) {
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
-	autoIncCol := t.schema.Schema[t.autoColIdx]
-	cmp, err := autoIncCol.Type.Compare(insertVal, t.autoIncVal)
+	cmp, err := sql.Uint64.Compare(insertVal, t.autoIncVal)
 	if err != nil {
 		return 0, err
 	}
 
 	if cmp > 0 && insertVal != nil {
-		v, err := uint64Type.Convert(insertVal)
+		v, err := sql.Uint64.Convert(insertVal)
 		if err != nil {
 			return 0, err
 		}
@@ -666,7 +657,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 
 					if cmp > 0 {
 						var val interface{}
-						val, err = uint64Type.Convert(row[newColIdx])
+						val, err = sql.Uint64.Convert(row[newColIdx])
 						if err != nil {
 							panic(err)
 						}

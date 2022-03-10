@@ -17,7 +17,6 @@ package expression
 import (
 	"fmt"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -29,14 +28,6 @@ var (
 	// ErrNoAutoIncrementCols is returned when table has no AUTO_INCREMENT columns.
 	ErrNoAutoIncrementCols = errors.NewKind("table %s has no AUTO_INCREMENT columns")
 )
-
-var uint64Type sql.Type
-
-func init() {
-	if uint64Type, _ = sql.CreateNumberType(sqltypes.Uint64); uint64Type == nil {
-		panic("cannot create auto increment type")
-	}
-}
 
 // AutoIncrement implements AUTO_INCREMENT
 type AutoIncrement struct {
@@ -99,7 +90,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = nil
 	}
 
-	conv, err := uint64Type.Convert(given)
+	conv, err := sql.Uint64.Convert(given)
 	if err != nil {
 		return nil, err
 	}
