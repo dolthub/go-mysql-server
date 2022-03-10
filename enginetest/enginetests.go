@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
@@ -5462,143 +5461,110 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 	return
 }
 
-var (
-	jsonData []byte
-)
-
-// privDataJson is used to marshal/unmarshal the privilege data to/from JSON.
-type privDataJson struct {
-	Users []*grant_tables.User
-	Roles []*grant_tables.RoleEdge
-}
-
-func temporaryLoadPrivileges() ([]*grant_tables.User, []*grant_tables.RoleEdge, error) {
-	if len(jsonData) == 0 {
-		return nil, nil, nil
-	}
-	data := &privDataJson{}
-	err := json.Unmarshal(jsonData, data)
-	if err != nil {
-		return nil, nil, err
-	}
-	return data.Users, data.Roles, nil
-}
-
-var _ grant_tables.PersistCallback = temporarySavePrivileges
-
-func temporarySavePrivileges(ctx *sql.Context, users []*grant_tables.User, roles []*grant_tables.RoleEdge) error {
-	data := &privDataJson{
-		Users: users,
-		Roles: roles,
-	}
-	jd, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	jsonData = jd
-	return nil
-}
-
-func TestPersistPrivileges(t *testing.T, h Harness) {
+func TestPrivilegePersistence(t *testing.T, h Harness) {
 	harness, ok := h.(ClientHarness)
 	if !ok {
-		t.Skip("Cannot run TestUserPrivileges as the harness must implement ClientHarness")
+		t.Skip("Cannot run TestPrivilegePersistence as the harness must implement ClientHarness")
 	}
 
-	port := getEmptyPort(t)
 	ctx := NewContextWithClient(harness, sql.Client{
 		User:    "root",
 		Address: "localhost",
 	})
-	serverConfig := server.Config{
-		Protocol:       "tcp",
-		Address:        fmt.Sprintf("localhost:%d", port),
-		MaxConnections: 1000,
-	}
-
-	users, roles, _ := temporaryLoadPrivileges()
 
 	myDb := harness.NewDatabase("mydb")
 	databases := []sql.Database{myDb}
 	engine := NewEngineWithDbs(t, harness, databases)
 	defer engine.Close()
 	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
-	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(temporarySavePrivileges)
-	engine.Analyzer.Catalog.GrantTables.LoadData(ctx, users, roles)
 
-	for _, script := range PersistPrivilegesTests {
-		// start test with empty `privileges file`
-		jsonData = []byte{}
+	var users []*grant_tables.User
+	var roles []*grant_tables.RoleEdge
+	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(
+		func(ctx *sql.Context, updatedUsers []*grant_tables.User, updatedRoles []*grant_tables.RoleEdge) error {
+			users = updatedUsers
+			roles = updatedRoles
+			return nil
+		},
+	)
 
-		t.Run(script.Name, func(t *testing.T) {
-			for _, statement := range script.SetUpScript {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
-				}
-				RunQueryWithContext(t, engine, ctx, statement)
-			}
+	RunQueryWithContext(t, engine, ctx, "CREATE USER tester@localhost")
+	// If the user exists in []*grant_tables.User, then it must be NOT nil.
+	require.NotNil(t, findUser("tester", "localhost", users))
 
-			for _, assertion := range script.InOneServer {
-				runTestsInOneServer(t, harness, ctx, serverConfig, assertion)
-			}
-		})
-	}
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester1')")
+	require.Nil(t, findUser("tester1", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.user SET User = 'test_user' WHERE User = 'tester'")
+	require.NotNil(t, findUser("tester", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.NotNil(t, findUser("tester1", "localhost", users))
+	require.Nil(t, findUser("tester", "localhost", users))
+	require.NotNil(t, findUser("test_user", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "DELETE FROM mysql.user WHERE User = 'tester1'")
+	require.NotNil(t, findUser("tester1", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON mydb.* TO test_user@localhost")
+	user := findUser("test_user", "localhost", users)
+	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'test_user'")
+	require.False(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
+
+	RunQueryWithContext(t, engine, ctx, "CREATE USER dolt@localhost")
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.db (Host, Db, User, Select_priv) VALUES ('localhost', 'mydb', 'dolt', 'Y')")
+	user1 := findUser("dolt", "localhost", users)
+	require.NotNil(t, user1)
+	require.False(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.Nil(t, findUser("tester1", "localhost", users))
+	user = findUser("test_user", "localhost", users)
+	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
+	user1 = findUser("dolt", "localhost", users)
+	require.True(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "CREATE ROLE test_role")
+	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON *.* TO test_role")
+	require.Zero(t, len(roles))
+	RunQueryWithContext(t, engine, ctx, "GRANT test_role TO test_user@localhost")
+	require.NotZero(t, len(roles))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.role_edges SET to_user = 'tester2' WHERE to_user = 'test_user'")
+	require.NotNil(t, findRole("test_user", roles))
+	require.Nil(t, findRole("tester2", roles))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.Nil(t, findRole("test_user", roles))
+	require.NotNil(t, findRole("tester2", roles))
+
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.role_edges VALUES ('%', 'test_role', 'localhost', 'test_user', 'N')")
+	require.Nil(t, findRole("test_user", roles))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.NotNil(t, findRole("test_user", roles))
 }
 
-func runTestsInOneServer(t *testing.T, harness ClientHarness, ctx *sql.Context, sc server.Config, script PersistPrivilegesTestInOneServer) {
-	users, roles, _ := temporaryLoadPrivileges()
-	myDb := harness.NewDatabase("mydb")
-	databases := []sql.Database{myDb}
-	engine := NewEngineWithDbs(t, harness, databases)
-	defer engine.Close()
-	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
-	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(temporarySavePrivileges)
-	engine.Analyzer.Catalog.GrantTables.LoadData(ctx, users, roles)
-
-	s, err := server.NewDefaultServer(sc, engine)
-	require.NoError(t, err)
-	go func() {
-		err := s.Start()
-		require.NoError(t, err)
-	}()
-	defer func() {
-		require.NoError(t, s.Close())
-	}()
-
-	for _, assertion := range script.Assertions {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(assertion.Query) {
-				t.Skipf("Skipping query %s", assertion.Query)
-			}
-		}
-
-		user := assertion.User
-		host := assertion.Host
-		if user == "" {
-			user = "root"
-		}
-		if host == "" {
-			host = "localhost"
-		}
-		ctx = NewContextWithClient(harness, sql.Client{
-			User:    user,
-			Address: host,
-		})
-
-		if assertion.ExpectedErr != nil {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErrWithCtx(t, engine, ctx, assertion.Query, assertion.ExpectedErr)
-			})
-		} else if assertion.ExpectedErrStr != "" {
-			t.Run(assertion.Query, func(t *testing.T) {
-				AssertErrWithCtx(t, engine, ctx, assertion.Query, nil, assertion.ExpectedErrStr)
-			})
-		} else {
-			t.Run(assertion.Query, func(t *testing.T) {
-				TestQueryWithContext(t, ctx, engine, assertion.Query, assertion.Expected, nil, nil)
-			})
+// findUser returns *grant_table.User corresponding to specific user and host names.
+// If not found, returns nil *grant_table.User.
+func findUser(user string, host string, users []*grant_tables.User) *grant_tables.User {
+	for _, u := range users {
+		if u.User == user && u.Host == host {
+			return u
 		}
 	}
+	return nil
+}
+
+// findRole returns *grant_table.RoleEdge corresponding to specific to_user.
+// If not found, returns nil *grant_table.RoleEdge.
+func findRole(to_user string, roles []*grant_tables.RoleEdge) *grant_tables.RoleEdge {
+	for _, r := range roles {
+		if r.ToUser == to_user {
+			return r
+		}
+	}
+	return nil
 }

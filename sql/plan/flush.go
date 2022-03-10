@@ -66,7 +66,6 @@ func (f *FlushPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (f *FlushPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if opChecker.UserHasPrivileges(ctx,
 		sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Reload)) {
-		// TODO: some options require additional privileges
 		return true
 	}
 	return false
