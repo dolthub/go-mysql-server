@@ -37,6 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -5444,4 +5445,118 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 		wide[i] = widenJSON(v)
 	}
 	return
+}
+
+func TestPrivilegePersistence(t *testing.T, h Harness) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestPrivilegePersistence as the harness must implement ClientHarness")
+	}
+
+	ctx := NewContextWithClient(harness, sql.Client{
+		User:    "root",
+		Address: "localhost",
+	})
+
+	myDb := harness.NewDatabase("mydb")
+	databases := []sql.Database{myDb}
+	engine := NewEngineWithDbs(t, harness, databases)
+	defer engine.Close()
+	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+
+	var users []*grant_tables.User
+	var roles []*grant_tables.RoleEdge
+	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(
+		func(ctx *sql.Context, updatedUsers []*grant_tables.User, updatedRoles []*grant_tables.RoleEdge) error {
+			users = updatedUsers
+			roles = updatedRoles
+			return nil
+		},
+	)
+
+	RunQueryWithContext(t, engine, ctx, "CREATE USER tester@localhost")
+	// If the user exists in []*grant_tables.User, then it must be NOT nil.
+	require.NotNil(t, findUser("tester", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester1')")
+	require.Nil(t, findUser("tester1", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.user SET User = 'test_user' WHERE User = 'tester'")
+	require.NotNil(t, findUser("tester", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.NotNil(t, findUser("tester1", "localhost", users))
+	require.Nil(t, findUser("tester", "localhost", users))
+	require.NotNil(t, findUser("test_user", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "DELETE FROM mysql.user WHERE User = 'tester1'")
+	require.NotNil(t, findUser("tester1", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON mydb.* TO test_user@localhost")
+	user := findUser("test_user", "localhost", users)
+	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'test_user'")
+	require.False(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
+
+	RunQueryWithContext(t, engine, ctx, "CREATE USER dolt@localhost")
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.db (Host, Db, User, Select_priv) VALUES ('localhost', 'mydb', 'dolt', 'Y')")
+	user1 := findUser("dolt", "localhost", users)
+	require.NotNil(t, user1)
+	require.False(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.Nil(t, findUser("tester1", "localhost", users))
+	user = findUser("test_user", "localhost", users)
+	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
+	user1 = findUser("dolt", "localhost", users)
+	require.True(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "CREATE ROLE test_role")
+	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON *.* TO test_role")
+	require.Zero(t, len(roles))
+	RunQueryWithContext(t, engine, ctx, "GRANT test_role TO test_user@localhost")
+	require.NotZero(t, len(roles))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.role_edges SET to_user = 'tester2' WHERE to_user = 'test_user'")
+	require.NotNil(t, findRole("test_user", roles))
+	require.Nil(t, findRole("tester2", roles))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.Nil(t, findRole("test_user", roles))
+	require.NotNil(t, findRole("tester2", roles))
+
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.role_edges VALUES ('%', 'test_role', 'localhost', 'test_user', 'N')")
+	require.Nil(t, findRole("test_user", roles))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.NotNil(t, findRole("test_user", roles))
+
+	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
+	require.Error(t, err)
+
+	_, _, err = engine.Query(ctx, "FLUSH LOCAL PRIVILEGES")
+	require.Error(t, err)
+}
+
+// findUser returns *grant_table.User corresponding to specific user and host names.
+// If not found, returns nil *grant_table.User.
+func findUser(user string, host string, users []*grant_tables.User) *grant_tables.User {
+	for _, u := range users {
+		if u.User == user && u.Host == host {
+			return u
+		}
+	}
+	return nil
+}
+
+// findRole returns *grant_table.RoleEdge corresponding to specific to_user.
+// If not found, returns nil *grant_table.RoleEdge.
+func findRole(toUser string, roles []*grant_tables.RoleEdge) *grant_tables.RoleEdge {
+	for _, r := range roles {
+		if r.ToUser == toUser {
+			return r
+		}
+	}
+	return nil
 }
