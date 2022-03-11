@@ -21,8 +21,8 @@ import (
 
 // FlushPrivileges reads privileges from grant tables and registers any unregistered privileges found.
 type FlushPrivileges struct {
-	writesToBinlog   bool
-	grantTables sql.Database
+	writesToBinlog bool
+	grantTables    sql.Database
 }
 
 var _ sql.Node = (*FlushPrivileges)(nil)
