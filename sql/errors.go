@@ -283,6 +283,21 @@ var (
 	// ErrForeignKeyNotResolved is called when an add or update is attempted on a foreign key that has not been resolved yet.
 	ErrForeignKeyNotResolved = errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))")
 
+	// ErrNoForeignKeySupport is returned when the table does not support FOREIGN KEY operations.
+	ErrNoForeignKeySupport = errors.NewKind("the table does not support foreign key operations: %s")
+
+	// ErrForeignKeyMissingColumns is returned when an ALTER TABLE ADD FOREIGN KEY statement does not provide any columns
+	ErrForeignKeyMissingColumns = errors.NewKind("cannot create a foreign key without columns")
+
+	// ErrAddForeignKeyDuplicateColumn is returned when an ALTER TABLE ADD FOREIGN KEY statement has the same column multiple times
+	ErrAddForeignKeyDuplicateColumn = errors.NewKind("cannot have duplicates of columns in a foreign key: `%v`")
+
+	// ErrTemporaryTablesForeignKeySupport is returned when a user tries to create a temporary table with a foreign key
+	ErrTemporaryTablesForeignKeySupport = errors.NewKind("temporary tables do not support foreign keys")
+
+	// ErrForeignKeyNotFound is returned when a foreign key was not found.
+	ErrForeignKeyNotFound = errors.NewKind("foreign key `%s` was not found on the table `%s`")
+
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 

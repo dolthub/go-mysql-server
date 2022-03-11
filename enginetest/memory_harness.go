@@ -137,7 +137,13 @@ func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
 }
 
 func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, schema sql.PrimaryKeySchema, asOf interface{}) sql.Table {
-	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	var fkColl *memory.ForeignKeyCollection
+	if memDb, ok := db.(*memory.HistoryDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	}
+	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()
 	}
@@ -182,7 +188,17 @@ func (m *MemoryHarness) NewDatabases(names ...string) []sql.Database {
 }
 
 func (m *MemoryHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
-	table := memory.NewPartitionedTable(name, schema, m.numTablePartitions)
+	var fkColl *memory.ForeignKeyCollection
+	if memDb, ok := db.(*memory.BaseDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.Database); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.HistoryDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	} else if memDb, ok := db.(*memory.ReadOnlyDatabase); ok {
+		fkColl = memDb.GetForeignKeyCollection()
+	}
+	table := memory.NewPartitionedTable(name, schema, fkColl, m.numTablePartitions)
 	if m.nativeIndexSupport {
 		table.EnablePrimaryKeyIndexes()
 	}

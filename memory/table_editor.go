@@ -34,6 +34,7 @@ var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
+var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
 	return t.ea.ApplyEdits(ctx)
@@ -161,6 +162,12 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val interface{}) error {
 	t.table.autoIncVal = val
 	return nil
+}
+
+// WithIndexLookup returns
+func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+	//TODO: create some new struct that encloses the tableEditor and filters based on the lookup
+	panic("not yet implemented")
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {

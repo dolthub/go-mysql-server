@@ -303,6 +303,16 @@ type Databaser interface {
 	WithDatabase(Database) (Node, error)
 }
 
+// MultiDatabaser is a node that contains a reference to a database provider. This interface is intended for very
+// specific nodes that must resolve databases during execution time rather than during analysis, such as block
+// statements where the execution of a nested statement in the block may affect future statements within that same block.
+type MultiDatabaser interface {
+	// DatabaseProvider returns the current DatabaseProvider.
+	DatabaseProvider() DatabaseProvider
+	// WithDatabaseProvider returns a new node instance with the database provider replaced with the one given as parameter.
+	WithDatabaseProvider(DatabaseProvider) (Node, error)
+}
+
 // SchemaTarget is a node that has a target schema that can be set
 type SchemaTarget interface {
 	WithTargetSchema(Schema) (Node, error)
@@ -407,13 +417,19 @@ type IndexedTable interface {
 	GetIndexes(ctx *Context) ([]Index, error)
 }
 
-// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match a given index
+// IndexAddressable provides a Table that has its row iteration restricted to only the rows that match the given index
 // lookup.
-type IndexAddressableTable interface {
-	Table
+type IndexAddressable interface {
 	// WithIndexLookup returns a version of the table that will return only the rows specified by the given IndexLookup,
 	// which was in turn created by a call to Index.Get() for a set of keys for this table.
 	WithIndexLookup(IndexLookup) Table
+}
+
+// IndexAddressableTable is a table that can restrict its row iteration to only the rows that match the given index
+// lookup.
+type IndexAddressableTable interface {
+	Table
+	IndexAddressable
 }
 
 // IndexAlterableTable represents a table that supports index modification operations.
@@ -429,22 +445,36 @@ type IndexAlterableTable interface {
 	RenameIndex(ctx *Context, fromIndexName string, toIndexName string) error
 }
 
-// ForeignKeyTable is a table that can declare its foreign key constraints.
+// ForeignKeyTable is a table that can declare its foreign key constraints, as well as be referenced.
 type ForeignKeyTable interface {
-	Table
-	// GetForeignKeys returns the foreign key constraints on this table.
-	GetForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+	IndexedTable
+	// CreateIndexForForeignKey creates an index for this table, using the provided parameters. Indexes created through
+	// this function are specifically ones generated for use with a foreign key. Returns an error if the index name
+	// already exists, or an index on the same columns already exists.
+	CreateIndexForForeignKey(ctx *Context, indexName string, using IndexUsing, constraint IndexConstraint, columns []IndexColumn) error
+
+	// GetDeclaredForeignKeys returns the foreign key constraints that are declared by this table.
+	GetDeclaredForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+	// GetReferencedForeignKeys returns the foreign key constraints that are referenced by this table.
+	GetReferencedForeignKeys(ctx *Context) ([]ForeignKeyConstraint, error)
+	// AddForeignKey adds the given foreign key constraint to the table. Returns an error if the foreign key name
+	// already exists on any other table within the database.
+	AddForeignKey(ctx *Context, fk ForeignKeyConstraint) error
+	// DropForeignKey removes a foreign key from the table.
+	DropForeignKey(ctx *Context, fkName string) error
+	// SetForeignKeyResolved is called once a foreign key has been resolved. The integrator only needs to set the
+	// IsResolved boolean to true.
+	SetForeignKeyResolved(ctx *Context, fkName string) error
+	// GetForeignKeyUpdater returns a ForeignKeyUpdater for this table.
+	GetForeignKeyUpdater(ctx *Context) ForeignKeyUpdater
 }
 
-// ForeignKeyAlterableTable represents a table that supports foreign key modification operations.
-type ForeignKeyAlterableTable interface {
-	Table
-	// CreateForeignKey creates an index for this table, using the provided parameters.
-	// Returns an error if the foreign key name already exists.
-	CreateForeignKey(ctx *Context, fkName string, columns []string, referencedTable string, referencedColumns []string,
-		onUpdate, onDelete ForeignKeyReferenceOption) error
-	// DropForeignKey removes a foreign key from the database.
-	DropForeignKey(ctx *Context, fkName string) error
+// ForeignKeyUpdater is a TableEditor that is addressable via IndexLookup.
+type ForeignKeyUpdater interface {
+	RowInserter
+	RowUpdater
+	RowDeleter
+	IndexAddressable
 }
 
 // CheckTable is a table that can declare its check constraints.

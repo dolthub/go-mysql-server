@@ -156,7 +156,7 @@ func validateTruncate(ctx *sql.Context, db sql.Database, tbl sql.Node) (bool, er
 		}
 		fkTable, ok := tableToCheck.(sql.ForeignKeyTable)
 		if ok {
-			fks, err := fkTable.GetForeignKeys(ctx)
+			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 			if err != nil {
 				return true, err
 			}

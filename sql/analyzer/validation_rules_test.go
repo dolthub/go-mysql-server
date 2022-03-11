@@ -71,7 +71,7 @@ func TestValidateGroupBy(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	})
 
-	child := memory.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -116,7 +116,7 @@ func TestValidateGroupByErr(t *testing.T) {
 		{Name: "col2", Type: sql.Int64},
 	})
 
-	child := memory.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -164,6 +164,7 @@ func TestValidateSchemaSource(t *testing.T) {
 					{Name: "foo", Source: "mytable"},
 					{Name: "bar", Source: "mytable"},
 				}),
+				nil,
 			), nil, nil),
 			true,
 		},
@@ -175,6 +176,7 @@ func TestValidateSchemaSource(t *testing.T) {
 					{Name: "foo", Source: ""},
 					{Name: "bar", Source: "something"},
 				}),
+				nil,
 			), nil, nil),
 			false,
 		},
@@ -182,7 +184,7 @@ func TestValidateSchemaSource(t *testing.T) {
 			"table alias with table",
 			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
-			})), nil, nil)),
+			}), nil), nil, nil)),
 			true,
 		},
 		{
@@ -226,6 +228,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 			{Name: "zab", Source: "mytable", Type: sql.Int64},
 			{Name: "quuz", Source: "mytable", Type: sql.Boolean},
 		}),
+		nil,
 	), nil, nil)
 	testCases := []struct {
 		name string
@@ -481,7 +484,7 @@ func TestValidateIndexCreation(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
-	}))
+	}), nil)
 
 	testCases := []struct {
 		name string
@@ -848,10 +851,10 @@ func TestValidateSubqueryColumns(t *testing.T) {
 
 	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Text},
-	}))
+	}), nil)
 	subTable := memory.NewTable("subtest", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "bar", Type: sql.Text},
-	}))
+	}), nil)
 
 	var node sql.Node
 	node = plan.NewProject([]sql.Expression{

@@ -31,7 +31,7 @@ func TestTableAlias(t *testing.T) {
 	table := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Text, Nullable: true},
 		{Name: "b", Type: sql.Text, Nullable: true},
-	}))
+	}), nil)
 	alias := NewTableAlias("foo", NewResolvedTable(table, nil, nil))
 
 	var rows = []sql.Row{
