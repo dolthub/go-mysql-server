@@ -263,7 +263,7 @@ var innoDBForeignColsSchema = Schema{
 	{Name: "id", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 129), Default: nil, Nullable: true, Source: InnoDBForeignColsName},
 	{Name: "for_col_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBForeignColsName},
 	{Name: "ref_col_name", Type: MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false, Source: InnoDBForeignColsName},
-	{Name: "pos", Type: Uint32, Default: nil, Nullable: false, Source: InnoDBFieldsName},
+	{Name: "pos", Type: Uint32, Default: nil, Nullable: false, Source: InnoDBForeignColsName},
 }
 
 var innoDBFtBeingDeletedSchema = Schema{
