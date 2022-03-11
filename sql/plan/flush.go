@@ -21,7 +21,7 @@ import (
 
 // FlushPrivileges reads privileges from grant tables and registers any unregistered privileges found.
 type FlushPrivileges struct {
-	flushType   string
+	writesToBinlog   bool
 	grantTables sql.Database
 }
 
@@ -29,10 +29,10 @@ var _ sql.Node = (*FlushPrivileges)(nil)
 var _ sql.Databaser = (*FlushPrivileges)(nil)
 
 // NewFlushPrivileges creates a new FlushPrivileges node.
-func NewFlushPrivileges(ft string) *FlushPrivileges {
+func NewFlushPrivileges(ft bool) *FlushPrivileges {
 	return &FlushPrivileges{
-		flushType:   ft,
-		grantTables: sql.UnresolvedDatabase("mysql"),
+		writesToBinlog: ft,
+		grantTables:    sql.UnresolvedDatabase("mysql"),
 	}
 }
 

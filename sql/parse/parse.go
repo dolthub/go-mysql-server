@@ -2205,9 +2205,16 @@ func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGra
 }
 
 func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
+	var writesToBinlog = true
+	switch strings.ToLower(f.Type) {
+	case "no_write_to_binlog", "local":
+		//writesToBinlog = false
+		return nil, fmt.Errorf("%s not supported", f.Type)
+	}
+
 	switch strings.ToLower(f.Option.Name) {
 	case "privileges":
-		return plan.NewFlushPrivileges(f.Type), nil
+		return plan.NewFlushPrivileges(writesToBinlog), nil
 	default:
 		return nil, fmt.Errorf("%s not supported", f.Option.Name)
 	}

@@ -5545,6 +5545,12 @@ func TestPrivilegePersistence(t *testing.T, h Harness) {
 
 	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
 	require.NotNil(t, findRole("test_user", roles))
+
+	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
+	require.Error(t, err)
+
+	_, _, err = engine.Query(ctx, "FLUSH LOCAL PRIVILEGES")
+	require.Error(t, err)
 }
 
 // findUser returns *grant_table.User corresponding to specific user and host names.
@@ -5560,9 +5566,9 @@ func findUser(user string, host string, users []*grant_tables.User) *grant_table
 
 // findRole returns *grant_table.RoleEdge corresponding to specific to_user.
 // If not found, returns nil *grant_table.RoleEdge.
-func findRole(to_user string, roles []*grant_tables.RoleEdge) *grant_tables.RoleEdge {
+func findRole(toUser string, roles []*grant_tables.RoleEdge) *grant_tables.RoleEdge {
 	for _, r := range roles {
-		if r.ToUser == to_user {
+		if r.ToUser == toUser {
 			return r
 		}
 	}
