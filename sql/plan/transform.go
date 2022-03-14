@@ -151,9 +151,6 @@ func TransformExpressionsWithNode(n sql.Node, f expression.TransformExprWithNode
 // TransformUpWithOpaque applies a transformation function to the given tree from the bottom up, including through
 // opaque nodes. This method is generally not safe to use for a transformation. Opaque nodes need to be considered in
 // isolation except for very specific exceptions.
-// TODO: a better way to do this might be to keep the WITH nodes around until the very end of anlysis, so that
-//  resolve_subqueries can get at this info during that stage. But we couldn't use the existing scope mechanism for
-//  that, so it's a bit of a headache.
 func TransformUpWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
 	children := node.Children()
 	if len(children) == 0 {
