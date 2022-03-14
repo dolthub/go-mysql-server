@@ -24,38 +24,46 @@ import (
 // If a binding for a |BindVar| expression is not found in the map, no error is
 // returned and the |BindVar| expression is left in place. There is no check on
 // whether all entries in |bindings| are used at least once throughout the |n|.
-//
-// This applies binding substitutions across *SubqueryAlias nodes, but will
-// fail to apply bindings across other |sql.Opaque| nodes.
-func ApplyBindings(ctx *sql.Context, n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
-	withSubqueries, err := TransformUp(n, func(n sql.Node) (sql.Node, error) {
-		switch n := n.(type) {
-		case *SubqueryAlias:
-			child, err := ApplyBindings(ctx, n.Child, bindings)
-			if err != nil {
-				return nil, err
-			}
-			return n.WithChildren(child)
-		case *InsertInto:
-			source, err := ApplyBindings(ctx, n.Source, bindings)
-			if err != nil {
-				return nil, err
-			}
-			return n.WithSource(source), nil
-		default:
-			return n, nil
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-	return TransformExpressionsUp(withSubqueries, func(e sql.Expression) (sql.Expression, error) {
-		if bv, ok := e.(*expression.BindVar); ok {
-			val, found := bindings[bv.Name]
+// sql.DeferredType instances will be resolved by the binding types.
+func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
+	fixBindings := func(expr sql.Expression) (sql.Expression, error) {
+		switch e := expr.(type) {
+		case *expression.BindVar:
+			val, found := bindings[e.Name]
 			if found {
 				return val, nil
 			}
+		case *Subquery:
+			// *Subquery is a sql.Expression with a sql.Node not reachable
+			// by the visitor. Manually apply bindings to [Query] field.
+			q, err := ApplyBindings(e.Query, bindings)
+			if err != nil {
+				return nil, err
+			}
+			return e.WithQuery(q), nil
 		}
-		return e, nil
+		return expr, nil
+	}
+
+	return TransformUpWithOpaque(n, func(node sql.Node) (sql.Node, error) {
+		switch n := node.(type) {
+		case *IndexedJoin:
+			// *plan.IndexedJoin cannot implement sql.Expressioner
+			// because the column indexes get mis-ordered by FixFieldIndexesForExpressions.
+			cond, err := expression.TransformUp(n.Cond, fixBindings)
+			if err != nil {
+				return nil, err
+			}
+			return NewIndexedJoin(n.left, n.right, n.joinType, cond, n.scopeLen), nil
+		case *InsertInto:
+			// Manually apply bindings to [Source] because it is separated
+			// from [Destination].
+			newSource, err := ApplyBindings(n.Source, bindings)
+			if err != nil {
+				return nil, err
+			}
+			return n.WithSource(newSource), nil
+		}
+		return TransformExpressionsUp(node, fixBindings)
 	})
 }
