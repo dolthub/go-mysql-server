@@ -15,11 +15,12 @@
 package enginetest_test
 
 import (
-	"github.com/dolthub/go-mysql-server/enginetest"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var _ sql.TableFunction = (*SimpleTableFunction)(nil)
