@@ -576,12 +576,6 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 		}
 	}
 
-	/*
-	   TODO: This method needs to be updated to allow columns to be resolved from table functions.
-	         Currently, trying to use column names from a table function returns an error about
-	         none of the tables in scope having that column.
-	*/
-
 	a.Log("column %s resolved to GetFieldWithTable: idx %d, typ %s, table %s, name %s, nullable %t",
 		e, col.index, col.Type, col.Source, col.Name, col.Nullable)
 	return expression.NewGetFieldWithTable(
