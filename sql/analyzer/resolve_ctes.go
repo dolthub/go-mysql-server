@@ -75,7 +75,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	cur = n
 	for i := 0; i < maxCteDepth && !nodesEqual(prev, cur); i++ {
 		prev = cur
-		cur, err = transformUpWithOpaque(prev, func(n sql.Node) (sql.Node, error) {
+		cur, err = plan.TransformUpWithOpaque(prev, func(n sql.Node) (sql.Node, error) {
 			switch n := n.(type) {
 			case *plan.UnresolvedTable:
 				lowerName := strings.ToLower(n.Name())
@@ -142,35 +142,6 @@ func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map
 	}
 
 	return with.Child, nil
-}
-
-// transformUpWithOpaque applies a transformation function to the given tree from the bottom up, including through
-// opaque nodes. This method is generally not safe to use for a transformation. Opaque nodes need to be considered in
-// isolation except for very specific exceptions.
-// TODO: a better way to do this might be to keep the WITH nodes around until the very end of anlysis, so that
-//  resolve_subqueries can get at this info during that stage. But we couldn't use the existing scope mechanism for
-//  that, so it's a bit of a headache.
-func transformUpWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
-	children := node.Children()
-	if len(children) == 0 {
-		return f(node)
-	}
-
-	newChildren := make([]sql.Node, len(children))
-	for i, c := range children {
-		c, err := transformUpWithOpaque(c, f)
-		if err != nil {
-			return nil, err
-		}
-		newChildren[i] = c
-	}
-
-	node, err := node.WithChildren(newChildren...)
-	if err != nil {
-		return nil, err
-	}
-
-	return f(node)
 }
 
 // schemaLength returns the length of a node's schema without actually accessing it. Useful when a node isn't yet
