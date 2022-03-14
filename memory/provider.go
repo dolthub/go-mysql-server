@@ -9,14 +9,16 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// memoryDBProvider is a collection of Database.
-type memoryDBProvider struct {
-	dbs map[string]sql.Database
-	mu  *sync.RWMutex
-}
-
 var _ sql.DatabaseProvider = memoryDBProvider{}
 var _ sql.MutableDatabaseProvider = memoryDBProvider{}
+var _ sql.FunctionProvider = memoryDBProvider{}
+
+// memoryDBProvider is a collection of Database.
+type memoryDBProvider struct {
+	dbs            map[string]sql.Database
+	mu             *sync.RWMutex
+	tableFunctions map[string]sql.TableFunction
+}
 
 func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
@@ -24,8 +26,9 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 		dbMap[strings.ToLower(db.Name())] = db
 	}
 	return memoryDBProvider{
-		dbs: dbMap,
-		mu:  &sync.RWMutex{},
+		dbs:            dbMap,
+		mu:             &sync.RWMutex{},
+		tableFunctions: make(map[string]sql.TableFunction),
 	}
 }
 
@@ -91,4 +94,19 @@ func (d memoryDBProvider) DropDatabase(ctx *sql.Context, name string) (err error
 
 	delete(d.dbs, strings.ToLower(name))
 	return
+}
+
+// Function implements sql.FunctionProvider
+func (_ memoryDBProvider) Function(_ *sql.Context, name string) (sql.Function, error) {
+	// Don't support any extra functions
+	return nil, sql.ErrFunctionNotFound.New(name)
+}
+
+// TableFunction implements sql.FunctionProvider
+func (mdb memoryDBProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+	if tableFunction, ok := mdb.tableFunctions[name]; ok {
+		return tableFunction, nil
+	}
+
+	return nil, sql.ErrTableFunctionNotFound.New(name)
 }
