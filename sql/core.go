@@ -651,6 +651,8 @@ type MutableDatabaseProvider interface {
 type FunctionProvider interface {
 	// Function returns the function with the name provided, case-insensitive
 	Function(ctx *Context, name string) (Function, error)
+
+	// TableFunction returns the table function with the name provided, case-insensitive
 	TableFunction(ctx *Context, name string) (TableFunction, error)
 }
 

@@ -49,9 +49,20 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			database = privilegedDatabase.Unwrap()
 		}
 
-		tableFunction.WithChildren(utf.Children()...)
-		tableFunction.WithExpressions(utf.Arguments...)
-		tableFunction.WithDatabase(database)
+		_, err = tableFunction.WithDatabase(database)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = tableFunction.WithChildren(utf.Children()...)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = tableFunction.WithExpressions(utf.Arguments...)
+		if err != nil {
+			return nil, err
+		}
 
 		return tableFunction, nil
 	})

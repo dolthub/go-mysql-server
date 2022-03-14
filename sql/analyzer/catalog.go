@@ -235,6 +235,7 @@ func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) 
 	return c.builtInFunctions.Function(ctx, name)
 }
 
+// TableFunction implements the FunctionProvider interface
 func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
 	if fp, ok := c.provider.(sql.FunctionProvider); ok {
 		tf, err := fp.TableFunction(ctx, name)
