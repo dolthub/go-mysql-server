@@ -227,7 +227,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertLockTables(ctx, n)
 	case *sqlparser.UnlockTables:
 		return convertUnlockTables(ctx, n)
-
 	case *sqlparser.CreateUser:
 		return convertCreateUser(ctx, n)
 	case *sqlparser.RenameUser:
@@ -269,6 +268,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertShowGrants(ctx, n)
 	case *sqlparser.ShowPrivileges:
 		return plan.NewShowPrivileges(), nil
+	case *sqlparser.Flush:
+		return convertFlush(ctx, n)
 	}
 }
 
@@ -2201,6 +2202,22 @@ func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGra
 		}
 	}
 	return plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...)), nil
+}
+
+func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
+	var writesToBinlog = true
+	switch strings.ToLower(f.Type) {
+	case "no_write_to_binlog", "local":
+		//writesToBinlog = false
+		return nil, fmt.Errorf("%s not supported", f.Type)
+	}
+
+	switch strings.ToLower(f.Option.Name) {
+	case "privileges":
+		return plan.NewFlushPrivileges(writesToBinlog), nil
+	default:
+		return nil, fmt.Errorf("%s not supported", f.Option.Name)
+	}
 }
 
 func columnsToStrings(cols sqlparser.Columns) []string {

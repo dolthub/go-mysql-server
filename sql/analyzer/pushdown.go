@@ -224,16 +224,15 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return FixFieldIndexesForExpressions(ctx, a, n, scope)
 			case *plan.IndexedTableAccess:
-				table := getTable(node)
-				if table == nil {
-					return n, nil
+				lookup, ok := indexes[node.Name()]
+				if !ok || lookup.expr == nil {
+					return node, nil
 				}
-				if _, ok := table.(sql.IndexAddressableTable); ok {
-					lookup := indexes[table.Name()]
-					if lookup != nil {
-						filters.markFiltersHandled(splitConjunction(lookup.expr)...)
-					}
+				handled, err := pushdownFiltersToIndex(ctx, a, node, lookup, tableAliases)
+				if err != nil {
+					return nil, err
 				}
+				filters.markFiltersHandled(handled...)
 				return node, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				table, err := pushdownFiltersToTable(ctx, a, node.(NameableNode), scope, filters, tableAliases)
@@ -330,6 +329,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 }
 
 // convertFiltersToIndexedAccess attempts to replace filter predicates with indexed accesses where possible
+// TODO: this function doesn't actually remove filters that have been converted to index lookups,
+//   that optimization is handled in transformPushdownFilters.
 func convertFiltersToIndexedAccess(
 	ctx *sql.Context,
 	a *Analyzer,
@@ -418,6 +419,34 @@ func convertFiltersToIndexedAccess(
 	}
 
 	return node, nil
+}
+
+// pushdownFiltersToTable attempts to push down filters to indexes that can accept them.
+func pushdownFiltersToIndex(ctx *sql.Context, a *Analyzer, idxTable *plan.IndexedTableAccess, lookup *indexLookup, tableAliases TableAliases) (handled []sql.Expression, err error) {
+	filteredIdx, ok := idxTable.Index().(sql.FilteredIndex)
+	if !ok {
+		return nil, nil
+	}
+
+	idxFilters := splitConjunction(lookup.expr)
+	if len(idxFilters) == 0 {
+		return nil, nil
+	}
+	idxFilters = normalizeExpressions(ctx, tableAliases, idxFilters...)
+
+	handled = filteredIdx.HandledFilters(idxFilters)
+	if len(handled) == 0 {
+		return nil, nil
+	}
+
+	a.Log(
+		"table %q transformed with pushdown of filters to index %s, %d filters handled of %d",
+		idxTable.Name(),
+		idxTable.Index().ID(),
+		len(handled),
+		len(idxFilters),
+	)
+	return handled, nil
 }
 
 // pushdownFiltersToTable attempts to push filters to tables that can accept them

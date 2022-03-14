@@ -159,7 +159,7 @@ func (pdb PrivilegedDatabase) GetTableNames(ctx *sql.Context) ([]string, error) 
 	for _, tblName := range tblNames {
 		// If the user has any global static privileges, database-level privileges, or table-relevant privileges then a
 		// table is accessible.
-		if privSetCount > 0 || dbSetCount > 0 && dbSet.Table(tblName).HasPrivileges() {
+		if privSetCount > 0 || dbSetCount > 0 || dbSet.Table(tblName).HasPrivileges() {
 			tablesWithAccess = append(tablesWithAccess, tblName)
 		}
 	}

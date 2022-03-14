@@ -23,7 +23,6 @@ import (
 var OnceBeforeDefault = []Rule{
 	{"validate_offset_and_limit", validateLimitAndOffset},
 	{"validate_create_table", validateCreateTable},
-	{"load_stored_procedures", loadStoredProcedures},
 	{"resolve_variables", resolveVariables},
 	{"resolve_named_windows", replaceNamedWindows},
 	{"resolve_set_variables", resolveSetVariables},
@@ -33,6 +32,7 @@ var OnceBeforeDefault = []Rule{
 	{"lift_recursive_ctes", liftRecursiveCte},
 	{"resolve_databases", resolveDatabases},
 	{"resolve_tables", resolveTables},
+	{"load_stored_procedures", loadStoredProcedures}, // Ensure that loading procedures happens after table resolution
 	{"validate_drop_tables", validateDropTables},
 	{"set_target_schemas", setTargetSchemas},
 	{"resolve_create_like", resolveCreateLike},
@@ -112,6 +112,7 @@ var OnceAfterDefault = []Rule{
 	{"resolve_insert_rows", resolveInsertRows},
 	{"apply_triggers", applyTriggers},
 	{"apply_procedures", applyProcedures},
+	{"assign_routines", assignRoutines},
 	{"modify_update_expressions_for_join", modifyUpdateExpressionsForJoin},
 	{"apply_row_update_accumulators", applyUpdateAccumulators},
 }

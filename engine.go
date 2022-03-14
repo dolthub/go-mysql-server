@@ -18,12 +18,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
-
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -591,4 +591,23 @@ func ResolveDefaults(tableName string, schema []*ColumnWithRawDefault) (sql.Sche
 	}
 
 	return analyzedCreateTable.CreateSchema.Schema, nil
+}
+
+// ColumnsFromCheckDefinition retrieves the Column Names referenced by a CheckDefinition
+func ColumnsFromCheckDefinition(ctx *sql.Context, def *sql.CheckDefinition) ([]string, error) {
+	// Evaluate the CheckDefinition to get evaluated Expression
+	c, err := analyzer.ConvertCheckDefToConstraint(ctx, def)
+	if err != nil {
+		return nil, err
+	}
+	// Look for any column references in the evaluated Expression
+	var cols []string
+	sql.Inspect(c.Expr, func(expr sql.Expression) bool {
+		if c, ok := expr.(*expression.UnresolvedColumn); ok {
+			cols = append(cols, c.Name())
+			return false
+		}
+		return true
+	})
+	return cols, nil
 }

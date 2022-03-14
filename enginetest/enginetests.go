@@ -15,6 +15,7 @@
 package enginetest
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -36,6 +37,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -119,6 +121,21 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	for _, script := range InfoSchemaScripts {
 		TestScript(t, harness, script)
 	}
+
+	p := sqle.NewProcessList()
+	sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
+
+	ctx, err := p.AddProcess(ctx, "SELECT foo")
+	require.NoError(t, err)
+
+	TestQueryWithContext(t, ctx, engine,
+		"SELECT * FROM information_schema.processlist",
+		[]sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}},
+		nil,
+		nil,
+	)
+	require.NoError(t, err)
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
@@ -1127,6 +1144,95 @@ func TestUserPrivileges(t *testing.T, h Harness) {
 						TestQueryWithContext(t, ctx, engine, assertion.Query, assertion.Expected, nil, nil)
 					})
 				}
+			}
+		})
+	}
+
+	// These tests are functionally identical to UserPrivTests, hence their inclusion in the same testing function.
+	// They're just written a little differently to ease the developer's ability to produce as many as possible.
+	for _, script := range QuickPrivTests {
+		t.Run(strings.Join(script.Queries, "\n > "), func(t *testing.T) {
+			provider := harness.NewDatabaseProvider(
+				harness.NewDatabase("mydb"),
+				harness.NewDatabase("otherdb"),
+				information_schema.NewInformationSchemaDatabase(),
+			)
+			engine := sqle.New(analyzer.NewDefault(provider), new(sqle.Config))
+			defer engine.Close()
+
+			engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+			rootCtx := harness.NewContextWithClient(sql.Client{
+				User:    "root",
+				Address: "localhost",
+			})
+			rootCtx.SetCurrentDatabase("mydb")
+			for _, setupQuery := range []string{
+				"CREATE USER tester@localhost;",
+				"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"CREATE TABLE otherdb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"CREATE TABLE otherdb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);",
+				"INSERT INTO mydb.test VALUES (0, 0), (1, 1);",
+				"INSERT INTO mydb.test2 VALUES (0, 1), (1, 2);",
+				"INSERT INTO otherdb.test VALUES (1, 1), (2, 2);",
+				"INSERT INTO otherdb.test2 VALUES (1, 1), (2, 2);",
+			} {
+				RunQueryWithContext(t, engine, rootCtx, setupQuery)
+			}
+
+			for i := 0; i < len(script.Queries)-1; i++ {
+				if sh, ok := harness.(SkippingHarness); ok {
+					if sh.SkipQueryTest(script.Queries[i]) {
+						t.Skipf("Skipping query %s", script.Queries[i])
+					}
+				}
+				RunQueryWithContext(t, engine, rootCtx, script.Queries[i])
+			}
+			lastQuery := script.Queries[len(script.Queries)-1]
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(lastQuery) {
+					t.Skipf("Skipping query %s", lastQuery)
+				}
+			}
+			ctx := harness.NewContextWithClient(sql.Client{
+				User:    "tester",
+				Address: "localhost",
+			})
+			ctx.SetCurrentDatabase(rootCtx.GetCurrentDatabase())
+			if script.ExpectedErr != nil {
+				t.Run(lastQuery, func(t *testing.T) {
+					AssertErrWithCtx(t, engine, ctx, lastQuery, script.ExpectedErr)
+				})
+			} else if script.ExpectingErr {
+				t.Run(lastQuery, func(t *testing.T) {
+					sch, iter, err := engine.Query(ctx, lastQuery)
+					if err == nil {
+						_, err = sql.RowIterToRows(ctx, sch, iter)
+					}
+					require.Error(t, err)
+					for _, errKind := range []*errors.Kind{
+						sql.ErrPrivilegeCheckFailed,
+						sql.ErrDatabaseAccessDeniedForUser,
+						sql.ErrTableAccessDeniedForUser,
+					} {
+						if errKind.Is(err) {
+							return
+						}
+					}
+					t.Fatalf("Not a standard privilege-check error: %s", err.Error())
+				})
+			} else {
+				t.Run(lastQuery, func(t *testing.T) {
+					sch, iter, err := engine.Query(ctx, lastQuery)
+					require.NoError(t, err)
+					rows, err := sql.RowIterToRows(ctx, sch, iter)
+					require.NoError(t, err)
+					// See the comment on QuickPrivilegeTest for a more in-depth explanation, but essentially we treat
+					// nil in script.Expected as matching "any" non-error result.
+					if script.Expected != nil && (rows != nil || len(script.Expected) != 0) {
+						checkResults(t, require.New(t), script.Expected, nil, sch, rows, lastQuery)
+					}
+				})
 			}
 		})
 	}
@@ -2944,6 +3050,16 @@ func TestChecksOnInsert(t *testing.T, harness Harness) {
 
 	AssertErr(t, e, harness, "INSERT INTO t1 (a,b) select a - 2, b - 1 from t2", sql.ErrCheckConstraintViolated)
 	RunQuery(t, e, harness, "INSERT INTO t1 (a,b) select a, b from t2")
+
+	// Check that INSERT IGNORE correctly drops errors with check constraints and does not update the actual table.
+	RunQuery(t, e, harness, "INSERT IGNORE INTO t1 VALUES (5,2, 'abc')")
+	TestQuery(t, harness, e, `SELECT count(*) FROM t1 where a = 5`, []sql.Row{{0}}, nil, nil)
+
+	// One value is correctly accepted and the other value is not accepted due to a check constraint violation.
+	// The accepted value is correctly added to the table.
+	RunQuery(t, e, harness, "INSERT IGNORE INTO t1 VALUES (4,4, null), (5,2, 'abc')")
+	TestQuery(t, harness, e, `SELECT count(*) FROM t1 where a = 5`, []sql.Row{{0}}, nil, nil)
+	TestQuery(t, harness, e, `SELECT count(*) FROM t1 where a = 4`, []sql.Row{{1}}, nil, nil)
 }
 
 func TestChecksOnUpdate(t *testing.T, harness Harness) {
@@ -5329,4 +5445,118 @@ func widenJSONArray(narrow []interface{}) (wide []interface{}) {
 		wide[i] = widenJSON(v)
 	}
 	return
+}
+
+func TestPrivilegePersistence(t *testing.T, h Harness) {
+	harness, ok := h.(ClientHarness)
+	if !ok {
+		t.Skip("Cannot run TestPrivilegePersistence as the harness must implement ClientHarness")
+	}
+
+	ctx := NewContextWithClient(harness, sql.Client{
+		User:    "root",
+		Address: "localhost",
+	})
+
+	myDb := harness.NewDatabase("mydb")
+	databases := []sql.Database{myDb}
+	engine := NewEngineWithDbs(t, harness, databases)
+	defer engine.Close()
+	engine.Analyzer.Catalog.GrantTables.AddRootAccount()
+
+	var users []*grant_tables.User
+	var roles []*grant_tables.RoleEdge
+	engine.Analyzer.Catalog.GrantTables.SetPersistCallback(
+		func(ctx *sql.Context, updatedUsers []*grant_tables.User, updatedRoles []*grant_tables.RoleEdge) error {
+			users = updatedUsers
+			roles = updatedRoles
+			return nil
+		},
+	)
+
+	RunQueryWithContext(t, engine, ctx, "CREATE USER tester@localhost")
+	// If the user exists in []*grant_tables.User, then it must be NOT nil.
+	require.NotNil(t, findUser("tester", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.user (Host, User) VALUES ('localhost', 'tester1')")
+	require.Nil(t, findUser("tester1", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.user SET User = 'test_user' WHERE User = 'tester'")
+	require.NotNil(t, findUser("tester", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.NotNil(t, findUser("tester1", "localhost", users))
+	require.Nil(t, findUser("tester", "localhost", users))
+	require.NotNil(t, findUser("test_user", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "DELETE FROM mysql.user WHERE User = 'tester1'")
+	require.NotNil(t, findUser("tester1", "localhost", users))
+
+	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON mydb.* TO test_user@localhost")
+	user := findUser("test_user", "localhost", users)
+	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.db SET Insert_priv = 'Y' WHERE User = 'test_user'")
+	require.False(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
+
+	RunQueryWithContext(t, engine, ctx, "CREATE USER dolt@localhost")
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.db (Host, Db, User, Select_priv) VALUES ('localhost', 'mydb', 'dolt', 'Y')")
+	user1 := findUser("dolt", "localhost", users)
+	require.NotNil(t, user1)
+	require.False(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.Nil(t, findUser("tester1", "localhost", users))
+	user = findUser("test_user", "localhost", users)
+	require.True(t, user.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Insert))
+	user1 = findUser("dolt", "localhost", users)
+	require.True(t, user1.PrivilegeSet.Database("mydb").Has(sql.PrivilegeType_Select))
+
+	RunQueryWithContext(t, engine, ctx, "CREATE ROLE test_role")
+	RunQueryWithContext(t, engine, ctx, "GRANT SELECT ON *.* TO test_role")
+	require.Zero(t, len(roles))
+	RunQueryWithContext(t, engine, ctx, "GRANT test_role TO test_user@localhost")
+	require.NotZero(t, len(roles))
+
+	RunQueryWithContext(t, engine, ctx, "UPDATE mysql.role_edges SET to_user = 'tester2' WHERE to_user = 'test_user'")
+	require.NotNil(t, findRole("test_user", roles))
+	require.Nil(t, findRole("tester2", roles))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.Nil(t, findRole("test_user", roles))
+	require.NotNil(t, findRole("tester2", roles))
+
+	RunQueryWithContext(t, engine, ctx, "INSERT INTO mysql.role_edges VALUES ('%', 'test_role', 'localhost', 'test_user', 'N')")
+	require.Nil(t, findRole("test_user", roles))
+
+	RunQueryWithContext(t, engine, ctx, "FLUSH PRIVILEGES")
+	require.NotNil(t, findRole("test_user", roles))
+
+	_, _, err := engine.Query(ctx, "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES")
+	require.Error(t, err)
+
+	_, _, err = engine.Query(ctx, "FLUSH LOCAL PRIVILEGES")
+	require.Error(t, err)
+}
+
+// findUser returns *grant_table.User corresponding to specific user and host names.
+// If not found, returns nil *grant_table.User.
+func findUser(user string, host string, users []*grant_tables.User) *grant_tables.User {
+	for _, u := range users {
+		if u.User == user && u.Host == host {
+			return u
+		}
+	}
+	return nil
+}
+
+// findRole returns *grant_table.RoleEdge corresponding to specific to_user.
+// If not found, returns nil *grant_table.RoleEdge.
+func findRole(toUser string, roles []*grant_tables.RoleEdge) *grant_tables.RoleEdge {
+	for _, r := range roles {
+		if r.ToUser == toUser {
+			return r
+		}
+	}
+	return nil
 }

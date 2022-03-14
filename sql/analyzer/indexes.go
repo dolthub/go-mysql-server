@@ -142,7 +142,11 @@ func getIndexes(
 						return nil, err
 					}
 					leftIdx.lookup = newLookup
-					leftIdx.expr = expression.NewOr(leftIdx.expr, rightIdx.expr)
+					if leftIdx.expr == nil {
+						leftIdx.expr = rightIdx.expr
+					} else if rightIdx.expr != nil {
+						leftIdx.expr = expression.NewOr(leftIdx.expr, rightIdx.expr)
+					}
 					leftIdx.indexes = append(leftIdx.indexes, rightIdx.indexes...)
 					result[table] = leftIdx
 					foundRightIdx = true
@@ -570,7 +574,11 @@ func indexesIntersection(ctx *sql.Context, left, right indexLookupsByTable) (ind
 				return nil, err
 			}
 			idx.indexes = append(idx.indexes, idx2.indexes...)
-			idx.expr = expression.NewAnd(idx.expr, idx2.expr)
+			if idx.expr == nil {
+				idx.expr = idx2.expr
+			} else if idx2.expr != nil {
+				idx.expr = expression.NewAnd(idx.expr, idx2.expr)
+			}
 		}
 
 		result[table] = idx
@@ -680,9 +688,10 @@ func getMultiColumnIndexForExpressions(
 	indexBuilder := sql.NewIndexBuilder(ctx, index)
 
 	var expressions []sql.Expression
-	var matchedExprs joinColExprs
+	var allMatches joinColExprs
 	for _, selectedExpr := range normalizedExpressions {
-		matchedExprs = findColumns(exprs, selectedExpr.String())
+		matchedExprs := findColumns(exprs, selectedExpr.String())
+		allMatches = append(allMatches, matchedExprs...)
 
 		for _, expr := range matchedExprs {
 			switch expr.comparison.(type) {
@@ -743,10 +752,12 @@ func getMultiColumnIndexForExpressions(
 						return nil, err
 					}
 					values, ok := value.([]interface{})
-					if !ok {
-						return nil, errInvalidInRightEvaluation.New(value)
+					if ok {
+						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), values...)
+					} else {
+						// For single length tuples, we don't return []interface{}, just the first element
+						indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), value)
 					}
-					indexBuilder = indexBuilder.Equals(ctx, expr.col.String(), values...)
 				} else {
 					return nil, nil
 				}
@@ -781,7 +792,7 @@ func getMultiColumnIndexForExpressions(
 		return nil, nil
 	}
 	var lookupExpr sql.Expression
-	for _, m := range matchedExprs {
+	for _, m := range allMatches {
 		if lookupExpr == nil {
 			lookupExpr = m.comparison
 		} else {
