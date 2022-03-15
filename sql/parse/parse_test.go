@@ -1867,7 +1867,7 @@ CREATE TABLE t2
 	`SELECT 0x01AF`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("0x01AF",
-				expression.NewLiteral(int16(431), sql.Int16),
+				expression.NewLiteral([]byte{1, 175}, sql.LongBlob),
 			),
 		},
 		plan.NewUnresolvedTable("dual", ""),
