@@ -277,12 +277,6 @@ func (r Registry) Function(ctx *sql.Context, name string) (sql.Function, error) 
 	return nil, sql.ErrFunctionNotFound.New(name + similar)
 }
 
-func (r Registry) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
-	panic("unsupported")
-
-	return nil, sql.ErrTableFunctionNotFound.New(name)
-}
-
 func (r Registry) mustRegister(fn ...sql.Function) {
 	if err := r.Register(fn...); err != nil {
 		panic(err)

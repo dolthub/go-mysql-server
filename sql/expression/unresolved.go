@@ -117,13 +117,8 @@ func (utf UnresolvedTableFunction) WithDatabase(database sql.Database) (sql.Node
 }
 
 // TableFunctionName implements the TableFunction interface
-func (utf UnresolvedTableFunction) TableFunctionName() string {
+func (utf UnresolvedTableFunction) FunctionName() string {
 	return utf.name
-}
-
-// Description implements the TableFunction interface
-func (utf UnresolvedTableFunction) Description() string {
-	return fmt.Sprintf("unresolved table function %q", utf.TableFunctionName())
 }
 
 // Expressions implements the Expressioner interface

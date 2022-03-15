@@ -35,7 +35,7 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return n, nil
 		}
 
-		tableFunction, err := a.Catalog.TableFunction(ctx, utf.TableFunctionName())
+		tableFunction, err := a.Catalog.TableFunction(ctx, utf.FunctionName())
 		if err != nil {
 			return nil, err
 		}

@@ -12,6 +12,7 @@ import (
 var _ sql.DatabaseProvider = memoryDBProvider{}
 var _ sql.MutableDatabaseProvider = memoryDBProvider{}
 var _ sql.FunctionProvider = memoryDBProvider{}
+var _ sql.TableFunctionProvider = memoryDBProvider{}
 
 // memoryDBProvider is a collection of Database.
 type memoryDBProvider struct {
@@ -102,7 +103,7 @@ func (_ memoryDBProvider) Function(_ *sql.Context, name string) (sql.Function, e
 	return nil, sql.ErrFunctionNotFound.New(name)
 }
 
-// TableFunction implements sql.FunctionProvider
+// TableFunction implements sql.TableFunctionProvider
 func (mdb memoryDBProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
 	if tableFunction, ok := mdb.tableFunctions[name]; ok {
 		return tableFunction, nil

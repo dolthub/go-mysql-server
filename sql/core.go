@@ -320,8 +320,8 @@ type TableFunction interface {
 	Expressioner
 	Databaser
 
-	TableFunctionName() string
-	Description() string
+	// FunctionName returns the name of this table function
+	FunctionName() string
 }
 
 // Table represents the backend of a SQL table.
@@ -651,7 +651,10 @@ type MutableDatabaseProvider interface {
 type FunctionProvider interface {
 	// Function returns the function with the name provided, case-insensitive
 	Function(ctx *Context, name string) (Function, error)
+}
 
+// TableFunctionProvider is an extension of DatabaseProvider that allows custom table functions to be provided
+type TableFunctionProvider interface {
 	// TableFunction returns the table function with the name provided, case-insensitive
 	TableFunction(ctx *Context, name string) (TableFunction, error)
 }
