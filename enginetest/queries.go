@@ -1448,6 +1448,29 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
+		Query: "SELECT i, 1 AS foo, 2 AS bar FROM (SELECT i FROM mYtABLE WHERE i = ?) AS a ORDER BY foo, i",
+		Expected: []sql.Row{
+			{2, 1, 2}},
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(int64(2), sql.Int64),
+		},
+	},
+	{
+		Query: "SELECT (select sum(?) from mytable) as x FROM mytable ORDER BY (select sum(?) from mytable)",
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(1, sql.Int8),
+			"v2": expression.NewLiteral(1, sql.Int8),
+		},
+		Expected: []sql.Row{{float64(3)}, {float64(3)}, {float64(3)}},
+	},
+	{
+		Query: "SELECT exists(select i from mytable where i = ?)",
+		Bindings: map[string]sql.Expression{
+			"v1": expression.NewLiteral(1, sql.Int8),
+		},
+		Expected: []sql.Row{{true}},
+	},
+	{
 		Query:    "SELECT i, 1 AS foo, 2 AS bar FROM MyTable WHERE bar = 1 ORDER BY foo, i;",
 		Expected: []sql.Row{},
 	},
@@ -8352,6 +8375,18 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 1002) select sum(n) from t",
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
+	},
+	{
+		Query:       `alter table a add fulltext index idx (id)`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+	{
+		Query:       `CREATE TABLE test (pk int primary key, body text, FULLTEXT KEY idx_body (body))`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+	{
+		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
 }
 

@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math"
 	"strconv"
@@ -488,7 +489,7 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 		}
 		return v.IntPart(), nil
 	case []byte:
-		i, err := strconv.ParseInt(string(v), 10, 64)
+		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
 			return 0, ErrInvalidValue.New(v, t.String())
 		}
@@ -572,7 +573,7 @@ func convertToUint64(t numberTypeImpl, v interface{}) (uint64, error) {
 		f, _ := v.Float64()
 		return uint64(f), nil
 	case []byte:
-		i, err := strconv.ParseUint(string(v), 10, 64)
+		i, err := strconv.ParseUint(hex.EncodeToString(v), 16, 64)
 		if err != nil {
 			return 0, ErrInvalidValue.New(v, t.String())
 		}
@@ -625,11 +626,11 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 		f, _ := v.Float64()
 		return f, nil
 	case []byte:
-		i, err := strconv.ParseFloat(string(v), 64)
+		i, err := strconv.ParseUint(hex.EncodeToString(v), 16, 64)
 		if err != nil {
 			return 0, ErrInvalidValue.New(v, t.String())
 		}
-		return i, nil
+		return float64(i), nil
 	case string:
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
