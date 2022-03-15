@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -86,6 +87,9 @@ func (uc *UnresolvedColumn) WithChildren(children ...sql.Expression) (sql.Expres
 	return uc, nil
 }
 
+// ErrUnresolvedTableFunction is thrown when a table function cannot be resolved
+var ErrUnresolvedTableFunction = errors.NewKind("unresolved table function")
+
 var _ sql.TableFunction = (*UnresolvedTableFunction)(nil)
 
 // UnresolvedTableFunction represents a table function that is not yet resolved.
@@ -138,17 +142,17 @@ func (utf UnresolvedTableFunction) WithExpressions(expression ...sql.Expression)
 
 // Schema implements the Node interface
 func (utf UnresolvedTableFunction) Schema() sql.Schema {
-	panic("unable to return schema for unresolved table function")
+	return nil
 }
 
 // Children implements the Node interface
 func (utf UnresolvedTableFunction) Children() []sql.Node {
-	return []sql.Node{}
+	return nil
 }
 
 // RowIter implements the Node interface
 func (utf UnresolvedTableFunction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("unable to iterate results for unresolved table function")
+	return nil, ErrUnresolvedTableFunction.New()
 }
 
 // WithChildren implements the Node interface
