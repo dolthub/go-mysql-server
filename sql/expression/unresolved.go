@@ -132,6 +132,10 @@ func (utf UnresolvedTableFunction) Expressions() []sql.Expression {
 
 // WithExpressions implements the Expressioner interface
 func (utf UnresolvedTableFunction) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
+	if len(expression) != len(utf.Expressions()) {
+		return nil, sql.ErrInvalidExpressionNumber.New(utf, len(expression), len(utf.Expressions()))
+	}
+
 	utf.Arguments = make([]sql.Expression, len(expression))
 	for i, _ := range expression {
 		utf.Arguments[i] = expression[i]
