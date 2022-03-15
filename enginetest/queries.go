@@ -8376,6 +8376,18 @@ var errorQueries = []QueryErrorTest{
 		Query:       "with recursive t (n) as (select (1) from dual union all select n + 1 from t where n < 1002) select sum(n) from t",
 		ExpectedErr: sql.ErrCteRecursionLimitExceeded,
 	},
+	{
+		Query:       `alter table a add fulltext index idx (id)`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+	{
+		Query:       `CREATE TABLE test (pk int primary key, body text, FULLTEXT KEY idx_body (body))`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+	{
+		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
+		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to

@@ -58,6 +58,7 @@ const (
 	colKeyUnique
 	colKeyUniqueKey
 	colKey
+	colKeyFulltextKey
 )
 
 func mustCastNumToInt64(x interface{}) int64 {
@@ -1258,7 +1259,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.UniqueStr:
 			constraint = sql.IndexConstraint_Unique
 		case sqlparser.FulltextStr:
-			constraint = sql.IndexConstraint_Fulltext
+			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		case sqlparser.SpatialStr:
 			constraint = sql.IndexConstraint_Spatial
 		case sqlparser.PrimaryStr:
@@ -1448,7 +1449,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
-		//TODO: add vitess support for FULLTEXT
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
 			constraint = sql.IndexConstraint_Primary
@@ -1456,6 +1456,9 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			constraint = sql.IndexConstraint_Unique
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
+		} else if idxDef.Info.Fulltext {
+			// TODO: We do not support FULLTEXT indexes or keys
+			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
 
 		columns := make([]sql.IndexColumn, len(idxDef.Columns))
