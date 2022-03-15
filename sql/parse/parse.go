@@ -1457,7 +1457,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
-			// TODO: We do not support FULLTEXT indexed or keys
+			// TODO: We do not support FULLTEXT indexes or keys
 			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
 
