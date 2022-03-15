@@ -15,6 +15,7 @@
 package parse
 
 import (
+	"encoding/hex"
 	goerrors "errors"
 	"fmt"
 	"strconv"
@@ -3030,7 +3031,13 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 			v = strings.Trim(v[1:], "'")
 		}
 
-		return convertInt(v, 16)
+		valBytes := []byte(v)
+		dst := make([]byte, hex.DecodedLen(len(valBytes)))
+		_, err := hex.Decode(dst, valBytes)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(dst, sql.LongBlob), nil
 	case sqlparser.HexVal:
 		val, err := v.HexDecode()
 		if err != nil {
