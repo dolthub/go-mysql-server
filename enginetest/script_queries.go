@@ -1303,9 +1303,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
-				Expected: []sql.Row{{"Filter(test.v3 = 8)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
@@ -1313,9 +1313,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
-				Expected: []sql.Row{{"Filter(test.v3 >= 6)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
@@ -1323,9 +1323,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
-				Expected: []sql.Row{{"Filter(test.v3 = 7)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
@@ -1342,9 +1342,9 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
-				Expected: []sql.Row{{"Filter(test.v1 = 2)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
@@ -1352,9 +1352,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
-				Expected: []sql.Row{{"Filter(test.v3 > 1)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
@@ -1362,9 +1362,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
-				Expected: []sql.Row{{"Filter(test.v1 > 1)"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
@@ -1372,9 +1372,9 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
-				Expected: []sql.Row{{"Filter((test.v1 = 5) AND (test.v2 >= 1))"},
-					{" └─ Projected table access on [pk v1 v2 v3]"},
-					{"     └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+				Expected: []sql.Row{
+					{"Projected table access on [pk v1 v2 v3]"},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
@@ -1490,6 +1490,52 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "insert into t values (1, 10) on duplicate key update b = 10",
 				Expected: []sql.Row{{sql.NewOkResult(2)}},
+			},
+		},
+	},
+	{
+		Name: "delete from table with misordered pks",
+		SetUpScript: []string{
+			"create table a (x int, y int, z int, primary key (z,x))",
+			"insert into a values (0,1,2), (3,4,5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT count(*) FROM a where x = 0",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query:    "delete from a where x = 0",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT * FROM a where x = 0",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "Handle hex number to binary conversion",
+		SetUpScript: []string{
+			"CREATE TABLE hex_nums1 (pk BIGINT PRIMARY KEY, v1 INT, v2 BIGINT UNSIGNED, v3 DOUBLE, v4 BINARY(32));",
+			"INSERT INTO hex_nums1 values (1, 0x7ED0599B, 0x765a8ce4ce74b187, 0xF753AD20B0C4, 0x148aa875c3cdb9af8919493926a3d7c6862fec7f330152f400c0aecb4467508a);",
+			"CREATE TABLE hex_nums2 (pk BIGINT PRIMARY KEY, v1 VARBINARY(255), v2 BLOB);",
+			"INSERT INTO hex_nums2 values (1, 0x765a8ce4ce74b187, 0x148aa875c3cdb9af8919493926a3d7c6862fec7f330152f400c0aecb4467508a);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v1, v2, v3, hex(v4) FROM hex_nums1;",
+				Expected: []sql.Row{{2127583643, uint64(8528283758723641735), float64(271938758947012), "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+			{
+				Query:    "SELECT hex(v1), hex(v2), hex(v3), hex(v4) FROM hex_nums1;",
+				Expected: []sql.Row{{"7ED0599B", "765A8CE4CE74B187", "F753AD20B0C4", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+			{
+				Query:    "SELECT hex(v1), hex(v2) FROM hex_nums2;",
+				Expected: []sql.Row{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
 			},
 		},
 	},

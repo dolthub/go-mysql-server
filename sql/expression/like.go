@@ -110,6 +110,10 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if likeMatcher == nil {
+		return false, nil
+	}
+
 	ok := likeMatcher.Match(left.(string))
 	if !l.cached {
 		likeMatcher.Dispose()

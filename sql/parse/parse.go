@@ -15,6 +15,7 @@
 package parse
 
 import (
+	"encoding/hex"
 	goerrors "errors"
 	"fmt"
 	"strconv"
@@ -57,6 +58,7 @@ const (
 	colKeyUnique
 	colKeyUniqueKey
 	colKey
+	colKeyFulltextKey
 )
 
 func mustCastNumToInt64(x interface{}) int64 {
@@ -227,7 +229,6 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertLockTables(ctx, n)
 	case *sqlparser.UnlockTables:
 		return convertUnlockTables(ctx, n)
-
 	case *sqlparser.CreateUser:
 		return convertCreateUser(ctx, n)
 	case *sqlparser.RenameUser:
@@ -269,6 +270,8 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 		return convertShowGrants(ctx, n)
 	case *sqlparser.ShowPrivileges:
 		return plan.NewShowPrivileges(), nil
+	case *sqlparser.Flush:
+		return convertFlush(ctx, n)
 	}
 }
 
@@ -1256,7 +1259,7 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.UniqueStr:
 			constraint = sql.IndexConstraint_Unique
 		case sqlparser.FulltextStr:
-			constraint = sql.IndexConstraint_Fulltext
+			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		case sqlparser.SpatialStr:
 			constraint = sql.IndexConstraint_Spatial
 		case sqlparser.PrimaryStr:
@@ -1446,7 +1449,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
-		//TODO: add vitess support for FULLTEXT
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
 			constraint = sql.IndexConstraint_Primary
@@ -1454,6 +1456,9 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 			constraint = sql.IndexConstraint_Unique
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
+		} else if idxDef.Info.Fulltext {
+			// TODO: We do not support FULLTEXT indexes or keys
+			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
 
 		columns := make([]sql.IndexColumn, len(idxDef.Columns))
@@ -2203,6 +2208,22 @@ func convertShowGrants(ctx *sql.Context, n *sqlparser.ShowGrants) (*plan.ShowGra
 	return plan.NewShowGrants(currentUser, user, convertAccountName(n.Using...)), nil
 }
 
+func convertFlush(ctx *sql.Context, f *sqlparser.Flush) (sql.Node, error) {
+	var writesToBinlog = true
+	switch strings.ToLower(f.Type) {
+	case "no_write_to_binlog", "local":
+		//writesToBinlog = false
+		return nil, fmt.Errorf("%s not supported", f.Type)
+	}
+
+	switch strings.ToLower(f.Option.Name) {
+	case "privileges":
+		return plan.NewFlushPrivileges(writesToBinlog), nil
+	default:
+		return nil, fmt.Errorf("%s not supported", f.Option.Name)
+	}
+}
+
 func columnsToStrings(cols sqlparser.Columns) []string {
 	res := make([]string, len(cols))
 	for i, c := range cols {
@@ -2338,6 +2359,15 @@ func tableExprToTable(
 		default:
 			return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}
+
+	case *sqlparser.TableFuncExpr:
+		exprs, err := selectExprsToExpressions(ctx, t.Exprs)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
+
 	case *sqlparser.JoinTableExpr:
 		// TODO: add support for using, once we have proper table
 		// qualification of fields
@@ -3015,7 +3045,13 @@ func convertVal(v *sqlparser.SQLVal) (sql.Expression, error) {
 			v = strings.Trim(v[1:], "'")
 		}
 
-		return convertInt(v, 16)
+		valBytes := []byte(v)
+		dst := make([]byte, hex.DecodedLen(len(valBytes)))
+		_, err := hex.Decode(dst, valBytes)
+		if err != nil {
+			return nil, err
+		}
+		return expression.NewLiteral(dst, sql.LongBlob), nil
 	case sqlparser.HexVal:
 		val, err := v.HexDecode()
 		if err != nil {

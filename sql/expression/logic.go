@@ -128,14 +128,10 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if lval != nil {
-		lvalBool, err := sql.ConvertToBool(lval)
-		if err == nil && lvalBool {
+		lval, err = sql.ConvertToBool(lval)
+		if err == nil && lval.(bool) {
 			return true, nil
 		}
-	}
-
-	if lval == true {
-		return true, nil
 	}
 
 	rval, err := o.Right.Eval(ctx, row)
@@ -143,16 +139,13 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if rval != nil {
-		rvalBool, err := sql.ConvertToBool(rval)
-		if err == nil && rvalBool {
+		rval, err = sql.ConvertToBool(rval)
+		if err == nil && rval.(bool) {
 			return true, nil
 		}
 	}
 
-	if rval == true {
-		return true, nil
-	}
-
+	// Can also be triggered by lval and rval not being bool types.
 	if lval == false && rval == false {
 		return false, nil
 	}

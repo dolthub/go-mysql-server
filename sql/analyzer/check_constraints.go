@@ -264,7 +264,7 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 			return nil, err
 		}
 		for _, ch := range checks {
-			constraint, err := convertCheckDefToConstraint(ctx, &ch)
+			constraint, err := ConvertCheckDefToConstraint(ctx, &ch)
 			if err != nil {
 				return nil, err
 			}
@@ -274,7 +274,7 @@ func loadChecksFromTable(ctx *sql.Context, table sql.Table) ([]*sql.CheckConstra
 	return loadedChecks, nil
 }
 
-func convertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
+func ConvertCheckDefToConstraint(ctx *sql.Context, check *sql.CheckDefinition) (*sql.CheckConstraint, error) {
 	parseStr := fmt.Sprintf("select %s", check.CheckExpression)
 	parsed, err := sqlparser.Parse(parseStr)
 	if err != nil {
