@@ -28,71 +28,14 @@ var errInvalidInRightEvaluation = errors.NewKind("expecting evaluation of IN exp
 // in it.
 type indexLookup struct {
 	fields  []sql.Expression
+	fields2 []sql.Expression2
 	lookup  sql.IndexLookup
 	indexes []sql.Index
 	expr    sql.Expression
+	expr2   sql.Expression2
 }
 
 type indexLookupsByTable map[string]*indexLookup
-
-// getIndexesByTable returns applicable index lookups for each table named in the query node given
-func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (indexLookupsByTable, error) {
-	indexSpan, _ := ctx.Span("getIndexesByTable")
-	defer indexSpan.Finish()
-
-	tableAliases, err := getTableAliases(node, scope)
-	if err != nil {
-		return nil, err
-	}
-
-	var indexes indexLookupsByTable
-	cont := true
-	var errInAnalysis error
-	plan.Inspect(node, func(node sql.Node) bool {
-		if !cont || errInAnalysis != nil {
-			return false
-		}
-
-		filter, ok := node.(*plan.Filter)
-		if !ok {
-			return true
-		}
-
-		indexAnalyzer, err := getIndexesForNode(ctx, a, node)
-		if err != nil {
-			errInAnalysis = err
-			return false
-		}
-		defer indexAnalyzer.releaseUsedIndexes()
-
-		var result indexLookupsByTable
-		filterExpression := convertIsNullForIndexes(ctx, filter.Expression)
-		result, err = getIndexes(ctx, a, indexAnalyzer, filterExpression, tableAliases)
-		if err != nil {
-			errInAnalysis = err
-			return false
-		}
-
-		if !canMergeIndexLookups(indexes, result) {
-			indexes = nil
-			cont = false
-			return false
-		}
-
-		indexes, err = indexesIntersection(ctx, indexes, result)
-		if err != nil {
-			errInAnalysis = err
-			return false
-		}
-		return true
-	})
-
-	if errInAnalysis != nil {
-		return nil, errInAnalysis
-	}
-
-	return indexes, nil
-}
 
 func getIndexes(
 	ctx *sql.Context,
