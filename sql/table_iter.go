@@ -77,7 +77,7 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	}
 	select {
 	case <-ctx.Done():
-		return nil, io.EOF
+		return nil, ctx.Err()
 	default:
 	}
 	return row, err

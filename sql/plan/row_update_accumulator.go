@@ -310,7 +310,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 		_, isIg := err.(sql.ErrInsertIgnore)
 		select {
 		case <-ctx.Done():
-			return nil, io.EOF
+			return nil, ctx.Err()
 		default:
 		}
 		if err == io.EOF {

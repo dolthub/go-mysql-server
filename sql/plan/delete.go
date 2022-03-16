@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"io"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -132,7 +130,7 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	select {
 	case <-ctx.Done():
-		return nil, io.EOF
+		return nil, ctx.Err()
 	default:
 	}
 

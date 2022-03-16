@@ -56,7 +56,7 @@ func (s *tableEditorIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 	select {
 	case <-ctx.Done():
-		return nil, io.EOF
+		return nil, ctx.Err()
 	default:
 	}
 	return row, err
