@@ -6738,6 +6738,10 @@ var QueryTests = []QueryTest{
 			{1, 1, 0},
 		},
 	},
+	{
+		Query:    `select (('%' || 'dsads') || '%')`,
+		Expected: []sql.Row{{false}},
+	},
 }
 
 var KeylessQueries = []QueryTest{

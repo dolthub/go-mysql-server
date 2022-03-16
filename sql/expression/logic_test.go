@@ -37,6 +37,9 @@ func TestAnd(t *testing.T) {
 		{"both true", true, true, true},
 		{"both false", false, false, false},
 		{"both nil", nil, nil, nil},
+		{"left is string, right is string", "dsdad", "dasa", false},
+		{"left is string, right is nil", "ads", nil, false},
+		{"left is nil, right is string", nil, "dada", false},
 	}
 
 	for _, tt := range testCases {
@@ -67,6 +70,9 @@ func TestOr(t *testing.T) {
 		{"both true", true, true, true},
 		{"both false", false, false, false},
 		{"both null", nil, nil, nil},
+		{"left is string, right is different string", "abc", "def", false},
+		{"left is string, right is nil", "abc", nil, nil},
+		{"left is nil, right is string", nil, "def", nil},
 	}
 
 	for _, tt := range testCases {
