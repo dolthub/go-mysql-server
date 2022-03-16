@@ -2506,8 +2506,8 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 }
 
-func TestPkOrdinals(t *testing.T, harness Harness) {
-	tests := []struct {
+func TestPkOrdinalsDDL(t *testing.T, harness Harness) {
+	ddl := []struct {
 		name        string
 		create      string
 		alter       string
@@ -2600,7 +2600,7 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 
 	var err error
 	var db sql.Database
-	for _, tt := range tests {
+	for _, tt := range ddl {
 		t.Run(tt.name, func(t *testing.T) {
 			defer RunQuery(t, e, harness, "DROP TABLE IF EXISTS a")
 			RunQuery(t, e, harness, tt.create)
@@ -2619,6 +2619,163 @@ func TestPkOrdinals(t *testing.T, harness Harness) {
 
 			pkOrds := pkTable.PrimaryKeySchema().PkOrdinals
 			require.Equal(t, tt.expOrdinals, pkOrds)
+		})
+	}
+}
+
+func TestPkOrdinalsDML(t *testing.T, harness Harness) {
+	dml := []struct {
+		create string
+		insert string
+		mutate string
+		sel    string
+		exp    []sql.Row
+	}{
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,0,0,0), (1,1,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE x = 0",
+			sel:    "select * from a",
+			exp:    []sql.Row{{1, 1, 1, 1}, {2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x,w))",
+			insert: "INSERT INTO a values (0,0,0,0), (1,1,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE x = 0 and z = 0",
+			sel:    "select * from a",
+			exp:    []sql.Row{{1, 1, 1, 1}, {2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y = 2",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y in (2)",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y not in (NULL)",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y IS NOT NULL",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y IS NULL",
+			sel:    "select * from a",
+			exp:    []sql.Row{{2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y = NULL",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y = NULL or y in (2,4)",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y IS NULL or y in (2,4)",
+			sel:    "select * from a",
+			exp:    []sql.Row{},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y IS NULL AND z != 0",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y != NULL",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}, {2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x,w))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE x in (0,2) and z in (0,4)",
+			sel:    "select * from a",
+			exp:    []sql.Row{{1, nil, 1, 1}, {2, 2, 2, 2}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y in (2,-1)",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y < 3",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y > 0 and z = 2",
+			sel:    "select * from a",
+			exp:    []sql.Row{{0, nil, 0, 0}, {1, nil, 1, 1}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, primary key (z,x))",
+			insert: "INSERT INTO a values (0,NULL,0,0), (1,NULL,1,1), (2,2,2,2)",
+			mutate: "DELETE FROM a WHERE y = 2",
+			sel:    "select y from a",
+			exp:    []sql.Row{{nil}, {nil}},
+		},
+		{
+			create: "CREATE TABLE a (x int, y int, z int, w int, index idx1 (y))",
+			insert: "INSERT INTO a values (0,0,0,0), (1,1,1,1), (2,2,2,2)",
+			mutate: "",
+			sel:    "select * from a where y = 3",
+			exp:    []sql.Row{},
+		},
+	}
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+	RunQuery(t, e, harness, "create table b (y char(6) primary key)")
+	RunQuery(t, e, harness, "insert into b values ('aaaaaa'),('bbbbbb'),('cccccc')")
+	for _, tt := range dml {
+		t.Run(fmt.Sprintf("%s", tt.mutate), func(t *testing.T) {
+			defer RunQuery(t, e, harness, "DROP TABLE IF EXISTS a")
+			if tt.create != "" {
+				RunQuery(t, e, harness, tt.create)
+			}
+			if tt.insert != "" {
+				RunQuery(t, e, harness, tt.insert)
+			}
+			if tt.mutate != "" {
+				RunQuery(t, e, harness, tt.mutate)
+			}
+			TestQuery(t, harness, e, tt.sel, tt.exp, nil, nil)
 		})
 	}
 }

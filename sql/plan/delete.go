@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"io"
+
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -127,6 +129,11 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := d.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
+	}
+	select {
+	case <-ctx.Done():
+		return nil, io.EOF
+	default:
 	}
 
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
