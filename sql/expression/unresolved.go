@@ -110,6 +110,11 @@ func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *Unreso
 	}
 }
 
+// NewInstance implements the TableFunction interface
+func (utf UnresolvedTableFunction) NewInstance(_ sql.Database, _ []sql.Expression) (sql.Node, error) {
+	return nil, ErrUnresolvedTableFunction.New()
+}
+
 // Database implements the Databaser interface
 func (utf UnresolvedTableFunction) Database() sql.Database {
 	return utf.database
@@ -121,7 +126,7 @@ func (utf UnresolvedTableFunction) WithDatabase(database sql.Database) (sql.Node
 	return utf, nil
 }
 
-// TableFunctionName implements the TableFunction interface
+// FunctionName implements the TableFunction interface
 func (utf UnresolvedTableFunction) FunctionName() string {
 	return utf.name
 }

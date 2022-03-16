@@ -521,6 +521,10 @@ type SimpleTableFunction struct {
 	returnedResults bool
 }
 
+func (s SimpleTableFunction) NewInstance(_ sql.Database, _ []sql.Expression) (sql.Node, error) {
+	return SimpleTableFunction{}, nil
+}
+
 func (s SimpleTableFunction) Resolved() bool {
 	return true
 }
@@ -558,11 +562,11 @@ func (s SimpleTableFunction) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, er
 	return rowIter, nil
 }
 
-func (s SimpleTableFunction) WithChildren(node ...sql.Node) (sql.Node, error) {
+func (s SimpleTableFunction) WithChildren(_ ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
-func (s SimpleTableFunction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (s SimpleTableFunction) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
 	return true
 }
 
@@ -623,11 +627,11 @@ func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf sql.TableFuncti
 	}
 }
 
-func (t TestProvider) Function(ctx *sql.Context, name string) (sql.Function, error) {
+func (t TestProvider) Function(_ *sql.Context, name string) (sql.Function, error) {
 	return nil, sql.ErrFunctionNotFound.New(name)
 }
 
-func (t TestProvider) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, error) {
+func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
 	if tf, ok := t.tableFunctions[strings.ToLower(name)]; ok {
 		return tf, nil
 	}

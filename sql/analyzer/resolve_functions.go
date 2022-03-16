@@ -49,17 +49,12 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) 
 			database = privilegedDatabase.Unwrap()
 		}
 
-		_, err = tableFunction.WithDatabase(database)
+		newInstance, err := tableFunction.NewInstance(database, utf.Arguments)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = tableFunction.WithExpressions(utf.Arguments...)
-		if err != nil {
-			return nil, err
-		}
-
-		return tableFunction, nil
+		return newInstance, nil
 	})
 }
 
