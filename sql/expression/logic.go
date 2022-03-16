@@ -145,6 +145,7 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
+	// Can also be triggered by lval and rval not being bool types.
 	if lval == false && rval == false {
 		return false, nil
 	}

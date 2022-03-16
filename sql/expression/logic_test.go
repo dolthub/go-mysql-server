@@ -73,6 +73,7 @@ func TestOr(t *testing.T) {
 		{"left is string, right is different string", "abc", "def", false},
 		{"left is string, right is nil", "abc", nil, nil},
 		{"left is nil, right is string", nil, "def", nil},
+		{"left is float, right is string", 2.0, "hello", true},
 	}
 
 	for _, tt := range testCases {
