@@ -17,6 +17,8 @@ package enginetest_test
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -465,4 +467,199 @@ func assertNodesEqualWithDiff(t *testing.T, expected, actual sql.Node) {
 			fmt.Println(diff)
 		}
 	}
+}
+
+func TestTableFunctions(t *testing.T) {
+	var tableFunctionScriptTests = []enginetest.ScriptTest{
+		{
+			Name:        "undefined table function",
+			Query:       "SELECT * from does_not_exist('q', 123);",
+			ExpectedErr: sql.ErrTableFunctionNotFound,
+		},
+		{
+			Name:        "projection of non-existent column from table function",
+			Query:       "SELECT none from simple_TABLE_function(123);",
+			ExpectedErr: sql.ErrColumnNotFound,
+		},
+		{
+			Name:     "basic table function",
+			Query:    "SELECT * from simple_table_function(123);",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "basic table function",
+			Query:    "SELECT * from simple_TABLE_function(123);",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "aggregate function applied to a table function",
+			Query:    "SELECT count(*) from simple_TABLE_function(123);",
+			Expected: []sql.Row{{1}},
+		},
+		{
+			Name:     "projection of table function",
+			Query:    "SELECT one from simple_TABLE_function(123);",
+			Expected: []sql.Row{{"foo"}},
+		},
+		{
+			Name:     "nested expressions in table function arguments",
+			Query:    "SELECT * from simple_TABLE_function(concat('f', 'o', 'o'));",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "filtering table function results",
+			Query:    "SELECT * from simple_TABLE_function(123) where one='foo';",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "filtering table function results to no results",
+			Query:    "SELECT * from simple_TABLE_function(123) where one='none';",
+			Expected: []sql.Row{},
+		},
+		{
+			Name:     "grouping table function results",
+			Query:    "SELECT count(one) from simple_TABLE_function(123) group by one;",
+			Expected: []sql.Row{{1}},
+		},
+		{
+			Name:     "table function as subquery",
+			Query:    "SELECT * from (select * from simple_TABLE_function(123)) as tf;",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+	}
+
+	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	db := harness.NewDatabase("mydb")
+	databaseProvider := harness.NewDatabaseProvider(db)
+	testDatabaseProvider := NewTestProvider(&databaseProvider, SimpleTableFunction{})
+	engine := enginetest.NewEngineWithProvider(t, harness, testDatabaseProvider)
+	for _, test := range tableFunctionScriptTests {
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
+}
+
+var _ sql.TableFunction = (*SimpleTableFunction)(nil)
+
+// SimpleTableFunction an extremely simple implementation of TableFunction for testing.
+// When evaluated, returns a single row: {"foo", 123}
+type SimpleTableFunction struct {
+	returnedResults bool
+}
+
+func (s SimpleTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
+	return SimpleTableFunction{}, nil
+}
+
+func (s SimpleTableFunction) Resolved() bool {
+	return true
+}
+
+func (s SimpleTableFunction) String() string {
+	return "SimpleTableFunction"
+}
+
+func (s SimpleTableFunction) Schema() sql.Schema {
+	schema := []*sql.Column{
+		&sql.Column{
+			Name: "one",
+			Type: sql.TinyText,
+		},
+		&sql.Column{
+			Name: "two",
+			Type: sql.Int64,
+		},
+	}
+
+	return schema
+}
+
+func (s SimpleTableFunction) Children() []sql.Node {
+	return []sql.Node{}
+}
+
+func (s SimpleTableFunction) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	if s.returnedResults == true {
+		return nil, io.EOF
+	}
+
+	s.returnedResults = true
+	rowIter := &SimpleTableFunctionRowIter{}
+	return rowIter, nil
+}
+
+func (s SimpleTableFunction) WithChildren(_ ...sql.Node) (sql.Node, error) {
+	return s, nil
+}
+
+func (s SimpleTableFunction) CheckPrivileges(_ *sql.Context, _ sql.PrivilegedOperationChecker) bool {
+	return true
+}
+
+func (s SimpleTableFunction) Expressions() []sql.Expression {
+	return []sql.Expression{}
+}
+
+func (s SimpleTableFunction) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+	return s, nil
+}
+
+func (s SimpleTableFunction) Database() sql.Database {
+	return nil
+}
+
+func (s SimpleTableFunction) WithDatabase(_ sql.Database) (sql.Node, error) {
+	return s, nil
+}
+
+func (s SimpleTableFunction) FunctionName() string {
+	return "simple_table_function"
+}
+
+func (s SimpleTableFunction) Description() string {
+	return "SimpleTableFunction"
+}
+
+var _ sql.RowIter = (*SimpleTableFunctionRowIter)(nil)
+
+type SimpleTableFunctionRowIter struct {
+	returnedResults bool
+}
+
+func (itr *SimpleTableFunctionRowIter) Next(_ *sql.Context) (sql.Row, error) {
+	if itr.returnedResults {
+		return nil, io.EOF
+	}
+
+	itr.returnedResults = true
+	return sql.Row{"foo", 123}, nil
+}
+
+func (itr *SimpleTableFunctionRowIter) Close(_ *sql.Context) error {
+	return nil
+}
+
+var _ sql.FunctionProvider = (*TestProvider)(nil)
+
+type TestProvider struct {
+	sql.MutableDatabaseProvider
+	tableFunctions map[string]sql.TableFunction
+}
+
+func NewTestProvider(dbProvider *sql.MutableDatabaseProvider, tf sql.TableFunction) *TestProvider {
+	return &TestProvider{
+		*dbProvider,
+		map[string]sql.TableFunction{strings.ToLower(tf.FunctionName()): tf},
+	}
+}
+
+func (t TestProvider) Function(_ *sql.Context, name string) (sql.Function, error) {
+	return nil, sql.ErrFunctionNotFound.New(name)
+}
+
+func (t TestProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+	if tf, ok := t.tableFunctions[strings.ToLower(name)]; ok {
+		return tf, nil
+	}
+
+	return nil, sql.ErrTableFunctionNotFound.New(name)
 }

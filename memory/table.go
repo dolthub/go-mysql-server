@@ -24,12 +24,10 @@ import (
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/proto/query"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 // Table represents an in-memory database table.
@@ -306,92 +304,14 @@ func (i *tableIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
 	}
 
 	for _, v := range r {
-		frame.Append(convertToValue(v))
+		x, err := sql.ConvertToValue(v)
+		if err != nil {
+			return err
+		}
+		frame.Append(x)
 	}
 
 	return nil
-}
-
-func convertToValue(v interface{}) sql.Value {
-	switch v := v.(type) {
-	case nil:
-		return sql.Value{
-			Typ: query.Type_NULL_TYPE,
-			Val: nil,
-		}
-	case int:
-		return sql.Value{
-			Typ: query.Type_INT64,
-			Val: values.WriteInt64(make([]byte, values.Int64Size), int64(v)),
-		}
-	case int8:
-		return sql.Value{
-			Typ: query.Type_INT8,
-			Val: values.WriteInt8(make([]byte, values.Int8Size), v),
-		}
-	case int16:
-		return sql.Value{
-			Typ: query.Type_INT16,
-			Val: values.WriteInt16(make([]byte, values.Int16Size), v),
-		}
-	case int32:
-		return sql.Value{
-			Typ: query.Type_INT32,
-			Val: values.WriteInt32(make([]byte, values.Int32Size), v),
-		}
-	case int64:
-		return sql.Value{
-			Typ: query.Type_INT64,
-			Val: values.WriteInt64(make([]byte, values.Int64Size), v),
-		}
-	case uint:
-		return sql.Value{
-			Typ: query.Type_UINT64,
-			Val: values.WriteUint64(make([]byte, values.Uint64Size), uint64(v)),
-		}
-	case uint8:
-		return sql.Value{
-			Typ: query.Type_UINT8,
-			Val: values.WriteUint8(make([]byte, values.Uint8Size), v),
-		}
-	case uint16:
-		return sql.Value{
-			Typ: query.Type_UINT16,
-			Val: values.WriteUint16(make([]byte, values.Uint16Size), v),
-		}
-	case uint32:
-		return sql.Value{
-			Typ: query.Type_UINT32,
-			Val: values.WriteUint32(make([]byte, values.Uint32Size), v),
-		}
-	case uint64:
-		return sql.Value{
-			Typ: query.Type_UINT64,
-			Val: values.WriteUint64(make([]byte, values.Uint64Size), v),
-		}
-	case float32:
-		return sql.Value{
-			Typ: query.Type_FLOAT32,
-			Val: values.WriteFloat32(make([]byte, values.Uint16Size), v),
-		}
-	case float64:
-		return sql.Value{
-			Typ: query.Type_FLOAT64,
-			Val: values.WriteFloat64(make([]byte, values.Uint16Size), v),
-		}
-	case string:
-		return sql.Value{
-			Typ: query.Type_VARCHAR,
-			Val: values.WriteString(make([]byte, len(v)), v, values.ByteOrderCollation),
-		}
-	case []byte:
-		return sql.Value{
-			Typ: query.Type_BLOB,
-			Val: values.WriteBytes(make([]byte, len(v)), v, values.ByteOrderCollation),
-		}
-	default:
-		panic(fmt.Sprintf("type %T not implemented", v))
-	}
 }
 
 func (i *tableIter) colIsProjected(idx int) bool {

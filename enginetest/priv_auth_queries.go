@@ -1662,4 +1662,16 @@ var QuickPrivTests = []QuickPrivilegeTest{
 			"UPDATE mydb.test SET v1 = 0;",
 		},
 	},
+	{
+		Queries: []string{
+			"FLUSH PRIVILEGES;",
+		},
+		ExpectingErr: true,
+	},
+	{
+		Queries: []string{
+			"GRANT RELOAD ON *.* TO tester@localhost",
+			"FLUSH PRIVILEGES;",
+		},
+	},
 }

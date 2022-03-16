@@ -1516,6 +1516,29 @@ var ScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Handle hex number to binary conversion",
+		SetUpScript: []string{
+			"CREATE TABLE hex_nums1 (pk BIGINT PRIMARY KEY, v1 INT, v2 BIGINT UNSIGNED, v3 DOUBLE, v4 BINARY(32));",
+			"INSERT INTO hex_nums1 values (1, 0x7ED0599B, 0x765a8ce4ce74b187, 0xF753AD20B0C4, 0x148aa875c3cdb9af8919493926a3d7c6862fec7f330152f400c0aecb4467508a);",
+			"CREATE TABLE hex_nums2 (pk BIGINT PRIMARY KEY, v1 VARBINARY(255), v2 BLOB);",
+			"INSERT INTO hex_nums2 values (1, 0x765a8ce4ce74b187, 0x148aa875c3cdb9af8919493926a3d7c6862fec7f330152f400c0aecb4467508a);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v1, v2, v3, hex(v4) FROM hex_nums1;",
+				Expected: []sql.Row{{2127583643, uint64(8528283758723641735), float64(271938758947012), "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+			{
+				Query:    "SELECT hex(v1), hex(v2), hex(v3), hex(v4) FROM hex_nums1;",
+				Expected: []sql.Row{{"7ED0599B", "765A8CE4CE74B187", "F753AD20B0C4", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+			{
+				Query:    "SELECT hex(v1), hex(v2) FROM hex_nums2;",
+				Expected: []sql.Row{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{

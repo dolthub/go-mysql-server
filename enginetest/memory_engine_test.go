@@ -151,8 +151,8 @@ func TestSingleScript(t *testing.T) {
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine := enginetest.NewEngine(t, harness)
-		engine.Analyzer.Debug = true
-		engine.Analyzer.Verbose = true
+		//engine.Analyzer.Debug = true
+		//engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
@@ -495,6 +495,10 @@ func TestUserPrivileges(t *testing.T) {
 
 func TestUserAuthentication(t *testing.T) {
 	enginetest.TestUserAuthentication(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
+func TestPrivilegePersistence(t *testing.T) {
+	enginetest.TestPrivilegePersistence(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
 }
 
 func TestComplexIndexQueries(t *testing.T) {
