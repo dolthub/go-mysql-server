@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -216,8 +217,50 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			return sql.ErrTableColumnNotFound.New(fkDef.ReferencedTable, fkRefCol)
 		}
 	}
+	//TODO: look for foreign keys on the same columns
 
-	//TODO: resolve foreign keys
+	// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
+	refTblIndex, ok, err := FindIndexWithPrefix(ctx, refTbl, fkDef.ReferencedColumns)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		//TODO: make SQL error
+		return fmt.Errorf("missing index for foreign key `%s` on the referenced table `%s`", fkDef.Name, fkDef.ReferencedTable)
+	}
+	_, ok, err = FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		indexColumns := make([]sql.IndexColumn, len(fkDef.Columns))
+		for i, col := range fkDef.Columns {
+			indexColumns[i] = sql.IndexColumn{
+				Name:   col,
+				Length: 0,
+			}
+		}
+		//TODO: generate a non-colliding index name
+		err := tbl.CreateIndexForForeignKey(ctx, fkDef.Name+"_idx", sql.IndexUsing_Default, sql.IndexConstraint_None, indexColumns)
+		if err != nil {
+			return err
+		}
+	}
+
+	indexPositions, appendTypes, err := FindForeignKeyColMapping(ctx, fkDef.Name, tbl, fkDef.Columns, fkDef.ReferencedColumns, refTblIndex)
+	if err != nil {
+		return err
+	}
+	reference := &ForeignKeyReference{
+		Index:          refTblIndex,
+		ForeignKey:     *fkDef,
+		Editor:         refTbl.GetForeignKeyUpdater(ctx),
+		IndexPositions: indexPositions,
+		AppendTypes:    appendTypes,
+	}
+	if err := reference.CheckTable(ctx, tbl); err != nil {
+		return err
+	}
 	return tbl.SetForeignKeyResolved(ctx, fkDef.Name)
 }
 
@@ -312,4 +355,167 @@ func (p *DropForeignKey) String() string {
 	_ = pr.WriteNode("DropForeignKey(%s)", p.Name)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s.%s)", p.Database, p.Table))
 	return pr.String()
+}
+
+// FindForeignKeyColMapping returns the mapping from a given row to its equivalent index position, based on the matching
+// foreign key columns. This also verifies that the column types match, as it is a prerequisite for mapping. For foreign
+// keys that do not match the full index, also returns the types to append during the key mapping, as all index columns
+// must have a column expression. All strings are case-insensitive.
+func FindForeignKeyColMapping(
+	ctx *sql.Context,
+	fkName string,
+	localTbl sql.ForeignKeyTable,
+	localFKCols []string,
+	destFKCols []string,
+	index sql.Index,
+) ([]int, []sql.Type, error) {
+	localFKCols = lowercaseSlice(localFKCols)
+	destFKCols = lowercaseSlice(destFKCols)
+	destTblName := strings.ToLower(index.Table())
+
+	localSchTypeMap := make(map[string]sql.Type)
+	localSchPositionMap := make(map[string]int)
+	for i, col := range localTbl.Schema() {
+		colName := strings.ToLower(col.Name)
+		localSchTypeMap[colName] = col.Type
+		localSchPositionMap[colName] = i
+	}
+	var appendTypes []sql.Type
+	indexTypeMap := make(map[string]sql.Type)
+	indexColMap := make(map[string]int)
+	for i, indexCol := range index.ColumnExpressionTypes(ctx) {
+		indexColName := strings.ToLower(indexCol.Expression)
+		indexTypeMap[indexColName] = indexCol.Type
+		indexColMap[indexColName] = i
+		if i >= len(destFKCols) {
+			appendTypes = append(appendTypes, indexCol.Type)
+		}
+	}
+	indexPositions := make([]int, len(destFKCols))
+
+	for fkIdx, colName := range localFKCols {
+		localRowPos, ok := localSchPositionMap[colName]
+		if !ok {
+			// Will happen if a column is renamed that is referenced by a foreign key
+			//TODO: enforce that renaming a column referenced by a foreign key updates that foreign key
+			return nil, nil, fmt.Errorf("column `%s` in foreign key `%s` cannot be found",
+				colName, fkName)
+		}
+		expectedType := localSchTypeMap[colName]
+		destFkCol := destTblName + "." + destFKCols[fkIdx]
+		indexPos, ok := indexColMap[destFkCol]
+		if !ok {
+			// Same as above, renaming a referenced column would cause this error
+			return nil, nil, fmt.Errorf("index column `%s` in foreign key `%s` cannot be found",
+				destFKCols[fkIdx], fkName)
+		}
+		//TODO: add equality checks to types
+		if indexTypeMap[destFkCol] != expectedType {
+			return nil, nil, fmt.Errorf("mismatched types")
+		}
+		indexPositions[indexPos] = localRowPos
+	}
+	return indexPositions, appendTypes, nil
+}
+
+// FindIndexWithPrefix returns an index that has the given columns as a prefix. The returned index is deterministic and
+// follows the given rules, from the highest priority in descending order:
+//
+// 1. Columns exactly match the index
+// 2. Columns match as much of the index prefix as possible
+// 3. Largest index by column count
+// 4. Index ID in ascending order
+//
+// The prefix columns may be in any order, and the returned index will contain all of the prefix columns within its
+// prefix. For example, the slices [col1, col2] and [col2, col1] will match the same index, as their ordering does not
+// matter. The index [col1, col2, col3] would match, but the index [col1, col3] would not match as it is missing "col2".
+// Prefix columns are case-insensitive.
+func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexedTable, prefixCols []string) (sql.Index, bool, error) {
+	type idxWithLen struct {
+		sql.Index
+		colLen int
+	}
+
+	indexes, err := tbl.GetIndexes(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	tblName := strings.ToLower(tbl.Name())
+	exprCols := make([]string, len(prefixCols))
+	for i, prefixCol := range prefixCols {
+		exprCols[i] = tblName + "." + strings.ToLower(prefixCol)
+	}
+	colLen := len(exprCols)
+	var indexesWithLen []idxWithLen
+	for _, idx := range indexes {
+		indexExprs := lowercaseSlice(idx.Expressions())
+		if ok, prefixCount := exprsAreIndexSubset(exprCols, indexExprs); ok && prefixCount == colLen {
+			indexesWithLen = append(indexesWithLen, idxWithLen{idx, len(indexExprs)})
+		}
+	}
+	if len(indexesWithLen) == 0 {
+		return nil, false, nil
+	}
+
+	sort.Slice(indexesWithLen, func(i, j int) bool {
+		idxI := indexesWithLen[i]
+		idxJ := indexesWithLen[j]
+		if idxI.colLen == colLen && idxJ.colLen != colLen {
+			return true
+		} else if idxI.colLen != colLen && idxJ.colLen == colLen {
+			return false
+		} else if idxI.colLen != idxJ.colLen {
+			return idxI.colLen > idxJ.colLen
+		} else {
+			return idxI.Index.ID() < idxJ.Index.ID()
+		}
+	})
+	sortedIndexes := make([]sql.Index, len(indexesWithLen))
+	for i := 0; i < len(sortedIndexes); i++ {
+		sortedIndexes[i] = indexesWithLen[i].Index
+	}
+	return sortedIndexes[0], true, nil
+}
+
+// TODO: copy of analyzer.exprsAreIndexSubset, need to shift stuff around to eliminate import cycle
+func exprsAreIndexSubset(exprs, indexExprs []string) (ok bool, prefixCount int) {
+	if len(exprs) > len(indexExprs) {
+		return false, 0
+	}
+
+	visitedIndexExprs := make([]bool, len(indexExprs))
+	for _, expr := range exprs {
+		found := false
+		for j, indexExpr := range indexExprs {
+			if visitedIndexExprs[j] {
+				continue
+			}
+			if expr == indexExpr {
+				visitedIndexExprs[j] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false, 0
+		}
+	}
+
+	// This checks the length of the prefix by checking how many true booleans are encountered before the first false
+	for i, visitedExpr := range visitedIndexExprs {
+		if visitedExpr {
+			continue
+		}
+		return true, i
+	}
+
+	return true, len(exprs)
+}
+
+func lowercaseSlice(strs []string) []string {
+	newStrs := make([]string, len(strs))
+	for i, str := range strs {
+		newStrs[i] = strings.ToLower(str)
+	}
+	return newStrs
 }

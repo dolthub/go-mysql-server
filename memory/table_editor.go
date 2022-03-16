@@ -166,8 +166,53 @@ func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val interface{}) e
 
 // WithIndexLookup returns
 func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
-	//TODO: create some new struct that encloses the tableEditor and filters based on the lookup
-	panic("not yet implemented")
+	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
+	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
+		newTable, err := copyTable(pkTea.table, pkTea.table.schema)
+		if err != nil {
+			panic(err)
+		}
+		adds := make(map[string]sql.Row)
+		deletes := make(map[string]sql.Row)
+		for key, val := range pkTea.adds {
+			adds[key] = val
+		}
+		for key, val := range pkTea.deletes {
+			deletes[key] = val
+		}
+		err = (&pkTableEditAccumulator{
+			table:   newTable,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+		return newTable.WithIndexLookup(lookup)
+	} else {
+		nonPkTea := t.ea.(*keylessTableEditAccumulator)
+		newTable, err := copyTable(nonPkTea.table, nonPkTea.table.schema)
+		if err != nil {
+			panic(err)
+		}
+		adds := make([]sql.Row, len(nonPkTea.adds))
+		deletes := make([]sql.Row, len(nonPkTea.deletes))
+		for i, val := range nonPkTea.adds {
+			adds[i] = val
+		}
+		for i, val := range nonPkTea.deletes {
+			deletes[i] = val
+		}
+		err = (&keylessTableEditAccumulator{
+			table:   newTable,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+		return newTable.WithIndexLookup(lookup)
+	}
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {
