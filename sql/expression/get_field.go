@@ -29,6 +29,7 @@ type GetField struct {
 	fieldIndex int
 	name       string
 	fieldType  sql.Type
+	fieldType2 sql.Type2
 	nullable   bool
 }
 
@@ -42,10 +43,12 @@ func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool)
 
 // NewGetFieldWithTable creates a GetField expression with table name. The table name may be an alias.
 func NewGetFieldWithTable(index int, fieldType sql.Type, table, fieldName string, nullable bool) *GetField {
+	fieldType2, _ := fieldType.(sql.Type2)
 	return &GetField{
 		table:      table,
 		fieldIndex: index,
 		fieldType:  fieldType,
+		fieldType2: fieldType2,
 		name:       fieldName,
 		nullable:   nullable,
 	}
@@ -94,6 +97,11 @@ func (p *GetField) Type() sql.Type {
 	return p.fieldType
 }
 
+// Type2 returns the type of the field, if this field has a sql.Type2.
+func (p *GetField) Type2() sql.Type2 {
+	return p.fieldType2
+}
+
 // ErrIndexOutOfBounds is returned when the field index is out of the bounds.
 var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns")
 
@@ -106,11 +114,11 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
-	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
-		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
+	if p.fieldIndex < 0 || p.fieldIndex >= row.Len() {
+		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, row.Len())
 	}
 
-	return row[p.fieldIndex], nil
+	return row.GetField(p.fieldIndex), nil
 }
 
 // WithChildren implements the Expression interface.
