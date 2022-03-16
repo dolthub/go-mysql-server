@@ -292,7 +292,16 @@ func getComparisonIndexLookup(
 		normalizedExpressions := normalizeExpressions(ctx, tableAliases, left)
 		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
 		if idx != nil {
-			value, err := right.Eval(ctx, nil)
+
+			var value interface{}
+			var err error
+			right2, _ := right.(sql.Expression2)
+
+			if right2 != nil {
+				value, err = right2.Eval2(ctx, nil)
+			} else {
+				value, err = right.Eval(ctx, nil)
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -320,11 +329,20 @@ func getComparisonIndexLookup(
 				return nil, err
 			}
 
+			var fields2 []sql.Expression2
+			if field2, ok := left.(sql.Expression2); ok {
+				fields2 = []sql.Expression2{field2}
+			}
+
+			expr2, _ := e.(sql.Expression2)
+
 			return &indexLookup{
 				fields:  []sql.Expression{left},
+				fields2: fields2,
 				lookup:  lookup,
 				indexes: []sql.Index{idx},
 				expr:    e,
+				expr2:   expr2,
 			}, nil
 		}
 	}
