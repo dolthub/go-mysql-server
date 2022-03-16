@@ -1540,10 +1540,10 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "select * from a where y = 5",
 				Expected: []sql.Row{{4, 5, 6}},
-            },
-        },
-    },
-    {
+			},
+		},
+	},
+	{
 		Name: "Handle hex number to binary conversion",
 		SetUpScript: []string{
 			"CREATE TABLE hex_nums1 (pk BIGINT PRIMARY KEY, v1 INT, v2 BIGINT UNSIGNED, v3 DOUBLE, v4 BINARY(32));",
