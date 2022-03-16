@@ -111,7 +111,7 @@ func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *Unreso
 }
 
 // NewInstance implements the TableFunction interface
-func (utf UnresolvedTableFunction) NewInstance(_ sql.Database, _ []sql.Expression) (sql.Node, error) {
+func (utf UnresolvedTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
 	return nil, ErrUnresolvedTableFunction.New()
 }
 

@@ -477,6 +477,11 @@ func TestTableFunctions(t *testing.T) {
 			ExpectedErr: sql.ErrTableFunctionNotFound,
 		},
 		{
+			Name:        "projection of non-existent column from table function",
+			Query:       "SELECT none from simple_TABLE_function(123);",
+			ExpectedErr: sql.ErrColumnNotFound,
+		},
+		{
 			Name:     "basic table function",
 			Query:    "SELECT * from simple_table_function(123);",
 			Expected: []sql.Row{{"foo", 123}},
@@ -501,6 +506,26 @@ func TestTableFunctions(t *testing.T) {
 			Query:    "SELECT * from simple_TABLE_function(concat('f', 'o', 'o'));",
 			Expected: []sql.Row{{"foo", 123}},
 		},
+		{
+			Name:     "filtering table function results",
+			Query:    "SELECT * from simple_TABLE_function(123) where one='foo';",
+			Expected: []sql.Row{{"foo", 123}},
+		},
+		{
+			Name:     "filtering table function results to no results",
+			Query:    "SELECT * from simple_TABLE_function(123) where one='none';",
+			Expected: []sql.Row{},
+		},
+		{
+			Name:     "grouping table function results",
+			Query:    "SELECT count(one) from simple_TABLE_function(123) group by one;",
+			Expected: []sql.Row{{1}},
+		},
+		{
+			Name:     "table function as subquery",
+			Query:    "SELECT * from (select * from simple_TABLE_function(123)) as tf;",
+			Expected: []sql.Row{{"foo", 123}},
+		},
 	}
 
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
@@ -521,7 +546,7 @@ type SimpleTableFunction struct {
 	returnedResults bool
 }
 
-func (s SimpleTableFunction) NewInstance(_ sql.Database, _ []sql.Expression) (sql.Node, error) {
+func (s SimpleTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
 	return SimpleTableFunction{}, nil
 }
 

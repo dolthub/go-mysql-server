@@ -321,7 +321,7 @@ type TableFunction interface {
 	Databaser
 
 	// NewInstance returns a new instance of the table function
-	NewInstance(Database, []Expression) (Node, error)
+	NewInstance(ctx *Context, db Database, expressions []Expression) (Node, error)
 	// FunctionName returns the name of this table function
 	FunctionName() string
 }

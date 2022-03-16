@@ -11,7 +11,6 @@ import (
 
 var _ sql.DatabaseProvider = memoryDBProvider{}
 var _ sql.MutableDatabaseProvider = memoryDBProvider{}
-var _ sql.FunctionProvider = memoryDBProvider{}
 var _ sql.TableFunctionProvider = memoryDBProvider{}
 
 // memoryDBProvider is a collection of Database.
@@ -34,7 +33,7 @@ func NewMemoryDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 }
 
 // Database returns the Database with the given name if it exists.
-func (d memoryDBProvider) Database(ctx *sql.Context, name string) (sql.Database, error) {
+func (d memoryDBProvider) Database(_ *sql.Context, name string) (sql.Database, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -53,7 +52,7 @@ func (d memoryDBProvider) Database(ctx *sql.Context, name string) (sql.Database,
 }
 
 // HasDatabase returns the Database with the given name if it exists.
-func (d memoryDBProvider) HasDatabase(ctx *sql.Context, name string) bool {
+func (d memoryDBProvider) HasDatabase(_ *sql.Context, name string) bool {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 
@@ -79,7 +78,7 @@ func (d memoryDBProvider) AllDatabases(*sql.Context) []sql.Database {
 }
 
 // CreateDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err error) {
+func (d memoryDBProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -89,18 +88,12 @@ func (d memoryDBProvider) CreateDatabase(ctx *sql.Context, name string) (err err
 }
 
 // DropDatabase implements MutableDatabaseProvider.
-func (d memoryDBProvider) DropDatabase(ctx *sql.Context, name string) (err error) {
+func (d memoryDBProvider) DropDatabase(_ *sql.Context, name string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	delete(d.dbs, strings.ToLower(name))
 	return
-}
-
-// Function implements sql.FunctionProvider
-func (_ memoryDBProvider) Function(_ *sql.Context, name string) (sql.Function, error) {
-	// Don't support any extra functions
-	return nil, sql.ErrFunctionNotFound.New(name)
 }
 
 // TableFunction implements sql.TableFunctionProvider
