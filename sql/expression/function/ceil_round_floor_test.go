@@ -41,7 +41,7 @@ func TestCeil(t *testing.T) {
 		{"int64 is nil", sql.Int64, sql.NewRow(nil), nil, nil},
 		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(0), nil},
+		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
 		{"string int is ok", sql.Text, sql.NewRow("1"), int32(1), nil},
 		{"string float is ok", sql.Text, sql.NewRow("1.2"), int32(2), nil},
 	}
@@ -96,7 +96,7 @@ func TestFloor(t *testing.T) {
 		{"int64 is nil", sql.Int64, sql.NewRow(nil), nil, nil},
 		{"int64 is ok", sql.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", sql.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(0), nil},
+		{"blob is ok", sql.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
 		{"string int is ok", sql.Text, sql.NewRow("1"), int32(1), nil},
 		{"string float is ok", sql.Text, sql.NewRow("1.2"), int32(1), nil},
 	}
@@ -149,14 +149,14 @@ func TestRound(t *testing.T) {
 		{"float64 with negative d", sql.Float64, sql.Int32, sql.NewRow(52.855, -1), float64(50), nil},
 		{"float64 with float d", sql.Float64, sql.Float64, sql.NewRow(5.855, float64(2.123)), float64(5.86), nil},
 		{"float64 with float negative d", sql.Float64, sql.Float64, sql.NewRow(52.855, float64(-1)), float64(50), nil},
-		{"float64 with blob d", sql.Float64, sql.Blob, sql.NewRow(5.855, []byte{1, 2, 3}), float64(6), nil},
+		{"float64 with blob d", sql.Float64, sql.Blob, sql.NewRow(5.855, []byte{1, 2, 3}), float64(5.855), nil},
 		{"float32 is nil", sql.Float32, sql.Int32, sql.NewRow(nil, nil), nil, nil},
 		{"float32 without d", sql.Float32, sql.Int32, sql.NewRow(float32(5.8), nil), float32(6), nil},
 		{"float32 with d", sql.Float32, sql.Int32, sql.NewRow(float32(5.855), 2), float32(5.86), nil},
 		{"float32 with negative d", sql.Float32, sql.Int32, sql.NewRow(float32(52.855), -1), float32(50), nil},
 		{"float32 with float d", sql.Float32, sql.Float64, sql.NewRow(float32(5.855), float32(2.123)), float32(5.86), nil},
 		{"float32 with float negative d", sql.Float32, sql.Float64, sql.NewRow(float32(52.855), float32(-1)), float32(50), nil},
-		{"float32 with blob d", sql.Float32, sql.Blob, sql.NewRow(float32(5.855), []byte{1, 2, 3}), float32(6), nil},
+		{"float32 with blob d", sql.Float32, sql.Blob, sql.NewRow(float32(5.855), []byte{1, 2, 3}), float32(5.855), nil},
 		{"int64 is nil", sql.Int64, sql.Int32, sql.NewRow(nil, nil), nil, nil},
 		{"int64 without d", sql.Int64, sql.Int32, sql.NewRow(int64(5), nil), int64(5), nil},
 		{"int64 with d", sql.Int64, sql.Int32, sql.NewRow(int64(5), 2), int64(5), nil},
@@ -216,18 +216,18 @@ func TestRound(t *testing.T) {
 		{"uint8 with float negative d", sql.Uint8, sql.Float64, sql.NewRow(uint8(52), float32(-1)), uint8(50), nil},
 		{"uint8 with blob d", sql.Uint8, sql.Blob, sql.NewRow(uint8(5), []byte{1, 2, 3}), uint8(5), nil},
 		{"blob is nil", sql.Blob, sql.Int32, sql.NewRow(nil, nil), nil, nil},
-		{"blob is ok", sql.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil), int32(0), nil},
-		{"text int without d", sql.Text, sql.Int32, sql.NewRow("5", nil), int32(5), nil},
-		{"text int with d", sql.Text, sql.Int32, sql.NewRow("5", 2), int32(5), nil},
-		{"text int with negative d", sql.Text, sql.Int32, sql.NewRow("52", -1), int32(50), nil},
-		{"text int with float d", sql.Text, sql.Float64, sql.NewRow("5", float32(2.123)), int32(5), nil},
-		{"text int with float negative d", sql.Text, sql.Float64, sql.NewRow("52", float32(-1)), int32(50), nil},
-		{"text float without d", sql.Text, sql.Int32, sql.NewRow("5.8", nil), int32(6), nil},
-		{"text float with d", sql.Text, sql.Int32, sql.NewRow("5.855", 2), int32(5), nil},
-		{"text float with negative d", sql.Text, sql.Int32, sql.NewRow("52.855", -1), int32(50), nil},
-		{"text float with float d", sql.Text, sql.Float64, sql.NewRow("5.855", float64(2.123)), int32(5), nil},
-		{"text float with float negative d", sql.Text, sql.Float64, sql.NewRow("52.855", float64(-1)), int32(50), nil},
-		{"text float with blob d", sql.Text, sql.Blob, sql.NewRow("5.855", []byte{1, 2, 3}), int32(6), nil},
+		{"blob is ok", sql.Blob, sql.Int32, sql.NewRow([]byte{1, 2, 3}, nil), float64(66051), nil},
+		{"text int without d", sql.Text, sql.Int32, sql.NewRow("5", nil), float64(5), nil},
+		{"text int with d", sql.Text, sql.Int32, sql.NewRow("5", 2), float64(5), nil},
+		{"text int with negative d", sql.Text, sql.Int32, sql.NewRow("52", -1), float64(50), nil},
+		{"text int with float d", sql.Text, sql.Float64, sql.NewRow("5", float32(2.123)), float64(5), nil},
+		{"text int with float negative d", sql.Text, sql.Float64, sql.NewRow("52", float32(-1)), float64(50), nil},
+		{"text float without d", sql.Text, sql.Int32, sql.NewRow("5.8", nil), float64(6), nil},
+		{"text float with d", sql.Text, sql.Int32, sql.NewRow("5.855", 2), float64(5.86), nil},
+		{"text float with negative d", sql.Text, sql.Int32, sql.NewRow("52.855", -1), float64(50), nil},
+		{"text float with float d", sql.Text, sql.Float64, sql.NewRow("5.855", float64(2.123)), float64(5.86), nil},
+		{"text float with float negative d", sql.Text, sql.Float64, sql.NewRow("52.855", float64(-1)), float64(50), nil},
+		{"text float with blob d", sql.Text, sql.Blob, sql.NewRow("5.855", []byte{1, 2, 3}), float64(5.855), nil},
 	}
 
 	for _, tt := range testCases {
@@ -279,5 +279,5 @@ func TestRound(t *testing.T) {
 
 	result, err := f.Eval(sql.NewEmptyContext(), sql.NewRow([]byte{1, 2, 3}, 2))
 	req.NoError(err)
-	req.Equal(int32(0), result)
+	req.Equal(float64(66051), result)
 }

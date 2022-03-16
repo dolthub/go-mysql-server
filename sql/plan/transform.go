@@ -147,3 +147,29 @@ func TransformExpressionsWithNode(n sql.Node, f expression.TransformExprWithNode
 
 	return e.WithExpressions(newExprs...)
 }
+
+// TransformUpWithOpaque applies a transformation function to the given tree from the bottom up, including through
+// opaque nodes. This method is generally not safe to use for a transformation. Opaque nodes need to be considered in
+// isolation except for very specific exceptions.
+func TransformUpWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, error) {
+	children := node.Children()
+	if len(children) == 0 {
+		return f(node)
+	}
+
+	newChildren := make([]sql.Node, len(children))
+	for i, c := range children {
+		c, err := TransformUpWithOpaque(c, f)
+		if err != nil {
+			return nil, err
+		}
+		newChildren[i] = c
+	}
+
+	node, err := node.WithChildren(newChildren...)
+	if err != nil {
+		return nil, err
+	}
+
+	return f(node)
+}

@@ -85,6 +85,10 @@ var (
 	// node or expression is called with an invalid number of arguments.
 	ErrInvalidChildrenNumber = errors.NewKind("%T: invalid children number, got %d, expected %d")
 
+	// ErrInvalidExpressionNumber is returned when the WithExpression method of a node
+	// is called with an invalid number of arguments.
+	ErrInvalidExpressionNumber = errors.NewKind("%T: invalid expression number, got %d, expected %d")
+
 	// ErrInvalidChildType is returned when the WithChildren method of a
 	// node or expression is called with an invalid child type. This error is indicative of a bug.
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
@@ -336,6 +340,9 @@ var (
 
 	// ErrFunctionNotFound is thrown when a function is not found
 	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
+
+	// ErrTableFunctionNotFound is thrown when a table function is not found
+	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
 
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.

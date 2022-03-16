@@ -236,8 +236,10 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 					return nil, sql.ErrAmbiguousColumnInOrderBy.New(schema[idx].Name)
 				}
 
+				uc := expression.NewUnresolvedQualifiedColumn(schema[idx].Source, schema[idx].Name)
 				fields[i] = sql.SortField{
-					Column:       expression.NewUnresolvedQualifiedColumn(schema[idx].Source, schema[idx].Name),
+					Column:       uc,
+					Column2:      uc,
 					Order:        f.Order,
 					NullOrdering: f.NullOrdering,
 				}
@@ -250,8 +252,10 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 						name = nameable.Name()
 					}
 
+					uc := expression.NewUnresolvedColumn(name)
 					fields[i] = sql.SortField{
-						Column:       expression.NewUnresolvedColumn(name),
+						Column:       uc,
+						Column2:      uc,
 						Order:        f.Order,
 						NullOrdering: f.NullOrdering,
 					}

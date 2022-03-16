@@ -5393,6 +5393,12 @@ func NewEngineWithDbs(t *testing.T, harness Harness, databases []sql.Database) *
 	databases = append(databases, information_schema.NewInformationSchemaDatabase())
 	provider := harness.NewDatabaseProvider(databases...)
 
+	return NewEngineWithProvider(t, harness, provider)
+}
+
+// NewEngineWithProvider returns a new engine with the specified provider. This is useful when you don't want to
+// implement a full harness, but you need more control over the database provider than the default test MemoryProvider.
+func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.MutableDatabaseProvider) *sqle.Engine {
 	var a *analyzer.Analyzer
 	if harness.Parallelism() > 1 {
 		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
