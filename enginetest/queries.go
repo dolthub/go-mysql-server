@@ -6739,8 +6739,12 @@ var QueryTests = []QueryTest{
 		},
 	},
 	{
-		Query:    `select (('%' || 'dsads') || '%')`,
-		Expected: []sql.Row{{false}},
+		Query:    `select c1 from jsontable where c1 LIKE (('%' OR 'dsads') OR '%')`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `select c1 from jsontable where c1 LIKE ('%' OR NULL)`,
+		Expected: []sql.Row{},
 	},
 }
 

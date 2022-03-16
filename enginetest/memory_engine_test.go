@@ -111,11 +111,11 @@ func TestQueriesSimple(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
+		Query:    `select c1 from jsontable where c1 LIKE ('%' OR NULL)`,
 		Expected: []sql.Row{},
 	}
 
