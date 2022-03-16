@@ -2359,6 +2359,15 @@ func tableExprToTable(
 		default:
 			return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(te))
 		}
+
+	case *sqlparser.TableFuncExpr:
+		exprs, err := selectExprsToExpressions(ctx, t.Exprs)
+		if err != nil {
+			return nil, err
+		}
+
+		return expression.NewUnresolvedTableFunction(t.Name, exprs), nil
+
 	case *sqlparser.JoinTableExpr:
 		// TODO: add support for using, once we have proper table
 		// qualification of fields
