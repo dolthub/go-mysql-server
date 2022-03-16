@@ -6738,6 +6738,18 @@ var QueryTests = []QueryTest{
 			{1, 1, 0},
 		},
 	},
+	{
+		Query:    `select c1 from jsontable where c1 LIKE (('%' OR 'dsads') OR '%')`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `select c1 from jsontable where c1 LIKE ('%' OR NULL)`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `select (('%' OR 'dsads') OR '%')`,
+		Expected: []sql.Row{{false}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
