@@ -6747,7 +6747,7 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    `select (('%' || 'dsads') || '%')`,
+		Query:    `select (('%' OR 'dsads') OR '%')`,
 		Expected: []sql.Row{{false}},
 	},
 }
