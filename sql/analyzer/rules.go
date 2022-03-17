@@ -45,6 +45,7 @@ var OnceBeforeDefault = []Rule{
 	{"resolve_unions", resolveUnions},
 	{"resolve_describe_query", resolveDescribeQuery},
 	{"check_unique_table_names", checkUniqueTableNames},
+	{"resolve_table_functions", resolveTableFunctions},
 	{"resolve_declarations", resolveDeclarations},
 	{"validate_create_trigger", validateCreateTrigger},
 	{"validate_create_procedure", validateCreateProcedure},
@@ -52,7 +53,7 @@ var OnceBeforeDefault = []Rule{
 	{"validate_read_only_database", validateReadOnlyDatabase},
 	{"validate_read_only_transaction", validateReadOnlyTransaction},
 	{"validate_database_set", validateDatabaseSet},
-	{"check_privileges", checkPrivileges}, // Ensure that checking privileges happens after db & table resolution
+	{"check_privileges", checkPrivileges}, // Ensure that checking privileges happens after db, table, and table function resolution
 }
 
 // DefaultRules to apply when analyzing nodes.
