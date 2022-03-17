@@ -38,8 +38,8 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 	assert.Equal("group_concat(distinct field separator '-')", m.String())
 
 	sf := sql.SortFields{
-		{expression.NewUnresolvedColumn("field"), sql.Ascending, 0},
-		{expression.NewUnresolvedColumn("field2"), sql.Descending, 0},
+		{Column: expression.NewUnresolvedColumn("field"), Order: sql.Ascending},
+		{Column: expression.NewUnresolvedColumn("field2"), Order: sql.Descending},
 	}
 
 	m, err = NewGroupConcat("field", sf, "-", nil, 1024)

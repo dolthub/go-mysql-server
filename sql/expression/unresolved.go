@@ -31,6 +31,9 @@ type UnresolvedColumn struct {
 	table string
 }
 
+var _ sql.Expression = (*UnresolvedColumn)(nil)
+var _ sql.Expression2 = (*UnresolvedColumn)(nil)
+
 // NewUnresolvedColumn creates a new UnresolvedColumn expression.
 func NewUnresolvedColumn(name string) *UnresolvedColumn {
 	return &UnresolvedColumn{name: name}
@@ -60,6 +63,14 @@ func (*UnresolvedColumn) IsNullable() bool {
 // Type implements the Expression interface.
 func (*UnresolvedColumn) Type() sql.Type {
 	panic("unresolved column is a placeholder node, but Type was called")
+}
+
+func (uc *UnresolvedColumn) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+	panic("unresolved column is a placeholder node, but Eval2 was called")
+}
+
+func (uc *UnresolvedColumn) Type2() sql.Type2 {
+	panic("unresolved column is a placeholder node, but Type2 was called")
 }
 
 // Name implements the Nameable interface.

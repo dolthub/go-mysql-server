@@ -2447,7 +2447,12 @@ func orderByToSortFields(ctx *sql.Context, ob sqlparser.OrderBy) (sql.SortFields
 			so = sql.Descending
 		}
 
-		sf := sql.SortField{Column: e, Order: so}
+		e2, _ := e.(sql.Expression2)
+		sf := sql.SortField{
+			Column:  e,
+			Column2: e2,
+			Order:   so,
+		}
 		sortFields = append(sortFields, sf)
 	}
 	return sortFields, nil

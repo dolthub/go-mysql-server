@@ -1472,7 +1472,14 @@ CREATE TABLE t2
 		),
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC;`: plan.NewSort(
-		[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
+		[]sql.SortField{
+			{
+				Column:       expression.NewUnresolvedColumn("baz"),
+				Column2:      expression.NewUnresolvedColumn("baz"),
+				Order:        sql.Descending,
+				NullOrdering: sql.NullsFirst,
+			},
+		},
 		plan.NewProject(
 			[]sql.Expression{
 				expression.NewUnresolvedColumn("foo"),
@@ -1498,7 +1505,14 @@ CREATE TABLE t2
 	),
 	`SELECT foo, bar FROM foo ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
 		plan.NewSort(
-			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
+			[]sql.SortField{
+				{
+					Column:       expression.NewUnresolvedColumn("baz"),
+					Column2:      expression.NewUnresolvedColumn("baz"),
+					Order:        sql.Descending,
+					NullOrdering: sql.NullsFirst,
+				},
+			},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -1510,7 +1524,14 @@ CREATE TABLE t2
 	),
 	`SELECT foo, bar FROM foo WHERE qux = 1 ORDER BY baz DESC LIMIT 1;`: plan.NewLimit(expression.NewLiteral(int8(1), sql.Int8),
 		plan.NewSort(
-			[]sql.SortField{{Column: expression.NewUnresolvedColumn("baz"), Order: sql.Descending, NullOrdering: sql.NullsFirst}},
+			[]sql.SortField{
+				{
+					Column:       expression.NewUnresolvedColumn("baz"),
+					Column2:      expression.NewUnresolvedColumn("baz"),
+					Order:        sql.Descending,
+					NullOrdering: sql.NullsFirst,
+				},
+			},
 			plan.NewProject(
 				[]sql.Expression{
 					expression.NewUnresolvedColumn("foo"),
@@ -2832,6 +2853,7 @@ CREATE TABLE t2
 				}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("x"),
+						Column2:      expression.NewUnresolvedColumn("x"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
@@ -2856,6 +2878,7 @@ CREATE TABLE t2
 				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("x"),
+						Column2:      expression.NewUnresolvedColumn("x"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
@@ -2876,6 +2899,7 @@ CREATE TABLE t2
 				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("x"),
+						Column2:      expression.NewUnresolvedColumn("x"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
@@ -2932,6 +2956,7 @@ CREATE TABLE t2
 				expression.NewUnresolvedFunction("count", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("x"),
+						Column2:      expression.NewUnresolvedColumn("x"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
@@ -2962,6 +2987,7 @@ CREATE TABLE t2
 				expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 					{
 						Column:       expression.NewUnresolvedColumn("a"),
+						Column2:      expression.NewUnresolvedColumn("a"),
 						Order:        sql.Ascending,
 						NullOrdering: sql.NullsFirst,
 					},
@@ -3186,6 +3212,7 @@ CREATE TABLE t2
 			"w1": sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 				{
 					Column:       expression.NewUnresolvedColumn("x"),
+					Column2:      expression.NewUnresolvedColumn("x"),
 					Order:        sql.Ascending,
 					NullOrdering: sql.NullsFirst,
 				},
@@ -3212,6 +3239,7 @@ CREATE TABLE t2
 			"w1": sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 				{
 					Column:       expression.NewUnresolvedColumn("x"),
+					Column2:      expression.NewUnresolvedColumn("x"),
 					Order:        sql.Ascending,
 					NullOrdering: sql.NullsFirst,
 				},

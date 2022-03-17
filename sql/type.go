@@ -77,6 +77,8 @@ type Type2 interface {
 	Convert2(Value) (Value, error)
 	// Zero2 returns the zero Value for this type.
 	Zero2() Value
+	// SQL2 returns the sqltypes.Value for the given value
+	SQL2(Value) (sqltypes.Value, error)
 }
 
 type LikeMatcher interface {

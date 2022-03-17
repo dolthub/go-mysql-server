@@ -128,6 +128,11 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
 
 	// Reduce the row to the length of the schema. The length can differ when some update values come from an outer
 	// scope, which will be the first N values in the row.
