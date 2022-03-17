@@ -16,9 +16,9 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"

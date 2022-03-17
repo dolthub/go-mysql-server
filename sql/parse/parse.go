@@ -18,12 +18,12 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
