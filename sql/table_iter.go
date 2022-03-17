@@ -73,9 +73,13 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 
 		i.partition = nil
 		i.rows = nil
-		return i.Next(ctx)
+		row, err = i.Next(ctx)
 	}
-
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
 	return row, err
 }
 

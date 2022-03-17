@@ -1517,6 +1517,33 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "recreate primary key rebuilds secondary indexes",
+		SetUpScript: []string{
+			"create table a (x int, y int, z int, primary key (x,y,z), index idx1 (y))",
+			"insert into a values (1,2,3), (4,5,6), (7,8,9)",
+			"alter table a drop primary key",
+			"alter table a add primary key (y,z,x)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "delete from a where y = 2",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "delete from a where y = 2",
+				Expected: []sql.Row{{sql.NewOkResult(0)}},
+			},
+			{
+				Query:    "select * from a where y = 2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from a where y = 5",
+				Expected: []sql.Row{{4, 5, 6}},
+			},
+		},
+	},
+	{
 		Name: "Handle hex number to binary conversion",
 		SetUpScript: []string{
 			"CREATE TABLE hex_nums1 (pk BIGINT PRIMARY KEY, v1 INT, v2 BIGINT UNSIGNED, v3 DOUBLE, v4 BINARY(32));",
