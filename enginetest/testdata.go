@@ -880,7 +880,7 @@ func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows .
 	require.NoError(t, deleter.Close(ctx))
 }
 
-func setAutoIncrementValue(t *testing.T, ctx *sql.Context, table sql.AutoIncrementTable, val interface{}) {
+func setAutoIncrementValue(t *testing.T, ctx *sql.Context, table sql.AutoIncrementTable, val uint64) {
 	setter := table.AutoIncrementSetter(ctx)
 	require.NoError(t, setter.SetAutoIncrementValue(ctx, val))
 	require.NoError(t, setter.Close(ctx))
