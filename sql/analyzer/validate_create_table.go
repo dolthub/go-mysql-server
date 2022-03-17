@@ -75,34 +75,28 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	initialSch := sch
 	var err error
-
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch, err = validateModifyColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.RenameColumn:
 			sch, err = validateRenameColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.AddColumn:
 			sch, err = validateAddColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.DropColumn:
 			sch, err = validateDropColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		}
-		return n, nil
+		if err != nil {
+			return false
+		}
+		return true
 	})
+	if err != nil {
+		return nil, err
+	}
+	return n, nil
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
@@ -190,14 +184,16 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 // validateColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
 // the specified table check constraints.
 func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	var err error
 	for _, check := range checks {
-		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+		_ = expression.InspectUp(check.Expr, func(e sql.Expression) bool {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
-					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					return true
 				}
 			}
-			return e, nil
+			return false
 		})
 
 		if err != nil {

@@ -40,13 +40,23 @@ type Resolvable interface {
 	Resolved() bool
 }
 
+// TreeIdentity tracks modifications to node and expression trees
+type TreeIdentity bool
+
+const (
+	SameTree TreeIdentity = true
+	NewTree  TreeIdentity = false
+)
+
 // TransformNodeFunc is a function that given a node will return that node
-// as is or transformed along with an error, if any.
-type TransformNodeFunc func(Node) (Node, error)
+// as is or transformed, a boolean to indicate whether the node was modified,
+// and an error, if any.
+type TransformNodeFunc func(Node) (Node, TreeIdentity, error)
 
 // TransformExprFunc is a function that given an expression will return that
-// expression as is or transformed along with an error, if any.
-type TransformExprFunc func(Expression) (Expression, error)
+// expression as is or transformed, a boolean to indicate whether the expression
+// was modified, and an error, if any.
+type TransformExprFunc func(Expression) (Expression, TreeIdentity, error)
 
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {

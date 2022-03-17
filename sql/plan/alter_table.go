@@ -796,14 +796,14 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 			continue
 		}
 		newCol := *col
-		newCol.Default.Expression, err = expression.TransformUp(col.Default.Expression, func(e sql.Expression) (sql.Expression, error) {
+		newCol.Default.Expression, err = expression.TransformUp(col.Default.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if expr, ok := e.(*expression.GetField); ok {
 				if strings.ToLower(expr.Name()) == oldName {
 					colsToModify[&newCol] = struct{}{}
-					return expr.WithName(newName), nil
+					return expr.WithName(newName), sql.NewTree, nil
 				}
 			}
-			return e, nil
+			return e, sql.SameTree, nil
 		})
 		if err != nil {
 			return err

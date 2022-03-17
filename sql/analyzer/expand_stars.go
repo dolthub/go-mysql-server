@@ -32,55 +32,62 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 		return nil, err
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
 		switch n := n.(type) {
 		case *plan.Project:
 			if !n.Child.Resolved() {
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 
-			expanded, err := expandStarsForExpressions(a, n.Projections, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.Projections, n.Child.Schema(), tableAliases)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
-
-			return plan.NewProject(expanded, n.Child), nil
+			if same {
+				return n, sql.SameTree, nil
+			}
+			return plan.NewProject(expanded, n.Child), sql.NewTree, nil
 		case *plan.GroupBy:
 			if !n.Child.Resolved() {
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 
-			expanded, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectedExprs, n.Child.Schema(), tableAliases)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
-
-			return plan.NewGroupBy(expanded, n.GroupByExprs, n.Child), nil
+			if same {
+				return n, sql.SameTree, nil
+			}
+			return plan.NewGroupBy(expanded, n.GroupByExprs, n.Child), sql.NewTree, nil
 		case *plan.Window:
 			if !n.Child.Resolved() {
-				return n, nil
+				return n, sql.SameTree, nil
 			}
-
-			expanded, err := expandStarsForExpressions(a, n.SelectExprs, n.Child.Schema(), tableAliases)
+			expanded, same, err := expandStarsForExpressions(a, n.SelectExprs, n.Child.Schema(), tableAliases)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
-
-			return plan.NewWindow(expanded, n.Child), nil
+			if same {
+				return n, sql.SameTree, nil
+			}
+			return plan.NewWindow(expanded, n.Child), sql.NewTree, nil
 		default:
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 	})
 }
 
-func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, error) {
+func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, bool, error) {
 	var expressions []sql.Expression
+	var found bool
 	for _, e := range exprs {
 		if star, ok := e.(*expression.Star); ok {
+			found = true
 			var exprs []sql.Expression
 			for i, col := range schema {
 				lowerSource := strings.ToLower(col.Source)
@@ -93,7 +100,7 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.S
 			}
 
 			if len(exprs) == 0 && star.Table != "" {
-				return nil, sql.ErrTableNotFound.New(star.Table)
+				return nil, false, sql.ErrTableNotFound.New(star.Table)
 			}
 
 			expressions = append(expressions, exprs...)
@@ -103,5 +110,5 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.S
 	}
 
 	a.Log("resolved * to expressions %s", expressions)
-	return expressions, nil
+	return expressions, !found, nil
 }

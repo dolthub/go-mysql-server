@@ -77,17 +77,17 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, nil
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 		predicates := splitConjunction(f.Expression)
 		movedPredicates := make(map[int]struct{})
-		newF, err := plan.TransformUp(f, func(n sql.Node) (sql.Node, error) {
+		newF, err := plan.TransformUp(f, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 			cj, ok := n.(*plan.CrossJoin)
 			if !ok {
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 
 			joinConjs := make([]int, 0, len(predicates))
@@ -98,7 +98,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 
 			if len(joinConjs) == 0 {
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 
 			newExprs := make([]sql.Expression, len(joinConjs))
@@ -106,20 +106,20 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				movedPredicates[v] = struct{}{}
 				newExprs[i] = predicates[v]
 			}
-			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), nil
+			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), sql.NewTree, nil
 		})
 		if err != nil {
-			return f, err
+			return f, sql.SameTree, err
 		}
 
 		// only alter the Filter expression tree if we transferred predicates to an InnerJoin
 		if len(movedPredicates) == 0 {
-			return f, nil
+			return f, sql.SameTree, nil
 		}
 
 		// remove Filter if all expressions were transferred to joins
 		if len(predicates) == len(movedPredicates) {
-			return newF.(*plan.Filter).Child, nil
+			return newF.(*plan.Filter).Child, sql.NewTree, nil
 		}
 
 		newFilterExprs := make([]sql.Expression, 0, len(predicates)-len(movedPredicates))
@@ -129,6 +129,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 			newFilterExprs = append(newFilterExprs, e)
 		}
-		return newF.(*plan.Filter).WithExpressions(expression.JoinAnd(newFilterExprs...))
+		newF, err = newF.(*plan.Filter).WithExpressions(expression.JoinAnd(newFilterExprs...))
+		return newF, sql.NewTree, err
 	})
 }

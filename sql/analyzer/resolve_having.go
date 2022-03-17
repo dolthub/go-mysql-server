@@ -27,24 +27,26 @@ import (
 )
 
 func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		having, ok := node.(*plan.Having)
 		if !ok {
-			return node, nil
+			return node, sql.SameTree, nil
 		}
 
 		if !having.Child.Resolved() {
-			return node, nil
+			return node, sql.SameTree, nil
 		}
 
 		originalSchema := having.Schema()
 
 		var requiresProjection bool
+		//same := sql.SameTree
 		if containsAggregation(having.Cond) {
+			//same = sql.NewTree
 			var err error
 			having, requiresProjection, err = replaceAggregations(ctx, having)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 		}
 
@@ -56,16 +58,21 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (
 			//  in non-strict mode)
 			having, err = pullMissingColumnsUp(having, missingCols)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
+			//same = sql.NewTree
 			requiresProjection = true
 		}
 
+		//if same {
+		//	return node, sql.SameTree, nil
+		//}
+
 		if !requiresProjection {
-			return having, nil
+			return having, sql.NewTree, nil
 		}
 
-		return projectOriginalAggregation(having, originalSchema), nil
+		return projectOriginalAggregation(having, originalSchema), sql.NewTree, nil
 	})
 }
 
@@ -301,7 +308,6 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 	var pushUp []int
 	var tokenToIdx = make(map[int]int)
 	var pushUpToken = -1
-
 	// We need to find all aggregations inside the having condition. The ones
 	// that are already present in the group by will be pushed up and the ones
 	// that are not, will be added to the group by and pushed up.
@@ -312,10 +318,10 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 	// indexes after they have been pushed up. This is because some of these
 	// may have already been projected in some projection and we cannot ensure
 	// from here what the final index will be.
-	cond, err := expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, error) {
+	cond, err := expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		agg, ok := e.(sql.Aggregation)
 		if !ok {
-			return e, nil
+			return e, sql.SameTree, nil
 		}
 
 		for i, expr := range groupBy.SelectedExprs {
@@ -329,7 +335,7 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 					expr.Type(),
 					expr.String(),
 					expr.IsNullable(),
-				), nil
+				), sql.NewTree, nil
 			}
 		}
 
@@ -339,7 +345,7 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 			agg.Type(),
 			agg.String(),
 			agg.IsNullable(),
-		), nil
+		), sql.NewTree, nil
 	})
 	if err != nil {
 		return nil, false, err
@@ -366,20 +372,20 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 
 	// Now, the tokens are replaced with the actual columns, now that we know
 	// what the indexes are.
-	cond, err = expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, error) {
+	cond, err = expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		f, ok := e.(*expression.GetField)
 		if !ok {
-			return e, nil
+			return e, sql.SameTree, nil
 		}
 
 		idx, ok := tokenToIdx[f.Index()]
 		if !ok {
-			return e, nil
+			return e, sql.SameTree, nil
 		}
 
 		idx = pushedUpColumns[idx]
 		col := newSchema[idx]
-		return expression.NewGetFieldWithTable(idx, col.Type, col.Source, col.Name, col.Nullable), nil
+		return expression.NewGetFieldWithTable(idx, col.Type, col.Source, col.Name, col.Nullable), sql.NewTree, nil
 	})
 	if err != nil {
 		return nil, false, err
@@ -480,7 +486,7 @@ func aggregationChildEquals(ctx *sql.Context, a, b sql.Expression) bool {
 		return true
 	})
 
-	a, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, error) {
+	a, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		var table, name string
 		switch e := e.(type) {
 		case column:
@@ -494,16 +500,16 @@ func aggregationChildEquals(ctx *sql.Context, a, b sql.Expression) bool {
 		if table == "" {
 			f, ok := fieldsByName[name]
 			if !ok {
-				return e, nil
+				return e, sql.SameTree, nil
 			}
-			return f, nil
+			return f, sql.NewTree, nil
 		}
 
 		f, ok := fieldsByTableCol[tableCol{table, name}]
 		if !ok {
-			return e, nil
+			return e, sql.SameTree, nil
 		}
-		return f, nil
+		return f, sql.NewTree, nil
 	})
 	if err != nil {
 		return false

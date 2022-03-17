@@ -58,22 +58,25 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	// replace the tables with possible index lookups with indexed access
 	for _, idxLookup := range indexLookups {
-		n, err = plan.TransformUpCtx(n, childSelector, func(c plan.TransformContext) (sql.Node, error) {
+		n, err = plan.TransformUpCtx(n, childSelector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+			if !childSelector(c) {
+				return n, sql.SameTree, nil
+			}
 			switch n := c.Node.(type) {
 			case *plan.IndexedTableAccess:
-				return n, nil
+				return n, sql.SameTree, nil
 			case *plan.TableAlias:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
 				}
-				return n, nil
+				return n, sql.SameTree, nil
 			case *plan.ResolvedTable:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(a, n, idxLookup.index, idxLookup.keyExpr)
 				}
-				return n, nil
+				return n, sql.SameTree, nil
 			default:
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 		})
 		if err != nil {
@@ -86,20 +89,20 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
-func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, error) {
-	return plan.TransformUp(tableNode, func(n sql.Node) (sql.Node, error) {
+func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, sql.TreeIdentity, error) {
+	return plan.TransformUpHelper(tableNode, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			table := getTable(tableNode)
 			if table == nil {
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 			if _, ok := table.(sql.IndexAddressableTable); ok {
 				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				return plan.NewIndexedTableAccess(n, index, keyExpr), nil
+				return plan.NewIndexedTableAccess(n, index, keyExpr), sql.NewTree, nil
 			}
 		}
-		return n, nil
+		return n, sql.SameTree, nil
 	})
 }
 

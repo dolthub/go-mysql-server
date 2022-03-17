@@ -45,24 +45,24 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
-	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
 			case *plan.ProcessTable, *plan.ProcessIndexableTable:
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 
 			name := n.Table.Name()
 			if _, ok := seen[name]; ok {
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 
 			var total int64 = -1
 			if counter, ok := n.Table.(sql.PartitionCounter); ok {
 				count, err := counter.PartitionCount(ctx)
 				if err != nil {
-					return nil, err
+					return nil, sql.SameTree, err
 				}
 				total = count
 			}
@@ -95,9 +95,10 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			}
 
-			return n.WithTable(t)
+			n, err := n.WithTable(t)
+			return n, sql.NewTree, err
 		default:
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 	})
 	if err != nil {
@@ -112,18 +113,20 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 	// Remove QueryProcess nodes from the subqueries and trigger bodies. Otherwise, the process
 	// will be marked as done as soon as a subquery / trigger finishes.
-	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
-				return sq.WithChildren(qp.Child)
+				n, err := sq.WithChildren(qp.Child)
+				return n, sql.NewTree, err
 			}
 		}
 		if t, ok := n.(*plan.TriggerExecutor); ok {
 			if qp, ok := t.Right().(*plan.QueryProcess); ok {
-				return t.WithChildren(t.Left(), qp.Child)
+				n, err := t.WithChildren(t.Left(), qp.Child)
+				return n, sql.NewTree, err
 			}
 		}
-		return n, nil
+		return n, sql.SameTree, nil
 	})
 	if err != nil {
 		return nil, err

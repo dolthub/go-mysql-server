@@ -116,60 +116,71 @@ var DefaultValidationRules = []Rule{
 
 // validateLimitAndOffset ensures that only integer literals are used for limit and offset values
 func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	var err error
+	var i, i64 interface{}
+	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
 				if !sql.IsInteger(e.Type()) {
-					return nil, sql.ErrInvalidType.New(e.Type().String())
+					err = sql.ErrInvalidType.New(e.Type().String())
+					return false
 				}
-				i, err := e.Eval(ctx, nil)
+				i, err = e.Eval(ctx, nil)
 				if err != nil {
-					return nil, err
+					return false
 				}
 
-				i64, err := sql.Int64.Convert(i)
+				i64, err = sql.Int64.Convert(i)
 				if err != nil {
-					return nil, err
+					return false
 				}
 				if i64.(int64) < 0 {
-					return nil, sql.ErrInvalidSyntax.New("negative limit")
+					err = sql.ErrInvalidSyntax.New("negative limit")
+					return false
 				}
 			case *expression.BindVar:
-				return n, nil
+				return true
 			default:
-				return nil, sql.ErrInvalidType.New(e.Type().String())
+				err = sql.ErrInvalidType.New(e.Type().String())
+				return false
 			}
-			return n, nil
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
 				if !sql.IsInteger(e.Type()) {
-					return nil, sql.ErrInvalidType.New(e.Type().String())
+					err = sql.ErrInvalidType.New(e.Type().String())
+					return false
 				}
-				i, err := e.Eval(ctx, nil)
+				i, err = e.Eval(ctx, nil)
 				if err != nil {
-					return nil, err
+					return false
 				}
 
-				i64, err := sql.Int64.Convert(i)
+				i64, err = sql.Int64.Convert(i)
 				if err != nil {
-					return nil, err
+					return false
 				}
 				if i64.(int64) < 0 {
-					return nil, sql.ErrInvalidSyntax.New("negative offset")
+					err = sql.ErrInvalidSyntax.New("negative offset")
+					return false
 				}
 			case *expression.BindVar:
-				return n, nil
+				return true
 			default:
-				return nil, sql.ErrInvalidType.New(e.Type().String())
+				err = sql.ErrInvalidType.New(e.Type().String())
+				return false
 			}
-			return n, nil
 		default:
-			return n, nil
+			return true
 		}
+		return true
 	})
+	if err != nil {
+		return nil, err
+	}
+	return n, nil
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {

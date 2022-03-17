@@ -197,28 +197,32 @@ func findTables(exprs ...sql.Expression) []string {
 // than one table was set in this way.
 func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
 	foundTable := false
-	return plan.TransformUp(node, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			if foundTable {
-				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+				return nil, sql.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
-			return n.WithTable(table)
+			n, err := n.WithTable(table)
+			if err != nil {
+				return nil, sql.SameTree, err
+			}
+			return n, sql.NewTree, nil
 		case *plan.IndexedTableAccess:
 			if foundTable {
-				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+				return nil, sql.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
 			newRt, err := n.WithTable(table)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 			n2 := *n
 			n2.ResolvedTable = newRt
-			return &n2, nil
+			return &n2, sql.NewTree, nil
 		default:
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 	})
 }

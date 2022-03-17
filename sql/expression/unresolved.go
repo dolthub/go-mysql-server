@@ -122,77 +122,78 @@ func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *Unreso
 }
 
 // NewInstance implements the TableFunction interface
-func (utf UnresolvedTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
+func (utf *UnresolvedTableFunction) NewInstance(_ *sql.Context, _ sql.Database, _ []sql.Expression) (sql.Node, error) {
 	return nil, ErrUnresolvedTableFunction.New()
 }
 
 // Database implements the Databaser interface
-func (utf UnresolvedTableFunction) Database() sql.Database {
+func (utf *UnresolvedTableFunction) Database() sql.Database {
 	return utf.database
 }
 
 // WithDatabase implements the Databaser interface
-func (utf UnresolvedTableFunction) WithDatabase(database sql.Database) (sql.Node, error) {
+func (utf *UnresolvedTableFunction) WithDatabase(database sql.Database) (sql.Node, error) {
 	utf.database = database
 	return utf, nil
 }
 
 // FunctionName implements the TableFunction interface
-func (utf UnresolvedTableFunction) FunctionName() string {
+func (utf *UnresolvedTableFunction) FunctionName() string {
 	return utf.name
 }
 
 // Expressions implements the Expressioner interface
-func (utf UnresolvedTableFunction) Expressions() []sql.Expression {
+func (utf *UnresolvedTableFunction) Expressions() []sql.Expression {
 	return utf.Arguments
 }
 
 // WithExpressions implements the Expressioner interface
-func (utf UnresolvedTableFunction) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
+func (utf *UnresolvedTableFunction) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
 	if len(expression) != len(utf.Expressions()) {
 		return nil, sql.ErrInvalidExpressionNumber.New(utf, len(expression), len(utf.Expressions()))
 	}
 
-	utf.Arguments = make([]sql.Expression, len(expression))
+	nutf := *utf
+	nutf.Arguments = make([]sql.Expression, len(expression))
 	for i, _ := range expression {
-		utf.Arguments[i] = expression[i]
+		nutf.Arguments[i] = expression[i]
 	}
 
-	return &utf, nil
+	return &nutf, nil
 }
 
 // Schema implements the Node interface
-func (utf UnresolvedTableFunction) Schema() sql.Schema {
+func (utf *UnresolvedTableFunction) Schema() sql.Schema {
 	return nil
 }
 
 // Children implements the Node interface
-func (utf UnresolvedTableFunction) Children() []sql.Node {
+func (utf *UnresolvedTableFunction) Children() []sql.Node {
 	return nil
 }
 
 // RowIter implements the Node interface
-func (utf UnresolvedTableFunction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (utf *UnresolvedTableFunction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return nil, ErrUnresolvedTableFunction.New()
 }
 
 // WithChildren implements the Node interface
-func (utf UnresolvedTableFunction) WithChildren(node ...sql.Node) (sql.Node, error) {
+func (utf *UnresolvedTableFunction) WithChildren(node ...sql.Node) (sql.Node, error) {
 	panic("no expected children for unresolved table function")
 }
 
 // CheckPrivileges implements the Node interface
-func (utf UnresolvedTableFunction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (utf *UnresolvedTableFunction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return true
 }
 
 // Resolved implements the Resolvable interface
-func (utf UnresolvedTableFunction) Resolved() bool {
+func (utf *UnresolvedTableFunction) Resolved() bool {
 	return false
 }
 
 // String implements the Stringer interface
-func (utf UnresolvedTableFunction) String() string {
+func (utf *UnresolvedTableFunction) String() string {
 	var exprs = make([]string, len(utf.Arguments))
 	for i, e := range utf.Arguments {
 		exprs[i] = e.String()

@@ -22,12 +22,12 @@ import (
 // Grab-bag analyzer function to assign information schema info to any plan nodes that need it, like various SHOW *
 // statements. The logic for each node is necessarily pretty custom.
 func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch x := n.(type) {
 		case *plan.ShowIndexes:
 			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 
 			x.IndexesToShow = filterGeneratedIndexes(tableIndexes)
@@ -35,7 +35,7 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			if !x.IsView {
 				tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
 				if err != nil {
-					return nil, err
+					return nil, sql.SameTree, err
 				}
 
 				x.Indexes = filterGeneratedIndexes(tableIndexes)
@@ -43,20 +43,21 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		case *plan.ShowColumns:
 			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 
 			x.Indexes = filterGeneratedIndexes(tableIndexes)
 		case *plan.ShowCharset:
 			rt, err := getInformationSchemaTable(ctx, a, "character_sets")
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 
 			x.CharacterSetTable = rt
+		default:
+			return n, sql.SameTree, nil
 		}
-
-		return n, nil
+		return n, sql.NewTree, nil
 	})
 }
 

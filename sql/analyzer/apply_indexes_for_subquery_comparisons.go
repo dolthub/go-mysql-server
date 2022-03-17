@@ -35,7 +35,7 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 		return nil, err
 	}
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			var replacement sql.Node
@@ -45,10 +45,10 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 				replacement = getIndexedInSubqueryFilter(ctx, a, is.Left, is.Right, node, false, scope, aliases)
 			}
 			if replacement != nil {
-				return replacement, nil
+				return replacement, sql.NewTree, nil
 			}
 		}
-		return node, nil
+		return node, sql.SameTree, nil
 	})
 }
 

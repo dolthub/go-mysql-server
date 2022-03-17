@@ -547,11 +547,11 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		if i == newColIdx {
 			continue
 		}
-		newDefault, _ := expression.TransformUp(newSchCol.Default, func(expr sql.Expression) (sql.Expression, error) {
+		newDefault, _ := expression.TransformUp(newSchCol.Default, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if expr, ok := expr.(*expression.GetField); ok {
-				return expr.WithIndex(newSch.IndexOf(expr.Name(), t.name)), nil
+				return expr.WithIndex(newSch.IndexOf(expr.Name(), t.name)), sql.NewTree, nil
 			}
-			return expr, nil
+			return expr, sql.SameTree, nil
 		})
 		newSchCol.Default = newDefault.(*sql.ColumnDefaultValue)
 	}

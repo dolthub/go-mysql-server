@@ -67,13 +67,13 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 		return node, nil
 	}
 
-	node, err := plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !isParallelizable(node) {
-			return node, nil
+			return node, sql.SameTree, nil
 		}
 		ParallelQueryCounter.With("parallelism", strconv.Itoa(a.Parallelism)).Add(1)
 
-		return plan.NewExchange(a.Parallelism, node), nil
+		return plan.NewExchange(a.Parallelism, node), sql.NewTree, nil
 	})
 
 	if err != nil {
@@ -85,23 +85,26 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
 // of all.
-func removeRedundantExchanges(node sql.Node) (sql.Node, error) {
+func removeRedundantExchanges(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 	exchange, ok := node.(*plan.Exchange)
 	if !ok {
-		return node, nil
+		return node, sql.SameTree, nil
 	}
 
-	child, err := plan.TransformUp(exchange.Child, func(node sql.Node) (sql.Node, error) {
+	child, same, err := plan.TransformUpHelper(exchange.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
-			return exchange.Child, nil
+			return exchange.Child, sql.NewTree, nil
 		}
-		return node, nil
+		return node, sql.SameTree, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
-
-	return exchange.WithChildren(child)
+	if same {
+		return node, sql.SameTree, nil
+	}
+	node, err = exchange.WithChildren(child)
+	return node, sql.NewTree, err
 }
 
 func isParallelizable(node sql.Node) bool {

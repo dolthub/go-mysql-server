@@ -25,24 +25,24 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) 
 	span, _ := ctx.Span("resolve_table_functions")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
 		utf, ok := n.(*expression.UnresolvedTableFunction)
 		if !ok {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
 		tableFunction, err := a.Catalog.TableFunction(ctx, utf.FunctionName())
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
 		database, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
 		if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
@@ -51,10 +51,10 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) 
 
 		newInstance, err := tableFunction.NewInstance(ctx, database, utf.Arguments)
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
-		return newInstance, nil
+		return newInstance, sql.NewTree, nil
 	})
 }
 
@@ -63,35 +63,35 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.
 	span, _ := ctx.Span("resolve_functions")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
-		return plan.TransformExpressionsUp(n, resolveFunctionsInExpr(ctx, a))
+		return plan.TransformExpressionsForNode(n, resolveFunctionsInExpr(ctx, a))
 	})
 }
 
 func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) sql.TransformExprFunc {
-	return func(e sql.Expression) (sql.Expression, error) {
+	return func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		if e.Resolved() {
-			return e, nil
+			return e, sql.SameTree, nil
 		}
 
 		uf, ok := e.(*expression.UnresolvedFunction)
 		if !ok {
-			return e, nil
+			return e, sql.SameTree, nil
 		}
 
 		n := uf.Name()
 		f, err := a.Catalog.Function(ctx, n)
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
 		rf, err := f.NewInstance(uf.Arguments)
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
 		// Because of the way that we instantiate functions, we need to pass in the window from the UnresolvedFunction
@@ -101,16 +101,16 @@ func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) sql.TransformExprFunc
 		case sql.WindowAggregation:
 			rf, err = a.WithWindow(uf.Window)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 		case sql.Aggregation:
 			rf, err = a.WithWindow(uf.Window)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 		}
 
 		a.Log("resolved function %q", n)
-		return rf, nil
+		return rf, sql.NewTree, nil
 	}
 }

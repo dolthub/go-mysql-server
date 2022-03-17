@@ -21,25 +21,32 @@ import (
 )
 
 func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
-		filter, ok := c.Node.(*plan.Filter)
+	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		filter, ok := node.(*plan.Filter)
 		if !ok {
-			return c.Node, nil
+			return node, sql.SameTree, nil
 		}
 
-		e, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, error) {
+		e, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if e, ok := expr.(*expression.InTuple); ok &&
 				hasSingleOutput(e.Left()) &&
 				isStatic(e.Right()) {
-				return expression.NewHashInTuple(e.Left(), e.Right())
+				newe, err := expression.NewHashInTuple(e.Left(), e.Right())
+				if err != nil {
+					return nil, sql.SameTree, err
+				}
+				return newe, sql.NewTree, nil
 			}
-			return expr, nil
+			return expr, sql.SameTree, nil
 		})
-
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
-		return filter.WithExpressions(e)
+		node, err = filter.WithExpressions(e)
+		if err != nil {
+			return nil, sql.SameTree, err
+		}
+		return node, sql.NewTree, nil
 	})
 }
 

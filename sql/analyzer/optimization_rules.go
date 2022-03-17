@@ -30,14 +30,14 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope)
 		return node, nil
 	}
 
-	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
 		if ok && project.Schema().Equals(project.Child.Schema()) {
 			a.Log("project erased")
-			return project.Child, nil
+			return project.Child, sql.NewTree, nil
 		}
 
-		return node, nil
+		return node, sql.SameTree, nil
 	})
 }
 
@@ -81,10 +81,10 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 	var nonJoinFilters []sql.Expression
 	var topJoin sql.Node
-	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		join, ok := n.(*plan.InnerJoin)
 		if !ok {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
 		leftSources := nodeSources(join.Left())
@@ -107,22 +107,21 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 
 		if filtersMoved == 0 {
 			topJoin = n
-			return topJoin, nil
+			return topJoin, sql.SameTree, nil
 		}
 
 		if len(condFilters) > 0 {
 			var err error
 			topJoin, err = join.WithExpressions(expression.JoinAnd(condFilters...))
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
-
-			return topJoin, nil
+			return topJoin, sql.NewTree, nil
 		}
 
 		// if there are no cond filters left we can just convert it to a cross join
 		topJoin = plan.NewCrossJoin(join.Left(), join.Right())
-		return topJoin, nil
+		return topJoin, sql.NewTree, nil
 	})
 
 	if err != nil {
@@ -143,18 +142,18 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return c.Parent != topJoin
 	}
 
-	return plan.TransformUpCtx(node, selector, func(c plan.TransformContext) (sql.Node, error) {
+	return plan.TransformUpCtx(node, selector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		switch node := c.Node.(type) {
 		case *plan.Filter:
 			return plan.NewFilter(
 				expression.JoinAnd(append([]sql.Expression{node.Expression}, nonJoinFilters...)...),
-				node.Child), nil
+				node.Child), sql.NewTree, nil
 		case *plan.InnerJoin, *plan.CrossJoin:
 			return plan.NewFilter(
 				expression.JoinAnd(nonJoinFilters...),
-				node), nil
+				node), sql.NewTree, nil
 		default:
-			return node, nil
+			return node, sql.SameTree, nil
 		}
 	})
 }
@@ -168,12 +167,12 @@ func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 		return n, nil
 	}
 
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
-			return c.Child, nil
+			return c.Child, sql.NewTree, nil
 		}
 
-		return e, nil
+		return e, sql.SameTree, nil
 	})
 }
 
@@ -239,78 +238,81 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql
 		return node, nil
 	}
 
-	return plan.TransformUp(node, func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
-			return node, nil
+			return node, sql.SameTree, nil
 		}
 
-		e, err := expression.TransformUp(filter.Expression, func(e sql.Expression) (sql.Expression, error) {
+		e, same, err := expression.TransformUpHelper(filter.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			switch e := e.(type) {
 			case *expression.Or:
 				if isTrue(e.Left) {
-					return e.Left, nil
+					return e.Left, sql.NewTree, nil
 				}
 
 				if isTrue(e.Right) {
-					return e.Right, nil
+					return e.Right, sql.NewTree, nil
 				}
 
 				if isFalse(e.Left) {
-					return e.Right, nil
+					return e.Right, sql.NewTree, nil
 				}
 
 				if isFalse(e.Right) {
-					return e.Left, nil
+					return e.Left, sql.NewTree, nil
 				}
 
-				return e, nil
+				return e, sql.SameTree, nil
 			case *expression.And:
 				if isFalse(e.Left) {
-					return e.Left, nil
+					return e.Left, sql.NewTree, nil
 				}
 
 				if isFalse(e.Right) {
-					return e.Right, nil
+					return e.Right, sql.NewTree, nil
 				}
 
 				if isTrue(e.Left) {
-					return e.Right, nil
+					return e.Right, sql.NewTree, nil
 				}
 
 				if isTrue(e.Right) {
-					return e.Left, nil
+					return e.Left, sql.NewTree, nil
 				}
 
-				return e, nil
+				return e, sql.SameTree, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval:
-				return e, nil
+				return e, sql.SameTree, nil
 			default:
 				if !isEvaluable(e) {
-					return e, nil
+					return e, sql.SameTree, nil
 				}
 
 				// All other expressions types can be evaluated once and turned into literals for the rest of query execution
 				val, err := e.Eval(ctx, nil)
 				if err != nil {
-					return e, nil
+					return e, sql.SameTree, nil
 				}
-				return expression.NewLiteral(val, e.Type()), nil
+				return expression.NewLiteral(val, e.Type()), sql.NewTree, nil
 			}
 		})
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
 		if isFalse(e) {
-			return plan.EmptyTable, nil
+			return plan.EmptyTable, sql.NewTree, nil
 		}
 
 		if isTrue(e) {
-			return filter.Child, nil
+			return filter.Child, sql.NewTree, nil
 		}
 
-		return plan.NewFilter(e, filter.Child), nil
+		if same {
+			return filter, sql.SameTree, nil
+		}
+		return plan.NewFilter(e, filter.Child), sql.NewTree, nil
 	})
 }
 

@@ -241,6 +241,8 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	a.Debug = true
+	a.Verbose = true
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 

@@ -26,37 +26,44 @@ import (
 // whether all entries in |bindings| are used at least once throughout the |n|.
 // sql.DeferredType instances will be resolved by the binding types.
 func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
-	fixBindings := func(expr sql.Expression) (sql.Expression, error) {
+	fixBindings := func(_ sql.Node, expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		switch e := expr.(type) {
 		case *expression.BindVar:
 			val, found := bindings[e.Name]
 			if found {
-				return val, nil
+				return val, sql.NewTree, nil
 			}
 		case *Subquery:
 			// *Subquery is a sql.Expression with a sql.Node not reachable
 			// by the visitor. Manually apply bindings to [Query] field.
 			q, err := ApplyBindings(e.Query, bindings)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
-			return e.WithQuery(q), nil
+			return e.WithQuery(q), sql.NewTree, nil
 		}
-		return expr, nil
+		return expr, sql.SameTree, nil
 	}
 
-	return TransformUpWithOpaque(n, func(node sql.Node) (sql.Node, error) {
+	n, _, err := TransformUpWithOpaque(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *InsertInto:
 			// Manually apply bindings to [Source] because it is separated
 			// from [Destination].
 			newSource, err := ApplyBindings(n.Source, bindings)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
-			return n.WithSource(newSource), nil
+			return n.WithSource(newSource), sql.NewTree, nil
 		default:
-			return TransformExpressionsUp(node, fixBindings)
+			//return TransformExpressionsUp(node, fixBindings)
+			return TransformUpHelper(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+				return TransformExpressionsWithNode(n, fixBindings)
+			})
 		}
 	})
+	if err != nil {
+		return nil, err
+	}
+	return n, err
 }

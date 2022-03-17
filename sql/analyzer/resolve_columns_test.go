@@ -623,11 +623,11 @@ func TestPushdownGroupByAliases(t *testing.T) {
 	a := NewDefault(nil)
 	node := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true, nil,
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,
 				uc("c"),
 			)),
 			expression.NewAlias("b", uc("d")),
-			expression.NewUnresolvedFunction("bar", false, nil,
+			expression.NewUnresolvedFunction("bar", true, nil,
 				uc("b"),
 			),
 		},
@@ -640,11 +640,11 @@ func TestPushdownGroupByAliases(t *testing.T) {
 
 	expected := plan.NewGroupBy(
 		[]sql.Expression{
-			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", true, nil,
+			expression.NewAlias("c", expression.NewUnresolvedFunction("foo", false, nil,
 				uc("c"),
 			)),
 			uc("b"),
-			expression.NewUnresolvedFunction("bar", false, nil,
+			expression.NewUnresolvedFunction("bar", true, nil,
 				uc("b_01"),
 			),
 		},

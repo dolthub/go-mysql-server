@@ -28,24 +28,24 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	span, _ := ctx.Span("loadTriggers")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node
 			loadedTriggers, err := loadTriggersFromDb(ctx, newShowTriggers.Database())
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 			if len(loadedTriggers) != 0 {
 				newShowTriggers.Triggers = loadedTriggers
 			} else {
 				newShowTriggers.Triggers = make([]*plan.CreateTrigger, 0)
 			}
-			return &newShowTriggers, nil
+			return &newShowTriggers, sql.NewTree, nil
 		case *plan.DropTrigger:
 			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database())
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 			lowercasedTriggerName := strings.ToLower(node.TriggerName)
 			for _, trigger := range loadedTriggers {
@@ -53,14 +53,14 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 					node.TriggerName = trigger.TriggerName
 				} else if trigger.TriggerOrder != nil &&
 					strings.ToLower(trigger.TriggerOrder.OtherTriggerName) == lowercasedTriggerName {
-					return nil, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
+					return nil, false, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
 				}
 			}
-			return node, nil
+			return node, sql.NewTree, nil
 		case *plan.DropTable:
 			// if there is no table left after filtering out non-existent tables, no need to load triggers
 			if len(node.Tables) == 0 {
-				return node, nil
+				return node, sql.SameTree, nil
 			}
 
 			// the table has to be ResolvedTable as this rule is executed after resolve-table rule
@@ -71,12 +71,12 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 			lowercasedNames := make(map[string]struct{})
 			tblNames, err := node.TableNames()
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 			for _, tableName := range tblNames {
 				lowercasedNames[strings.ToLower(tableName)] = struct{}{}
@@ -87,9 +87,9 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 					triggersForTable = append(triggersForTable, trigger.TriggerName)
 				}
 			}
-			return node.WithTriggers(triggersForTable), nil
+			return node.WithTriggers(triggersForTable), sql.NewTree, nil
 		default:
-			return node, nil
+			return node, sql.SameTree, nil
 		}
 	})
 }

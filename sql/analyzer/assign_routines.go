@@ -33,9 +33,9 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 	span, _ := ctx.Span("assign_routines")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !n.Resolved() {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
 		switch node := n.(type) {
@@ -44,10 +44,11 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			ct, ok := nc.Table.(RoutineTable)
 			if ok {
 				nc.Table = ct.AssignProcedures(a.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase()))
+				return &nc, sql.NewTree, nil
 			}
-			return &nc, nil
+			return node, sql.SameTree, nil
 		default:
-			return n, nil
+			return node, sql.SameTree, nil
 		}
 	})
 }

@@ -48,18 +48,18 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	}
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	n, err := plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, error) {
+	n, err := plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		sq, ok := e.(*plan.Subquery)
 		if !ok {
-			return e, nil
+			return e, sql.SameTree, nil
 		}
 
 		query, err := resolveCtesInNode(ctx, a, sq.Query, scope, ctes)
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
-		return sq.WithQuery(query), nil
+		return sq.WithQuery(query), sql.NewTree, nil
 	})
 	if err != nil {
 		return nil, err
@@ -72,26 +72,27 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	// second pass, that reference gets resolved to the subquery alias of cte1's definition. Then we're done.
 	// We iterate until the tree stops changing, or until we hit our limit.
 	var cur, prev sql.Node
+	same := sql.NewTree
 	cur = n
-	for i := 0; i < maxCteDepth && !nodesEqual(prev, cur); i++ {
+	for i := 0; i < maxCteDepth && !same; i++ {
 		prev = cur
-		cur, err = plan.TransformUpWithOpaque(prev, func(n sql.Node) (sql.Node, error) {
-			switch n := n.(type) {
+		cur, same, err = plan.TransformUpWithOpaque(prev, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+			switch n := node.(type) {
 			case *plan.UnresolvedTable:
 				lowerName := strings.ToLower(n.Name())
 				if ctes[lowerName] != nil {
-					return ctes[lowerName], nil
+					return ctes[lowerName], sql.NewTree, nil
 				}
-				return n, nil
+				return n, sql.SameTree, nil
 			case *plan.SubqueryAlias:
 				newChild, err := resolveCtesInNode(ctx, a, n.Child, scope, ctes)
 				if err != nil {
-					return nil, err
+					return nil, sql.SameTree, err
 				}
-
-				return n.WithChildren(newChild)
+				node, err = node.WithChildren(newChild)
+				return node, sql.NewTree, err
 			default:
-				return n, nil
+				return n, sql.SameTree, nil
 			}
 		})
 
@@ -182,48 +183,55 @@ func schemaLength(node sql.Node) int {
 // where the CTE will be visible on the second half of the UNION. We live with
 // it for now.
 func liftCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	n, _, err := liftCommonTableExpressionsHelper(ctx, a, n, scope)
+	return n, err
+}
+func liftCommonTableExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+	return plan.TransformUpHelper(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if union, isUnion := n.(*plan.Union); isUnion {
 			if cte, isCTE := union.Left().(*plan.With); isCTE && !cte.Recursive {
-				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs, cte.Recursive), nil
+				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs, cte.Recursive), sql.NewTree, nil
 			}
-			l, err := liftCommonTableExpressions(ctx, a, union.Left(), scope)
+			l, sameL, err := liftCommonTableExpressionsHelper(ctx, a, union.Left(), scope)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
-			r, err := liftCommonTableExpressions(ctx, a, union.Right(), scope)
+			r, sameR, err := liftCommonTableExpressionsHelper(ctx, a, union.Right(), scope)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 			if _, isCTE := l.(*plan.With); isCTE {
-				return liftCommonTableExpressions(ctx, a, plan.NewUnion(l, r), scope)
+				return liftCommonTableExpressionsHelper(ctx, a, plan.NewUnion(l, r), scope)
 			}
-			return plan.NewUnion(l, r), nil
+			if sameL && sameR {
+				return n, sql.SameTree, nil
+			}
+			return plan.NewUnion(l, r), sql.NewTree, nil
 		}
 		if distinct, isDistinct := n.(*plan.Distinct); isDistinct {
 			if cte, isCTE := distinct.Child.(*plan.With); isCTE {
-				return plan.NewWith(plan.NewDistinct(cte.Child), cte.CTEs, cte.Recursive), nil
+				return plan.NewWith(plan.NewDistinct(cte.Child), cte.CTEs, cte.Recursive), sql.NewTree, nil
 			}
 		}
-		return n, nil
+		return n, sql.SameTree, nil
 	})
 }
 
 func liftRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		ta, ok := n.(*plan.TableAlias)
 		if !ok {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 		p, ok := ta.Child.(*plan.Project)
 		if !ok {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 		rCte, ok := p.Child.(*plan.RecursiveCte)
 		if !ok {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
-		return plan.NewSubqueryAlias(ta.Name(), "", rCte), nil
+		return plan.NewSubqueryAlias(ta.Name(), "", rCte), sql.NewTree, nil
 	})
 }
 
@@ -305,15 +313,15 @@ func resolveRecursiveCte(ctx *sql.Context, a *Analyzer, node sql.Node, sq sql.No
 
 	// replace recursive table refs
 	var foundRecursive bool
-	newRec, err := plan.TransformUp(rCte.Rec, func(n sql.Node) (sql.Node, error) {
+	newRec, err := plan.TransformUp(rCte.Rec, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch t := n.(type) {
 		case *plan.UnresolvedTable:
 			if t.Name() == rCte.Name() {
 				foundRecursive = true
-				return rTable, nil
+				return rTable, sql.NewTree, nil
 			}
 		}
-		return n, nil
+		return n, sql.SameTree, nil
 	})
 	if err != nil {
 		return node, err

@@ -217,7 +217,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		return nil, err
 	}
 
-	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
 		// parent is a trigger body.
 		// TODO: this won't work for BEGIN END blocks, stored procedures, etc. For those, we need to examine all ancestors,
@@ -225,7 +225,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		//  (probably better).
 		if _, ok := c.Parent.(*plan.TriggerExecutor); ok {
 			if c.ChildNum == 1 { // Right child is the trigger execution logic
-				return c.Node, nil
+				return c.Node, sql.SameTree, nil
 			}
 		}
 
@@ -236,12 +236,12 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithSource(triggerExecutor), nil
+				return n.WithSource(triggerExecutor), sql.NewTree, nil
 			} else {
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				}), sql.NewTree, nil
 			}
 		case *plan.Update:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -249,12 +249,13 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithChildren(triggerExecutor)
+				node, err := n.WithChildren(triggerExecutor)
+				return node, sql.NewTree, err
 			} else {
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				}), sql.NewTree, nil
 			}
 		case *plan.DeleteFrom:
 			if trigger.TriggerTime == sqlparser.BeforeStr {
@@ -262,16 +263,17 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
 				})
-				return n.WithChildren(triggerExecutor)
+				node, err := n.WithChildren(triggerExecutor)
+				return node, sql.NewTree, err
 			} else {
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
-				}), nil
+				}), sql.NewTree, nil
 			}
 		}
 
-		return c.Node, nil
+		return c.Node, sql.SameTree, nil
 	})
 }
 

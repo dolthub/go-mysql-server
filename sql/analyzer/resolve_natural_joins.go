@@ -28,14 +28,18 @@ func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	var replacements = make(map[tableCol]tableCol)
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.NaturalJoin:
-			return resolveNaturalJoin(n, replacements)
+			newn, err := resolveNaturalJoin(n, replacements)
+			if err != nil {
+				return nil, sql.SameTree, err
+			}
+			return newn, sql.NewTree, nil
 		case sql.Expressioner:
 			return replaceExpressionsForNaturalJoin(ctx, node, replacements)
 		default:
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 	})
 }
@@ -126,17 +130,17 @@ func replaceExpressionsForNaturalJoin(
 	ctx *sql.Context,
 	n sql.Node,
 	replacements map[tableCol]tableCol,
-) (sql.Node, error) {
-	return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+) (sql.Node, sql.TreeIdentity, error) {
+	return plan.TransformExpressionsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
 			var tableName = strings.ToLower(e.(sql.Tableable).Table())
 
 			name := e.(sql.Nameable).Name()
 			if col, ok := replacements[tableCol{strings.ToLower(tableName), strings.ToLower(name)}]; ok {
-				return expression.NewUnresolvedQualifiedColumn(col.table, col.col), nil
+				return expression.NewUnresolvedQualifiedColumn(col.table, col.col), sql.NewTree, nil
 			}
 		}
-		return e, nil
+		return e, sql.SameTree, nil
 	})
 }

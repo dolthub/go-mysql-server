@@ -169,7 +169,6 @@ func TestReplaceWindowNames(t *testing.T) {
 										NullOrdering: sql.NullsFirst,
 									},
 								}, nil, "", ""),
-							[]sql.Expression{}...,
 						),
 					),
 					expression.NewAlias("max(b) over (w2)",
@@ -206,7 +205,7 @@ func TestReplaceWindowNames(t *testing.T) {
 			expected: plan.NewWindow(
 				[]sql.Expression{
 					expression.NewAlias("row_number() over (w)",
-						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition(nil, sql.SortFields{}, nil, "", "")),
+						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, nil, nil, "", "")),
 					),
 				},
 				plan.NewUnresolvedTable("foo", ""),
