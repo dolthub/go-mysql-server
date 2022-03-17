@@ -183,7 +183,8 @@ func (utf UnresolvedTableFunction) WithChildren(node ...sql.Node) (sql.Node, err
 
 // CheckPrivileges implements the Node interface
 func (utf UnresolvedTableFunction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+	panic("attempting to check privileges on an unresolved table function")
+	return false
 }
 
 // Resolved implements the Resolvable interface
