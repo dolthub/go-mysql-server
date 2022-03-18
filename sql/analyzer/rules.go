@@ -60,7 +60,6 @@ var OnceBeforeDefault = []Rule{
 var DefaultRules = []Rule{
 	{"resolve_natural_joins", resolveNaturalJoins},
 	{"resolve_orderby_literals", resolveOrderByLiterals},
-	{"resolve_table_functions", resolveTableFunctions},
 	{"resolve_functions", resolveFunctions},
 	{"flatten_table_aliases", flattenTableAliases},
 	{"pushdown_sort", pushdownSort},
