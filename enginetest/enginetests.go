@@ -2498,6 +2498,14 @@ func TestCreateDatabase(t *testing.T, harness Harness) {
 	})
 
 	t.Run("CREATE DATABASE error handling", func(t *testing.T) {
+		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
+			[]sql.Row{sql.Row{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
+			"", false)
+
+		AssertWarningAndTestQuery(t, e, ctx, harness, "CREATE DATABASE newtest1db DEFAULT COLLATE binary ENCRYPTION='Y'",
+			[]sql.Row{sql.Row{sql.OkResult{RowsAffected: 1, InsertID: 0, Info: nil}}}, nil, mysql.ERNotSupportedYet, 1,
+			"", false)
+
 		AssertErr(t, e, harness, "CREATE DATABASE mydb", sql.ErrDatabaseExists)
 
 		AssertWarningAndTestQuery(t, e, nil, harness, "CREATE DATABASE IF NOT EXISTS mydb",
@@ -4852,6 +4860,16 @@ func TestAlterTable(t *testing.T, harness Harness) {
 				Enforced:        true,
 			},
 		}, checks)
+	})
+
+	t.Run("Add column invalid after", func(t *testing.T) {
+		ctx := NewContext(harness)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 DISABLE KEYS",
+			[]sql.Row{}, nil, mysql.ERNotSupportedYet, 1,
+			"", false)
+		AssertWarningAndTestQuery(t, e, ctx, harness, "ALTER TABLE t33 ENABLE KEYS",
+			[]sql.Row{}, nil, mysql.ERNotSupportedYet, 1,
+			"", false)
 	})
 }
 

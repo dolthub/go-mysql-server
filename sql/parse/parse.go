@@ -23,6 +23,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/opentracing/opentracing-go"
 	"gopkg.in/src-d/go-errors.v1"
@@ -181,7 +182,7 @@ func convert(ctx *sql.Context, stmt sqlparser.Statement, query string) (sql.Node
 	case *sqlparser.MultiAlterDDL:
 		return convertMultiAlterDDL(ctx, query, n)
 	case *sqlparser.DBDDL:
-		return convertDBDDL(n)
+		return convertDBDDL(ctx, n)
 	case *sqlparser.Explain:
 		return convertExplain(ctx, n)
 	case *sqlparser.Insert:
@@ -901,9 +902,16 @@ func convertMultiAlterDDL(ctx *sql.Context, query string, c *sqlparser.MultiAlte
 	return plan.NewBlock(statements), nil
 }
 
-func convertDBDDL(c *sqlparser.DBDDL) (sql.Node, error) {
+func convertDBDDL(ctx *sql.Context, c *sqlparser.DBDDL) (sql.Node, error) {
 	switch strings.ToLower(c.Action) {
 	case sqlparser.CreateStr:
+		if len(c.CharsetCollate) > 0 {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Warning",
+				Code:    mysql.ERNotSupportedYet,
+				Message: fmt.Sprintf("Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"),
+			})
+		}
 		return plan.NewCreateDatabase(c.DBName, c.IfNotExists), nil
 	case sqlparser.DropStr:
 		return plan.NewDropDatabase(c.DBName, c.IfExists), nil
@@ -1306,6 +1314,10 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		return plan.NewAlterDropIndex(table, ddl.IndexSpec.ToName.String()), nil
 	case sqlparser.RenameStr:
 		return plan.NewAlterRenameIndex(table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String()), nil
+	case "disable":
+		return plan.NewAlterDisableEnableKeys(table, true), nil
+	case "enable":
+		return plan.NewAlterDisableEnableKeys(table, false), nil
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}

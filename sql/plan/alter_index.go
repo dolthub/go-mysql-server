@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -40,6 +41,7 @@ const (
 	IndexAction_Create IndexAction = iota
 	IndexAction_Drop
 	IndexAction_Rename
+	IndexAction_DisableEnableKeys
 )
 
 type AlterIndex struct {
@@ -59,6 +61,8 @@ type AlterIndex struct {
 	Columns []sql.IndexColumn
 	// Comment is the comment that was left at index creation, if any
 	Comment string
+	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
+	DisableKeys bool
 }
 
 func NewAlterCreateIndex(table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
@@ -87,6 +91,14 @@ func NewAlterRenameIndex(table sql.Node, fromIndexName, toIndexName string) *Alt
 		Table:             table,
 		IndexName:         toIndexName,
 		PreviousIndexName: fromIndexName,
+	}
+}
+
+func NewAlterDisableEnableKeys(table sql.Node, disableKeys bool) *AlterIndex {
+	return &AlterIndex{
+		Action:      IndexAction_DisableEnableKeys,
+		Table:       table,
+		DisableKeys: disableKeys,
 	}
 }
 
@@ -154,6 +166,13 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 		return indexable.DropIndex(ctx, p.IndexName)
 	case IndexAction_Rename:
 		return indexable.RenameIndex(ctx, p.PreviousIndexName, p.IndexName)
+	case IndexAction_DisableEnableKeys:
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Warning",
+			Code:    mysql.ERNotSupportedYet,
+			Message: fmt.Sprintf("'disable/enable keys' feature is not supported yet"),
+		})
+		return nil
 	default:
 		return ErrIndexActionNotImplemented.New(p.Action)
 	}
@@ -181,6 +200,8 @@ func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return NewAlterDropIndex(children[0], p.IndexName), nil
 	case IndexAction_Rename:
 		return NewAlterRenameIndex(children[0], p.PreviousIndexName, p.IndexName), nil
+	case IndexAction_DisableEnableKeys:
+		return NewAlterDisableEnableKeys(children[0], p.DisableKeys), nil
 	default:
 		return nil, ErrIndexActionNotImplemented.New(p.Action)
 	}
