@@ -29,11 +29,11 @@ import (
 func TestJoinSchema(t *testing.T) {
 	t1 := NewResolvedTable(memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
-	})), nil, nil)
+	}), nil), nil, nil)
 
 	t2 := NewResolvedTable(memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "b", Source: "bar", Type: sql.Int64},
-	})), nil, nil)
+	}), nil), nil, nil)
 
 	t.Run("inner", func(t *testing.T) {
 		j := NewInnerJoin(t1, t2, nil)
@@ -88,8 +88,8 @@ func testInnerJoin(t *testing.T, ctx *sql.Context) {
 	t.Helper()
 
 	require := require.New(t)
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -113,8 +113,8 @@ func TestInnerJoinEmpty(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 
 	j := NewInnerJoin(
 		NewResolvedTable(ltable, nil, nil),
@@ -134,12 +134,12 @@ func BenchmarkInnerJoin(b *testing.B) {
 	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo", Type: sql.Int64},
 		{Name: "b", Source: "foo", Type: sql.Text},
-	}))
+	}), nil)
 
 	t2 := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "bar", Type: sql.Int64},
 		{Name: "b", Source: "bar", Type: sql.Text},
-	}))
+	}), nil)
 
 	for i := 0; i < 5; i++ {
 		t1.Insert(sql.NewEmptyContext(), sql.NewRow(int64(i), fmt.Sprintf("t1_%d", i)))
@@ -240,8 +240,8 @@ func BenchmarkInnerJoin(b *testing.B) {
 func TestLeftJoin(t *testing.T) {
 	require := require.New(t)
 
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 
@@ -270,8 +270,8 @@ func TestLeftJoin(t *testing.T) {
 func TestRightJoin(t *testing.T) {
 	require := require.New(t)
 
-	ltable := memory.NewTable("left", lSchema)
-	rtable := memory.NewTable("right", rSchema)
+	ltable := memory.NewTable("left", lSchema, nil)
+	rtable := memory.NewTable("right", rSchema, nil)
 	insertData(t, ltable)
 	insertData(t, rtable)
 

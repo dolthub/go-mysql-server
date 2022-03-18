@@ -21,12 +21,16 @@ import (
 
 // ForeignKeyConstraint declares a constraint between the columns of two tables.
 type ForeignKeyConstraint struct {
-	Name              string
-	Columns           []string
-	ReferencedTable   string
-	ReferencedColumns []string
-	OnUpdate          ForeignKeyReferenceOption
-	OnDelete          ForeignKeyReferenceOption
+	Name               string
+	Database           string
+	Table              string
+	Columns            []string
+	ReferencedDatabase string
+	ReferencedTable    string
+	ReferencedColumns  []string
+	OnUpdate           ForeignKeyReferenceOption
+	OnDelete           ForeignKeyReferenceOption
+	IsResolved         bool
 }
 
 // ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
@@ -41,6 +45,12 @@ const (
 	ForeignKeyReferenceOption_SetNull       ForeignKeyReferenceOption = "SET NULL"
 	ForeignKeyReferenceOption_SetDefault    ForeignKeyReferenceOption = "SET DEFAULT"
 )
+
+// IsSelfReferential returns whether this foreign key represents a self-referential foreign key.
+func (f ForeignKeyConstraint) IsSelfReferential() bool {
+	return strings.ToLower(f.Database) == strings.ToLower(f.ReferencedDatabase) &&
+		strings.ToLower(f.Table) == strings.ToLower(f.ReferencedTable)
+}
 
 func (f *ForeignKeyConstraint) DebugString() string {
 	return fmt.Sprintf(

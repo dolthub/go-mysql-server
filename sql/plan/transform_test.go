@@ -36,7 +36,7 @@ func TestTransformUp(t *testing.T) {
 		{Name: "a", Type: sql.Text},
 		{Name: "b", Type: sql.Text},
 	})
-	table := memory.NewTable("resolved", schema)
+	table := memory.NewTable("resolved", schema, nil)
 
 	pt, err := TransformUp(p, func(n sql.Node) (sql.Node, error) {
 		switch n.(type) {

@@ -27,7 +27,7 @@ func TestIssue361(t *testing.T) {
 	t.Run("Update", func(*testing.T) {
 		table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "json", Type: sql.JSON, Nullable: false, Source: name},
-		}))
+		}), nil)
 
 		old := sql.NewRow(sql.JSONDocument{Val: []string{"foo", "bar"}})
 		new := sql.NewRow(sql.JSONDocument{Val: []string{"foo"}})
@@ -42,7 +42,7 @@ func TestIssue361(t *testing.T) {
 	t.Run("Delete", func(*testing.T) {
 		table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "json", Type: sql.JSON, Nullable: false, Source: name},
-		}))
+		}), nil)
 
 		row := sql.NewRow(sql.JSONDocument{Val: []string{"foo", "bar"}})
 

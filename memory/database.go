@@ -43,6 +43,7 @@ var _ sql.ViewDatabase = (*Database)(nil)
 type BaseDatabase struct {
 	name              string
 	tables            map[string]sql.Table
+	fkColl            *ForeignKeyCollection
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
 	primaryKeyIndexes bool
@@ -64,6 +65,7 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 	return &BaseDatabase{
 		name:   name,
 		tables: map[string]sql.Table{},
+		fkColl: newForeignKeyCollection(),
 	}
 }
 
@@ -94,6 +96,10 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	}
 
 	return tblNames, nil
+}
+
+func (d *BaseDatabase) GetForeignKeyCollection() *ForeignKeyCollection {
+	return d.fkColl
 }
 
 // HistoryDatabase is a test-only VersionedDatabase implementation. It only supports exact lookups, not AS OF queries
@@ -159,7 +165,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTable(name, schema)
+	table := NewTable(name, schema, d.fkColl)
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}

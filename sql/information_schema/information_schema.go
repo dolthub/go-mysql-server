@@ -1274,7 +1274,7 @@ func tableConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			// Get FKs
 			fkTable, ok := tbl.(ForeignKeyTable)
 			if ok {
-				fks, err := fkTable.GetForeignKeys(ctx)
+				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -1345,7 +1345,7 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			// Get FKs
 			fkTable, ok := tbl.(ForeignKeyTable)
 			if ok {
-				fks, err := fkTable.GetForeignKeys(ctx)
+				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 				if err != nil {
 					return nil, err
 				}

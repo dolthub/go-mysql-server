@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Dolthub, Inc.
+// Copyright 2020-2022 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ type Table struct {
 	name             string
 	schema           sql.PrimaryKeySchema
 	indexes          map[string]sql.Index
-	foreignKeys      []sql.ForeignKeyConstraint
+	fkColl           *ForeignKeyCollection
 	checks           []sql.CheckDefinition
 	pkIndexesEnabled bool
 
@@ -71,7 +71,6 @@ var _ sql.DriverIndexableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.IndexedTable = (*Table)(nil)
-var _ sql.ForeignKeyAlterableTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
 var _ sql.CheckTable = (*Table)(nil)
@@ -82,12 +81,12 @@ var _ sql.PrimaryKeyAlterableTable = (*Table)(nil)
 var _ sql.PrimaryKeyTable = (*Table)(nil)
 
 // NewTable creates a new Table with the given name and schema.
-func NewTable(name string, schema sql.PrimaryKeySchema) *Table {
-	return NewPartitionedTable(name, schema, 0)
+func NewTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *Table {
+	return NewPartitionedTable(name, schema, fkColl, 0)
 }
 
 // NewPartitionedTable creates a new Table with the given name, schema and number of partitions.
-func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, numPartitions int) *Table {
+func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection, numPartitions int) *Table {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 
@@ -114,6 +113,7 @@ func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, numPartitions
 	return &Table{
 		name:          name,
 		schema:        schema,
+		fkColl:        fkColl,
 		partitions:    partitions,
 		partitionKeys: keys,
 		autoIncVal:    autoIncVal,
@@ -814,7 +814,7 @@ func (t *Table) HandledFilters(filters []sql.Expression) []sql.Expression {
 	return handled
 }
 
-// sql.FilteredTable functionality in the Table type was disabled for a long period of time, and has developed major
+// FilteredTable functionality in the Table type was disabled for a long period of time, and has developed major
 // issues with the current analyzer logic. It's only used in the pushdown unit tests, and sql.FilteredTable should be
 // considered unstable until this situation is fixed.
 type FilteredTable struct {
@@ -823,9 +823,9 @@ type FilteredTable struct {
 
 var _ sql.FilteredTable = (*FilteredTable)(nil)
 
-func NewFilteredTable(name string, schema sql.PrimaryKeySchema) *FilteredTable {
+func NewFilteredTable(name string, schema sql.PrimaryKeySchema, fkColl *ForeignKeyCollection) *FilteredTable {
 	return &FilteredTable{
-		Table: NewTable(name, schema),
+		Table: NewTable(name, schema, fkColl),
 	}
 }
 
@@ -924,56 +924,68 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return append(indexes, nonPrimaryIndexes...), nil
 }
 
-// GetForeignKeys implements sql.ForeignKeyTable
-func (t *Table) GetForeignKeys(_ *sql.Context) ([]sql.ForeignKeyConstraint, error) {
-	return t.foreignKeys, nil
+// GetDeclaredForeignKeys implements the interface sql.ForeignKeyTable.
+func (t *Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
+	//TODO: may not be the best location, need to handle db as well
+	var fks []sql.ForeignKeyConstraint
+	lowerName := strings.ToLower(t.name)
+	for _, fk := range t.fkColl.Keys() {
+		if strings.ToLower(fk.Table) == lowerName {
+			fks = append(fks, fk)
+		}
+	}
+	return fks, nil
 }
 
-// CreateForeignKey implements sql.ForeignKeyAlterableTable. Foreign partitionKeys are not enforced on update / delete.
-func (t *Table) CreateForeignKey(_ *sql.Context, fkName string, columns []string, referencedTable string, referencedColumns []string, onUpdate, onDelete sql.ForeignKeyReferenceOption) error {
-	for _, key := range t.foreignKeys {
-		if key.Name == fkName {
-			return fmt.Errorf("Constraint %s already exists", fkName)
+// GetReferencedForeignKeys implements the interface sql.ForeignKeyTable.
+func (t *Table) GetReferencedForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
+	//TODO: may not be the best location, need to handle db as well
+	var fks []sql.ForeignKeyConstraint
+	lowerName := strings.ToLower(t.name)
+	for _, fk := range t.fkColl.Keys() {
+		if strings.ToLower(fk.ReferencedTable) == lowerName {
+			fks = append(fks, fk)
 		}
 	}
+	return fks, nil
+}
 
-	for _, key := range t.checks {
-		if key.Name == fkName {
-			return fmt.Errorf("constraint %s already exists", fkName)
+// AddForeignKey implements sql.ForeignKeyTable. Foreign partitionKeys are not enforced on update / delete.
+func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) error {
+	lowerName := strings.ToLower(fk.Name)
+	for _, key := range t.fkColl.Keys() {
+		if strings.ToLower(key.Name) == lowerName {
+			return fmt.Errorf("Constraint %s already exists", fk.Name)
 		}
 	}
-
-	t.foreignKeys = append(t.foreignKeys, sql.ForeignKeyConstraint{
-		Name:              fkName,
-		Columns:           columns,
-		ReferencedTable:   referencedTable,
-		ReferencedColumns: referencedColumns,
-		OnUpdate:          onUpdate,
-		OnDelete:          onDelete,
-	})
-
+	t.fkColl.AddFK(fk)
 	return nil
 }
 
-// DropForeignKey implements sql.ForeignKeyAlterableTable.
+// DropForeignKey implements sql.ForeignKeyTable.
 func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
-	return t.dropConstraint(ctx, fkName)
+	if t.fkColl.DropFK(fkName) {
+		return nil
+	}
+	return sql.ErrForeignKeyNotFound.New(fkName, t.name)
 }
 
-func (t *Table) dropConstraint(ctx *sql.Context, name string) error {
-	for i, key := range t.foreignKeys {
-		if key.Name == name {
-			t.foreignKeys = append(t.foreignKeys[:i], t.foreignKeys[i+1:]...)
-			return nil
-		}
-	}
-	for i, key := range t.checks {
-		if key.Name == name {
-			t.checks = append(t.checks[:i], t.checks[i+1:]...)
-			return nil
-		}
+// CreateIndexForForeignKey implements sql.ForeignKeyTable.
+func (t *Table) CreateIndexForForeignKey(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn) error {
+	return t.CreateIndex(ctx, indexName, using, constraint, columns, "")
+}
+
+// SetForeignKeyResolved implements sql.ForeignKeyTable.
+func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
+	if !t.fkColl.SetResolved(fkName) {
+		return sql.ErrForeignKeyNotFound.New(fkName, t.name)
 	}
 	return nil
+}
+
+// GetForeignKeyUpdater implements sql.ForeignKeyTable.
+func (t *Table) GetForeignKeyUpdater(ctx *sql.Context) sql.ForeignKeyUpdater {
+	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
 }
 
 // GetChecks implements sql.CheckTable
@@ -995,20 +1007,22 @@ func (t *Table) CreateCheck(_ *sql.Context, check *sql.CheckDefinition) error {
 		}
 	}
 
-	for _, key := range t.foreignKeys {
-		if key.Name == toInsert.Name {
-			return fmt.Errorf("constraint %s already exists", toInsert.Name)
-		}
-	}
-
 	t.checks = append(t.checks, toInsert)
 
 	return nil
 }
 
-// func (t *Table) DropCheck(ctx *sql.Context, chName string) error {} implements sql.CheckAlterableTable.
+// DropCheck implements sql.CheckAlterableTable.
 func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
-	return t.dropConstraint(ctx, chName)
+	lowerName := strings.ToLower(chName)
+	for i, key := range t.checks {
+		if strings.ToLower(key.Name) == lowerName {
+			t.checks = append(t.checks[:i], t.checks[i+1:]...)
+			return nil
+		}
+	}
+	//TODO: add SQL error
+	return fmt.Errorf("check '%s' was not found on the table", chName)
 }
 
 func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
@@ -1198,7 +1212,7 @@ func copyschema(sch sql.Schema) sql.Schema {
 }
 
 func copyTable(t *Table, newSch sql.PrimaryKeySchema) (*Table, error) {
-	newTable := NewPartitionedTable(t.name, newSch, len(t.partitions))
+	newTable := NewPartitionedTable(t.name, newSch, t.fkColl, len(t.partitions))
 	for _, partition := range t.partitions {
 		for _, partitionRow := range partition {
 			err := newTable.Insert(sql.NewEmptyContext(), partitionRow)
@@ -1231,7 +1245,7 @@ func (t *Table) DropPrimaryKey(ctx *sql.Context) error {
 
 	// Check for foreign key relationships
 	for _, pk := range pks {
-		if columnInFkRelationship(pk.Name, t.foreignKeys) {
+		if columnInFkRelationship(pk.Name, t.fkColl.Keys()) {
 			return sql.ErrCantDropIndex.New("PRIMARY")
 		}
 	}

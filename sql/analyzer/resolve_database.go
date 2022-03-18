@@ -20,39 +20,47 @@ import (
 )
 
 // resolveDatabases sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
-// actual sql.Database implementation from the catalog.
+// actual sql.Database implementation from the catalog. Also sets the database provider for nodes that implement
+// sql.MultiDatabaser.
 func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
 	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
 		d, ok := n.(sql.Databaser)
-		if !ok {
-			return n, nil
-		}
+		if ok {
+			var dbName = ctx.GetCurrentDatabase()
+			if db := d.Database(); db != nil {
+				if _, ok := db.(sql.UnresolvedDatabase); !ok {
+					return n, nil
+				}
 
-		var dbName = ctx.GetCurrentDatabase()
-		if db := d.Database(); db != nil {
-			if _, ok := db.(sql.UnresolvedDatabase); !ok {
-				return n, nil
+				if db.Name() != "" {
+					dbName = db.Name()
+				}
 			}
 
-			if db.Name() != "" {
-				dbName = db.Name()
+			// Only search the catalog if we have a database to resolve.
+			if dbName != "" {
+				db, err := a.Catalog.Database(ctx, dbName)
+				if err != nil {
+					return nil, err
+				}
+				n, err = d.WithDatabase(db)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
-
-		// Nothing to resolve. This can happen if no database is current
-		if dbName == "" {
-			return n, nil
+		md, ok := n.(sql.MultiDatabaser)
+		if ok && md.DatabaseProvider() == nil {
+			var err error
+			n, err = md.WithDatabaseProvider(a.Catalog.provider)
+			if err != nil {
+				return nil, err
+			}
 		}
-
-		db, err := a.Catalog.Database(ctx, dbName)
-		if err != nil {
-			return nil, err
-		}
-
-		return d.WithDatabase(db)
+		return n, nil
 	})
 }
 

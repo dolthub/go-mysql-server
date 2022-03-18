@@ -115,6 +115,7 @@ var OnceAfterDefault = []Rule{
 	{"assign_routines", assignRoutines},
 	{"modify_update_expressions_for_join", modifyUpdateExpressionsForJoin},
 	{"apply_row_update_accumulators", applyUpdateAccumulators},
+	{"apply_foreign_keys", applyForeignKeys},
 }
 
 // OnceAfterAll contains the rules to be applied just once after all other

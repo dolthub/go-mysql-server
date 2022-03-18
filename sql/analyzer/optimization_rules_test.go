@@ -31,7 +31,7 @@ func TestEraseProjection(t *testing.T) {
 
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{
 		Name: "i", Source: "mytable", Type: sql.Int64,
-	}}))
+	}}), nil)
 
 	expected := plan.NewSort(
 		[]sql.SortField{{Column: expression.NewGetField(2, sql.Int64, "foo", false)}},
@@ -81,7 +81,7 @@ func TestOptimizeDistinct(t *testing.T) {
 	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
-	}))
+	}), nil)
 
 	testCases := []struct {
 		name      string
@@ -132,17 +132,17 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "t1", Type: sql.Int64},
 		{Name: "b", Source: "t1", Type: sql.Int64},
-	}))
+	}), nil)
 
 	t2 := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c", Source: "t2", Type: sql.Int64},
 		{Name: "d", Source: "t2", Type: sql.Int64},
-	}))
+	}), nil)
 
 	t3 := memory.NewTable("t3", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "e", Source: "t3", Type: sql.Int64},
 		{Name: "f", Source: "t3", Type: sql.Int64},
-	}))
+	}), nil)
 
 	rule := getRule("move_join_conds_to_filter")
 	require := require.New(t)
@@ -297,7 +297,7 @@ func TestMoveJoinConditionsToFilter(t *testing.T) {
 }
 
 func TestEvalFilter(t *testing.T) {
-	inner := memory.NewTable("foo", sql.PrimaryKeySchema{})
+	inner := memory.NewTable("foo", sql.PrimaryKeySchema{}, nil)
 	rule := getRule("eval_filter")
 
 	testCases := []struct {
@@ -430,7 +430,7 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 			node := plan.NewProject([]sql.Expression{
 				expression.NewConvert(tt.childExpr, tt.castType),
 			},
-				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}), nil, nil),
+				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil), nil, nil),
 			)
 
 			result, err := removeUnnecessaryConverts(

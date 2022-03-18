@@ -1177,7 +1177,6 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		return convertAlterIndex(ctx, ddl)
 	}
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
-		db := sql.UnresolvedDatabase(ddl.Table.Qualifier.String())
 		table := tableNameToUnresolvedTable(ddl.Table)
 		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
 		if err != nil {
@@ -1187,7 +1186,12 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.AddStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterAddForeignKey(db, ddl.Table.Name.String(), c.ReferencedTable, c), nil
+				c.Database = table.Database
+				c.Table = table.Name()
+				if c.Database == "" {
+					c.Database = ctx.GetCurrentDatabase()
+				}
+				return plan.NewAlterAddForeignKey(c), nil
 			case *sql.CheckConstraint:
 				return plan.NewAlterAddCheck(table, c), nil
 			default:
@@ -1197,7 +1201,11 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterDropForeignKey(table, c.Name), nil
+				database := table.Database
+				if database == "" {
+					database = ctx.GetCurrentDatabase()
+				}
+				return plan.NewAlterDropForeignKey(database, table.Name(), c.Name), nil
 			case *sql.CheckConstraint:
 				return plan.NewAlterDropCheck(table, c.Name), nil
 			case namedConstraint:
@@ -1439,6 +1447,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
+			constraint.Database = c.Table.Qualifier.String()
+			constraint.Table = c.Table.Name.String()
+			if constraint.Database == "" {
+				constraint.Database = ctx.GetCurrentDatabase()
+			}
 			fkDefs = append(fkDefs, constraint)
 		case *sql.CheckConstraint:
 			chDefs = append(chDefs, constraint)
@@ -1551,13 +1564,20 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 		for i, col := range fkConstraint.ReferencedColumns {
 			refColumns[i] = col.String()
 		}
+		refDatabase := fkConstraint.ReferencedTable.Qualifier.String()
+		if refDatabase == "" {
+			refDatabase = ctx.GetCurrentDatabase()
+		}
+		// The database and table are set in the calling function
 		return &sql.ForeignKeyConstraint{
-			Name:              cd.Name,
-			Columns:           columns,
-			ReferencedTable:   fkConstraint.ReferencedTable.Name.String(),
-			ReferencedColumns: refColumns,
-			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
-			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
+			Name:               cd.Name,
+			Columns:            columns,
+			ReferencedDatabase: refDatabase,
+			ReferencedTable:    fkConstraint.ReferencedTable.Name.String(),
+			ReferencedColumns:  refColumns,
+			OnUpdate:           convertReferenceAction(fkConstraint.OnUpdate),
+			OnDelete:           convertReferenceAction(fkConstraint.OnDelete),
+			IsResolved:         false,
 		}, nil
 	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
 		var c sql.Expression
