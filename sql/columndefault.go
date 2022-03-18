@@ -113,7 +113,7 @@ func (e *ColumnDefaultValue) Resolved() bool {
 func (e *ColumnDefaultValue) String() string {
 	//TODO: currently (2+2)/2 will, when output as a string, give (2 + 2 / 2), which is clearly wrong
 	if e == nil {
-		return ""
+		return "NULL"
 	}
 
 	// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
