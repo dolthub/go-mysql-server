@@ -909,7 +909,7 @@ func convertDBDDL(ctx *sql.Context, c *sqlparser.DBDDL) (sql.Node, error) {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Warning",
 				Code:    mysql.ERNotSupportedYet,
-				Message: fmt.Sprintf("Setting CHARACTER SET, COLLATION and ENCRYPTION feature is not supported yet"),
+				Message: fmt.Sprintf("Setting CHARACTER SET, COLLATION and ENCRYPTION are not supported yet"),
 			})
 		}
 		return plan.NewCreateDatabase(c.DBName, c.IfNotExists), nil
