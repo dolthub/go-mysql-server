@@ -995,9 +995,9 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					)
 					indexName = index.ID()
 					if index.IsUnique() {
-						nonUnique = 1
-					} else {
 						nonUnique = 0
+					} else {
+						nonUnique = 1
 					}
 					indexType := index.IndexType()
 					indexComment = index.Comment()
