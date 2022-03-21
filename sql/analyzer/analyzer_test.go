@@ -41,7 +41,7 @@ func TestMaxIterations(t *testing.T) {
 
 	count := 0
 	a := withoutProcessTracking(NewBuilder(provider).AddPostAnalyzeRule("loop",
-		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 
 			switch n.(type) {
 			case *plan.ResolvedTable:

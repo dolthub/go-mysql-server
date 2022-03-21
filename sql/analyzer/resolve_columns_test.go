@@ -86,7 +86,7 @@ func TestMisusedAlias(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	_, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	_, _, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	require.EqualError(err, sql.ErrMisusedAlias.New("alias_i").Error())
 }
 
@@ -115,7 +115,7 @@ func TestQualifyVariables(t *testing.T) {
 		plan.NewResolvedTable(globalTable, nil, nil),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	result, _, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 
@@ -137,7 +137,7 @@ func TestQualifyVariables(t *testing.T) {
 		plan.NewResolvedTable(sessionTable, nil, nil),
 	)
 
-	result, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	result, _, err = f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	assert.NoError(err)
 	assert.Equal(expected, result)
 }
@@ -416,7 +416,7 @@ func TestQualifyColumnsQualifiedStar(t *testing.T) {
 		plan.NewResolvedTable(table, nil, nil),
 	)
 
-	result, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
+	result, _, err := f.Apply(sql.NewEmptyContext(), nil, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"os"
 	"reflect"
@@ -735,7 +736,7 @@ func makeNullable(cols []*sql.Column) []*sql.Column {
 
 func nodeHasJoin(node sql.Node) bool {
 	hasJoinNode := false
-	Inspect(node, func(node sql.Node) bool {
+	visit.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
 		case JoinNode, *CrossJoin, *IndexedJoin:
 			hasJoinNode = true

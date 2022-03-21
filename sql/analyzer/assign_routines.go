@@ -17,6 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // RoutineTable is a Table that depends on a procedures and functions.
@@ -29,11 +30,11 @@ type RoutineTable interface {
 }
 
 // assignRoutines sets the catalog in the required nodes.
-func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("assign_routines")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !n.Resolved() {
 			return n, sql.SameTree, nil
 		}

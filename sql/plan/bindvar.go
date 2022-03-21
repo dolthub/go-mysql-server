@@ -17,6 +17,7 @@ package plan
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // ApplyBindings replaces all `BindVar` expressions in the given sql.Node with
@@ -45,7 +46,7 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 		return expr, sql.SameTree, nil
 	}
 
-	n, _, err := TransformUpWithOpaque(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	n, _, err := visit.AllNodesWithOpaque(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *InsertInto:
 			// Manually apply bindings to [Source] because it is separated
@@ -56,9 +57,8 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 			}
 			return n.WithSource(newSource), sql.NewTree, nil
 		default:
-			//return TransformExpressionsUp(node, fixBindings)
-			return TransformUpHelper(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
-				return TransformExpressionsWithNode(n, fixBindings)
+			return visit.Nodes(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+				return visit.SingleNodeExprsWithNode(n, fixBindings)
 			})
 		}
 	})

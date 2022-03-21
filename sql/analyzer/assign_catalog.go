@@ -17,6 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // CatalogTable is a Table that depends on a Catalog.
@@ -28,11 +29,12 @@ type CatalogTable interface {
 }
 
 // assignCatalog sets the catalog in the required nodes.
-func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("assign_catalog")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	// TODO make the catalog interfaces change sensitive
+	newn, _, err := visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !n.Resolved() {
 			return n, sql.SameTree, nil
 		}
@@ -91,4 +93,8 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			return n, sql.SameTree, nil
 		}
 	})
+	if err != nil {
+		return nil, sql.SameTree, err
+	}
+	return n, sql.TreeIdentity(nodesEqual(n, newn)), nil
 }

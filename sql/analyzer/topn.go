@@ -18,13 +18,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // insertTopNNodes replaces Limit(Sort(...)) and Limit(Offset(Sort(...))) with
 // a TopN node.
-func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	var updateCalcFoundRows bool
-	return plan.TransformUpCtx(n, nil, func(tc plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return visit.NodesWithCtx(n, nil, func(tc visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		if o, ok := tc.Node.(*plan.Offset); ok {
 			parentLimit, ok := tc.Parent.(*plan.Limit)
 			if !ok {

@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -438,13 +439,13 @@ type targetSchema interface {
 	TargetSchema() sql.Schema
 }
 
-func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolveColumnDefaults")
 	defer span.Finish()
 
 	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
 	//  returned by Expressions() for these nodes
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, sql.SameTree, nil
 		}
@@ -503,8 +504,8 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			colIndex = 0
 		)
 
-		return plan.TransformUpHelper(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
-			return plan.TransformExpressionsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+			return visit.SingleNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -527,23 +528,23 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 // parseColumnDefaults transforms UnresolvedColumnDefault expressions into ColumnDefaultValue expressions, which
 // amounts to parsing the string representation into an actual expression. We only require an actual column default
 // value for some node types, where the value will be used.
-func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("parse_column_defaults")
 	defer span.Finish()
 
 	switch nn := n.(type) {
 	case *plan.InsertInto:
 		if !nn.Destination.Resolved() {
-			return nn, nil
+			return nn, sql.SameTree, nil
 		}
 		var err error
 		n, err = nn.WithChildren(plan.NewInsertDestination(nn.Destination.Schema(), nn.Destination))
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 	}
 
-	return plan.TransformExpressionsUpWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return visit.NodesExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {
 			return e, sql.SameTree, nil
@@ -594,7 +595,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 	}
 
 	var err error
-	newDefault.Expression, err = expression.TransformUp(newDefault.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	newDefault.Expression, _, err = visit.Exprs(newDefault.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		if expr, ok := e.(*expression.GetField); ok {
 			// Default values can only reference their host table, so we can remove the table name, removing
 			// the necessity to update default values on table renames.

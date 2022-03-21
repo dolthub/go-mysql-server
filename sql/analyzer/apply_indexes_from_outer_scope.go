@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,27 +28,27 @@ import (
 // It functions similarly to pushdownFilters, in that it applies an index to a table. But unlike that function, it must
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
-func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if scope == nil {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	// this isn't good enough: we need to consider aliases defined in the outer scope as well for this analysis
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	indexLookups, err := getOuterScopeIndexes(ctx, a, n, scope, tableAliases)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	if len(indexLookups) == 0 {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
-	childSelector := func(c plan.TransformContext) bool {
+	childSelector := func(c visit.TransformContext) bool {
 		switch c.Parent.(type) {
 		// We can't push any indexes down a branch that have already had an index pushed down it
 		case *plan.IndexedTableAccess:
@@ -57,8 +58,10 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	}
 
 	// replace the tables with possible index lookups with indexed access
+	allSame := sql.SameTree
+	sameN := sql.SameTree
 	for _, idxLookup := range indexLookups {
-		n, err = plan.TransformUpCtx(n, childSelector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+		n, sameN, err = visit.NodesWithCtx(n, childSelector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 			if !childSelector(c) {
 				return n, sql.SameTree, nil
 			}
@@ -79,18 +82,19 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				return n, sql.SameTree, nil
 			}
 		})
+		allSame = allSame && sameN
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 	}
 
-	return n, nil
+	return n, allSame, nil
 }
 
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
 func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, sql.TreeIdentity, error) {
-	return plan.TransformUpHelper(tableNode, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(tableNode, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			table := getTable(tableNode)
@@ -126,7 +130,7 @@ func getOuterScopeIndexes(
 	var exprsByTable joinExpressionsByTable
 
 	var err error
-	plan.Inspect(node, func(node sql.Node) bool {
+	visit.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
 

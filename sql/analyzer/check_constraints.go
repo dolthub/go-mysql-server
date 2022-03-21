@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -31,7 +32,7 @@ import (
 //
 // TODO: validateCheckConstraints doesn't currently do any type validation on the check and will allow you to create
 //       checks that will never evaluate correctly.
-func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.CreateCheck:
 		return validateCreateCheckNode(n)
@@ -39,16 +40,16 @@ func validateCheckConstraints(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return validateCreateTableChecks(ctx, a, n, scope)
 	}
 
-	return n, nil
+	return n, sql.SameTree, nil
 }
 
-func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *Scope) (sql.Node, error) {
+func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTable, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	columns, err := indexColumns(ctx, a, n, scope)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	visit.InspectExpressions(n, func(e sql.Expression) bool {
 		if err != nil {
 			return false
 		}
@@ -79,19 +80,19 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	return n, nil
+	return n, sql.SameTree, nil
 }
 
-func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, error) {
+func validateCreateCheckNode(ct *plan.CreateCheck) (sql.Node, sql.TreeIdentity, error) {
 	err := checkExpressionValid(ct.Check.Expr)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	return ct, nil
+	return ct, sql.SameTree, nil
 }
 
 func checkExpressionValid(e sql.Expression) error {
@@ -117,11 +118,11 @@ func checkExpressionValid(e sql.Expression) error {
 
 // loadChecks loads any checks that are required for a plan node to operate properly (except for nodes dealing with
 // check execution).
-func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("loadChecks")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch node := n.(type) {
 		case *plan.InsertInto:
 			nn := *node
@@ -191,25 +192,30 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			}
 
 			// To match MySQL output format, transform the column names and wrap with backticks
-			transformedChecks := make(sql.CheckConstraints, len(checks))
+			var transformedChecks sql.CheckConstraints
 			for i, check := range checks {
-				newExpr, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newExpr, same, err := visit.Exprs(check.Expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 					if t, ok := e.(*expression.UnresolvedColumn); ok {
 						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), sql.NewTree, nil
 					}
-
 					return e, sql.SameTree, nil
 				})
-
 				if err != nil {
 					return nil, sql.SameTree, err
 				}
-
-				check.Expr = newExpr
-				transformedChecks[i] = check
+				if !same {
+					if transformedChecks == nil {
+						transformedChecks = make(sql.CheckConstraints, len(checks))
+						copy(transformedChecks, checks)
+					}
+					check.Expr = newExpr
+					transformedChecks[i] = check
+				}
+			}
+			if len(transformedChecks) == 0 {
+				return node, sql.SameTree, nil
 			}
 			nn.Checks = transformedChecks
-
 			return &nn, sql.NewTree, nil
 
 		case *plan.DropColumn:

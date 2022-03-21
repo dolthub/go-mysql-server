@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // comparisonSatisfiesJoinCondition checks a) whether a comparison is a valid join predicate,
@@ -57,7 +58,7 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 // satisfies the join condition. The input conjunctions have already been split,
 // so we do not care which predicate satisfies the expression.
 func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
-	return expression.InspectUp(c, func(expr sql.Expression) bool {
+	return visit.InspectExprs(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
 			return comparisonSatisfiesJoinCondition(e, j)
@@ -72,19 +73,19 @@ func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
 // 2) For every CrossJoin, check whether a subset of predicates covers as join conditions,
 //    and create a new InnerJoin with the matching predicates.
 // 3) Remove predicates from the parent Filter that have been pushed into InnerJoins.
-func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
 			return n, sql.SameTree, nil
 		}
 		predicates := splitConjunction(f.Expression)
 		movedPredicates := make(map[int]struct{})
-		newF, err := plan.TransformUp(f, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		newF, _, err := visit.Nodes(f, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 			cj, ok := n.(*plan.CrossJoin)
 			if !ok {
 				return n, sql.SameTree, nil

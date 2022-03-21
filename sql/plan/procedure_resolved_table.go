@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // ProcedureResolvedTable represents a resolved SQL Table inside of a stored procedure. These are initially resolved to
@@ -78,13 +79,14 @@ func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, e
 	// Even though we return the *ResolvedTable in Children, we cannot assume that the given child is still
 	// *ResolvedTable. In the analyzer, there are instances where the table is buried under other nodes such as
 	// tracking nodes, so we must walk the tree and find the table.
-	return TransformUp(children[0], func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	nt, _, err := visit.Nodes(children[0], func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		rt, ok := children[0].(*ResolvedTable)
 		if !ok {
 			return n, sql.SameTree, nil
 		}
 		return NewProcedureResolvedTable(rt), sql.NewTree, nil
 	})
+	return nt, err
 }
 
 // CheckPrivileges implements the interface sql.Node.

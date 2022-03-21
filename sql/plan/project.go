@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
@@ -42,7 +43,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		s[i] = expression.ExpressionToColumn(e)
+		s[i] = visit.ExpressionToColumn(e)
 	}
 	return s
 }

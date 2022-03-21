@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -86,7 +87,7 @@ func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2
 func getQueryType(child sql.Node) queryType {
 	// TODO: behavior of CALL is not specified in the docs. Needs investigation
 	var queryType queryType = queryTypeSelect
-	Inspect(child, func(node sql.Node) bool {
+	visit.Inspect(child, func(node sql.Node) bool {
 		if IsNoRowNode(node) {
 			queryType = queryTypeDdl
 			return false
@@ -124,7 +125,7 @@ func (p *QueryProcess) DebugString() string {
 func (p *QueryProcess) shouldSetFoundRows() bool {
 	var fromLimit *bool
 	var fromTopN *bool
-	Inspect(p.Child, func(n sql.Node) bool {
+	visit.Inspect(p.Child, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *StartTransaction:
 			return true
@@ -352,11 +353,11 @@ func (i *trackedRowIter) done() {
 }
 
 func disposeNode(n sql.Node) {
-	Inspect(n, func(node sql.Node) bool {
+	visit.Inspect(n, func(node sql.Node) bool {
 		sql.Dispose(node)
 		return true
 	})
-	InspectExpressions(n, func(e sql.Expression) bool {
+	visit.InspectExpressions(n, func(e sql.Expression) bool {
 		sql.Dispose(e)
 		return true
 	})

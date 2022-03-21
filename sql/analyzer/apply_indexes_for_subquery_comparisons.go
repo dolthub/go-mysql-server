@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // applyIndexesForSubqueryComparisons converts a `Filter(id = (SELECT ...),
@@ -29,13 +30,13 @@ import (
 // 3. The left hand side is a GetField expression against the Child.
 // 4. The Child is a *plan.ResolvedTable.
 // 5. The referenced field in the Child is indexed.
-func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	aliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			var replacement sql.Node
@@ -85,7 +86,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 // range [low, high).
 func nodeHasGetFieldReferenceBetween(n sql.Node, low, high int) bool {
 	var found bool
-	plan.Inspect(n, func(n sql.Node) bool {
+	visit.Inspect(n, func(n sql.Node) bool {
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				if expressionHasGetFieldReferenceBetween(e, low, high) {

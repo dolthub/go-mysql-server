@@ -17,8 +17,8 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 const dualTableName = "dual"
@@ -48,11 +48,11 @@ func isDualTable(t sql.Table) bool {
 	return t.Name() == dualTableName && t.Schema().Equals(dualTableSchema.Schema)
 }
 
-func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return visit.NodesWithCtx(n, nil, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		ignore := false
 		switch p := c.Parent.(type) {
 		case *plan.DropTable:
@@ -92,7 +92,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 		// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
 		// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
 		// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
-		asOfExpr, err := expression.TransformUp(t.AsOf, resolveFunctionsInExpr(ctx, a))
+		asOfExpr, _, err := visit.Exprs(t.AsOf, resolveFunctionsInExpr(ctx, a))
 		if err != nil {
 			return nil, err
 		}
@@ -126,11 +126,11 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
 // store supplementary schema information. This is useful for lazy resolution of column default values.
-func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("set_target_schema")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		t, ok := n.(sql.SchemaTarget)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -182,10 +182,10 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 }
 
 // validateDropTables returns an error if the database is not droppable.
-func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	// validates that each table in DropTable is ResolvedTable and each database of
@@ -193,13 +193,13 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 	for _, table := range dt.Tables {
 		rt, ok := table.(*plan.ResolvedTable)
 		if !ok {
-			return nil, plan.ErrUnresolvedTable.New(rt.String())
+			return nil, sql.SameTree, plan.ErrUnresolvedTable.New(rt.String())
 		}
 		_, ok = rt.Database.(sql.TableDropper)
 		if !ok {
-			return nil, sql.ErrDropTableNotSupported.New(rt.Database.Name())
+			return nil, sql.SameTree, sql.ErrDropTableNotSupported.New(rt.Database.Name())
 		}
 	}
 
-	return n, nil
+	return n, sql.SameTree, nil
 }

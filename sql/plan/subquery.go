@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"sync"
 
@@ -254,7 +255,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	q, _, err := visit.Nodes(s.Query, prependRowInPlan(row))
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +340,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, err := TransformUp(s.Query, prependRowInPlan(row))
+	q, _, err := visit.Nodes(s.Query, prependRowInPlan(row))
 	if err != nil {
 		return false, err
 	}

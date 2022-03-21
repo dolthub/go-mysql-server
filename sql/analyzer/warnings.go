@@ -19,23 +19,23 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
-		return node, nil
+		return node, sql.SameTree, nil
 	}
 
 	switch ch := children[0].(type) {
 	case plan.ShowWarnings:
-		return node, nil
+		return node, sql.SameTree, nil
 	case *plan.Offset:
 		clearWarnings(ctx, a, ch, scope)
-		return node, nil
+		return node, sql.SameTree, nil
 	case *plan.Limit:
 		clearWarnings(ctx, a, ch, scope)
-		return node, nil
+		return node, sql.SameTree, nil
 	}
 
 	ctx.ClearWarnings()
-	return node, nil
+	return node, sql.SameTree, nil
 }

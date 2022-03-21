@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	errors "gopkg.in/src-d/go-errors.v1"
@@ -26,11 +27,11 @@ import (
 
 // pushdownSort pushes the Sort node underneath the Project or GroupBy node in the case that columns needed to
 // sort would be projected away before sorting. This can also alter the projection in some cases.
-func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("pushdownSort")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		sort, ok := n.(*plan.Sort)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -203,8 +204,8 @@ func pushSortDown(sort *plan.Sort) (sql.Node, sql.TreeIdentity, error) {
 	}
 }
 
-func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		sort, ok := n.(*plan.Sort)
 		if !ok {
 			return n, sql.SameTree, nil

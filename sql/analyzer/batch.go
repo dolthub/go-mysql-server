@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 
@@ -22,7 +23,7 @@ import (
 )
 
 // RuleFunc is the function to be applied in a rule.
-type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *Scope) (sql.Node, error)
+type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *Scope) (sql.Node, sql.TreeIdentity, error)
 
 // Rule to transform nodes.
 type Rule struct {
@@ -44,55 +45,68 @@ type Batch struct {
 // Eval executes the rules of the batch. On any error, the partially transformed node is returned along with the error.
 // If the batch's max number of iterations is reached without achieving stabilization (batch evaluation no longer
 // changes the node), then this method returns ErrMaxAnalysisIters.
-func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if b.Iterations == 0 {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	prev := n
 	a.PushDebugContext("0")
-	cur, err := b.evalOnce(ctx, a, n, scope)
+	cur, same, err := b.evalOnce(ctx, a, n, scope)
 	a.PopDebugContext()
 	if err != nil {
-		return cur, err
+		return cur, sql.SameTree, err
 	}
 
 	if b.Iterations == 1 {
-		return cur, nil
+		return cur, same, nil
 	}
 
-	for i := 1; !nodesEqual(prev, cur); {
+	allSame := same
+	for i := 1; !same; {
 		a.Log("Nodes not equal, re-running batch")
 		a.LogDiff(prev, cur)
 		if i >= b.Iterations {
-			return cur, ErrMaxAnalysisIters.New(b.Iterations)
+			return cur, sql.SameTree, ErrMaxAnalysisIters.New(b.Iterations)
 		}
 
 		prev = cur
 		a.PushDebugContext(strconv.Itoa(i))
-		cur, err = b.evalOnce(ctx, a, cur, scope)
+		cur, same, err = b.evalOnce(ctx, a, cur, scope)
 		a.PopDebugContext()
 		if err != nil {
-			return cur, err
+			return cur, sql.SameTree, err
 		}
+		allSame = allSame && same
 
 		i++
 	}
 
-	return cur, nil
+	return cur, allSame, nil
 }
 
 // evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result
 // of the last successful transformation is returned along with the error. If no transformation was successful, the
 // input node is returned as-is.
-func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	prev := n
+func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+	var (
+		err     error
+		same    = sql.SameTree
+		allSame = sql.SameTree
+		next    sql.Node
+		prev    = n
+	)
 	for _, rule := range b.Rules {
-		var err error
 		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
-		next, err := rule.Apply(ctx, a, prev, scope)
-		if next != nil {
+		next, same, err = rule.Apply(ctx, a, prev, scope)
+		if !same {
+			allSame = allSame && sql.TreeIdentity(nodesEqual(prev, next))
+		}
+		if nodesEqual(prev, next) != bool(same) {
+			panic(fmt.Sprintf("BADRULE: '%s'", rule.Name))
+		}
+		if next != nil && !same {
 			a.LogDiff(prev, next)
 			prev = next
 			a.LogNode(prev)
@@ -102,11 +116,12 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			// Returning the last node before the error is important. This is non-idiomatic, but in the case of partial
 			// resolution before an error we want the last successful transformation result. Very important for resolving
 			// subqueries.
-			return prev, err
+			return prev, allSame, err
 		}
+		allSame = same && allSame
 	}
 
-	return prev, nil
+	return prev, allSame, nil
 }
 
 func nodesEqual(a, b sql.Node) bool {

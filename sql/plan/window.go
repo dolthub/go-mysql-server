@@ -16,6 +16,7 @@ package plan
 
 import (
 	"errors"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
@@ -73,7 +74,7 @@ func (w *Window) DebugString() string {
 func (w *Window) Schema() sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = expression.ExpressionToColumn(e)
+		s[i] = visit.ExpressionToColumn(e)
 	}
 	return s
 }

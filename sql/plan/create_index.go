@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 	"time"
 
@@ -306,7 +307,7 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		ex, _, err := visit.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
 				return e, sql.SameTree, nil

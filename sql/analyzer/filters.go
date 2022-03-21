@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -43,7 +44,7 @@ func (f filtersByTable) size() int {
 // predicates that contain no table or more than one table are not included in the result.
 func getFiltersByTable(n sql.Node) filtersByTable {
 	filters := newFiltersByTable()
-	plan.Inspect(n, func(node sql.Node) bool {
+	visit.Inspect(n, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
 			fs := exprToTableFilters(node.Expression)

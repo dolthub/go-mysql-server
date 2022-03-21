@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -25,32 +26,32 @@ import (
 
 // validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
 // at execution time, and should be moved here over time.
-func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	err := validateAutoIncrement(ct.CreateSchema.Schema)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	err = validateIndexes(ct.TableSpec())
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	return n, nil
+	return n, sql.SameTree, nil
 }
 
-func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	var sch sql.Schema
-	plan.Inspect(n, func(n sql.Node) bool {
+	visit.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch = n.Child.Schema()
@@ -70,14 +71,14 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	// Skip this validation if we didn't find one or more of the above node types
 	if len(sch) == 0 {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	initialSch := sch
 	var err error
-	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
+	// Need a Exprs here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	plan.Inspect(n, func(n sql.Node) bool {
+	visit.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch, err = validateModifyColumn(initialSch, sch, n)
@@ -94,9 +95,9 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return true
 	})
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
-	return n, nil
+	return n, sql.SameTree, nil
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
@@ -186,7 +187,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
 	var err error
 	for _, check := range checks {
-		_ = expression.InspectUp(check.Expr, func(e sql.Expression) bool {
+		_ = visit.InspectExprs(check.Expr, func(e sql.Expression) bool {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
 					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)

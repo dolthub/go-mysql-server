@@ -18,16 +18,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
-func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return node, sql.SameTree, nil
 		}
 
-		e, err := expression.TransformUp(filter.Expression, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := visit.Exprs(filter.Expression, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if e, ok := expr.(*expression.InTuple); ok &&
 				hasSingleOutput(e.Left()) &&
 				isStatic(e.Right()) {
@@ -42,6 +43,9 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 		if err != nil {
 			return nil, sql.SameTree, err
 		}
+		if same {
+			return node, sql.SameTree, nil
+		}
 		node, err = filter.WithExpressions(e)
 		if err != nil {
 			return nil, sql.SameTree, err
@@ -52,7 +56,7 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 
 // hasSingleOutput checks if an expression evaluates to a single output
 func hasSingleOutput(e sql.Expression) bool {
-	return !expression.InspectUp(e, func(expr sql.Expression) bool {
+	return !visit.InspectExprs(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal, *expression.GetField,
 			expression.Comparer, *expression.Convert, sql.FunctionExpression,
@@ -67,7 +71,7 @@ func hasSingleOutput(e sql.Expression) bool {
 
 // isStatic checks if an expression is static
 func isStatic(e sql.Expression) bool {
-	return !expression.InspectUp(e, func(expr sql.Expression) bool {
+	return !visit.InspectExprs(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal:
 			return false

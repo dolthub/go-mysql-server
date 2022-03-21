@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"os"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -33,19 +34,19 @@ func init() {
 
 // trackProcess will wrap the query in a process node and add progress items
 // to the already existing process.
-func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	if _, ok := n.(*plan.QueryProcess); ok {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
-	n, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	n, _, err := visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
@@ -102,18 +103,18 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		}
 	})
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	// Don't wrap CreateIndex in a QueryProcess, as it is a CreateIndexProcess.
 	// CreateIndex will take care of marking the process as done on its own.
 	if _, ok := n.(*plan.CreateIndex); ok {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	// Remove QueryProcess nodes from the subqueries and trigger bodies. Otherwise, the process
 	// will be marked as done as soon as a subquery / trigger finishes.
-	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	node, _, err := visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
 				n, err := sq.WithChildren(qp.Child)
@@ -129,7 +130,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		return n, sql.SameTree, nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	return plan.NewQueryProcess(node, func() {
@@ -137,5 +138,5 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		if span := ctx.RootSpan(); span != nil {
 			span.Finish()
 		}
-	}), nil
+	}), sql.NewTree, nil
 }

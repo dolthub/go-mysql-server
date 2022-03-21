@@ -22,21 +22,21 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok || ct.Like() == nil {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 	resolvedLikeTable, ok := ct.Like().(*plan.ResolvedTable)
 	if !ok {
-		return nil, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", ct.Like())
+		return nil, sql.SameTree, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", ct.Like())
 	}
 	likeTable := resolvedLikeTable.Table
 	var idxDefs []*plan.IndexDefinition
 	if indexableTable, ok := likeTable.(sql.IndexedTable); ok {
 		indexes, err := indexableTable.GetIndexes(ctx)
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 		for _, index := range indexes {
 			if index.IsGenerated() {
@@ -82,5 +82,5 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		IdxDefs: idxDefs,
 	}
 
-	return plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), tableSpec), nil
+	return plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), tableSpec), sql.NewTree, nil
 }

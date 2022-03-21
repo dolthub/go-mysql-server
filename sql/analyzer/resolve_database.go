@@ -17,15 +17,16 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // resolveDatabases sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
 // actual sql.Database implementation from the catalog.
-func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		d, ok := n.(sql.Databaser)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -58,9 +59,9 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 }
 
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
-func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	var err error
-	plan.Inspect(n, func(node sql.Node) bool {
+	visit.Inspect(n, func(node sql.Node) bool {
 		switch n.(type) {
 		// TODO: there are probably other kinds of nodes that need this too
 		case *plan.ShowTables, *plan.ShowTriggers, *plan.CreateTable:
@@ -73,8 +74,8 @@ func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return true
 	})
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	return n, nil
+	return n, sql.SameTree, nil
 }

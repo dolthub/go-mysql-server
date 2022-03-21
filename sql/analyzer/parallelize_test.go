@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -66,7 +67,7 @@ func TestParallelize(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -83,7 +84,7 @@ func TestParallelizeCreateIndex(t *testing.T) {
 		nil,
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil)
 	require.NoError(err)
 	require.Equal(node, result)
 }
@@ -295,7 +296,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 		),
 	)
 
-	result, err := plan.TransformUp(node, removeRedundantExchanges)
+	result, err := visit.Nodes(node, removeRedundantExchanges)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -22,13 +23,13 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_natural_joins")
 	defer span.Finish()
 
 	var replacements = make(map[tableCol]tableCol)
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.NaturalJoin:
 			newn, err := resolveNaturalJoin(n, replacements)
@@ -131,7 +132,7 @@ func replaceExpressionsForNaturalJoin(
 	n sql.Node,
 	replacements map[tableCol]tableCol,
 ) (sql.Node, sql.TreeIdentity, error) {
-	return plan.TransformExpressionsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return visit.SingleNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
 			var tableName = strings.ToLower(e.(sql.Tableable).Table())

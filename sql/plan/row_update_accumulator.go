@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"sync"
 
@@ -385,7 +386,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	case UpdateTypeJoinUpdate:
 		var schema sql.Schema
 		var updaterMap map[string]sql.RowUpdater
-		Inspect(r.Child, func(node sql.Node) bool {
+		visit.Inspect(r.Child, func(node sql.Node) bool {
 			switch node.(type) {
 			case JoinNode, *CrossJoin, *Project, *IndexedJoin:
 				schema = node.Schema()

@@ -18,19 +18,20 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // eraseProjection removes redundant Project nodes from the plan. A project is redundant if it doesn't alter the schema
 // of its child.
-func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("erase_projection")
 	defer span.Finish()
 
 	if !node.Resolved() {
-		return node, nil
+		return node, sql.SameTree, nil
 	}
 
-	return plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
 		if ok && project.Schema().Equals(project.Child.Schema()) {
 			a.Log("project erased")
@@ -44,13 +45,13 @@ func eraseProjection(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope)
 // optimizeDistinct substitutes a Distinct node for an OrderedDistinct node when the child of Distinct is already
 // ordered. The OrderedDistinct node is much faster and uses much less memory, since it only has to compare the
 // previous row to the current one to determine its distinct-ness.
-func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("optimize_distinct")
 	defer span.Finish()
 
 	if n, ok := node.(*plan.Distinct); ok {
 		var sortField *expression.GetField
-		plan.Inspect(n, func(node sql.Node) bool {
+		visit.Inspect(n, func(node sql.Node) bool {
 			// TODO: this is a bug. Every column in the output must be sorted in order for OrderedDistinct to produce a
 			//  correct result. This only checks one sort field
 			if sort, ok := node.(*plan.Sort); ok && sortField == nil {
@@ -64,24 +65,24 @@ func optimizeDistinct(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope
 
 		if sortField != nil && n.Schema().Contains(sortField.Name(), sortField.Table()) {
 			a.Log("distinct optimized for ordered output")
-			return plan.NewOrderedDistinct(n.Child), nil
+			return plan.NewOrderedDistinct(n.Child), sql.NewTree, nil
 		}
 	}
 
-	return node, nil
+	return node, sql.SameTree, nil
 }
 
 // moveJoinConditionsToFilter looks for expressions in a join condition that reference only tables in the left or right
 // side of the join, and move those conditions to a new Filter node instead. If the join condition is empty after these
 // moves, the join is converted to a CrossJoin.
-func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	var nonJoinFilters []sql.Expression
 	var topJoin sql.Node
-	node, err := plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	node, same, err := visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		join, ok := n.(*plan.InnerJoin)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -125,16 +126,16 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	if len(nonJoinFilters) == 0 {
-		return node, nil
+	if len(nonJoinFilters) == 0 || same {
+		return node, sql.SameTree, nil
 	}
 
 	// Add a new filter node with all removed predicates above the top level InnerJoin. Or, if there is a filter node
 	// above that, combine into a new filter.
-	selector := func(c plan.TransformContext) bool {
+	selector := func(c visit.TransformContext) bool {
 		switch c.Parent.(type) {
 		case *plan.Filter:
 			return false
@@ -142,7 +143,7 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return c.Parent != topJoin
 	}
 
-	return plan.TransformUpCtx(node, selector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return visit.NodesWithCtx(node, selector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		switch node := c.Node.(type) {
 		case *plan.Filter:
 			return plan.NewFilter(
@@ -159,15 +160,15 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 }
 
 // removeUnnecessaryConverts removes any Convert expressions that don't alter the type of the expression.
-func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func removeUnnecessaryConverts(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("remove_unnecessary_converts")
 	defer span.Finish()
 
 	if !n.Resolved() {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return visit.NodesExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		if c, ok := e.(*expression.Convert); ok && c.Child.Type() == c.Type() {
 			return c.Child, sql.NewTree, nil
 		}
@@ -233,18 +234,18 @@ func expressionSources(expr sql.Expression) []string {
 // evalFilter simplifies the expressions in Filter nodes where possible. This involves removing redundant parts of AND
 // and OR expressions, as well as replacing evaluable expressions with their literal result. Filters that can
 // statically be determined to be true or false are replaced with the child node or an empty result, respectively.
-func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if !node.Resolved() {
-		return node, nil
+		return node, sql.SameTree, nil
 	}
 
-	return plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return node, sql.SameTree, nil
 		}
 
-		e, same, err := expression.TransformUpHelper(filter.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := visit.Exprs(filter.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			switch e := e.(type) {
 			case *expression.Or:
 				if isTrue(e.Left) {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package expression
+package visit
 
 import (
 	"errors"
@@ -24,12 +24,7 @@ import (
 // expression as is or transformed along with an error, if any.
 type TransformExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, sql.TreeIdentity, error)
 
-func TransformUp(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, error) {
-	newe, _, err := TransformUpHelper(e, f)
-	return newe, err
-}
-
-func TransformUpHelper(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeIdentity, error) {
+func Exprs(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(e)
@@ -44,7 +39,7 @@ func TransformUpHelper(e sql.Expression, f sql.TransformExprFunc) (sql.Expressio
 
 	for i := 0; i < len(children); i++ {
 		c = children[i]
-		c, sameC, err = TransformUpHelper(c, f)
+		c, sameC, err = Exprs(c, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}
@@ -72,19 +67,16 @@ func TransformUpHelper(e sql.Expression, f sql.TransformExprFunc) (sql.Expressio
 	return e, sameC && sameN, nil
 }
 
-// InspectUp traverses the given tree from the bottom up, breaking if
+// InspectExprs traverses the given tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
-func InspectUp(node sql.Expression, f func(sql.Expression) bool) bool {
+func InspectExprs(node sql.Expression, f func(sql.Expression) bool) bool {
 	stop := errors.New("stop")
-	wrap := func(n sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
-		ok := f(n)
+	_, _, err := Exprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		ok := f(e)
 		if ok {
 			return nil, sql.SameTree, stop
 		}
-		return n, sql.SameTree, nil
-	}
-	_, err := TransformUp(node, func(node sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
-		return wrap(node)
+		return e, sql.SameTree, nil
 	})
 	return errors.Is(err, stop)
 }
@@ -94,13 +86,14 @@ func InspectUp(node sql.Expression, f func(sql.Expression) bool) bool {
 // stateful expression nodes where an evaluation needs to create multiple
 // independent histories of the internal state of the expression nodes.
 func Clone(expr sql.Expression) (sql.Expression, error) {
-	return TransformUp(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	expr, _, err := Exprs(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		return e, sql.NewTree, nil
 	})
+	return expr, err
 }
 
-// TransformUpWithNode applies a transformation function to the given expression from the bottom up.
-func TransformUpWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, sql.TreeIdentity, error) {
+// ExprsWithNode applies a transformation function to the given expression from the bottom up.
+func ExprsWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, sql.TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(n, e)
@@ -115,7 +108,7 @@ func TransformUpWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFu
 
 	for i := 0; i < len(children); i++ {
 		c = children[i]
-		c, sameC, err = TransformUpWithNode(n, c, f)
+		c, sameC, err = ExprsWithNode(n, c, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}

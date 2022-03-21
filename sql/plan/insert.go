@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"strings"
 
@@ -305,7 +306,7 @@ func newInsertIter(
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
 	var exprs []sql.Expression
-	Inspect(values, func(node sql.Node) bool {
+	visit.Inspect(values, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *Project:
 			exprs = node.Projections

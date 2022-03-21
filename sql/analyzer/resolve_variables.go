@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -26,11 +27,11 @@ import (
 )
 
 // resolveVariables replaces UnresolvedColumn which are variables with their literal values
-func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_variables")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if node.Resolved() {
 			return node, sql.SameTree, nil
 		}
@@ -53,13 +54,13 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 		// Set nodes need to resolve the right-hand side of an expression only
 		if n, ok := node.(*plan.Set); ok {
-			n, err := plan.TransformExpressionsUpWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return visit.NodesExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				sf, ok := e.(*expression.SetField)
 				if !ok {
 					return e, sql.SameTree, nil
 				}
 
-				nr, same, err := expression.TransformUpHelper(sf.Right, resolveVars)
+				nr, same, err := visit.Exprs(sf.Right, resolveVars)
 				if err != nil {
 					return nil, sql.SameTree, err
 				}
@@ -73,24 +74,23 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 				}
 				return e, sql.NewTree, nil
 			})
-			return n, sql.NewTree, err
 		}
 
-		return plan.TransformExpressionsForNode(node, resolveVars)
+		return visit.SingleNodeExpressions(node, resolveVars)
 	})
 }
 
 // resolveSetVariables replaces SET @@var and SET @var expressions with appropriately resolved expressions for the
 // left-hand side, and evaluate the right-hand side where possible, including filling in defaults. Also validates that
 // system variables are known to the system.
-func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		_, ok := n.(*plan.Set)
 		if !ok || n.Resolved() {
 			return n, sql.SameTree, nil
 		}
 
-		return plan.TransformExpressionsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return visit.SingleNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			sf, ok := e.(*expression.SetField)
 			if !ok {
 				return e, sql.SameTree, nil
@@ -163,13 +163,13 @@ func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 // resolveUnquotedSetVariables does a similar pass as resolveSetVariables, but handles system vars that were provided
 // as barewords (vars not prefixed with @@, and string values unquoted). These will have been deferred into
 // deferredColumns by the resolve_columns rule.
-func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	_, ok := n.(*plan.Set)
 	if !ok || n.Resolved() {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
-	return plan.TransformExpressionsUp(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return visit.NodesExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		sf, ok := e.(*expression.SetField)
 		if !ok {
 			return e, sql.SameTree, nil

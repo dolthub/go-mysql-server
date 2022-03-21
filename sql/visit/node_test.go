@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package visit
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -29,8 +30,8 @@ func TestTransformUp(t *testing.T) {
 
 	aCol := expression.NewUnresolvedColumn("a")
 	bCol := expression.NewUnresolvedColumn("a")
-	ur := NewUnresolvedTable("unresolved", "")
-	p := NewProject([]sql.Expression{aCol, bCol}, NewFilter(expression.NewEquals(aCol, bCol), ur))
+	ur := plan.NewUnresolvedTable("unresolved", "")
+	p := plan.NewProject([]sql.Expression{aCol, bCol}, plan.NewFilter(expression.NewEquals(aCol, bCol), ur))
 
 	schema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Text},
@@ -38,20 +39,20 @@ func TestTransformUp(t *testing.T) {
 	})
 	table := memory.NewTable("resolved", schema)
 
-	pt, err := TransformUp(p, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	pt, err := Nodes(p, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n.(type) {
-		case *UnresolvedTable:
-			return NewResolvedTable(table, nil, nil), sql.NewTree, nil
+		case *plan.UnresolvedTable:
+			return plan.NewResolvedTable(table, nil, nil), sql.NewTree, nil
 		default:
 			return n, sql.SameTree, nil
 		}
 	})
 	require.NoError(err)
 
-	ep := NewProject(
+	ep := plan.NewProject(
 		[]sql.Expression{aCol, bCol},
-		NewFilter(expression.NewEquals(aCol, bCol),
-			NewResolvedTable(table, nil, nil),
+		plan.NewFilter(expression.NewEquals(aCol, bCol),
+			plan.NewResolvedTable(table, nil, nil),
 		),
 	)
 	require.Equal(ep, pt)

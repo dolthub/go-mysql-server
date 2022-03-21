@@ -18,14 +18,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
-	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
-func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, error) {
+func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_table_functions")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, sql.SameTree, nil
 		}
@@ -59,16 +59,16 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) 
 }
 
 // resolveFunctions replaces UnresolvedFunction nodes with equivalent functions from the Catalog.
-func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, error) {
+func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_functions")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, sql.SameTree, nil
 		}
 
-		return plan.TransformExpressionsForNode(n, resolveFunctionsInExpr(ctx, a))
+		return visit.SingleNodeExpressions(n, resolveFunctionsInExpr(ctx, a))
 	})
 }
 

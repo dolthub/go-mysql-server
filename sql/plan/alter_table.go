@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"strings"
 
@@ -796,7 +797,7 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 			continue
 		}
 		newCol := *col
-		newCol.Default.Expression, err = expression.TransformUp(col.Default.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		newCol.Default.Expression, _, err = visit.Exprs(col.Default.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if expr, ok := e.(*expression.GetField); ok {
 				if strings.ToLower(expr.Name()) == oldName {
 					colsToModify[&newCol] = struct{}{}

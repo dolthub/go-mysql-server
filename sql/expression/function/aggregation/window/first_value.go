@@ -16,6 +16,7 @@ package window
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -126,7 +127,7 @@ func (f *FirstValue) WithWindow(window *sql.WindowDefinition) (sql.WindowAggrega
 }
 
 func (f *FirstValue) NewWindowFunction() (sql.WindowFunction, error) {
-	c, err := expression.Clone(f.Child)
+	c, err := visit.Clone(f.Child)
 	if err != nil {
 		return nil, err
 	}

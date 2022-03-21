@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"os"
 	"strconv"
 
@@ -57,17 +58,17 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	return !plan.IsNoRowNode(node)
 }
 
-func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if a.Parallelism <= 1 || !node.Resolved() {
-		return node, nil
+		return node, sql.SameTree, nil
 	}
 
 	proc, ok := node.(*plan.QueryProcess)
 	if (ok && !shouldParallelize(proc.Child, nil)) || !shouldParallelize(node, scope) {
-		return node, nil
+		return node, sql.SameTree, nil
 	}
 
-	node, err := plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	node, same, err := visit.Nodes(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !isParallelizable(node) {
 			return node, sql.SameTree, nil
 		}
@@ -75,12 +76,14 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 
 		return plan.NewExchange(a.Parallelism, node), sql.NewTree, nil
 	})
-
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
+	}
+	if same {
+		return node, sql.SameTree, nil
 	}
 
-	return plan.TransformUp(node, removeRedundantExchanges)
+	return visit.Nodes(node, removeRedundantExchanges)
 }
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
@@ -91,7 +94,7 @@ func removeRedundantExchanges(node sql.Node) (sql.Node, sql.TreeIdentity, error)
 		return node, sql.SameTree, nil
 	}
 
-	child, same, err := plan.TransformUpHelper(exchange.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	child, same, err := visit.Nodes(exchange.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
 			return exchange.Child, sql.NewTree, nil
 		}
@@ -112,7 +115,7 @@ func isParallelizable(node sql.Node) bool {
 	var tableSeen bool
 	var lastWasTable bool
 
-	plan.Inspect(node, func(node sql.Node) bool {
+	visit.Inspect(node, func(node sql.Node) bool {
 		if node == nil {
 			return true
 		}
@@ -133,7 +136,7 @@ func isParallelizable(node sql.Node) bool {
 				sql.Inspect(e, func(e sql.Expression) bool {
 					if q, ok := e.(*plan.Subquery); ok {
 						subqueryParallelizable := true
-						plan.Inspect(q.Query, func(node sql.Node) bool {
+						visit.Inspect(q.Query, func(node sql.Node) bool {
 							if node == nil {
 								return true
 							}

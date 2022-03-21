@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"reflect"
 	"strings"
 
@@ -26,8 +27,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+	n, _, err := visit.Nodes(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		having, ok := node.(*plan.Having)
 		if !ok {
 			return node, sql.SameTree, nil
@@ -64,16 +65,16 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (
 			requiresProjection = true
 		}
 
-		//if same {
-		//	return node, sql.SameTree, nil
-		//}
-
 		if !requiresProjection {
 			return having, sql.NewTree, nil
 		}
 
 		return projectOriginalAggregation(having, originalSchema), sql.NewTree, nil
 	})
+	if err != nil {
+		return nil, sql.SameTree, err
+	}
+	return n, sql.TreeIdentity(nodesEqual(n, node)), nil
 }
 
 func findMissingColumns(node sql.Node, expr sql.Expression) []string {
@@ -318,7 +319,7 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 	// indexes after they have been pushed up. This is because some of these
 	// may have already been projected in some projection and we cannot ensure
 	// from here what the final index will be.
-	cond, err := expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	cond, _, err := visit.Exprs(having.Cond, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		agg, ok := e.(sql.Aggregation)
 		if !ok {
 			return e, sql.SameTree, nil
@@ -372,7 +373,7 @@ func replaceAggregations(ctx *sql.Context, having *plan.Having) (*plan.Having, b
 
 	// Now, the tokens are replaced with the actual columns, now that we know
 	// what the indexes are.
-	cond, err = expression.TransformUp(having.Cond, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	cond, _, err = visit.Exprs(having.Cond, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		f, ok := e.(*expression.GetField)
 		if !ok {
 			return e, sql.SameTree, nil
@@ -486,7 +487,7 @@ func aggregationChildEquals(ctx *sql.Context, a, b sql.Expression) bool {
 		return true
 	})
 
-	a, err := expression.TransformUp(a, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	a, _, err := visit.Exprs(a, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		var table, name string
 		switch e := e.(type) {
 		case column:

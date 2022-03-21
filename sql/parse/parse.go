@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strconv"
 	"strings"
 	"time"
@@ -654,7 +655,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				return nil, err
 			}
 			// TODO: once collations are properly implemented, we should better be able to handle utf8 -> utf8mb3 comparisons as they're aliases
-			filterExpr, err = expression.TransformUp(filterExpr, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			filterExpr, _, err = visit.Exprs(filterExpr, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				if exprLiteral, ok := expr.(*expression.Literal); ok {
 					const utf8Prefix = "utf8_"
 					if strLiteral, ok := exprLiteral.Value().(string); ok && strings.HasPrefix(strLiteral, utf8Prefix) {

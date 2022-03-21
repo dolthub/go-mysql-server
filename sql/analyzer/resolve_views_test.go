@@ -52,7 +52,7 @@ func TestResolveViews(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess)).WithCurrentDB("mydb")
 	// AS OF expressions on a view should be pushed down to unresolved tables
 	var notAnalyzed sql.Node = plan.NewUnresolvedTable("myview", "")
-	analyzed, err := f.Apply(ctx, a, notAnalyzed, nil)
+	analyzed, _, err := f.Apply(ctx, a, notAnalyzed, nil)
 	require.NoError(err)
 	require.Equal(viewDefinition, analyzed)
 
@@ -65,7 +65,7 @@ func TestResolveViews(t *testing.T) {
 	)
 	var notAnalyzedAsOf sql.Node = plan.NewUnresolvedTableAsOf("myview", "", expression.NewLiteral("2019-01-01", sql.LongText))
 
-	analyzed, err = f.Apply(ctx, a, notAnalyzedAsOf, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzedAsOf, nil)
 	require.NoError(err)
 	require.Equal(viewDefinitionWithAsOf, analyzed)
 
@@ -75,7 +75,7 @@ func TestResolveViews(t *testing.T) {
 	require.NoError(err)
 
 	notAnalyzedAsOf = plan.NewUnresolvedTableAsOf("viewWithAsOf", "", expression.NewLiteral("2019-01-01", sql.LongText))
-	analyzed, err = f.Apply(ctx, a, notAnalyzedAsOf, nil)
+	analyzed, _, err = f.Apply(ctx, a, notAnalyzedAsOf, nil)
 	require.Error(err)
 	require.True(sql.ErrIncompatibleAsOf.Is(err), "wrong error type")
 }

@@ -4,6 +4,7 @@ package aggregation
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -50,7 +51,7 @@ func (a *Avg) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (a *Avg) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Avg) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +107,7 @@ func (a *Count) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 func (a *Count) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +115,7 @@ func (a *Count) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Count) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +163,7 @@ func (a *CountDistinct) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +171,7 @@ func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *CountDistinct) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +219,7 @@ func (a *First) WithChildren(children ...sql.Expression) (sql.Expression, error)
 }
 
 func (a *First) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +227,7 @@ func (a *First) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *First) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +275,7 @@ func (a *Last) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 }
 
 func (a *Last) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +283,7 @@ func (a *Last) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Last) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +331,7 @@ func (a *Max) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Max) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +339,7 @@ func (a *Max) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Max) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +387,7 @@ func (a *Min) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Min) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +395,7 @@ func (a *Min) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Min) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +443,7 @@ func (a *Sum) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 func (a *Sum) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +451,7 @@ func (a *Sum) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *Sum) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -498,7 +499,7 @@ func (a *JsonArray) WithChildren(children ...sql.Expression) (sql.Expression, er
 }
 
 func (a *JsonArray) NewBuffer() (sql.AggregationBuffer, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}
@@ -506,7 +507,7 @@ func (a *JsonArray) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 func (a *JsonArray) NewWindowFunction() (sql.WindowFunction, error) {
-	child, err := expression.Clone(a.UnaryExpression.Child)
+	child, err := visit.Clone(a.UnaryExpression.Child)
 	if err != nil {
 		return nil, err
 	}

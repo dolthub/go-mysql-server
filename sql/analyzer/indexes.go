@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -48,7 +49,7 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 	var indexes indexLookupsByTable
 	cont := true
 	var errInAnalysis error
-	plan.Inspect(node, func(node sql.Node) bool {
+	visit.Inspect(node, func(node sql.Node) bool {
 		if !cont || errInAnalysis != nil {
 			return false
 		}
@@ -1083,7 +1084,7 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 // convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
 // equivalent as far as the index interfaces are concerned.
 func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
-	expr, _ := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	expr, _, _ := visit.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		isNull, ok := e.(*expression.IsNull)
 		if !ok {
 			return e, sql.SameTree, nil

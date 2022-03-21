@@ -18,14 +18,15 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // replaceNamedWindows will 1) extract window definitions from a *plan.NamedWindows node,
 // 2) resolve window name references, 3) embed resolved window definitions in sql.Window clauses
 // (currently in expression.UnresolvedFunction instances), and 4) replace the plan.NamedWindows
 // node with its child *plan.Window.
-func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n.(type) {
 		case *plan.NamedWindows:
 			wn, ok := n.(*plan.NamedWindows)
@@ -48,7 +49,7 @@ func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			newExprs := make([]sql.Expression, len(window.SelectExprs))
 			same := sql.SameTree
 			for i, expr := range window.SelectExprs {
-				newExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newExprs[i], _, err = visit.Exprs(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 					uf, ok := e.(*expression.UnresolvedFunction)
 					if !ok {
 						return e, sql.SameTree, nil

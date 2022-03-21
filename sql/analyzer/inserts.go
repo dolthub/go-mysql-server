@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -22,14 +23,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
-		return n, nil
+		return n, sql.SameTree, nil
 	} else if _, ok := n.(*plan.CreateProcedure); ok {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		insert, ok := n.(*plan.InsertInto)
 		if !ok {
 			return n, sql.SameTree, nil

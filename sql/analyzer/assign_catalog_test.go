@@ -37,7 +37,7 @@ func TestAssignCatalog(t *testing.T) {
 
 	tbl := memory.NewTable("foo", sql.PrimaryKeySchema{})
 
-	node, err := f.Apply(ctx, a,
+	node, _, err := f.Apply(ctx, a,
 		plan.NewCreateIndex("", plan.NewResolvedTable(tbl, nil, nil), nil, "", make(map[string]string)), nil)
 	require.NoError(err)
 
@@ -46,7 +46,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(a.Catalog, ci.Catalog)
 	require.Equal("foo", ci.CurrentDatabase)
 
-	node, err = f.Apply(ctx, a,
+	node, _, err = f.Apply(ctx, a,
 		plan.NewDropIndex("foo", plan.NewResolvedTable(tbl, nil, nil)), nil)
 	require.NoError(err)
 
@@ -55,7 +55,7 @@ func TestAssignCatalog(t *testing.T) {
 	require.Equal(a.Catalog, di.Catalog)
 	require.Equal("foo", di.CurrentDatabase)
 
-	node, err = f.Apply(ctx, a, plan.NewShowProcessList(), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewShowProcessList(), nil)
 	require.NoError(err)
 
 	pl, ok := node.(*plan.ShowProcessList)
@@ -64,19 +64,19 @@ func TestAssignCatalog(t *testing.T) {
 	// TODO: get processlist from runtime
 	//	require.Equal(c.ProcessList, pl.ProcessList)
 
-	node, err = f.Apply(ctx, a, plan.NewShowDatabases(), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewShowDatabases(), nil)
 	require.NoError(err)
 	sd, ok := node.(*plan.ShowDatabases)
 	require.True(ok)
 	require.Equal(a.Catalog, sd.Catalog)
 
-	node, err = f.Apply(ctx, a, plan.NewLockTables(nil), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewLockTables(nil), nil)
 	require.NoError(err)
 	lt, ok := node.(*plan.LockTables)
 	require.True(ok)
 	require.Equal(a.Catalog, lt.Catalog)
 
-	node, err = f.Apply(ctx, a, plan.NewUnlockTables(), nil)
+	node, _, err = f.Apply(ctx, a, plan.NewUnlockTables(), nil)
 	require.NoError(err)
 	ut, ok := node.(*plan.UnlockTables)
 	require.True(ok)

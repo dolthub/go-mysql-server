@@ -65,16 +65,15 @@ func (d *declarationScope) getCondition(name string) *plan.DeclareCondition {
 
 // resolveDeclarations handles all Declare nodes, ensuring correct node order and assigning variables and conditions to
 // their appropriate references.
-func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, error) {
+func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	return resolveDeclarationsInner(ctx, a, node, newDeclarationScope(nil))
 }
 
-func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scope *declarationScope) (sql.Node, error) {
+func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scope *declarationScope) (sql.Node, sql.TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
-		return node, nil
+		return node, sql.SameTree, nil
 	}
-	newChildren := make([]sql.Node, len(children))
 	// First pass checks for order and assigns to scope
 	isBeginEnd := false
 	switch node.(type) {
@@ -90,10 +89,10 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			switch child := child.(type) {
 			case *plan.DeclareCondition:
 				if !lastStatementDeclare {
-					return nil, sql.ErrDeclareOrderInvalid.New()
+					return nil, sql.SameTree, sql.ErrDeclareOrderInvalid.New()
 				}
 				if err := scope.AddCondition(child); err != nil {
-					return nil, err
+					return nil, sql.SameTree, err
 				}
 			default:
 				lastStatementDeclare = false
@@ -103,34 +102,57 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		for _, child := range children {
 			switch child.(type) {
 			case *plan.DeclareCondition:
-				return nil, sql.ErrDeclareOrderInvalid.New()
+				return nil, sql.SameTree, sql.ErrDeclareOrderInvalid.New()
 			}
 		}
 	}
-	for i, child := range children {
-		var newChild sql.Node
-		var err error
-		switch child := child.(type) {
+
+	var (
+		child sql.Node
+		newChild sql.Node
+		newChildren []sql.Node
+		same = sql.SameTree
+		err error
+	)
+
+	for i :=0; i < len(children); i++ {
+		child = children[i]
+		switch c := child.(type) {
 		case *plan.Procedure, *plan.Block, *plan.IfElseBlock, *plan.IfConditional:
-			newChild, err = resolveDeclarationsInner(ctx, a, child, scope)
+			newChild, same, err = resolveDeclarationsInner(ctx, a, c, scope)
 		case *plan.BeginEndBlock, *plan.TriggerBeginEndBlock:
-			newChild, err = resolveDeclarationsInner(ctx, a, child, newDeclarationScope(scope))
+			newChild, same, err = resolveDeclarationsInner(ctx, a, c, newDeclarationScope(scope))
 		case *plan.SignalName:
-			condition := scope.GetCondition(child.Name)
+			condition := scope.GetCondition(c.Name)
 			if condition == nil {
-				return nil, sql.ErrDeclareConditionNotFound.New(child.Name)
+				return nil, sql.SameTree, sql.ErrDeclareConditionNotFound.New(c.Name)
 			}
 			if condition.SqlStateValue == "" {
-				return nil, sql.ErrSignalOnlySqlState.New()
+				return nil, sql.SameTree, sql.ErrSignalOnlySqlState.New()
 			}
-			newChild = plan.NewSignal(condition.SqlStateValue, child.Signal.Info)
+			newChild = plan.NewSignal(condition.SqlStateValue, c.Signal.Info)
 		default:
-			newChild = child
+			newChild = c
 		}
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
-		newChildren[i] = newChild
+		if !same {
+			if newChildren == nil {
+				newChildren = make([]sql.Node, len(children))
+				copy(newChildren, children)
+			}
+			newChildren[i] = newChild
+		}
 	}
-	return node.WithChildren(newChildren...)
+
+	if len(newChildren) > 0 {
+		node, err = node.WithChildren(newChildren...)
+		if err != nil {
+			return nil, sql.SameTree, err
+		}
+		return node, sql.NewTree, nil
+	}
+
+	return node, sql.SameTree, nil
 }

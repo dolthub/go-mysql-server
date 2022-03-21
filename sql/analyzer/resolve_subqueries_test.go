@@ -110,10 +110,10 @@ func TestResolveSubqueries(t *testing.T) {
 	finalizeSubqueries := getRule("finalize_subqueries")
 	runTestCases(t, ctx, testCases, a, Rule{
 		Name: "subqueries",
-		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-			n, err := resolveSubqueries.Apply(ctx, a, n, scope)
+		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+			n, _, err := resolveSubqueries.Apply(ctx, a, n, scope)
 			if err != nil {
-				return nil, err
+				return nil, sql.SameTree, err
 			}
 			return finalizeSubqueries.Apply(ctx, a, n, scope)
 		},

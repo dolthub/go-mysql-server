@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package visit
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,11 +24,11 @@ import (
 )
 
 func TestWalk(t *testing.T) {
-	t1 := NewUnresolvedTable("foo", "")
-	t2 := NewUnresolvedTable("bar", "")
-	join := NewCrossJoin(t1, t2)
-	filter := NewFilter(nil, join)
-	project := NewProject(nil, filter)
+	t1 := plan.NewUnresolvedTable("foo", "")
+	t2 := plan.NewUnresolvedTable("bar", "")
+	join := plan.NewCrossJoin(t1, t2)
+	filter := plan.NewFilter(nil, join)
+	project := plan.NewProject(nil, filter)
 
 	var f visitor
 	var visited []sql.Node
@@ -46,7 +47,7 @@ func TestWalk(t *testing.T) {
 	visited = nil
 	f = func(node sql.Node) Visitor {
 		visited = append(visited, node)
-		if _, ok := node.(*CrossJoin); ok {
+		if _, ok := node.(*plan.CrossJoin); ok {
 			return nil
 		}
 		return f
@@ -67,11 +68,11 @@ func (f visitor) Visit(n sql.Node) Visitor {
 }
 
 func TestInspect(t *testing.T) {
-	t1 := NewUnresolvedTable("foo", "")
-	t2 := NewUnresolvedTable("bar", "")
-	join := NewCrossJoin(t1, t2)
-	filter := NewFilter(nil, join)
-	project := NewProject(nil, filter)
+	t1 := plan.NewUnresolvedTable("foo", "")
+	t2 := plan.NewUnresolvedTable("bar", "")
+	join := plan.NewCrossJoin(t1, t2)
+	filter := plan.NewFilter(nil, join)
+	project := plan.NewProject(nil, filter)
 
 	var f func(sql.Node) bool
 	var visited []sql.Node
@@ -90,7 +91,7 @@ func TestInspect(t *testing.T) {
 	visited = nil
 	f = func(node sql.Node) bool {
 		visited = append(visited, node)
-		if _, ok := node.(*CrossJoin); ok {
+		if _, ok := node.(*plan.CrossJoin); ok {
 			return false
 		}
 		return true

@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -26,64 +27,68 @@ import (
 // pushdownFilters attempts to push conditions in filters down to individual tables. Tables that implement
 // sql.FilteredTable will get such conditions applied to them. For conditions that have an index, tables that implement
 // sql.IndexAddressableTable will get an appropriate index lookup applied.
-func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func pushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, ctx := ctx.Span("pushdown_filters")
 	defer span.Finish()
 
 	if !canDoPushdown(n) {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	return pushdownFiltersAtNode(ctx, a, n, scope)
 }
 
-func pushdownFiltersAtNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func pushdownFiltersAtNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	indexes, err := getIndexesByTable(ctx, a, n, scope)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	n, err = convertFiltersToIndexedAccess(ctx, a, n, scope, indexes)
+	n, sameI, err := convertFiltersToIndexedAccess(ctx, a, n, scope, indexes)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	return transformPushdownFilters(ctx, a, n, scope, tableAliases, indexes)
+	n, sameF, err := transformPushdownFilters(ctx, a, n, scope, tableAliases, indexes)
+	if err != nil {
+		return nil, sql.SameTree, err
+	}
+	return n, sameF && sameI, nil
 }
 
 // pushdownSubqueryAliasFilters attempts to push conditions in filters down to
 // individual subquery aliases.
-func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func pushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, ctx := ctx.Span("pushdown_subquery_alias_filters")
 	defer span.Finish()
 
 	if !canDoPushdown(n) {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	return transformPushdownSubqueryAliasFilters(ctx, a, n, scope, tableAliases)
 }
 
 // pushdownProjections attempts to push projections down to individual tables that implement sql.ProjectTable
-func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func pushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, ctx := ctx.Span("pushdown_projections")
 	defer span.Finish()
 
 	if !canDoPushdown(n) {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 	if !canProject(n, a) {
-		return n, nil
+		return n, sql.SameTree, nil
 	}
 
 	return transformPushdownProjections(ctx, a, n, scope)
@@ -100,7 +105,7 @@ func canProject(n sql.Node, a *Analyzer) bool {
 	// skip pushdown for any query with a subquery in it.
 	// TODO: fix this
 	containsSubquery := false
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	visit.InspectExpressions(n, func(e sql.Expression) bool {
 		if _, ok := e.(*plan.Subquery); ok {
 			containsSubquery = true
 			return false
@@ -114,7 +119,7 @@ func canProject(n sql.Node, a *Analyzer) bool {
 	}
 
 	containsIndexedJoin := false
-	plan.Inspect(n, func(node sql.Node) bool {
+	visit.Inspect(n, func(node sql.Node) bool {
 		if _, ok := node.(*plan.IndexedJoin); ok {
 			containsIndexedJoin = true
 			return false
@@ -134,7 +139,7 @@ func canProject(n sql.Node, a *Analyzer) bool {
 	// projection, so we do this for now.
 	// TODO: this is a hack, we shouldn't use decorator nodes for logic like this.
 	alreadyPushedDown := false
-	plan.Inspect(n, func(n sql.Node) bool {
+	visit.Inspect(n, func(n sql.Node) bool {
 		if n, ok := n.(*plan.DecoratedNode); ok && strings.Contains(n.String(), "Projected table access on") {
 			alreadyPushedDown = true
 			return false
@@ -168,7 +173,7 @@ func canDoPushdown(n sql.Node) bool {
 // Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on
 // the secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
 // sometimes null in these types of joins). It must be evaluated only after the join result is computed.
-func filterPushdownChildSelector(c plan.TransformContext) bool {
+func filterPushdownChildSelector(c visit.TransformContext) bool {
 	switch n := c.Parent.(type) {
 	case *plan.TableAlias:
 		return false
@@ -194,7 +199,7 @@ func filterPushdownChildSelector(c plan.TransformContext) bool {
 // (for tables that can't treat the filter as an index lookup or accept it directly). In this case, we want to avoid
 // introducing additional Filter nodes unnecessarily. This means only introducing new filter nodes when they are being
 // pushed below a join or other structure.
-func filterPushdownAboveTablesChildSelector(c plan.TransformContext) bool {
+func filterPushdownAboveTablesChildSelector(c visit.TransformContext) bool {
 	// All the same restrictions that apply to pushing filters down in general apply here as well
 	if !filterPushdownChildSelector(c) {
 		return false
@@ -213,10 +218,9 @@ func filterPushdownAboveTablesChildSelector(c plan.TransformContext) bool {
 	return true
 }
 
-func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases, indexes indexLookupsByTable) (sql.Node, error) {
+func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases, indexes indexLookupsByTable) (sql.Node, sql.TreeIdentity, error) {
 	applyFilteredTables := func(n *plan.Filter, filters *filterSet) (sql.Node, sql.TreeIdentity, error) {
-		c := plan.TransformContext{n, nil, -1, sql.Schema{}}
-		return plan.TransformUpCtxHelper(c, filterPushdownChildSelector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+		return visit.NodesWithCtx(n, filterPushdownChildSelector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
 				n, samePred, err := removePushedDownPredicates(ctx, a, node, filters)
@@ -256,8 +260,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	}
 
 	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, sql.TreeIdentity, error) {
-		c := plan.TransformContext{n, nil, -1, sql.Schema{}}
-		return plan.TransformUpCtxHelper(c, filterPushdownAboveTablesChildSelector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+		return visit.NodesWithCtx(n, filterPushdownAboveTablesChildSelector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
 				n, same, err := removePushedDownPredicates(ctx, a, node, filters)
@@ -292,7 +295,7 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	}
 
 	// For each filter node, we want to push its predicates as low as possible.
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.Filter:
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
@@ -315,9 +318,12 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		case *plan.Window:
 			// Analyze below the Window in isolation to push down
 			// any relevant indexes, for example.
-			child, err := pushdownFiltersAtNode(ctx, a, n.Child, scope)
+			child, same, err := pushdownFiltersAtNode(ctx, a, n.Child, scope)
 			if err != nil {
 				return nil, sql.SameTree, err
+			}
+			if same {
+				return n, sql.SameTree, nil
 			}
 			node, err = n.WithChildren(child)
 			if err != nil {
@@ -330,12 +336,11 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	})
 }
 
-func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, error) {
+func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, tableAliases TableAliases) (sql.Node, sql.TreeIdentity, error) {
 	var filters *filterSet
 
 	transformFilterNode := func(n *plan.Filter) (sql.Node, sql.TreeIdentity, error) {
-		c := plan.TransformContext{n, nil, -1, sql.Schema{}}
-		return plan.TransformUpCtxHelper(c, filterPushdownChildSelector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+		return visit.NodesWithCtx(n, filterPushdownChildSelector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
 				return removePushedDownPredicates(ctx, a, node, filters)
@@ -348,7 +353,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	}
 
 	// For each filter node, we want to push its predicates as low as possible.
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
@@ -370,8 +375,8 @@ func convertFiltersToIndexedAccess(
 	n sql.Node,
 	scope *Scope,
 	indexes indexLookupsByTable,
-) (sql.Node, error) {
-	childSelector := func(c plan.TransformContext) bool {
+) (sql.Node, sql.TreeIdentity, error) {
+	childSelector := func(c visit.TransformContext) bool {
 		switch c.Node.(type) {
 		// We can't push any indexes down to a table has already had an index pushed down it
 		case *plan.IndexedTableAccess:
@@ -410,7 +415,7 @@ func convertFiltersToIndexedAccess(
 		return true
 	}
 
-	node, err := plan.TransformUpCtx(n, childSelector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return visit.NodesWithCtx(n, childSelector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		switch node := c.Node.(type) {
 		// TODO: some indexes, once pushed down, can be safely removed from the filter. But not all of them, as currently
 		//  implemented -- some indexes return more values than strictly match.
@@ -422,7 +427,7 @@ func convertFiltersToIndexedAccess(
 			if same {
 				return c.Node, sql.SameTree, nil
 			}
-			n, _, err := plan.TransformUpHelper(table, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+			n, _, err := visit.Nodes(table, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 				ita, ok := n.(*plan.IndexedTableAccess)
 				if !ok {
 					return n, sql.SameTree, nil
@@ -462,12 +467,6 @@ func convertFiltersToIndexedAccess(
 			return FixFieldIndexesForExpressions(ctx, a, node, scope)
 		}
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return node, nil
 }
 
 // pushdownFiltersToTable attempts to push down filters to indexes that can accept them.
@@ -542,7 +541,7 @@ func pushdownFiltersToTable(
 
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		t, err := withTable(newTableNode, table)
+		t, _, err := withTable(newTableNode, table)
 		return t, same, err
 	default:
 		return nil, sql.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
@@ -585,7 +584,7 @@ func pushdownFiltersToAboveTable(
 
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		node, err := withTable(tableNode, table)
+		node, _, err := withTable(tableNode, table)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}
@@ -594,7 +593,7 @@ func pushdownFiltersToAboveTable(
 			return plan.NewFilter(pushedDownFilterExpression, node), sql.NewTree, nil
 		}
 
-		return node, sql.SameTree, nil
+		return node, sql.NewTree, nil
 	default:
 		return nil, sql.SameTree, ErrInvalidNodeType.New("pushdownFiltersToAboveTable", tableNode)
 	}
@@ -623,7 +622,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	childSchema := sa.Child.Schema()
 	expressionsForChild := make([]sql.Expression, len(handled))
 	for i, h := range handled {
-		expressionsForChild[i], err = expression.TransformUp(h, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		expressionsForChild[i], _, err = visit.Exprs(h, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if gt, ok := e.(*expression.GetField); ok {
 				col := childSchema[gt.Index()]
 				return gt.WithTable(col.Source).WithName(col.Name), sql.NewTree, nil
@@ -642,7 +641,7 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 // pushdownIndexesToTable attempts to convert filter predicates to indexes on tables that implement
 // sql.IndexAddressableTable
 func pushdownIndexesToTable(a *Analyzer, tableNode NameableNode, indexes map[string]*indexLookup) (sql.Node, sql.TreeIdentity, error) {
-	return plan.TransformUpHelper(tableNode, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(tableNode, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			table := getTable(tableNode)
@@ -710,7 +709,7 @@ func pushdownProjectionsToTable(
 
 	switch tableNode.(type) {
 	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess:
-		node, err := withTable(newTableNode, table)
+		node, _, err := withTable(newTableNode, table)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}
@@ -721,11 +720,11 @@ func pushdownProjectionsToTable(
 	}
 }
 
-func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	usedFieldsByTable := make(fieldsByTable)
 	fieldsByTable := getFieldsByTable(ctx, n)
 
-	selector := func(c plan.TransformContext) bool {
+	selector := func(c visit.TransformContext) bool {
 		switch c.Parent.(type) {
 		case *plan.TableAlias:
 			// When we hit a table alias, we don't want to descend farther into the tree for expression matches, which
@@ -736,7 +735,7 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		}
 	}
 
-	node, err := plan.TransformUpCtx(n, selector, func(c plan.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return visit.NodesWithCtx(n, selector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		var nameable NameableNode
 
 		switch c.Node.(type) {
@@ -759,12 +758,6 @@ func transformPushdownProjections(ctx *sql.Context, a *Analyzer, n sql.Node, sco
 		}
 		return FixFieldIndexesForExpressions(ctx, a, c.Node, scope)
 	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return node, nil
 }
 
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all

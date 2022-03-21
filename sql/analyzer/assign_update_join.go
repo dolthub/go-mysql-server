@@ -4,20 +4,21 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/visit"
 )
 
 // modifyUpdateExpressionsForJoin searches for a JOIN for UPDATE query and updates the child of the original update
 // node to use a plan.UpdateJoin node as a child.
-func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.Update:
 		us, ok := n.Child.(*plan.UpdateSource)
 		if !ok {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
 		var jn sql.Node
-		plan.Inspect(us, func(node sql.Node) bool {
+		visit.Inspect(us, func(node sql.Node) bool {
 			switch node.(type) {
 			case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin:
 				jn = node
@@ -28,25 +29,25 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 		})
 
 		if jn == nil {
-			return n, nil
+			return n, sql.SameTree, nil
 		}
 
 		updaters, err := rowUpdatersByTable(ctx, us, jn)
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
 		uj := plan.NewUpdateJoin(updaters, us)
 		ret, err := n.WithChildren(uj)
 
 		if err != nil {
-			return nil, err
+			return nil, sql.SameTree, err
 		}
 
-		return ret, nil
+		return ret, sql.NewTree, nil
 	}
 
-	return n, nil
+	return n, sql.SameTree, nil
 }
 
 // rowUpdatersByTable maps a set of tables to their RowUpdater objects.
@@ -79,7 +80,7 @@ func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[strin
 func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 	ret := make(map[string]struct{})
 
-	plan.InspectExpressions(node, func(e sql.Expression) bool {
+	visit.InspectExpressions(node, func(e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.SetField:
 			gf := e.Left.(*expression.GetField)
