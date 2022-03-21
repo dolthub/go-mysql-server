@@ -41,18 +41,18 @@ func NewUpdate(n sql.Node, updateExprs []sql.Expression) *Update {
 		)}}
 }
 
-func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
+func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	switch node := node.(type) {
 	case sql.UpdatableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return getUpdatable(node.ResolvedTable)
+		return GetUpdatable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
 	case *SubqueryAlias:
 		return nil, ErrUpdateNotSupported.New()
 	case *TriggerExecutor:
-		return getUpdatable(node.Left())
+		return GetUpdatable(node.Left())
 	case sql.TableWrapper:
 		return getUpdatableTable(node.Underlying())
 	case *UpdateJoin:
@@ -62,7 +62,7 @@ func getUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 		return nil, ErrUpdateNotSupported.New()
 	}
 	for _, child := range node.Children() {
-		updater, _ := getUpdatable(child)
+		updater, _ := GetUpdatable(child)
 		if updater != nil {
 			return updater, nil
 		}
@@ -242,7 +242,7 @@ func newUpdateIter(
 
 // RowIter implements the Node interface.
 func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	updatable, err := getUpdatable(u.Child)
+	updatable, err := GetUpdatable(u.Child)
 	if err != nil {
 		return nil, err
 	}

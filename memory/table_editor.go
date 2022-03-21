@@ -188,7 +188,11 @@ func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 		if err != nil {
 			panic(err)
 		}
-		return newTable.WithIndexLookup(lookup)
+		memoryLookup := lookup.(*IndexLookup)
+		lookupIndex := *memoryLookup.idx.(*Index)
+		lookupIndex.Tbl = newTable
+		memoryLookup.idx = &lookupIndex
+		return newTable.WithIndexLookup(memoryLookup)
 	} else {
 		nonPkTea := t.ea.(*keylessTableEditAccumulator)
 		newTable, err := copyTable(nonPkTea.table, nonPkTea.table.schema)
@@ -211,7 +215,11 @@ func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
 		if err != nil {
 			panic(err)
 		}
-		return newTable.WithIndexLookup(lookup)
+		memoryLookup := lookup.(*IndexLookup)
+		lookupIndex := *memoryLookup.idx.(*Index)
+		lookupIndex.Tbl = newTable
+		memoryLookup.idx = &lookupIndex
+		return newTable.WithIndexLookup(memoryLookup)
 	}
 }
 

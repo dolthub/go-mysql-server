@@ -251,12 +251,23 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	if err != nil {
 		return err
 	}
+	var selfCols map[string]int
+	if fkDef.IsSelfReferential() {
+		selfCols = make(map[string]int)
+		for i, col := range tbl.Schema() {
+			selfCols[strings.ToLower(col.Name)] = i
+		}
+	}
 	reference := &ForeignKeyReferenceHandler{
-		Index:          refTblIndex,
-		ForeignKey:     *fkDef,
-		Editor:         refTbl.GetForeignKeyUpdater(ctx),
-		IndexPositions: indexPositions,
-		AppendTypes:    appendTypes,
+		ForeignKey: *fkDef,
+		SelfCols:   selfCols,
+		RowMapper: ForeignKeyRowMapper{
+			Index:          refTblIndex,
+			Updater:        refTbl.GetForeignKeyUpdater(ctx),
+			SourceSch:      tbl.Schema(),
+			IndexPositions: indexPositions,
+			AppendTypes:    appendTypes,
+		},
 	}
 	if err := reference.CheckTable(ctx, tbl); err != nil {
 		return err

@@ -1026,6 +1026,11 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 }
 
 func (t *Table) createIndex(name string, columns []sql.IndexColumn, constraint sql.IndexConstraint, comment string) (sql.Index, error) {
+	if name == "" {
+		for _, column := range columns {
+			name += column.Name + "_"
+		}
+	}
 	if t.indexes[name] != nil {
 		// TODO: extract a standard error type for this
 		return nil, fmt.Errorf("Error: index already exists")
