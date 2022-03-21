@@ -6754,6 +6754,14 @@ var QueryTests = []QueryTest{
 		Query:    `show function status`,
 		Expected: []sql.Row{},
 	},
+	{
+		Query:    `show function status like 'foo'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `show function status where Db='mydb'`,
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{

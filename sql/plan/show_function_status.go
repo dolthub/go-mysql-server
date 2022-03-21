@@ -47,18 +47,21 @@ func NewShowFunctionStatus() *ShowFunctionStatus {
 
 // String implements the sql.Node interface.
 func (s *ShowFunctionStatus) String() string {
-	return "SHOW PROCEDURE STATUS"
+	return "SHOW FUNCTION STATUS"
 }
 
 // Resolved implements the sql.Node interface.
 func (s *ShowFunctionStatus) Resolved() bool {
-	return true
+	if s.RoutinesTable == nil {
+		return true
+	}
+	return s.RoutinesTable.Resolved()
 }
 
 // Children implements the sql.Node interface.
 func (s *ShowFunctionStatus) Children() []sql.Node {
 	if s.RoutinesTable == nil {
-		return nil
+		return []sql.Node{}
 	}
 	return []sql.Node{s.RoutinesTable}
 }
@@ -75,7 +78,7 @@ func (s *ShowFunctionStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 		return nil, err
 	}
 
-	return &showFuncStatusIter{originalIter: ri}, nil
+	return &showFuncStatusIter{routinesIter: ri}, nil
 }
 
 // WithChildren implements the sql.Node interface.
@@ -95,11 +98,11 @@ func (s *ShowFunctionStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.Pri
 }
 
 type showFuncStatusIter struct {
-	originalIter sql.RowIter
+	routinesIter sql.RowIter
 }
 
 func (sfsi *showFuncStatusIter) Next(ctx *sql.Context) (sql.Row, error) {
-	row, err := sfsi.originalIter.Next(ctx)
+	row, err := sfsi.routinesIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -126,5 +129,5 @@ func (sfsi *showFuncStatusIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (sfsi *showFuncStatusIter) Close(ctx *sql.Context) error {
-	return sfsi.originalIter.Close(ctx)
+	return sfsi.routinesIter.Close(ctx)
 }
