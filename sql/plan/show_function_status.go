@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"strings"
 )
 
 type ShowFunctionStatus struct {
@@ -102,22 +103,22 @@ func (sfsi *showFuncStatusIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	if row[4] != "PROCEDURE" {
+	if strings.ToLower(row[4].(string)) != "function" {
 		return nil, nil
 	}
 
 	var qr = sql.Row{
-		row[2],
-		row[3],
-		row[4],
-		row[27],
-		row[24],
-		row[23],
-		row[22],
-		row[26],
-		row[28],
-		row[29],
-		row[30],
+		row[2],  // Db
+		row[3],  // Name
+		row[4],  // Type
+		row[27], // Definer
+		row[24], // Modified
+		row[23], // Created
+		row[22], // Security_type
+		row[26], // Comment
+		row[28], // character_set_client
+		row[29], // collation_connection
+		row[30], // Database Collation
 	}
 
 	return qr, nil
