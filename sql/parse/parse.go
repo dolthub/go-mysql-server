@@ -528,6 +528,30 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			node = plan.NewFilter(filter, node)
 		}
 		return node, nil
+	case "function status":
+		var filter sql.Expression
+
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Name"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+			}
+		}
+
+		var node sql.Node = plan.NewShowFunctionStatus()
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
