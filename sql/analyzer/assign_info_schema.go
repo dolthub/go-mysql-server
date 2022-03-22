@@ -54,13 +54,6 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			}
 
 			x.CharacterSetTable = rt
-		case *plan.ShowFunctionStatus:
-			rt, err := getInformationSchemaTable(ctx, a, "routines")
-			if err != nil {
-				return nil, err
-			}
-
-			x.RoutinesTable = rt
 		}
 
 		return n, nil
