@@ -96,7 +96,7 @@ func (s *ShowTriggers) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			tableName,             // Table
 			trigger.BodyString,    // Statement
 			triggerTime,           // Timing
-			time.Unix(0, 0).UTC(), // Created
+			time.Unix(1, 0).UTC(), // Created
 			"",                    // sql_mode
 			"",                    // Definer
 			characterSetClient,    // character_set_client
