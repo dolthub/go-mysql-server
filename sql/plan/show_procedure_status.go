@@ -19,11 +19,9 @@ import (
 )
 
 type ShowProcedureStatus struct {
-	db         sql.Database
 	Procedures []*Procedure
 }
 
-var _ sql.Databaser = (*ShowProcedureStatus)(nil)
 var _ sql.Node = (*ShowProcedureStatus)(nil)
 
 var showProcedureStatusSchema = sql.Schema{
@@ -41,10 +39,8 @@ var showProcedureStatusSchema = sql.Schema{
 }
 
 // NewShowProcedureStatus creates a new *ShowProcedureStatus node.
-func NewShowProcedureStatus(db sql.Database) *ShowProcedureStatus {
-	return &ShowProcedureStatus{
-		db: db,
-	}
+func NewShowProcedureStatus() *ShowProcedureStatus {
+	return &ShowProcedureStatus{}
 }
 
 // String implements the sql.Node interface.
@@ -54,8 +50,7 @@ func (s *ShowProcedureStatus) String() string {
 
 // Resolved implements the sql.Node interface.
 func (s *ShowProcedureStatus) Resolved() bool {
-	_, ok := s.db.(sql.UnresolvedDatabase)
-	return !ok
+	return true
 }
 
 // Children implements the sql.Node interface.
@@ -89,7 +84,7 @@ func (s *ShowProcedureStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 			return nil, err
 		}
 		rows = append(rows, sql.Row{
-			s.db.Name(),                // Db
+			"mydb",                     // Db
 			procedure.Name,             // Name
 			"PROCEDURE",                // Type
 			procedure.Definer,          // Definer
@@ -114,16 +109,4 @@ func (s *ShowProcedureStatus) WithChildren(children ...sql.Node) (sql.Node, erro
 func (s *ShowProcedureStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: procedure visibility should be limited by privileges
 	return true
-}
-
-// Database implements the sql.Databaser interface.
-func (s *ShowProcedureStatus) Database() sql.Database {
-	return s.db
-}
-
-// WithDatabase implements the sql.Databaser interface.
-func (s *ShowProcedureStatus) WithDatabase(db sql.Database) (sql.Node, error) {
-	ns := *s
-	ns.db = db
-	return &ns, nil
 }
