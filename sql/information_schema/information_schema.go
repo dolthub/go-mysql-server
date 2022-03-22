@@ -1170,7 +1170,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						nil,                     // action_reference_new_table
 						"OLD",                   // action_reference_old_row
 						"NEW",                   // action_reference_new_row
-						time.Unix(1, 0).UTC(),   // created
+						time.Unix(0, 0).UTC(),   // created
 						"",                      // sql_mode
 						"",                      // definer
 						characterSetClient,      // character_set_client
