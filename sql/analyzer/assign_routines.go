@@ -24,7 +24,7 @@ type RoutineTable interface {
 	sql.Table
 
 	// AssignProcedures assigns an array of procedures to the routines table.
-	AssignProcedures(p []*plan.Procedure) sql.Table
+	AssignProcedures(p map[string][]*plan.Procedure) sql.Table
 	// TODO: also should assign FUNCTIONS
 }
 
@@ -42,9 +42,17 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 		case *plan.ResolvedTable:
 			nc := *node
 			ct, ok := nc.Table.(RoutineTable)
-			if ok {
-				nc.Table = ct.AssignProcedures(a.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase()))
+
+			dbs := a.Catalog.AllDatabases(ctx)
+			pm := make(map[string][]*plan.Procedure)
+			for _, db := range dbs {
+				pm[db.Name()] = a.ProcedureCache.AllForDatabase(db.Name())
 			}
+
+			if ok {
+				nc.Table = ct.AssignProcedures(pm)
+			}
+
 			return &nc, nil
 		default:
 			return n, nil

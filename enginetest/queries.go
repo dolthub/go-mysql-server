@@ -7968,6 +7968,9 @@ var InfoSchemaScripts = []ScriptTest{
 			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
 			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
 			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
+			"CREATE DATABASE somedb",
+			"USE somedb",
+			"CREATE PROCEDURE p12() COMMENT 'hello' DETERMINISTIC SELECT 6",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7983,6 +7986,9 @@ var InfoSchemaScripts = []ScriptTest{
 						"utf8mb4_0900_bin"},
 					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
 						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "user", "utf8mb4", "utf8mb4_0900_bin",
+						"utf8mb4_0900_bin"},
+					{"p12", "def", "somedb", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hello", "", "utf8mb4", "utf8mb4_0900_bin",
 						"utf8mb4_0900_bin"},
 					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
 						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "", "", "utf8mb4", "utf8mb4_0900_bin",
