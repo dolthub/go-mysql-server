@@ -1907,7 +1907,7 @@ func routinesRowIter(ctx *Context, c Catalog, p []*plan.Procedure) (RowIter, err
 			isDeterministic,            // is_deterministic NOT NULL
 			"",                         // sql_data_access NOT NULL
 			nil,                        // sql_path
-			securityType,               // security_type NOT NULL 22
+			securityType,               // security_type NOT NULL
 			procedure.CreatedAt.UTC(),  // created NOT NULL
 			procedure.ModifiedAt.UTC(), // last_altered NOT NULL
 			sqlMode,                    // sql_mode NOT NULL
