@@ -1249,6 +1249,7 @@ func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedT
 }
 
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	// TODO: Need to re-resolve tables on MultiAlter ddl
 	table := tableNameToUnresolvedTable(ddl.Table)
 	switch strings.ToLower(ddl.IndexSpec.Action) {
 	case sqlparser.CreateStr:
@@ -1302,14 +1303,15 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			}
 		}
 
+		// TODO: Fix the database name
 		if constraint == sql.IndexConstraint_Primary {
-			return plan.NewAlterCreatePk(table, columns), nil
+			return plan.NewAlterCreatePk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name(), columns), nil
 		}
 
 		return plan.NewAlterCreateIndex(table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment), nil
 	case sqlparser.DropStr:
 		if ddl.IndexSpec.Type == sqlparser.PrimaryStr {
-			return plan.NewAlterDropPk(table), nil
+			return plan.NewAlterDropPk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name()), nil
 		}
 		return plan.NewAlterDropIndex(table, ddl.IndexSpec.ToName.String()), nil
 	case sqlparser.RenameStr:

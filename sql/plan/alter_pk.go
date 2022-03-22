@@ -33,73 +33,63 @@ const (
 var ErrNotPrimaryKeyAlterable = errors.NewKind("error: table is not primary key alterable")
 
 type AlterPK struct {
+	ddlNode
+
 	Action  PKAction
-	Table   sql.Node
+	Table   string
 	Columns []sql.IndexColumn
+	Catalog sql.Catalog
 }
 
-func NewAlterCreatePk(table sql.Node, columns []sql.IndexColumn) *AlterPK {
+var _ sql.Databaser = (*AlterPK)(nil)
+
+func NewAlterCreatePk(db sql.Database, tableName string, columns []sql.IndexColumn) *AlterPK {
 	return &AlterPK{
 		Action:  PrimaryKeyAction_Create,
-		Table:   table,
+		ddlNode: ddlNode{db: db},
+		Table:   tableName,
 		Columns: columns,
 	}
 }
 
-func NewAlterDropPk(table sql.Node) *AlterPK {
+func NewAlterDropPk(db sql.Database, tableName string) *AlterPK {
 	return &AlterPK{
-		Action: PrimaryKeyAction_Drop,
-		Table:  table,
+		Action:  PrimaryKeyAction_Drop,
+		Table:   tableName,
+		ddlNode: ddlNode{db: db},
 	}
 }
 
-func (a AlterPK) Resolved() bool {
-	return a.Table.Resolved()
+func (a *AlterPK) Resolved() bool {
+	return a.ddlNode.Resolved()
 }
 
-func (a AlterPK) String() string {
+func (a *AlterPK) String() string {
 	action := "add"
 	if a.Action == PrimaryKeyAction_Drop {
 		action = "drop"
 	}
 
-	return fmt.Sprintf("alter table %s %s primary key", a.Table.String(), action)
+	return fmt.Sprintf("alter table %s %s primary key", a.Table, action)
 }
 
-func (a AlterPK) Schema() sql.Schema {
+func (a *AlterPK) Schema() sql.Schema {
 	return nil
 }
 
-func (a AlterPK) Children() []sql.Node {
-	return []sql.Node{a.Table}
-}
-
-func getPrimaryKeyAlterable(node sql.Node) (sql.PrimaryKeyAlterableTable, error) {
-	switch node := node.(type) {
-	case sql.PrimaryKeyAlterableTable:
-		return node, nil
-	case *ResolvedTable:
-		return getPrimaryKeyAlterableTable(node.Table)
-	case sql.TableWrapper:
-		return getPrimaryKeyAlterableTable(node.Underlying())
-	default:
-		return nil, ErrNotPrimaryKeyAlterable.New()
+func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	table, ok, err := a.ddlNode.Database().GetTableInsensitive(ctx, a.Table)
+	if err != nil {
+		return nil, err
 	}
-}
-
-func getPrimaryKeyAlterableTable(t sql.Table) (sql.PrimaryKeyAlterableTable, error) {
-	switch t := t.(type) {
-	case sql.PrimaryKeyAlterableTable:
-		return t, nil
-	case sql.TableWrapper:
-		return getPrimaryKeyAlterableTable(t.Underlying())
-	default:
-		return nil, ErrNotPrimaryKeyAlterable.New()
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(a.Table)
 	}
-}
 
-func (a AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	pkAlterable, err := getPrimaryKeyAlterable(a.Table)
+	pkAlterable, ok := table.(sql.PrimaryKeyAlterableTable)
+	if !ok {
+		return nil, ErrNotPrimaryKeyAlterable.New(a.Table)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -138,23 +128,19 @@ func hasPrimaryKeys(table sql.Table) bool {
 	return false
 }
 
-func (a AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
-	}
+func (a *AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
+	return NillaryWithChildren(a, children...)
+}
 
-	switch a.Action {
-	case PrimaryKeyAction_Create:
-		return NewAlterCreatePk(children[0], a.Columns), nil
-	case PrimaryKeyAction_Drop:
-		return NewAlterDropPk(children[0]), nil
-	default:
-		return nil, ErrIndexActionNotImplemented.New(a.Action)
-	}
+// WithDatabase implements the sql.Database interface
+func (a *AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
+	na := *a
+	na.db = database
+	return &na, nil
 }
 
 // CheckPrivileges implements the interface sql.Node.
-func (a AlterPK) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (a *AlterPK) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(a.Table), getTableName(a.Table), "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(a.Database().Name(), a.Table, "", sql.PrivilegeType_Alter))
 }

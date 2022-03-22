@@ -4522,6 +4522,40 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that adding a primary key with an unknown column causes an error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
+
+		// Truncate the table and re-add rows
+		RunQuery(t, e, harness, "TRUNCATE t1")
+		RunQuery(t, e, harness, "ALTER TABLE t1 DROP INDEX myidx")
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
+		RunQuery(t, e, harness, `INSERT INTO t1 values ("a1","a2"),("a2","a3"),("a3","a4")`)
+
+		// Execute a MultiDDL Alter Statement
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (pk, v)`)
+		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
+			{"pk", "text", "NO", "PRI", "", ""},
+			{"v", "text", "NO", "PRI", "", ""},
+		}, nil, nil)
+		AssertErr(t, e, harness, `INSERT INTO t1 values ("a2", "a3")`, sql.ErrPrimaryKeyViolation)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+
+		// Technically the query beneath errors in MySQL but I'm pretty sure it's a bug cc:
+		// https://stackoverflow.com/questions/8301744/mysql-reports-a-primary-key-but-can-not-drop-it-from-the-table
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
+		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
+			{"pk", "text", "NO", "", "", ""},
+			{"v", "text", "NO", "", "", ""},
+		}, nil, nil)
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 	})
 
 	t.Run("No database selected", func(t *testing.T) {
