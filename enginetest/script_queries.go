@@ -1567,7 +1567,8 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "trigger before insert, alter inserted value",
+		// https://github.com/dolthub/dolt/issues/3065
+		Name: "join index lookups do not handle filters",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
 			"create table b (y int primary key, x int, index idx_x(x))",
