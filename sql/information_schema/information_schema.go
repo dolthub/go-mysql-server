@@ -868,9 +868,11 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			for i, c := range t.Schema() {
 				var (
-					nullable string
-					charName interface{}
-					collName interface{}
+					nullable   string
+					charName   interface{}
+					collName   interface{}
+					ordinalPos uint64
+					colDefault string
 				)
 				if c.Nullable {
 					nullable = "YES"
@@ -881,13 +883,18 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					charName = Collation_Default.CharacterSet().String()
 					collName = Collation_Default.String()
 				}
+				ordinalPos = uint64(i + 1)
+				colDefault = c.Default.String()
+				if c.Default == nil {
+					colDefault = "NULL"
+				}
 				rows = append(rows, Row{
 					"def",                            // table_catalog
 					db.Name(),                        // table_schema
 					t.Name(),                         // table_name
 					c.Name,                           // column_name
-					uint64(i),                        // ordinal_position
-					c.Default.String(),               // column_default
+					ordinalPos,                       // ordinal_position
+					colDefault,                       // column_default
 					nullable,                         // is_nullable
 					strings.ToLower(c.Type.String()), // data_type
 					nil,                              // character_maximum_length
