@@ -19,6 +19,7 @@ import (
 	"math"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -3539,6 +3540,7 @@ CREATE TABLE t2
 		 DELETE FROM baz WHERE a = old.b;
 		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
    END`,
+		time.Now(),
 	),
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
 		plan.NewUnresolvedTable("foo", ""),
@@ -3549,6 +3551,7 @@ CREATE TABLE t2
 		), false, []string{"a", "b"}, []sql.Expression{}, false),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		time.Now(),
 	),
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update",
 		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
@@ -3560,6 +3563,7 @@ CREATE TABLE t2
 		), false, []string{"a", "b"}, []sql.Expression{}, false),
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		time.Now(),
 	),
 	`SELECT 2 UNION SELECT 3`: plan.NewDistinct(
 		plan.NewUnion(
