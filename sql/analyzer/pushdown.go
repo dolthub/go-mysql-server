@@ -224,6 +224,11 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return FixFieldIndexesForExpressions(ctx, a, n, scope)
 			case *plan.IndexedTableAccess:
+				if plan.GetIndexLookup(node) == nil {
+					// [ita] produced by join planning do not have lookup expressions
+					// even though the equivilent lookup in [indexes] might
+					return node, nil
+				}
 				lookup, ok := indexes[node.Name()]
 				if !ok || lookup.expr == nil {
 					return node, nil
