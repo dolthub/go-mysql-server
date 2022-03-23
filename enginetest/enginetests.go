@@ -226,6 +226,20 @@ func TestIndexQueryPlans(t *testing.T, harness Harness) {
 			TestQueryPlan(t, NewContextWithEngine(harness, engine), engine, harness, tt.Query, tt.ExpectedPlan)
 		})
 	}
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		RunQuery(t, engine, harness, "CREATE DATABASE otherdb")
+		RunQuery(t, engine, harness, `CREATE TABLE otherdb.a (x int, y int)`)
+		RunQuery(t, engine, harness, `CREATE INDEX idx1 ON otherdb.a (y);`)
+
+		TestQueryWithContext(t, ctx, engine, "SHOW INDEXES FROM otherdb.a", []sql.Row{
+			{"a", 1, "idx1", 1, "y", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+		}, nil, nil)
+
+	})
 }
 
 // Tests a variety of queries against databases and tables provided by the given harness.
@@ -4491,7 +4505,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that query plan this follows correctly uses an IndexedTableAccess
 		expectedPlan := "Projected table access on [pk v]\n" +
-			" └─ IndexedTableAccess(t1 on [t1.v])\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v] with ranges: [{[a3, a3]}])\n" +
 			""
 
 		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)

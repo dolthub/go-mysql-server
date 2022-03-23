@@ -138,12 +138,18 @@ func TestSingleScript(t *testing.T) {
 			Name: "trigger before insert, alter inserted value",
 			SetUpScript: []string{
 				"create table a (x int primary key)",
-				"create trigger insert_into_a before insert on a for each row set new.x = new.x + 1",
-				"insert into a values (1)",
+				"create table b (y int primary key, x int, index idx_x(x))",
+				"create table c (z int primary key, x int, y int, index idx_x(x))",
+				"insert into a values (0),(1),(2),(3)",
+				"insert into b values (0,1), (1,1), (2,2), (3,2)",
+				"insert into c values (0,1,0), (1,1,0), (2,2,1), (3,2,1)",
 			},
-			Query: "select x from a order by 1",
+			Query: "select a.* from a join b on a.x = b.x join c where c.x = a.x and b.x = 1",
 			Expected: []sql.Row{
-				{2},
+				{1},
+				{1},
+				{1},
+				{1},
 			},
 		},
 	}

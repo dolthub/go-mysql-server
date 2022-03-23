@@ -12,9 +12,9 @@ type routineTable struct {
 	name       string
 	schema     Schema
 	catalog    Catalog
-	procedures []*plan.Procedure
+	procedures map[string][]*plan.Procedure
 	// functions
-	rowIter func(*Context, Catalog, []*plan.Procedure) (RowIter, error)
+	rowIter func(*Context, Catalog, map[string][]*plan.Procedure) (RowIter, error)
 }
 
 var (
@@ -26,7 +26,7 @@ func (t *routineTable) AssignCatalog(cat Catalog) Table {
 	return t
 }
 
-func (r *routineTable) AssignProcedures(p []*plan.Procedure) Table {
+func (r *routineTable) AssignProcedures(p map[string][]*plan.Procedure) Table {
 	// TODO: should also assign functions
 	r.procedures = p
 	return r
@@ -62,4 +62,74 @@ func (r *routineTable) PartitionRows(context *Context, partition Partition) (Row
 	}
 
 	return r.rowIter(context, r.catalog, r.procedures)
+}
+
+func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (RowIter, error) {
+	var rows []Row
+	var (
+		securityType    string
+		isDeterministic string
+		sqlMode         string
+	)
+
+	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+	if err != nil {
+		return nil, err
+	}
+	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+	if err != nil {
+		return nil, err
+	}
+	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+	if err != nil {
+		return nil, err
+	}
+
+	for db, procedures := range p {
+		for _, procedure := range procedures {
+			securityType = "DEFINER"
+			isDeterministic = "" // YES or NO
+			sqlMode = "SQL"      // SQL, NO SQL, READS SQL DATA, or MODIFIES SQL DATA.
+			if procedure.SecurityContext == plan.ProcedureSecurityContext_Invoker {
+				securityType = "INVOKER"
+			}
+			rows = append(rows, Row{
+				procedure.Name,             // specific_name NOT NULL
+				"def",                      // routine_catalog
+				db,                         // routine_schema // TODO: get correct db associated to this procedure
+				procedure.Name,             // routine_name NOT NULL
+				"PROCEDURE",                // routine_type NOT NULL
+				"",                         // data_type
+				nil,                        // character_maximum_length
+				nil,                        // character_octet_length
+				nil,                        // numeric_precision
+				nil,                        // numeric_scale
+				nil,                        // datetime_precision
+				nil,                        // character_set_name
+				nil,                        // collation_name
+				"",                         // dtd_identifier
+				"SQL",                      // routine_body NOT NULL
+				procedure.Body.String(),    // routine_definition
+				nil,                        // external_name
+				"SQL",                      // external_language NOT NULL
+				"SQL",                      // parameter_style NOT NULL
+				isDeterministic,            // is_deterministic NOT NULL
+				"",                         // sql_data_access NOT NULL
+				nil,                        // sql_path
+				securityType,               // security_type NOT NULL
+				procedure.CreatedAt.UTC(),  // created NOT NULL
+				procedure.ModifiedAt.UTC(), // last_altered NOT NULL
+				sqlMode,                    // sql_mode NOT NULL
+				procedure.Comment,          // routine_comment NOT NULL
+				procedure.Definer,          // definer NOT NULL
+				characterSetClient,         // character_set_client NOT NULL
+				collationConnection,        // collation_connection NOT NULL
+				collationServer,            // database_collation NOT NULL
+			})
+		}
+	}
+
+	// TODO: need to add FUNCTIONS routine_type
+
+	return RowsToRowIter(rows...), nil
 }

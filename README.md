@@ -266,15 +266,16 @@ database implementation:
 
 ```go
 package main
+
 import (
 	"time"
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
+
 // Example of how to implement a MySQL server based on a Engine:
 //
 // ```
@@ -297,7 +298,6 @@ func main() {
 	config := server.Config{
 		Protocol: "tcp",
 		Address:  "localhost:3306",
-		Auth:     auth.NewNativeSingle("root", "", auth.AllPermissions),
 	}
 	s, err := server.NewDefaultServer(config, engine)
 	if err != nil {
@@ -305,6 +305,7 @@ func main() {
 	}
 	s.Start()
 }
+
 func createTestDatabase() *memory.Database {
 	const (
 		dbName    = "mydb"
@@ -317,7 +318,7 @@ func createTestDatabase() *memory.Database {
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
 		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
 	}))
-	
+
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
 	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
