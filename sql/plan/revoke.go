@@ -124,6 +124,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_ShowView,
 				sql.PrivilegeType_CreateRoutine,
 				sql.PrivilegeType_AlterRoutine,
+				sql.PrivilegeType_ShowRoutine,
 				sql.PrivilegeType_CreateUser,
 				sql.PrivilegeType_Event,
 				sql.PrivilegeType_Trigger,
@@ -157,6 +158,7 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_LockTables,
 				sql.PrivilegeType_References,
 				sql.PrivilegeType_Select,
+				sql.PrivilegeType_ShowRoutine,
 				sql.PrivilegeType_ShowView,
 				sql.PrivilegeType_Trigger,
 				sql.PrivilegeType_Update,
@@ -323,6 +325,8 @@ func (n *Revoke) handleGlobalPrivileges(user *grant_tables.User) error {
 			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_Select)
 		case PrivilegeType_ShowDatabases:
 			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_ShowDB)
+		case PrivilegeType_ShowRoutine:
+			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_ShowRoutine)
 		case PrivilegeType_ShowView:
 			user.PrivilegeSet.RemoveGlobalStatic(sql.PrivilegeType_ShowView)
 		case PrivilegeType_Shutdown:
@@ -389,6 +393,8 @@ func (n *Revoke) handleDatabasePrivileges(user *grant_tables.User, dbName string
 			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_References)
 		case PrivilegeType_Select:
 			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_Select)
+		case PrivilegeType_ShowRoutine:
+			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_ShowRoutine)
 		case PrivilegeType_ShowView:
 			user.PrivilegeSet.RemoveDatabase(dbName, sql.PrivilegeType_ShowView)
 		case PrivilegeType_Trigger:

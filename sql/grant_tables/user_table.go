@@ -279,6 +279,7 @@ const (
 	userTblColIndex_Show_view_priv
 	userTblColIndex_Create_routine_priv
 	userTblColIndex_Alter_routine_priv
+	userTblColIndex_Show_routine_priv
 	userTblColIndex_Create_user_priv
 	userTblColIndex_Event_priv
 	userTblColIndex_Trigger_priv

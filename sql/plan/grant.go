@@ -128,6 +128,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 				sql.PrivilegeType_ShowView,
 				sql.PrivilegeType_CreateRoutine,
 				sql.PrivilegeType_AlterRoutine,
+				sql.PrivilegeType_ShowRoutine,
 				sql.PrivilegeType_CreateUser,
 				sql.PrivilegeType_Event,
 				sql.PrivilegeType_Trigger,
@@ -162,6 +163,7 @@ func (n *Grant) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperat
 				sql.PrivilegeType_References,
 				sql.PrivilegeType_Select,
 				sql.PrivilegeType_ShowView,
+				sql.PrivilegeType_ShowRoutine,
 				sql.PrivilegeType_Trigger,
 				sql.PrivilegeType_Update,
 				sql.PrivilegeType_Grant,
@@ -309,6 +311,7 @@ func (n *Grant) grantAllGlobalPrivileges(user *grant_tables.User) {
 		sql.PrivilegeType_ShowView,
 		sql.PrivilegeType_CreateRoutine,
 		sql.PrivilegeType_AlterRoutine,
+		sql.PrivilegeType_ShowRoutine,
 		sql.PrivilegeType_CreateUser,
 		sql.PrivilegeType_Event,
 		sql.PrivilegeType_Trigger,
@@ -339,6 +342,7 @@ func (n *Grant) grantAllDatabasePrivileges(user *grant_tables.User, dbName strin
 		sql.PrivilegeType_References,
 		sql.PrivilegeType_Select,
 		sql.PrivilegeType_ShowView,
+		sql.PrivilegeType_ShowRoutine,
 		sql.PrivilegeType_Trigger,
 		sql.PrivilegeType_Update,
 	)
@@ -430,6 +434,8 @@ func (n *Grant) handleGlobalPrivileges(user *grant_tables.User) error {
 			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_Select)
 		case PrivilegeType_ShowDatabases:
 			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_ShowDB)
+		case PrivilegeType_ShowRoutine:
+			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_ShowRoutine)
 		case PrivilegeType_ShowView:
 			user.PrivilegeSet.AddGlobalStatic(sql.PrivilegeType_ShowView)
 		case PrivilegeType_Shutdown:
@@ -496,6 +502,8 @@ func (n *Grant) handleDatabasePrivileges(user *grant_tables.User, dbName string)
 			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_References)
 		case PrivilegeType_Select:
 			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_Select)
+		case PrivilegeType_ShowRoutine:
+			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_ShowRoutine)
 		case PrivilegeType_ShowView:
 			user.PrivilegeSet.AddDatabase(dbName, sql.PrivilegeType_ShowView)
 		case PrivilegeType_Trigger:

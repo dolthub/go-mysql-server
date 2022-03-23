@@ -63,6 +63,7 @@ const (
 	PrivilegeType_ReplicationSlave
 	PrivilegeType_Select
 	PrivilegeType_ShowDatabases
+	PrivilegeType_ShowRoutine
 	PrivilegeType_ShowView
 	PrivilegeType_Shutdown
 	PrivilegeType_Super
@@ -130,6 +131,8 @@ func convertToSqlPrivilegeType(addGrant bool, privs ...Privilege) []sql.Privileg
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_Select)
 		case PrivilegeType_ShowDatabases:
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_ShowDB)
+		case PrivilegeType_ShowRoutine:
+			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_ShowRoutine)
 		case PrivilegeType_ShowView:
 			sqlPrivs = append(sqlPrivs, sql.PrivilegeType_ShowView)
 		case PrivilegeType_Shutdown:

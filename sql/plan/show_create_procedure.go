@@ -113,8 +113,13 @@ func (s *ShowCreateProcedure) WithChildren(children ...sql.Node) (sql.Node, erro
 func (s *ShowCreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	// TODO: set definer
 
-	// Must have SHOW_ROUTINE,SELECT, or
-	return true
+	// According to: https://dev.mysql.com/doc/refman/8.0/en/show-create-procedure.html
+	// Must have SELECT, SHOW_ROUTINE, CREATE_ROUTINE, ALTER_ROUTINE, or EXECUTE privileges.
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Select)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ShowRoutine)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateRoutine)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_AlterRoutine)) ||
+		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Execute))
 }
 
 // Database implements the sql.Databaser interface.

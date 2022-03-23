@@ -108,6 +108,8 @@ func (conv DbConverter) AddRowToEntry(ctx *sql.Context, row sql.Row, entry in_me
 				privs = append(privs, sql.PrivilegeType_CreateRoutine)
 			case dbTblColIndex_Alter_routine_priv:
 				privs = append(privs, sql.PrivilegeType_AlterRoutine)
+			case dbTblColIndex_Show_routine_priv:
+				privs = append(privs, sql.PrivilegeType_ShowRoutine)
 			case dbTblColIndex_Execute_priv:
 				privs = append(privs, sql.PrivilegeType_Execute)
 			case dbTblColIndex_Event_priv:
@@ -198,6 +200,8 @@ func (conv DbConverter) EntryToRows(ctx *sql.Context, entry in_mem_table.Entry) 
 				row[dbTblColIndex_Create_routine_priv] = "Y"
 			case sql.PrivilegeType_AlterRoutine:
 				row[dbTblColIndex_Alter_routine_priv] = "Y"
+			case sql.PrivilegeType_ShowRoutine:
+				row[dbTblColIndex_Show_routine_priv] = "Y"
 			case sql.PrivilegeType_Execute:
 				row[dbTblColIndex_Execute_priv] = "Y"
 			case sql.PrivilegeType_Event:
@@ -289,6 +293,7 @@ const (
 	dbTblColIndex_Show_view_priv
 	dbTblColIndex_Create_routine_priv
 	dbTblColIndex_Alter_routine_priv
+	dbTblColIndex_Show_routine_priv
 	dbTblColIndex_Execute_priv
 	dbTblColIndex_Event_priv
 	dbTblColIndex_Trigger_priv
