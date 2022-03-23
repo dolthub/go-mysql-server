@@ -78,6 +78,8 @@ func (a *AlterPK) Schema() sql.Schema {
 }
 
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	// We grab the table from the database to ensure that state is properly refreshed, thereby preventing multiple keys
+	// being defined.
 	table, ok, err := a.ddlNode.Database().GetTableInsensitive(ctx, a.Table)
 	if err != nil {
 		return nil, err
@@ -132,7 +134,7 @@ func (a *AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(a, children...)
 }
 
-// WithDatabase implements the sql.Database interface
+// WithDatabase implements the sql.Databaser interface.
 func (a *AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
 	na := *a
 	na.db = database

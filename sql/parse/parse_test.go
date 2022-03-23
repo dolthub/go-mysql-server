@@ -1050,7 +1050,8 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD INDEX (v1)`: plan.NewAlterCreateIndex(
-		plan.NewUnresolvedTable("mytable", ""),
+		sql.UnresolvedDatabase(""),
+		"mytable",
 		"",
 		sql.IndexUsing_BTree,
 		sql.IndexConstraint_None,
@@ -2215,7 +2216,8 @@ CREATE TABLE t2
 		make(map[string]string),
 	),
 	`CREATE INDEX idx USING BTREE ON foo (bar)`: plan.NewAlterCreateIndex(
-		plan.NewUnresolvedTable("foo", ""),
+		sql.UnresolvedDatabase(""),
+		"foo",
 		"idx",
 		sql.IndexUsing_BTree,
 		sql.IndexConstraint_None,
@@ -2225,7 +2227,8 @@ CREATE TABLE t2
 		"",
 	),
 	`      CREATE INDEX idx USING BTREE ON foo(bar)`: plan.NewAlterCreateIndex(
-		plan.NewUnresolvedTable("foo", ""),
+		sql.UnresolvedDatabase(""),
+		"foo",
 		"idx",
 		sql.IndexUsing_BTree,
 		sql.IndexConstraint_None,
@@ -2252,7 +2255,8 @@ CREATE TABLE t2
 		),
 	),
 	`DROP INDEX foo ON bar`: plan.NewAlterDropIndex(
-		plan.NewUnresolvedTable("bar", ""),
+		sql.UnresolvedDatabase(""),
+		"bar",
 		"foo",
 	),
 	`DESCRIBE FORMAT=TREE SELECT * FROM foo`: plan.NewDescribeQuery(

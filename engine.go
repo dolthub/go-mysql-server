@@ -462,9 +462,8 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 			transactionDatabase = t.Database
 		}
 	case *plan.AlterIndex:
-		t, ok := n.Table.(*plan.UnresolvedTable)
-		if ok && t.Database != "" {
-			transactionDatabase = t.Database
+		if n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
 		}
 	case *plan.DropIndex:
 		t, ok := n.Table.(*plan.UnresolvedTable)

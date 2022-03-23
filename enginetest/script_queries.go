@@ -953,6 +953,22 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT * FROM test;",
 				Expected: []sql.Row{{1, 88}, {2, 42}},
 			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 DROP DEFAULT",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "INSERT INTO test (pk) VALUES (2);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+			{
+				Query:    "ALTER TABLE test ALTER v1 SET DEFAULT 100, alter v1 SET DEFAULT 200",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 200",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
 		},
 	},
 	{
@@ -1789,6 +1805,26 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{2},
 				},
+			},
+		},
+	},
+}
+
+// ErrorScriptTests represents tests that are currently erroring.
+var ErrorScriptTests = []ScriptTest{
+	{
+		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
+				Expected: []sql.Row{{}},
 			},
 		},
 	},
