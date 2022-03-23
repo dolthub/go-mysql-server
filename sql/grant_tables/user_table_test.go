@@ -131,6 +131,10 @@ func TestUserTableSchema(t *testing.T) {
 			if userTblColIndex_Alter_routine_priv != i {
 				t.FailNow()
 			}
+		case "Show_routine_priv":
+			if userTblColIndex_Show_routine_priv != i {
+				t.FailNow()
+			}
 		case "Create_user_priv":
 			if userTblColIndex_Create_user_priv != i {
 				t.FailNow()
