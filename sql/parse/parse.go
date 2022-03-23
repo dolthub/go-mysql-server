@@ -490,7 +490,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					}
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
-						expression.NewUnresolvedColumn(fmt.Sprintf("Tables_in_%s", dbName)),
+						expression.NewUnresolvedColumn("Table"),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
 						nil,
 					)
