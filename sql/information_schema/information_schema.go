@@ -17,13 +17,11 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"sort"
 	"strings"
-	"time"
-
-	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -1110,6 +1108,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				if !ok {
 					return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 				}
+				triggerPlan.CreatedAt = trigger.CreatedAt // Keep stored created time
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
 
@@ -1177,7 +1176,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						nil,                     // action_reference_new_table
 						"OLD",                   // action_reference_old_row
 						"NEW",                   // action_reference_new_row
-						time.Unix(1, 0).UTC(),   // created
+						triggerPlan.CreatedAt,   // created
 						"",                      // sql_mode
 						"",                      // definer
 						characterSetClient,      // character_set_client

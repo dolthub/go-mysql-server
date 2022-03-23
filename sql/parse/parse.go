@@ -957,7 +957,7 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 		body,
 		query,
 		bodyStr,
-		time.Now(),
+		time.Now(), // TODO: need to convert to UTC?
 	), nil
 }
 
