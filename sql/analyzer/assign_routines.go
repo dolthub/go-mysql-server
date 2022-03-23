@@ -23,12 +23,12 @@ import (
 type RoutineTable interface {
 	sql.Table
 
-	// AssignProcedures assigns an array of procedures to the routines table.
+	// AssignProcedures assigns a map of db-procedures to the routines table.
 	AssignProcedures(p map[string][]*plan.Procedure) sql.Table
 	// TODO: also should assign FUNCTIONS
 }
 
-// assignRoutines sets the catalog in the required nodes.
+// assignRoutines sets the map of db-procedures in the routineTable node.
 func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	span, _ := ctx.Span("assign_routines")
 	defer span.Finish()
