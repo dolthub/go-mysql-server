@@ -77,16 +77,8 @@ func (*ShowTables) Children() []sql.Node {
 
 // Schema implements the Node interface.
 func (p *ShowTables) Schema() sql.Schema {
-	if p.Full {
-		return showTablesFullSchema
-	}
-
-	return showTablesSchema
-}
-
-func (p *ShowTables) SchemaWithDbName(db string) sql.Schema {
 	var sch sql.Schema
-	colName := fmt.Sprintf("Tables_in_%s", db)
+	colName := fmt.Sprintf("Tables_in_%s", p.Database().Name())
 	if p.Full {
 		sch = sql.Schema{
 			{Name: colName, Type: sql.LongText},
