@@ -462,7 +462,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N"}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 			{
 				User:     "root",
@@ -474,7 +474,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N"}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 			{
 				User:  "root",
@@ -494,7 +494,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N"}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 		},
 	},
