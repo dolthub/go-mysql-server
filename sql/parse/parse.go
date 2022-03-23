@@ -504,6 +504,11 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
+	case "create procedure":
+		return plan.NewShowCreateProcedure(
+			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
+			s.Table.Name.String(),
+		), nil
 	case "procedure status":
 		var filter sql.Expression
 
