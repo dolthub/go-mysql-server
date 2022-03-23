@@ -872,7 +872,7 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					charName   interface{}
 					collName   interface{}
 					ordinalPos uint64
-					colDefault interface{}
+					colDefault string
 				)
 				if c.Nullable {
 					nullable = "YES"
@@ -884,17 +884,10 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					collName = Collation_Default.String()
 				}
 				ordinalPos = uint64(i + 1)
-
-				if c.Default.String() == "" {
-					colDefault = nil
-				} else if c.Default.IsLiteral() && c.Default.String() == "NULL" {
-					colDefault = nil
-				} else if c.Default.IsLiteral() && c.Default.String() == `""` {
-					colDefault = ""
-				} else {
-					colDefault = c.Default.String()
+				colDefault = c.Default.String()
+				if c.Default == nil {
+					colDefault = "NULL"
 				}
-
 				rows = append(rows, Row{
 					"def",                            // table_catalog
 					db.Name(),                        // table_schema
