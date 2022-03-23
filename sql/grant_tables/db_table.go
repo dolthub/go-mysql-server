@@ -266,6 +266,7 @@ func init() {
 		columnTemplate("Show_view_priv", dbTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Create_routine_priv", dbTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Alter_routine_priv", dbTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
+		columnTemplate("Show_routine_priv", dbTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Execute_priv", dbTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Event_priv", dbTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Trigger_priv", dbTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),

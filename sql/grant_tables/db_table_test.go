@@ -97,6 +97,10 @@ func TestDbTableSchema(t *testing.T) {
 			if dbTblColIndex_Alter_routine_priv != i {
 				t.FailNow()
 			}
+		case "Show_routine_priv":
+			if dbTblColIndex_Show_routine_priv != i {
+				t.FailNow()
+			}
 		case "Execute_priv":
 			if dbTblColIndex_Execute_priv != i {
 				t.FailNow()
