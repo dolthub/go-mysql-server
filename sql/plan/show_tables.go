@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
@@ -81,6 +82,23 @@ func (p *ShowTables) Schema() sql.Schema {
 	}
 
 	return showTablesSchema
+}
+
+func (p *ShowTables) SchemaWithDbName(db string) sql.Schema {
+	var sch sql.Schema
+	colName := fmt.Sprintf("Tables_in_%s", db)
+	if p.Full {
+		sch = sql.Schema{
+			{Name: colName, Type: sql.LongText},
+			{Name: "Table_type", Type: sql.LongText},
+		}
+	} else {
+		sch = sql.Schema{
+			{Name: colName, Type: sql.LongText},
+		}
+	}
+
+	return sch
 }
 
 // RowIter implements the Node interface.
