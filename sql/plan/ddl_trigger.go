@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -37,9 +38,18 @@ type CreateTrigger struct {
 	CreateTriggerString string
 	BodyString          string
 	CreateDatabase      sql.Database
+	CreatedAt           time.Time
 }
 
-func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrder *TriggerOrder, table sql.Node, body sql.Node, createTriggerString, bodyString string) *CreateTrigger {
+func NewCreateTrigger(triggerName,
+	triggerTime,
+	triggerEvent string,
+	triggerOrder *TriggerOrder,
+	table sql.Node,
+	body sql.Node,
+	createTriggerString,
+	bodyString string,
+	createdAt time.Time) *CreateTrigger {
 	return &CreateTrigger{
 		TriggerName:         triggerName,
 		TriggerTime:         triggerTime,
@@ -49,6 +59,7 @@ func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrde
 		Body:                body,
 		BodyString:          bodyString,
 		CreateTriggerString: createTriggerString,
+		CreatedAt:           createdAt,
 	}
 }
 
