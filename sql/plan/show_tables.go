@@ -31,15 +31,6 @@ type ShowTables struct {
 	AsOf sql.Expression
 }
 
-var showTablesSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-}
-
-var showTablesFullSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-	{Name: "Table_type", Type: sql.LongText},
-}
-
 // NewShowTables creates a new show tables node given a database.
 func NewShowTables(database sql.Database, full bool, asOf sql.Expression) *ShowTables {
 	return &ShowTables{
