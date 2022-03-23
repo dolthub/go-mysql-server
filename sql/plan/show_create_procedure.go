@@ -111,7 +111,9 @@ func (s *ShowCreateProcedure) WithChildren(children ...sql.Node) (sql.Node, erro
 
 // CheckPrivileges implements the interface sql.Node.
 func (s *ShowCreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: figure out what privileges are needed here
+	// TODO: set definer
+
+	// Must have SHOW_ROUTINE,SELECT, or
 	return true
 }
 

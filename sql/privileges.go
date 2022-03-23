@@ -56,6 +56,7 @@ const (
 	PrivilegeType_ShowView
 	PrivilegeType_CreateRoutine
 	PrivilegeType_AlterRoutine
+	PrivilegeType_ShowRoutine
 	PrivilegeType_CreateUser
 	PrivilegeType_Event
 	PrivilegeType_Trigger
@@ -91,6 +92,7 @@ var privilegeTypeStrings = []string{
 	"SHOW VIEW",
 	"CREATE ROUTINE",
 	"ALTER ROUTINE",
+	"SHOW ROUTINE",
 	"CREATE USER",
 	"EVENT",
 	"TRIGGER",
@@ -131,6 +133,7 @@ var privilegeTypeStringMap = map[string]PrivilegeType{
 	"SHOW VIEW":               PrivilegeType_ShowView,
 	"CREATE ROUTINE":          PrivilegeType_CreateRoutine,
 	"ALTER ROUTINE":           PrivilegeType_AlterRoutine,
+	"SHOW ROUTINE":            PrivilegeType_ShowRoutine,
 	"CREATE USER":             PrivilegeType_CreateUser,
 	"EVENT":                   PrivilegeType_Event,
 	"TRIGGER":                 PrivilegeType_Trigger,
