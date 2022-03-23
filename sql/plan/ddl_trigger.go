@@ -157,6 +157,7 @@ func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		definition: sql.TriggerDefinition{
 			Name:            c.TriggerName,
 			CreateStatement: c.CreateTriggerString,
+			CreatedAt:       c.CreatedAt,
 		},
 		db: c.CreateDatabase,
 	}, nil
