@@ -36,32 +36,32 @@ type AlterPK struct {
 	ddlNode
 
 	Action  PKAction
-	Table   string
+	Table   sql.Node
 	Columns []sql.IndexColumn
 	Catalog sql.Catalog
 }
 
 var _ sql.Databaser = (*AlterPK)(nil)
 
-func NewAlterCreatePk(db sql.Database, tableName string, columns []sql.IndexColumn) *AlterPK {
+func NewAlterCreatePk(db sql.Database, table sql.Node, columns []sql.IndexColumn) *AlterPK {
 	return &AlterPK{
 		Action:  PrimaryKeyAction_Create,
 		ddlNode: ddlNode{db: db},
-		Table:   tableName,
+		Table:   table,
 		Columns: columns,
 	}
 }
 
-func NewAlterDropPk(db sql.Database, tableName string) *AlterPK {
+func NewAlterDropPk(db sql.Database, table sql.Node) *AlterPK {
 	return &AlterPK{
 		Action:  PrimaryKeyAction_Drop,
-		Table:   tableName,
+		Table:   table,
 		ddlNode: ddlNode{db: db},
 	}
 }
 
 func (a *AlterPK) Resolved() bool {
-	return a.ddlNode.Resolved()
+	return a.Table.Resolved() && a.ddlNode.Resolved()
 }
 
 func (a *AlterPK) String() string {
@@ -70,7 +70,7 @@ func (a *AlterPK) String() string {
 		action = "drop"
 	}
 
-	return fmt.Sprintf("alter table %s %s primary key", a.Table, action)
+	return fmt.Sprintf("alter table %s %s primary key", a.Table.String(), action)
 }
 
 func (a *AlterPK) Schema() sql.Schema {
@@ -80,7 +80,7 @@ func (a *AlterPK) Schema() sql.Schema {
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// We grab the table from the database to ensure that state is properly refreshed, thereby preventing multiple keys
 	// being defined.
-	table, ok, err := a.ddlNode.Database().GetTableInsensitive(ctx, a.Table)
+	table, ok, err := a.ddlNode.Database().GetTableInsensitive(ctx, getTableName(a.Table))
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,23 @@ func hasPrimaryKeys(table sql.Table) bool {
 }
 
 func (a *AlterPK) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(a, children...)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
+	}
+
+	switch a.Action {
+	case PrimaryKeyAction_Create:
+		return NewAlterCreatePk(a.db, children[0], a.Columns), nil
+	case PrimaryKeyAction_Drop:
+		return NewAlterDropPk(a.db, children[0]), nil
+	default:
+		return nil, ErrIndexActionNotImplemented.New(a.Action)
+	}
+}
+
+// Children implements the sql.Node interface.
+func (a *AlterPK) Children() []sql.Node {
+	return []sql.Node{a.Table}
 }
 
 // WithDatabase implements the sql.Databaser interface.
@@ -144,5 +160,5 @@ func (a *AlterPK) WithDatabase(database sql.Database) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (a *AlterPK) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(a.Database().Name(), a.Table, "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(a.Database().Name(), getTableName(a.Table), "", sql.PrivilegeType_Alter))
 }

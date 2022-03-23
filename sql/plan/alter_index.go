@@ -33,7 +33,7 @@ var (
 	ErrCreateIndexNonExistentColumn = errors.NewKind("column `%v` does not exist in the table")
 	// ErrCreateIndexDuplicateColumn is returned when a CREATE INDEX statement has the same column multiple times
 	ErrCreateIndexDuplicateColumn = errors.NewKind("cannot have duplicates of columns in an index: `%v`")
-	// DuplicateIndexCode is the warning code returned when an index is created on an index that already has on
+	// DuplicateIndexCode is the warning code returned when an index is created on a column that already has one.
 	DuplicateIndexCode = 1831
 )
 
@@ -51,8 +51,8 @@ type AlterIndex struct {
 	Action IndexAction
 	// ddlNode references to the database that is being operated on
 	ddlNode
-	// Table is the name of the table that is being referenced
-	Table string
+	// Table is the table that is being referenced
+	Table sql.Node
 	// IndexName is the index name, and in the case of a RENAME it represents the new name
 	IndexName string
 	// PreviousIndexName states the old name when renaming an index
@@ -69,7 +69,7 @@ type AlterIndex struct {
 	DisableKeys bool
 }
 
-func NewAlterCreateIndex(db sql.Database, table string, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
 		Action:     IndexAction_Create,
 		ddlNode:    ddlNode{db: db},
@@ -82,7 +82,7 @@ func NewAlterCreateIndex(db sql.Database, table string, indexName string, using 
 	}
 }
 
-func NewAlterDropIndex(db sql.Database, table string, indexName string) *AlterIndex {
+func NewAlterDropIndex(db sql.Database, table sql.Node, indexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:    IndexAction_Drop,
 		ddlNode:   ddlNode{db: db},
@@ -91,7 +91,7 @@ func NewAlterDropIndex(db sql.Database, table string, indexName string) *AlterIn
 	}
 }
 
-func NewAlterRenameIndex(db sql.Database, table string, fromIndexName, toIndexName string) *AlterIndex {
+func NewAlterRenameIndex(db sql.Database, table sql.Node, fromIndexName, toIndexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:            IndexAction_Rename,
 		ddlNode:           ddlNode{db: db},
@@ -101,7 +101,7 @@ func NewAlterRenameIndex(db sql.Database, table string, fromIndexName, toIndexNa
 	}
 }
 
-func NewAlterDisableEnableKeys(db sql.Database, table string, disableKeys bool) *AlterIndex {
+func NewAlterDisableEnableKeys(db sql.Database, table sql.Node, disableKeys bool) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_DisableEnableKeys,
 		ddlNode:     ddlNode{db: db},
@@ -117,7 +117,7 @@ func (p *AlterIndex) Schema() sql.Schema {
 
 // Execute inserts the rows in the database.
 func (p *AlterIndex) Execute(ctx *sql.Context) error {
-	table, ok, err := p.ddlNode.Database().GetTableInsensitive(ctx, p.Table)
+	table, ok, err := p.ddlNode.Database().GetTableInsensitive(ctx, getTableName(p.Table))
 	if err != nil {
 		return err
 	}
@@ -186,13 +186,33 @@ func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 
 // WithChildren implements the Node interface.
 func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(p, children...)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
+	}
+
+	switch p.Action {
+	case IndexAction_Create:
+		return NewAlterCreateIndex(p.db, children[0], p.IndexName, p.Using, p.Constraint, p.Columns, p.Comment), nil
+	case IndexAction_Drop:
+		return NewAlterDropIndex(p.db, children[0], p.IndexName), nil
+	case IndexAction_Rename:
+		return NewAlterRenameIndex(p.db, children[0], p.PreviousIndexName, p.IndexName), nil
+	case IndexAction_DisableEnableKeys:
+		return NewAlterDisableEnableKeys(p.db, children[0], p.DisableKeys), nil
+	default:
+		return nil, ErrIndexActionNotImplemented.New(p.Action)
+	}
+}
+
+// Children implements the node interface.
+func (p *AlterIndex) Children() []sql.Node {
+	return []sql.Node{p.Table}
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (p *AlterIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.ddlNode.Database().Name(), p.Table, "", sql.PrivilegeType_Index))
+		sql.NewPrivilegedOperation(p.ddlNode.Database().Name(), getTableName(p.Table), "", sql.PrivilegeType_Index))
 }
 
 // WithDatabase implements the sql.Databaser interface.
@@ -207,7 +227,7 @@ func (p AlterIndex) String() string {
 	switch p.Action {
 	case IndexAction_Create:
 		_ = pr.WriteNode("CreateIndex(%s)", p.IndexName)
-		children := []string{fmt.Sprintf("Table(%s)", p.Table)}
+		children := []string{fmt.Sprintf("Table(%s)", p.Table.String())}
 		switch p.Constraint {
 		case sql.IndexConstraint_Unique:
 			children = append(children, "Constraint(UNIQUE)")
@@ -235,11 +255,11 @@ func (p AlterIndex) String() string {
 		_ = pr.WriteChildren(children...)
 	case IndexAction_Drop:
 		_ = pr.WriteNode("DropIndex(%s)", p.IndexName)
-		_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table))
+		_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table.String()))
 	case IndexAction_Rename:
 		_ = pr.WriteNode("RenameIndex")
 		_ = pr.WriteChildren(
-			fmt.Sprintf("Table(%s)", p.Table),
+			fmt.Sprintf("Table(%s)", p.Table.String()),
 			fmt.Sprintf("FromIndex(%s)", p.PreviousIndexName),
 			fmt.Sprintf("ToIndex(%s)", p.IndexName),
 		)
@@ -250,5 +270,5 @@ func (p AlterIndex) String() string {
 }
 
 func (p *AlterIndex) Resolved() bool {
-	return p.ddlNode.Resolved()
+	return p.Table.Resolved() && p.ddlNode.Resolved()
 }

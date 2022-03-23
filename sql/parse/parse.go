@@ -1303,21 +1303,21 @@ func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		}
 
 		if constraint == sql.IndexConstraint_Primary {
-			return plan.NewAlterCreatePk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name(), columns), nil
+			return plan.NewAlterCreatePk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, columns), nil
 		}
 
-		return plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name(), ddl.IndexSpec.ToName.String(), using, constraint, columns, comment), nil
+		return plan.NewAlterCreateIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment), nil
 	case sqlparser.DropStr:
 		if ddl.IndexSpec.Type == sqlparser.PrimaryStr {
-			return plan.NewAlterDropPk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name()), nil
+			return plan.NewAlterDropPk(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table), nil
 		}
-		return plan.NewAlterDropIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name(), ddl.IndexSpec.ToName.String()), nil
+		return plan.NewAlterDropIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, ddl.IndexSpec.ToName.String()), nil
 	case sqlparser.RenameStr:
-		return plan.NewAlterRenameIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name(), ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String()), nil
+		return plan.NewAlterRenameIndex(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String()), nil
 	case "disable":
-		return plan.NewAlterDisableEnableKeys(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name(), true), nil
+		return plan.NewAlterDisableEnableKeys(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, true), nil
 	case "enable":
-		return plan.NewAlterDisableEnableKeys(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table.Name(), false), nil
+		return plan.NewAlterDisableEnableKeys(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, false), nil
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}
@@ -1350,15 +1350,16 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 }
 
 func convertAlterDefault(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
+	table := tableNameToUnresolvedTable(ddl.Table)
 	switch strings.ToLower(ddl.DefaultSpec.Action) {
 	case sqlparser.SetStr:
 		defaultVal, err := convertDefaultExpression(ctx, ddl.DefaultSpec.Value)
 		if err != nil {
 			return nil, err
 		}
-		return plan.NewAlterDefaultSet(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), ddl.Table.Name.String(), ddl.DefaultSpec.Column.String(), defaultVal), nil
+		return plan.NewAlterDefaultSet(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, ddl.DefaultSpec.Column.String(), defaultVal), nil
 	case sqlparser.DropStr:
-		return plan.NewAlterDefaultDrop(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), ddl.Table.Name.String(), ddl.DefaultSpec.Column.String()), nil
+		return plan.NewAlterDefaultDrop(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), table, ddl.DefaultSpec.Column.String()), nil
 	default:
 		return nil, sql.ErrUnsupportedFeature.New(sqlparser.String(ddl))
 	}

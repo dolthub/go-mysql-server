@@ -25,7 +25,7 @@ import (
 // AlterDefaultSet represents the ALTER COLUMN SET DEFAULT statement.
 type AlterDefaultSet struct {
 	ddlNode
-	Table      string
+	Table      sql.Node
 	ColumnName string
 	Default    *sql.ColumnDefaultValue
 }
@@ -35,7 +35,7 @@ var _ sql.Expressioner = (*AlterDefaultSet)(nil)
 // AlterDefaultDrop represents the ALTER COLUMN DROP DEFAULT statement.
 type AlterDefaultDrop struct {
 	ddlNode
-	Table      string
+	table      sql.Node
 	ColumnName string
 }
 
@@ -74,7 +74,7 @@ func getAlterableTableUnderlying(t sql.Table) (sql.AlterableTable, error) {
 }
 
 // NewAlterDefaultSet returns a *AlterDefaultSet node.
-func NewAlterDefaultSet(database sql.Database, table string, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
+func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
 	return &AlterDefaultSet{
 		ddlNode:    ddlNode{db: database},
 		Table:      table,
@@ -85,12 +85,13 @@ func NewAlterDefaultSet(database sql.Database, table string, columnName string, 
 
 // String implements the sql.Node interface.
 func (d *AlterDefaultSet) String() string {
-	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s", d.Table, d.ColumnName, d.Default.String())
+	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s", d.Table.String(), d.ColumnName, d.Default.String())
 }
 
 // RowIter implements the sql.Node interface.
 func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, d.Table)
+	// Grab the table fresh from the database.
+	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, getTableName(d.Table))
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +100,9 @@ func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	}
 
 	alterable, ok := table.(sql.AlterableTable)
+	if !ok {
+		return nil, sql.ErrAlterTableNotSupported.New(d.Table)
+	}
 
 	if err != nil {
 		return nil, err
@@ -121,18 +125,27 @@ func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 
 // WithChildren implements the sql.Node interface.
 func (d *AlterDefaultSet) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(d, children...)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+
+	return NewAlterDefaultSet(d.db, children[0], d.ColumnName, d.Default), nil
+}
+
+// Children implements the sql.Node interface.
+func (d *AlterDefaultSet) Children() []sql.Node {
+	return []sql.Node{d.Table}
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *AlterDefaultSet) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.Database().Name(), d.Table, "", sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(d.Database().Name(), getTableName(d.Table), "", sql.PrivilegeType_Alter))
 }
 
 // Resolved implements the sql.Node interface.
 func (d *AlterDefaultSet) Resolved() bool {
-	return d.ddlNode.Resolved()
+	return d.Table.Resolved() && d.ddlNode.Resolved()
 }
 
 // Expressions implements the sql.Expressioner interface.
@@ -162,27 +175,27 @@ func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) 
 }
 
 // NewAlterDefaultDrop returns a *AlterDefaultDrop node.
-func NewAlterDefaultDrop(database sql.Database, table string, columnName string) *AlterDefaultDrop {
+func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName string) *AlterDefaultDrop {
 	return &AlterDefaultDrop{
 		ddlNode:    ddlNode{db: database},
-		Table:      table,
+		table:      table,
 		ColumnName: columnName,
 	}
 }
 
 // String implements the sql.Node interface.
 func (d *AlterDefaultDrop) String() string {
-	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", d.Table, d.ColumnName)
+	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", d.table, d.ColumnName)
 }
 
 // RowIter implements the sql.Node interface.
 func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, d.Table)
+	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, getTableName(d.table))
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, sql.ErrTableNotFound.New(d.Table)
+		return nil, sql.ErrTableNotFound.New(d.table)
 	}
 
 	alterable, ok := table.(sql.AlterableTable)
@@ -195,7 +208,7 @@ func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		}
 	}
 	if col == nil {
-		return nil, sql.ErrTableColumnNotFound.New(d.Table, d.ColumnName)
+		return nil, sql.ErrTableColumnNotFound.New(d.table, d.ColumnName)
 	}
 	newCol := &(*col)
 	newCol.Default = nil
@@ -204,15 +217,24 @@ func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 
 // WithChildren implements the sql.Node interface.
 func (d *AlterDefaultDrop) WithChildren(children ...sql.Node) (sql.Node, error) {
-	return NillaryWithChildren(d, children...)
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
+	}
+	return NewAlterDefaultDrop(d.Database(), children[0], d.ColumnName), nil
+}
+
+// Children implements the sql.Node interface.
+func (d *AlterDefaultDrop) Children() []sql.Node {
+	return []sql.Node{d.table}
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *AlterDefaultDrop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.db.Name(), d.Table, d.ColumnName, sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(d.db.Name(), getTableName(d.table), d.ColumnName, sql.PrivilegeType_Alter))
 }
 
+// WithDatabase implements the sql.Databaser interface.
 func (d *AlterDefaultDrop) WithDatabase(db sql.Database) (sql.Node, error) {
 	nd := *d
 	nd.db = db
