@@ -4505,7 +4505,7 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that query plan this follows correctly uses an IndexedTableAccess
 		expectedPlan := "Projected table access on [pk v]\n" +
-			" └─ IndexedTableAccess(t1 on [t1.v])\n" +
+			" └─ IndexedTableAccess(t1 on [t1.v] with ranges: [{[a3, a3]}])\n" +
 			""
 
 		TestQueryPlan(t, NewContextWithEngine(harness, e), e, harness, `SELECT * FROM t1 WHERE v = 'a3'`, expectedPlan)
