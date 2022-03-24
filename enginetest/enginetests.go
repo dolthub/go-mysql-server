@@ -1329,10 +1329,6 @@ func TestTriggers(t *testing.T, harness Harness) {
 }
 
 func TestShowTriggers(t *testing.T, harness Harness) {
-	//for _, script := range TmpTriggerTests {
-	//	TestScript(t, harness, script)
-	//}
-
 	e := NewEngine(t, harness)
 	defer e.Close()
 
