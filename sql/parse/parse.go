@@ -1358,7 +1358,7 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 		return nil, sql.ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
 	}
 
-	return plan.NewAlterAutoIncrement(tableNameToUnresolvedTable(ddl.Table), autoVal), nil
+	return plan.NewAlterAutoIncrement(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), autoVal), nil
 }
 
 func convertAlterDefault(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {

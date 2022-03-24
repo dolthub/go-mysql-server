@@ -1750,6 +1750,18 @@ var ScriptTests = []ScriptTest{
 					{"v2", "int", "NO", "", "100", ""},
 				},
 			},
+			{
+				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "INSERT INTO test (v2) values (11)",
+				Expected: []sql.Row{{sql.OkResult{RowsAffected: 1, InsertID: 100}}},
+			},
+			{
+				Query:    "SELECT * from test where pk = 100",
+				Expected: []sql.Row{{100, 11}},
+			},
 		},
 	},
 	{
