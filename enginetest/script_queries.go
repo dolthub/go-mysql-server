@@ -966,8 +966,15 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{},
 			},
 			{
-				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 200",
+				Query:       "ALTER TABLE test DROP COLUMN v1, alter v1 SET DEFAULT 5000",
 				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "DESCRIBE test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"v1", "bigint", "NO", "", "200", ""},
+				},
 			},
 		},
 	},
@@ -1603,6 +1610,38 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT hex(v1), hex(v2) FROM hex_nums2;",
 				Expected: []sql.Row{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+		},
+	},
+	{
+		Name: "Multialter DDL with ADD/DROP Primary Key",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, v1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v2 int), drop primary key, add primary key (v2)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v3 int), drop primary key, add primary key (notacolumn)",
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+				},
 			},
 		},
 	},

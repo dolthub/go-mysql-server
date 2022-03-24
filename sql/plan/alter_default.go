@@ -35,7 +35,7 @@ var _ sql.Expressioner = (*AlterDefaultSet)(nil)
 // AlterDefaultDrop represents the ALTER COLUMN DROP DEFAULT statement.
 type AlterDefaultDrop struct {
 	ddlNode
-	table      sql.Node
+	Table      sql.Node
 	ColumnName string
 }
 
@@ -178,24 +178,24 @@ func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) 
 func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName string) *AlterDefaultDrop {
 	return &AlterDefaultDrop{
 		ddlNode:    ddlNode{db: database},
-		table:      table,
+		Table:      table,
 		ColumnName: columnName,
 	}
 }
 
 // String implements the sql.Node interface.
 func (d *AlterDefaultDrop) String() string {
-	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", getTableName(d.table), d.ColumnName)
+	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", getTableName(d.Table), d.ColumnName)
 }
 
 // RowIter implements the sql.Node interface.
 func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, getTableName(d.table))
+	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, getTableName(d.Table))
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return nil, sql.ErrTableNotFound.New(d.table)
+		return nil, sql.ErrTableNotFound.New(d.Table)
 	}
 
 	alterable, ok := table.(sql.AlterableTable)
@@ -209,7 +209,7 @@ func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 	}
 
 	if col == nil {
-		return nil, sql.ErrTableColumnNotFound.New(getTableName(d.table), d.ColumnName)
+		return nil, sql.ErrTableColumnNotFound.New(getTableName(d.Table), d.ColumnName)
 	}
 	newCol := &(*col)
 	newCol.Default = nil
@@ -226,13 +226,13 @@ func (d *AlterDefaultDrop) WithChildren(children ...sql.Node) (sql.Node, error) 
 
 // Children implements the sql.Node interface.
 func (d *AlterDefaultDrop) Children() []sql.Node {
-	return []sql.Node{d.table}
+	return []sql.Node{d.Table}
 }
 
 // CheckPrivileges implements the interface sql.Node.
 func (d *AlterDefaultDrop) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(d.db.Name(), getTableName(d.table), d.ColumnName, sql.PrivilegeType_Alter))
+		sql.NewPrivilegedOperation(d.db.Name(), getTableName(d.Table), d.ColumnName, sql.PrivilegeType_Alter))
 }
 
 // WithDatabase implements the sql.Databaser interface.

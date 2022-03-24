@@ -69,6 +69,12 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.AlterIndex:
 			sch = n.Table.Schema()
 			indexes, err = getNamesOfIndexes(ctx, a, n.Table)
+		case *plan.AlterPK:
+			sch = n.Table.Schema()
+		case *plan.AlterDefaultSet:
+			sch = n.Table.Schema()
+		case *plan.AlterDefaultDrop:
+			sch = n.Table.Schema()
 		}
 		return true
 	})
@@ -82,6 +88,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
+	sch = copySchema(sch) // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
 
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
@@ -110,6 +117,21 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 		case *plan.AlterIndex:
 			indexes, err = validateAlterIndex(initialSch, sch, n, indexes)
+			if err != nil {
+				return nil, err
+			}
+		case *plan.AlterPK:
+			sch, err = validatePrimaryKey(initialSch, sch, n)
+			if err != nil {
+				return nil, err
+			}
+		case *plan.AlterDefaultSet:
+			sch, err = validateAlterDefault(initialSch, sch, n)
+			if err != nil {
+				return nil, err
+			}
+		case *plan.AlterDefaultDrop:
+			sch, err = validateDropDefault(initialSch, sch, n)
 			if err != nil {
 				return nil, err
 			}
@@ -158,9 +180,9 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// None of the checks we do concern ordering, so we don't need to worry about it here
-	newCol := ac.Column()
+	newCol := copyColumn(ac.Column())
 	newCol.Source = nameable.Name()
-	newSch := append(table.Schema(), newCol)
+	newSch := append(schema, newCol)
 
 	// TODO: more validation possible to do here
 	err := validateAutoIncrement(newSch)
@@ -228,9 +250,9 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 
 	switch ai.Action {
 	case plan.IndexAction_Create:
-		err := schContainsAllIndexColumns(ai.Columns, sch, tableName)
-		if err != nil {
-			return nil, err
+		badColName, ok := schContainsAllIndexColumns(ai.Columns, sch, tableName)
+		if !ok {
+			return nil, sql.ErrColumnNotFound.New(badColName)
 		}
 
 		return append(indexes, ai.IndexName), nil
@@ -261,14 +283,14 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	return indexes, nil
 }
 
-func schContainsAllIndexColumns(cols []sql.IndexColumn, sch sql.Schema, tableName string) error {
+func schContainsAllIndexColumns(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
 	for _, c := range cols {
 		if ok := sch.Contains(c.Name, tableName); !ok {
-			return sql.ErrColumnNotFound.New(c.Name)
+			return c.Name, false
 		}
 	}
 
-	return nil
+	return "", true
 }
 
 func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {
@@ -377,4 +399,100 @@ func getNamesOfIndexes(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string,
 	}
 
 	return names, nil
+}
+
+func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
+	tableName := getTableName(ai.Table)
+	switch ai.Action {
+	case plan.PrimaryKeyAction_Create:
+		badColName, ok := schContainsAllIndexColumns(ai.Columns, sch, tableName)
+		if !ok {
+			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
+		}
+
+		if hasPrimaryKeys(sch) {
+			return nil, sql.ErrMultiplePrimaryKeysDefined.New()
+		}
+
+		// Set the primary keys
+		for _, col := range ai.Columns {
+			sch[sch.IndexOf(col.Name, tableName)].PrimaryKey = true
+		}
+
+		return sch, nil
+	case plan.PrimaryKeyAction_Drop:
+		if !hasPrimaryKeys(sch) {
+			return nil, sql.ErrCantDropFieldOrKey.New("PRIMARY")
+		}
+
+		for _, col := range sch {
+			if col.PrimaryKey {
+				col.PrimaryKey = false
+			}
+		}
+
+		return sch, nil
+	default:
+		return sch, nil
+	}
+}
+
+func hasPrimaryKeys(sch sql.Schema) bool {
+	for _, c := range sch {
+		if c.PrimaryKey {
+			return true
+		}
+	}
+
+	return false
+}
+
+func copySchema(s sql.Schema) sql.Schema {
+	newSchema := make(sql.Schema, len(s))
+	for i, col := range s {
+		newSchema[i] = copyColumn(col)
+	}
+
+	return newSchema
+}
+
+func copyColumn(c *sql.Column) *sql.Column {
+	return &sql.Column{
+		Name:          c.Name,
+		Type:          c.Type,
+		Default:       c.Default,
+		AutoIncrement: c.AutoIncrement,
+		Nullable:      c.Nullable,
+		Source:        c.Source,
+		PrimaryKey:    c.PrimaryKey,
+		Comment:       c.Comment,
+		Extra:         c.Extra,
+	}
+}
+
+func validateAlterDefault(initialSch, sch sql.Schema, as *plan.AlterDefaultSet) (sql.Schema, error) {
+	idx := sch.IndexOf(as.ColumnName, getTableName(as.Table))
+	if idx == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(as.ColumnName)
+	}
+
+	copiedDefault, err := as.Default.WithChildren(as.Default.Children()...)
+	if err != nil {
+		return nil, err
+	}
+
+	sch[idx].Default = copiedDefault.(*sql.ColumnDefaultValue)
+
+	return sch, err
+}
+
+func validateDropDefault(initialSch, sch sql.Schema, ad *plan.AlterDefaultDrop) (sql.Schema, error) {
+	idx := sch.IndexOf(ad.ColumnName, getTableName(ad.Table))
+	if idx == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(ad.ColumnName)
+	}
+
+	sch[idx].Default = nil
+
+	return sch, nil
 }
