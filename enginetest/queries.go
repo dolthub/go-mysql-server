@@ -6750,6 +6750,18 @@ var QueryTests = []QueryTest{
 		Query:    `select (('%' OR 'dsads') OR '%')`,
 		Expected: []sql.Row{{false}},
 	},
+	{
+		Query:    `show function status`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `show function status like 'foo'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `show function status where Db='mydb'`,
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
