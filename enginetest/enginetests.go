@@ -1341,6 +1341,9 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 	for _, script := range ProcedureShowStatus {
 		TestScript(t, harness, script)
 	}
+	for _, script := range ProcedureShowCreate {
+		TestScript(t, harness, script)
+	}
 }
 
 func TestTriggerErrors(t *testing.T, harness Harness) {
