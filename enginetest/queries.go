@@ -7991,6 +7991,26 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "information_schema.columns shows default value",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, fname varchar(20), lname varchar(20), height int)",
+			"ALTER TABLE mytable CHANGE fname fname varchar(20) NOT NULL DEFAULT ''",
+			"ALTER TABLE mytable CHANGE lname lname varchar(20) NOT NULL DEFAULT 'ln'",
+			"ALTER TABLE mytable CHANGE height h int NULL DEFAULT NULL",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='mytable'",
+				Expected: []sql.Row{
+					{"mytable", "pk", nil, "NO"},
+					{"mytable", "fname", "", "NO"},
+					{"mytable", "lname", "\"ln\"", "NO"},
+					{"mytable", "h", nil, "YES"},
+				},
+			},
+		},
+	},
 }
 
 var ExplodeQueries = []QueryTest{
