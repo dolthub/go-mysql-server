@@ -1018,10 +1018,9 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						if col != nil {
 							i += 1
 							var (
-								collation string
-								nullable  string
-
-								cardinality uint64
+								collation   string
+								nullable    string
+								cardinality int64
 							)
 
 							seqInIndex := i
@@ -1033,9 +1032,15 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// TODO : cardinality should be an estimate of the number of unique values in the index.
 							// it is currently set to total number of rows in the table
 							if st, ok := tbl.(StatisticsTable); ok {
-								cardinality, err = st.NumRows(ctx)
-								if err != nil {
-									return nil, err
+								c, cErr := st.NumRows(ctx)
+								if cErr != nil {
+									return nil, cErr
+								}
+								// cardinality is int64 type, but NumRows return uint64
+								// so casting it to int64 with a check for negative number
+								cardinality = int64(c)
+								if cardinality < 0 {
+									cardinality = int64(0)
 								}
 							}
 
