@@ -1734,6 +1734,13 @@ CREATE TABLE t2
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, expression.NewLiteral("abc", sql.LongText)),
 	),
+	"SHOW FULL TABLES FROM bar WHERE `Tables_in_bar` = 'test'": plan.NewFilter(
+		expression.NewEquals(
+			expression.NewUnresolvedColumn("Tables_in_bar"),
+			expression.NewLiteral("test", sql.LongText),
+		),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
+	),
 	`SELECT DISTINCT foo, bar FROM foo;`: plan.NewDistinct(
 		plan.NewProject(
 			[]sql.Expression{
