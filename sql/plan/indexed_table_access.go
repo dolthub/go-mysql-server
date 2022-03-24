@@ -138,7 +138,11 @@ func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.Index
 }
 
 func (i *IndexedTableAccess) String() string {
-	return fmt.Sprintf("IndexedTableAccess(%s on %s)", i.Name(), formatIndexDecoratorString(i.index))
+	var filters string
+	if i.lookup != nil {
+		filters = fmt.Sprintf(" with ranges: %s", i.lookup.Ranges().DebugString())
+	}
+	return fmt.Sprintf("IndexedTableAccess(%s on %s%s)", i.Name(), formatIndexDecoratorString(i.index), filters)
 }
 
 func formatIndexDecoratorString(idx sql.Index) string {
@@ -151,7 +155,8 @@ func formatIndexDecoratorString(idx sql.Index) string {
 
 func (i *IndexedTableAccess) DebugString() string {
 	if i.lookup != nil {
-		return fmt.Sprintf("IndexedTableAccess(%s on %s, using fields %s)", i.Name(), formatIndexDecoratorString(i.index), "STATIC LOOKUP("+sql.DebugString(i.lookup)+")")
+		filters := fmt.Sprintf(" with ranges: %s,", i.lookup.Ranges().DebugString())
+		return fmt.Sprintf("IndexedTableAccess(%s on %s,%s using fields %s)", i.Name(), formatIndexDecoratorString(i.index), filters, "STATIC LOOKUP("+sql.DebugString(i.lookup)+")")
 	}
 	keyExprs := make([]string, len(i.keyExprs))
 	for j := range i.keyExprs {

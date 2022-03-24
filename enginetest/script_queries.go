@@ -1342,7 +1342,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 4;",
 				Expected: []sql.Row{{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[4, 4], (-∞, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 4;",
@@ -1352,7 +1352,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[8, 8], [7, 7], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 8 AND v2 = 7;",
@@ -1362,7 +1362,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[6, ∞), [6, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 >= 6 AND v2 >= 6;",
@@ -1372,7 +1372,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{[7, 7], [6, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 7 AND v2 >= 6;",
@@ -1391,7 +1391,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[2, 2], (1, ∞), (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 2 AND v2 > 1;",
@@ -1401,7 +1401,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1])"}},
+					{" └─ IndexedTableAccess(test on [test.v3,test.v2,test.v1] with ranges: [{(1, ∞), [4, 4], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v2 = 4 AND v3 > 1;",
@@ -1411,7 +1411,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2])"}},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v3,test.v2] with ranges: [{(1, ∞), [6, 6], (-∞, ∞)}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v3 = 6 AND v1 > 1;",
@@ -1421,7 +1421,7 @@ var ScriptTests = []ScriptTest{
 				Query: "EXPLAIN SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
 				Expected: []sql.Row{
 					{"Projected table access on [pk v1 v2 v3]"},
-					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3])"}},
+					{" └─ IndexedTableAccess(test on [test.v1,test.v2,test.v3] with ranges: [{[5, 5], [1, ∞), (-∞, 10]}])"}},
 			},
 			{
 				Query:    "SELECT * FROM test WHERE v1 = 5 AND v3 <= 10 AND v2 >= 1;",
@@ -1743,6 +1743,32 @@ var ScriptTests = []ScriptTest{
 				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
 				Expected: []sql.Row{},
 			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/3065
+		Name: "join index lookups do not handle filters",
+		SetUpScript: []string{
+			"create table a (x int primary key)",
+			"create table b (y int primary key, x int, index idx_x(x))",
+			"create table c (z int primary key, x int, y int, index idx_x(x))",
+			"insert into a values (0),(1),(2),(3)",
+			"insert into b values (0,1), (1,1), (2,2), (3,2)",
+			"insert into c values (0,1,0), (1,1,0), (2,2,1), (3,2,1)",
+		},
+		Query: "select a.* from a join b on a.x = b.x join c where c.x = a.x and b.x = 1",
+		Expected: []sql.Row{
+			{1},
+			{1},
+			{1},
+			{1},
 		},
 	},
 }

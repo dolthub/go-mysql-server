@@ -504,8 +504,21 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		}
 
 		return node, nil
+	case "create procedure":
+		return plan.NewShowCreateProcedure(
+			sql.UnresolvedDatabase(s.Table.Qualifier.String()),
+			s.Table.Name.String(),
+		), nil
 	case "procedure status":
 		var filter sql.Expression
+
+		node, err := Parse(ctx, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+			"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
+			"routine_comment as `Comment`, character_set_client, collation_connection,"+
+			"database_collation as `Database Collation` from information_schema.routines where routine_type = 'PROCEDURE'")
+		if err != nil {
+			return nil, err
+		}
 
 		if s.Filter != nil {
 			if s.Filter.Filter != nil {
@@ -523,13 +536,12 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			}
 		}
 
-		var node sql.Node = plan.NewShowProcedureStatus(sql.UnresolvedDatabase(""))
 		if filter != nil {
 			node = plan.NewFilter(filter, node)
 		}
 		return node, nil
 	case "index":
-		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Database)), nil
+		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String())), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
 		var likepattern string
 		if s.Filter != nil {
