@@ -35,6 +35,7 @@ var _ sql.DebugStringer = (*CreateProcedure)(nil)
 
 // NewCreateProcedure returns a *CreateProcedure node.
 func NewCreateProcedure(
+	db sql.Database,
 	name,
 	definer string,
 	params []ProcedureParam,
@@ -58,6 +59,7 @@ func NewCreateProcedure(
 	return &CreateProcedure{
 		Procedure:  procedure,
 		BodyString: bodyString,
+		Db:         db,
 	}
 }
 
@@ -75,6 +77,9 @@ func (c *CreateProcedure) WithDatabase(database sql.Database) (sql.Node, error) 
 
 // Resolved implements the sql.Node interface.
 func (c *CreateProcedure) Resolved() bool {
+	if _, ok := c.Db.(sql.UnresolvedDatabase); ok {
+		return false
+	}
 	return c.Procedure.Resolved()
 }
 

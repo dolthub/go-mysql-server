@@ -881,7 +881,8 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
 		}
 		if c.ProcedureSpec != nil {
-			return plan.NewDropProcedure(sql.UnresolvedDatabase(""), c.ProcedureSpec.Name, c.IfExists), nil
+			return plan.NewDropProcedure(sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
+				c.ProcedureSpec.ProcName.Name.String(), c.IfExists), nil
 		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
@@ -1018,7 +1019,8 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 	}
 
 	return plan.NewCreateProcedure(
-		c.ProcedureSpec.Name,
+		sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
+		c.ProcedureSpec.ProcName.Name.String(),
 		c.ProcedureSpec.Definer,
 		params,
 		time.Now(),
