@@ -252,7 +252,7 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	case plan.IndexAction_Create:
 		badColName, ok := schContainsAllIndexColumns(ai.Columns, sch, tableName)
 		if !ok {
-			return nil, sql.ErrColumnNotFound.New(badColName)
+			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
 
 		return append(indexes, ai.IndexName), nil

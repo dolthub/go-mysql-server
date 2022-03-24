@@ -1653,7 +1653,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE t DROP COLUMN v1, ADD INDEX myidx (v1)",
-				ExpectedErr: sql.ErrColumnNotFound,
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 			},
 			{
 				Query: "DESCRIBE t",
@@ -1688,7 +1688,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx (notacolumn)",
-				ExpectedErr: sql.ErrColumnNotFound,
+				ExpectedErr: sql.ErrKeyColumnDoesNotExist,
 			},
 			{
 				Query: "DESCRIBE t",
