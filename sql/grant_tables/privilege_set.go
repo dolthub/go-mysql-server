@@ -67,7 +67,6 @@ func newPrivilegeSetWithAllPrivileges() PrivilegeSet {
 			sql.PrivilegeType_ShowView:          {},
 			sql.PrivilegeType_CreateRoutine:     {},
 			sql.PrivilegeType_AlterRoutine:      {},
-			sql.PrivilegeType_ShowRoutine:       {},
 			sql.PrivilegeType_CreateUser:        {},
 			sql.PrivilegeType_Event:             {},
 			sql.PrivilegeType_Trigger:           {},

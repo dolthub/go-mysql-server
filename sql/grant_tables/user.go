@@ -271,10 +271,6 @@ func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 			if val.(string) == "Y" {
 				privSet.AddGlobalStatic(sql.PrivilegeType_AlterRoutine)
 			}
-		case userTblColIndex_Show_routine_priv:
-			if val.(string) == "Y" {
-				privSet.AddGlobalStatic(sql.PrivilegeType_ShowRoutine)
-			}
 		case userTblColIndex_Create_user_priv:
 			if val.(string) == "Y" {
 				privSet.AddGlobalStatic(sql.PrivilegeType_CreateUser)
@@ -359,8 +355,6 @@ func (u *User) privSetToRow(ctx *sql.Context, row sql.Row) {
 			row[userTblColIndex_Create_routine_priv] = "Y"
 		case sql.PrivilegeType_AlterRoutine:
 			row[userTblColIndex_Alter_routine_priv] = "Y"
-		case sql.PrivilegeType_ShowRoutine:
-			row[userTblColIndex_Show_routine_priv] = "Y"
 		case sql.PrivilegeType_CreateUser:
 			row[userTblColIndex_Create_user_priv] = "Y"
 		case sql.PrivilegeType_Event:

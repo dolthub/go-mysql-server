@@ -206,7 +206,6 @@ func init() {
 		columnTemplate("Show_view_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Create_routine_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Alter_routine_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
-		columnTemplate("Show_routine_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Create_user_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Event_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
 		columnTemplate("Trigger_priv", userTblName, false, enum_N_Y_utf8_general_ci_not_null_default_N),
@@ -280,7 +279,6 @@ const (
 	userTblColIndex_Show_view_priv
 	userTblColIndex_Create_routine_priv
 	userTblColIndex_Alter_routine_priv
-	userTblColIndex_Show_routine_priv
 	userTblColIndex_Create_user_priv
 	userTblColIndex_Event_priv
 	userTblColIndex_Trigger_priv
