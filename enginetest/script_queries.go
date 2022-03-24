@@ -1972,23 +1972,3 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 		},
 	},
 }
-
-// ErrorScriptTests represents tests that are currently erroring.
-var ErrorScriptTests = []ScriptTest{
-	{
-		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO test (pk) VALUES (1);",
-				Expected: []sql.Row{{sql.NewOkResult(1)}},
-			},
-			{
-				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
-				Expected: []sql.Row{{}},
-			},
-		},
-	},
-}

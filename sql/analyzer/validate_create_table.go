@@ -68,7 +68,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return false
 		case *plan.AlterIndex:
 			sch = n.Table.Schema()
-			indexes, err = getNamesOfIndexes(ctx, a, n.Table)
+			indexes, err = getTableIndexNames(ctx, a, n.Table)
 		case *plan.AlterPK:
 			sch = n.Table.Schema()
 		case *plan.AlterDefaultSet:
@@ -244,7 +244,7 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 	return nil
 }
 
-// validateAlterIndex validates the specified column can have an index either dropped or added to it.
+// validateAlterIndex validates the specified column can have an index added, dropped, or renamed.
 func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
 	tableName := getTableName(ai.Table)
 
@@ -283,6 +283,8 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	return indexes, nil
 }
 
+// schContainsAllIndexColumns takes in a set of IndexColumns and returns false, along with the offending column name, if
+// an index Column is not in an index.
 func schContainsAllIndexColumns(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
 	for _, c := range cols {
 		if ok := sch.Contains(c.Name, tableName); !ok {
@@ -385,7 +387,8 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 	return nil
 }
 
-func getNamesOfIndexes(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string, error) {
+// getTableIndexNames returns the names of indexes associated with a table.
+func getTableIndexNames(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string, error) {
 	ia, err := getIndexesForNode(ctx, a, table)
 	if err != nil {
 		return nil, err
@@ -401,6 +404,7 @@ func getNamesOfIndexes(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string,
 	return names, nil
 }
 
+// validatePrimaryKey validates a primary key add or drop operation.
 func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schema, error) {
 	tableName := getTableName(ai.Table)
 	switch ai.Action {
@@ -437,6 +441,35 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 	}
 }
 
+// validateAlterDefault validates the addition of a default value to a column.
+func validateAlterDefault(initialSch, sch sql.Schema, as *plan.AlterDefaultSet) (sql.Schema, error) {
+	idx := sch.IndexOf(as.ColumnName, getTableName(as.Table))
+	if idx == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(as.ColumnName)
+	}
+
+	copiedDefault, err := as.Default.WithChildren(as.Default.Children()...)
+	if err != nil {
+		return nil, err
+	}
+
+	sch[idx].Default = copiedDefault.(*sql.ColumnDefaultValue)
+
+	return sch, err
+}
+
+// validateDropDefault validates the dropping of a default value.
+func validateDropDefault(initialSch, sch sql.Schema, ad *plan.AlterDefaultDrop) (sql.Schema, error) {
+	idx := sch.IndexOf(ad.ColumnName, getTableName(ad.Table))
+	if idx == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(ad.ColumnName)
+	}
+
+	sch[idx].Default = nil
+
+	return sch, nil
+}
+
 func hasPrimaryKeys(sch sql.Schema) bool {
 	for _, c := range sch {
 		if c.PrimaryKey {
@@ -468,31 +501,4 @@ func copyColumn(c *sql.Column) *sql.Column {
 		Comment:       c.Comment,
 		Extra:         c.Extra,
 	}
-}
-
-func validateAlterDefault(initialSch, sch sql.Schema, as *plan.AlterDefaultSet) (sql.Schema, error) {
-	idx := sch.IndexOf(as.ColumnName, getTableName(as.Table))
-	if idx == -1 {
-		return nil, sql.ErrTableColumnNotFound.New(as.ColumnName)
-	}
-
-	copiedDefault, err := as.Default.WithChildren(as.Default.Children()...)
-	if err != nil {
-		return nil, err
-	}
-
-	sch[idx].Default = copiedDefault.(*sql.ColumnDefaultValue)
-
-	return sch, err
-}
-
-func validateDropDefault(initialSch, sch sql.Schema, ad *plan.AlterDefaultDrop) (sql.Schema, error) {
-	idx := sch.IndexOf(ad.ColumnName, getTableName(ad.Table))
-	if idx == -1 {
-		return nil, sql.ErrTableColumnNotFound.New(ad.ColumnName)
-	}
-
-	sch[idx].Default = nil
-
-	return sch, nil
 }
