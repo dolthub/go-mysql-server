@@ -50,6 +50,8 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	}
 
 	var sch sql.Schema
+	var indexes []string
+	var err error
 	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
@@ -64,9 +66,16 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.DropColumn:
 			sch = n.Child.Schema()
 			return false
+		case *plan.AlterIndex:
+			sch = n.Table.Schema()
+			indexes, err = getNamesOfIndexes(ctx, a, n.Table)
 		}
 		return true
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	// Skip this validation if we didn't find one or more of the above node types
 	if len(sch) == 0 {
@@ -74,7 +83,6 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	}
 
 	initialSch := sch
-	var err error
 
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
@@ -97,6 +105,11 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			}
 		case *plan.DropColumn:
 			sch, err = validateDropColumn(initialSch, sch, n)
+			if err != nil {
+				return nil, err
+			}
+		case *plan.AlterIndex:
+			indexes, err = validateAlterIndex(initialSch, sch, n, indexes)
 			if err != nil {
 				return nil, err
 			}
@@ -145,7 +158,9 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// None of the checks we do concern ordering, so we don't need to worry about it here
-	newSch := append(table.Schema(), ac.Column())
+	newCol := ac.Column()
+	newCol.Source = nameable.Name()
+	newSch := append(table.Schema(), newCol)
 
 	// TODO: more validation possible to do here
 	err := validateAutoIncrement(newSch)
@@ -207,6 +222,55 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 	return nil
 }
 
+// validateAlterIndex validates the specified column can have an index either dropped or added to it.
+func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
+	tableName := getTableName(ai.Table)
+
+	switch ai.Action {
+	case plan.IndexAction_Create:
+		err := schContainsAllIndexColumns(ai.Columns, sch, tableName)
+		if err != nil {
+			return nil, err
+		}
+
+		return append(indexes, ai.IndexName), nil
+	case plan.IndexAction_Drop:
+		for _, idx := range indexes {
+			if strings.EqualFold(idx, ai.IndexName) {
+				return indexes, nil
+			}
+		}
+
+		return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
+	case plan.IndexAction_Rename:
+		savedIdx := -1
+		for i, idx := range indexes {
+			if strings.EqualFold(idx, ai.PreviousIndexName) {
+				savedIdx = i
+			}
+		}
+
+		if savedIdx == -1 {
+			return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
+		}
+
+		// Simulate the rename by deleting the old name and adding the new one.
+		return append(append(indexes[:savedIdx], indexes[savedIdx+1:]...), ai.IndexName), nil
+	}
+
+	return indexes, nil
+}
+
+func schContainsAllIndexColumns(cols []sql.IndexColumn, sch sql.Schema, tableName string) error {
+	for _, c := range cols {
+		if ok := sch.Contains(c.Name, tableName); !ok {
+			return sql.ErrColumnNotFound.New(c.Name)
+		}
+	}
+
+	return nil
+}
+
 func replaceInSchema(sch sql.Schema, col *sql.Column, tableName string) sql.Schema {
 	idx := sch.IndexOf(col.Name, tableName)
 	schCopy := make(sql.Schema, len(sch))
@@ -243,11 +307,18 @@ func renameInSchema(sch sql.Schema, oldColName, newColName, tableName string) sq
 
 func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	idx := sch.IndexOf(colName, tableName)
-	schCopy := make(sql.Schema, len(sch))
+	if idx == -1 {
+		return sch
+	}
+
+	schCopy := make(sql.Schema, len(sch)-1)
 	for i := range sch {
-		if i != idx {
+		if i < idx {
 			cc := *sch[i]
 			schCopy[i] = &cc
+		} else if i > idx {
+			cc := *sch[i-1] // We want to shift stuff over.
+			schCopy[i-1] = &cc
 		}
 	}
 	return schCopy
@@ -290,4 +361,20 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 	}
 
 	return nil
+}
+
+func getNamesOfIndexes(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string, error) {
+	ia, err := getIndexesForNode(ctx, a, table)
+	if err != nil {
+		return nil, err
+	}
+
+	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
+	names := make([]string, len(indexes))
+
+	for i, index := range indexes {
+		names[i] = index.ID()
+	}
+
+	return names, nil
 }

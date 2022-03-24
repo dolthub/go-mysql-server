@@ -185,7 +185,7 @@ func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName strin
 
 // String implements the sql.Node interface.
 func (d *AlterDefaultDrop) String() string {
-	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", d.table, d.ColumnName)
+	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", getTableName(d.table), d.ColumnName)
 }
 
 // RowIter implements the sql.Node interface.
@@ -207,8 +207,9 @@ func (d *AlterDefaultDrop) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 			break
 		}
 	}
+
 	if col == nil {
-		return nil, sql.ErrTableColumnNotFound.New(d.table, d.ColumnName)
+		return nil, sql.ErrTableColumnNotFound.New(getTableName(d.table), d.ColumnName)
 	}
 	newCol := &(*col)
 	newCol.Default = nil

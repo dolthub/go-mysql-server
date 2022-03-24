@@ -33,8 +33,6 @@ var (
 	ErrCreateIndexNonExistentColumn = errors.NewKind("column `%v` does not exist in the table")
 	// ErrCreateIndexDuplicateColumn is returned when a CREATE INDEX statement has the same column multiple times
 	ErrCreateIndexDuplicateColumn = errors.NewKind("cannot have duplicates of columns in an index: `%v`")
-	// DuplicateIndexCode is the warning code returned when an index is created on a column that already has one.
-	DuplicateIndexCode = 1831
 )
 
 type IndexAction byte
@@ -117,6 +115,7 @@ func (p *AlterIndex) Schema() sql.Schema {
 
 // Execute inserts the rows in the database.
 func (p *AlterIndex) Execute(ctx *sql.Context) error {
+	// We should refresh the state of the table in case this alter was in a multi alter statement.
 	table, ok, err := p.ddlNode.Database().GetTableInsensitive(ctx, getTableName(p.Table))
 	if err != nil {
 		return err
@@ -150,7 +149,7 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 				if !seen {
 					seenCols[indexCol.Name] = true
 				} else {
-					ctx.Warn(DuplicateIndexCode, ErrCreateIndexDuplicateColumn.New(indexCol.Name).Error())
+					return ErrCreateIndexDuplicateColumn.New(indexCol.Name)
 				}
 			} else {
 				return ErrCreateIndexNonExistentColumn.New(indexCol.Name)

@@ -972,6 +972,30 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE ... ALTER ADD CHECK / DROP CHECK",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE test ADD CONSTRAINT cx CHECK (v1 < 100)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "ALTER TABLE test DROP CHECK cx, ADD CHECK (v1 < 50)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "INSERT INTO test VALUES (1, 99)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "INSERT INTO test VALUES (2, 2)",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+		},
+	},
+	{
 		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key)",
@@ -1579,6 +1603,106 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT hex(v1), hex(v2) FROM hex_nums2;",
 				Expected: []sql.Row{{"765A8CE4CE74B187", "148AA875C3CDB9AF8919493926A3D7C6862FEC7F330152F400C0AECB4467508A"}},
+			},
+		},
+	},
+	{
+		Name: "Multialter DDL with ADD/DROP INDEX",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int primary key, v1 int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t DROP COLUMN v1, ADD INDEX myidx (v1)",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""}, // should not be dropped
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v2 int), ADD INDEX myidx (v2)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v3 int), DROP INDEX notanindex",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx (notacolumn)",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4), DROP INDEX notanindex;",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v4 int), ADD INDEX myidx2 (v4)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"v1", "int", "YES", "", "", ""},
+					{"v2", "int", "YES", "MUL", "", ""},
+					{"v4", "int", "YES", "MUL", "", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE t ADD COLUMN (v5 int), RENAME INDEX myidx2 TO myidx3",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MULTI ADD/DROP COLUMN",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 BIGINT NOT NULL DEFAULT 88);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO test (pk) VALUES (1);",
+				Expected: []sql.Row{{sql.NewOkResult(1)}},
+			},
+			{
+				Query:    "ALTER TABLE test DROP COLUMN v1, ADD COLUMN v2 INT NOT NULL DEFAULT 100",
+				Expected: []sql.Row{},
 			},
 		},
 	},
