@@ -984,7 +984,17 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 		return nil, err
 	}
 
-	return plan.NewCreateTrigger(c.TriggerSpec.Name, c.TriggerSpec.Time, c.TriggerSpec.Event, triggerOrder, tableNameToUnresolvedTable(c.Table), body, query, bodyStr), nil
+	return plan.NewCreateTrigger(
+		c.TriggerSpec.Name,
+		c.TriggerSpec.Time,
+		c.TriggerSpec.Event,
+		triggerOrder,
+		tableNameToUnresolvedTable(c.Table),
+		body,
+		query,
+		bodyStr,
+		ctx.QueryTime(),
+	), nil
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {

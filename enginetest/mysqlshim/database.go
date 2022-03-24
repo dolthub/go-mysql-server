@@ -131,6 +131,7 @@ func (d Database) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error)
 			Name: row[0].(string),
 			CreateStatement: fmt.Sprintf("CREATE TRIGGER `%s` %s %s ON `%s` FOR EACH ROW %s;",
 				row[0].(string), row[4].(string), row[1].(string), row[2].(string), row[3].(string)),
+			CreatedAt: time.Time{}, // TODO: time works in with doltharness
 		})
 	}
 	if err != io.EOF {

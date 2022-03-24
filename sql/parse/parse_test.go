@@ -19,6 +19,7 @@ import (
 	"math"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -3497,70 +3498,6 @@ CREATE TABLE t2
 		),
 		true,
 	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
-   BEGIN 
-     UPDATE bar SET x = old.y WHERE z = new.y;
-		 DELETE FROM baz WHERE a = old.b;
-		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
-		plan.NewUnresolvedTable("foo", ""),
-		plan.NewBeginEndBlock(
-			plan.NewBlock([]sql.Node{
-				plan.NewUpdate(
-					plan.NewFilter(
-						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
-						plan.NewUnresolvedTable("bar", ""),
-					),
-					[]sql.Expression{
-						expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
-					},
-				),
-				plan.NewDeleteFrom(
-					plan.NewFilter(
-						expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
-						plan.NewUnresolvedTable("baz", ""),
-					),
-				),
-				plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
-					expression.NewUnresolvedQualifiedColumn("old", "a"),
-					expression.NewUnresolvedQualifiedColumn("old", "b"),
-				}},
-				), false, []string{"a", "b"}, []sql.Expression{}, false),
-			}),
-		),
-		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
-   BEGIN 
-     UPDATE bar SET x = old.y WHERE z = new.y;
-		 DELETE FROM baz WHERE a = old.b;
-		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`,
-		`BEGIN 
-     UPDATE bar SET x = old.y WHERE z = new.y;
-		 DELETE FROM baz WHERE a = old.b;
-		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`,
-	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
-		plan.NewUnresolvedTable("foo", ""),
-		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
-			expression.NewUnresolvedQualifiedColumn("old", "a"),
-			expression.NewUnresolvedQualifiedColumn("old", "b"),
-		}},
-		), false, []string{"a", "b"}, []sql.Expression{}, false),
-		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update",
-		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
-		plan.NewUnresolvedTable("foo", ""),
-		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
-			expression.NewUnresolvedQualifiedColumn("old", "a"),
-			expression.NewUnresolvedQualifiedColumn("old", "b"),
-		}},
-		), false, []string{"a", "b"}, []sql.Expression{}, false),
-		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-	),
 	`SELECT 2 UNION SELECT 3`: plan.NewDistinct(
 		plan.NewUnion(
 			plan.NewProject(
@@ -3691,6 +3628,76 @@ CREATE TABLE t2
 	`KILL CONNECTION 1`:                  plan.NewKill(plan.KillType_Connection, 1),
 }
 
+var triggerFixtures = map[string]sql.Node{
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
+   BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewBeginEndBlock(
+			plan.NewBlock([]sql.Node{
+				plan.NewUpdate(
+					plan.NewFilter(
+						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
+						plan.NewUnresolvedTable("bar", ""),
+					),
+					[]sql.Expression{
+						expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
+					},
+				),
+				plan.NewDeleteFrom(
+					plan.NewFilter(
+						expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
+						plan.NewUnresolvedTable("baz", ""),
+					),
+				),
+				plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+					expression.NewUnresolvedQualifiedColumn("old", "a"),
+					expression.NewUnresolvedQualifiedColumn("old", "b"),
+				}},
+				), false, []string{"a", "b"}, []sql.Expression{}, false),
+			}),
+		),
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
+   BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`,
+		`BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`,
+		time.Unix(0, 0),
+	),
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+			expression.NewUnresolvedQualifiedColumn("old", "a"),
+			expression.NewUnresolvedQualifiedColumn("old", "b"),
+		}},
+		), false, []string{"a", "b"}, []sql.Expression{}, false),
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		time.Unix(0, 0),
+	),
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update",
+		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+			expression.NewUnresolvedQualifiedColumn("old", "a"),
+			expression.NewUnresolvedQualifiedColumn("old", "b"),
+		}},
+		), false, []string{"a", "b"}, []sql.Expression{}, false),
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		time.Unix(0, 0),
+	),
+}
+
 func TestParse(t *testing.T) {
 	var queriesInOrder []string
 	for q := range fixtures {
@@ -3708,6 +3715,31 @@ func TestParse(t *testing.T) {
 			if !assertNodesEqualWithDiff(t, expectedPlan, p) {
 				t.Logf("Unexpected result for query %s", query)
 			}
+		})
+	}
+}
+
+func TestParseCreateTrigger(t *testing.T) {
+	var queriesInOrder []string
+	for q := range triggerFixtures {
+		queriesInOrder = append(queriesInOrder, q)
+	}
+	sort.Strings(queriesInOrder)
+
+	date := time.Unix(0, 0)
+	for _, query := range queriesInOrder {
+		expectedPlan := triggerFixtures[query]
+		t.Run(query, func(t *testing.T) {
+			sql.RunWithNowFunc(func() time.Time { return date }, func() error {
+				require := require.New(t)
+				ctx := sql.NewEmptyContext()
+				p, err := Parse(ctx, query)
+				require.NoError(err)
+				if !assertNodesEqualWithDiff(t, expectedPlan, p) {
+					t.Logf("Unexpected result for query %s", query)
+				}
+				return nil
+			})
 		})
 	}
 }
