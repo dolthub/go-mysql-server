@@ -88,7 +88,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, nil
 	}
 
-	sch = copySchema(sch) // Make a copy of the original schema to deal with any references to the original table.
+	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
 	initialSch := sch
 
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
@@ -478,15 +478,6 @@ func hasPrimaryKeys(sch sql.Schema) bool {
 	}
 
 	return false
-}
-
-func copySchema(s sql.Schema) sql.Schema {
-	newSchema := make(sql.Schema, len(s))
-	for i, col := range s {
-		newSchema[i] = copyColumn(col)
-	}
-
-	return newSchema
 }
 
 func copyColumn(c *sql.Column) *sql.Column {

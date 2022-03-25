@@ -84,10 +84,12 @@ func (p *AlterAutoIncrement) WithChildren(children ...sql.Node) (sql.Node, error
 	return NewAlterAutoIncrement(p.Database(), children[0], p.autoVal), nil
 }
 
+// Children implements the sql.Node interface.
 func (p *AlterAutoIncrement) Children() []sql.Node {
 	return []sql.Node{p.Table}
 }
 
+// Resolved implements the sql.Node interface.
 func (p *AlterAutoIncrement) Resolved() bool {
 	return p.ddlNode.Resolved() && p.Table.Resolved()
 }

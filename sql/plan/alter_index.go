@@ -203,11 +203,6 @@ func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 }
 
-// Children implements the node interface.
-func (p *AlterIndex) Children() []sql.Node {
-	return []sql.Node{p.Table}
-}
-
 // CheckPrivileges implements the interface sql.Node.
 func (p *AlterIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
@@ -270,4 +265,9 @@ func (p AlterIndex) String() string {
 
 func (p *AlterIndex) Resolved() bool {
 	return p.Table.Resolved() && p.ddlNode.Resolved()
+}
+
+// Children implements the sql.Node interface.
+func (p *AlterIndex) Children() []sql.Node {
+	return []sql.Node{p.Table}
 }
