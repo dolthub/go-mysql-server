@@ -316,6 +316,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 			// below here.
 			return false
 		case *plan.CrossJoin:
+			// cross joins have to be index planned in isolation
 			return false
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)
@@ -892,6 +893,8 @@ func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 	return tables
 }
 
+// hasIndexableChild validates whether the join tree
+// has indexable tables.
 func hasIndexableChild(node plan.JoinNode) bool {
 	switch n := node.Right().(type) {
 	case *plan.ResolvedTable, *plan.TableAlias:

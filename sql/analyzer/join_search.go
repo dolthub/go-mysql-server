@@ -423,7 +423,8 @@ func visitCommutableJoinSearchNodes(indexes []int, nodes []joinOrderNode, cb fun
 func newJoinOrderNode(node sql.Node) *joinOrderNode {
 	switch node := node.(type) {
 	case *plan.TableAlias, *plan.ResolvedTable, *plan.SubqueryAlias, *plan.ValueDerivedTable:
-		return &joinOrderNode{node: node.(NameableNode), name: strings.ToLower(node.(NameableNode).Name())}
+		n := node.(NameableNode)
+		return &joinOrderNode{node: n, name: strings.ToLower(n.Name())}
 	case *plan.CrossJoin:
 		return &joinOrderNode{node: node}
 	case plan.JoinNode:
