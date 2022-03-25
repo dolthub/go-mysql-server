@@ -18,20 +18,21 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
-	"github.com/opentracing/opentracing-go"
-	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+	"github.com/opentracing/opentracing-go"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 var (
