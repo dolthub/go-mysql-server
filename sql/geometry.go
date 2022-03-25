@@ -15,10 +15,9 @@
 package sql
 
 import (
-	"errors"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // Represents the Geometry type.
@@ -30,6 +29,8 @@ type Geometry struct {
 type GeometryType struct{}
 
 var _ Type = GeometryType{}
+
+var ErrNotGeometry = errors.NewKind("Value of type %T is not a geometry")
 
 // Compare implements Type interface.
 func (t GeometryType) Compare(a any, b any) (int, error) {
@@ -54,7 +55,7 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 	case Geometry:
 		return t.Compare(this.Inner, b)
 	default:
-		return 0, errors.New("a was not a geometry type")
+		return 0, ErrNotGeometry.New(a)
 	}
 }
 
