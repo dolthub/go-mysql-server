@@ -892,7 +892,12 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				} else if c.Default.IsLiteral() && c.Default.String() == `""` {
 					colDefault = ""
 				} else {
-					colDefault = c.Default.String()
+					// in FromDoltSchema, all default values are handled as expression including literal value,
+					// and string of expr value is in parentheses
+					colDefaultStr := c.Default.String()
+					colDefaultStr = strings.TrimPrefix(colDefaultStr, "(\"")
+					colDefaultStr = strings.TrimSuffix(colDefaultStr, "\")")
+					colDefault = colDefaultStr
 				}
 
 				rows = append(rows, Row{
