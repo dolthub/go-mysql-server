@@ -7976,7 +7976,7 @@ var InfoSchemaScripts = []ScriptTest{
 				Expected: []sql.Row{
 					{"mytable", "pk", nil, "NO"},
 					{"mytable", "fname", "", "NO"},
-					{"mytable", "lname", "\"ln\"", "NO"},
+					{"mytable", "lname", "ln", "NO"},
 					{"mytable", "h", nil, "YES"},
 				},
 			},
