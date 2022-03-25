@@ -44,6 +44,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
 	selector := func(c plan.TransformContext) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
+		//TODO do search crossjoins with plan.JoinNode parent
 		switch c.Parent.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
 			return false
@@ -60,6 +61,10 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		case *plan.IndexedJoin:
 			return n, nil
 		case plan.JoinNode:
+			if !hasIndexableChild(n) {
+				return n, nil
+			}
+
 			oldJoin = n
 
 			var err error
@@ -75,9 +80,9 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
 			// some tables / conditions)
-			if len(joinIndexes) != len(getTablesOrSubqueryAliases(n)) {
-				return n, nil
-			}
+			//if len(joinIndexes) != len(getTablesOrSubqueryAliases(n)) {
+			//	return n, nil
+			//}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
 		default:
@@ -303,17 +308,25 @@ func replaceIndexedAccessInUnaryNode(
 }
 
 func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable, scope *Scope) (sql.Node, error) {
-	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
-	// only certain nodes can be below it.
+	// Inspect the node for eligibility. The join planner rewrites
+	// the tree beneath this node, and for this to be correct only
+	// certain nodes can be below it.
 	eligible := true
+	// indexes can only be applied to visible tables
+	visibleTables := make([]string, 0)
 	plan.Inspect(node, func(node sql.Node) bool {
-		switch node.(type) {
-		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, nil:
+		switch n := node.(type) {
+		case plan.JoinNode, *plan.ValueDerivedTable, nil:
+		case *plan.ResolvedTable, *plan.TableAlias:
+			visibleTables = append(visibleTables, n.(sql.Nameable).Name())
 		case *plan.SubqueryAlias:
 			// The join planner can use the subquery alias as a
 			// table alias in join conditions, but the subquery
 			// itself has already been analyzed. Do not inspect
 			// below here.
+			visibleTables = append(visibleTables, n.Name())
+			return false
+		case *plan.CrossJoin:
 			return false
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)
@@ -423,7 +436,9 @@ func (j JoinOrder) HintType() string {
 
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
-	if tree.isLeaf() {
+	if tree.isCrossJoin() {
+		return tree.node
+	} else if tree.isLeaf() {
 		nn, ok := tablesByName[strings.ToLower(tree.table)]
 		if !ok {
 			panic(fmt.Sprintf("Could not find NameableNode for '%s'", tree.table))
@@ -433,6 +448,11 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 
 	left := joinTreeToNodes(tree.left, tablesByName, scope)
 	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	switch right.(type) {
+	case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
+		//TODO this is only OK if node is InnerJoin or CrossJoin and Left is indexable
+		right, left = left, right
+	}
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
@@ -544,6 +564,7 @@ type joinCond struct {
 	cond           sql.Expression
 	joinType       plan.JoinType
 	rightHandTable string
+	sourceIndex    sql.Index
 }
 
 // findJoinIndexesByTable inspects the Node given for Join nodes, and returns a slice of joinIndexes for each table
@@ -627,15 +648,19 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 // flattenJoinConds returns the set of distinct join conditions in the collection. A table order must be given to ensure
 // that the order of the conditions returned is deterministic for a given table order.
 func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
-	if len(tableOrder) != len(ji) {
-		panic(fmt.Sprintf("Inconsistent table order for flattenJoinConds: tableOrder: %v, ji: %v", tableOrder, ji))
-	}
-
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
-			if joinIndex.joinPosition != plan.JoinTypeRight && !joinCondPresent(joinIndex.joinCond, joinConditions) {
-				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
+			if !joinCondPresent(joinIndex.joinCond, joinConditions) {
+				joinConditions = append(
+					joinConditions,
+					&joinCond{
+						cond:           joinIndex.joinCond,
+						joinType:       joinIndex.joinType,
+						rightHandTable: joinIndex.table,
+						sourceIndex:    joinIndex.index,
+					},
+				)
 			}
 		}
 	}
@@ -695,8 +720,8 @@ func getJoinIndexes(
 
 		return getJoinIndex(ctx, jc, exprs, ia, tableAliases)
 	case *expression.Or:
-		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable}
-		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable}
+		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable, jc.sourceIndex}
+		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable, jc.sourceIndex}
 		leftIdxByTbl := getJoinIndexes(ctx, a, ia, leftCond, tableAliases)
 		rightIdxByTbl := getJoinIndexes(ctx, a, ia, rightCond, tableAliases)
 		result := make(joinIndexesByTable)
@@ -885,4 +910,26 @@ func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 	})
 
 	return tables
+}
+
+func hasIndexableChild(node plan.JoinNode) bool {
+	switch n := node.Right().(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		return true
+	case *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.StripRowNode:
+	case plan.JoinNode:
+		if hasIndexableChild(n) {
+			return true
+		}
+	}
+
+	switch n := node.Left().(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		return true
+	case plan.JoinNode:
+		return hasIndexableChild(n)
+	default:
+	}
+
+	return false
 }

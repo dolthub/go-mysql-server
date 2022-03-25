@@ -244,34 +244,31 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT sub.i, sub.i2, sub.s2, ot.i2, ot.s2 FROM othertable ot LEFT JOIN (SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 WHERE CONVERT(s2, signed) <> 0) sub ON sub.i = ot.i2 WHERE ot.i2 > 0`,
 		ExpectedPlan: "Project(sub.i, sub.i2, sub.s2, ot.i2, ot.s2)\n" +
-			" └─ LeftJoin(sub.i = ot.i2)\n" +
-			"     ├─ Filter(ot.i2 > 0)\n" +
-			"     │   └─ TableAlias(ot)\n" +
-			"     │       └─ IndexedTableAccess(othertable on [othertable.i2] with ranges: [{(0, ∞)}])\n" +
-			"     └─ HashLookup(child: (sub.i), lookup: (ot.i2))\n" +
-			"         └─ CachedResults\n" +
-			"             └─ SubqueryAlias(sub)\n" +
-			"                 └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			"                     └─ IndexedJoin(mytable.i = othertable.i2)\n" +
-			"                         ├─ Table(mytable)\n" +
-			"                         └─ Filter(NOT((convert(othertable.s2, signed) = 0)))\n" +
-			"                             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			" └─ Filter(ot.i2 > 0)\n" +
+			"     └─ LeftIndexedJoin(sub.i = ot.i2)\n" +
+			"         ├─ SubqueryAlias(sub)\n" +
+			"         │   └─ Project(mytable.i, othertable.i2, othertable.s2)\n" +
+			"         │       └─ IndexedJoin(mytable.i = othertable.i2)\n" +
+			"         │           ├─ Table(mytable)\n" +
+			"         │           └─ Filter(NOT((convert(othertable.s2, signed) = 0)))\n" +
+			"         │               └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
+			"         └─ TableAlias(ot)\n" +
+			"             └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 	{
 		Query: `select /*+ JOIN_ORDER( i, k, j ) */  * from one_pk i join one_pk k on i.pk = k.pk join (select pk, rand() r from one_pk) j on i.pk = j.pk`,
-		ExpectedPlan: "IndexedJoin(i.pk = j.pk)\n" +
-			" ├─ IndexedJoin(i.pk = k.pk)\n" +
-			" │   ├─ TableAlias(i)\n" +
-			" │   │   └─ Table(one_pk)\n" +
-			" │   └─ TableAlias(k)\n" +
-			" │       └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
-			" └─ HashLookup(child: (j.pk), lookup: (i.pk))\n" +
-			"     └─ CachedResults\n" +
-			"         └─ SubqueryAlias(j)\n" +
-			"             └─ Project(one_pk.pk, RAND() as r)\n" +
-			"                 └─ Projected table access on [pk]\n" +
-			"                     └─ Table(one_pk)\n" +
+		ExpectedPlan: "Project(i.pk, i.c1, i.c2, i.c3, i.c4, i.c5, k.pk, k.c1, k.c2, k.c3, k.c4, k.c5, j.pk, j.r)\n" +
+			" └─ IndexedJoin(i.pk = j.pk)\n" +
+			"     ├─ SubqueryAlias(j)\n" +
+			"     │   └─ Project(one_pk.pk, RAND() as r)\n" +
+			"     │       └─ Projected table access on [pk]\n" +
+			"     │           └─ Table(one_pk)\n" +
+			"     └─ IndexedJoin(i.pk = k.pk)\n" +
+			"         ├─ TableAlias(i)\n" +
+			"         │   └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"         └─ TableAlias(k)\n" +
+			"             └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			"",
 	},
 	{
@@ -401,25 +398,21 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT /*+ JOIN_ORDER(mytable, othertable) */ s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
-			" └─ InnerJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Table(mytable)\n" +
-			"     └─ HashLookup(child: (othertable.i2), lookup: (mytable.i))\n" +
-			"         └─ CachedResults\n" +
-			"             └─ SubqueryAlias(othertable)\n" +
-			"                 └─ Projected table access on [s2 i2]\n" +
-			"                     └─ Table(othertable)\n" +
+			" └─ IndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Projected table access on [s2 i2]\n" +
+			"     │       └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
 	{
 		Query: `SELECT s2, i2, i FROM mytable LEFT JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
 		ExpectedPlan: "Project(othertable.s2, othertable.i2, mytable.i)\n" +
-			" └─ LeftJoin(othertable.i2 = mytable.i)\n" +
-			"     ├─ Table(mytable)\n" +
-			"     └─ HashLookup(child: (othertable.i2), lookup: (mytable.i))\n" +
-			"         └─ CachedResults\n" +
-			"             └─ SubqueryAlias(othertable)\n" +
-			"                 └─ Projected table access on [s2 i2]\n" +
-			"                     └─ Table(othertable)\n" +
+			" └─ LeftIndexedJoin(othertable.i2 = mytable.i)\n" +
+			"     ├─ SubqueryAlias(othertable)\n" +
+			"     │   └─ Projected table access on [s2 i2]\n" +
+			"     │       └─ Table(othertable)\n" +
+			"     └─ IndexedTableAccess(mytable on [mytable.i])\n" +
 			"",
 	},
 	{
@@ -2031,6 +2024,31 @@ var PlanTests = []QueryPlanTest{
 		Query: `SELECT * FROM one_pk WHERE pk IN (1)`,
 		ExpectedPlan: "Projected table access on [pk c1 c2 c3 c4 c5]\n" +
 			" └─ IndexedTableAccess(one_pk on [one_pk.pk] with ranges: [{[1, 1]}])\n" +
+			"",
+	},
+	{
+		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c LEFT JOIN one_pk b ON b.pk = c.pk and b.pk = a.pk`,
+		ExpectedPlan: "Project(a.pk, a.c1, a.c2, a.c3, a.c4, a.c5)\n" +
+			" └─ LeftIndexedJoin((b.pk = c.pk) AND (b.pk = a.pk))\n" +
+			"     ├─ CrossJoin\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table(one_pk)\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ Table(one_pk)\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM tabletest join mytable mt INNER JOIN othertable ot ON tabletest.i = ot.i2 order by 1,3,6`,
+		ExpectedPlan: "Sort(tabletest.i ASC, mt.i ASC, ot.i2 ASC)\n" +
+			" └─ IndexedJoin(tabletest.i = ot.i2)\n" +
+			"     ├─ CrossJoin\n" +
+			"     │   ├─ Table(tabletest)\n" +
+			"     │   └─ TableAlias(mt)\n" +
+			"     │       └─ Table(mytable)\n" +
+			"     └─ TableAlias(ot)\n" +
+			"         └─ IndexedTableAccess(othertable on [othertable.i2])\n" +
 			"",
 	},
 }
