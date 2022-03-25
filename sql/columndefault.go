@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -119,12 +120,14 @@ func (e *ColumnDefaultValue) String() string {
 	// https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html
 	// The default value specified in a DEFAULT clause can be a literal constant or an expression. With one exception,
 	// enclose expression default values within parentheses to distinguish them from literal constant default values.
-	if e.literal {
+	switch {
+	// if it is a literal or an expression that is surrounded as parentheses already, don't put it around parentheses
+	case e.literal, strings.HasPrefix(e.Expression.String(), "(") && strings.HasSuffix(e.Expression.String(), ")"):
 		return e.Expression.String()
-		// CURRENT_TIMESTAMP() is an exception to enclosing expression default in parentheses
-	} else if e.Expression.String() == "CURRENT_TIMESTAMP()" || e.Expression.String() == "NOW()" {
+	// CURRENT_TIMESTAMP() and its synonyms are an exception to enclosing expression default in parentheses
+	case e.Expression.String() == "CURRENT_TIMESTAMP()", e.Expression.String() == "NOW()":
 		return "CURRENT_TIMESTAMP"
-	} else {
+	default:
 		return fmt.Sprintf("(%s)", e.Expression.String())
 	}
 }
