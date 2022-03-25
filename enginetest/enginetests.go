@@ -74,6 +74,17 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 	}
 }
 
+// Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
+func TestJoinQueries(t *testing.T, harness Harness) {
+	engine := NewEngine(t, harness)
+	CreateIndexes(t, harness, engine)
+	createForeignKeys(t, harness, engine)
+
+	for _, tt := range JoinQueryTests {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+	}
+}
+
 // Runs the query tests given after setting up the engine. Useful for testing out a smaller subset of queries during
 // debugging.
 func RunQueryTests(t *testing.T, harness Harness, queries []QueryTest) {

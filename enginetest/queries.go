@@ -6816,6 +6816,73 @@ var KeylessQueries = []QueryTest{
 	},
 }
 
+var JoinQueryTests = []QueryTest{
+	{
+		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v2 where b.pk = 0 and a.v2 = 1;",
+		Expected: []sql.Row{
+			{2, 0},
+			{2, 0},
+			{2, 0},
+			{2, 0},
+		},
+	},
+	{
+		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v3 where b.pk = 0 and c.v2 = 0;",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 0},
+			{1, 0},
+			{1, 0},
+			{2, 0},
+			{2, 0},
+			{3, 0},
+			{3, 0},
+			{4, 0},
+			{4, 0},
+			{5, 0},
+			{5, 0},
+			{6, 0},
+			{6, 0},
+			{7, 0},
+			{7, 0},
+		},
+	},
+	{
+		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b inner join (select * from one_pk_three_idx where v2 = 0) c on b.pk = c.v3 where b.pk = 0 and c.v2 = 0;",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 0},
+			{1, 0},
+			{1, 0},
+			{2, 0},
+			{2, 0},
+			{3, 0},
+			{3, 0},
+			{4, 0},
+			{4, 0},
+			{5, 0},
+			{5, 0},
+			{6, 0},
+			{6, 0},
+			{7, 0},
+			{7, 0},
+		},
+	},
+	{
+		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v2+1 where b.pk = 0;",
+		Expected: []sql.Row{
+			{0, nil},
+			{1, nil},
+			{2, nil},
+			{3, nil},
+			{4, nil},
+			{5, nil},
+			{6, nil},
+			{7, nil},
+		},
+	},
+}
+
 // Queries that are known to be broken in the engine.
 var BrokenQueries = []QueryTest{
 	{

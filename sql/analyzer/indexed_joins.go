@@ -438,11 +438,22 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 
 	left := joinTreeToNodes(tree.left, tablesByName, scope)
 	right := joinTreeToNodes(tree.right, tablesByName, scope)
-	//switch right.(type) {
-	//case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
-	//	//TODO this is only OK if node is InnerJoin or CrossJoin and Left is indexable
-	//	right, left = left, right
-	//}
+
+	switch left.(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		switch right.(type) {
+		case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
+			switch tree.joinCond.joinType {
+			case plan.JoinTypeLeft:
+				right, left = left, right
+				tree.joinCond.joinType = plan.JoinTypeRight
+			case plan.JoinTypeRight:
+				right, left = left, right
+				tree.joinCond.joinType = plan.JoinTypeLeft
+			}
+		}
+	}
+
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
