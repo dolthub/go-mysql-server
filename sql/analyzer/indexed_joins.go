@@ -308,7 +308,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	eligible := true
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
-		case plan.JoinNode, *plan.ValueDerivedTable, nil, *plan.ResolvedTable, *plan.TableAlias:
+		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, nil:
 		case *plan.SubqueryAlias:
 			// The join planner can use the subquery alias as a
 			// table alias in join conditions, but the subquery
@@ -437,11 +437,11 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 
 	left := joinTreeToNodes(tree.left, tablesByName, scope)
 	right := joinTreeToNodes(tree.right, tablesByName, scope)
-	switch right.(type) {
-	case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
-		//TODO this is only OK if node is InnerJoin or CrossJoin and Left is indexable
-		right, left = left, right
-	}
+	//switch right.(type) {
+	//case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
+	//	//TODO this is only OK if node is InnerJoin or CrossJoin and Left is indexable
+	//	right, left = left, right
+	//}
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
@@ -640,14 +640,7 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
 			if !joinCondPresent(joinIndex.joinCond, joinConditions) {
-				joinConditions = append(
-					joinConditions,
-					&joinCond{
-						cond:           joinIndex.joinCond,
-						joinType:       joinIndex.joinType,
-						rightHandTable: joinIndex.table,
-					},
-				)
+				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
 		}
 	}
