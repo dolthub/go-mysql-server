@@ -18,21 +18,20 @@ import (
 	"encoding/hex"
 	goerrors "errors"
 	"fmt"
+	"github.com/opentracing/opentracing-go"
+	"gopkg.in/src-d/go-errors.v1"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
-
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/opentracing/opentracing-go"
-	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 var (
@@ -909,7 +908,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		return convertCreateTable(ctx, c)
 	case sqlparser.DropStr:
 		if c.TriggerSpec != nil {
-			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
+			return plan.NewDropTrigger(sql.UnresolvedDatabase(c.TriggerSpec.TrigName.Qualifier.String()), c.TriggerSpec.TrigName.Name.String(), c.IfExists), nil
 		}
 		if c.ProcedureSpec != nil {
 			return plan.NewDropProcedure(sql.UnresolvedDatabase(""), c.ProcedureSpec.Name, c.IfExists), nil
@@ -985,7 +984,8 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 	}
 
 	return plan.NewCreateTrigger(
-		c.TriggerSpec.Name,
+		sql.UnresolvedDatabase(c.TriggerSpec.TrigName.Qualifier.String()),
+		c.TriggerSpec.TrigName.Name.String(),
 		c.TriggerSpec.Time,
 		c.TriggerSpec.Event,
 		triggerOrder,

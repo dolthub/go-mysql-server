@@ -506,6 +506,14 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
 		}
+	case *plan.CreateTrigger:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.DropTrigger:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
 	}
 
 	switch n := parsed.(type) {

@@ -41,7 +41,8 @@ type CreateTrigger struct {
 	CreatedAt           time.Time
 }
 
-func NewCreateTrigger(triggerName,
+func NewCreateTrigger(triggerDb sql.Database,
+	triggerName,
 	triggerTime,
 	triggerEvent string,
 	triggerOrder *TriggerOrder,
@@ -51,6 +52,7 @@ func NewCreateTrigger(triggerName,
 	bodyString string,
 	createdAt time.Time) *CreateTrigger {
 	return &CreateTrigger{
+		CreateDatabase:      triggerDb,
 		TriggerName:         triggerName,
 		TriggerTime:         triggerTime,
 		TriggerEvent:        triggerEvent,
@@ -74,6 +76,9 @@ func (c *CreateTrigger) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 func (c *CreateTrigger) Resolved() bool {
+	if _, ok := c.CreateDatabase.(sql.UnresolvedDatabase); ok {
+		return false
+	}
 	return c.Table.Resolved() && c.Body.Resolved()
 }
 
