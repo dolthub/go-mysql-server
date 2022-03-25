@@ -42,9 +42,9 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	//TODO replan children of crossjoins
 	selector := func(c plan.TransformContext) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
-		//TODO do search crossjoins with plan.JoinNode parent
 		switch c.Parent.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
 			return false
@@ -77,12 +77,6 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			if err != nil {
 				return nil, err
 			}
-
-			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
-			// some tables / conditions)
-			//if len(joinIndexes) != len(getTablesOrSubqueryAliases(n)) {
-			//	return n, nil
-			//}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
 		default:
@@ -312,19 +306,14 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	// the tree beneath this node, and for this to be correct only
 	// certain nodes can be below it.
 	eligible := true
-	// indexes can only be applied to visible tables
-	visibleTables := make([]string, 0)
 	plan.Inspect(node, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case plan.JoinNode, *plan.ValueDerivedTable, nil:
-		case *plan.ResolvedTable, *plan.TableAlias:
-			visibleTables = append(visibleTables, n.(sql.Nameable).Name())
+		switch node.(type) {
+		case plan.JoinNode, *plan.ValueDerivedTable, nil, *plan.ResolvedTable, *plan.TableAlias:
 		case *plan.SubqueryAlias:
 			// The join planner can use the subquery alias as a
 			// table alias in join conditions, but the subquery
 			// itself has already been analyzed. Do not inspect
 			// below here.
-			visibleTables = append(visibleTables, n.Name())
 			return false
 		case *plan.CrossJoin:
 			return false
@@ -564,7 +553,6 @@ type joinCond struct {
 	cond           sql.Expression
 	joinType       plan.JoinType
 	rightHandTable string
-	sourceIndex    sql.Index
 }
 
 // findJoinIndexesByTable inspects the Node given for Join nodes, and returns a slice of joinIndexes for each table
@@ -658,7 +646,6 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 						cond:           joinIndex.joinCond,
 						joinType:       joinIndex.joinType,
 						rightHandTable: joinIndex.table,
-						sourceIndex:    joinIndex.index,
 					},
 				)
 			}
@@ -720,8 +707,8 @@ func getJoinIndexes(
 
 		return getJoinIndex(ctx, jc, exprs, ia, tableAliases)
 	case *expression.Or:
-		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable, jc.sourceIndex}
-		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable, jc.sourceIndex}
+		leftCond := joinCond{cond.Left, jc.joinType, jc.rightHandTable}
+		rightCond := joinCond{cond.Right, jc.joinType, jc.rightHandTable}
 		leftIdxByTbl := getJoinIndexes(ctx, a, ia, leftCond, tableAliases)
 		rightIdxByTbl := getJoinIndexes(ctx, a, ia, rightCond, tableAliases)
 		result := make(joinIndexesByTable)

@@ -443,17 +443,6 @@ func newJoinOrderNode(node sql.Node) *joinOrderNode {
 			}
 			return &joinOrderNode{commutes: commutes}
 		}
-	//case *plan.CrossJoin:
-	//	ljo := newJoinOrderNode(node.Left())
-	//	rjo := newJoinOrderNode(node.Right())
-	//	commutes := append(ljo.commutes, rjo.commutes...)
-	//	if ljo.left != nil || ljo.node != nil {
-	//		commutes = append(commutes, *ljo)
-	//	}
-	//	if rjo.left != nil || rjo.node != nil {
-	//		commutes = append(commutes, *rjo)
-	//	}
-	//	return &joinOrderNode{commutes: commutes}
 	default:
 		panic(fmt.Sprintf("unexpected node type: %t", node))
 	}
@@ -557,15 +546,6 @@ func containsAllCols(needles []tableCol, haystack map[tableCol]struct{}) bool {
 	return found >= len(needles)
 }
 
-func containsSomeTables(needles []string, haystack []string) bool {
-	for _, needle := range needles {
-		if indexOf(needle, haystack) > 0 {
-			return true
-		}
-	}
-	return true
-}
-
 func strArraysEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -594,21 +574,4 @@ func indexOfInt(i int, is []int) int {
 		}
 	}
 	return -1
-}
-
-// indexableChildHasPrefixMatch returns true when the join node has a table child
-// that can index on the join condition
-func indexableChildHasPrefixMatch(n *joinSearchNode, cond *joinCond) bool {
-	// TODO pass index through, need to check whether index is from table of interest
-	if n.left.isLeaf() {
-		if n.left.table == cond.sourceIndex.Table() {
-			return true
-		}
-	}
-	if n.right.isLeaf() {
-		if n.right.table == cond.sourceIndex.Table() {
-			return true
-		}
-	}
-	return false
 }
