@@ -895,8 +895,9 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					// in FromDoltSchema function, all default values are handled as expression including literal value,
 					// and string of expr value is in parentheses
 					colDefaultStr := c.Default.String()
-					colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(colDefaultStr, "("), ")")
-					// trim double-quotes to avoid double double-quote strings
+					if strings.HasPrefix(colDefaultStr, "(") && strings.HasSuffix(colDefaultStr, ")") {
+						colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(c.Default.String(), "("), ")")
+					}
 					if strings.HasPrefix(colDefaultStr, "\"") && strings.HasSuffix(colDefaultStr, "\"") {
 						colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(colDefaultStr, "\""), "\"")
 					}
