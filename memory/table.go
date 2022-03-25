@@ -56,7 +56,7 @@ type Table struct {
 	lookup sql.IndexLookup
 
 	// AUTO_INCREMENT bookkeeping
-	autoIncVal interface{}
+	autoIncVal uint64
 	autoColIdx int
 }
 
@@ -101,11 +101,11 @@ func NewPartitionedTable(name string, schema sql.PrimaryKeySchema, numPartitions
 		partitions[key] = []sql.Row{}
 	}
 
-	var autoIncVal interface{}
+	var autoIncVal uint64
 	autoIncIdx := -1
 	for i, c := range schema.Schema {
 		if c.AutoIncrement {
-			autoIncVal = sql.NumericUnaryValue(c.Type)
+			autoIncVal = uint64(1)
 			autoIncIdx = i
 			break
 		}
@@ -398,23 +398,23 @@ func EncodeIndexValue(value *IndexValue) ([]byte, error) {
 }
 
 func (t *Table) Inserter(*sql.Context) sql.RowInserter {
-	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
+	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Updater(*sql.Context) sql.RowUpdater {
-	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
+	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Replacer(*sql.Context) sql.RowReplacer {
-	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
+	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Deleter(*sql.Context) sql.RowDeleter {
-	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
+	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) AutoIncrementSetter(*sql.Context) sql.AutoIncrementSetter {
-	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
+	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
 }
 
 func (t *Table) Truncate(ctx *sql.Context) (int, error) {
@@ -492,20 +492,23 @@ func rowsAreEqual(ctx *sql.Context, schema sql.Schema, left, right sql.Row) (boo
 }
 
 // PeekNextAutoIncrementValue peeks at the next AUTO_INCREMENT value
-func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (interface{}, error) {
+func (t *Table) PeekNextAutoIncrementValue(*sql.Context) (uint64, error) {
 	return t.autoIncVal, nil
 }
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
-func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (interface{}, error) {
-	autoIncCol := t.schema.Schema[t.autoColIdx]
-	cmp, err := autoIncCol.Type.Compare(insertVal, t.autoIncVal)
+func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
+	cmp, err := sql.Uint64.Compare(insertVal, t.autoIncVal)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	if cmp > 0 && insertVal != nil {
-		t.autoIncVal = insertVal
+		v, err := sql.Uint64.Convert(insertVal)
+		if err != nil {
+			return 0, err
+		}
+		t.autoIncVal = v.(uint64)
 	}
 
 	return t.autoIncVal, nil
@@ -563,13 +566,22 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		if newColIdx < len(t.schema.Schema) {
 			for _, p := range t.partitions {
 				for _, row := range p {
+					if row[newColIdx] == nil {
+						continue
+					}
+
 					cmp, err := newCol.Type.Compare(row[newColIdx], t.autoIncVal)
 					if err != nil {
 						panic(err)
 					}
 
 					if cmp > 0 {
-						t.autoIncVal = row[newColIdx]
+						var val interface{}
+						val, err = sql.Uint64.Convert(row[newColIdx])
+						if err != nil {
+							panic(err)
+						}
+						t.autoIncVal = val.(uint64)
 					}
 				}
 			}
@@ -577,7 +589,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 			t.autoIncVal = 0
 		}
 
-		t.autoIncVal = increment(t.autoIncVal)
+		t.autoIncVal++
 	}
 
 	newPkOrds := t.schema.PkOrdinals

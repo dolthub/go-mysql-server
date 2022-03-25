@@ -22,10 +22,10 @@ import (
 
 type AlterAutoIncrement struct {
 	UnaryNode
-	autoVal int64
+	autoVal uint64
 }
 
-func NewAlterAutoIncrement(table sql.Node, autoVal int64) *AlterAutoIncrement {
+func NewAlterAutoIncrement(table sql.Node, autoVal uint64) *AlterAutoIncrement {
 	return &AlterAutoIncrement{
 		UnaryNode: UnaryNode{Child: table},
 		autoVal:   autoVal,

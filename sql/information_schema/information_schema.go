@@ -794,7 +794,6 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-			autoVal := getAutoIncrementValue(ctx, t)
 			rows = append(rows, Row{
 				"def",                      // table_catalog
 				db.Name(),                  // table_schema
@@ -809,7 +808,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				nil,                        // max_data_length
 				nil,                        // max_data_length
 				nil,                        // data_free
-				autoVal,                    // auto_increment
+				nil,                        // auto_increment (always nil)
 				y2k,                        // create_time
 				y2k,                        // update_time
 				nil,                        // check_time
@@ -1993,15 +1992,4 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
-}
-
-func getAutoIncrementValue(ctx *Context, t Table) (val interface{}) {
-	for _, c := range t.Schema() {
-		if c.AutoIncrement {
-			val, _ = t.(AutoIncrementTable).PeekNextAutoIncrementValue(ctx)
-			// ignore errors
-			break
-		}
-	}
-	return
 }
