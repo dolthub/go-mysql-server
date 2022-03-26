@@ -2113,39 +2113,33 @@ var PlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v3 where b.pk = 0 and c.v2 = 0;`,
+		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and c.v2 = 0;`,
 		ExpectedPlan: "Project(a.pk, c.v2)\n" +
-			" └─ Filter(b.pk = 0)\n" +
-			"     └─ RightJoin(b.pk = c.v3)\n" +
+			" └─ Filter(c.v2 = 0)\n" +
+			"     └─ LeftIndexedJoin(b.pk = c.v1)\n" +
 			"         ├─ CrossJoin\n" +
-			"         │   ├─ Projected table access on [pk]\n" +
-			"         │   │   └─ TableAlias(a)\n" +
-			"         │   │       └─ Table(one_pk_three_idx)\n" +
-			"         │   └─ Projected table access on [pk]\n" +
+			"         │   ├─ TableAlias(a)\n" +
+			"         │   │   └─ Table(one_pk_three_idx)\n" +
+			"         │   └─ Filter(b.pk = 0)\n" +
 			"         │       └─ TableAlias(b)\n" +
-			"         │           └─ Table(one_pk_three_idx)\n" +
-			"         └─ Filter(c.v2 = 0)\n" +
-			"             └─ Projected table access on [v2 v3]\n" +
-			"                 └─ TableAlias(c)\n" +
-			"                     └─ Table(one_pk_three_idx)\n" +
+			"         │           └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk] with ranges: [{[0, 0]}])\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3])\n" +
 			"",
 	},
 	{
-		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v2 where b.pk = 0 and a.v2 = 1;`,
+		Query: `select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and a.v2 = 1;`,
 		ExpectedPlan: "Project(a.pk, c.v2)\n" +
-			" └─ LeftJoin(b.pk = c.v2)\n" +
+			" └─ LeftIndexedJoin(b.pk = c.v1)\n" +
 			"     ├─ CrossJoin\n" +
 			"     │   ├─ Filter(a.v2 = 1)\n" +
-			"     │   │   └─ Projected table access on [pk v2]\n" +
-			"     │   │       └─ TableAlias(a)\n" +
-			"     │   │           └─ Table(one_pk_three_idx)\n" +
+			"     │   │   └─ TableAlias(a)\n" +
+			"     │   │       └─ Table(one_pk_three_idx)\n" +
 			"     │   └─ Filter(b.pk = 0)\n" +
-			"     │       └─ Projected table access on [pk]\n" +
-			"     │           └─ TableAlias(b)\n" +
-			"     │               └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk] with ranges: [{[0, 0]}])\n" +
-			"     └─ Projected table access on [v2]\n" +
-			"         └─ TableAlias(c)\n" +
-			"             └─ Table(one_pk_three_idx)\n" +
+			"     │       └─ TableAlias(b)\n" +
+			"     │           └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.pk] with ranges: [{[0, 0]}])\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ IndexedTableAccess(one_pk_three_idx on [one_pk_three_idx.v1,one_pk_three_idx.v2,one_pk_three_idx.v3])\n" +
 			"",
 	},
 }

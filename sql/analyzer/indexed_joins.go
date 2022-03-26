@@ -316,7 +316,8 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 			// below here.
 			return false
 		case *plan.CrossJoin:
-			// cross joins have to be index planned in isolation
+			// cross join subtrees have to be planned in isolation,
+			// but otherwise are valid leafs for join planning.
 			return false
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)

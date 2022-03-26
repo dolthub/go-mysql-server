@@ -6869,7 +6869,7 @@ var JoinQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v2+1 where b.pk = 0;",
+		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b left join one_pk_three_idx c on b.pk = c.v1+1 where b.pk = 0;",
 		Expected: []sql.Row{
 			{0, nil},
 			{1, nil},
@@ -6879,6 +6879,27 @@ var JoinQueryTests = []QueryTest{
 			{5, nil},
 			{6, nil},
 			{7, nil},
+		},
+	},
+	{
+		Query: "select a.pk, c.v2 from one_pk_three_idx a cross join one_pk_three_idx b right join one_pk_three_idx c on b.pk = c.v1 where b.pk = 0 and c.v2 = 0;",
+		Expected: []sql.Row{
+			{0, 0},
+			{0, 0},
+			{1, 0},
+			{1, 0},
+			{2, 0},
+			{2, 0},
+			{3, 0},
+			{3, 0},
+			{4, 0},
+			{4, 0},
+			{5, 0},
+			{5, 0},
+			{6, 0},
+			{6, 0},
+			{7, 0},
+			{7, 0},
 		},
 	},
 }

@@ -501,6 +501,7 @@ func (n *joinSearchNode) tableCols() map[tableCol]struct{} {
 		for _, col := range n.node.Schema() {
 			tableCols[tableCol{table: col.Source, col: col.Name}] = struct{}{}
 		}
+		return tableCols
 	}
 	for _, col := range n.left.schema() {
 		tableCols[tableCol{table: col.Source, col: col.Name}] = struct{}{}
