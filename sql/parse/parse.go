@@ -540,6 +540,37 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			node = plan.NewFilter(filter, node)
 		}
 		return node, nil
+	case "function status":
+		var filter sql.Expression
+		var node sql.Node
+		if s.Filter != nil {
+			if s.Filter.Filter != nil {
+				var err error
+				filter, err = ExprToExpression(ctx, s.Filter.Filter)
+				if err != nil {
+					return nil, err
+				}
+			} else if s.Filter.Like != "" {
+				filter = expression.NewLike(
+					expression.NewUnresolvedColumn("Name"),
+					expression.NewLiteral(s.Filter.Like, sql.LongText),
+					nil,
+				)
+			}
+		}
+
+		node, err := Parse(ctx, "select routine_schema as `Db`, routine_name as `Name`, routine_type as `Type`,"+
+			"definer as `Definer`, last_altered as `Modified`, created as `Created`, security_type as `Security_type`,"+
+			"routine_comment as `Comment`, character_set_client, collation_connection,"+
+			"database_collation as `Database Collation` from information_schema.routines where routine_type = 'FUNCTION'")
+		if err != nil {
+			return nil, err
+		}
+
+		if filter != nil {
+			node = plan.NewFilter(filter, node)
+		}
+		return node, nil
 	case "index":
 		return plan.NewShowIndexes(plan.NewUnresolvedTable(s.Table.Name.String(), s.Table.Qualifier.String())), nil
 	case sqlparser.KeywordString(sqlparser.VARIABLES):
@@ -953,7 +984,17 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 		return nil, err
 	}
 
-	return plan.NewCreateTrigger(c.TriggerSpec.Name, c.TriggerSpec.Time, c.TriggerSpec.Event, triggerOrder, tableNameToUnresolvedTable(c.Table), body, query, bodyStr), nil
+	return plan.NewCreateTrigger(
+		c.TriggerSpec.Name,
+		c.TriggerSpec.Time,
+		c.TriggerSpec.Event,
+		triggerOrder,
+		tableNameToUnresolvedTable(c.Table),
+		body,
+		query,
+		bodyStr,
+		ctx.QueryTime(),
+	), nil
 }
 
 func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
@@ -1341,9 +1382,9 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 		return nil, sql.ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
 	}
 
-	var autoVal int64
+	var autoVal uint64
 	if val.Type == sqlparser.IntVal {
-		i, err := strconv.ParseInt(string(val.Val), 10, 64)
+		i, err := strconv.ParseUint(string(val.Val), 10, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -1353,7 +1394,7 @@ func convertAlterAutoIncrement(ddl *sqlparser.DDL) (sql.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		autoVal = int64(f)
+		autoVal = uint64(f)
 	} else {
 		return nil, sql.ErrInvalidSQLValType.New(ddl.AutoIncSpec.Value)
 	}

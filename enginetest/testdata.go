@@ -652,11 +652,15 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			autoTbl, ok := table.(sql.AutoIncrementTable)
 
 			if err == nil && ok {
-				InsertRows(t, NewContext(harness), mustInsertableTable(t, autoTbl),
+				ctx := NewContext(harness)
+				InsertRows(t, ctx, mustInsertableTable(t, autoTbl),
 					sql.NewRow(1, 11),
 					sql.NewRow(2, 22),
 					sql.NewRow(3, 33),
 				)
+				// InsertRows bypasses integrator auto increment methods
+				// manually set the auto increment value here
+				setAutoIncrementValue(t, ctx, autoTbl, 4)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "auto_increment_tbl", err)
 			}
@@ -874,6 +878,12 @@ func DeleteRows(t *testing.T, ctx *sql.Context, table sql.DeletableTable, rows .
 		}
 	}
 	require.NoError(t, deleter.Close(ctx))
+}
+
+func setAutoIncrementValue(t *testing.T, ctx *sql.Context, table sql.AutoIncrementTable, val uint64) {
+	setter := table.AutoIncrementSetter(ctx)
+	require.NoError(t, setter.SetAutoIncrementValue(ctx, val))
+	require.NoError(t, setter.Close(ctx))
 }
 
 func createNativeIndexes(t *testing.T, harness Harness, e *sqle.Engine) error {

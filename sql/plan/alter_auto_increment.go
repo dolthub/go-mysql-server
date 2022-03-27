@@ -23,10 +23,10 @@ import (
 type AlterAutoIncrement struct {
 	ddlNode
 	Table   sql.Node
-	autoVal int64
+	autoVal uint64
 }
 
-func NewAlterAutoIncrement(database sql.Database, table sql.Node, autoVal int64) *AlterAutoIncrement {
+func NewAlterAutoIncrement(database sql.Database, table sql.Node, autoVal uint64) *AlterAutoIncrement {
 	return &AlterAutoIncrement{
 		ddlNode: ddlNode{db: database},
 		Table:   table,
