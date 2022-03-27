@@ -2091,6 +2091,40 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.Equal(t, s, testTable.Schema())
 	})
 
+	t.Run("CREATE TABLE with multiple unamed indexes", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "CREATE TABLE mydb.t12 (a INTEGER NOT NULL PRIMARY KEY, "+
+			"b VARCHAR(10) UNIQUE, c varchar(10) UNIQUE)", []sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(t, err)
+
+		t12Table, ok, err := db.GetTableInsensitive(ctx, "t12")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		t9TableIndexable, ok := t12Table.(sql.IndexedTable)
+		require.True(t, ok)
+		t9Indexes, err := t9TableIndexable.GetIndexes(ctx)
+		require.NoError(t, err)
+		uniqueCount := 0
+		for _, index := range t9Indexes {
+			if index.IsUnique() {
+				uniqueCount += 1
+			}
+		}
+
+		// We want two unique indexes to be created with unique names being generated. It is up to the integrator
+		// to decide how empty string indexes are created. Adding in the primary key gives us a result of 3.
+		require.Equal(t, 3, uniqueCount)
+
+		// Validate No Unique Index has an empty Name
+		for _, index := range t9Indexes {
+			require.True(t, index.ID() != "")
+		}
+	})
 	//TODO: Implement "CREATE TABLE otherDb.tableName"
 }
 

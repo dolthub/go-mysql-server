@@ -1068,7 +1068,7 @@ func (t *Table) CreateIndex(ctx *sql.Context, indexName string, using sql.IndexU
 		return err
 	}
 
-	t.indexes[indexName] = index
+	t.indexes[index.ID()] = index // We should store the computed index name in the case of an empty index name being passed in
 	return nil
 }
 
