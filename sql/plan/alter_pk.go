@@ -80,12 +80,10 @@ func (a *AlterPK) Schema() sql.Schema {
 func (a *AlterPK) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// We grab the table from the database to ensure that state is properly refreshed, thereby preventing multiple keys
 	// being defined.
-	table, ok, err := a.ddlNode.Database().GetTableInsensitive(ctx, getTableName(a.Table))
+	// Grab the table fresh from the database.
+	table, err := getTableFromDatabase(ctx, a.Database(), a.Table)
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(a.Table)
 	}
 
 	pkAlterable, ok := table.(sql.PrimaryKeyAlterableTable)

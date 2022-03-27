@@ -116,12 +116,9 @@ func (p *AlterIndex) Schema() sql.Schema {
 // Execute inserts the rows in the database.
 func (p *AlterIndex) Execute(ctx *sql.Context) error {
 	// We should refresh the state of the table in case this alter was in a multi alter statement.
-	table, ok, err := p.ddlNode.Database().GetTableInsensitive(ctx, getTableName(p.Table))
+	table, err := getTableFromDatabase(ctx, p.Database(), p.Table)
 	if err != nil {
 		return err
-	}
-	if !ok {
-		return sql.ErrTableNotFound.New(p.Table)
 	}
 
 	indexable, ok := table.(sql.IndexAlterableTable)

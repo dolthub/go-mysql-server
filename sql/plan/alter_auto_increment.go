@@ -37,12 +37,9 @@ func NewAlterAutoIncrement(database sql.Database, table sql.Node, autoVal int64)
 // Execute inserts the rows in the database.
 func (p *AlterAutoIncrement) Execute(ctx *sql.Context) error {
 	// Grab the table fresh from the database.
-	table, ok, err := p.ddlNode.Database().GetTableInsensitive(ctx, getTableName(p.Table))
+	table, err := getTableFromDatabase(ctx, p.Database(), p.Table)
 	if err != nil {
 		return err
-	}
-	if !ok {
-		return sql.ErrTableNotFound.New(p.Table)
 	}
 
 	insertable, ok := table.(sql.InsertableTable)

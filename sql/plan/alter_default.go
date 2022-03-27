@@ -91,12 +91,9 @@ func (d *AlterDefaultSet) String() string {
 // RowIter implements the sql.Node interface.
 func (d *AlterDefaultSet) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	// Grab the table fresh from the database.
-	table, ok, err := d.ddlNode.Database().GetTableInsensitive(ctx, getTableName(d.Table))
+	table, err := getTableFromDatabase(ctx, d.Database(), d.Table)
 	if err != nil {
 		return nil, err
-	}
-	if !ok {
-		return nil, sql.ErrTableNotFound.New(d.Table)
 	}
 
 	alterable, ok := table.(sql.AlterableTable)
@@ -240,4 +237,20 @@ func (d *AlterDefaultDrop) WithDatabase(db sql.Database) (sql.Node, error) {
 	nd := *d
 	nd.db = db
 	return &nd, nil
+}
+
+// getTableFromDatabase returns the related sql.Table from a database in the case of a sql.Databasw
+func getTableFromDatabase(ctx *sql.Context, db sql.Database, tableNode sql.Node) (sql.Table, error) {
+	// Grab the table fresh from the database.
+	tableName := getTableName(tableNode)
+
+	table, ok, err := db.GetTableInsensitive(ctx, tableName)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(tableName)
+	}
+
+	return table, nil
 }

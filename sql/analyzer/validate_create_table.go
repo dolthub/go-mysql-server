@@ -180,7 +180,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	}
 
 	// None of the checks we do concern ordering, so we don't need to worry about it here
-	newCol := copyColumn(ac.Column())
+	newCol := ac.Column().Copy()
 	newCol.Source = nameable.Name()
 	newSch := append(schema, newCol)
 
@@ -244,26 +244,34 @@ func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckC
 	return nil
 }
 
-// validateAlterIndex validates the specified column can have an index added, dropped, or renamed.
+// validateAlterIndex validates the specified column can have an index added, dropped, or renamed. Returns an updated
+// list of index name given the add, drop, or rename operations.
 func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes []string) ([]string, error) {
 	tableName := getTableName(ai.Table)
 
 	switch ai.Action {
 	case plan.IndexAction_Create:
-		badColName, ok := schContainsAllIndexColumns(ai.Columns, sch, tableName)
+		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
 
 		return append(indexes, ai.IndexName), nil
 	case plan.IndexAction_Drop:
-		for _, idx := range indexes {
+		savedIdx := -1
+		for i, idx := range indexes {
 			if strings.EqualFold(idx, ai.IndexName) {
-				return indexes, nil
+				savedIdx = i
+				break
 			}
 		}
 
-		return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
+		if savedIdx == -1 {
+			return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
+		}
+
+		// Remove the index from the list
+		return append(indexes[:savedIdx], indexes[savedIdx+1:]...), nil
 	case plan.IndexAction_Rename:
 		savedIdx := -1
 		for i, idx := range indexes {
@@ -283,9 +291,9 @@ func validateAlterIndex(initialSch, sch sql.Schema, ai *plan.AlterIndex, indexes
 	return indexes, nil
 }
 
-// schContainsAllIndexColumns takes in a set of IndexColumns and returns false, along with the offending column name, if
+// missingIdxColumn takes in a set of IndexColumns and returns false, along with the offending column name, if
 // an index Column is not in an index.
-func schContainsAllIndexColumns(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
+func missingIdxColumn(cols []sql.IndexColumn, sch sql.Schema, tableName string) (string, bool) {
 	for _, c := range cols {
 		if ok := sch.Contains(c.Name, tableName); !ok {
 			return c.Name, false
@@ -409,7 +417,7 @@ func validatePrimaryKey(initialSch, sch sql.Schema, ai *plan.AlterPK) (sql.Schem
 	tableName := getTableName(ai.Table)
 	switch ai.Action {
 	case plan.PrimaryKeyAction_Create:
-		badColName, ok := schContainsAllIndexColumns(ai.Columns, sch, tableName)
+		badColName, ok := missingIdxColumn(ai.Columns, sch, tableName)
 		if !ok {
 			return nil, sql.ErrKeyColumnDoesNotExist.New(badColName)
 		}
@@ -478,18 +486,4 @@ func hasPrimaryKeys(sch sql.Schema) bool {
 	}
 
 	return false
-}
-
-func copyColumn(c *sql.Column) *sql.Column {
-	return &sql.Column{
-		Name:          c.Name,
-		Type:          c.Type,
-		Default:       c.Default,
-		AutoIncrement: c.AutoIncrement,
-		Nullable:      c.Nullable,
-		Source:        c.Source,
-		PrimaryKey:    c.PrimaryKey,
-		Comment:       c.Comment,
-		Extra:         c.Extra,
-	}
 }

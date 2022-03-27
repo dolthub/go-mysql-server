@@ -4547,12 +4547,12 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, `INSERT INTO t1 values ("a1","a2"),("a2","a3"),("a3","a4")`)
 
 		// Execute a MultiDDL Alter Statement
-		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (pk, v)`)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
 		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
-			{"pk", "text", "NO", "PRI", "", ""},
+			{"pk", "text", "NO", "", "", ""},
 			{"v", "text", "NO", "PRI", "", ""},
 		}, nil, nil)
-		AssertErr(t, e, harness, `INSERT INTO t1 values ("a2", "a3")`, sql.ErrPrimaryKeyViolation)
+		AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
 
 		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
 			{"a1", "a2"},
