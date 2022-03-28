@@ -7335,7 +7335,7 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query: "SHOW TABLES WHERE `Table` = 'mytable'",
+		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
 		Expected: []sql.Row{
 			{"mytable"},
 		},
@@ -7968,8 +7968,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.statistics where table_name='mytable'",
 				Expected: []sql.Row{
-					{"def", "mydb", "mytable", 1, "mydb", "myindex", 1, "test_score", "A", uint64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"def", "mydb", "mytable", 0, "mydb", "PRIMARY", 1, "pk", "A", uint64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "mytable", 1, "mydb", "myindex", 1, "test_score", "A", int64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "mytable", 0, "mydb", "PRIMARY", 1, "pk", "A", int64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},

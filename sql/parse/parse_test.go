@@ -1697,47 +1697,47 @@ CREATE TABLE t2
 	`SHOW TABLES FROM foo AS OF 'abc'`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", sql.LongText)),
 	`SHOW FULL TABLES FROM foo AS OF 'abc'`: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
 	`SHOW FULL TABLES IN foo AS OF 'abc'`:   plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
-	`SHOW TABLES LIKE 'foo'`: plan.NewFilter(
+	`SHOW TABLES FROM mydb LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_mydb"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("mydb"), false, nil),
 	),
-	`SHOW TABLES AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
+	`SHOW TABLES FROM mydb AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_mydb"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
+		plan.NewShowTables(sql.UnresolvedDatabase("mydb"), false, expression.NewLiteral("abc", sql.LongText)),
 	),
-	"SHOW TABLES WHERE `Table` = 'foo'": plan.NewFilter(
+	"SHOW TABLES FROM bar WHERE `Tables_in_bar` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), false, nil),
 	),
-	`SHOW FULL TABLES LIKE 'foo'`: plan.NewFilter(
+	`SHOW FULL TABLES FROM mydb LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_mydb"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("mydb"), true, nil),
 	),
-	"SHOW FULL TABLES WHERE `Table` = 'foo'": plan.NewFilter(
+	"SHOW FULL TABLES FROM bar WHERE `Tables_in_bar` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 	),
 	`SHOW FULL TABLES FROM bar LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
@@ -1745,16 +1745,16 @@ CREATE TABLE t2
 	),
 	`SHOW FULL TABLES FROM bar AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, expression.NewLiteral("abc", sql.LongText)),
 	),
-	"SHOW FULL TABLES FROM bar WHERE `Table` = 'foo'": plan.NewFilter(
+	"SHOW FULL TABLES FROM bar WHERE `Tables_in_bar` = 'test'": plan.NewFilter(
 		expression.NewEquals(
-			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.LongText),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
+			expression.NewLiteral("test", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 	),

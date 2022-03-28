@@ -591,6 +591,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		if s.ShowTablesOpt != nil {
 			dbName = s.ShowTablesOpt.DbName
+			if dbName == "" {
+				dbName = ctx.GetCurrentDatabase()
+			}
 			full = s.Full
 
 			if s.ShowTablesOpt.Filter != nil {
@@ -602,7 +605,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					}
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
-						expression.NewUnresolvedColumn("Table"),
+						expression.NewUnresolvedColumn(fmt.Sprintf("Tables_in_%s", dbName)),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
 						nil,
 					)

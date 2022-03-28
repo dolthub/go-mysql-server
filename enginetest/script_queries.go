@@ -1643,7 +1643,6 @@ var ScriptTests = []ScriptTest{
 					{"v2", "int", "NO", "PRI", "", ""},
 				},
 			},
-			// TODO: Move query to appropriate place
 			{
 				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v4`, ADD COLUMN v7 int NOT NULL",
 				Expected: []sql.Row{},
