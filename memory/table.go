@@ -738,6 +738,17 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 
 	t.schema.PkOrdinals = newPkOrds
 
+	for _, index := range t.indexes {
+		memIndex := index.(*Index)
+		nameLowercase := strings.ToLower(columnName)
+		for i, expr := range memIndex.Exprs {
+			getField := expr.(*expression.GetField)
+			if strings.ToLower(getField.Name()) == nameLowercase {
+				memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), getField.Table(), column.Name, getField.IsNullable())
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -982,6 +993,12 @@ func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	return sql.ErrForeignKeyNotFound.New(fkName, t.name)
 }
 
+// UpdateForeignKey implements sql.ForeignKeyTable.
+func (t *Table) UpdateForeignKey(ctx *sql.Context, fkName string, fk sql.ForeignKeyConstraint) error {
+	t.fkColl.DropFK(fkName)
+	return t.AddForeignKey(ctx, fk)
+}
+
 // CreateIndexForForeignKey implements sql.ForeignKeyTable.
 func (t *Table) CreateIndexForForeignKey(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn) error {
 	return t.CreateIndex(ctx, indexName, using, constraint, columns, "")
@@ -997,7 +1014,7 @@ func (t *Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
 
 // GetForeignKeyUpdater implements sql.ForeignKeyTable.
 func (t *Table) GetForeignKeyUpdater(ctx *sql.Context) sql.ForeignKeyUpdater {
-	return &tableEditor{t, nil, nil, NewTableEditAccumulator(t), 0}
+	return &tableEditor{t, 1, nil, NewTableEditAccumulator(t), 0}
 }
 
 // GetChecks implements sql.CheckTable

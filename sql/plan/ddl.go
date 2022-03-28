@@ -72,6 +72,15 @@ func (i *IndexDefinition) String() string {
 	return i.IndexName
 }
 
+// ColumnNames returns each column's name without the length property.
+func (i *IndexDefinition) ColumnNames() []string {
+	colNames := make([]string, len(i.Columns))
+	for i, col := range i.Columns {
+		colNames[i] = col.Name
+	}
+	return colNames
+}
+
 // TableSpec is a node describing the schema of a table.
 type TableSpec struct {
 	Schema  sql.PrimaryKeySchema
@@ -317,11 +326,30 @@ func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 		return ErrNotIndexable.New()
 	}
 
+	indexMap := make(map[string]struct{})
 	for _, idxDef := range idxes {
-		err := idxAlterable.CreateIndex(ctx, idxDef.IndexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
+		indexName := idxDef.IndexName
+		// If the name is empty, we create a new name using the columns provided while appending an ascending integer
+		// until we get a non-colliding name if the original name (or each preceding name) already exists.
+		if indexName == "" {
+			indexName = strings.Join(idxDef.ColumnNames(), "")
+			if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+				for i := 0; true; i++ {
+					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
+						indexName = newIndexName
+						break
+					}
+				}
+			}
+		} else if _, ok = indexMap[strings.ToLower(idxDef.IndexName)]; ok {
+			return sql.ErrIndexIDAlreadyRegistered.New(idxDef.IndexName)
+		}
+		err := idxAlterable.CreateIndex(ctx, indexName, idxDef.Using, idxDef.Constraint, idxDef.Columns, idxDef.Comment)
 		if err != nil {
 			return err
 		}
+		indexMap[strings.ToLower(indexName)] = struct{}{}
 	}
 
 	return nil
@@ -338,9 +366,8 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 		return err
 	}
 	for i, fkDef := range c.fkDefs {
-		err = fkTbl.AddForeignKey(ctx, *fkDef)
-		if err != nil {
-			return err
+		if fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
+			return sql.ErrForeignKeySetDefault.New()
 		}
 		if fkChecks.(int8) == 1 {
 			fkParentTbl := c.fkParentTbls[i]
@@ -349,7 +376,12 @@ func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) e
 				fkParentTbl = fkTbl
 			}
 			// If foreign_key_checks are true, then the referenced tables will be populated
-			err = resolveForeignKey(ctx, fkTbl, fkParentTbl, fkDef)
+			err = ResolveForeignKey(ctx, fkTbl, fkParentTbl, *fkDef, true)
+			if err != nil {
+				return err
+			}
+		} else {
+			err = fkTbl.AddForeignKey(ctx, *fkDef)
 			if err != nil {
 				return err
 			}
@@ -640,6 +672,31 @@ func (d *DropTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 		curdb = tbl.Database
 
 		droppable := tbl.Database.(sql.TableDropper)
+
+		if fkTable, err := getForeignKeyTable(tbl); err == nil {
+			fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
+			if err != nil {
+				return nil, err
+			}
+			if fkChecks.(int8) == 1 {
+				parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+				if err != nil {
+					return nil, err
+				}
+				if len(parentFks) > 0 {
+					return nil, sql.ErrForeignKeyDropTable.New(fkTable.Name(), parentFks[0].Name)
+				}
+			}
+			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+			if err != nil {
+				return nil, err
+			}
+			for _, fk := range fks {
+				if err = fkTable.DropForeignKey(ctx, fk.Name); err != nil {
+					return nil, err
+				}
+			}
+		}
 
 		err = droppable.DropTable(ctx, tbl.Name())
 		if err != nil {

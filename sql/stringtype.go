@@ -317,6 +317,14 @@ func (t stringType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t stringType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(stringType); ok {
+		return t.baseType == ot.baseType && t.collationName == ot.collationName && t.charLength == ot.charLength
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t stringType) Promote() Type {
 	switch t.baseType {

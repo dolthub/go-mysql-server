@@ -164,141 +164,6 @@ func TestSingleScript(t *testing.T) {
 	}
 }
 
-//TODO: DELETE ME BEFORE MERGING PR TO MAIN
-func TestTempFKTests(t *testing.T) {
-	var scripts = []enginetest.ScriptTest{
-		{
-			Name: "a",
-			SetUpScript: []string{
-				"CREATE TABLE parent(pk DOUBLE PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX(v1, v2, pk));",
-				"INSERT INTO parent VALUES (1, 1, 1), (2, 1, 2);",
-				"CREATE TABLE child(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child FOREIGN KEY (v2, v1) REFERENCES parent(v2, v1));",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query:    "INSERT INTO child VALUES (1, 1, 1);",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
-				{
-					Query:       "INSERT INTO child VALUES (2, 2, 2);",
-					ExpectedErr: sql.ErrForeignKeyChildViolation,
-				},
-				{
-					Query:       "INSERT INTO child VALUES (3, 2, 1);",
-					ExpectedErr: sql.ErrForeignKeyChildViolation,
-				},
-				{
-					Query:    "INSERT INTO child VALUES (4, 1, 2);",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
-			},
-		},
-		{
-			Name: "b",
-			SetUpScript: []string{
-				"CREATE TABLE parent(pk DOUBLE PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX(v1, v2, pk));",
-				"INSERT INTO parent VALUES (1, 1, 1), (2, 1, 2);",
-				"CREATE TABLE child(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT);",
-				"INSERT INTO child VALUES (1, 2, 1);",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query:       "ALTER TABLE child ADD CONSTRAINT fk_child FOREIGN KEY (v2, v1) REFERENCES parent(v2, v1);",
-					ExpectedErr: sql.ErrForeignKeyChildViolation,
-				},
-			},
-		},
-		{
-			Name: "c",
-			SetUpScript: []string{
-				"CREATE TABLE self(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX(v1), CONSTRAINT fk_self FOREIGN KEY(v2) REFERENCES self(v1) ON UPDATE CASCADE);",
-				"INSERT INTO self VALUES (0, 1, 1), (1, 2, 1);",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query:       "DELETE FROM self WHERE v1 = 1;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
-				},
-				{
-					Query:    "DELETE FROM self WHERE v1 = 2;",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
-			},
-		},
-		{
-			Name: "d",
-			SetUpScript: []string{
-				"CREATE TABLE self(pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX(v1), CONSTRAINT fk_self FOREIGN KEY(v2) REFERENCES self(v1) ON UPDATE CASCADE);",
-				"INSERT INTO self VALUES (0, 1, 1), (1, 2, 1);",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query:       "DELETE FROM self WHERE v1 = 1;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
-				},
-				{
-					Query:    "DELETE FROM self WHERE v1 = 2;",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
-			},
-		},
-		{
-			Name: "e",
-			SetUpScript: []string{
-				"CREATE TABLE parent (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX (v1), INDEX (v2), INDEX (v1, v2));",
-				"CREATE TABLE child (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child FOREIGN KEY (v1, v2) REFERENCES parent (v1, v2) ON DELETE SET NULL);",
-				"CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child2 FOREIGN KEY (v1, v2) REFERENCES child (v1, v2) ON DELETE SET NULL);",
-				"INSERT INTO parent VALUES (1,1,1), (2,2,2), (3,3,3);",
-				"INSERT INTO child VALUES (1,1,1), (2,2,2), (3,3,3);",
-				"INSERT INTO child2 VALUES (1,1,1), (2,2,2), (3,3,3);",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query:       "DELETE FROM parent WHERE pk = 1;",
-					ExpectedErr: sql.ErrForeignKeyParentViolation,
-				},
-			},
-		},
-		{
-			Name: "f",
-			SetUpScript: []string{
-				"CREATE TABLE parent (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, INDEX (v1), INDEX (v2), INDEX (v1, v2));",
-				"CREATE TABLE child (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child FOREIGN KEY (v1, v2) REFERENCES parent (v1, v2) ON DELETE SET NULL);",
-				"CREATE TABLE child2 (pk BIGINT PRIMARY KEY, v1 BIGINT, v2 BIGINT, CONSTRAINT fk_child2 FOREIGN KEY (v1, v2) REFERENCES child (v1, v2) ON UPDATE CASCADE);",
-				"INSERT INTO parent VALUES (1,1,1), (2,2,2), (3,3,3);",
-				"INSERT INTO child VALUES (1,1,1), (2,2,2), (3,3,3);",
-				"INSERT INTO child2 VALUES (1,1,1), (2,2,2), (3,3,3);",
-			},
-			Assertions: []enginetest.ScriptTestAssertion{
-				{
-					Query:    "DELETE FROM parent WHERE pk = 1;",
-					Expected: []sql.Row{{sql.NewOkResult(1)}},
-				},
-				{
-					Query:    "SELECT * FROM parent;",
-					Expected: []sql.Row{{2, 2, 2}, {3, 3, 3}},
-				},
-				{
-					Query:    "SELECT * FROM child;",
-					Expected: []sql.Row{{1, nil, nil}, {2, 2, 2}, {3, 3, 3}},
-				},
-				{
-					Query:    "SELECT * FROM child2;",
-					Expected: []sql.Row{{1, nil, nil}, {2, 2, 2}, {3, 3, 3}},
-				},
-			},
-		},
-	}
-
-	for _, test := range scripts {
-		t.Run(test.Name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-			engine := enginetest.NewEngine(t, harness)
-			enginetest.TestScriptWithEngine(t, engine, harness, test)
-		})
-	}
-}
-
 func TestUnbuildableIndex(t *testing.T) {
 	var scripts = []enginetest.ScriptTest{
 		{
@@ -714,6 +579,10 @@ func TestCreateForeignKeys(t *testing.T) {
 
 func TestDropForeignKeys(t *testing.T) {
 	enginetest.TestDropForeignKeys(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestForeignKeys(t *testing.T) {
+	enginetest.TestForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }
 
 func TestCreateCheckConstraints(t *testing.T) {

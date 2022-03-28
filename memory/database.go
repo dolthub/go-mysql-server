@@ -17,6 +17,8 @@ package memory
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -196,7 +198,18 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		return sql.ErrTableAlreadyExists.New(newName)
 	}
 
-	tbl.(*Table).name = newName
+	memTbl := tbl.(*Table)
+	memTbl.name = newName
+	for _, col := range memTbl.schema.Schema {
+		col.Source = newName
+	}
+	for _, index := range memTbl.indexes {
+		memIndex := index.(*Index)
+		for i, expr := range memIndex.Exprs {
+			getField := expr.(*expression.GetField)
+			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), newName, getField.Name(), getField.IsNullable())
+		}
+	}
 	d.tables[newName] = tbl
 	delete(d.tables, oldName)
 

@@ -148,6 +148,7 @@ func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
 func createForeignKeys(t *testing.T, harness Harness, engine *sqle.Engine) {
 	if fkh, ok := harness.(ForeignKeyHarness); ok && fkh.SupportsForeignKeys() {
 		ctx := NewContextWithEngine(harness, engine)
+		TestQueryWithContext(t, ctx, engine, "ALTER TABLE mytable ADD INDEX idx_si (s,i)", nil, nil, nil)
 		TestQueryWithContext(t, ctx, engine, "ALTER TABLE fk_tbl ADD CONSTRAINT fk1 FOREIGN KEY (a,b) REFERENCES mytable (i,s) ON DELETE CASCADE", nil, nil, nil)
 	}
 }
@@ -3378,6 +3379,22 @@ func TestDropForeignKeys(t *testing.T, harness Harness) {
 	AssertErr(t, e, harness, "ALTER TABLE child2 DROP FOREIGN KEY fk3", sql.ErrForeignKeyNotFound)
 }
 
+func TestForeignKeys(t *testing.T, harness Harness) {
+	for _, script := range ForeignKeyTests {
+		t.Run(script.Name, func(t *testing.T) {
+			myDb := harness.NewDatabase("mydb")
+			databases := []sql.Database{myDb}
+			e := NewEngineWithDbs(t, harness, databases)
+			defer e.Close()
+			script.SetUpScript = append([]string{
+				"CREATE TABLE parent (id INT PRIMARY KEY, v1 INT, v2 INT, INDEX v1 (v1), INDEX v2 (v2));",
+				"CREATE TABLE child (id INT PRIMARY KEY, v1 INT, v2 INT);",
+			}, script.SetUpScript...)
+			TestScriptWithEngine(t, e, harness, script)
+		})
+	}
+}
+
 func TestCreateCheckConstraints(t *testing.T, harness Harness) {
 	require := require.New(t)
 
@@ -3702,7 +3719,7 @@ func TestDropConstraints(t *testing.T, harness Harness) {
 	defer e.Close()
 
 	RunQuery(t, e, harness, "CREATE TABLE t1 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
-	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER, c integer)")
+	RunQuery(t, e, harness, "CREATE TABLE t2 (a INTEGER PRIMARY KEY, b INTEGER, c integer, INDEX (b))")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT chk1 CHECK (a > 0)")
 	RunQuery(t, e, harness, "ALTER TABLE t1 ADD CONSTRAINT fk1 FOREIGN KEY (a) REFERENCES t2(b)")
 

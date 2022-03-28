@@ -476,9 +476,9 @@ type ForeignKeyTable interface {
 	AddForeignKey(ctx *Context, fk ForeignKeyConstraint) error
 	// DropForeignKey removes a foreign key from the table.
 	DropForeignKey(ctx *Context, fkName string) error
-	// SetForeignKeyResolved is called once a foreign key has been resolved. The integrator only needs to set the
-	// IsResolved boolean to true.
-	SetForeignKeyResolved(ctx *Context, fkName string) error
+	// UpdateForeignKey updates the given foreign key constraint. May range from updated table names to setting the
+	// IsResolved boolean.
+	UpdateForeignKey(ctx *Context, fkName string, fk ForeignKeyConstraint) error
 	// GetForeignKeyUpdater returns a ForeignKeyUpdater for this table.
 	GetForeignKeyUpdater(ctx *Context) ForeignKeyUpdater
 }

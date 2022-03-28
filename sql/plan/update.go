@@ -206,7 +206,8 @@ func applyUpdateExpressions(ctx *sql.Context, updateExprs []sql.Expression, row 
 }
 
 func (u *updateIter) validateNullability(row sql.Row, schema sql.Schema) error {
-	for idx, col := range schema {
+	for idx := 0; idx < len(row); idx++ {
+		col := schema[idx]
 		if !col.Nullable && row[idx] == nil {
 			// In the case of an IGNORE we set the nil value to a default and add a warning
 			return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)

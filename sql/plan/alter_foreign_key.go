@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -28,6 +30,8 @@ func getForeignKeyTable(t sql.Table) (sql.ForeignKeyTable, error) {
 		return t, nil
 	case sql.TableWrapper:
 		return getForeignKeyTable(t.Underlying())
+	case *ResolvedTable:
+		return getForeignKeyTable(t.Table)
 	default:
 		return nil, sql.ErrNoForeignKeySupport.New(t.Name())
 	}
@@ -91,6 +95,9 @@ func (p *CreateForeignKey) WithDatabaseProvider(provider sql.DatabaseProvider) (
 
 // RowIter implements the interface sql.Node.
 func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	if p.FkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault || p.FkDef.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
+		return nil, sql.ErrForeignKeySetDefault.New()
+	}
 	db, err := p.dbProvider.Database(ctx, p.FkDef.Database)
 	if err != nil {
 		return nil, err
@@ -124,11 +131,7 @@ func (p *CreateForeignKey) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, 
 		return nil, sql.ErrNoForeignKeySupport.New(p.FkDef.ParentTable)
 	}
 
-	err = fkTbl.AddForeignKey(ctx, *p.FkDef)
-	if err != nil {
-		return nil, err
-	}
-	err = resolveForeignKey(ctx, fkTbl, refFkTbl, p.FkDef)
+	err = ResolveForeignKey(ctx, fkTbl, refFkTbl, *p.FkDef, true)
 	if err != nil {
 		return nil, err
 	}
@@ -150,9 +153,9 @@ func (p *CreateForeignKey) String() string {
 	return pr.String()
 }
 
-// resolveForeignKey verifies the foreign key definition and resolves the foreign key, creating indexes and validating
+// ResolveForeignKey verifies the foreign key definition and resolves the foreign key, creating indexes and validating
 // data as necessary.
-func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef *sql.ForeignKeyConstraint) error {
+func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.ForeignKeyTable, fkDef sql.ForeignKeyConstraint, shouldAdd bool) error {
 	if t, ok := tbl.(sql.TemporaryTable); ok && t.IsTemporary() {
 		return sql.ErrTemporaryTablesForeignKeySupport.New()
 	}
@@ -189,7 +192,7 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			// Non-nullable columns may not have SET NULL as a reference option
 			if !cols[lowerFkCol].Nullable && (fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetNull ||
 				fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetNull) {
-
+				return sql.ErrForeignKeySetNullNonNullable.New(cols[lowerFkCol].Name)
 			}
 		} else {
 			return sql.ErrTableColumnNotFound.New(tbl.Name(), fkCol)
@@ -197,27 +200,41 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 	}
 
 	// Do the same for the referenced columns
+	parentCols := make(map[string]*sql.Column)
 	seenCols = make(map[string]bool)
 	actualColNames = make(map[string]string)
 	for _, col := range refTbl.Schema() {
 		lowerColName := strings.ToLower(col.Name)
+		parentCols[lowerColName] = col
 		seenCols[lowerColName] = false
 		actualColNames[lowerColName] = col.Name
 	}
-	for i, fkRefCol := range fkDef.ParentColumns {
-		lowerFkRefCol := strings.ToLower(fkRefCol)
-		if seen, ok := seenCols[lowerFkRefCol]; ok {
+	for i, fkParentCol := range fkDef.ParentColumns {
+		lowerFkParentCol := strings.ToLower(fkParentCol)
+		if seen, ok := seenCols[lowerFkParentCol]; ok {
 			if !seen {
-				seenCols[lowerFkRefCol] = true
-				fkDef.ParentColumns[i] = actualColNames[lowerFkRefCol]
+				seenCols[lowerFkParentCol] = true
+				fkDef.ParentColumns[i] = actualColNames[lowerFkParentCol]
 			} else {
-				return sql.ErrAddForeignKeyDuplicateColumn.New(fkRefCol)
+				return sql.ErrAddForeignKeyDuplicateColumn.New(fkParentCol)
 			}
 		} else {
-			return sql.ErrTableColumnNotFound.New(fkDef.ParentTable, fkRefCol)
+			return sql.ErrTableColumnNotFound.New(fkDef.ParentTable, fkParentCol)
 		}
 	}
-	//TODO: look for foreign keys on the same columns
+
+	// Check that the types align and are valid
+	for i := range fkDef.Columns {
+		col := cols[strings.ToLower(fkDef.Columns[i])]
+		parentCol := parentCols[strings.ToLower(fkDef.ParentColumns[i])]
+		if !col.Type.Equals(parentCol.Type) {
+			return sql.ErrForeignKeyColumnTypeMismatch.New(fkDef.Columns[i], fkDef.ParentColumns[i])
+		}
+		sqlParserType := col.Type.Type()
+		if sqlParserType == sqltypes.Text || sqlParserType == sqltypes.Blob {
+			return sql.ErrForeignKeyTextBlob.New()
+		}
+	}
 
 	// Ensure that a suitable index exists on the referenced table, and check the declaring table for a suitable index.
 	refTblIndex, ok, err := FindIndexWithPrefix(ctx, refTbl, fkDef.ParentColumns)
@@ -225,8 +242,7 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		return err
 	}
 	if !ok {
-		//TODO: make SQL error
-		return fmt.Errorf("missing index for foreign key `%s` on the referenced table `%s`", fkDef.Name, fkDef.ParentTable)
+		return sql.ErrForeignKeyMissingReferenceIndex.New(fkDef.Name, fkDef.ParentTable)
 	}
 	_, ok, err = FindIndexWithPrefix(ctx, tbl, fkDef.Columns)
 	if err != nil {
@@ -240,8 +256,25 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 				Length: 0,
 			}
 		}
-		//TODO: generate a non-colliding index name
-		err := tbl.CreateIndexForForeignKey(ctx, fkDef.Name+"_idx", sql.IndexUsing_Default, sql.IndexConstraint_None, indexColumns)
+		indexMap := make(map[string]struct{})
+		indexes, err := tbl.GetIndexes(ctx)
+		if err != nil {
+			return err
+		}
+		for _, index := range indexes {
+			indexMap[strings.ToLower(index.ID())] = struct{}{}
+		}
+		indexName := strings.Join(fkDef.Columns, "")
+		if _, ok = indexMap[strings.ToLower(indexName)]; ok {
+			for i := 0; true; i++ {
+				newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+				if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
+					indexName = newIndexName
+					break
+				}
+			}
+		}
+		err = tbl.CreateIndexForForeignKey(ctx, indexName, sql.IndexUsing_Default, sql.IndexConstraint_None, indexColumns)
 		if err != nil {
 			return err
 		}
@@ -259,7 +292,7 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		}
 	}
 	reference := &ForeignKeyReferenceHandler{
-		ForeignKey: *fkDef,
+		ForeignKey: fkDef,
 		SelfCols:   selfCols,
 		RowMapper: ForeignKeyRowMapper{
 			Index:          refTblIndex,
@@ -269,10 +302,32 @@ func resolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 			AppendTypes:    appendTypes,
 		},
 	}
+
+	// Check if the current foreign key name has already been used. Rather than checking the table first (which is the
+	// highest cost part of creating a foreign key), we'll check the name if it needs to be checked. If the foreign key
+	// was previously added, we don't need to check the name.
+	if shouldAdd {
+		if existingFks, err := tbl.GetDeclaredForeignKeys(ctx); err == nil {
+			fkLowerName := strings.ToLower(fkDef.Name)
+			for _, existingFk := range existingFks {
+				if fkLowerName == strings.ToLower(existingFk.Name) {
+					return sql.ErrForeignKeyDuplicateName.New(fkDef.Name)
+				}
+			}
+		} else {
+			return err
+		}
+	}
 	if err := reference.CheckTable(ctx, tbl); err != nil {
 		return err
 	}
-	return tbl.SetForeignKeyResolved(ctx, fkDef.Name)
+	if shouldAdd {
+		fkDef.IsResolved = true
+		return tbl.AddForeignKey(ctx, fkDef)
+	} else {
+		fkDef.IsResolved = true
+		return tbl.UpdateForeignKey(ctx, fkDef.Name, fkDef)
+	}
 }
 
 type DropForeignKey struct {
@@ -441,10 +496,15 @@ func FindForeignKeyColMapping(
 // prefix. For example, the slices [col1, col2] and [col2, col1] will match the same index, as their ordering does not
 // matter. The index [col1, col2, col3] would match, but the index [col1, col3] would not match as it is missing "col2".
 // Prefix columns are case-insensitive.
-func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexedTable, prefixCols []string) (sql.Index, bool, error) {
+func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexedTable, prefixCols []string, ignoredIndexes ...string) (sql.Index, bool, error) {
 	type idxWithLen struct {
 		sql.Index
 		colLen int
+	}
+
+	ignoredIndexesMap := make(map[string]struct{})
+	for _, ignoredIndex := range ignoredIndexes {
+		ignoredIndexesMap[strings.ToLower(ignoredIndex)] = struct{}{}
 	}
 
 	indexes, err := tbl.GetIndexes(ctx)
@@ -459,6 +519,9 @@ func FindIndexWithPrefix(ctx *sql.Context, tbl sql.IndexedTable, prefixCols []st
 	colLen := len(exprCols)
 	var indexesWithLen []idxWithLen
 	for _, idx := range indexes {
+		if _, ok := ignoredIndexesMap[strings.ToLower(idx.ID())]; ok {
+			continue
+		}
 		indexExprs := lowercaseSlice(idx.Expressions())
 		if ok, prefixCount := exprsAreIndexSubset(exprCols, indexExprs); ok && prefixCount == colLen {
 			indexesWithLen = append(indexesWithLen, idxWithLen{idx, len(indexExprs)})

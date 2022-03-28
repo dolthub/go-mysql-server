@@ -273,6 +273,12 @@ func (t Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	return t.db.shim.Exec(t.db.name, fmt.Sprintf("ALTER TABLE `%s` DROP FOREIGN KEY `%s`;", t.name, fkName))
 }
 
+// UpdateForeignKey implements the interface sql.ForeignKeyTable.
+func (t Table) UpdateForeignKey(ctx *sql.Context, fkName string, fkDef sql.ForeignKeyConstraint) error {
+	// Will automatically be handled by MySQL
+	return nil
+}
+
 // CreateIndexForForeignKey implements the interface sql.ForeignKeyTable.
 func (t Table) CreateIndexForForeignKey(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn) error {
 	return nil

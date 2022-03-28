@@ -81,7 +81,7 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 	for _, refActionData := range fkEditor.RefActions {
 		switch refActionData.ForeignKey.OnUpdate {
 		default: // RESTRICT and friends
-			if err := fkEditor.OnUpdateRestrict(ctx, refActionData, old); err != nil {
+			if err := fkEditor.OnUpdateRestrict(ctx, refActionData, old, new); err != nil {
 				return err
 			}
 		case sql.ForeignKeyReferentialAction_Cascade:
@@ -89,7 +89,7 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 				return err
 			}
 		case sql.ForeignKeyReferentialAction_SetNull:
-			if err := fkEditor.OnUpdateSetNull(ctx, refActionData, old); err != nil {
+			if err := fkEditor.OnUpdateSetNull(ctx, refActionData, old, new); err != nil {
 				return err
 			}
 		}
@@ -101,7 +101,13 @@ func (fkEditor *ForeignKeyEditor) Update(ctx *sql.Context, old sql.Row, new sql.
 }
 
 // OnUpdateRestrict handles the ON UPDATE RESTRICT referential action.
-func (fkEditor *ForeignKeyEditor) OnUpdateRestrict(ctx *sql.Context, refActionData ForeignKeyRefActionData, old sql.Row) error {
+func (fkEditor *ForeignKeyEditor) OnUpdateRestrict(ctx *sql.Context, refActionData ForeignKeyRefActionData, old sql.Row, new sql.Row) error {
+	if ok, err := fkEditor.ColumnsUpdated(refActionData, old, new); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
 	rowIter, err := refActionData.RowMapper.GetIter(ctx, old)
 	if err != nil {
 		return err
@@ -116,6 +122,12 @@ func (fkEditor *ForeignKeyEditor) OnUpdateRestrict(ctx *sql.Context, refActionDa
 
 // OnUpdateCascade handles the ON UPDATE CASCADE referential action.
 func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionData ForeignKeyRefActionData, old sql.Row, new sql.Row) error {
+	if ok, err := fkEditor.ColumnsUpdated(refActionData, old, new); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
 	rowIter, err := refActionData.RowMapper.GetIter(ctx, old)
 	if err != nil {
 		return err
@@ -144,7 +156,13 @@ func (fkEditor *ForeignKeyEditor) OnUpdateCascade(ctx *sql.Context, refActionDat
 }
 
 // OnUpdateSetNull handles the ON UPDATE SET NULL referential action.
-func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionData ForeignKeyRefActionData, old sql.Row) error {
+func (fkEditor *ForeignKeyEditor) OnUpdateSetNull(ctx *sql.Context, refActionData ForeignKeyRefActionData, old sql.Row, new sql.Row) error {
+	if ok, err := fkEditor.ColumnsUpdated(refActionData, old, new); err != nil {
+		return err
+	} else if !ok {
+		return nil
+	}
+
 	rowIter, err := refActionData.RowMapper.GetIter(ctx, old)
 	if err != nil {
 		return err
@@ -253,6 +271,27 @@ func (fkEditor *ForeignKeyEditor) OnDeleteSetNull(ctx *sql.Context, refActionDat
 	return err
 }
 
+// ColumnsUpdated returns whether the columns involved in the foreign key were updated. Some updates may only update
+// columns that are not involved in a foreign key, and therefore we should ignore a CASCADE or SET NULL referential
+// action in such cases.
+func (fkEditor *ForeignKeyEditor) ColumnsUpdated(refActionData ForeignKeyRefActionData, old sql.Row, new sql.Row) (bool, error) {
+	for _, mappedVal := range refActionData.ChildParentMapping {
+		if mappedVal == -1 {
+			continue
+		}
+		oldVal := old[mappedVal]
+		newVal := new[mappedVal]
+		cmp, err := fkEditor.Schema[mappedVal].Type.Compare(oldVal, newVal)
+		if err != nil {
+			return false, err
+		}
+		if cmp != 0 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // Close closes this handler along with all child handlers.
 func (fkEditor *ForeignKeyEditor) Close(ctx *sql.Context) error {
 	//TODO: remove this once the table collection has been added
@@ -280,6 +319,18 @@ func (reference *ForeignKeyReferenceHandler) IsInitialized() bool {
 
 // CheckReference checks that the given row has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, row sql.Row) error {
+	// If all of the values are NULL then we don't check the parent
+	allNull := true
+	for _, pos := range reference.RowMapper.IndexPositions {
+		if row[pos] != nil {
+			allNull = false
+			break
+		}
+	}
+	if allNull {
+		return nil
+	}
+
 	rowIter, err := reference.RowMapper.GetIter(ctx, row)
 	if err != nil {
 		return err

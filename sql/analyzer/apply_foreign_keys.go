@@ -74,6 +74,9 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		}
 		return n.WithParentForeignKeyTables(fkParentTbls)
 	case *plan.InsertInto:
+		if n.Destination == plan.EmptyTable {
+			return n, nil
+		}
 		insertableDest, err := plan.GetInsertable(n.Destination)
 		if err != nil {
 			return nil, err
@@ -105,6 +108,9 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			Editor:       fkEditor,
 		})
 	case *plan.Update:
+		if n.Child == plan.EmptyTable {
+			return n, nil
+		}
 		updateDest, err := plan.GetUpdatable(n.Child)
 		if err != nil {
 			return nil, err
@@ -128,6 +134,9 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			Editor:       fkEditor,
 		})
 	case *plan.DeleteFrom:
+		if n.Child == plan.EmptyTable {
+			return n, nil
+		}
 		deleteDest, err := plan.GetDeletable(n.Child)
 		if err != nil {
 			return nil, err
@@ -232,17 +241,27 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 		parentTbl, parentUpdater, err := cache.Get(ctx, a, fk.ParentDatabase, fk.ParentTable)
 		if err != nil {
-			return nil, err
+			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
+				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
+
+		// Resolve the foreign key if it has not been resolved yet
+		if !fk.IsResolved {
+			err = plan.ResolveForeignKey(ctx, tbl, parentTbl, fk, false)
+			if err != nil {
+				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
+					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
+			}
+		}
+
 		parentIndex, ok, err := plan.FindIndexWithPrefix(ctx, parentTbl, fk.ParentColumns)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
 			// If this error is returned, it is due to an index deletion not properly checking for foreign key usage
-			//TODO: enforce that the last matching index cannot be removed if depended upon by a foreign key
-			return nil, fmt.Errorf("no suitable index found for table `%s` in foreign key `%s` declared on table `%s`",
-				fk.ParentTable, fk.Name, fk.Table)
+			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
+				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
 		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.Columns,
 			fk.ParentColumns, parentIndex)
@@ -304,16 +323,27 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 		childTbl, childUpdater, err := cache.Get(ctx, a, fk.Database, fk.Table)
 		if err != nil {
-			return nil, err
+			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
+				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
+
+		// Resolve the foreign key if it has not been resolved yet
+		if !fk.IsResolved {
+			err = plan.ResolveForeignKey(ctx, childTbl, tbl, fk, false)
+			if err != nil {
+				return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
+					strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
+			}
+		}
+
 		childIndex, ok, err := plan.FindIndexWithPrefix(ctx, childTbl, fk.Columns)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
 			// If this error is returned, it is due to an index deletion not properly checking for foreign key usage
-			return nil, fmt.Errorf("no suitable index found for table `%s` in foreign key `%s`",
-				fk.Table, fk.Name)
+			return nil, sql.ErrForeignKeyNotResolved.New(fk.Database, fk.Table, fk.Name,
+				strings.Join(fk.Columns, "`, `"), fk.ParentTable, strings.Join(fk.ParentColumns, "`, `"))
 		}
 		indexPositions, appendTypes, err := plan.FindForeignKeyColMapping(ctx, fk.Name, tbl, fk.ParentColumns,
 			fk.Columns, childIndex)

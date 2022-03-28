@@ -94,6 +94,12 @@ func (t LinestringType) Convert(v interface{}) (interface{}, error) {
 	return nil, ErrNotLinestring.New(v)
 }
 
+// Equals implements the Type interface.
+func (t LinestringType) Equals(otherType Type) bool {
+	_, ok := otherType.(LinestringType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t LinestringType) Promote() Type {
 	return t

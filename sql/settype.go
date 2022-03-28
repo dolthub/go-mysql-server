@@ -197,6 +197,19 @@ func (t setType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t setType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(setType); ok && t.collation.Equals(ot.collation) && len(t.bitToVal) == len(ot.bitToVal) {
+		for bit, val := range t.bitToVal {
+			if ot.bitToVal[bit] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t setType) Promote() Type {
 	return t
