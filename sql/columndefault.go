@@ -121,10 +121,6 @@ func (e *ColumnDefaultValue) String() string {
 	// enclose expression default values within parentheses to distinguish them from literal constant default values.
 	if e.literal {
 		return e.Expression.String()
-	}
-	// CURRENT_TIMESTAMP() and its synonyms are an exception to enclosing expression default in parentheses
-	if e.Expression.String() == "CURRENT_TIMESTAMP()" || e.Expression.String() == "NOW()" {
-		return "CURRENT_TIMESTAMP"
 	} else {
 		return fmt.Sprintf("(%s)", e.Expression.String())
 	}

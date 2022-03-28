@@ -882,25 +882,7 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					collName = Collation_Default.String()
 				}
 				ordinalPos = uint64(i + 1)
-
-				if c.Default.String() == "" {
-					colDefault = nil
-				} else if c.Default.IsLiteral() && c.Default.String() == "NULL" {
-					colDefault = nil
-				} else if c.Default.IsLiteral() && c.Default.String() == `""` {
-					colDefault = ""
-				} else {
-					// in FromDoltSchema function, all default values are handled as expression including literal value,
-					// and string of expr value is in parentheses
-					colDefaultStr := c.Default.String()
-					if strings.HasPrefix(colDefaultStr, "(") && strings.HasSuffix(colDefaultStr, ")") {
-						colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(c.Default.String(), "("), ")")
-					}
-					if strings.HasPrefix(colDefaultStr, "\"") && strings.HasSuffix(colDefaultStr, "\"") {
-						colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(colDefaultStr, "\""), "\"")
-					}
-					colDefault = colDefaultStr
-				}
+				colDefault = getColumnDefaultString(c.Default)
 
 				rows = append(rows, Row{
 					"def",                            // table_catalog
@@ -2008,4 +1990,28 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
+}
+
+func getColumnDefaultString(cd *ColumnDefaultValue) interface{} {
+	if cd.String() == "" {
+		return nil
+	} else if cd.IsLiteral() && cd.String() == "NULL" {
+		return nil
+	} else if cd.IsLiteral() && cd.String() == `""` {
+		return ""
+	} else {
+		// in FromDoltSchema function, all default values are handled as expression including literal value,
+		// and string of expr value is in parentheses
+		colDefaultStr := cd.String()
+		if strings.HasPrefix(colDefaultStr, "(") && strings.HasSuffix(colDefaultStr, ")") {
+			colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(cd.String(), "("), ")")
+		}
+		if strings.HasPrefix(colDefaultStr, "\"") && strings.HasSuffix(colDefaultStr, "\"") {
+			colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(colDefaultStr, "\""), "\"")
+		}
+		if colDefaultStr == "CURRENT_TIMESTAMP()" || colDefaultStr == "NOW()" {
+			colDefaultStr = "CURRENT_TIMESTAMP"
+		}
+		return colDefaultStr
+	}
 }
