@@ -179,6 +179,15 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 		return nil, sql.ErrColumnExists.New(ac.Column().Name)
 	}
 
+	// After collisions
+	if ac.Order() != nil && ac.Order().AfterColumn != "" {
+		afterColumn := ac.Order().AfterColumn
+		idx := schema.IndexOf(afterColumn, nameable.Name())
+		if idx < 0 {
+			return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), afterColumn)
+		}
+	}
+
 	// None of the checks we do concern ordering, so we don't need to worry about it here
 	newCol := ac.Column().Copy()
 	newCol.Source = nameable.Name()
@@ -196,7 +205,13 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn) (sql.Schema, error) {
 	table := mc.Table
 	nameable := table.(sql.Nameable)
-	newSch := replaceInSchema(table.Schema(), mc.NewColumn(), nameable.Name())
+
+	// Look for the old column and throw an error if it's not there.
+	if schema.IndexOf(mc.Column(), nameable.Name()) == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), mc.Column())
+	}
+
+	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
 
 	err := validateAutoIncrement(newSch)
 	if err != nil {
@@ -213,6 +228,11 @@ func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.Modi
 func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Schema, error) {
 	table := dc.Table
 	nameable := table.(sql.Nameable)
+
+	// Look for the column to be dropped and throw an error if it's not there.
+	if sch.IndexOf(dc.Column, nameable.Name()) == -1 {
+		return nil, sql.ErrTableColumnNotFound.New(nameable.Name(), dc.Column)
+	}
 
 	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
 	if err != nil {
@@ -349,8 +369,8 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 			cc := *sch[i]
 			schCopy[i] = &cc
 		} else if i > idx {
-			cc := *sch[i-1] // We want to shift stuff over.
-			schCopy[i-1] = &cc
+			cc := *sch[i]
+			schCopy[i-1] = &cc // We want to shift stuff over.
 		}
 	}
 	return schCopy
