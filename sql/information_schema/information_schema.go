@@ -20,7 +20,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -795,7 +794,6 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-			autoVal := getAutoIncrementValue(ctx, t)
 			rows = append(rows, Row{
 				"def",                      // table_catalog
 				db.Name(),                  // table_schema
@@ -810,7 +808,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				nil,                        // max_data_length
 				nil,                        // max_data_length
 				nil,                        // data_free
-				autoVal,                    // auto_increment
+				nil,                        // auto_increment (always nil)
 				y2k,                        // create_time
 				y2k,                        // update_time
 				nil,                        // check_time
@@ -1126,6 +1124,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				if !ok {
 					return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 				}
+				triggerPlan.CreatedAt = trigger.CreatedAt // Keep stored created time
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
 
@@ -1193,7 +1192,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						nil,                     // action_reference_new_table
 						"OLD",                   // action_reference_old_row
 						"NEW",                   // action_reference_new_row
-						time.Unix(1, 0).UTC(),   // created
+						triggerPlan.CreatedAt,   // created
 						"",                      // sql_mode
 						"",                      // definer
 						characterSetClient,      // character_set_client
@@ -1882,71 +1881,6 @@ func viewRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func routinesRowIter(ctx *Context, c Catalog, p []*plan.Procedure) (RowIter, error) {
-	var rows []Row
-	var (
-		securityType    = "DEFINER"
-		isDeterministic = ""    // YES or NO
-		sqlMode         = "SQL" // SQL, NO SQL, READS SQL DATA, or MODIFIES SQL DATA.
-	)
-
-	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-	if err != nil {
-		return nil, err
-	}
-	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-	if err != nil {
-		return nil, err
-	}
-	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-	if err != nil {
-		return nil, err
-	}
-
-	for _, procedure := range p {
-		if procedure.SecurityContext == plan.ProcedureSecurityContext_Invoker {
-			securityType = "INVOKER"
-		}
-		rows = append(rows, Row{
-			procedure.Name,             // specific_name NOT NULL
-			"def",                      // routine_catalog
-			"sys",                      // routine_schema
-			procedure.Name,             // routine_name NOT NULL
-			"PROCEDURE",                // routine_type NOT NULL
-			"",                         // data_type
-			nil,                        // character_maximum_length
-			nil,                        // character_octet_length
-			nil,                        // numeric_precision
-			nil,                        // numeric_scale
-			nil,                        // datetime_precision
-			nil,                        // character_set_name
-			nil,                        // collation_name
-			"",                         // dtd_identifier
-			"SQL",                      // routine_body NOT NULL
-			procedure.Body.String(),    // routine_definition
-			nil,                        // external_name
-			"SQL",                      // external_language NOT NULL
-			"SQL",                      // parameter_style NOT NULL
-			isDeterministic,            // is_deterministic NOT NULL
-			"",                         // sql_data_access NOT NULL
-			nil,                        // sql_path
-			securityType,               // security_type NOT NULL
-			procedure.CreatedAt.UTC(),  // created NOT NULL
-			procedure.ModifiedAt.UTC(), // last_altered NOT NULL
-			sqlMode,                    // sql_mode NOT NULL
-			procedure.Comment,          // routine_comment NOT NULL
-			procedure.Definer,          // definer NOT NULL
-			characterSetClient,         // character_set_client NOT NULL
-			collationConnection,        // collation_connection NOT NULL
-			collationServer,            // database_collation NOT NULL
-		})
-	}
-
-	// TODO: need to add FUNCTIONS routine_type
-
-	return RowsToRowIter(rows...), nil
-}
-
 // viewsInDatabase returns all views defined on the database given, consulting both the database itself as well as any
 // views defined in session memory. Typically there will not be both types of views on a single database, but the
 // interfaces do make it possible.
@@ -2074,15 +2008,4 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
-}
-
-func getAutoIncrementValue(ctx *Context, t Table) (val interface{}) {
-	for _, c := range t.Schema() {
-		if c.AutoIncrement {
-			val, _ = t.(AutoIncrementTable).PeekNextAutoIncrementValue(ctx)
-			// ignore errors
-			break
-		}
-	}
-	return
 }

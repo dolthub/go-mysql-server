@@ -96,3 +96,17 @@ func (c *Column) DebugString() string {
 
 	return sb.String()
 }
+
+func (c *Column) Copy() *Column {
+	return &Column{
+		Name:          c.Name,
+		Type:          c.Type,
+		Default:       c.Default,
+		AutoIncrement: c.AutoIncrement,
+		Nullable:      c.Nullable,
+		Source:        c.Source,
+		PrimaryKey:    c.PrimaryKey,
+		Comment:       c.Comment,
+		Extra:         c.Extra,
+	}
+}
