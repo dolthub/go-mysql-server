@@ -21,34 +21,44 @@ import (
 
 // ForeignKeyConstraint declares a constraint between the columns of two tables.
 type ForeignKeyConstraint struct {
-	Name              string
-	Columns           []string
-	ReferencedTable   string
-	ReferencedColumns []string
-	OnUpdate          ForeignKeyReferenceOption
-	OnDelete          ForeignKeyReferenceOption
+	Name           string
+	Database       string
+	Table          string
+	Columns        []string
+	ParentDatabase string
+	ParentTable    string
+	ParentColumns  []string
+	OnUpdate       ForeignKeyReferentialAction
+	OnDelete       ForeignKeyReferentialAction
+	IsResolved     bool
 }
 
-// ForeignKeyReferenceOption is the behavior for this foreign key with the relevant action is performed on the foreign
+// ForeignKeyReferentialAction is the behavior for this foreign key with the relevant action is performed on the foreign
 // table.
-type ForeignKeyReferenceOption string
+type ForeignKeyReferentialAction string
 
 const (
-	ForeignKeyReferenceOption_DefaultAction ForeignKeyReferenceOption = "DEFAULT" // No explicit action was specified
-	ForeignKeyReferenceOption_Restrict      ForeignKeyReferenceOption = "RESTRICT"
-	ForeignKeyReferenceOption_Cascade       ForeignKeyReferenceOption = "CASCADE"
-	ForeignKeyReferenceOption_NoAction      ForeignKeyReferenceOption = "NO ACTION"
-	ForeignKeyReferenceOption_SetNull       ForeignKeyReferenceOption = "SET NULL"
-	ForeignKeyReferenceOption_SetDefault    ForeignKeyReferenceOption = "SET DEFAULT"
+	ForeignKeyReferentialAction_DefaultAction ForeignKeyReferentialAction = "DEFAULT" // No explicit action was specified
+	ForeignKeyReferentialAction_Restrict      ForeignKeyReferentialAction = "RESTRICT"
+	ForeignKeyReferentialAction_Cascade       ForeignKeyReferentialAction = "CASCADE"
+	ForeignKeyReferentialAction_NoAction      ForeignKeyReferentialAction = "NO ACTION"
+	ForeignKeyReferentialAction_SetNull       ForeignKeyReferentialAction = "SET NULL"
+	ForeignKeyReferentialAction_SetDefault    ForeignKeyReferentialAction = "SET DEFAULT"
 )
+
+// IsSelfReferential returns whether this foreign key represents a self-referential foreign key.
+func (f ForeignKeyConstraint) IsSelfReferential() bool {
+	return strings.ToLower(f.Database) == strings.ToLower(f.ParentDatabase) &&
+		strings.ToLower(f.Table) == strings.ToLower(f.ParentTable)
+}
 
 func (f *ForeignKeyConstraint) DebugString() string {
 	return fmt.Sprintf(
 		"FOREIGN KEY %s (%s) REFERENCES %s (%s)",
 		f.Name,
 		strings.Join(f.Columns, ","),
-		f.ReferencedTable,
-		strings.Join(f.ReferencedColumns, ","),
+		f.ParentTable,
+		strings.Join(f.ParentColumns, ","),
 	)
 }
 

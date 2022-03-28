@@ -173,7 +173,7 @@ func (a *AddColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 
 // updateRowsWithDefaults iterates through an updatable table and applies an update to each row.
 func (a *AddColumn) updateRowsWithDefaults(ctx *sql.Context, row sql.Row) error {
-	updatable, err := getUpdatable(a.Child)
+	updatable, err := GetUpdatable(a.Child)
 	if err != nil {
 		return err
 	}

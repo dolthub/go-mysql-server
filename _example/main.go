@@ -69,7 +69,7 @@ func createTestDatabase() *memory.Database {
 		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
 		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
-	}))
+	}), db.GetForeignKeyCollection())
 
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()

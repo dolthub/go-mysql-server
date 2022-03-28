@@ -111,6 +111,7 @@ type CreateTable struct {
 	CreateSchema sql.PrimaryKeySchema
 	ifNotExists  IfNotExistsOption
 	fkDefs       []*sql.ForeignKeyConstraint
+	fkParentTbls []sql.ForeignKeyTable
 	chDefs       sql.CheckConstraints
 	idxDefs      []*IndexDefinition
 	like         sql.Node
@@ -293,6 +294,23 @@ func (c *CreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 	return sql.RowsToRowIter(), nil
 }
 
+// ForeignKeys returns any foreign keys that will be declared on this table.
+func (c *CreateTable) ForeignKeys() []*sql.ForeignKeyConstraint {
+	return c.fkDefs
+}
+
+// WithParentForeignKeyTables adds the tables that are referenced in each foreign key. The table indices is assumed
+// to match the foreign key indices in their respective slices.
+func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) (*CreateTable, error) {
+	if len(c.fkDefs) != len(refTbls) {
+		return nil, fmt.Errorf("table `%s` defines `%d` foreign keys but found `%d` referenced tables",
+			c.name, len(c.fkDefs), len(refTbls))
+	}
+	nc := *c
+	nc.fkParentTbls = refTbls
+	return &nc, nil
+}
+
 func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes []*IndexDefinition) error {
 	idxAlterable, ok := tableNode.(sql.IndexAlterableTable)
 	if !ok {
@@ -310,40 +328,28 @@ func (c *CreateTable) createIndexes(ctx *sql.Context, tableNode sql.Table, idxes
 }
 
 func (c *CreateTable) createForeignKeys(ctx *sql.Context, tableNode sql.Table) error {
-	fkAlterable, ok := tableNode.(sql.ForeignKeyAlterableTable)
+	fkTbl, ok := tableNode.(sql.ForeignKeyTable)
 	if !ok {
-		return ErrNoForeignKeySupport.New(c.name)
+		return sql.ErrNoForeignKeySupport.New(c.name)
 	}
 
 	fkChecks, err := ctx.GetSessionVariable(ctx, "foreign_key_checks")
 	if err != nil {
 		return err
 	}
-	if fkChecks.(int8) == 1 {
-		for _, fkDef := range c.fkDefs {
-			refTbl, ok, err := c.db.GetTableInsensitive(ctx, fkDef.ReferencedTable)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return sql.ErrTableNotFound.New(fkDef.ReferencedTable)
-			}
-			err = executeCreateForeignKey(ctx, fkAlterable, refTbl, fkDef)
-			if err != nil {
-				return err
-			}
+	for i, fkDef := range c.fkDefs {
+		err = fkTbl.AddForeignKey(ctx, *fkDef)
+		if err != nil {
+			return err
 		}
-	} else {
-		for _, fkDef := range c.fkDefs {
-			err = fkAlterable.CreateForeignKey(
-				ctx,
-				fkDef.Name,
-				fkDef.Columns,
-				fkDef.ReferencedTable,
-				fkDef.ReferencedColumns,
-				fkDef.OnUpdate,
-				fkDef.OnDelete,
-			)
+		if fkChecks.(int8) == 1 {
+			fkParentTbl := c.fkParentTbls[i]
+			// If a foreign key is self-referential then the analyzer uses a nil since the table does not yet exist
+			if fkParentTbl == nil {
+				fkParentTbl = fkTbl
+			}
+			// If foreign_key_checks are true, then the referenced tables will be populated
+			err = resolveForeignKey(ctx, fkTbl, fkParentTbl, fkDef)
 			if err != nil {
 				return err
 			}

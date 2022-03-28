@@ -1238,7 +1238,6 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		return convertAlterIndex(ctx, ddl)
 	}
 	if ddl.ConstraintAction != "" && len(ddl.TableSpec.Constraints) == 1 {
-		db := sql.UnresolvedDatabase(ddl.Table.Qualifier.String())
 		table := tableNameToUnresolvedTable(ddl.Table)
 		parsedConstraint, err := convertConstraintDefinition(ctx, ddl.TableSpec.Constraints[0])
 		if err != nil {
@@ -1248,7 +1247,12 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.AddStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterAddForeignKey(db, ddl.Table.Name.String(), c.ReferencedTable, c), nil
+				c.Database = table.Database
+				c.Table = table.Name()
+				if c.Database == "" {
+					c.Database = ctx.GetCurrentDatabase()
+				}
+				return plan.NewAlterAddForeignKey(c), nil
 			case *sql.CheckConstraint:
 				return plan.NewAlterAddCheck(table, c), nil
 			default:
@@ -1258,7 +1262,11 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 		case sqlparser.DropStr:
 			switch c := parsedConstraint.(type) {
 			case *sql.ForeignKeyConstraint:
-				return plan.NewAlterDropForeignKey(table, c.Name), nil
+				database := table.Database
+				if database == "" {
+					database = ctx.GetCurrentDatabase()
+				}
+				return plan.NewAlterDropForeignKey(database, table.Name(), c.Name), nil
 			case *sql.CheckConstraint:
 				return plan.NewAlterDropCheck(table, c.Name), nil
 			case namedConstraint:
@@ -1504,6 +1512,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 		switch constraint := parsedConstraint.(type) {
 		case *sql.ForeignKeyConstraint:
+			constraint.Database = c.Table.Qualifier.String()
+			constraint.Table = c.Table.Name.String()
+			if constraint.Database == "" {
+				constraint.Database = ctx.GetCurrentDatabase()
+			}
 			fkDefs = append(fkDefs, constraint)
 		case *sql.CheckConstraint:
 			chDefs = append(chDefs, constraint)
@@ -1616,13 +1629,20 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 		for i, col := range fkConstraint.ReferencedColumns {
 			refColumns[i] = col.String()
 		}
+		refDatabase := fkConstraint.ReferencedTable.Qualifier.String()
+		if refDatabase == "" {
+			refDatabase = ctx.GetCurrentDatabase()
+		}
+		// The database and table are set in the calling function
 		return &sql.ForeignKeyConstraint{
-			Name:              cd.Name,
-			Columns:           columns,
-			ReferencedTable:   fkConstraint.ReferencedTable.Name.String(),
-			ReferencedColumns: refColumns,
-			OnUpdate:          convertReferenceAction(fkConstraint.OnUpdate),
-			OnDelete:          convertReferenceAction(fkConstraint.OnDelete),
+			Name:           cd.Name,
+			Columns:        columns,
+			ParentDatabase: refDatabase,
+			ParentTable:    fkConstraint.ReferencedTable.Name.String(),
+			ParentColumns:  refColumns,
+			OnUpdate:       convertReferentialAction(fkConstraint.OnUpdate),
+			OnDelete:       convertReferentialAction(fkConstraint.OnDelete),
+			IsResolved:     false,
 		}, nil
 	} else if chConstraint, ok := cd.Details.(*sqlparser.CheckConstraintDefinition); ok {
 		var c sql.Expression
@@ -1645,20 +1665,20 @@ func convertConstraintDefinition(ctx *sql.Context, cd *sqlparser.ConstraintDefin
 	return nil, sql.ErrUnknownConstraintDefinition.New(cd.Name, cd)
 }
 
-func convertReferenceAction(action sqlparser.ReferenceAction) sql.ForeignKeyReferenceOption {
+func convertReferentialAction(action sqlparser.ReferenceAction) sql.ForeignKeyReferentialAction {
 	switch action {
 	case sqlparser.Restrict:
-		return sql.ForeignKeyReferenceOption_Restrict
+		return sql.ForeignKeyReferentialAction_Restrict
 	case sqlparser.Cascade:
-		return sql.ForeignKeyReferenceOption_Cascade
+		return sql.ForeignKeyReferentialAction_Cascade
 	case sqlparser.NoAction:
-		return sql.ForeignKeyReferenceOption_NoAction
+		return sql.ForeignKeyReferentialAction_NoAction
 	case sqlparser.SetNull:
-		return sql.ForeignKeyReferenceOption_SetNull
+		return sql.ForeignKeyReferentialAction_SetNull
 	case sqlparser.SetDefault:
-		return sql.ForeignKeyReferenceOption_SetDefault
+		return sql.ForeignKeyReferentialAction_SetDefault
 	default:
-		return sql.ForeignKeyReferenceOption_DefaultAction
+		return sql.ForeignKeyReferentialAction_DefaultAction
 	}
 }
 

@@ -30,11 +30,11 @@ import (
 func TestMaxIterations(t *testing.T) {
 	require := require.New(t)
 	tName := "my-table"
+	db := memory.NewDatabase("mydb")
 	table := memory.NewTable(tName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: tName},
 		{Name: "t", Type: sql.Text, Source: tName},
-	}))
-	db := memory.NewDatabase("mydb")
+	}), db.GetForeignKeyCollection())
 	db.AddTable(tName, table)
 
 	provider := sql.NewDatabaseProvider(db)
@@ -50,7 +50,7 @@ func TestMaxIterations(t *testing.T) {
 				table := memory.NewTable(name, sql.NewPrimaryKeySchema(sql.Schema{
 					{Name: "i", Type: sql.Int32, Source: name},
 					{Name: "t", Type: sql.Text, Source: name},
-				}))
+				}), db.GetForeignKeyCollection())
 				n = plan.NewResolvedTable(table, nil, nil)
 			}
 
@@ -66,7 +66,7 @@ func TestMaxIterations(t *testing.T) {
 		plan.NewResolvedTable(memory.NewTable("mytable-8", sql.NewPrimaryKeySchema(sql.Schema{
 			{Name: "i", Type: sql.Int32, Source: "mytable-8"},
 			{Name: "t", Type: sql.Text, Source: "mytable-8"},
-		})), nil, nil),
+		}), db.GetForeignKeyCollection()), nil, nil),
 		analyzed,
 	)
 	require.Equal(maxAnalysisIterations, count)
@@ -168,19 +168,19 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	}))
+	}), nil)
 
 	table2 := memory.NewFilteredTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	}))
+	}), nil)
 
 	table3 := memory.NewFilteredTable("mytable3", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int32, Source: "mytable3"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable3"},
 		{Name: "t3", Type: sql.Text, Source: "mytable3"},
-	}))
+	}), nil)
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -297,19 +297,19 @@ func TestReorderProjectionUnresolvedChild(t *testing.T) {
 		{Name: "repository_id", Source: "commits", Type: sql.Text},
 		{Name: "commit_hash", Source: "commits", Type: sql.Text},
 		{Name: "commit_author_when", Source: "commits", Type: sql.Text},
-	}))
+	}), nil)
 
 	refs := memory.NewTable("refs", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "repository_id", Source: "refs", Type: sql.Text},
 		{Name: "ref_name", Source: "refs", Type: sql.Text},
-	}))
+	}), nil)
 
 	refCommits := memory.NewTable("ref_commits", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "repository_id", Source: "ref_commits", Type: sql.Text},
 		{Name: "ref_name", Source: "ref_commits", Type: sql.Text},
 		{Name: "commit_hash", Source: "ref_commits", Type: sql.Text},
 		{Name: "history_index", Source: "ref_commits", Type: sql.Int64},
-	}))
+	}), nil)
 
 	db := memory.NewDatabase("")
 	db.AddTable("refs", refs)

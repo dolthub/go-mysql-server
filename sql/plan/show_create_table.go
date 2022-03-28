@@ -274,24 +274,24 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		colStmts = append(colStmts, key)
 	}
 
-	fkt := getForeignKeyTable(table)
-	if fkt != nil {
-		fks, err := fkt.GetForeignKeys(ctx)
+	fkt, err := getForeignKeyTable(table)
+	if err == nil && fkt != nil {
+		fks, err := fkt.GetDeclaredForeignKeys(ctx)
 		if err != nil {
 			return "", err
 		}
 		for _, fk := range fks {
 			keyCols := strings.Join(quoteIdentifiers(fk.Columns), ",")
-			refCols := strings.Join(quoteIdentifiers(fk.ReferencedColumns), ",")
+			refCols := strings.Join(quoteIdentifiers(fk.ParentColumns), ",")
 			onDelete := ""
-			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferenceOption_DefaultAction {
+			if len(fk.OnDelete) > 0 && fk.OnDelete != sql.ForeignKeyReferentialAction_DefaultAction {
 				onDelete = " ON DELETE " + string(fk.OnDelete)
 			}
 			onUpdate := ""
-			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferenceOption_DefaultAction {
+			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
 				onUpdate = " ON UPDATE " + string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ReferencedTable, refCols, onDelete, onUpdate))
+			colStmts = append(colStmts, fmt.Sprintf("  CONSTRAINT `%s` FOREIGN KEY (%s) REFERENCES `%s` (%s)%s%s", fk.Name, keyCols, fk.ParentTable, refCols, onDelete, onUpdate))
 		}
 	}
 
@@ -312,18 +312,6 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		table.Name(),
 		strings.Join(colStmts, ",\n"),
 	), nil
-}
-
-// getForeignKeyTable returns the underlying ForeignKeyTable for the table given, or nil if it isn't a ForeignKeyTable
-func getForeignKeyTable(t sql.Table) sql.ForeignKeyTable {
-	switch t := t.(type) {
-	case sql.ForeignKeyTable:
-		return t
-	case sql.TableWrapper:
-		return getForeignKeyTable(t.Underlying())
-	default:
-		return nil
-	}
 }
 
 func quoteIdentifiers(ids []string) []string {
