@@ -93,7 +93,7 @@ func (p *Truncate) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 			aiTable, ok := truncatable.(sql.AutoIncrementTable)
 			if ok {
 				setter := aiTable.AutoIncrementSetter(ctx)
-				err = setter.SetAutoIncrementValue(ctx, p.incrementAutoIncrementZero(col.Type.Zero()))
+				err = setter.SetAutoIncrementValue(ctx, uint64(1))
 				if err != nil {
 					return nil, err
 				}
@@ -106,37 +106,6 @@ func (p *Truncate) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 		}
 	}
 	return sql.RowsToRowIter(sql.NewRow(sql.NewOkResult(removed))), nil
-}
-
-// incrementAutoIncrementZero returns the starting value for an auto_increment column once truncated.
-func (p *Truncate) incrementAutoIncrementZero(v interface{}) interface{} {
-	switch val := v.(type) {
-	case int:
-		return val + 1
-	case uint:
-		return val + 1
-	case int8:
-		return val + 1
-	case int16:
-		return val + 1
-	case int32:
-		return val + 1
-	case int64:
-		return val + 1
-	case uint8:
-		return val + 1
-	case uint16:
-		return val + 1
-	case uint32:
-		return val + 1
-	case uint64:
-		return val + 1
-	case float32:
-		return val + 1
-	case float64:
-		return val + 1
-	}
-	return v
 }
 
 // Schema implements the Node interface.
