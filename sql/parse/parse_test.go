@@ -970,18 +970,21 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
 	),
 	`ALTER TABLE foo RENAME COLUMN bar TO baz`: plan.NewRenameColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("foo", ""), "bar", "baz",
 	),
 	`ALTER TABLE otherdb.mytable RENAME COLUMN i TO s`: plan.NewRenameColumn(
+		sql.UnresolvedDatabase("otherdb"),
 		plan.NewUnresolvedTable("mytable", "otherdb"), "i", "s",
 	),
 	`ALTER TABLE mytable RENAME COLUMN bar TO baz, RENAME COLUMN abc TO xyz`: plan.NewBlock(
 		[]sql.Node{
-			plan.NewRenameColumn(plan.NewUnresolvedTable("mytable", ""), "bar", "baz"),
-			plan.NewRenameColumn(plan.NewUnresolvedTable("mytable", ""), "abc", "xyz"),
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("mytable", ""), "bar", "baz"),
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("mytable", ""), "abc", "xyz"),
 		},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -989,6 +992,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -998,6 +1002,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1007,6 +1012,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1016,6 +1022,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
@@ -1025,6 +1032,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Float32,
@@ -1034,6 +1042,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1042,6 +1051,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE mydb.mytable ADD COLUMN bar INT DEFAULT 1 COMMENT 'otherdb'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase("mydb"),
 		plan.NewUnresolvedTable("mytable", "mydb"), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1060,12 +1070,15 @@ CREATE TABLE t2
 		"",
 	),
 	`ALTER TABLE mytable DROP COLUMN bar`: plan.NewDropColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), "bar",
 	),
 	`ALTER TABLE otherdb.mytable DROP COLUMN bar`: plan.NewDropColumn(
+		sql.UnresolvedDatabase("otherdb"),
 		plan.NewUnresolvedTable("mytable", "otherdb"), "bar",
 	),
 	`ALTER TABLE tabletest MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
@@ -1075,6 +1088,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE tabletest CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "baz",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
@@ -1084,6 +1098,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE mydb.mytable MODIFY COLUMN col1 VARCHAR(20) NULL DEFAULT 'string' COMMENT 'changed'`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase("mydb"),
 		plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
 			Name:     "col1",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default),

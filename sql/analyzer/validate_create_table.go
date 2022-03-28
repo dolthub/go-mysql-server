@@ -55,16 +55,16 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	plan.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
 			return false
 		case *plan.RenameColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
 			return false
 		case *plan.AddColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
 			return false
 		case *plan.DropColumn:
-			sch = n.Child.Schema()
+			sch = n.Table.Schema()
 			return false
 		case *plan.AlterIndex:
 			sch = n.Table.Schema()
@@ -146,7 +146,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 // Note that schema is passed in twice, because one version is the initial version before the alter column expressions
 // are applied, and the second version is the current schema that is being modified as multiple nodes are processed.
 func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sql.Schema, error) {
-	table := rc.Child
+	table := rc.Table
 	nameable := table.(sql.Nameable)
 
 	// Check for column name collisions
@@ -170,7 +170,7 @@ func validateRenameColumn(initialSch, sch sql.Schema, rc *plan.RenameColumn) (sq
 }
 
 func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddColumn) (sql.Schema, error) {
-	table := ac.Child
+	table := ac.Table
 	nameable := table.(sql.Nameable)
 
 	// Name collisions
@@ -194,7 +194,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 }
 
 func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn) (sql.Schema, error) {
-	table := mc.Child
+	table := mc.Table
 	nameable := table.(sql.Nameable)
 	newSch := replaceInSchema(table.Schema(), mc.NewColumn(), nameable.Name())
 
@@ -211,7 +211,7 @@ func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.Modi
 }
 
 func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Schema, error) {
-	table := dc.Child
+	table := dc.Table
 	nameable := table.(sql.Nameable)
 
 	err := validateColumnNotUsedInCheckConstraint(dc.Column, dc.Checks)
