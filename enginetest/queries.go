@@ -331,6 +331,17 @@ var SpatialQueryTests = []QueryTest{
 			{uint64(4326)},
 		},
 	},
+	{
+		Query: `SELECT ST_DIMENSION(g) from geometry_table order by i`,
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{2},
+			{0},
+			{1},
+			{2},
+		},
+	},
 }
 
 var QueryTests = []QueryTest{
