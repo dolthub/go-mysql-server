@@ -1932,8 +1932,6 @@ func columnDefinitionToColumn(ctx *sql.Context, cd *sqlparser.ColumnDefinition, 
 	extra := ""
 	if cd.Type.Autoincrement {
 		extra = "auto_increment"
-	} else if defaultVal.String() == "CURRENT_TIMESTAMP" {
-		extra = "DEFAULT_GENERATED"
 	}
 
 	return &sql.Column{
