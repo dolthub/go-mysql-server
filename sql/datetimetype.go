@@ -201,6 +201,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(v interface{}) (time.Time, error)
 		if value == zeroDateStr || value == zeroTimestampDatetimeStr {
 			return zeroTime, nil
 		}
+		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		parsed := false
 		for _, fmt := range TimestampDatetimeLayouts {
 			if t, err := time.Parse(fmt, value); err == nil {
