@@ -67,6 +67,17 @@ var SpatialQueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `SHOW CREATE TABLE geometry_table`,
+		Expected: []sql.Row{{
+			"geometry_table",
+			"CREATE TABLE `geometry_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `g` geometry NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
 		Query:    `SELECT HEX(ST_ASWKB(p)) from point_table`,
 		Expected: []sql.Row{{"0101000000000000000000F03F0000000000000040"}},
 	},
@@ -285,6 +296,39 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table ORDER BY i`,
+		Expected: []sql.Row{
+			{"POINT(1 2)"},
+			{"LINESTRING(1 2,3 4)"},
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POINT(1 2)"},
+			{"LINESTRING(1 2,3 4)"},
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+		},
+	},
+	{
+		Query: `SELECT HEX(ST_ASWKB(g)) from geometry_table`,
+		Expected: []sql.Row{
+			{"0101000000000000000000F03F0000000000000040"},
+			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
+			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+			{"0101000000000000000000F03F0000000000000040"},
+			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
+			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+		},
+	},
+	{
+		Query: `SELECT ST_SRID(g) from geometry_table`,
+		Expected: []sql.Row{
+			{0},
+			{0},
+			{0},
+			{4326},
+			{4326},
+			{4326},
 		},
 	},
 }
