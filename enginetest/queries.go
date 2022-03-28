@@ -321,14 +321,14 @@ var SpatialQueryTests = []QueryTest{
 		},
 	},
 	{
-		Query: `SELECT ST_SRID(g) from geometry_table`,
+		Query: `SELECT ST_SRID(g) from geometry_table order by i`,
 		Expected: []sql.Row{
-			{0},
-			{0},
-			{0},
-			{4326},
-			{4326},
-			{4326},
+			{uint64(0)},
+			{uint64(0)},
+			{uint64(0)},
+			{uint64(4326)},
+			{uint64(4326)},
+			{uint64(4326)},
 		},
 	},
 }
