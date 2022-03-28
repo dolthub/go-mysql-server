@@ -70,17 +70,12 @@ func (*ShowTables) Children() []sql.Node {
 func (p *ShowTables) Schema() sql.Schema {
 	var sch sql.Schema
 	colName := fmt.Sprintf("Tables_in_%s", p.Database().Name())
-	if p.Full {
-		sch = sql.Schema{
-			{Name: colName, Type: sql.LongText},
-			{Name: "Table_type", Type: sql.LongText},
-		}
-	} else {
-		sch = sql.Schema{
-			{Name: colName, Type: sql.LongText},
-		}
+	sch = sql.Schema{
+		{Name: colName, Type: sql.LongText},
 	}
-
+	if p.Full {
+		sch = append(sch, &sql.Column{Name: "Table_type", Type: sql.LongText})
+	}
 	return sch
 }
 

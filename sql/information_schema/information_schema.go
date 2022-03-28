@@ -1032,15 +1032,9 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// TODO : cardinality should be an estimate of the number of unique values in the index.
 							// it is currently set to total number of rows in the table
 							if st, ok := tbl.(StatisticsTable); ok {
-								c, cErr := st.NumRows(ctx)
-								if cErr != nil {
-									return nil, cErr
-								}
-								// cardinality is int64 type, but NumRows return uint64
-								// so casting it to int64 with a check for negative number
-								cardinality = int64(c)
-								if cardinality < 0 {
-									cardinality = int64(0)
+								cardinality, err = getTotalNumRows(ctx, st)
+								if err != nil {
+									return nil, err
 								}
 							}
 
@@ -2009,4 +2003,19 @@ func getAutoIncrementValue(ctx *Context, t Table) (val interface{}) {
 		}
 	}
 	return
+}
+
+func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
+	c, cErr := st.NumRows(ctx)
+	if cErr != nil {
+		return 0, cErr
+	}
+	// cardinality is int64 type, but NumRows return uint64
+	// so casting it to int64 with a check for negative number
+	cardinality := int64(c)
+	if cardinality < 0 {
+		cardinality = int64(0)
+	}
+
+	return cardinality, nil
 }
