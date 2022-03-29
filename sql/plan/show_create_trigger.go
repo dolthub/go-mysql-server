@@ -17,7 +17,6 @@ package plan
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -100,7 +99,7 @@ func (s *ShowCreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 				characterSetClient,      // character_set_client
 				collationConnection,     // collation_connection
 				collationServer,         // Database Collation
-				time.Unix(0, 0).UTC(),   // Created
+				trigger.CreatedAt,       // Created
 			}), nil
 		}
 	}

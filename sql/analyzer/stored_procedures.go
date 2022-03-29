@@ -36,9 +36,6 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		if _, ok := n.(*plan.Call); ok {
 			referencesProcedures = true
 			return false
-		} else if _, ok := n.(*plan.ShowProcedureStatus); ok {
-			referencesProcedures = true
-			return false
 		} else if rt, ok := n.(*plan.ResolvedTable); ok {
 			_, rOk := rt.Table.(RoutineTable)
 			if rOk {
@@ -308,8 +305,6 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		switch n := n.(type) {
 		case *plan.Call:
 			return applyProceduresCall(ctx, a, n, scope)
-		case *plan.ShowProcedureStatus:
-			return applyProceduresShowProcedure(ctx, a, n, scope)
 		default:
 			return n, nil
 		}
@@ -398,10 +393,4 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 
 	call = call.WithProcedure(procedure)
 	return call, nil
-}
-
-// applyProceduresShowProcedure applies all of the stored procedures to the given *plan.ShowProcedureStatus.
-func applyProceduresShowProcedure(ctx *sql.Context, a *Analyzer, n *plan.ShowProcedureStatus, scope *Scope) (sql.Node, error) {
-	n.Procedures = a.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase())
-	return n, nil
 }

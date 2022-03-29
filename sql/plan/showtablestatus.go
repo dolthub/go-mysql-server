@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"errors"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -102,12 +100,7 @@ func (s *ShowTableStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 			}
 		}
 
-		nextAIVal, err := getAutoIncrementValue(ctx, table)
-		if err != nil {
-			return nil, err
-		}
-
-		rows[i] = tableToStatusRow(tName, numRows, nextAIVal, dataLength)
+		rows[i] = tableToStatusRow(tName, numRows, dataLength)
 	}
 
 	return sql.RowsToRowIter(rows...), nil
@@ -132,54 +125,8 @@ func (s *ShowTableStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.Privil
 	return true
 }
 
-// getAutoIncrementValue takes in a ctx and table and returns the next autoincrement value.
-func getAutoIncrementValue(ctx *sql.Context, table sql.Table) (interface{}, error) {
-	if autoTbl, ok := table.(sql.AutoIncrementTable); ok {
-		next, err := autoTbl.PeekNextAutoIncrementValue(ctx)
-		if errors.Is(err, sql.ErrNoAutoIncrementCol) {
-			return nil, nil
-		} else if err != nil {
-			return nil, err
-		} else if next == nil {
-			return nil, nil
-		} else {
-			num := sqlValToInt64(next)
-			if ok {
-				return num, nil
-			}
-		}
-	}
-	return nil, nil
-}
-
-// sqlValToInt64 takes an interface that is expected to be a numeric type and converts it to an appropriate int64.
-func sqlValToInt64(val interface{}) int64 {
-	switch n := val.(type) {
-	case uint8:
-		return int64(n)
-	case uint16:
-		return int64(n)
-	case uint32:
-		return int64(n)
-	case uint64:
-		return int64(n)
-	case int8:
-		return int64(n)
-	case int16:
-		return int64(n)
-	case int32:
-		return int64(n)
-	case int64:
-		return n
-	case int:
-		return int64(n)
-	default:
-		return 0
-	}
-}
-
 // cc here: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html
-func tableToStatusRow(table string, numRows uint64, nextAIVal interface{}, dataLength uint64) sql.Row {
+func tableToStatusRow(table string, numRows uint64, dataLength uint64) sql.Row {
 	var avgLength uint64 = 0
 	if numRows > 0 {
 		avgLength = dataLength / numRows
@@ -198,7 +145,7 @@ func tableToStatusRow(table string, numRows uint64, nextAIVal interface{}, dataL
 		uint64(0),                      // Max_data_length (Unused for InnoDB)
 		int64(0),                       // Index_length
 		int64(0),                       // Data_free
-		nextAIVal,                      // Auto_increment
+		nil,                            // Auto_increment (always null)
 		nil,                            // Create_time
 		nil,                            // Update_time
 		nil,                            // Check_time

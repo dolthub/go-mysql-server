@@ -308,7 +308,11 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 	for {
 		row, err := a.iter.Next(ctx)
 		_, isIg := err.(sql.ErrInsertIgnore)
-
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
 		if err == io.EOF {
 			res := a.updateRowHandler.okResult()
 

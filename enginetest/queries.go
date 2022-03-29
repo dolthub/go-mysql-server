@@ -6750,6 +6750,18 @@ var QueryTests = []QueryTest{
 		Query:    `select (('%' OR 'dsads') OR '%')`,
 		Expected: []sql.Row{{false}},
 	},
+	{
+		Query:    `show function status`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `show function status like 'foo'`,
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    `show function status where Db='mydb'`,
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -7323,7 +7335,7 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query: "SHOW TABLES WHERE `Table` = 'mytable'",
+		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
 		Expected: []sql.Row{
 			{"mytable"},
 		},
@@ -7520,7 +7532,7 @@ var InfoSchemaQueries = []QueryTest{
 		Query: "SELECT table_name, `auto_increment` FROM information_schema.tables " +
 			"WHERE TABLE_SCHEMA='mydb' AND TABLE_TYPE='BASE TABLE' ORDER BY 1",
 		Expected: []sql.Row{
-			{"auto_increment_tbl", 4},
+			{"auto_increment_tbl", nil},
 			{"bigtable", nil},
 			{"datetime_table", nil},
 			{"fk_tbl", nil},
@@ -7956,8 +7968,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.statistics where table_name='mytable'",
 				Expected: []sql.Row{
-					{"def", "mydb", "mytable", 0, "mydb", "myindex", 1, "test_score", "A", uint64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"def", "mydb", "mytable", 1, "mydb", "PRIMARY", 1, "pk", "A", uint64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "mytable", 1, "mydb", "myindex", 1, "test_score", "A", int64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "mytable", 0, "mydb", "PRIMARY", 1, "pk", "A", int64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},
@@ -7968,6 +7980,9 @@ var InfoSchemaScripts = []ScriptTest{
 			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
 			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
 			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
+			"CREATE DATABASE somedb",
+			"USE somedb",
+			"CREATE PROCEDURE p12() COMMENT 'hello' DETERMINISTIC SELECT 6",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7978,14 +7993,17 @@ var InfoSchemaScripts = []ScriptTest{
 					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
 					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
 				Expected: []sql.Row{
-					{"p1", "def", "sys", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
 						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hi", "", "utf8mb4", "utf8mb4_0900_bin",
 						"utf8mb4_0900_bin"},
-					{"p2", "def", "sys", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
 						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "user", "utf8mb4", "utf8mb4_0900_bin",
 						"utf8mb4_0900_bin"},
-					{"p21", "def", "sys", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
-						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "", "utf8mb4", "utf8mb4_0900_bin",
+					{"p12", "def", "somedb", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hello", "", "utf8mb4", "utf8mb4_0900_bin",
+						"utf8mb4_0900_bin"},
+					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
+						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "", "", "utf8mb4", "utf8mb4_0900_bin",
 						"utf8mb4_0900_bin"},
 				},
 			},
@@ -8612,7 +8630,7 @@ var ShowTableStatusQueries = []QueryTest{
 	{
 		Query: `SHOW TABLE STATUS FROM mydb`,
 		Expected: []sql.Row{
-			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_two_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(24), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
@@ -8655,7 +8673,7 @@ var ShowTableStatusQueries = []QueryTest{
 	{
 		Query: `SHOW TABLE STATUS`,
 		Expected: []sql.Row{
-			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), int64(4), nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
+			{"auto_increment_tbl", "InnoDB", "10", "Fixed", uint64(3), uint64(16), uint64(48), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_three_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(32), uint64(256), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 			{"one_pk_two_idx", "InnoDB", "10", "Fixed", uint64(8), uint64(24), uint64(192), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
