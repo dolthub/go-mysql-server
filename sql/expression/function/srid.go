@@ -176,11 +176,11 @@ func (s *SRID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case sql.Geometry:
 		switch inner := g.Inner.(type) {
 		case sql.Point:
-			return PointWithSRID(inner, _srid), nil
+			return sql.Geometry{Inner: PointWithSRID(inner, _srid)}, nil
 		case sql.Linestring:
-			return LineWithSRID(inner, _srid), nil
+			return sql.Geometry{Inner: LineWithSRID(inner, _srid)}, nil
 		case sql.Polygon:
-			return PolyWithSRID(inner, _srid), nil
+			return sql.Geometry{Inner: PolyWithSRID(inner, _srid)}, nil
 		default:
 			return nil, sql.ErrIllegalGISValue.New(g)
 		}
