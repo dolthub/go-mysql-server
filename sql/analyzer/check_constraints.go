@@ -207,7 +207,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.DropColumn:
 			nn := *node
 
-			rtable := getResolvedTable(nn.Child)
+			rtable := getResolvedTable(nn.Table)
 			if rtable == nil {
 				return node, nil
 			}
@@ -228,7 +228,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 		case *plan.RenameColumn:
 			nn := *node
 
-			rtable := getResolvedTable(nn.Child)
+			rtable := getResolvedTable(nn.Table)
 			if rtable == nil {
 				return node, nil
 			}

@@ -1643,6 +1643,20 @@ var ScriptTests = []ScriptTest{
 					{"v2", "int", "NO", "PRI", "", ""},
 				},
 			},
+			{
+				Query:    "ALTER TABLE t ADD column `v4` int NOT NULL, ADD column `v5` int NOT NULL, DROP COLUMN `v1`, ADD COLUMN `v6` int NOT NULL, DROP COLUMN `v4`, ADD COLUMN v7 int NOT NULL",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE t",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "", "", ""},
+					{"v2", "int", "NO", "PRI", "", ""},
+					{"v5", "int", "NO", "", "", ""},
+					{"v6", "int", "NO", "", "", ""},
+					{"v7", "int", "NO", "", "", ""},
+				},
+			},
 		},
 	},
 	{
@@ -1776,6 +1790,67 @@ var ScriptTests = []ScriptTest{
 				Query:    "SELECT * from test where pk = 100",
 				Expected: []sql.Row{{100, 11}},
 			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v2, ADD COLUMN v3 int NOT NULL after v2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE test DROP COLUMN v2, RENAME COLUMN v2 to v3",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:       "ALTER TABLE test RENAME COLUMN v2 to v3, DROP COLUMN v2",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE test ADD COLUMN (v3 int NOT NULL), add column (v4 int), drop column v3, add column (v5 int NOT NULL)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "DESCRIBE test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+					{"v4", "int", "YES", "", "", ""},
+					{"v5", "int", "NO", "", "", ""},
+				},
+			},
+			{
+				Query:    "ALTER TABLE test ADD COLUMN (v6 int not null), RENAME COLUMN v5 TO mycol, DROP COLUMN v4, ADD COLUMN (v7 int);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", "auto_increment"},
+					{"v2", "int", "NO", "", "100", ""},
+					{"mycol", "int", "NO", "", "", ""},
+					{"v6", "int", "NO", "", "", ""},
+					{"v7", "int", "YES", "", "", ""},
+				},
+			},
+			// TODO: Does not include tests with column renames and defaults.
 		},
 	},
 	{
