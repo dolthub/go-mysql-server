@@ -179,9 +179,6 @@ func TestDatetimeConvert(t *testing.T) {
 		{Datetime, "2010-10-3 12:12:2", time.Date(2010, 10, 3, 12, 12, 2, 0, time.UTC), false},
 		{Datetime, "2010-10-3 12:2:2", time.Date(2010, 10, 3, 12, 2, 2, 0, time.UTC), false},
 
-		{Datetime, "2010-06-03 1", time.Date(2010, 6, 3, 1, 0, 0, 0, time.UTC), false},
-		{Datetime, "2010-06-03 12", time.Date(2010, 6, 3, 12, 0, 0, 0, time.UTC), false},
-		{Datetime, "2010-06-03 12:", time.Date(2010, 6, 3, 12, 0, 0, 0, time.UTC), false},
 		{Datetime, "2010-06-03 12:3", time.Date(2010, 6, 3, 12, 3, 0, 0, time.UTC), false},
 		{Datetime, "2010-06-03 12:34", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
 		{Datetime, "2010-06-03 12:34:", time.Date(2010, 6, 3, 12, 34, 0, 0, time.UTC), false},
