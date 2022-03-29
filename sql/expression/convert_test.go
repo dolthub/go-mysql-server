@@ -102,7 +102,7 @@ func TestConvert(t *testing.T) {
 			castTo:      ConvertToDatetime,
 			expression:  NewLiteral(1, sql.Int32),
 			expected:    nil,
-			expectedErr: true,
+			expectedErr: false,
 		},
 		{
 			name:        "string to date",
@@ -118,7 +118,7 @@ func TestConvert(t *testing.T) {
 			castTo:      ConvertToDate,
 			expression:  NewLiteral(1, sql.Int32),
 			expected:    nil,
-			expectedErr: true,
+			expectedErr: false,
 		},
 		{
 			name:        "float to binary",
