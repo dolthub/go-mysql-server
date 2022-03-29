@@ -164,7 +164,7 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 		}
 		d, err := sql.Date.Convert(val)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		return d, nil
 	case ConvertToDatetime:
@@ -175,7 +175,7 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 		}
 		d, err := sql.Datetime.Convert(val)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		return d, nil
 	case ConvertToDecimal:
