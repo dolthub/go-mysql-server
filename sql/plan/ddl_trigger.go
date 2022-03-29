@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -28,6 +29,7 @@ type TriggerOrder struct {
 }
 
 type CreateTrigger struct {
+	ddlNode
 	TriggerName         string
 	TriggerTime         string
 	TriggerEvent        string
@@ -36,11 +38,21 @@ type CreateTrigger struct {
 	Body                sql.Node
 	CreateTriggerString string
 	BodyString          string
-	CreateDatabase      sql.Database
+	CreatedAt           time.Time
 }
 
-func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrder *TriggerOrder, table sql.Node, body sql.Node, createTriggerString, bodyString string) *CreateTrigger {
+func NewCreateTrigger(triggerDb sql.Database,
+	triggerName,
+	triggerTime,
+	triggerEvent string,
+	triggerOrder *TriggerOrder,
+	table sql.Node,
+	body sql.Node,
+	createTriggerString,
+	bodyString string,
+	createdAt time.Time) *CreateTrigger {
 	return &CreateTrigger{
+		ddlNode:             ddlNode{db: triggerDb},
 		TriggerName:         triggerName,
 		TriggerTime:         triggerTime,
 		TriggerEvent:        triggerEvent,
@@ -49,21 +61,22 @@ func NewCreateTrigger(triggerName, triggerTime, triggerEvent string, triggerOrde
 		Body:                body,
 		BodyString:          bodyString,
 		CreateTriggerString: createTriggerString,
+		CreatedAt:           createdAt,
 	}
 }
 
 func (c *CreateTrigger) Database() sql.Database {
-	return c.CreateDatabase
+	return c.db
 }
 
 func (c *CreateTrigger) WithDatabase(database sql.Database) (sql.Node, error) {
-	nc := *c
-	nc.CreateDatabase = database
-	return &nc, nil
+	ct := *c
+	ct.db = database
+	return &ct, nil
 }
 
 func (c *CreateTrigger) Resolved() bool {
-	return c.Table.Resolved() && c.Body.Resolved()
+	return c.ddlNode.Resolved() && c.Table.Resolved() && c.Body.Resolved()
 }
 
 func (c *CreateTrigger) Schema() sql.Schema {
@@ -146,7 +159,8 @@ func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		definition: sql.TriggerDefinition{
 			Name:            c.TriggerName,
 			CreateStatement: c.CreateTriggerString,
+			CreatedAt:       c.CreatedAt,
 		},
-		db: c.CreateDatabase,
+		db: c.db,
 	}, nil
 }
