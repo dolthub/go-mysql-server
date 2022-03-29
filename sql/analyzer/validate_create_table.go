@@ -179,7 +179,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 		return nil, sql.ErrColumnExists.New(ac.Column().Name)
 	}
 
-	// After collisions
+	// Make sure columns named in After clause exist
 	if ac.Order() != nil && ac.Order().AfterColumn != "" {
 		afterColumn := ac.Order().AfterColumn
 		idx := schema.IndexOf(afterColumn, nameable.Name())
