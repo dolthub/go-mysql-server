@@ -8430,6 +8430,14 @@ var errorQueries = []QueryErrorTest{
 		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
+	{
+		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
+		ExpectedErr: sql.ErrConvertingToTime,
+	},
+	{
+		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
+		ExpectedErr: sql.ErrConvertingToTime,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
