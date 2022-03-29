@@ -135,8 +135,10 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Should always return nil, and a warning instead
 	casted, err := convertValue(val, c.castToType)
 	if err != nil {
+		if c.castToType == ConvertToJSON {
+			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
+		}
 		return nil, nil
-		//return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
 	}
 
 	return casted, nil
