@@ -41,38 +41,6 @@ type AlterDefaultDrop struct {
 
 var _ sql.Node = (*AlterDefaultDrop)(nil)
 
-func getAlterable(node sql.Node) (sql.AlterableTable, error) {
-	switch node := node.(type) {
-	case sql.AlterableTable:
-		return node, nil
-	case *IndexedTableAccess:
-		return getAlterable(node.ResolvedTable)
-	case *ResolvedTable:
-		return getAlterableTableUnderlying(node.Table)
-	case sql.TableWrapper:
-		return getAlterableTableUnderlying(node.Underlying())
-	}
-	for _, child := range node.Children() {
-		alterableChild, _ := getAlterable(child)
-		if alterableChild != nil {
-			return alterableChild, nil
-		}
-	}
-
-	return nil, sql.ErrAlterTableNotSupported.New(node.String())
-}
-
-func getAlterableTableUnderlying(t sql.Table) (sql.AlterableTable, error) {
-	switch t := t.(type) {
-	case sql.AlterableTable:
-		return t, nil
-	case sql.TableWrapper:
-		return getAlterableTableUnderlying(t.Underlying())
-	default:
-		return nil, sql.ErrAlterTableNotSupported.New()
-	}
-}
-
 // NewAlterDefaultSet returns a *AlterDefaultSet node.
 func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
 	return &AlterDefaultSet{
