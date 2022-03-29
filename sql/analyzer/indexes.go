@@ -283,71 +283,73 @@ func getComparisonIndexLookup(
 		left, right, e = swapTermsOfExpression(e)
 	}
 
-	if !isEvaluable(left) && isEvaluable(right) {
-		gf := expression.ExtractGetField(left)
-		if gf == nil {
-			return nil, nil
-		}
-
-		normalizedExpressions := normalizeExpressions(ctx, tableAliases, left)
-		idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
-		if idx != nil {
-
-			var value interface{}
-			var err error
-			right2, _ := right.(sql.Expression2)
-
-			if right2 != nil {
-				value, err = right2.Eval2(ctx, nil)
-			} else {
-				value, err = right.Eval(ctx, nil)
-			}
-			if err != nil {
-				return nil, err
-			}
-
-			var lookup sql.IndexLookup
-			switch e.(type) {
-			case *expression.Equals, *expression.NullSafeEquals:
-				if e.Right().Type() == sql.Null {
-					lookup, err = sql.NewIndexBuilder(ctx, idx).IsNull(ctx, normalizedExpressions[0].String()).Build(ctx)
-				} else {
-					lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
-				}
-			case *expression.GreaterThan:
-				lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
-			case *expression.GreaterThanOrEqual:
-				lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
-			case *expression.LessThan:
-				lookup, err = sql.NewIndexBuilder(ctx, idx).LessThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
-			case *expression.LessThanOrEqual:
-				lookup, err = sql.NewIndexBuilder(ctx, idx).LessOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
-			default:
-				return nil, nil
-			}
-			if err != nil || lookup == nil {
-				return nil, err
-			}
-
-			var fields2 []sql.Expression2
-			if field2, ok := left.(sql.Expression2); ok {
-				fields2 = []sql.Expression2{field2}
-			}
-
-			expr2, _ := e.(sql.Expression2)
-
-			return &indexLookup{
-				fields:  []sql.Expression{left},
-				fields2: fields2,
-				lookup:  lookup,
-				indexes: []sql.Index{idx},
-				expr:    e,
-				expr2:   expr2,
-			}, nil
-		}
+	if isEvaluable(left) || !isEvaluable(right) {
+		return nil, nil
 	}
 
-	return nil, nil
+	gf := expression.ExtractGetField(left)
+	if gf == nil {
+		return nil, nil
+	}
+
+	normalizedExpressions := normalizeExpressions(ctx, tableAliases, left)
+	idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), gf.Table(), normalizedExpressions...)
+
+	if idx == nil {
+		return nil, nil
+	}
+
+	var value interface{}
+	var err error
+	right2, _ := right.(sql.Expression2)
+
+	if right2 != nil {
+		value, err = right2.Eval2(ctx, nil)
+	} else {
+		value, err = right.Eval(ctx, nil)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var lookup sql.IndexLookup
+	switch e.(type) {
+	case *expression.Equals, *expression.NullSafeEquals:
+		if e.Right().Type() == sql.Null {
+			lookup, err = sql.NewIndexBuilder(ctx, idx).IsNull(ctx, normalizedExpressions[0].String()).Build(ctx)
+		} else {
+			lookup, err = sql.NewIndexBuilder(ctx, idx).Equals(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+		}
+	case *expression.GreaterThan:
+		lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+	case *expression.GreaterThanOrEqual:
+		lookup, err = sql.NewIndexBuilder(ctx, idx).GreaterOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+	case *expression.LessThan:
+		lookup, err = sql.NewIndexBuilder(ctx, idx).LessThan(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+	case *expression.LessThanOrEqual:
+		lookup, err = sql.NewIndexBuilder(ctx, idx).LessOrEqual(ctx, normalizedExpressions[0].String(), value).Build(ctx)
+	default:
+		return nil, nil
+	}
+	if err != nil || lookup == nil {
+		return nil, err
+	}
+
+	var fields2 []sql.Expression2
+	if field2, ok := left.(sql.Expression2); ok {
+		fields2 = []sql.Expression2{field2}
+	}
+
+	expr2, _ := e.(sql.Expression2)
+
+	return &indexLookup{
+		fields:  []sql.Expression{left},
+		fields2: fields2,
+		lookup:  lookup,
+		indexes: []sql.Index{idx},
+		expr:    e,
+		expr2:   expr2,
+	}, nil
 }
 
 // Returns an equivalent expression to the one given with the left and right terms reversed. The new left and right side
