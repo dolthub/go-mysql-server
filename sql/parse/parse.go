@@ -631,7 +631,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
 		// TODO(erizocosmico): vitess parser does not support EXTENDED.
-		table := tableNameToUnresolvedTable(s.OnTable)
+		var asOfExpression sql.Expression = nil
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+			asOfExpression = expression
+		}
+
+		table := tableNameToUnresolvedTableAsOf(s.OnTable, asOfExpression)
 		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
@@ -1305,6 +1314,10 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedTable {
 	return plan.NewUnresolvedTable(tableName.Name.String(), tableName.Qualifier.String())
+}
+
+func tableNameToUnresolvedTableAsOf(tableName sqlparser.TableName, asOf sql.Expression) *plan.UnresolvedTable {
+	return plan.NewUnresolvedTableAsOf(tableName.Name.String(), tableName.Qualifier.String(), asOf)
 }
 
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {

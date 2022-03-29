@@ -976,6 +976,14 @@ var ScriptTests = []ScriptTest{
 					{"v1", "bigint", "NO", "", "200", ""},
 				},
 			},
+			{
+				// as of syntax is supported, but mocked out in test harnesses
+				Query: "DESCRIBE test as of 'version'",
+				Expected: []sql.Row{
+					{"pk", "bigint", "NO", "PRI", "", ""},
+					{"v1", "bigint", "NO", "", "200", ""},
+				},
+			},
 		},
 	},
 	{
