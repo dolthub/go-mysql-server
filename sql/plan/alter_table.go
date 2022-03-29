@@ -121,13 +121,6 @@ func (a *AddColumn) Order() *sql.ColumnOrder {
 	return a.order
 }
 
-func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	//na := *a
-	//na.db = db
-	//return &na, nil
-	return a, nil
-}
-
 // Schema implements the sql.Node interface.
 func (a *AddColumn) Schema() sql.Schema {
 	return sql.Schema{a.column}
@@ -358,13 +351,6 @@ func NewDropColumn(table *UnresolvedTable, column string) *DropColumn {
 	}
 }
 
-func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	//nd := *d
-	//nd.db = db
-	//return &nd, nil
-	return d, nil
-}
-
 func (d *DropColumn) String() string {
 	return fmt.Sprintf("drop column %s", d.Column)
 }
@@ -487,13 +473,6 @@ func NewRenameColumn(table *UnresolvedTable, columnName string, newColumnName st
 	}
 }
 
-func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	//nr := *r
-	//nr.db = db
-	//return &nr, nil
-	return r, nil
-}
-
 func (r RenameColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	r.targetSchema = schema
 	return &r, nil
@@ -612,13 +591,6 @@ func NewModifyColumn(table *UnresolvedTable, columnName string, column *sql.Colu
 		column:     column,
 		order:      order,
 	}
-}
-
-func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
-	//nm := *m
-	//nm.db = db
-	//return &nm, nil
-	return m, nil
 }
 
 func (m *ModifyColumn) Column() string {

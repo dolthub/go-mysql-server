@@ -501,10 +501,26 @@ func getTransactionDatabase(ctx *sql.Context, parsed sql.Node) string {
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
 		}
+	case *plan.CreateProcedure:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.DropProcedure:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
 	case *plan.Truncate:
 		t, ok := n.Child.(*plan.UnresolvedTable)
 		if ok && t.Database != "" {
 			transactionDatabase = t.Database
+		}
+	case *plan.CreateTrigger:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
+		}
+	case *plan.DropTrigger:
+		if n.Database() != nil && n.Database().Name() != "" {
+			transactionDatabase = n.Database().Name()
 		}
 	}
 

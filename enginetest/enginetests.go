@@ -1326,6 +1326,28 @@ func TestTriggers(t *testing.T, harness Harness) {
 	for _, script := range TriggerTests {
 		TestScript(t, harness, script)
 	}
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		RunQueryWithContext(t, e, ctx, "create table mydb.a (i int primary key, j int)")
+		RunQueryWithContext(t, e, ctx, "create table mydb.b (x int primary key)")
+
+		TestQueryWithContext(t, ctx, e, "CREATE TRIGGER mydb.trig BEFORE INSERT ON mydb.a FOR EACH ROW BEGIN SET NEW.j = (SELECT COALESCE(MAX(x),1) FROM mydb.b); UPDATE mydb.b SET x = x + 1; END",
+			[]sql.Row{{sql.OkResult{}}}, nil, nil)
+
+		RunQueryWithContext(t, e, ctx, "insert into mydb.b values (1)")
+		RunQueryWithContext(t, e, ctx, "insert into mydb.a values (1,0), (2,0), (3,0)")
+
+		TestQueryWithContext(t, ctx, e, "select * from mydb.a order by i", []sql.Row{{1, 1}, {2, 2}, {3, 3}}, nil, nil)
+
+		TestQueryWithContext(t, ctx, e, "DROP TRIGGER mydb.trig", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SHOW TRIGGERS FROM mydb", []sql.Row{}, nil, nil)
+	})
 }
 
 func TestShowTriggers(t *testing.T, harness Harness) {
@@ -1591,6 +1613,31 @@ func TestStoredProcedures(t *testing.T, harness Harness) {
 	for _, script := range ProcedureShowCreate {
 		TestScript(t, harness, script)
 	}
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "CREATE PROCEDURE mydb.p1() SELECT 5", []sql.Row{{sql.OkResult{}}}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "CREATE PROCEDURE mydb.p2() SELECT 6", []sql.Row{{sql.OkResult{}}}, nil, nil)
+
+		TestQueryWithContext(t, ctx, e, "SHOW PROCEDURE STATUS", []sql.Row{
+			{"mydb", "p1", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
+				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
+				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+		}, nil, nil)
+
+		TestQueryWithContext(t, ctx, e, "DROP PROCEDURE mydb.p1", []sql.Row{}, nil, nil)
+
+		TestQueryWithContext(t, ctx, e, "SHOW PROCEDURE STATUS", []sql.Row{
+			{"mydb", "p2", "PROCEDURE", "", time.Unix(0, 0).UTC(), time.Unix(0, 0).UTC(),
+				"DEFINER", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+		}, nil, nil)
+	})
 }
 
 func TestTriggerErrors(t *testing.T, harness Harness) {
