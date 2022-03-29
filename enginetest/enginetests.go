@@ -1326,6 +1326,275 @@ func TestTriggers(t *testing.T, harness Harness) {
 	for _, script := range TriggerTests {
 		TestScript(t, harness, script)
 	}
+
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	t.Run("no database selected", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		RunQueryWithContext(t, e, ctx, "create table mydb.a (i int primary key, j int)")
+		RunQueryWithContext(t, e, ctx, "create table mydb.b (x int primary key)")
+
+		TestQueryWithContext(t, ctx, e, "CREATE TRIGGER mydb.trig BEFORE INSERT ON mydb.a FOR EACH ROW BEGIN SET NEW.j = (SELECT COALESCE(MAX(x),1) FROM mydb.b); UPDATE mydb.b SET x = x + 1; END",
+			[]sql.Row{{sql.OkResult{}}}, nil, nil)
+
+		RunQueryWithContext(t, e, ctx, "insert into mydb.b values (1)")
+		RunQueryWithContext(t, e, ctx, "insert into mydb.a values (1,0), (2,0), (3,0)")
+
+		TestQueryWithContext(t, ctx, e, "select * from mydb.a order by i", []sql.Row{{1, 1}, {2, 2}, {3, 3}}, nil, nil)
+
+		TestQueryWithContext(t, ctx, e, "DROP TRIGGER mydb.trig", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SHOW TRIGGERS FROM mydb", []sql.Row{}, nil, nil)
+	})
+}
+
+func TestShowTriggers(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+
+	// Pick a date
+	date := time.Unix(0, 0).UTC()
+
+	// Set up Harness to contain triggers; created at a specific time
+	var ctx *sql.Context
+	setupTriggers := []struct {
+		Query    string
+		Expected []sql.Row
+	}{
+		{"create table a (x int primary key)", nil},
+		{"create table b (y int primary key)", nil},
+		{"create trigger a1 before insert on a for each row set new.x = New.x + 1", []sql.Row{{sql.NewOkResult(0)}}},
+		{"create trigger a2 before insert on a for each row precedes a1 set new.x = New.x * 2", []sql.Row{{sql.NewOkResult(0)}}},
+		{"create trigger a3 before insert on a for each row precedes a2 set new.x = New.x - 5", []sql.Row{{sql.NewOkResult(0)}}},
+		{"create trigger a4 before insert on a for each row follows a2 set new.x = New.x * 3", []sql.Row{{sql.NewOkResult(0)}}},
+		// order of execution should be: a3, a2, a4, a1
+		{"create trigger a5 after insert on a for each row update b set y = y + 1 order by y asc", []sql.Row{{sql.NewOkResult(0)}}},
+		{"create trigger a6 after insert on a for each row precedes a5 update b set y = y * 2 order by y asc", []sql.Row{{sql.NewOkResult(0)}}},
+		{"create trigger a7 after insert on a for each row precedes a6 update b set y = y - 5 order by y asc", []sql.Row{{sql.NewOkResult(0)}}},
+		{"create trigger a8 after insert on a for each row follows a6 update b set y = y * 3 order by y asc", []sql.Row{{sql.NewOkResult(0)}}},
+		// order of execution should be: a7, a6, a8, a5
+	}
+	for _, tt := range setupTriggers {
+		t.Run("setting up triggers", func(t *testing.T) {
+			sql.RunWithNowFunc(func() time.Time { return date }, func() error {
+				ctx = NewContext(harness)
+				TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
+				return nil
+			})
+		})
+	}
+
+	// Test selecting these queries
+	expectedResults := []struct {
+		Query    string
+		Expected []sql.Row
+	}{
+		{
+			Query: "select * from information_schema.triggers",
+			Expected: []sql.Row{
+				{
+					"def",                   // trigger_catalog
+					"mydb",                  // trigger_schema
+					"a1",                    // trigger_name
+					"INSERT",                // event_manipulation
+					"def",                   // event_object_catalog
+					"mydb",                  // event_object_schema
+					"a",                     // event_object_table
+					int64(4),                // action_order
+					nil,                     // action_condition
+					"set new.x = New.x + 1", // action_statement
+					"ROW",                   // action_orientation
+					"BEFORE",                // action_timing
+					nil,                     // action_reference_old_table
+					nil,                     // action_reference_new_table
+					"OLD",                   // action_reference_old_row
+					"NEW",                   // action_reference_new_row
+					date,                    // created
+					"",                      // sql_mode
+					"",                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+				{
+					"def",                   // trigger_catalog
+					"mydb",                  // trigger_schema
+					"a2",                    // trigger_name
+					"INSERT",                // event_manipulation
+					"def",                   // event_object_catalog
+					"mydb",                  // event_object_schema
+					"a",                     // event_object_table
+					int64(2),                // action_order
+					nil,                     // action_condition
+					"set new.x = New.x * 2", // action_statement
+					"ROW",                   // action_orientation
+					"BEFORE",                // action_timing
+					nil,                     // action_reference_old_table
+					nil,                     // action_reference_new_table
+					"OLD",                   // action_reference_old_row
+					"NEW",                   // action_reference_new_row
+					date,                    // created
+					"",                      // sql_mode
+					"",                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+				{
+					"def",                   // trigger_catalog
+					"mydb",                  // trigger_schema
+					"a3",                    // trigger_name
+					"INSERT",                // event_manipulation
+					"def",                   // event_object_catalog
+					"mydb",                  // event_object_schema
+					"a",                     // event_object_table
+					int64(1),                // action_order
+					nil,                     // action_condition
+					"set new.x = New.x - 5", // action_statement
+					"ROW",                   // action_orientation
+					"BEFORE",                // action_timing
+					nil,                     // action_reference_old_table
+					nil,                     // action_reference_new_table
+					"OLD",                   // action_reference_old_row
+					"NEW",                   // action_reference_new_row
+					date,                    // created
+					"",                      // sql_mode
+					"",                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+				{
+					"def",                   // trigger_catalog
+					"mydb",                  // trigger_schema
+					"a4",                    // trigger_name
+					"INSERT",                // event_manipulation
+					"def",                   // event_object_catalog
+					"mydb",                  // event_object_schema
+					"a",                     // event_object_table
+					int64(3),                // action_order
+					nil,                     // action_condition
+					"set new.x = New.x * 3", // action_statement
+					"ROW",                   // action_orientation
+					"BEFORE",                // action_timing
+					nil,                     // action_reference_old_table
+					nil,                     // action_reference_new_table
+					"OLD",                   // action_reference_old_row
+					"NEW",                   // action_reference_new_row
+					date,                    // created
+					"",                      // sql_mode
+					"",                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+				{
+					"def",                                   // trigger_catalog
+					"mydb",                                  // trigger_schema
+					"a5",                                    // trigger_name
+					"INSERT",                                // event_manipulation
+					"def",                                   // event_object_catalog
+					"mydb",                                  // event_object_schema
+					"a",                                     // event_object_table
+					int64(4),                                // action_order
+					nil,                                     // action_condition
+					"update b set y = y + 1 order by y asc", // action_statement
+					"ROW",                                   // action_orientation
+					"AFTER",                                 // action_timing
+					nil,                                     // action_reference_old_table
+					nil,                                     // action_reference_new_table
+					"OLD",                                   // action_reference_old_row
+					"NEW",                                   // action_reference_new_row
+					date,                                    // created
+					"",                                      // sql_mode
+					"",                                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+				{
+					"def",                                   // trigger_catalog
+					"mydb",                                  // trigger_schema
+					"a6",                                    // trigger_name
+					"INSERT",                                // event_manipulation
+					"def",                                   // event_object_catalog
+					"mydb",                                  // event_object_schema
+					"a",                                     // event_object_table
+					int64(2),                                // action_order
+					nil,                                     // action_condition
+					"update b set y = y * 2 order by y asc", // action_statement
+					"ROW",                                   // action_orientation
+					"AFTER",                                 // action_timing
+					nil,                                     // action_reference_old_table
+					nil,                                     // action_reference_new_table
+					"OLD",                                   // action_reference_old_row
+					"NEW",                                   // action_reference_new_row
+					date,                                    // created
+					"",                                      // sql_mode
+					"",                                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+				{
+					"def",                                   // trigger_catalog
+					"mydb",                                  // trigger_schema
+					"a7",                                    // trigger_name
+					"INSERT",                                // event_manipulation
+					"def",                                   // event_object_catalog
+					"mydb",                                  // event_object_schema
+					"a",                                     // event_object_table
+					int64(1),                                // action_order
+					nil,                                     // action_condition
+					"update b set y = y - 5 order by y asc", // action_statement
+					"ROW",                                   // action_orientation
+					"AFTER",                                 // action_timing
+					nil,                                     // action_reference_old_table
+					nil,                                     // action_reference_new_table
+					"OLD",                                   // action_reference_old_row
+					"NEW",                                   // action_reference_new_row
+					date,                                    // created
+					"",                                      // sql_mode
+					"",                                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+				{
+					"def",                                   // trigger_catalog
+					"mydb",                                  // trigger_schema
+					"a8",                                    // trigger_name
+					"INSERT",                                // event_manipulation
+					"def",                                   // event_object_catalog
+					"mydb",                                  // event_object_schema
+					"a",                                     // event_object_table
+					int64(3),                                // action_order
+					nil,                                     // action_condition
+					"update b set y = y * 3 order by y asc", // action_statement
+					"ROW",                                   // action_orientation
+					"AFTER",                                 // action_timing
+					nil,                                     // action_reference_old_table
+					nil,                                     // action_reference_new_table
+					"OLD",                                   // action_reference_old_row
+					"NEW",                                   // action_reference_new_row
+					date,                                    // created
+					"",                                      // sql_mode
+					"",                                      // definer
+					sql.Collation_Default.CharacterSet().String(), // character_set_client
+					sql.Collation_Default.String(),                // collation_connection
+					sql.Collation_Default.String(),                // database_collation
+				},
+			},
+		},
+	}
+
+	for _, tt := range expectedResults {
+		t.Run(tt.Query, func(t *testing.T) {
+			TestQueryWithContext(t, ctx, e, tt.Query, tt.Expected, nil, nil)
+		})
+	}
 }
 
 func TestStoredProcedures(t *testing.T, harness Harness) {
@@ -1869,6 +2138,40 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		require.Equal(t, s, testTable.Schema())
 	})
 
+	t.Run("CREATE TABLE with multiple unamed indexes", func(t *testing.T) {
+		ctx := NewContext(harness)
+		ctx.SetCurrentDatabase("")
+
+		TestQueryWithContext(t, ctx, e, "CREATE TABLE mydb.t12 (a INTEGER NOT NULL PRIMARY KEY, "+
+			"b VARCHAR(10) UNIQUE, c varchar(10) UNIQUE)", []sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(t, err)
+
+		t12Table, ok, err := db.GetTableInsensitive(ctx, "t12")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		t9TableIndexable, ok := t12Table.(sql.IndexedTable)
+		require.True(t, ok)
+		t9Indexes, err := t9TableIndexable.GetIndexes(ctx)
+		require.NoError(t, err)
+		uniqueCount := 0
+		for _, index := range t9Indexes {
+			if index.IsUnique() {
+				uniqueCount += 1
+			}
+		}
+
+		// We want two unique indexes to be created with unique names being generated. It is up to the integrator
+		// to decide how empty string indexes are created. Adding in the primary key gives us a result of 3.
+		require.Equal(t, 3, uniqueCount)
+
+		// Validate No Unique Index has an empty Name
+		for _, index := range t9Indexes {
+			require.True(t, index.ID() != "")
+		}
+	})
 	//TODO: Implement "CREATE TABLE otherDb.tableName"
 }
 
@@ -4564,6 +4867,40 @@ func TestAddDropPks(t *testing.T, harness Harness) {
 
 		// Assert that adding a primary key with an unknown column causes an error
 		AssertErr(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (v2)`, sql.ErrKeyColumnDoesNotExist)
+
+		// Truncate the table and re-add rows
+		RunQuery(t, e, harness, "TRUNCATE t1")
+		RunQuery(t, e, harness, "ALTER TABLE t1 DROP INDEX myidx")
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v)`)
+		RunQuery(t, e, harness, `INSERT INTO t1 values ("a1","a2"),("a2","a3"),("a3","a4")`)
+
+		// Execute a MultiDDL Alter Statement
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY, ADD PRIMARY KEY (v)`)
+		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
+			{"pk", "text", "NO", "", "", ""},
+			{"v", "text", "NO", "PRI", "", ""},
+		}, nil, nil)
+		AssertErr(t, e, harness, `INSERT INTO t1 (pk, v) values ("a100", "a3")`, sql.ErrPrimaryKeyViolation)
+
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
+		RunQuery(t, e, harness, `ALTER TABLE t1 DROP PRIMARY KEY`)
+
+		// Technically the query beneath errors in MySQL but I'm pretty sure it's a bug cc:
+		// https://stackoverflow.com/questions/8301744/mysql-reports-a-primary-key-but-can-not-drop-it-from-the-table
+		RunQuery(t, e, harness, `ALTER TABLE t1 ADD PRIMARY KEY (pk, v), DROP PRIMARY KEY`)
+		TestQuery(t, harness, e, `DESCRIBE t1`, []sql.Row{
+			{"pk", "text", "NO", "", "", ""},
+			{"v", "text", "NO", "", "", ""},
+		}, nil, nil)
+		TestQuery(t, harness, e, `SELECT * FROM t1 ORDER BY pk`, []sql.Row{
+			{"a1", "a2"},
+			{"a2", "a3"},
+			{"a3", "a4"},
+		}, nil, nil)
 	})
 
 	t.Run("No database selected", func(t *testing.T) {

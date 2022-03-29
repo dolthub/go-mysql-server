@@ -14,7 +14,9 @@
 
 package enginetest
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 var ComplexIndexQueries = []ScriptTest{
 	{
