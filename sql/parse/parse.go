@@ -912,10 +912,11 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		return convertCreateTable(ctx, c)
 	case sqlparser.DropStr:
 		if c.TriggerSpec != nil {
-			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
+			return plan.NewDropTrigger(sql.UnresolvedDatabase(c.TriggerSpec.TrigName.Qualifier.String()), c.TriggerSpec.TrigName.Name.String(), c.IfExists), nil
 		}
 		if c.ProcedureSpec != nil {
-			return plan.NewDropProcedure(sql.UnresolvedDatabase(""), c.ProcedureSpec.Name, c.IfExists), nil
+			return plan.NewDropProcedure(sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
+				c.ProcedureSpec.ProcName.Name.String(), c.IfExists), nil
 		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
@@ -988,7 +989,8 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 	}
 
 	return plan.NewCreateTrigger(
-		c.TriggerSpec.Name,
+		sql.UnresolvedDatabase(c.TriggerSpec.TrigName.Qualifier.String()),
+		c.TriggerSpec.TrigName.Name.String(),
 		c.TriggerSpec.Time,
 		c.TriggerSpec.Event,
 		triggerOrder,
@@ -1062,7 +1064,8 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 	}
 
 	return plan.NewCreateProcedure(
-		c.ProcedureSpec.Name,
+		sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
+		c.ProcedureSpec.ProcName.Name.String(),
 		c.ProcedureSpec.Definer,
 		params,
 		time.Now(),

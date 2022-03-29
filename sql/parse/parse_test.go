@@ -3653,7 +3653,7 @@ var triggerFixtures = map[string]sql.Node{
      UPDATE bar SET x = old.y WHERE z = new.y;
 		 DELETE FROM baz WHERE a = old.b;
 		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
+   END`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""), "myTrigger", "before", "update", nil,
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewBeginEndBlock(
 			plan.NewBlock([]sql.Node{
@@ -3692,7 +3692,8 @@ var triggerFixtures = map[string]sql.Node{
    END`,
 		time.Unix(0, 0),
 	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
+		"myTrigger", "before", "update", nil,
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
 			expression.NewUnresolvedQualifiedColumn("old", "a"),
@@ -3703,7 +3704,8 @@ var triggerFixtures = map[string]sql.Node{
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		time.Unix(0, 0),
 	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update",
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
+		"myTrigger", "before", "update",
 		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
 		plan.NewUnresolvedTable("foo", ""),
 		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{

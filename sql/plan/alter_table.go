@@ -367,12 +367,15 @@ func NewDropColumn(database sql.Database, table *UnresolvedTable, column string)
 	}
 }
 
+<<<<<<< HEAD
 func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	nd := *d
 	nd.db = db
 	return &nd, nil
 }
 
+=======
+>>>>>>> main
 func (d *DropColumn) String() string {
 	return fmt.Sprintf("drop column %s", d.Column)
 }
@@ -501,12 +504,15 @@ func NewRenameColumn(database sql.Database, table *UnresolvedTable, columnName s
 	}
 }
 
+<<<<<<< HEAD
 func (r *RenameColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	nr := *r
 	nr.db = db
 	return &nr, nil
 }
 
+=======
+>>>>>>> main
 func (r RenameColumn) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 	r.targetSchema = schema
 	return &r, nil
@@ -631,12 +637,15 @@ func NewModifyColumn(database sql.Database, table *UnresolvedTable, columnName s
 	}
 }
 
+<<<<<<< HEAD
 func (m *ModifyColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	nm := *m
 	nm.db = db
 	return &nm, nil
 }
 
+=======
+>>>>>>> main
 func (m *ModifyColumn) Column() string {
 	return m.columnName
 }
