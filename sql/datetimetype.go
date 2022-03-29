@@ -38,7 +38,7 @@ const (
 
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
-	ErrConvertingToTime = errors.NewKind("value %q can't be converted to time.Time")
+	ErrConvertingToTime = errors.NewKind("Incorrect %s value: '%s'")
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
