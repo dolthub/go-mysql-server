@@ -138,6 +138,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if c.castToType == ConvertToJSON {
 			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
 		}
+		ctx.Warn(1292, "Incorrect %s value: %v", c.castToType, val)
 		return nil, nil
 	}
 
