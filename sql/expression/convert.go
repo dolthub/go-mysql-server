@@ -144,7 +144,8 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return casted, nil
 }
 
-// convertValue only returns an error if converting to JSON, and returns the zero value for float types.
+// convertValue only returns an error if converting to JSON, Date, and Datetime;
+// the zero value is returned for float types.
 // Nil is returned in all other cases.
 func convertValue(val interface{}, castTo string) (interface{}, error) {
 	switch strings.ToLower(castTo) {
