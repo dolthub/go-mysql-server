@@ -353,6 +353,17 @@ var SpatialQueryTests = []QueryTest{
 			{2},
 		},
 	},
+	{
+		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
+		Expected: []sql.Row{
+			{sql.Point{X: 2, Y: 1}},
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{SRID: 4326, X: 2, Y: 1}},
+			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
+		},
+	},
 }
 
 var QueryTests = []QueryTest{
