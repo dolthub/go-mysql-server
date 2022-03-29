@@ -570,7 +570,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 					}
 				}
 				if col == nil {
-					return nil, sql.ErrTableColumnNotFound.New(node.Child.String(), node.ColumnName)
+					return nil, sql.ErrTableColumnNotFound.New(node.Table, node.ColumnName)
 				}
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})

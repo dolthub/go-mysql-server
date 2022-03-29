@@ -20,7 +20,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -795,7 +794,6 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		y2k, _ := Timestamp.Convert("2000-01-01 00:00:00")
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-			autoVal := getAutoIncrementValue(ctx, t)
 			rows = append(rows, Row{
 				"def",                      // table_catalog
 				db.Name(),                  // table_schema
@@ -810,7 +808,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				nil,                        // max_data_length
 				nil,                        // max_data_length
 				nil,                        // data_free
-				autoVal,                    // auto_increment
+				nil,                        // auto_increment (always nil)
 				y2k,                        // create_time
 				y2k,                        // update_time
 				nil,                        // check_time
@@ -1018,10 +1016,9 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						if col != nil {
 							i += 1
 							var (
-								collation string
-								nullable  string
-
-								cardinality uint64
+								collation   string
+								nullable    string
+								cardinality int64
 							)
 
 							seqInIndex := i
@@ -1033,7 +1030,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 							// TODO : cardinality should be an estimate of the number of unique values in the index.
 							// it is currently set to total number of rows in the table
 							if st, ok := tbl.(StatisticsTable); ok {
-								cardinality, err = st.NumRows(ctx)
+								cardinality, err = getTotalNumRows(ctx, st)
 								if err != nil {
 									return nil, err
 								}
@@ -1110,6 +1107,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				if !ok {
 					return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 				}
+				triggerPlan.CreatedAt = trigger.CreatedAt // Keep stored created time
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
 
@@ -1177,7 +1175,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						nil,                     // action_reference_new_table
 						"OLD",                   // action_reference_old_row
 						"NEW",                   // action_reference_new_row
-						time.Unix(1, 0).UTC(),   // created
+						triggerPlan.CreatedAt,   // created
 						"",                      // sql_mode
 						"",                      // definer
 						characterSetClient,      // character_set_client
@@ -1995,13 +1993,17 @@ func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
 }
 
-func getAutoIncrementValue(ctx *Context, t Table) (val interface{}) {
-	for _, c := range t.Schema() {
-		if c.AutoIncrement {
-			val, _ = t.(AutoIncrementTable).PeekNextAutoIncrementValue(ctx)
-			// ignore errors
-			break
-		}
+func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
+	c, cErr := st.NumRows(ctx)
+	if cErr != nil {
+		return 0, cErr
 	}
-	return
+	// cardinality is int64 type, but NumRows return uint64
+	// so casting it to int64 with a check for negative number
+	cardinality := int64(c)
+	if cardinality < 0 {
+		cardinality = int64(0)
+	}
+
+	return cardinality, nil
 }
