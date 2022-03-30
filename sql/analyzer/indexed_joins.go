@@ -650,7 +650,7 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
-			if !joinCondPresent(joinIndex.joinCond, joinConditions) {
+			if !(joinIndex.joinPosition == plan.JoinTypeRight && joinIndex.joinType == plan.JoinTypeRight) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
 				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
 		}

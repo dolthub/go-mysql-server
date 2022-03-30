@@ -7000,7 +7000,21 @@ var JoinQueryTests = []QueryTest{
 			{1, "first row", 1, "first row", 2, "second row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 			{3, "third row", 3, "third row", nil, nil},
-		}},
+		},
+	},
+	{
+		// todo: CROSS JOIN -> RIGHT JOIN correctness
+		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i+1 = c.i;",
+		Expected: []sql.Row{
+			{nil, nil, nil, nil, 1, "first row"},
+			{1, "first row", 1, "first row", 2, "second row"},
+			{2, "second row", 1, "first row", 2, "second row"},
+			{3, "third row", 1, "first row", 2, "second row"},
+			{1, "first row", 2, "second row", 3, "third row"},
+			{2, "second row", 2, "second row", 3, "third row"},
+			{3, "third row", 2, "second row", 3, "third row"},
+		},
+	},
 }
 
 // Queries that are known to be broken in the engine.
@@ -7296,19 +7310,6 @@ var BrokenQueries = []QueryTest{
 		// TODO truncate date outputs
 		Query:    "select i, date_col from datetime_table",
 		Expected: []sql.Row{{1, "2019-12-31"}},
-	},
-	{
-		// todo: CROSS JOIN -> RIGHT JOIN correctness
-		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i+1 = c.i;",
-		Expected: []sql.Row{
-			{nil, nil, nil, nil, 1, "first row"},
-			{1, "first row", 1, "first row", 2, "second row"},
-			{2, "second row", 1, "first row", 2, "second row"},
-			{3, "third row", 1, "first row", 2, "second row"},
-			{1, "first row", 2, "second row", 3, "third row"},
-			{2, "second row", 2, "second row", 3, "third row"},
-			{3, "third row", 2, "second row", 3, "third row"},
-		},
 	},
 }
 
