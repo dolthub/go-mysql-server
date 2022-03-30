@@ -696,6 +696,10 @@ func TestPersist(t *testing.T) {
 	enginetest.TestPersist(t, enginetest.NewDefaultMemoryHarness(), newSess)
 }
 
+func TestPreparedInsert(t *testing.T) {
+	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func mergableIndexDriver(dbs []sql.Database) sql.IndexDriver {
 	return memory.NewIndexDriver("mydb", map[string][]sql.DriverIndex{
 		"mytable": {
