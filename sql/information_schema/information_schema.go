@@ -863,6 +863,7 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	for _, db := range cat.AllDatabases(ctx) {
+		// Get all Tables
 		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
 			for i, c := range t.Schema() {
 				var (
@@ -913,6 +914,38 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 			return true, nil
 		})
 
+		// TODO: View Definition is lacking information to properly fill out these table
+		// TODO: Should somehow get reference to table(s) view is referencing
+		views, err := viewsInDatabase(ctx, db)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, view := range views {
+			rows = append(rows, Row{
+				"def",     // table_catalog
+				db.Name(), // table_schema
+				view.Name, // table_name
+				"",        // column_name
+				uint64(0), // ordinal_position
+				"",        // column_default
+				"",        // is_nullable
+				"",        // data_type
+				nil,       // character_maximum_length
+				nil,       // character_octet_length
+				nil,       // numeric_precision
+				nil,       // numeric_scale
+				nil,       // datetime_precision
+				"",        // character_set_name
+				"",        // collation_name
+				"",        // column_type
+				"",        // column_key
+				"",        // extra
+				"select",  // privileges
+				"",        // column_comment
+				"",        // generation_expression
+			})
+		}
 		if err != nil {
 			return nil, err
 		}
