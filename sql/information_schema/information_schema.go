@@ -2011,7 +2011,7 @@ func getColumnDefaultString(cd *ColumnDefaultValue) interface{} {
 		if colDefaultStr == "CURRENT_TIMESTAMP()" || colDefaultStr == "NOW()" {
 			colDefaultStr = "CURRENT_TIMESTAMP"
 		}
-		return colDefaultStr
+		return strings.ToLower(colDefaultStr)
 	}
 }
 
