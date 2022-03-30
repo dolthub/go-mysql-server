@@ -65,9 +65,8 @@ func TestQueries(t *testing.T, harness Harness) {
 
 // Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueries(t *testing.T, harness Harness) {
-	engine := NewEngine(t, harness)
-	CreateIndexes(t, harness, engine)
-	createForeignKeys(t, harness, engine)
+	engine := NewSpatialEngine(t, harness)
+	defer engine.Close()
 
 	for _, tt := range SpatialQueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
@@ -607,7 +606,8 @@ func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 
 func TestSpatialInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range SpatialInsertQueries {
-		e := NewEngine(t, harness)
+		e := NewSpatialEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
 		// If we skipped the insert, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -712,7 +712,8 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 
 func TestSpatialUpdate(t *testing.T, harness Harness) {
 	for _, update := range SpatialUpdateTests {
-		e := NewEngine(t, harness)
+		e := NewSpatialEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil, update.Bindings)
 		// If we skipped the update, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -757,7 +758,8 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 
 func TestSpatialDelete(t *testing.T, harness Harness) {
 	for _, delete := range SpatialDeleteTests {
-		e := NewEngine(t, harness)
+		e := NewSpatialEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, delete.Bindings)
 		// If we skipped the delete, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -5780,6 +5782,13 @@ func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
 // NewEngine creates test data and returns an engine using the harness provided.
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateTestData(t, harness)
+	engine := NewEngineWithDbs(t, harness, dbs)
+	return engine
+}
+
+// NewSpatialEngine creates test data and returns an engine using the harness provided.
+func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
+	dbs := CreateSpatialTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness, dbs)
 	return engine
 }

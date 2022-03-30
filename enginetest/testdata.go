@@ -72,13 +72,12 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	return createSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
 }
 
-func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
-	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
-	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
-	// transaction without committing the work done so far.
-	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
-	// when adding data to it
-	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+func CreateSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
+	dbs := harness.NewDatabases("mydb", "foo")
+	return createSpatialSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
+}
+
+func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
 	var table sql.Table
 	var err error
 
@@ -100,6 +99,28 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 				)
 			} else {
 				t.Logf("Warning: could not create table %s: %s", "point_table", err)
+			}
+		})
+	}
+
+	if includeTable(includedTables, "geometry_table") {
+		wrapInTransaction(t, myDb, harness, func() {
+			table, err = harness.NewTable(myDb, "geometry_table", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "geometry_table", PrimaryKey: true},
+				{Name: "g", Type: sql.GeometryType{}, Source: "geometry_table"},
+			}))
+
+			if err == nil {
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(1, sql.Point{X: 1, Y: 2}),
+					sql.NewRow(2, sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}),
+					sql.NewRow(3, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}),
+					sql.NewRow(4, sql.Point{SRID: 4326, X: 1, Y: 2}),
+					sql.NewRow(5, sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 1, Y: 2}, {SRID: 4326, X: 3, Y: 4}}}),
+					sql.NewRow(6, sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 0, Y: 1}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}),
+				)
+			} else {
+				t.Logf("Warning: could not create table %s: %s", "geometry_table", err)
 			}
 		})
 	}
@@ -155,6 +176,19 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			}
 		})
 	}
+
+	return []sql.Database{myDb, foo}
+}
+
+func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
+	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
+	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
+	// transaction without committing the work done so far.
+	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
+	// when adding data to it
+	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+	var table sql.Table
+	var err error
 
 	if includeTable(includedTables, "specialtable") {
 		wrapInTransaction(t, myDb, harness, func() {
@@ -840,9 +874,14 @@ func mustParseDate(datestring string) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-// createTestData uses the provided harness to create test tables and data for many of the other tests.
+// CreateTestData uses the provided harness to create test tables and data for many of the other tests.
 func CreateTestData(t *testing.T, harness Harness) []sql.Database {
 	return CreateSubsetTestData(t, harness, nil)
+}
+
+// CreateSpatialTestData uses the provided harness to create test tables and data for tests involving spatial types.
+func CreateSpatialTestData(t *testing.T, harness Harness) []sql.Database {
+	return CreateSpatialSubsetTestData(t, harness, nil)
 }
 
 func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {
