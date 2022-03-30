@@ -759,7 +759,7 @@ func getIndexesByTable(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scop
 			return true
 		}
 
-		indexAnalyzer, err := getIndexesForNode(ctx, a, node)
+		indexAnalyzer, err := newIndexAnalyzerForNode(ctx, node)
 		if err != nil {
 			errInAnalysis = err
 			return false

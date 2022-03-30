@@ -63,7 +63,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 	if referencesChildRow {
 		return nil
 	}
-	indexes, err := getIndexesForNode(ctx, a, rt)
+	indexes, err := newIndexAnalyzerForNode(ctx, rt)
 	if err != nil {
 		return nil
 	}

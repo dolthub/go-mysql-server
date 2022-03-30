@@ -74,7 +74,7 @@ func filterGeneratedIndexes(indexes []sql.Index) []sql.Index {
 // getIndexesForTable returns all indexes on the table represented by the node given. If the node isn't a
 // *(plan.ResolvedTable), returns an empty slice.
 func getIndexesForTable(ctx *sql.Context, a *Analyzer, node sql.Node) ([]sql.Index, error) {
-	ia, err := getIndexesForNode(ctx, a, node)
+	ia, err := newIndexAnalyzerForNode(ctx, node)
 	if err != nil {
 		return nil, err
 	}

@@ -417,7 +417,7 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 
 // getTableIndexNames returns the names of indexes associated with a table.
 func getTableIndexNames(ctx *sql.Context, a *Analyzer, table sql.Node) ([]string, error) {
-	ia, err := getIndexesForNode(ctx, a, table)
+	ia, err := newIndexAnalyzerForNode(ctx, table)
 	if err != nil {
 		return nil, err
 	}

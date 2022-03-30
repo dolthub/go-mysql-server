@@ -578,7 +578,7 @@ func findJoinIndexesByTable(
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
 			var indexAnalyzer *indexAnalyzer
-			indexAnalyzer, err = getIndexesForNode(ctx, a, node)
+			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node)
 			if err != nil {
 				return false
 			}
