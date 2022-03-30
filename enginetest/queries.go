@@ -8575,17 +8575,17 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview1 ORDER BY i",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
+			sql.NewRow(int64(2), "second row, 2", "2"),
+			sql.NewRow(int64(3), "third row, 2", "3"),
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
+			sql.NewRow(int64(2), "second row, 2", "2"),
+			sql.NewRow(int64(3), "third row, 2", "3"),
 		},
 	},
 	{
@@ -8607,7 +8607,7 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview2",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
 		},
 	},
 	{
@@ -8625,13 +8625,13 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT myview2.* FROM myview2",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview2 as t",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
 		},
 	},
 	{
