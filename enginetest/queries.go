@@ -7165,9 +7165,9 @@ var VersionedQueries = []QueryTest{
 	{
 		Query: "SELECT *  FROM myhistorytable ORDER BY i",
 		Expected: []sql.Row{
-			{int64(1), "first row, 2"},
-			{int64(2), "second row, 2"},
-			{int64(3), "third row, 2"},
+			{int64(1), "first row, 2", "1"},
+			{int64(2), "second row, 2", "2"},
+			{int64(3), "third row, 2", "3"},
 		},
 	},
 	{
@@ -7211,6 +7211,25 @@ var VersionedScripts = []ScriptTest{
 				Query: "SHOW TABLES AS OF @rev1 LIKE 'myhistorytable'",
 				Expected: []sql.Row{
 					{"myhistorytable"},
+				},
+			},
+			{
+				Query:       "DESCRIBE myhistorytable AS OF '2018-12-01'",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
+				Expected: []sql.Row{
+					{"i", "bigint", "NO", "PRI", "", ""},
+					{"s", "text", "NO", "", "", ""},
+				},
+			},
+			{
+				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
+				Expected: []sql.Row{
+					{"i", "bigint", "NO", "PRI", "", ""},
+					{"s", "text", "NO", "", "", ""},
+					{"c", "text", "NO", "", "", ""},
 				},
 			},
 		},
