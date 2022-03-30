@@ -823,6 +823,27 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 		wrapInTransaction(t, myDb, harness, func() {
 			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-02"))
 		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			table = versionedHarness.NewTableAsOf(versionedDb, "myhistorytable", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "i", Type: sql.Int64, Source: "myhistorytable", PrimaryKey: true},
+				{Name: "s", Type: sql.Text, Source: "myhistorytable"},
+			}), "2019-01-03")
+
+			if err == nil {
+				column := sql.Column{Name: "c", Type: sql.Text}
+				AddColumn(t, NewContext(harness), mustAlterableTable(t, table), &column)
+
+				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
+					sql.NewRow(int64(1), "first row, 2", "1"),
+					sql.NewRow(int64(2), "second row, 2", "2"),
+					sql.NewRow(int64(3), "third row, 2", "3"))
+			}
+		})
+
+		wrapInTransaction(t, myDb, harness, func() {
+			require.NoError(t, versionedHarness.SnapshotTable(versionedDb, "myhistorytable", "2019-01-03"))
+		})
 	}
 
 	if keyless, ok := harness.(KeylessTableHarness); ok &&
@@ -896,6 +917,12 @@ func mustDeletableTable(t *testing.T, table sql.Table) sql.DeletableTable {
 	return deletable
 }
 
+func mustAlterableTable(t *testing.T, table sql.Table) sql.AlterableTable {
+	alterable, ok := table.(sql.AlterableTable)
+	require.True(t, ok, "Table must implement sql.AlterableTable")
+	return alterable
+}
+
 func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows ...sql.Row) {
 	t.Helper()
 
@@ -904,6 +931,14 @@ func InsertRows(t *testing.T, ctx *sql.Context, table sql.InsertableTable, rows 
 		require.NoError(t, inserter.Insert(ctx, r))
 	}
 	err := inserter.Close(ctx)
+	require.NoError(t, err)
+}
+
+// AddColumn adds a column to the specified table
+func AddColumn(t *testing.T, ctx *sql.Context, table sql.AlterableTable, column *sql.Column) {
+	t.Helper()
+
+	err := table.AddColumn(ctx, column, nil)
 	require.NoError(t, err)
 }
 

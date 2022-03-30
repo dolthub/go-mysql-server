@@ -461,10 +461,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "processlist":
 		return plan.NewShowProcessList(), nil
 	case "create table", "create view":
-		return plan.NewShowCreateTable(
-			tableNameToUnresolvedTable(s.Table),
-			showType == "create view",
-		), nil
+		var asOfExpression sql.Expression
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+			asOfExpression = expression
+		}
+		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
+		return plan.NewShowCreateTable(table, showType == "create view"), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(
 			sql.UnresolvedDatabase(s.Database),
@@ -630,8 +636,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.DATABASES), sqlparser.KeywordString(sqlparser.SCHEMAS):
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
-		// TODO(erizocosmico): vitess parser does not support EXTENDED.
-		table := tableNameToUnresolvedTable(s.OnTable)
+		var asOfExpression sql.Expression
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+			asOfExpression = expression
+		}
+
+		table := tableNameToUnresolvedTableAsOf(s.OnTable, asOfExpression)
 		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
@@ -1305,6 +1319,10 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 
 func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedTable {
 	return plan.NewUnresolvedTable(tableName.Name.String(), tableName.Qualifier.String())
+}
+
+func tableNameToUnresolvedTableAsOf(tableName sqlparser.TableName, asOf sql.Expression) *plan.UnresolvedTable {
+	return plan.NewUnresolvedTableAsOf(tableName.Name.String(), tableName.Qualifier.String(), asOf)
 }
 
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {

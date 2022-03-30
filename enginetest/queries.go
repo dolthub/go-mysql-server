@@ -7242,9 +7242,9 @@ var VersionedQueries = []QueryTest{
 	{
 		Query: "SELECT *  FROM myhistorytable ORDER BY i",
 		Expected: []sql.Row{
-			{int64(1), "first row, 2"},
-			{int64(2), "second row, 2"},
-			{int64(3), "third row, 2"},
+			{int64(1), "first row, 2", "1"},
+			{int64(2), "second row, 2", "2"},
+			{int64(3), "third row, 2", "3"},
 		},
 	},
 	{
@@ -7288,6 +7288,25 @@ var VersionedScripts = []ScriptTest{
 				Query: "SHOW TABLES AS OF @rev1 LIKE 'myhistorytable'",
 				Expected: []sql.Row{
 					{"myhistorytable"},
+				},
+			},
+			{
+				Query:       "DESCRIBE myhistorytable AS OF '2018-12-01'",
+				ExpectedErr: sql.ErrTableNotFound,
+			},
+			{
+				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
+				Expected: []sql.Row{
+					{"i", "bigint", "NO", "PRI", "", ""},
+					{"s", "text", "NO", "", "", ""},
+				},
+			},
+			{
+				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
+				Expected: []sql.Row{
+					{"i", "bigint", "NO", "PRI", "", ""},
+					{"s", "text", "NO", "", "", ""},
+					{"c", "text", "NO", "", "", ""},
 				},
 			},
 		},
@@ -8633,17 +8652,17 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview1 ORDER BY i",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
+			sql.NewRow(int64(2), "second row, 2", "2"),
+			sql.NewRow(int64(3), "third row, 2", "3"),
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
+			sql.NewRow(int64(2), "second row, 2", "2"),
+			sql.NewRow(int64(3), "third row, 2", "3"),
 		},
 	},
 	{
@@ -8665,7 +8684,7 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview2",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
 		},
 	},
 	{
@@ -8683,13 +8702,13 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT myview2.* FROM myview2",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview2 as t",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 2", "1"),
 		},
 	},
 	{
