@@ -2259,6 +2259,14 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
+		Query:    "select i from datetime_table where datetime_col >= '2020-01-01 00:00' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col >= '2020-01-01 00:00:00' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
 		Query:    "select i from datetime_table where datetime_col > '2020/01/01' order by 1",
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
@@ -4462,6 +4470,10 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00'`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
@@ -7335,7 +7347,7 @@ var InfoSchemaQueries = []QueryTest{
 		},
 	},
 	{
-		Query: "SHOW TABLES WHERE `Table` = 'mytable'",
+		Query: "SHOW TABLES WHERE `Tables_in_mydb` = 'mytable'",
 		Expected: []sql.Row{
 			{"mytable"},
 		},
@@ -7968,8 +7980,8 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.statistics where table_name='mytable'",
 				Expected: []sql.Row{
-					{"def", "mydb", "mytable", 1, "mydb", "myindex", 1, "test_score", "A", uint64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
-					{"def", "mydb", "mytable", 0, "mydb", "PRIMARY", 1, "pk", "A", uint64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "mytable", 1, "mydb", "myindex", 1, "test_score", "A", int64(2), nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"def", "mydb", "mytable", 0, "mydb", "PRIMARY", 1, "pk", "A", int64(2), nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},
@@ -8437,6 +8449,14 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
+	},
+	{
+		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
+		ExpectedErr: sql.ErrConvertingToTime,
+	},
+	{
+		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
+		ExpectedErr: sql.ErrConvertingToTime,
 	},
 }
 

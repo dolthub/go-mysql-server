@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
@@ -28,15 +29,6 @@ type ShowTables struct {
 	db   sql.Database
 	Full bool
 	AsOf sql.Expression
-}
-
-var showTablesSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-}
-
-var showTablesFullSchema = sql.Schema{
-	{Name: "Table", Type: sql.LongText},
-	{Name: "Table_type", Type: sql.LongText},
 }
 
 // NewShowTables creates a new show tables node given a database.
@@ -76,11 +68,15 @@ func (*ShowTables) Children() []sql.Node {
 
 // Schema implements the Node interface.
 func (p *ShowTables) Schema() sql.Schema {
-	if p.Full {
-		return showTablesFullSchema
+	var sch sql.Schema
+	colName := fmt.Sprintf("Tables_in_%s", p.Database().Name())
+	sch = sql.Schema{
+		{Name: colName, Type: sql.LongText},
 	}
-
-	return showTablesSchema
+	if p.Full {
+		sch = append(sch, &sql.Column{Name: "Table_type", Type: sql.LongText})
+	}
+	return sch
 }
 
 // RowIter implements the Node interface.

@@ -591,6 +591,9 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 
 		if s.ShowTablesOpt != nil {
 			dbName = s.ShowTablesOpt.DbName
+			if dbName == "" {
+				dbName = ctx.GetCurrentDatabase()
+			}
 			full = s.Full
 
 			if s.ShowTablesOpt.Filter != nil {
@@ -602,7 +605,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 					}
 				} else if s.ShowTablesOpt.Filter.Like != "" {
 					filter = expression.NewLike(
-						expression.NewUnresolvedColumn("Table"),
+						expression.NewUnresolvedColumn(fmt.Sprintf("Tables_in_%s", dbName)),
 						expression.NewLiteral(s.ShowTablesOpt.Filter.Like, sql.LongText),
 						nil,
 					)
@@ -909,10 +912,11 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		return convertCreateTable(ctx, c)
 	case sqlparser.DropStr:
 		if c.TriggerSpec != nil {
-			return plan.NewDropTrigger(sql.UnresolvedDatabase(""), c.TriggerSpec.Name, c.IfExists), nil
+			return plan.NewDropTrigger(sql.UnresolvedDatabase(c.TriggerSpec.TrigName.Qualifier.String()), c.TriggerSpec.TrigName.Name.String(), c.IfExists), nil
 		}
 		if c.ProcedureSpec != nil {
-			return plan.NewDropProcedure(sql.UnresolvedDatabase(""), c.ProcedureSpec.Name, c.IfExists), nil
+			return plan.NewDropProcedure(sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
+				c.ProcedureSpec.ProcName.Name.String(), c.IfExists), nil
 		}
 		if len(c.FromViews) != 0 {
 			return convertDropView(ctx, c)
@@ -985,7 +989,8 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 	}
 
 	return plan.NewCreateTrigger(
-		c.TriggerSpec.Name,
+		sql.UnresolvedDatabase(c.TriggerSpec.TrigName.Qualifier.String()),
+		c.TriggerSpec.TrigName.Name.String(),
 		c.TriggerSpec.Time,
 		c.TriggerSpec.Event,
 		triggerOrder,
@@ -1059,7 +1064,8 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 	}
 
 	return plan.NewCreateProcedure(
-		c.ProcedureSpec.Name,
+		sql.UnresolvedDatabase(c.ProcedureSpec.ProcName.Qualifier.String()),
+		c.ProcedureSpec.ProcName.Name.String(),
 		c.ProcedureSpec.Definer,
 		params,
 		time.Now(),
@@ -1275,17 +1281,17 @@ func convertAlterTable(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewAddColumn(tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewAddColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		case sqlparser.DropStr:
-			return plan.NewDropColumn(tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
+			return plan.NewDropColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String()), nil
 		case sqlparser.RenameStr:
-			return plan.NewRenameColumn(tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
+			return plan.NewRenameColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), ddl.ToColumn.String()), nil
 		case sqlparser.ModifyStr, sqlparser.ChangeStr:
 			sch, err := TableSpecToSchema(nil, ddl.TableSpec)
 			if err != nil {
 				return nil, err
 			}
-			return plan.NewModifyColumn(tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
+			return plan.NewModifyColumn(sql.UnresolvedDatabase(ddl.Table.Qualifier.String()), tableNameToUnresolvedTable(ddl.Table), ddl.Column.String(), sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder)), nil
 		}
 	}
 	if ddl.AutoIncSpec != nil {
