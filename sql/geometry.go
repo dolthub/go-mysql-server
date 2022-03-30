@@ -26,7 +26,9 @@ type Geometry struct {
 	Inner interface{} // Will be Point, Linestring, or Polygon
 }
 
-type GeometryType struct{}
+type GeometryType struct {
+	InnerType Type // Will be PointType, LinestringType, or PolygonType
+}
 
 var _ Type = GeometryType{}
 
