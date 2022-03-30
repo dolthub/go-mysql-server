@@ -916,6 +916,7 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 		// TODO: View Definition is lacking information to properly fill out these table
 		// TODO: Should somehow get reference to table(s) view is referencing
+		// TODO: Each column that view references should also show up as unique entries as well
 		views, err := viewsInDatabase(ctx, db)
 		if err != nil {
 			return nil, err
