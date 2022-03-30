@@ -910,6 +910,8 @@ func hasIndexableChild(node plan.JoinNode) bool {
 	case *plan.ResolvedTable, *plan.TableAlias:
 		return true
 	case *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.StripRowNode:
+		// this set of nodes are not indexable, with the exception
+		// of subqueries which can be optimized to hash lookups
 	case plan.JoinNode:
 		if hasIndexableChild(n) {
 			return true
