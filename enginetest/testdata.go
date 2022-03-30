@@ -72,13 +72,12 @@ func CreateSubsetTestData(t *testing.T, harness Harness, includedTables []string
 	return createSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
 }
 
-func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
-	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
-	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
-	// transaction without committing the work done so far.
-	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
-	// when adding data to it
-	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+func CreateSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string) []sql.Database {
+	dbs := harness.NewDatabases("mydb", "foo")
+	return createSpatialSubsetTestData(t, harness, includedTables, dbs[0], dbs[1])
+}
+
+func createSpatialSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
 	var table sql.Table
 	var err error
 
@@ -177,6 +176,19 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			}
 		})
 	}
+
+	return []sql.Database{myDb, foo}
+}
+
+func createSubsetTestData(t *testing.T, harness Harness, includedTables []string, myDb, foo sql.Database) []sql.Database {
+	// This is a bit odd, but because this setup doesn't interact with the engine.Query path, we need to do transaction
+	// management here, instead. If we don't, then any Query-based setup will wipe out our work by starting a new
+	// transaction without committing the work done so far.
+	// The secondary foo database doesn't have this problem because we don't mix and match query and non-query setup
+	// when adding data to it
+	// TODO: rewrite this to use CREATE TABLE and INSERT statements instead
+	var table sql.Table
+	var err error
 
 	if includeTable(includedTables, "specialtable") {
 		wrapInTransaction(t, myDb, harness, func() {
@@ -862,9 +874,14 @@ func mustParseDate(datestring string) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-// createTestData uses the provided harness to create test tables and data for many of the other tests.
+// CreateTestData uses the provided harness to create test tables and data for many of the other tests.
 func CreateTestData(t *testing.T, harness Harness) []sql.Database {
 	return CreateSubsetTestData(t, harness, nil)
+}
+
+// CreateSpatialTestData uses the provided harness to create test tables and data for tests involving spatial types.
+func CreateSpatialTestData(t *testing.T, harness Harness) []sql.Database {
+	return CreateSpatialSubsetTestData(t, harness, nil)
 }
 
 func mustInsertableTable(t *testing.T, table sql.Table) sql.InsertableTable {

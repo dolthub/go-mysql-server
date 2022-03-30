@@ -65,9 +65,8 @@ func TestQueries(t *testing.T, harness Harness) {
 
 // Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueries(t *testing.T, harness Harness) {
-	engine := NewEngine(t, harness)
-	CreateIndexes(t, harness, engine)
-	createForeignKeys(t, harness, engine)
+	engine := NewSpatialEngine(t, harness)
+	defer engine.Close()
 
 	for _, tt := range SpatialQueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
@@ -5780,6 +5779,13 @@ func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
 // NewEngine creates test data and returns an engine using the harness provided.
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateTestData(t, harness)
+	engine := NewEngineWithDbs(t, harness, dbs)
+	return engine
+}
+
+// NewSpatialEngine creates test data and returns an engine using the harness provided.
+func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
+	dbs := CreateSpatialTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness, dbs)
 	return engine
 }
