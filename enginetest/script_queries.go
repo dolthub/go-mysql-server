@@ -1880,6 +1880,46 @@ var ScriptTests = []ScriptTest{
 			{1},
 		},
 	},
+	{
+		Name: "failed conversion shows warning",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                           "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: 10000-12-31 23:59:59",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CONVERT('this is not a datetime', DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: this is not a datetime",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CAST('this is not a datetime' as DATETIME)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect datetime value: this is not a datetime",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CONVERT('this is not a date', DATE)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect date value: this is not a date",
+				SkipResultsCheck:                true,
+			},
+			{
+				Query:                           "SELECT CAST('this is not a date' as DATE)",
+				ExpectedWarning:                 1292,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Incorrect date value: this is not a date",
+				SkipResultsCheck:                true,
+			},
+		},
+	},
 }
 
 var CreateCheckConstraintsScripts = []ScriptTest{

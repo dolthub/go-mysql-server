@@ -81,7 +81,7 @@ func TestConvert(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name:        "imposible conversion string to signed",
+			name:        "impossible conversion string to signed",
 			row:         nil,
 			castTo:      ConvertToSigned,
 			expression:  NewLiteral("A", sql.LongText),
