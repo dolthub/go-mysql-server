@@ -78,10 +78,11 @@ func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 		return sqltypes.NULL, nil
 	}
 
-	js, ok := v.(JSONValue)
-	if !ok {
-		return sqltypes.NULL, nil
+	v, err := t.Convert(v)
+	if err != nil {
+		return sqltypes.Value{}, err
 	}
+	js, _ := v.(JSONValue)
 
 	// todo: making a context here is expensive
 	s, err := js.ToString(NewEmptyContext())
