@@ -447,10 +447,8 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 			switch tree.joinCond.joinType {
 			case plan.JoinTypeLeft:
 				right, left = left, right
-				tree.joinCond.joinType = plan.JoinTypeRight
 			case plan.JoinTypeRight:
 				right, left = left, right
-				tree.joinCond.joinType = plan.JoinTypeLeft
 			}
 		}
 	}
