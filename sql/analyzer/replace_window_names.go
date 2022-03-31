@@ -49,7 +49,7 @@ func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			newExprs := make([]sql.Expression, len(window.SelectExprs))
 			same := sql.SameTree
 			for i, expr := range window.SelectExprs {
-				newExprs[i], _, err = transform.Exprs(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newExprs[i], _, err = transform.Expr(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 					uf, ok := e.(*expression.UnresolvedFunction)
 					if !ok {
 						return e, sql.SameTree, nil

@@ -194,7 +194,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			// To match MySQL output format, transform the column names and wrap with backticks
 			var transformedChecks sql.CheckConstraints
 			for i, check := range checks {
-				newExpr, same, err := transform.Exprs(check.Expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newExpr, same, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 					if t, ok := e.(*expression.UnresolvedColumn); ok {
 						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), sql.NewTree, nil
 					}

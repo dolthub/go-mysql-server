@@ -330,7 +330,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 	default:
 		// If any other kind of expression has a star, just replace it
 		// with an unqualified star because it cannot be expanded.
-		return transform.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.Expr(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if _, ok := e.(*expression.Star); ok {
 				return expression.NewStar(), sql.NewTree, nil
 			}
@@ -739,7 +739,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if len(renames) > 0 {
 			for i, expr := range newSelectedExprs {
 				var err error
-				newSelectedExprs[i], _, err = transform.Exprs(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newSelectedExprs[i], _, err = transform.Expr(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the

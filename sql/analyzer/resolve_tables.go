@@ -92,7 +92,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 		// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
 		// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
 		// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
-		asOfExpr, _, err := transform.Exprs(t.AsOf, resolveFunctionsInExpr(ctx, a))
+		asOfExpr, _, err := transform.Expr(t.AsOf, resolveFunctionsInExpr(ctx, a))
 		if err != nil {
 			return nil, err
 		}

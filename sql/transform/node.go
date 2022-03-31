@@ -83,7 +83,7 @@ func OneNodeExprsWithNode(n sql.Node, f TransformExprWithNodeFunc) (sql.Node, sq
 
 	for i := 0; i < len(exprs); i++ {
 		e = exprs[i]
-		e, same, err = ExprsWithNode(n, e, f)
+		e, same, err = ExprWithNode(n, e, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}
@@ -128,7 +128,7 @@ func OneNodeExpressions(n sql.Node, f sql.TransformExprFunc) (sql.Node, sql.Tree
 
 	for i := 0; i < len(exprs); i++ {
 		expr = exprs[i]
-		expr, sameC, err = Exprs(expr, f)
+		expr, sameC, err = Expr(expr, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}

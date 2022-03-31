@@ -58,7 +58,7 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 // satisfies the join condition. The input conjunctions have already been split,
 // so we do not care which predicate satisfies the expression.
 func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
-	return transform.InspectExprs(c, func(expr sql.Expression) bool {
+	return transform.InspectExpr(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
 			return comparisonSatisfiesJoinCondition(e, j)

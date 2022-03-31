@@ -307,7 +307,7 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, _, err := transform.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		ex, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
 				return e, sql.SameTree, nil

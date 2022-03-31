@@ -53,7 +53,7 @@ func FixFieldIndexesOnExpressions(ctx *sql.Context, scope *Scope, a *Analyzer, s
 func FixFieldIndexes(ctx *sql.Context, scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 	scopeLen := len(scope.Schema())
 
-	return transform.Exprs(exp, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return transform.Expr(exp, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		switch e := e.(type) {
 		// For each GetField expression, re-index it with the appropriate index from the schema.
 		case *expression.GetField:

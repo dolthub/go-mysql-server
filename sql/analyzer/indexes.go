@@ -1085,7 +1085,7 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 // convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
 // equivalent as far as the index interfaces are concerned.
 func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
-	expr, _, _ := transform.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	expr, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		isNull, ok := e.(*expression.IsNull)
 		if !ok {
 			return e, sql.SameTree, nil

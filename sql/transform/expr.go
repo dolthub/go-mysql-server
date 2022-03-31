@@ -24,7 +24,7 @@ import (
 // expression as is or transformed along with an error, if any.
 type TransformExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, sql.TreeIdentity, error)
 
-func Exprs(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeIdentity, error) {
+func Expr(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(e)
@@ -39,7 +39,7 @@ func Exprs(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeI
 
 	for i := 0; i < len(children); i++ {
 		c = children[i]
-		c, sameC, err = Exprs(c, f)
+		c, sameC, err = Expr(c, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}
@@ -67,11 +67,11 @@ func Exprs(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeI
 	return e, sameC && sameN, nil
 }
 
-// InspectExprs traverses the given tree from the bottom up, breaking if
+// InspectExpr traverses the given tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
-func InspectExprs(node sql.Expression, f func(sql.Expression) bool) bool {
+func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
 	stop := errors.New("stop")
-	_, _, err := Exprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	_, _, err := Expr(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		ok := f(e)
 		if ok {
 			return nil, sql.SameTree, stop
@@ -86,14 +86,14 @@ func InspectExprs(node sql.Expression, f func(sql.Expression) bool) bool {
 // stateful expression nodes where an evaluation needs to create multiple
 // independent histories of the internal state of the expression nodes.
 func Clone(expr sql.Expression) (sql.Expression, error) {
-	expr, _, err := Exprs(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	expr, _, err := Expr(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		return e, sql.NewTree, nil
 	})
 	return expr, err
 }
 
-// ExprsWithNode applies a transformation function to the given expression from the bottom up.
-func ExprsWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, sql.TreeIdentity, error) {
+// ExprWithNode applies a transformation function to the given expression from the bottom up.
+func ExprWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, sql.TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(n, e)
@@ -108,7 +108,7 @@ func ExprsWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (s
 
 	for i := 0; i < len(children); i++ {
 		c = children[i]
-		c, sameC, err = ExprsWithNode(n, c, f)
+		c, sameC, err = ExprWithNode(n, c, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}

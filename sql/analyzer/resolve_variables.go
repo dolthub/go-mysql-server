@@ -60,7 +60,7 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 					return e, sql.SameTree, nil
 				}
 
-				nr, same, err := transform.Exprs(sf.Right, resolveVars)
+				nr, same, err := transform.Expr(sf.Right, resolveVars)
 				if err != nil {
 					return nil, sql.SameTree, err
 				}

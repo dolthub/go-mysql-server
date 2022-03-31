@@ -232,7 +232,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
 	var err error
 	for _, check := range checks {
-		_ = transform.InspectExprs(check.Expr, func(e sql.Expression) bool {
+		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
 					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)

@@ -245,7 +245,7 @@ func evalFilter(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql
 			return node, sql.SameTree, nil
 		}
 
-		e, same, err := transform.Exprs(filter.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := transform.Expr(filter.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			switch e := e.(type) {
 			case *expression.Or:
 				if isTrue(e.Left) {

@@ -82,7 +82,7 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 	projDeps := make(map[int]struct{})
 	allSame := sql.SameTree
 	for i, p := range projection {
-		e, same, err := transform.Exprs(p, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := transform.Expr(p, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
 			// continue on
@@ -118,7 +118,7 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 	// find subset of allGetFields not covered by newAggregates
 	newAggDeps := make(map[int]struct{}, 0)
 	for _, agg := range newAggregates {
-		_ = transform.InspectExprs(agg, func(e sql.Expression) bool {
+		_ = transform.InspectExpr(agg, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				newAggDeps[e.Index()] = struct{}{}
