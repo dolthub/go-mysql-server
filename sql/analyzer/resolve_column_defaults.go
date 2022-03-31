@@ -450,78 +450,134 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return n, sql.SameTree, nil
 		}
 
-		var getCol func(i int) (*sql.Column, error)
+		// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
+		// we need to count the column indexes in the very hacky way outlined above.
+		colIndex := 0
+
 		switch node := n.(type) {
 		case *plan.ShowColumns, *plan.ShowCreateTable:
-			getCol = func(i int) (*sql.Column, error) { return getResolvedTable(node).Schema()[i], nil }
-		case *plan.InsertDestination:
-			getCol = func(i int) (*sql.Column, error) { return node.Sch[i], nil }
-		case *plan.CreateTable:
-			getCol = func(i int) (*sql.Column, error) { return node.CreateSchema.Schema[i], nil }
-		case *plan.RenameColumn, *plan.DropColumn:
-			getCol = func(i int) (*sql.Column, error) {
-				sch := node.(targetSchema).TargetSchema()
-				if i > len(sch) {
-					return nil, nil
-				}
-				return sch[i], nil
-			}
-		case *plan.ModifyColumn:
-			getCol = func(i int) (*sql.Column, error) {
-				sch := node.TargetSchema()
-				if i < len(sch) {
-					return sch[i], nil
-				}
-				return node.NewColumn(), nil
-			}
-		case *plan.AddColumn:
-			getCol = func(i int) (*sql.Column, error) {
-				sch := node.TargetSchema()
-				if i < len(sch) {
-					return sch[i], nil
-				}
-				return node.Column(), nil
-			}
-		case *plan.AlterDefaultSet:
-			getCol = func(i int) (*sql.Column, error) {
-				loweredColName := strings.ToLower(node.ColumnName)
-				for _, schCol := range node.Schema() {
-					if strings.ToLower(schCol.Name) == loweredColName {
-						return schCol, nil
-					}
-				}
-				return nil, sql.ErrTableColumnNotFound.New(node.Child.String(), node.ColumnName)
-			}
-		default:
-			return node, sql.SameTree, nil
-		}
-
-		var (
-			err error
-			col *sql.Column
-			// There may be multiple DDL nodes in the plan (ALTER TABLE statements can have many clauses), and for each of them
-			// we need to count the column indexes in the very hacky way outlined above.
-			colIndex = 0
-		)
-
-		return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
-			return visit.SingleNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
 				}
-				col, err = getCol(colIndex)
-				if err != nil {
-					return nil, sql.SameTree, err
-				}
-				if col == nil {
+
+				table := getResolvedTable(node)
+				sch := table.Schema()
+				if colIndex >= len(sch) {
 					return e, sql.SameTree, nil
 				}
+
+				col := sch[colIndex]
 				colIndex++
-				n, err := resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
-				return n, sql.NewTree, err
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
-		})
+		case *plan.InsertDestination:
+			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, sql.SameTree, nil
+				}
+				sch := node.Sch
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.CreateTable:
+			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, sql.SameTree, nil
+				}
+				sch := node.CreateSchema.Schema
+				col := sch[colIndex]
+				colIndex++
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.RenameColumn, *plan.DropColumn:
+			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, sql.SameTree, nil
+				}
+
+				// Not a public interface, should make part of sql.SchemaTarget?
+				sch := node.(targetSchema).TargetSchema()
+
+				var col *sql.Column
+				if colIndex >= len(sch) {
+					return e, sql.SameTree, nil
+				}
+
+				col = sch[colIndex]
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+
+		case *plan.ModifyColumn:
+			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, sql.SameTree, nil
+				}
+
+				sch := node.TargetSchema()
+
+				var col *sql.Column
+				if colIndex < len(sch) {
+					col = sch[colIndex]
+				} else {
+					col = node.NewColumn()
+				}
+
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.AddColumn:
+			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, sql.SameTree, nil
+				}
+
+				sch := node.TargetSchema()
+
+				var col *sql.Column
+				if colIndex < len(sch) {
+					col = sch[colIndex]
+				} else {
+					col = node.Column()
+				}
+
+				colIndex++
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		case *plan.AlterDefaultSet:
+			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				eWrapper, ok := e.(*expression.Wrapper)
+				if !ok {
+					return e, sql.SameTree, nil
+				}
+
+				loweredColName := strings.ToLower(node.ColumnName)
+				var col *sql.Column
+				for _, schCol := range node.Schema() {
+					if strings.ToLower(schCol.Name) == loweredColName {
+						col = schCol
+						break
+					}
+				}
+				if col == nil {
+					return nil, sql.SameTree, sql.ErrTableColumnNotFound.New(node.Table, node.ColumnName)
+				}
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
+		default:
+			return node, sql.SameTree, nil
+		}
 	})
 }
 
@@ -580,18 +636,18 @@ func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql
 	return expression.WrapExpression(newDefault), nil
 }
 
-func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, error) {
+func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, sql.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
-		return e, nil
+		return e, sql.SameTree, nil
 	}
 
 	if newDefault.Resolved() {
-		return e, nil
+		return e, sql.SameTree, nil
 	}
 
 	if sql.IsTextBlob(col.Type) && newDefault.IsLiteral() {
-		return nil, sql.ErrInvalidTextBlobColumnDefault.New()
+		return nil, sql.SameTree, sql.ErrInvalidTextBlobColumnDefault.New()
 	}
 
 	var err error
@@ -605,7 +661,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
@@ -631,7 +687,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 		}
 	})
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
@@ -651,13 +707,13 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 
 	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
 	if err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
 	// validate type of default expression
 	if err = newDefault.CheckType(ctx); err != nil {
-		return nil, err
+		return nil, sql.SameTree, err
 	}
 
-	return expression.WrapExpression(newDefault), nil
+	return expression.WrapExpression(newDefault), sql.NewTree, nil
 }

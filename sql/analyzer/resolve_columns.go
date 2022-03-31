@@ -543,10 +543,10 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 			idx++
 		}
 	case *plan.AddColumn: // Add/Modify need to have the full column set in order to resolve a default expression.
-		tbl := node.Child
+		tbl := node.Table
 		indexSchemaForDefaults(node.Column(), node.Order(), tbl.Schema())
 	case *plan.ModifyColumn:
-		tbl := node.Child
+		tbl := node.Table
 		indexSchemaForDefaults(node.NewColumn(), node.Order(), tbl.Schema())
 	}
 

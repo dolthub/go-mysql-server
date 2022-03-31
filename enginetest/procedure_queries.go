@@ -1127,3 +1127,65 @@ var ProcedureShowStatus = []ScriptTest{
 		},
 	},
 }
+
+var ProcedureShowCreate = []ScriptTest{
+	{
+		Name: "SHOW procedures",
+		SetUpScript: []string{
+			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
+			"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7",
+			"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SHOW CREATE PROCEDURE p1",
+				Expected: []sql.Row{
+					{
+						"p1", // Procedure
+						"",   // sql_mode
+						"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6", // Create Procedure
+						"utf8mb4",          // character_set_client
+						"utf8mb4_0900_bin", // collation_connection
+						"utf8mb4_0900_bin", // Database Collation
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE PROCEDURE p2",
+				Expected: []sql.Row{
+					{
+						"p2", // Procedure
+						"",   // sql_mode
+						"CREATE definer=`user` PROCEDURE p2() SQL SECURITY INVOKER SELECT 7", // Create Procedure
+						"utf8mb4",          // character_set_client
+						"utf8mb4_0900_bin", // collation_connection
+						"utf8mb4_0900_bin", // Database Collation
+					},
+				},
+			},
+			{
+				Query: "SHOW CREATE PROCEDURE p21",
+				Expected: []sql.Row{
+					{
+						"p21", // Procedure
+						"",    // sql_mode
+						"CREATE PROCEDURE p21() SQL SECURITY DEFINER SELECT 8", // Create Procedure
+						"utf8mb4",          // character_set_client
+						"utf8mb4_0900_bin", // collation_connection
+						"utf8mb4_0900_bin", // Database Collation
+					},
+				},
+			},
+		},
+	},
+	{
+		Name:        "SHOW non-existent procedures",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SHOW CREATE PROCEDURE p1",
+				ExpectedErr: sql.ErrStoredProcedureDoesNotExist,
+			},
+		},
+	},
+}

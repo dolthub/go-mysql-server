@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -40,11 +41,14 @@ const (
 	IndexAction_Create IndexAction = iota
 	IndexAction_Drop
 	IndexAction_Rename
+	IndexAction_DisableEnableKeys
 )
 
 type AlterIndex struct {
 	// Action states whether it's a CREATE, DROP, or RENAME
 	Action IndexAction
+	// ddlNode references to the database that is being operated on
+	ddlNode
 	// Table is the table that is being referenced
 	Table sql.Node
 	// IndexName is the index name, and in the case of a RENAME it represents the new name
@@ -59,11 +63,14 @@ type AlterIndex struct {
 	Columns []sql.IndexColumn
 	// Comment is the comment that was left at index creation, if any
 	Comment string
+	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
+	DisableKeys bool
 }
 
-func NewAlterCreateIndex(table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
 		Action:     IndexAction_Create,
+		ddlNode:    ddlNode{db: db},
 		Table:      table,
 		IndexName:  indexName,
 		Using:      using,
@@ -73,20 +80,31 @@ func NewAlterCreateIndex(table sql.Node, indexName string, using sql.IndexUsing,
 	}
 }
 
-func NewAlterDropIndex(table sql.Node, indexName string) *AlterIndex {
+func NewAlterDropIndex(db sql.Database, table sql.Node, indexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:    IndexAction_Drop,
+		ddlNode:   ddlNode{db: db},
 		Table:     table,
 		IndexName: indexName,
 	}
 }
 
-func NewAlterRenameIndex(table sql.Node, fromIndexName, toIndexName string) *AlterIndex {
+func NewAlterRenameIndex(db sql.Database, table sql.Node, fromIndexName, toIndexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:            IndexAction_Rename,
+		ddlNode:           ddlNode{db: db},
 		Table:             table,
 		IndexName:         toIndexName,
 		PreviousIndexName: fromIndexName,
+	}
+}
+
+func NewAlterDisableEnableKeys(db sql.Database, table sql.Node, disableKeys bool) *AlterIndex {
+	return &AlterIndex{
+		Action:      IndexAction_DisableEnableKeys,
+		ddlNode:     ddlNode{db: db},
+		Table:       table,
+		DisableKeys: disableKeys,
 	}
 }
 
@@ -95,33 +113,19 @@ func (p *AlterIndex) Schema() sql.Schema {
 	return nil
 }
 
-func getIndexAlterable(node sql.Node) (sql.IndexAlterableTable, error) {
-	switch node := node.(type) {
-	case sql.IndexAlterableTable:
-		return node, nil
-	case *ResolvedTable:
-		return getIndexAlterableTable(node.Table)
-	case sql.TableWrapper:
-		return getIndexAlterableTable(node.Underlying())
-	default:
-		return nil, ErrNotIndexable.New()
-	}
-}
-
-func getIndexAlterableTable(t sql.Table) (sql.IndexAlterableTable, error) {
-	switch t := t.(type) {
-	case sql.IndexAlterableTable:
-		return t, nil
-	case sql.TableWrapper:
-		return getIndexAlterableTable(t.Underlying())
-	default:
-		return nil, ErrNotIndexable.New()
-	}
-}
-
 // Execute inserts the rows in the database.
 func (p *AlterIndex) Execute(ctx *sql.Context) error {
-	indexable, err := getIndexAlterable(p.Table)
+	// We should refresh the state of the table in case this alter was in a multi alter statement.
+	table, err := getTableFromDatabase(ctx, p.Database(), p.Table)
+	if err != nil {
+		return err
+	}
+
+	indexable, ok := table.(sql.IndexAlterableTable)
+	if !ok {
+		return ErrNotIndexable.New()
+	}
+
 	if err != nil {
 		return err
 	}
@@ -154,6 +158,13 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 		return indexable.DropIndex(ctx, p.IndexName)
 	case IndexAction_Rename:
 		return indexable.RenameIndex(ctx, p.PreviousIndexName, p.IndexName)
+	case IndexAction_DisableEnableKeys:
+		ctx.Session.Warn(&sql.Warning{
+			Level:   "Warning",
+			Code:    mysql.ERNotSupportedYet,
+			Message: fmt.Sprintf("'disable/enable keys' feature is not supported yet"),
+		})
+		return nil
 	default:
 		return ErrIndexActionNotImplemented.New(p.Action)
 	}
@@ -174,13 +185,16 @@ func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
+
 	switch p.Action {
 	case IndexAction_Create:
-		return NewAlterCreateIndex(children[0], p.IndexName, p.Using, p.Constraint, p.Columns, p.Comment), nil
+		return NewAlterCreateIndex(p.db, children[0], p.IndexName, p.Using, p.Constraint, p.Columns, p.Comment), nil
 	case IndexAction_Drop:
-		return NewAlterDropIndex(children[0], p.IndexName), nil
+		return NewAlterDropIndex(p.db, children[0], p.IndexName), nil
 	case IndexAction_Rename:
-		return NewAlterRenameIndex(children[0], p.PreviousIndexName, p.IndexName), nil
+		return NewAlterRenameIndex(p.db, children[0], p.PreviousIndexName, p.IndexName), nil
+	case IndexAction_DisableEnableKeys:
+		return NewAlterDisableEnableKeys(p.db, children[0], p.DisableKeys), nil
 	default:
 		return nil, ErrIndexActionNotImplemented.New(p.Action)
 	}
@@ -189,7 +203,14 @@ func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CheckPrivileges implements the interface sql.Node.
 func (p *AlterIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(getDatabaseName(p.Table), getTableName(p.Table), "", sql.PrivilegeType_Index))
+		sql.NewPrivilegedOperation(p.ddlNode.Database().Name(), getTableName(p.Table), "", sql.PrivilegeType_Index))
+}
+
+// WithDatabase implements the sql.Databaser interface.
+func (p *AlterIndex) WithDatabase(database sql.Database) (sql.Node, error) {
+	np := *p
+	np.db = database
+	return &np, nil
 }
 
 func (p AlterIndex) String() string {
@@ -240,9 +261,10 @@ func (p AlterIndex) String() string {
 }
 
 func (p *AlterIndex) Resolved() bool {
-	return p.Table.Resolved()
+	return p.Table.Resolved() && p.ddlNode.Resolved()
 }
 
+// Children implements the sql.Node interface.
 func (p *AlterIndex) Children() []sql.Node {
 	return []sql.Node{p.Table}
 }

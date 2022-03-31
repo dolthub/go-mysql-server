@@ -19,6 +19,7 @@ import (
 	"math"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -969,18 +970,21 @@ CREATE TABLE t2
 		sql.UnresolvedDatabase(""), []string{"foo"}, []string{"bar"},
 	),
 	`ALTER TABLE foo RENAME COLUMN bar TO baz`: plan.NewRenameColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("foo", ""), "bar", "baz",
 	),
 	`ALTER TABLE otherdb.mytable RENAME COLUMN i TO s`: plan.NewRenameColumn(
+		sql.UnresolvedDatabase("otherdb"),
 		plan.NewUnresolvedTable("mytable", "otherdb"), "i", "s",
 	),
 	`ALTER TABLE mytable RENAME COLUMN bar TO baz, RENAME COLUMN abc TO xyz`: plan.NewBlock(
 		[]sql.Node{
-			plan.NewRenameColumn(plan.NewUnresolvedTable("mytable", ""), "bar", "baz"),
-			plan.NewRenameColumn(plan.NewUnresolvedTable("mytable", ""), "abc", "xyz"),
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("mytable", ""), "bar", "baz"),
+			plan.NewRenameColumn(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("mytable", ""), "abc", "xyz"),
 		},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -988,6 +992,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT 42 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -997,6 +1002,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT -42.0 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1006,6 +1012,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT NOT NULL DEFAULT (2+2)/2 COMMENT 'hello' AFTER baz`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1015,6 +1022,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{AfterColumn: "baz"},
 	),
 	`ALTER TABLE mytable ADD COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
@@ -1024,6 +1032,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD COLUMN bar FLOAT NULL DEFAULT 32.0 COMMENT 'hello'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Float32,
@@ -1033,6 +1042,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD COLUMN bar INT DEFAULT 1 FIRST`: plan.NewAddColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1041,6 +1051,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE mydb.mytable ADD COLUMN bar INT DEFAULT 1 COMMENT 'otherdb'`: plan.NewAddColumn(
+		sql.UnresolvedDatabase("mydb"),
 		plan.NewUnresolvedTable("mytable", "mydb"), &sql.Column{
 			Name:     "bar",
 			Type:     sql.Int32,
@@ -1050,6 +1061,7 @@ CREATE TABLE t2
 		}, nil,
 	),
 	`ALTER TABLE mytable ADD INDEX (v1)`: plan.NewAlterCreateIndex(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""),
 		"",
 		sql.IndexUsing_BTree,
@@ -1058,12 +1070,15 @@ CREATE TABLE t2
 		"",
 	),
 	`ALTER TABLE mytable DROP COLUMN bar`: plan.NewDropColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("mytable", ""), "bar",
 	),
 	`ALTER TABLE otherdb.mytable DROP COLUMN bar`: plan.NewDropColumn(
+		sql.UnresolvedDatabase("otherdb"),
 		plan.NewUnresolvedTable("mytable", "otherdb"), "bar",
 	),
 	`ALTER TABLE tabletest MODIFY COLUMN bar VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "bar",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
@@ -1073,6 +1088,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE tabletest CHANGE COLUMN bar baz VARCHAR(10) NULL DEFAULT 'string' COMMENT 'hello' FIRST`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("tabletest", ""), "bar", &sql.Column{
 			Name:     "baz",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 10, sql.Collation_Default),
@@ -1082,6 +1098,7 @@ CREATE TABLE t2
 		}, &sql.ColumnOrder{First: true},
 	),
 	`ALTER TABLE mydb.mytable MODIFY COLUMN col1 VARCHAR(20) NULL DEFAULT 'string' COMMENT 'changed'`: plan.NewModifyColumn(
+		sql.UnresolvedDatabase("mydb"),
 		plan.NewUnresolvedTable("mytable", "mydb"), "col1", &sql.Column{
 			Name:     "col1",
 			Type:     sql.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default),
@@ -1680,47 +1697,47 @@ CREATE TABLE t2
 	`SHOW TABLES FROM foo AS OF 'abc'`:      plan.NewShowTables(sql.UnresolvedDatabase("foo"), false, expression.NewLiteral("abc", sql.LongText)),
 	`SHOW FULL TABLES FROM foo AS OF 'abc'`: plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
 	`SHOW FULL TABLES IN foo AS OF 'abc'`:   plan.NewShowTables(sql.UnresolvedDatabase("foo"), true, expression.NewLiteral("abc", sql.LongText)),
-	`SHOW TABLES LIKE 'foo'`: plan.NewFilter(
+	`SHOW TABLES FROM mydb LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_mydb"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("mydb"), false, nil),
 	),
-	`SHOW TABLES AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
+	`SHOW TABLES FROM mydb AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_mydb"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false, expression.NewLiteral("abc", sql.LongText)),
+		plan.NewShowTables(sql.UnresolvedDatabase("mydb"), false, expression.NewLiteral("abc", sql.LongText)),
 	),
-	"SHOW TABLES WHERE `Table` = 'foo'": plan.NewFilter(
+	"SHOW TABLES FROM bar WHERE `Tables_in_bar` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), false, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), false, nil),
 	),
-	`SHOW FULL TABLES LIKE 'foo'`: plan.NewFilter(
+	`SHOW FULL TABLES FROM mydb LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_mydb"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("mydb"), true, nil),
 	),
-	"SHOW FULL TABLES WHERE `Table` = 'foo'": plan.NewFilter(
+	"SHOW FULL TABLES FROM bar WHERE `Tables_in_bar` = 'foo'": plan.NewFilter(
 		expression.NewEquals(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 		),
-		plan.NewShowTables(sql.UnresolvedDatabase(""), true, nil),
+		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 	),
 	`SHOW FULL TABLES FROM bar LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
@@ -1728,16 +1745,16 @@ CREATE TABLE t2
 	),
 	`SHOW FULL TABLES FROM bar AS OF 'abc' LIKE 'foo'`: plan.NewFilter(
 		expression.NewLike(
-			expression.NewUnresolvedColumn("Table"),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
 			expression.NewLiteral("foo", sql.LongText),
 			nil,
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, expression.NewLiteral("abc", sql.LongText)),
 	),
-	"SHOW FULL TABLES FROM bar WHERE `Table` = 'foo'": plan.NewFilter(
+	"SHOW FULL TABLES FROM bar WHERE `Tables_in_bar` = 'test'": plan.NewFilter(
 		expression.NewEquals(
-			expression.NewUnresolvedColumn("Table"),
-			expression.NewLiteral("foo", sql.LongText),
+			expression.NewUnresolvedColumn("Tables_in_bar"),
+			expression.NewLiteral("test", sql.LongText),
 		),
 		plan.NewShowTables(sql.UnresolvedDatabase("bar"), true, nil),
 	),
@@ -2215,6 +2232,7 @@ CREATE TABLE t2
 		make(map[string]string),
 	),
 	`CREATE INDEX idx USING BTREE ON foo (bar)`: plan.NewAlterCreateIndex(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("foo", ""),
 		"idx",
 		sql.IndexUsing_BTree,
@@ -2225,6 +2243,7 @@ CREATE TABLE t2
 		"",
 	),
 	`      CREATE INDEX idx USING BTREE ON foo(bar)`: plan.NewAlterCreateIndex(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("foo", ""),
 		"idx",
 		sql.IndexUsing_BTree,
@@ -2252,6 +2271,7 @@ CREATE TABLE t2
 		),
 	),
 	`DROP INDEX foo ON bar`: plan.NewAlterDropIndex(
+		sql.UnresolvedDatabase(""),
 		plan.NewUnresolvedTable("bar", ""),
 		"foo",
 	),
@@ -3497,70 +3517,6 @@ CREATE TABLE t2
 		),
 		true,
 	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
-   BEGIN 
-     UPDATE bar SET x = old.y WHERE z = new.y;
-		 DELETE FROM baz WHERE a = old.b;
-		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
-		plan.NewUnresolvedTable("foo", ""),
-		plan.NewBeginEndBlock(
-			plan.NewBlock([]sql.Node{
-				plan.NewUpdate(
-					plan.NewFilter(
-						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
-						plan.NewUnresolvedTable("bar", ""),
-					),
-					[]sql.Expression{
-						expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
-					},
-				),
-				plan.NewDeleteFrom(
-					plan.NewFilter(
-						expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
-						plan.NewUnresolvedTable("baz", ""),
-					),
-				),
-				plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
-					expression.NewUnresolvedQualifiedColumn("old", "a"),
-					expression.NewUnresolvedQualifiedColumn("old", "b"),
-				}},
-				), false, []string{"a", "b"}, []sql.Expression{}, false),
-			}),
-		),
-		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
-   BEGIN 
-     UPDATE bar SET x = old.y WHERE z = new.y;
-		 DELETE FROM baz WHERE a = old.b;
-		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`,
-		`BEGIN 
-     UPDATE bar SET x = old.y WHERE z = new.y;
-		 DELETE FROM baz WHERE a = old.b;
-		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
-   END`,
-	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update", nil,
-		plan.NewUnresolvedTable("foo", ""),
-		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
-			expression.NewUnresolvedQualifiedColumn("old", "a"),
-			expression.NewUnresolvedQualifiedColumn("old", "b"),
-		}},
-		), false, []string{"a", "b"}, []sql.Expression{}, false),
-		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-	),
-	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger("myTrigger", "before", "update",
-		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
-		plan.NewUnresolvedTable("foo", ""),
-		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
-			expression.NewUnresolvedQualifiedColumn("old", "a"),
-			expression.NewUnresolvedQualifiedColumn("old", "b"),
-		}},
-		), false, []string{"a", "b"}, []sql.Expression{}, false),
-		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
-	),
 	`SELECT 2 UNION SELECT 3`: plan.NewDistinct(
 		plan.NewUnion(
 			plan.NewProject(
@@ -3691,6 +3647,78 @@ CREATE TABLE t2
 	`KILL CONNECTION 1`:                  plan.NewKill(plan.KillType_Connection, 1),
 }
 
+var triggerFixtures = map[string]sql.Node{
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
+   BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""), "myTrigger", "before", "update", nil,
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewBeginEndBlock(
+			plan.NewBlock([]sql.Node{
+				plan.NewUpdate(
+					plan.NewFilter(
+						expression.NewEquals(expression.NewUnresolvedColumn("z"), expression.NewUnresolvedQualifiedColumn("new", "y")),
+						plan.NewUnresolvedTable("bar", ""),
+					),
+					[]sql.Expression{
+						expression.NewSetField(expression.NewUnresolvedColumn("x"), expression.NewUnresolvedQualifiedColumn("old", "y")),
+					},
+				),
+				plan.NewDeleteFrom(
+					plan.NewFilter(
+						expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
+						plan.NewUnresolvedTable("baz", ""),
+					),
+				),
+				plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+					expression.NewUnresolvedQualifiedColumn("old", "a"),
+					expression.NewUnresolvedQualifiedColumn("old", "b"),
+				}},
+				), false, []string{"a", "b"}, []sql.Expression{}, false),
+			}),
+		),
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW 
+   BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`,
+		`BEGIN 
+     UPDATE bar SET x = old.y WHERE z = new.y;
+		 DELETE FROM baz WHERE a = old.b;
+		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
+   END`,
+		time.Unix(0, 0),
+	),
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
+		"myTrigger", "before", "update", nil,
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+			expression.NewUnresolvedQualifiedColumn("old", "a"),
+			expression.NewUnresolvedQualifiedColumn("old", "b"),
+		}},
+		), false, []string{"a", "b"}, []sql.Expression{}, false),
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		time.Unix(0, 0),
+	),
+	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
+		"myTrigger", "before", "update",
+		&plan.TriggerOrder{PrecedesOrFollows: sqlparser.FollowsStr, OtherTriggerName: "yourTrigger"},
+		plan.NewUnresolvedTable("foo", ""),
+		plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
+			expression.NewUnresolvedQualifiedColumn("old", "a"),
+			expression.NewUnresolvedQualifiedColumn("old", "b"),
+		}},
+		), false, []string{"a", "b"}, []sql.Expression{}, false),
+		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
+		time.Unix(0, 0),
+	),
+}
+
 func TestParse(t *testing.T) {
 	var queriesInOrder []string
 	for q := range fixtures {
@@ -3708,6 +3736,31 @@ func TestParse(t *testing.T) {
 			if !assertNodesEqualWithDiff(t, expectedPlan, p) {
 				t.Logf("Unexpected result for query %s", query)
 			}
+		})
+	}
+}
+
+func TestParseCreateTrigger(t *testing.T) {
+	var queriesInOrder []string
+	for q := range triggerFixtures {
+		queriesInOrder = append(queriesInOrder, q)
+	}
+	sort.Strings(queriesInOrder)
+
+	date := time.Unix(0, 0)
+	for _, query := range queriesInOrder {
+		expectedPlan := triggerFixtures[query]
+		t.Run(query, func(t *testing.T) {
+			sql.RunWithNowFunc(func() time.Time { return date }, func() error {
+				require := require.New(t)
+				ctx := sql.NewEmptyContext()
+				p, err := Parse(ctx, query)
+				require.NoError(err)
+				if !assertNodesEqualWithDiff(t, expectedPlan, p) {
+					t.Logf("Unexpected result for query %s", query)
+				}
+				return nil
+			})
 		})
 	}
 }

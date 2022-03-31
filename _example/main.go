@@ -18,7 +18,6 @@ import (
 	"time"
 
 	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/auth"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -48,7 +47,6 @@ func main() {
 	config := server.Config{
 		Protocol: "tcp",
 		Address:  "localhost:3306",
-		Auth:     auth.NewNativeSingle("root", "", auth.AllPermissions),
 	}
 
 	s, err := server.NewDefaultServer(config, engine)

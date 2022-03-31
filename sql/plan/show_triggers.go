@@ -16,7 +16,6 @@ package plan
 
 import (
 	"strings"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -91,17 +90,17 @@ func (s *ShowTriggers) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 			return nil, err
 		}
 		rows = append(rows, sql.Row{
-			trigger.TriggerName,   // Trigger
-			triggerEvent,          // Event
-			tableName,             // Table
-			trigger.BodyString,    // Statement
-			triggerTime,           // Timing
-			time.Unix(0, 0).UTC(), // Created
-			"",                    // sql_mode
-			"",                    // Definer
-			characterSetClient,    // character_set_client
-			collationConnection,   // collation_connection
-			collationServer,       // Database Collation
+			trigger.TriggerName, // Trigger
+			triggerEvent,        // Event
+			tableName,           // Table
+			trigger.BodyString,  // Statement
+			triggerTime,         // Timing
+			trigger.CreatedAt,   // Created
+			"",                  // sql_mode
+			"",                  // Definer
+			characterSetClient,  // character_set_client
+			collationConnection, // collation_connection
+			collationServer,     // Database Collation
 		})
 	}
 	return sql.RowsToRowIter(rows...), nil

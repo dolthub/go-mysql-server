@@ -604,7 +604,7 @@ func getJoinIndexesByTable(
 	joinConds []joinCond,
 	tableAliases TableAliases,
 ) joinIndexesByTable {
-
+	//TODO add lookup filter
 	result := make(joinIndexesByTable)
 	for _, cond := range joinConds {
 		indexes := getJoinIndexes(ctx, a, ia, cond, tableAliases)

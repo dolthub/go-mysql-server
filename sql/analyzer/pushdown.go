@@ -233,11 +233,17 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				}
 				return n, samePred && sameFix, nil
 			case *plan.IndexedTableAccess:
+				if plan.GetIndexLookup(node) == nil {
+					// Index without lookup has no filters to mark/push.
+					// Relevant for IndexJoin, which has more restrictive
+					// rules for lookup expressions.
+					return node, sql.SameTree, nil
+				}
 				lookup, ok := indexes[node.Name()]
 				if !ok || lookup.expr == nil {
 					return node, sql.SameTree, nil
 				}
-				handled, same, err := pushdownFiltersToIndex(ctx, a, node, lookup, tableAliases)
+				handled, same, err := getPredicateExprsHandledByLookup(ctx, a, node, lookup, tableAliases)
 				if err != nil {
 					return nil, sql.SameTree, err
 				}
@@ -470,7 +476,7 @@ func convertFiltersToIndexedAccess(
 }
 
 // pushdownFiltersToTable attempts to push down filters to indexes that can accept them.
-func pushdownFiltersToIndex(ctx *sql.Context, a *Analyzer, idxTable *plan.IndexedTableAccess, lookup *indexLookup, tableAliases TableAliases) ([]sql.Expression, sql.TreeIdentity, error) {
+func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *plan.IndexedTableAccess, lookup *indexLookup, tableAliases TableAliases) ([]sql.Expression, sql.TreeIdentity, error) {
 	filteredIdx, ok := idxTable.Index().(sql.FilteredIndex)
 	if !ok {
 		return nil, sql.SameTree, nil

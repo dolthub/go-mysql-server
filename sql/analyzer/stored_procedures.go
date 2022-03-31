@@ -326,8 +326,6 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		switch n := n.(type) {
 		case *plan.Call:
 			return applyProceduresCall(ctx, a, n, scope)
-		case *plan.ShowProcedureStatus:
-			return applyProceduresShowProcedure(ctx, a, n)
 		default:
 			return n, sql.SameTree, nil
 		}
@@ -428,13 +426,4 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 
 	call = call.WithProcedure(procedure)
 	return call, sql.NewTree, nil
-}
-
-// applyProceduresShowProcedure applies all of the stored procedures to the given *plan.ShowProcedureStatus.
-func applyProceduresShowProcedure(ctx *sql.Context, a *Analyzer, n *plan.ShowProcedureStatus) (sql.Node, sql.TreeIdentity, error) {
-	if len(a.ProcedureCache.dbToProcedureMap) == 0 {
-		return n, sql.SameTree, nil
-	}
-	n.Procedures = a.ProcedureCache.AllForDatabase(ctx.GetCurrentDatabase())
-	return n, sql.NewTree, nil
 }

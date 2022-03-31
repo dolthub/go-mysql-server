@@ -111,6 +111,7 @@ func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigge
 			if !ok {
 				return nil, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
 			}
+			triggerPlan.CreatedAt = trigger.CreatedAt // use the stored created time
 			loadedTriggers = append(loadedTriggers, triggerPlan)
 		}
 	}

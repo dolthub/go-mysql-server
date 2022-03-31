@@ -132,15 +132,21 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// Should always return nil, and a warning instead
 	casted, err := convertValue(val, c.castToType)
 	if err != nil {
-		return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
+		if c.castToType == ConvertToJSON {
+			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
+		}
+		ctx.Warn(1292, "Incorrect %s value: %v", c.castToType, val)
+		return nil, nil
 	}
 
 	return casted, nil
 }
 
-// convertValue only returns an error if converting to JSON, and returns the zero value for float types.
+// convertValue only returns an error if converting to JSON, Date, and Datetime;
+// the zero value is returned for float types.
 // Nil is returned in all other cases.
 func convertValue(val interface{}, castTo string) (interface{}, error) {
 	switch strings.ToLower(castTo) {
@@ -164,7 +170,7 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 		}
 		d, err := sql.Date.Convert(val)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		return d, nil
 	case ConvertToDatetime:
@@ -175,7 +181,7 @@ func convertValue(val interface{}, castTo string) (interface{}, error) {
 		}
 		d, err := sql.Datetime.Convert(val)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		return d, nil
 	case ConvertToDecimal:

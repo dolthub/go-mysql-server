@@ -570,14 +570,11 @@ type TruncateableTable interface {
 // and AUTO_INCREMENT column in their schema.
 type AutoIncrementTable interface {
 	Table
-	// PeekNextAutoIncrementValue returns the expected next AUTO_INCREMENT value but does not require
-	// implementations to update their state.
-	PeekNextAutoIncrementValue(*Context) (interface{}, error)
 	// GetNextAutoIncrementValue gets the next AUTO_INCREMENT value. In the case that a table with an autoincrement
 	// column is passed in a row with the autoinc column failed, the next auto increment value must
 	// update its internal state accordingly and use the insert val at runtime.
 	// Implementations are responsible for updating their state to provide the correct values.
-	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (interface{}, error)
+	GetNextAutoIncrementValue(ctx *Context, insertVal interface{}) (uint64, error)
 	// AutoIncrementSetter returns an AutoIncrementSetter.
 	AutoIncrementSetter(*Context) AutoIncrementSetter
 }
@@ -588,7 +585,7 @@ var ErrNoAutoIncrementCol = fmt.Errorf("this table has no AUTO_INCREMENT columns
 // AUTO_INCREMENT sequence, eg 'ALTER TABLE t AUTO_INCREMENT = 10;'
 type AutoIncrementSetter interface {
 	// SetAutoIncrementValue sets a new AUTO_INCREMENT value.
-	SetAutoIncrementValue(*Context, interface{}) error
+	SetAutoIncrementValue(*Context, uint64) error
 	// Close finalizes the set operation, persisting the result.
 	Closer
 }
@@ -752,8 +749,9 @@ type TransactionDatabase interface {
 // TriggerDefinition defines a trigger. Integrators are not expected to parse or understand the trigger definitions,
 // but must store and return them when asked.
 type TriggerDefinition struct {
-	Name            string // The name of this trigger. Trigger names in a database are unique.
-	CreateStatement string // The text of the statement to create this trigger.
+	Name            string    // The name of this trigger. Trigger names in a database are unique.
+	CreateStatement string    // The text of the statement to create this trigger.
+	CreatedAt       time.Time // The time that the trigger was created.
 }
 
 // TriggerDatabase is a Database that supports the creation and execution of triggers. The engine handles all parsing
