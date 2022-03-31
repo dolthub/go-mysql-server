@@ -929,9 +929,9 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 				view.Name, // table_name
 				"",        // column_name
 				uint64(0), // ordinal_position
-				"",        // column_default
-				"",        // is_nullable
-				"",        // data_type
+				nil,       // column_default
+				nil,       // is_nullable
+				nil,       // data_type
 				nil,       // character_maximum_length
 				nil,       // character_octet_length
 				nil,       // numeric_precision
