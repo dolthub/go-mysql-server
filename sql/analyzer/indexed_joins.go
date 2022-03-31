@@ -362,11 +362,8 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 
 	tablesByName := byLowerCaseName(tableJoinOrder.tables())
 
-	joinNode := joinTreeToNodes(joinTree, tablesByName, scope)
-	if joinNode == nil {
-		return node, nil
-	}
-
+	joinNode := joinTreeToNodes(joinTree, tablesByName, scope, ordered)
+	
 	return joinNode, nil
 }
 
@@ -430,9 +427,8 @@ func (j JoinOrder) HintType() string {
 }
 
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
-// If the join plan is invalid, return nil.
 // todo(max): smarter index generation/search to avoid pruning bad plans here
-func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
+func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope, ordered bool) sql.Node {
 	if tree.isCrossJoin() {
 		return tree.node
 	} else if tree.isLeaf() {
@@ -443,24 +439,27 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 		return nn
 	}
 
-	left := joinTreeToNodes(tree.left, tablesByName, scope)
-	if left == nil {
-		return nil
-	}
+	left := joinTreeToNodes(tree.left, tablesByName, scope, ordered)
 
-	right := joinTreeToNodes(tree.right, tablesByName, scope)
-	if right == nil {
-		return nil
-	}
+	right := joinTreeToNodes(tree.right, tablesByName, scope, ordered)
 
 	switch right.(type) {
 	case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
-		return nil
+		switch tree.joinCond.joinType {
+		case plan.JoinTypeLeft:
+			return plan.NewLeftJoin(left, right, tree.joinCond.cond)
+		case plan.JoinTypeRight:
+			return plan.NewRightJoin(left, right, tree.joinCond.cond)
+		case plan.JoinTypeInner:
+			if ordered {
+				return plan.NewInnerJoin(left, right, tree.joinCond.cond)
+			}
+			left, right = right, left
+		}
 	default:
 	}
 
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
-
 }
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
