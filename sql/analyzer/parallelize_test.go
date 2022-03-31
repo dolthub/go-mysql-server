@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func TestParallelize(t *testing.T) {
@@ -296,7 +296,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 		),
 	)
 
-	result, err := visit.Nodes(node, removeRedundantExchanges)
+	result, _, err := transform.Node(node, removeRedundantExchanges)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

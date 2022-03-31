@@ -16,7 +16,8 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -61,7 +62,7 @@ func getUpdateAccumulatorType(n sql.Node) (plan.RowUpdateType, error) {
 	case *plan.Update:
 		// search for a join
 		hasJoin := false
-		visit.Inspect(n, func(node sql.Node) bool {
+		transform.Inspect(n, func(node sql.Node) bool {
 			switch node.(type) {
 			case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin:
 				hasJoin = true

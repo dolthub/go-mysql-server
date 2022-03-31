@@ -15,8 +15,9 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -26,7 +27,7 @@ import (
 // Returns the underlying table name for the node given
 func getTableName(node sql.Node) string {
 	var tableName string
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.TableAlias:
 			tableName = node.Name()
@@ -55,7 +56,7 @@ type NameableNode interface {
 // getTables returns all tables in the node given
 func getTables(node sql.Node) []NameableNode {
 	var tables []NameableNode
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.TableAlias:
 			tables = append(tables, node)
@@ -88,7 +89,7 @@ func byLowerCaseName(nodes []NameableNode) map[string]NameableNode {
 // Returns the underlying table name for the node given, ignoring table aliases
 func getUnaliasedTableName(node sql.Node) string {
 	var tableName string
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.ResolvedTable:
 			tableName = node.Name()
@@ -109,7 +110,7 @@ func getUnaliasedTableName(node sql.Node) string {
 // Finds first table node that is a descendant of the node given
 func getTable(node sql.Node) sql.Table {
 	var table sql.Table
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			table = n.Table
@@ -126,7 +127,7 @@ func getTable(node sql.Node) sql.Table {
 // Finds first ResolvedTable node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
 		// only want the first ResolvedTable match.
 		if table != nil {
@@ -150,7 +151,7 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
 
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
@@ -198,7 +199,7 @@ func findTables(exprs ...sql.Expression) []string {
 // than one table was set in this way.
 func withTable(node sql.Node, table sql.Table) (sql.Node, sql.TreeIdentity, error) {
 	foundTable := false
-	return visit.Nodes(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			if foundTable {
@@ -252,7 +253,7 @@ func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
 	defer colSpan.Finish()
 
 	var fieldsByTable = make(fieldsByTable)
-	visit.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {
 			fieldsByTable.add(gf.Table(), gf.Name())
 		}

@@ -433,7 +433,7 @@ func TestRemoveUnnecessaryConverts(t *testing.T) {
 				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}), nil, nil),
 			)
 
-			result, err := removeUnnecessaryConverts(
+			result, _, err := removeUnnecessaryConverts(
 				sql.NewEmptyContext(),
 				NewDefault(nil),
 				node,

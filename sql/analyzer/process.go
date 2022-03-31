@@ -15,8 +15,9 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"os"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -46,7 +47,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
-	n, _, err := visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
@@ -114,7 +115,7 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 	// Remove QueryProcess nodes from the subqueries and trigger bodies. Otherwise, the process
 	// will be marked as done as soon as a subquery / trigger finishes.
-	node, _, err := visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	node, _, err := transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
 				n, err := sq.WithChildren(qp.Child)

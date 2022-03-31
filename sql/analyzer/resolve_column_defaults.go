@@ -15,8 +15,9 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -445,7 +446,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 
 	// TODO: this is pretty hacky, many of the transformations below rely on a particular ordering of expressions
 	//  returned by Expressions() for these nodes
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, sql.SameTree, nil
 		}
@@ -456,7 +457,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 
 		switch node := n.(type) {
 		case *plan.ShowColumns, *plan.ShowCreateTable:
-			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -473,7 +474,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.InsertDestination:
-			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -484,7 +485,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.CreateTable:
-			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -495,7 +496,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.RenameColumn, *plan.DropColumn:
-			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -516,7 +517,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			})
 
 		case *plan.ModifyColumn:
-			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -536,7 +537,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.AddColumn:
-			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -556,7 +557,7 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
 		case *plan.AlterDefaultSet:
-			return visit.NodesExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)
 				if !ok {
 					return e, sql.SameTree, nil
@@ -600,7 +601,7 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		}
 	}
 
-	return visit.NodesExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		eWrapper, ok := e.(*expression.Wrapper)
 		if !ok {
 			return e, sql.SameTree, nil
@@ -651,7 +652,7 @@ func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expres
 	}
 
 	var err error
-	newDefault.Expression, _, err = visit.Exprs(newDefault.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	newDefault.Expression, _, err = transform.Exprs(newDefault.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		if expr, ok := e.(*expression.GetField); ok {
 			// Default values can only reference their host table, so we can remove the table name, removing
 			// the necessity to update default values on table renames.

@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // validateCheckConstraints validates DDL nodes that create table check constraints, such as CREATE TABLE and
@@ -49,7 +49,7 @@ func validateCreateTableChecks(ctx *sql.Context, a *Analyzer, n *plan.CreateTabl
 		return nil, sql.SameTree, err
 	}
 
-	visit.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		if err != nil {
 			return false
 		}
@@ -122,7 +122,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 	span, _ := ctx.Span("loadChecks")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch node := n.(type) {
 		case *plan.InsertInto:
 			nn := *node
@@ -194,7 +194,7 @@ func loadChecks(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.No
 			// To match MySQL output format, transform the column names and wrap with backticks
 			var transformedChecks sql.CheckConstraints
 			for i, check := range checks {
-				newExpr, same, err := visit.Exprs(check.Expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newExpr, same, err := transform.Exprs(check.Expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 					if t, ok := e.(*expression.UnresolvedColumn); ok {
 						return expression.NewUnresolvedColumn(fmt.Sprintf("`%s`", t.Name())), sql.NewTree, nil
 					}

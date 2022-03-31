@@ -17,7 +17,6 @@ package plan
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"sync"
 
@@ -25,6 +24,7 @@ import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ErrNoPartitionable is returned when no Partitionable node is found
@@ -55,7 +55,7 @@ func NewExchange(
 // RowIter implements the sql.Node interface.
 func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	var t sql.Table
-	visit.Inspect(e.Child, func(n sql.Node) bool {
+	transform.Inspect(e.Child, func(n sql.Node) bool {
 		if table, ok := n.(sql.Table); ok {
 			t = table
 			return false
@@ -119,7 +119,7 @@ func (e *Exchange) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 // RowIter2 implements the sql.Node2 interface.
 func (e *Exchange) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
 	var t sql.Table2
-	visit.Inspect(e.Child, func(n sql.Node) bool {
+	transform.Inspect(e.Child, func(n sql.Node) bool {
 		if table, ok := n.(sql.Table2); ok {
 			t = table
 			return false
@@ -201,7 +201,7 @@ func (e *Exchange) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition) (sql.RowIter, error) {
 	return func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-		node, _, err := visit.Nodes(e.Child, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 			if t, ok := n.(sql.Table); ok {
 				return &exchangePartition{partition, t}, sql.NewTree, nil
 			}
@@ -216,7 +216,7 @@ func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition)
 
 func (e *Exchange) getRowIter2Func() func(*sql.Context, sql.Partition, *sql.RowFrame) (sql.RowIter2, error) {
 	return func(ctx *sql.Context, partition sql.Partition, frame *sql.RowFrame) (sql.RowIter2, error) {
-		node, _, err := visit.Nodes(e.Child, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 			if t, ok := n.(sql.Table); ok {
 				return &exchangePartition{partition, t}, sql.NewTree, nil
 			}

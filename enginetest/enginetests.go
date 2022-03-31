@@ -17,7 +17,6 @@ package enginetest
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"net"
 	"strings"
 	"sync/atomic"
@@ -42,6 +41,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/test"
 )
 
@@ -830,7 +830,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -859,7 +859,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -887,7 +887,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -915,7 +915,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -944,7 +944,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -971,7 +971,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -998,7 +998,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1030,7 +1030,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.Analyzer.Analyze(ctx, parsed, nil)
 		require.NoError(t, err)
 		truncateFound := false
-		visit.Inspect(analyzed, func(n sql.Node) bool {
+		transform.Inspect(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true

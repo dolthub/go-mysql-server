@@ -18,14 +18,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_table_functions")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, sql.SameTree, nil
 		}
@@ -63,12 +63,12 @@ func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.
 	span, _ := ctx.Span("resolve_functions")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, sql.SameTree, nil
 		}
 
-		return visit.SingleNodeExpressions(n, resolveFunctionsInExpr(ctx, a))
+		return transform.OneNodeExpressions(n, resolveFunctionsInExpr(ctx, a))
 	})
 }
 

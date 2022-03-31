@@ -17,7 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // CatalogTable is a Table that depends on a Catalog.
@@ -34,7 +34,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	defer span.Finish()
 
 	// TODO make the catalog interfaces change sensitive
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !n.Resolved() {
 			return n, sql.SameTree, nil
 		}

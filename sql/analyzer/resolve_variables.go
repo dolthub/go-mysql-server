@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -24,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // resolveVariables replaces UnresolvedColumn which are variables with their literal values
@@ -31,7 +31,7 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	span, ctx := ctx.Span("resolve_variables")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if node.Resolved() {
 			return node, sql.SameTree, nil
 		}
@@ -54,13 +54,13 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 		// Set nodes need to resolve the right-hand side of an expression only
 		if n, ok := node.(*plan.Set); ok {
-			return visit.NodesExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+			return transform.NodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 				sf, ok := e.(*expression.SetField)
 				if !ok {
 					return e, sql.SameTree, nil
 				}
 
-				nr, same, err := visit.Exprs(sf.Right, resolveVars)
+				nr, same, err := transform.Exprs(sf.Right, resolveVars)
 				if err != nil {
 					return nil, sql.SameTree, err
 				}
@@ -76,7 +76,7 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			})
 		}
 
-		return visit.SingleNodeExpressions(node, resolveVars)
+		return transform.OneNodeExpressions(node, resolveVars)
 	})
 }
 
@@ -84,13 +84,13 @@ func resolveVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 // left-hand side, and evaluate the right-hand side where possible, including filling in defaults. Also validates that
 // system variables are known to the system.
 func resolveSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		_, ok := n.(*plan.Set)
 		if !ok || n.Resolved() {
 			return n, sql.SameTree, nil
 		}
 
-		return visit.SingleNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			sf, ok := e.(*expression.SetField)
 			if !ok {
 				return e, sql.SameTree, nil
@@ -169,7 +169,7 @@ func resolveBarewordSetVariables(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return n, sql.SameTree, nil
 	}
 
-	return visit.NodesExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		sf, ok := e.(*expression.SetField)
 		if !ok {
 			return e, sql.SameTree, nil

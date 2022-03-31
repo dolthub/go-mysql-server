@@ -16,10 +16,11 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -43,7 +44,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	selector := func(c visit.TransformContext) bool {
+	selector := func(c transform.TransformContext) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
 		switch c.Parent.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
@@ -56,7 +57,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	var tableAliases TableAliases
 	var joinIndexes joinIndexesByTable
 	var oldJoin sql.Node
-	newJoin, _, err := visit.NodesWithCtx(n, selector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	newJoin, _, err := transform.NodeWithCtx(n, selector, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
 			return n, sql.SameTree, nil
@@ -113,7 +114,7 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 }
 
 func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, error) {
-	topLevelIndexedJoinSelector := func(c visit.TransformContext) bool {
+	topLevelIndexedJoinSelector := func(c transform.TransformContext) bool {
 		switch c.Node.(type) {
 		case *plan.IndexedJoin:
 			_, hasParent := c.Parent.(*plan.IndexedJoin)
@@ -124,7 +125,7 @@ func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, e
 	}
 
 	// Wrap the top level Indexed Join with a Project Node to preserve the original join schema.
-	updated, _, err := visit.NodesWithCtx(node, topLevelIndexedJoinSelector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	updated, _, err := transform.NodeWithCtx(node, topLevelIndexedJoinSelector, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *plan.IndexedJoin:
 			return plan.NewProject(expression.SchemaToGetFields(oldJoin.Schema()), n), sql.NewTree, nil
@@ -191,7 +192,7 @@ func replaceTableAccessWithIndexedAccess(
 			return node, sql.SameTree, nil
 		}
 
-		return visit.Nodes(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		return transform.Node(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 			switch node := node.(type) {
 			case *plan.ResolvedTable:
 				return toIndexedTableAccess(node, indexToApply)
@@ -307,7 +308,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
 	// only certain nodes can be below it.
 	eligible := true
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
 		case plan.JoinNode, *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, nil:
 		case *plan.SubqueryAlias:
@@ -562,7 +563,7 @@ func findJoinIndexesByTable(
 	var conds []joinCond
 
 	// collect all the conds for the entire tree together
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case plan.JoinNode:
 			conds = append(conds, joinCond{
@@ -575,7 +576,7 @@ func findJoinIndexesByTable(
 	})
 
 	var joinIndexesByTable joinIndexesByTable
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.InnerJoin, *plan.LeftJoin, *plan.RightJoin:
 			var indexAnalyzer *indexAnalyzer
@@ -876,7 +877,7 @@ func colExprsToJoinIndex(table string, idx sql.Index, joinCond joinCond, colExpr
 
 func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 	var tables []NameableNode
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.SubqueryAlias, *plan.ValueDerivedTable, *plan.TableAlias, *plan.ResolvedTable, *plan.UnresolvedTable, *plan.IndexedTableAccess:
 			tables = append(tables, node.(NameableNode))

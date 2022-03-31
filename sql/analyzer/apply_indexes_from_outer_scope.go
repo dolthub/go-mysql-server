@@ -16,8 +16,9 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -48,7 +49,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		return n, sql.SameTree, nil
 	}
 
-	childSelector := func(c visit.TransformContext) bool {
+	childSelector := func(c transform.TransformContext) bool {
 		switch c.Parent.(type) {
 		// We can't push any indexes down a branch that have already had an index pushed down it
 		case *plan.IndexedTableAccess:
@@ -61,7 +62,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	allSame := sql.SameTree
 	sameN := sql.SameTree
 	for _, idxLookup := range indexLookups {
-		n, sameN, err = visit.NodesWithCtx(n, childSelector, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+		n, sameN, err = transform.NodeWithCtx(n, childSelector, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 			if !childSelector(c) {
 				return n, sql.SameTree, nil
 			}
@@ -94,7 +95,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 // pushdownIndexToTable attempts to push the index given down to the table given, if it implements
 // sql.IndexAddressableTable
 func pushdownIndexToTable(a *Analyzer, tableNode NameableNode, index sql.Index, keyExpr []sql.Expression) (sql.Node, sql.TreeIdentity, error) {
-	return visit.Nodes(tableNode, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(tableNode, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			table := getTable(tableNode)
@@ -130,7 +131,7 @@ func getOuterScopeIndexes(
 	var exprsByTable joinExpressionsByTable
 
 	var err error
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
 

@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // applyIndexesForSubqueryComparisons converts a `Filter(id = (SELECT ...),
@@ -36,7 +36,7 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 		return nil, sql.SameTree, err
 	}
 
-	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			var replacement sql.Node
@@ -86,7 +86,7 @@ func getIndexedInSubqueryFilter(ctx *sql.Context, a *Analyzer, left, right sql.E
 // range [low, high).
 func nodeHasGetFieldReferenceBetween(n sql.Node, low, high int) bool {
 	var found bool
-	visit.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				if expressionHasGetFieldReferenceBetween(e, low, high) {

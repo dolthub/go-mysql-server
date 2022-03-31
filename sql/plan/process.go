@@ -16,7 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -87,7 +88,7 @@ func (p *QueryProcess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2
 func getQueryType(child sql.Node) queryType {
 	// TODO: behavior of CALL is not specified in the docs. Needs investigation
 	var queryType queryType = queryTypeSelect
-	visit.Inspect(child, func(node sql.Node) bool {
+	transform.Inspect(child, func(node sql.Node) bool {
 		if IsNoRowNode(node) {
 			queryType = queryTypeDdl
 			return false
@@ -125,7 +126,7 @@ func (p *QueryProcess) DebugString() string {
 func (p *QueryProcess) shouldSetFoundRows() bool {
 	var fromLimit *bool
 	var fromTopN *bool
-	visit.Inspect(p.Child, func(n sql.Node) bool {
+	transform.Inspect(p.Child, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *StartTransaction:
 			return true
@@ -353,11 +354,11 @@ func (i *trackedRowIter) done() {
 }
 
 func disposeNode(n sql.Node) {
-	visit.Inspect(n, func(node sql.Node) bool {
+	transform.Inspect(n, func(node sql.Node) bool {
 		sql.Dispose(node)
 		return true
 	})
-	visit.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		sql.Dispose(e)
 		return true
 	})

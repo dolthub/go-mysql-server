@@ -17,7 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
@@ -69,7 +69,7 @@ func (s *Scope) MemoNodes() []sql.Node {
 	return s.memos
 }
 
-// InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope. When using these nodes for
+// InnerToOuter returns the scope Node in order of innermost scope to outermost scope. When using these nodes for
 // analysis, always inspect the children of the nodes, rather than the nodes themselves. The children define the schema
 // of the rows being processed by the scope node itself.
 func (s *Scope) InnerToOuter() []sql.Node {
@@ -112,7 +112,7 @@ func (s *Scope) Schema() sql.Schema {
 				for _, expr := range n.Projections {
 					var col *sql.Column
 					if expr.Resolved() {
-						col = visit.ExpressionToColumn(expr)
+						col = transform.ExpressionToColumn(expr)
 					} else {
 						// TODO: a new type here?
 						col = &sql.Column{

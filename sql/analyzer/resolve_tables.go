@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 const dualTableName = "dual"
@@ -52,7 +52,7 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	return visit.NodesWithCtx(n, nil, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, nil, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		ignore := false
 		switch p := c.Parent.(type) {
 		case *plan.DropTable:
@@ -92,7 +92,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 		// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
 		// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
 		// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
-		asOfExpr, _, err := visit.Exprs(t.AsOf, resolveFunctionsInExpr(ctx, a))
+		asOfExpr, _, err := transform.Exprs(t.AsOf, resolveFunctionsInExpr(ctx, a))
 		if err != nil {
 			return nil, err
 		}
@@ -130,7 +130,7 @@ func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	span, _ := ctx.Span("set_target_schema")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		t, ok := n.(sql.SchemaTarget)
 		if !ok {
 			return n, sql.SameTree, nil

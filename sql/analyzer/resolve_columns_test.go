@@ -49,7 +49,7 @@ func TestQualifyColumnsProject(t *testing.T) {
 		),
 	)
 
-	result, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node, nil)
+	result, _, err := qualifyColumns(sql.NewEmptyContext(), NewDefault(nil), node, nil)
 	require.NoError(err)
 
 	expected := plan.NewProject(
@@ -663,7 +663,7 @@ func TestPushdownGroupByAliases(t *testing.T) {
 		),
 	)
 
-	result, err := pushdownGroupByAliases(sql.NewEmptyContext(), a, node, nil)
+	result, _, err := pushdownGroupByAliases(sql.NewEmptyContext(), a, node, nil)
 	require.NoError(err)
 
 	require.Equal(expected, result)

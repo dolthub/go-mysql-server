@@ -15,8 +15,9 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
@@ -29,7 +30,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 	span, _ := ctx.Span("loadTriggers")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node

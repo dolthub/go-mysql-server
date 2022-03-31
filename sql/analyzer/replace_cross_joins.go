@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // comparisonSatisfiesJoinCondition checks a) whether a comparison is a valid join predicate,
@@ -58,7 +58,7 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.CrossJoi
 // satisfies the join condition. The input conjunctions have already been split,
 // so we do not care which predicate satisfies the expression.
 func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
-	return visit.InspectExprs(c, func(expr sql.Expression) bool {
+	return transform.InspectExprs(c, func(expr sql.Expression) bool {
 		switch e := expr.(type) {
 		case expression.Comparer:
 			return comparisonSatisfiesJoinCondition(e, j)
@@ -78,14 +78,14 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, sql.SameTree, nil
 	}
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
 			return n, sql.SameTree, nil
 		}
 		predicates := splitConjunction(f.Expression)
 		movedPredicates := make(map[int]struct{})
-		newF, _, err := visit.Nodes(f, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		newF, _, err := transform.Node(f, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 			cj, ok := n.(*plan.CrossJoin)
 			if !ok {
 				return n, sql.SameTree, nil

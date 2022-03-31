@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // FixFieldIndexesOnExpressions executes FixFieldIndexes on a list of exprs.
@@ -53,7 +53,7 @@ func FixFieldIndexesOnExpressions(ctx *sql.Context, scope *Scope, a *Analyzer, s
 func FixFieldIndexes(ctx *sql.Context, scope *Scope, a *Analyzer, schema sql.Schema, exp sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 	scopeLen := len(scope.Schema())
 
-	return visit.Exprs(exp, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return transform.Exprs(exp, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		switch e := e.(type) {
 		// For each GetField expression, re-index it with the appropriate index from the schema.
 		case *expression.GetField:
@@ -129,7 +129,7 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, a *Analyzer, node sql.Node,
 		return node, sql.SameTree, nil
 	}
 
-	n, sameC, err := visit.SingleNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	n, sameC, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		for _, schema := range schemas {
 			fixed, same, err := FixFieldIndexes(ctx, scope, a, schema, e)
 			if err == nil {
@@ -198,7 +198,7 @@ func FixFieldIndexesForTableNode(ctx *sql.Context, a *Analyzer, node sql.Node, s
 		return node, sql.SameTree, nil
 	}
 
-	n, same, err := visit.SingleNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	n, same, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		schema := node.Schema()
 		fixed, same, err := FixFieldIndexes(ctx, scope, a, schema, e)
 		if err != nil {

@@ -16,8 +16,9 @@ package window
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -163,13 +164,13 @@ func (l *Lag) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, e
 }
 
 func (l *Lag) NewWindowFunction() (sql.WindowFunction, error) {
-	c, err := visit.Clone(l.ChildExpressions[0])
+	c, err := transform.Clone(l.ChildExpressions[0])
 	if err != nil {
 		return nil, err
 	}
 	var def sql.Expression
 	if len(l.ChildExpressions) > 1 {
-		def, err = visit.Clone(l.ChildExpressions[1])
+		def, err = transform.Clone(l.ChildExpressions[1])
 		if err != nil {
 			return nil, err
 		}

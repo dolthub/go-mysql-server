@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"sort"
 	"strconv"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Table represents an in-memory database table.
@@ -551,7 +551,7 @@ func (t *Table) addColumnToSchema(ctx *sql.Context, newCol *sql.Column, order *s
 		if i == newColIdx {
 			continue
 		}
-		newDefault, _, _ := visit.Exprs(newSchCol.Default, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		newDefault, _, _ := transform.Exprs(newSchCol.Default, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if expr, ok := expr.(*expression.GetField); ok {
 				return expr.WithIndex(newSch.IndexOf(expr.Name(), t.name)), sql.NewTree, nil
 			}

@@ -15,13 +15,12 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
@@ -53,7 +52,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	var sch sql.Schema
 	var indexes []string
 	var err error
-	visit.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch = n.Table.Schema()
@@ -94,7 +93,7 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	visit.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch, err = validateModifyColumn(initialSch, sch, n)
@@ -233,7 +232,7 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
 	var err error
 	for _, check := range checks {
-		_ = visit.InspectExprs(check.Expr, func(e sql.Expression) bool {
+		_ = transform.InspectExprs(check.Expr, func(e sql.Expression) bool {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
 					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)

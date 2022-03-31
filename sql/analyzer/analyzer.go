@@ -370,8 +370,8 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		//"plan": , n.String(),
 	})
-	a.Debug = true
-	a.Verbose = true
+	//a.Debug = true
+	//a.Verbose = true
 
 	var (
 		same    = sql.SameTree

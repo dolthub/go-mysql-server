@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package visit
+package transform
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
@@ -28,7 +28,7 @@ type TransformContext struct {
 	ChildNum int
 	// SchemaPrefix is the concatenation of the Parent's SchemaPrefix with
 	// child.Schema() for all child with an index < ChildNum in
-	// Parent.Children(). For many Nodes, this represents the schema of the
+	// Parent.Children(). For many Node, this represents the schema of the
 	// |row| parameter that is going to be passed to this node by its
 	// parent in a RowIter() call. This field is only non-nil if the entire
 	// in-order traversal of the tree up to this point is Resolved().
@@ -39,31 +39,31 @@ type TransformContext struct {
 // TransformContext.
 type Transformer func(TransformContext) (sql.Node, sql.TreeIdentity, error)
 
-// TransformSelector is a function which will allow NodesWithCtx to not
+// TransformSelector is a function which will allow NodeWithCtx to not
 // traverse past a certain TransformContext. If this function returns |false|
 // for a given TransformContext, the subtree is not transformed and the child
 // is kept in its existing place in the parent as-is.
 type TransformSelector func(TransformContext) bool
 
-// NodesExprsWithNode applies a transformation function to all expressions
+// NodeExprsWithNode applies a transformation function to all expressions
 // on the given tree from the bottom up.
-func NodesExprsWithNode(node sql.Node, f TransformExprWithNodeFunc) (sql.Node, sql.TreeIdentity, error) {
-	return Nodes(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
-		return SingleNodeExprsWithNode(n, f)
+func NodeExprsWithNode(node sql.Node, f TransformExprWithNodeFunc) (sql.Node, sql.TreeIdentity, error) {
+	return Node(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		return OneNodeExprsWithNode(n, f)
 	})
 }
 
-// NodesExprs applies a transformation function to all expressions
+// NodeExprs applies a transformation function to all expressions
 // on the given tree from the bottom up.
-func NodesExprs(node sql.Node, f sql.TransformExprFunc) (sql.Node, sql.TreeIdentity, error) {
-	return NodesExprsWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+func NodeExprs(node sql.Node, f sql.TransformExprFunc) (sql.Node, sql.TreeIdentity, error) {
+	return NodeExprsWithNode(node, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		return f(e)
 	})
 }
 
-// SingleNodeExprsWithNode applies a transformation function to all expressions
+// OneNodeExprsWithNode applies a transformation function to all expressions
 // on the given node.
-func SingleNodeExprsWithNode(n sql.Node, f TransformExprWithNodeFunc) (sql.Node, sql.TreeIdentity, error) {
+func OneNodeExprsWithNode(n sql.Node, f TransformExprWithNodeFunc) (sql.Node, sql.TreeIdentity, error) {
 	ne, ok := n.(sql.Expressioner)
 	if !ok {
 		return n, sql.SameTree, nil
@@ -106,9 +106,9 @@ func SingleNodeExprsWithNode(n sql.Node, f TransformExprWithNodeFunc) (sql.Node,
 	return n, sql.SameTree, nil
 }
 
-// SingleNodeExpressions applies a transformation function to all expressions
+// OneNodeExpressions applies a transformation function to all expressions
 // on the given node.
-func SingleNodeExpressions(n sql.Node, f sql.TransformExprFunc) (sql.Node, sql.TreeIdentity, error) {
+func OneNodeExpressions(n sql.Node, f sql.TransformExprFunc) (sql.Node, sql.TreeIdentity, error) {
 	e, ok := n.(sql.Expressioner)
 	if !ok {
 		return n, sql.SameTree, nil
@@ -150,14 +150,14 @@ func SingleNodeExpressions(n sql.Node, f sql.TransformExprFunc) (sql.Node, sql.T
 	return n, sql.SameTree, nil
 }
 
-// NodesWithCtx transforms |n| from the bottom up, left to right, by passing
+// NodeWithCtx transforms |n| from the bottom up, left to right, by passing
 // each node to |f|. If |s| is non-nil, does not descend into children where
 // |s| returns false.
-func NodesWithCtx(n sql.Node, s TransformSelector, f Transformer) (sql.Node, sql.TreeIdentity, error) {
-	return allNodesWithCtxHelper(TransformContext{n, nil, -1, sql.Schema{}}, s, f)
+func NodeWithCtx(n sql.Node, s TransformSelector, f Transformer) (sql.Node, sql.TreeIdentity, error) {
+	return nodeWithCtxHelper(TransformContext{n, nil, -1, sql.Schema{}}, s, f)
 }
 
-func allNodesWithCtxHelper(c TransformContext, s TransformSelector, f Transformer) (sql.Node, sql.TreeIdentity, error) {
+func nodeWithCtxHelper(c TransformContext, s TransformSelector, f Transformer) (sql.Node, sql.TreeIdentity, error) {
 	node := c.Node
 	_, ok := node.(sql.OpaqueNode)
 	if ok {
@@ -172,16 +172,16 @@ func allNodesWithCtxHelper(c TransformContext, s TransformSelector, f Transforme
 	var (
 		newChildren []sql.Node
 		err         error
-		child sql.Node
-		cc    TransformContext
-		sameC = sql.SameTree
+		child       sql.Node
+		cc          TransformContext
+		sameC       = sql.SameTree
 	)
 
 	for i := 0; i < len(children); i++ {
 		child = children[i]
 		cc = TransformContext{child, node, i, nil}
 		if s == nil || s(cc) {
-			child, sameC, err = allNodesWithCtxHelper(cc, s, f)
+			child, sameC, err = nodeWithCtxHelper(cc, s, f)
 			if err != nil {
 				return nil, sql.SameTree, err
 			}
@@ -210,10 +210,10 @@ func allNodesWithCtxHelper(c TransformContext, s TransformSelector, f Transforme
 	return node, sameC && sameN, nil
 }
 
-// NodesWithPrefixSchema transforms |n| from the bottom up, left to right, by passing
+// NodeWithPrefixSchema transforms |n| from the bottom up, left to right, by passing
 // each node to |f|. If |s| is non-nil, does not descend into children where
 // |s| returns false.
-func NodesWithPrefixSchema(n sql.Node, s TransformSelector, f Transformer) (sql.Node, sql.TreeIdentity, error) {
+func NodeWithPrefixSchema(n sql.Node, s TransformSelector, f Transformer) (sql.Node, sql.TreeIdentity, error) {
 	return transformUpWithPrefixSchemaHelper(TransformContext{n, nil, -1, sql.Schema{}}, s, f)
 }
 
@@ -233,8 +233,8 @@ func transformUpWithPrefixSchemaHelper(c TransformContext, s TransformSelector, 
 		sameC       = sql.SameTree
 		newChildren []sql.Node
 		child       sql.Node
-		err error
-		cc  TransformContext
+		err         error
+		cc          TransformContext
 	)
 
 	childPrefix := append(sql.Schema{}, c.SchemaPrefix...)
@@ -277,9 +277,9 @@ func transformUpWithPrefixSchemaHelper(c TransformContext, s TransformSelector, 
 	return node, sameC && sameN, nil
 }
 
-// Nodes applies a transformation function to the given tree from the
+// Node applies a transformation function to the given tree from the
 // bottom up.
-func Nodes(node sql.Node, f sql.TransformNodeFunc) (sql.Node, sql.TreeIdentity, error) {
+func Node(node sql.Node, f sql.TransformNodeFunc) (sql.Node, sql.TreeIdentity, error) {
 	_, ok := node.(sql.OpaqueNode)
 	if ok {
 		return f(node)
@@ -299,7 +299,7 @@ func Nodes(node sql.Node, f sql.TransformNodeFunc) (sql.Node, sql.TreeIdentity, 
 
 	for i := 0; i < len(children); i++ {
 		child = children[i]
-		child, sameC, err = Nodes(child, f)
+		child, sameC, err = Node(child, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}
@@ -327,10 +327,10 @@ func Nodes(node sql.Node, f sql.TransformNodeFunc) (sql.Node, sql.TreeIdentity, 
 	return node, sameC && sameN, nil
 }
 
-// AllNodesWithOpaque applies a transformation function to the given tree from the bottom up, including through
+// NodeWithOpaque applies a transformation function to the given tree from the bottom up, including through
 // opaque nodes. This method is generally not safe to use for a transformation. Opaque nodes need to be considered in
 // isolation except for very specific exceptions.
-func AllNodesWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, sql.TreeIdentity, error) {
+func NodeWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, sql.TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
 		return f(node)
@@ -345,7 +345,7 @@ func AllNodesWithOpaque(node sql.Node, f sql.TransformNodeFunc) (sql.Node, sql.T
 
 	for i := 0; i < len(children); i++ {
 		c = children[i]
-		c, sameC, err = AllNodesWithOpaque(c, f)
+		c, sameC, err = NodeWithOpaque(c, f)
 		if err != nil {
 			return nil, sql.SameTree, err
 		}

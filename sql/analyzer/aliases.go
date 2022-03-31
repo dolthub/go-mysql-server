@@ -16,8 +16,9 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -129,7 +130,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	aliases := make(TableAliases)
 	for _, scopeNode := range scope.OuterToInner() {
 		passAliases = make(TableAliases)
-		visit.Inspect(scopeNode, aliasFn)
+		transform.Inspect(scopeNode, aliasFn)
 		if analysisErr != nil {
 			return nil, analysisErr
 		}
@@ -138,7 +139,7 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 	}
 
 	passAliases = make(TableAliases)
-	visit.Inspect(n, aliasFn)
+	transform.Inspect(n, aliasFn)
 	if analysisErr != nil {
 		return nil, analysisErr
 	}
@@ -186,7 +187,7 @@ func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, expr ...s
 // declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, e sql.Expression) sql.Expression {
 	// If the query has table aliases, use them to replace any table aliases in column expressions
-	normalized, _, _ := visit.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	normalized, _, _ := transform.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {
 			table := field.Table()
 			if rt, ok := tableAliases[table]; ok {

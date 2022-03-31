@@ -16,13 +16,12 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 const maxCteDepth = 5
@@ -49,7 +48,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	}
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	n, _, err := visit.NodesExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	n, _, err := transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		sq, ok := e.(*plan.Subquery)
 		if !ok {
 			return e, sql.SameTree, nil
@@ -79,7 +78,7 @@ func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 	cur = n
 	for i := 0; i < maxCteDepth && !same; i++ {
 		prev = cur
-		cur, same, err = visit.AllNodesWithOpaque(prev, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		cur, same, err = transform.NodeWithOpaque(prev, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 			switch n := node.(type) {
 			case *plan.UnresolvedTable:
 				lowerName := strings.ToLower(n.Name())
@@ -155,7 +154,7 @@ func stripWith(ctx *sql.Context, a *Analyzer, scope *Scope, n sql.Node, ctes map
 // resolved, so Schema() could fail.
 func schemaLength(node sql.Node) int {
 	schemaLen := 0
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Project:
 			schemaLen = len(node.Projections)
@@ -193,7 +192,7 @@ func liftCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 	return n, sql.SameTree, err
 }
 func liftCommonTableExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if union, isUnion := n.(*plan.Union); isUnion {
 			if cte, isCTE := union.Left().(*plan.With); isCTE && !cte.Recursive {
 				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs, cte.Recursive), sql.NewTree, nil
@@ -224,7 +223,7 @@ func liftCommonTableExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node,
 }
 
 func liftRecursiveCte(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		ta, ok := n.(*plan.TableAlias)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -318,7 +317,7 @@ func resolveRecursiveCte(ctx *sql.Context, a *Analyzer, node sql.Node, sq sql.No
 	rTable := plan.NewRecursiveTable(rCte.Name(), schema)
 
 	// replace recursive table refs
-	newRec, same, err := visit.Nodes(rCte.Rec, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	newRec, same, err := transform.Node(rCte.Rec, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch t := n.(type) {
 		case *plan.UnresolvedTable:
 			if t.Name() == rCte.Name() {

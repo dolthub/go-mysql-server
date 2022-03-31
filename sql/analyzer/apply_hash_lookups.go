@@ -18,11 +18,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return visit.NodesWithPrefixSchema(n, nil, func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return transform.NodeWithPrefixSchema(n, nil, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		if c.SchemaPrefix == nil {
 			// If c.SchemaPrefix is nil, it's possible our prefix
 			// isn't Resolved yet. Whatever the case, we cannot

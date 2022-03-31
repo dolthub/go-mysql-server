@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // reorderProjection adds intermediate Project nodes to the descendants of existing Project nodes, adding fields to
@@ -40,7 +40,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return n, sql.SameTree, nil
 	}
 
-	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
 		// When we transform the projection, the children will always be
 		// unresolved in the case we want to fix, as the reorder happens just
@@ -124,7 +124,7 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 	// processed first, so only the lowest mention of each alias will be applied at that layer. High layers will just have
 	// a normal GetField expression to reference the lower layer.
 	appliedProjections := make(map[string]bool)
-	child, _, err = visit.Nodes(project.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	child, _, err = transform.Node(project.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		var missingColumns []string
 		switch node := node.(type) {
 		case *plan.Sort, *plan.Filter:
@@ -224,7 +224,7 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 // findDeferredColumns returns all the deferredColumn expressions in the node given
 func findDeferredColumns(n sql.Node) []*deferredColumn {
 	var cols []*deferredColumn
-	visit.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		if dc, ok := e.(*deferredColumn); ok {
 			cols = append(cols, dc)
 		}
@@ -238,7 +238,7 @@ func findDeferredColumns(n sql.Node) []*deferredColumn {
 // given node and its children.
 func hasNaturalJoin(node sql.Node) bool {
 	var found bool
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		if _, ok := node.(*plan.NaturalJoin); ok {
 			found = true
 			return false

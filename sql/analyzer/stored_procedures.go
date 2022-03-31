@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // loadStoredProcedures loads stored procedures for all databases on relevant calls.
@@ -33,7 +33,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		return n, sql.SameTree, nil
 	}
 	referencesProcedures := false
-	visit.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		if _, ok := n.(*plan.Call); ok {
 			referencesProcedures = true
 			return false
@@ -179,7 +179,7 @@ func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string
 	var err error
 	spUnsupportedErr := errors.NewKind("creating %s in stored procedures is currently unsupported " +
 		"and will be added in a future release")
-	visit.Inspect(proc, func(n sql.Node) bool {
+	transform.Inspect(proc, func(n sql.Node) bool {
 		switch n.(type) {
 		case *plan.CreateTable:
 			err = spUnsupportedErr.New("tables")
@@ -204,7 +204,7 @@ func validateStoredProcedure(ctx *sql.Context, proc *plan.Procedure) (map[string
 		return nil, err
 	}
 
-	visit.Inspect(proc, func(n sql.Node) bool {
+	transform.Inspect(proc, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Call:
 			if proc.Name == strings.ToLower(n.Name) {
@@ -237,7 +237,7 @@ func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, pr
 		return nil, sql.SameTree, err
 	}
 	// Some nodes do not expose all of their children, so we need to handle them here.
-	newProc, _, err := visit.Nodes(newProcNode, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	newProc, _, err := transform.Node(newProcNode, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.InsertInto:
 			newSource, same, err := resolveProcedureParamsTransform(ctx, paramNames, n.Source)
@@ -271,7 +271,7 @@ func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, pr
 	if err != nil {
 		return nil, sql.SameTree, err
 	}
-	newProc, ok := newProcNode.(*plan.Procedure)
+	newProc, ok := newProc.(*plan.Procedure)
 	if !ok {
 		return nil, sql.SameTree, fmt.Errorf("expected `*plan.Procedure` but got `%T`", newProcNode)
 	}
@@ -281,7 +281,7 @@ func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, pr
 // resolveProcedureParamsTransform resolves all of the named parameters and declared variables inside of a node.
 // In cases where an expression contains nodes, this will also walk those nodes.
 func resolveProcedureParamsTransform(ctx *sql.Context, paramNames map[string]struct{}, n sql.Node) (sql.Node, sql.TreeIdentity, error) {
-	return visit.NodesExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.UnresolvedColumn:
 			if strings.ToLower(e.Table()) == "" {
@@ -322,7 +322,7 @@ func applyProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, sql.SameTree, nil
 	}
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Call:
 			return applyProceduresCall(ctx, a, n, scope)
@@ -348,7 +348,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		case *expression.ProcedureParam:
 			return expr.WithParamReference(pRef), sql.NewTree, nil
 		case *plan.Subquery: // Subqueries have an internal Query node that we need to check as well.
-			newQuery, same, err := visit.NodesExprs(expr.Query, procParamTransformFunc)
+			newQuery, same, err := transform.NodeExprs(expr.Query, procParamTransformFunc)
 			if err != nil {
 				return nil, sql.SameTree, err
 			}
@@ -362,16 +362,16 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			return e, sql.SameTree, nil
 		}
 	}
-	transformedProcedure, _, err := visit.NodesExprs(procedure, procParamTransformFunc)
+	transformedProcedure, _, err := transform.NodeExprs(procedure, procParamTransformFunc)
 	if err != nil {
 		return nil, sql.SameTree, err
 	}
 	// Some nodes do not expose all of their children, so we need to handle them here.
-	transformedProcedure, _, err = visit.Nodes(transformedProcedure, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	transformedProcedure, _, err = transform.Node(transformedProcedure, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.InsertInto:
-			newSource, same, err := visit.Nodes(n.Source, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
-				return visit.NodesExprs(n, procParamTransformFunc)
+			newSource, same, err := transform.Node(n.Source, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+				return transform.NodeExprs(n, procParamTransformFunc)
 			})
 			if err != nil {
 				return nil, sql.SameTree, err
@@ -381,11 +381,11 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 			}
 			return n.WithSource(newSource), sql.NewTree, nil
 		case *plan.Union:
-			newLeft, sameL, err := visit.NodesExprs(n.Left(), procParamTransformFunc)
+			newLeft, sameL, err := transform.NodeExprs(n.Left(), procParamTransformFunc)
 			if err != nil {
 				return nil, sql.SameTree, err
 			}
-			newRight, sameR, err := visit.NodesExprs(n.Right(), procParamTransformFunc)
+			newRight, sameR, err := transform.NodeExprs(n.Right(), procParamTransformFunc)
 			if err != nil {
 				return nil, sql.SameTree, err
 			}
@@ -402,7 +402,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 		return nil, sql.SameTree, err
 	}
 
-	transformedProcedure, _, err = visit.Nodes(transformedProcedure, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	transformedProcedure, _, err = transform.Node(transformedProcedure, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		rt, ok := node.(*plan.ResolvedTable)
 		if !ok {
 			return node, sql.SameTree, nil

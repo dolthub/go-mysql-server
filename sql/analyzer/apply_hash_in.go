@@ -18,17 +18,17 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
 			return node, sql.SameTree, nil
 		}
 
-		e, same, err := visit.Exprs(filter.Expression, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := transform.Exprs(filter.Expression, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if e, ok := expr.(*expression.InTuple); ok &&
 				hasSingleOutput(e.Left()) &&
 				isStatic(e.Right()) {
@@ -56,7 +56,7 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 
 // hasSingleOutput checks if an expression evaluates to a single output
 func hasSingleOutput(e sql.Expression) bool {
-	return !visit.InspectExprs(e, func(expr sql.Expression) bool {
+	return !transform.InspectExprs(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal, *expression.GetField,
 			expression.Comparer, *expression.Convert, sql.FunctionExpression,
@@ -71,7 +71,7 @@ func hasSingleOutput(e sql.Expression) bool {
 
 // isStatic checks if an expression is static
 func isStatic(e sql.Expression) bool {
-	return !visit.InspectExprs(e, func(expr sql.Expression) bool {
+	return !transform.InspectExprs(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
 		case expression.Tuple, *expression.Literal:
 			return false

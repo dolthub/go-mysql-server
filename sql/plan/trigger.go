@@ -15,12 +15,11 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type TriggerEvent string
@@ -104,8 +103,8 @@ type triggerIter struct {
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func prependRowInPlanForTriggerExecution(row sql.Row) func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
-	return func(c visit.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *Project:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
@@ -136,7 +135,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	}
 
 	// Wrap the execution logic with the current child row before executing it.
-	logic, _, err := visit.NodesWithCtx(t.executionLogic, nil, prependRowInPlanForTriggerExecution(childRow))
+	logic, _, err := transform.NodeWithCtx(t.executionLogic, nil, prependRowInPlanForTriggerExecution(childRow))
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +195,7 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 		return hasSetField, row[len(row)/2:]
 	case *TriggerBeginEndBlock:
 		hasSetField := false
-		visit.Inspect(logic, func(n sql.Node) bool {
+		transform.Inspect(logic, func(n sql.Node) bool {
 			set, ok := n.(*Set)
 			if !ok {
 				return true

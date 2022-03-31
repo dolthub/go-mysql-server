@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"io"
 	"strings"
 
@@ -25,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -306,7 +306,7 @@ func newInsertIter(
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
 	var exprs []sql.Expression
-	visit.Inspect(values, func(node sql.Node) bool {
+	transform.Inspect(values, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *Project:
 			exprs = node.Projections

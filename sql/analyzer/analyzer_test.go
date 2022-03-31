@@ -54,7 +54,7 @@ func TestMaxIterations(t *testing.T) {
 				n = plan.NewResolvedTable(table, nil, nil)
 			}
 
-			return n, nil
+			return n, sql.NewTree, nil
 		}).Build())
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")

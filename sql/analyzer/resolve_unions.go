@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"reflect"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -23,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // resolveUnions resolves the left and right side of a union node in isolation.
@@ -35,7 +35,7 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 		return n, sql.SameTree, nil
 	}
 
-	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.Union:
 			subqueryCtx, cancelFunc := ctx.NewSubContext()
@@ -72,7 +72,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 		return n, sql.SameTree, nil
 	}
 
-	return visit.Nodes(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.Union:
 			subqueryCtx, cancelFunc := ctx.NewSubContext()
@@ -117,7 +117,7 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	if !n.Resolved() {
 		return n, sql.SameTree, nil
 	}
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if u, ok := n.(*plan.Union); ok {
 			ls, rs := u.Left().Schema(), u.Right().Schema()
 			if len(ls) != len(rs) {

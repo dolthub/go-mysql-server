@@ -15,13 +15,13 @@
 package plan
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"strings"
 
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Project is a projection of certain expression from the children node.
@@ -43,7 +43,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
 	for i, e := range p.Projections {
-		s[i] = visit.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e)
 	}
 	return s
 }

@@ -16,20 +16,19 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
-
-	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_views")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		urt, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -115,7 +114,7 @@ func resolveViews(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 func applyAsOfToView(n sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, sql.TreeIdentity, error) {
 	a.Log("applying AS OF clause to view definition")
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		urt, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -139,7 +138,7 @@ func applyAsOfToView(n sql.Node, a *Analyzer, asOf sql.Expression) (sql.Node, sq
 func applyDatabaseQualifierToView(n sql.Node, a *Analyzer, dbName string) (sql.Node, sql.TreeIdentity, error) {
 	a.Log("applying database qualifier to view definition")
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		urt, ok := n.(*plan.UnresolvedTable)
 		if !ok {
 			return n, sql.SameTree, nil

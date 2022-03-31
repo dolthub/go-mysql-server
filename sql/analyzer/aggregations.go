@@ -18,7 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // flattenAggregationExpressions flattens any complex aggregate or window expressions in a GroupBy or Window node and
@@ -36,7 +36,7 @@ func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 		return n, sql.SameTree, nil
 	}
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Window:
 			if !hasHiddenAggregations(n.SelectExprs) && !hasHiddenWindows(n.SelectExprs) {
@@ -82,7 +82,7 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 	projDeps := make(map[int]struct{})
 	allSame := sql.SameTree
 	for i, p := range projection {
-		e, same, err := visit.Exprs(p, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := transform.Exprs(p, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
 			// continue on
@@ -118,7 +118,7 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 	// find subset of allGetFields not covered by newAggregates
 	newAggDeps := make(map[int]struct{}, 0)
 	for _, agg := range newAggregates {
-		_ = visit.InspectExprs(agg, func(e sql.Expression) bool {
+		_ = transform.InspectExprs(agg, func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				newAggDeps[e.Index()] = struct{}{}

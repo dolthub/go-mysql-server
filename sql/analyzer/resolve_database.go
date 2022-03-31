@@ -17,7 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/visit"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // resolveDatabases sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
@@ -26,7 +26,7 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		d, ok := n.(sql.Databaser)
 		if !ok {
 			return n, sql.SameTree, nil
@@ -61,7 +61,7 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
 func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
 	var err error
-	visit.Inspect(n, func(node sql.Node) bool {
+	transform.Inspect(n, func(node sql.Node) bool {
 		switch n.(type) {
 		// TODO: there are probably other kinds of nodes that need this too
 		case *plan.ShowTables, *plan.ShowTriggers, *plan.CreateTable:

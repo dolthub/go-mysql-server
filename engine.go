@@ -16,8 +16,9 @@ package sqle
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"os"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -226,7 +227,7 @@ func (e *Engine) QueryNodeWithBindings(
 // allNode2 returns whether all the nodes in the tree implement Node2.
 func allNode2(n sql.Node) bool {
 	allNode2 := true
-	visit.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			table := n.Table
@@ -250,7 +251,7 @@ func allNode2(n sql.Node) bool {
 
 	// All expressions in the tree must likewise be Expression2, and all types Type2, or we can't use rowFrame iteration
 	// TODO: likely that some nodes rely on expressions but don't implement sql.Expressioner, or implement it incompletely
-	visit.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		if e == nil {
 			return false
 		}

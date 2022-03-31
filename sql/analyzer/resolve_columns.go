@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"sort"
 	"strings"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func checkUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
@@ -182,14 +182,14 @@ func dedupStrings(in []string) []string {
 
 // qualifyColumns assigns a table to any column expressions that don't have one already
 func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
 			return n, sql.SameTree, nil
 		}
 
 		symbols := getNodeAvailableNames(n, scope)
 
-		return visit.SingleNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
 		})
 	})
@@ -211,7 +211,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 
 	// Get table names in all outer scopes and nodes. Inner scoped names will overwrite those from the outer scope.
 	for i, n := range append(append(([]sql.Node)(nil), n), scope.InnerToOuter()...) {
-		visit.Inspect(n, func(n sql.Node) bool {
+		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.SubqueryAlias, *plan.ResolvedTable, *plan.ValueDerivedTable, *plan.RecursiveTable, *plan.RecursiveCte:
 				name := strings.ToLower(n.(sql.Nameable).Name())
@@ -330,7 +330,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 	default:
 		// If any other kind of expression has a star, just replace it
 		// with an unqualified star because it cannot be expanded.
-		return visit.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.Exprs(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			if _, ok := e.(*expression.Star); ok {
 				return expression.NewStar(), sql.NewTree, nil
 			}
@@ -385,7 +385,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
 
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if n.Resolved() {
 			return n, sql.SameTree, nil
 		}
@@ -408,7 +408,7 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			return nil, sql.SameTree, err
 		}
 
-		return visit.SingleNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
 				return e, sql.SameTree, nil
@@ -446,11 +446,11 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 		case *expression.Alias:
 			// Aliases get indexed twice with the same index number: once with the aliased name and once with the
 			// underlying name
-			indexColumn(visit.ExpressionToColumn(e))
+			indexColumn(transform.ExpressionToColumn(e))
 			idx--
 			indexColumnExpr(e.Child)
 		default:
-			indexColumn(visit.ExpressionToColumn(e))
+			indexColumn(transform.ExpressionToColumn(e))
 		}
 	}
 
@@ -602,7 +602,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 	// the new projection node.
 	replacedAliases := make(map[string]string)
 	var err error
-	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
 		// GroupBy itself.
 		ex, ok := n.(sql.Expressioner)
@@ -739,7 +739,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if len(renames) > 0 {
 			for i, expr := range newSelectedExprs {
 				var err error
-				newSelectedExprs[i], _, err = visit.Exprs(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newSelectedExprs[i], _, err = transform.Exprs(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the

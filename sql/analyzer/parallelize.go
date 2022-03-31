@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/visit"
 	"os"
 	"strconv"
 
@@ -23,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func init() {
@@ -68,7 +68,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 		return node, sql.SameTree, nil
 	}
 
-	node, same, err := visit.Nodes(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	node, same, err := transform.Node(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !isParallelizable(node) {
 			return node, sql.SameTree, nil
 		}
@@ -83,7 +83,7 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 		return node, sql.SameTree, nil
 	}
 
-	return visit.Nodes(node, removeRedundantExchanges)
+	return transform.Node(node, removeRedundantExchanges)
 }
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
@@ -94,7 +94,7 @@ func removeRedundantExchanges(node sql.Node) (sql.Node, sql.TreeIdentity, error)
 		return node, sql.SameTree, nil
 	}
 
-	child, same, err := visit.Nodes(exchange.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	child, same, err := transform.Node(exchange.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
 			return exchange.Child, sql.NewTree, nil
 		}
@@ -115,7 +115,7 @@ func isParallelizable(node sql.Node) bool {
 	var tableSeen bool
 	var lastWasTable bool
 
-	visit.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		if node == nil {
 			return true
 		}
@@ -136,7 +136,7 @@ func isParallelizable(node sql.Node) bool {
 				sql.Inspect(e, func(e sql.Expression) bool {
 					if q, ok := e.(*plan.Subquery); ok {
 						subqueryParallelizable := true
-						visit.Inspect(q.Query, func(node sql.Node) bool {
+						transform.Inspect(q.Query, func(node sql.Node) bool {
 							if node == nil {
 								return true
 							}
