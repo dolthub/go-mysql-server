@@ -29,13 +29,15 @@ var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, co
 // IndexedTableAccess represents an indexed lookup of a particular ResolvedTable. The values for the key used to access
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
-	*ResolvedTable
+	ResolvedTable *ResolvedTable
 	index    sql.Index
 	keyExprs []sql.Expression
 	lookup   sql.IndexLookup
 }
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
+var _ sql.Nameable = (*IndexedTableAccess)(nil)
+//var _ sql.Node2 = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 
 // NewIndexedTableAccess returns a new IndexedTableAccess node with the index and key expressions given. An index
@@ -58,6 +60,38 @@ func NewStaticIndexedTableAccess(resolvedTable *ResolvedTable, lookup sql.IndexL
 		keyExprs:      keyExprs,
 		lookup:        lookup,
 	}
+}
+
+func (i *IndexedTableAccess) Resolved() bool {
+	return i.ResolvedTable.Resolved()
+}
+
+func (i *IndexedTableAccess) Schema() sql.Schema {
+	return i.ResolvedTable.Schema()
+}
+
+func (i *IndexedTableAccess) Children() []sql.Node {
+	return nil
+}
+
+func (i *IndexedTableAccess) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 0)
+	}
+
+	return i, nil
+}
+
+func (i *IndexedTableAccess) Name() string {
+	return i.ResolvedTable.Name()
+}
+
+func (i *IndexedTableAccess) Database() sql.Database {
+	return i.ResolvedTable.Database
+}
+
+func (i *IndexedTableAccess) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	return i.ResolvedTable.CheckPrivileges(ctx, opChecker)
 }
 
 func (i *IndexedTableAccess) Index() sql.Index {
@@ -84,6 +118,13 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
 }
 
+// func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+// 	// TODO implement me
+// 	panic("implement me")
+// }
+
+// CanBuildIndex returns whether an index lookup on this table can be successfully built for a zero-valued key. For a
+// static lookup, no lookup needs to be built, so returns true.
 func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	// If the lookup was provided at analysis time (static evaluation), then an index was already built
 	if i.lookup != nil {
@@ -142,7 +183,7 @@ func (i *IndexedTableAccess) String() string {
 	if i.lookup != nil {
 		filters = fmt.Sprintf(" with ranges: %s", i.lookup.Ranges().DebugString())
 	}
-	return fmt.Sprintf("IndexedTableAccess(%s on %s%s)", i.Name(), formatIndexDecoratorString(i.index), filters)
+	return fmt.Sprintf("IndexedTableAccess(%s on %s%s)", i.ResolvedTable.Name(), formatIndexDecoratorString(i.index), filters)
 }
 
 func formatIndexDecoratorString(idx sql.Index) string {
@@ -156,7 +197,7 @@ func formatIndexDecoratorString(idx sql.Index) string {
 func (i *IndexedTableAccess) DebugString() string {
 	if i.lookup != nil {
 		filters := fmt.Sprintf(" with ranges: %s,", i.lookup.Ranges().DebugString())
-		return fmt.Sprintf("IndexedTableAccess(%s on %s,%s using fields %s)", i.Name(), formatIndexDecoratorString(i.index), filters, "STATIC LOOKUP("+sql.DebugString(i.lookup)+")")
+		return fmt.Sprintf("IndexedTableAccess(%s on %s,%s using fields %s)", i.ResolvedTable.Name(), formatIndexDecoratorString(i.index), filters, "STATIC LOOKUP("+sql.DebugString(i.lookup)+")")
 	}
 	keyExprs := make([]string, len(i.keyExprs))
 	for j := range i.keyExprs {
@@ -191,6 +232,17 @@ func (i *IndexedTableAccess) WithExpressions(exprs ...sql.Expression) (sql.Node,
 		keyExprs:      exprs,
 		lookup:        i.lookup,
 	}, nil
+}
+
+// WithTable replaces the underlying ResolvedTable with the one given.
+func (i IndexedTableAccess) WithTable(table sql.Table) (*IndexedTableAccess, error) {
+	nrt, err := i.ResolvedTable.WithTable(table)
+	if err != nil {
+		return nil, err
+	}
+
+	i.ResolvedTable = nrt
+	return &i, nil
 }
 
 // GetIndexLookup returns the sql.IndexLookup from an IndexedTableAccess.

@@ -301,13 +301,13 @@ func getComparisonIndexLookup(
 
 	var value interface{}
 	var err error
-	right2, _ := right.(sql.Expression2)
-
-	if right2 != nil {
-		value, err = right2.Eval2(ctx, nil)
-	} else {
+	// right2, _ := right.(sql.Expression2)
+	//
+	// if right2 != nil {
+	// 	value, err = right2.Eval2(ctx, nil)
+	// } else {
 		value, err = right.Eval(ctx, nil)
-	}
+	// }
 	if err != nil {
 		return nil, err
 	}

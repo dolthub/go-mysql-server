@@ -211,7 +211,7 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 	}
 
-	if enableRowIter2 {
+	if useIter2 {
 		iter = rowFormatSelectorIter{
 			iter:    iter,
 			iter2:   iter2,
@@ -304,7 +304,7 @@ const (
 )
 
 var fakeReadCommitted bool
-var enableRowIter2 bool
+var enableRowIter2 bool = true
 
 func init() {
 	_, ok := os.LookupEnv(fakeReadCommittedEnvVar)

@@ -114,7 +114,7 @@ func getTable(node sql.Node) sql.Table {
 			table = n.Table
 			return false
 		case *plan.IndexedTableAccess:
-			table = n.Table
+			table = n.ResolvedTable.Table
 			return false
 		}
 		return true
@@ -210,13 +210,7 @@ func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
 				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
-			newRt, err := n.WithTable(table)
-			if err != nil {
-				return nil, err
-			}
-			n2 := *n
-			n2.ResolvedTable = newRt
-			return &n2, nil
+			return n.WithTable(table)
 		default:
 			return n, nil
 		}
