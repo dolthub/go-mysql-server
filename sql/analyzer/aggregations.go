@@ -103,7 +103,7 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 			return nil, nil, allSame, err
 		}
 
-		if !same {
+		if same {
 			allSame = sql.NewTree
 			newAggregates = append(newAggregates, e)
 			name, source := getNameAndSource(e)
@@ -122,7 +122,6 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 			switch e := e.(type) {
 			case *expression.GetField:
 				newAggDeps[e.Index()] = struct{}{}
-				allSame = sql.NewTree
 			}
 			return false
 		})
@@ -134,7 +133,7 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 		}
 	}
 
-	return newProjection, newAggregates, allSame, nil
+	return newProjection, newAggregates, sql.NewTree, nil
 }
 
 func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, sql.TreeIdentity, error) {

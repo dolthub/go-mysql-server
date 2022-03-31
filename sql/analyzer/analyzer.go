@@ -370,11 +370,13 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		//"plan": , n.String(),
 	})
+	//a.Debug = true
+	//a.Verbose = true
 
 	var (
-		same = sql.SameTree
+		same    = sql.SameTree
 		allSame = sql.SameTree
-		err error
+		err     error
 	)
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {

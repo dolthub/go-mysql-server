@@ -101,7 +101,7 @@ func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 }
 
 func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	newn, _, err := visit.NodesExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return visit.NodesExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 		s, ok := e.(*plan.Subquery)
 		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 		// query might cause them to need to shift their field indexes.
@@ -113,7 +113,7 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 		defer cancelFunc()
 		subScope := scope.newScope(n)
 
-		analyzed, same, err := a.analyzeWithSelector(subqueryCtx, s.Query, subScope, analyzeAll)
+		analyzed, _, err := a.analyzeWithSelector(subqueryCtx, s.Query, subScope, analyzeAll)
 		if err != nil {
 			// We ignore certain errors, deferring them to later analysis passes. Specifically, if the subquery isn't
 			// resolved or a column can't be found in the scope node, wait until a later pass.
@@ -121,23 +121,16 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			//  recover the actual error in the validation step.
 			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
 				// keep the work we have and defer remainder of analysis of this subquery until a later pass
-				return s.WithQuery(analyzed), same, nil
+				return s.WithQuery(analyzed), sql.NewTree, nil
 			}
 			return nil, sql.SameTree, err
 		}
 
-		if same {
-			return e, sql.SameTree, nil
-		}
+		//if same {
+		//	return e, sql.SameTree, nil
+		//}
 		return s.WithQuery(StripPassthroughNodes(analyzed)), sql.NewTree, nil
 	})
-	if err != nil {
-		return nil, sql.SameTree, err
-	}
-	if nodesEqual(newn, n) {
-		return n, sql.SameTree, nil
-	}
-	return newn, sql.NewTree, nil
 }
 
 // StripPassthroughNodes strips all top-level passthrough nodes meant to apply only to top-level queries (query

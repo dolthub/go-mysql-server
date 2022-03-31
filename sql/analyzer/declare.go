@@ -108,14 +108,14 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 	}
 
 	var (
-		child sql.Node
-		newChild sql.Node
+		child       sql.Node
+		newChild    sql.Node
 		newChildren []sql.Node
-		same = sql.SameTree
-		err error
+		same        = sql.SameTree
+		err         error
 	)
 
-	for i :=0; i < len(children); i++ {
+	for i := 0; i < len(children); i++ {
 		child = children[i]
 		switch c := child.(type) {
 		case *plan.Procedure, *plan.Block, *plan.IfElseBlock, *plan.IfConditional:
@@ -131,6 +131,7 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 				return nil, sql.SameTree, sql.ErrSignalOnlySqlState.New()
 			}
 			newChild = plan.NewSignal(condition.SqlStateValue, c.Signal.Info)
+			same = false
 		default:
 			newChild = c
 		}

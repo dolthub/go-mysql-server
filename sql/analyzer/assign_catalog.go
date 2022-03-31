@@ -34,7 +34,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 	defer span.Finish()
 
 	// TODO make the catalog interfaces change sensitive
-	newn, _, err := visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return visit.Nodes(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
 		if !n.Resolved() {
 			return n, sql.SameTree, nil
 		}
@@ -93,8 +93,4 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			return n, sql.SameTree, nil
 		}
 	})
-	if err != nil {
-		return nil, sql.SameTree, err
-	}
-	return n, sql.TreeIdentity(nodesEqual(n, newn)), nil
 }

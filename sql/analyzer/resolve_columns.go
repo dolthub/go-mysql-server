@@ -189,7 +189,7 @@ func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 
 		symbols := getNodeAvailableNames(n, scope)
 
-		return visit.NodesExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return visit.SingleNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
 		})
 	})
@@ -295,9 +295,9 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 				// This column could be in an outer scope, keep going
 				continue
 			case 1:
-				if tablesForColumn[0] == "" {
-					return col, sql.SameTree, nil
-				}
+				//if tablesForColumn[0] == "" {
+				//	return col, sql.SameTree, nil
+				//}
 				return expression.NewUnresolvedQualifiedColumn(
 					tablesForColumn[0],
 					col.Name(),

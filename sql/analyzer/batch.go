@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 
@@ -52,18 +51,18 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 	prev := n
 	a.PushDebugContext("0")
-	cur, same, err := b.evalOnce(ctx, a, n, scope)
+	cur, _, err := b.evalOnce(ctx, a, n, scope)
 	a.PopDebugContext()
 	if err != nil {
 		return cur, sql.SameTree, err
 	}
 
+	nodesEq := !nodesEqual(prev, cur)
 	if b.Iterations == 1 {
-		return cur, same, nil
+		return cur, sql.TreeIdentity(nodesEq), nil
 	}
 
-	allSame := same
-	for i := 1; !same; {
+	for i := 1; nodesEq; {
 		a.Log("Nodes not equal, re-running batch")
 		a.LogDiff(prev, cur)
 		if i >= b.Iterations {
@@ -72,17 +71,17 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 
 		prev = cur
 		a.PushDebugContext(strconv.Itoa(i))
-		cur, same, err = b.evalOnce(ctx, a, cur, scope)
+		cur, _, err = b.evalOnce(ctx, a, cur, scope)
 		a.PopDebugContext()
 		if err != nil {
 			return cur, sql.SameTree, err
 		}
-		allSame = allSame && same
 
+		nodesEq = !nodesEqual(prev, cur)
 		i++
 	}
 
-	return cur, allSame, nil
+	return cur, sql.TreeIdentity(nodesEq), nil
 }
 
 // evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result
@@ -101,15 +100,14 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		a.PushDebugContext(rule.Name)
 		next, same, err = rule.Apply(ctx, a, prev, scope)
 		if !same {
-			allSame = allSame && sql.TreeIdentity(nodesEqual(prev, next))
+			allSame = allSame && same
 		}
-		if nodesEqual(prev, next) != bool(same) {
-			panic(fmt.Sprintf("BADRULE: '%s'", rule.Name))
-		}
+		//if nodesEqual(prev, next) != bool(same) {
+		//	panic(fmt.Sprintf("BADRULE: '%s'", rule.Name))
+		//}
 		if next != nil && !same {
 			a.LogDiff(prev, next)
-			prev = next
-			a.LogNode(prev)
+			a.LogNode(next)
 		}
 		a.PopDebugContext()
 		if err != nil {
@@ -118,6 +116,7 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			// subqueries.
 			return prev, allSame, err
 		}
+		prev = next
 		allSame = same && allSame
 	}
 
