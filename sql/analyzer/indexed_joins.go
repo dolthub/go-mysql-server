@@ -361,7 +361,11 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	}
 
 	tablesByName := byLowerCaseName(tableJoinOrder.tables())
+
 	joinNode := joinTreeToNodes(joinTree, tablesByName, scope)
+	if joinNode == nil {
+		return node, nil
+	}
 
 	return joinNode, nil
 }
@@ -426,6 +430,8 @@ func (j JoinOrder) HintType() string {
 }
 
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
+// If the join plan is invalid, return nil.
+// todo(max): smarter index generation/search to avoid pruning bad plans here
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
 	if tree.isCrossJoin() {
 		return tree.node
@@ -438,22 +444,23 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 	}
 
 	left := joinTreeToNodes(tree.left, tablesByName, scope)
-	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	if left == nil {
+		return nil
+	}
 
-	switch left.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias:
-		switch right.(type) {
-		case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
-			switch tree.joinCond.joinType {
-			case plan.JoinTypeLeft:
-				right, left = left, right
-			case plan.JoinTypeRight:
-				right, left = left, right
-			}
-		}
+	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	if right == nil {
+		return nil
+	}
+
+	switch right.(type) {
+	case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
+		return nil
+	default:
 	}
 
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
+
 }
 
 // createIndexLookupKeyExpression returns a slice of expressions to be used when evaluating the context row given to the
