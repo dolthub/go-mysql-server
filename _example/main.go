@@ -46,7 +46,7 @@ func main() {
 
 	config := server.Config{
 		Protocol: "tcp",
-		Address:  "localhost:3306",
+		Address:  "localhost:3307",
 	}
 
 	s, err := server.NewDefaultServer(config, engine)
@@ -71,11 +71,12 @@ func createTestDatabase() *memory.Database {
 		{Name: "created_at", Type: sql.Timestamp, Nullable: false, Source: tableName},
 	}))
 
+	creationTime := time.Unix(1524044473, 0).UTC()
 	db.AddTable(tableName, table)
 	ctx := sql.NewEmptyContext()
-	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, time.Now()))
-	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, time.Now()))
-	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, time.Now()))
+	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", []string{"555-555-555"}, creationTime))
+	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", []string{}, creationTime))
+	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", []string{}, creationTime))
+	table.Insert(ctx, sql.NewRow("Evil Bob", "evilbob@gmail.com", []string{"555-666-555", "666-666-666"}, creationTime))
 	return db
 }
