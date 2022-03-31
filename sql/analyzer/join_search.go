@@ -485,10 +485,10 @@ func (n *joinSearchNode) schema() []*sql.Column {
 		return n.node.Schema()
 	}
 
-	var tables []*sql.Column
-	tables = append(tables, n.left.schema()...)
-	tables = append(tables, n.right.schema()...)
-	return tables
+	var schema []*sql.Column
+	schema = append(schema, n.left.schema()...)
+	schema = append(schema, n.right.schema()...)
+	return schema
 }
 
 func (n *joinSearchNode) tableCols() map[tableCol]struct{} {

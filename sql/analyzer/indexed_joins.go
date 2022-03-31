@@ -447,10 +447,8 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 			switch tree.joinCond.joinType {
 			case plan.JoinTypeLeft:
 				right, left = left, right
-				tree.joinCond.joinType = plan.JoinTypeRight
 			case plan.JoinTypeRight:
 				right, left = left, right
-				tree.joinCond.joinType = plan.JoinTypeLeft
 			}
 		}
 	}
@@ -652,7 +650,7 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
-			if !joinCondPresent(joinIndex.joinCond, joinConditions) {
+			if !(joinIndex.joinPosition == plan.JoinTypeRight && joinIndex.joinType == plan.JoinTypeRight) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
 				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
 		}
@@ -912,6 +910,8 @@ func hasIndexableChild(node plan.JoinNode) bool {
 	case *plan.ResolvedTable, *plan.TableAlias:
 		return true
 	case *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.StripRowNode:
+		// this set of nodes are not indexable, with the exception
+		// of subqueries which can be optimized to hash lookups
 	case plan.JoinNode:
 		if hasIndexableChild(n) {
 			return true
