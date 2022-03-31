@@ -18,14 +18,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// TreeIdentity tracks modifications to node and expression trees
-type TreeIdentity bool
-
-const (
-	SameTree TreeIdentity = true
-	NewTree  TreeIdentity = false
-)
-
 // NodeFunc is a function that given a node will return that node
 // as is or transformed, a boolean to indicate whether the node was modified,
 // and an error, if any.
@@ -66,6 +58,14 @@ type Selector func(Context) bool
 // ExprWithNodeFunc is a function that given an expression and the node that contains it, will return that
 // expression as is or transformed along with an error, if any.
 type ExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, TreeIdentity, error)
+
+// TreeIdentity tracks modifications to node and expression trees
+type TreeIdentity bool
+
+const (
+	SameTree TreeIdentity = true
+	NewTree  TreeIdentity = false
+)
 
 // NodeExprsWithNode applies a transformation function to all expressions
 // on the given tree from the bottom up.

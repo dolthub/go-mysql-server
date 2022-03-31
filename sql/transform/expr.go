@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
+// Expr applies a transformation function to the given expression tree from the bottom up.
 func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
