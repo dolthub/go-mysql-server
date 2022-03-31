@@ -4438,6 +4438,90 @@ func TestVariables(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedInsert(t *testing.T, harness Harness) {
+	myDb := harness.NewDatabase("mydb")
+	databases := []sql.Database{myDb}
+	e := NewEngineWithDbs(t, harness, databases)
+	defer e.Close()
+
+	tests := []struct {
+		Name        string
+		SetUpScript []string
+		Assertions  []QueryTest
+	}{
+		{
+			Name: "Insert on duplicate key",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
+			},
+			Assertions: []QueryTest{
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
+					Bindings: map[string]sql.Expression{
+						"v1": expression.NewLiteral("id1", sql.Text),
+						"v2": expression.NewLiteral("dabe", sql.Text),
+						"v3": expression.NewLiteral("off", sql.Text),
+						"v4": expression.NewLiteral(2, sql.Int64),
+						"v5": expression.NewLiteral("milo", sql.Text),
+						"v6": expression.NewLiteral("on", sql.Text),
+					},
+					Expected: []sql.Row{
+						{sql.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
+					Bindings: map[string]sql.Expression{
+						"v1": expression.NewLiteral("id2", sql.Text),
+						"v2": expression.NewLiteral("dabe", sql.Text),
+						"v3": expression.NewLiteral("off", sql.Text),
+						"v4": expression.NewLiteral(3, sql.Int64),
+						"v5": expression.NewLiteral("milo", sql.Text),
+						"v6": expression.NewLiteral("on", sql.Text),
+					},
+					Expected: []sql.Row{
+						{sql.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "milo", "on", 1},
+						{"id2", "dabe", "off", 3},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		ctx := NewContextWithEngine(harness, e)
+		for _, statement := range tt.SetUpScript {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(statement) {
+					t.Skip()
+				}
+			}
+
+			RunQuery(t, e, harness, statement)
+		}
+
+		for _, a := range tt.Assertions {
+			TestQueryWithContext(t, ctx, e, a.Query, a.Expected, nil, a.Bindings)
+		}
+	}
+}
+
 func TestVariableErrors(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()

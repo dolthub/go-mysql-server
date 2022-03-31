@@ -47,6 +47,14 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 
 	return TransformUpWithOpaque(n, func(node sql.Node) (sql.Node, error) {
 		switch n := node.(type) {
+		case *IndexedJoin:
+			// *plan.IndexedJoin cannot implement sql.Expressioner
+			// because the column indexes get mis-ordered by FixFieldIndexesForExpressions.
+			cond, err := expression.TransformUp(n.Cond, fixBindings)
+			if err != nil {
+				return nil, err
+			}
+			return NewIndexedJoin(n.left, n.right, n.joinType, cond, n.scopeLen), nil
 		case *InsertInto:
 			// Manually apply bindings to [Source] because it is separated
 			// from [Destination].
@@ -54,9 +62,8 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 			if err != nil {
 				return nil, err
 			}
-			return n.WithSource(newSource), nil
-		default:
-			return TransformExpressionsUp(node, fixBindings)
+			return TransformExpressionsUp(n.WithSource(newSource), fixBindings)
 		}
+		return TransformExpressionsUp(node, fixBindings)
 	})
 }
