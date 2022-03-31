@@ -21,14 +21,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return transform.NodeWithPrefixSchema(n, nil, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithPrefixSchema(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if c.SchemaPrefix == nil {
 			// If c.SchemaPrefix is nil, it's possible our prefix
 			// isn't Resolved yet. Whatever the case, we cannot
 			// safely apply a hash lookup here without knowing what
 			// our schema actually is.
-			return c.Node, sql.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		}
 
 		if j, ok := c.Node.(plan.JoinNode); ok {
@@ -38,14 +38,14 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			// is a HashLookup.
 			if j.JoinType() == plan.JoinTypeRight {
 				if _, ok := j.Left().(*plan.HashLookup); ok {
-					return j.WithMultipassMode(), sql.NewTree, nil
+					return j.WithMultipassMode(), transform.NewTree, nil
 				}
 			} else {
 				if _, ok := j.Right().(*plan.HashLookup); ok {
-					return j.WithMultipassMode(), sql.NewTree, nil
+					return j.WithMultipassMode(), transform.NewTree, nil
 				}
 			}
-			return c.Node, sql.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		}
 
 		cr, isCachedResults := c.Node.(*plan.CachedResults)
@@ -74,7 +74,7 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			}
 		}
 		if cond == nil {
-			return c.Node, sql.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		}
 		// Support expressions of the form (GetField = GetField AND GetField = GetField AND ...)
 		// where every equal comparison has one operand coming from primary and one operand
@@ -118,9 +118,9 @@ func applyHashLookups(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		if validCondition {
 			primaryTuple := expression.NewTuple(primaryGetFields...)
 			secondaryTuple := expression.NewTuple(secondaryGetFields...)
-			return plan.NewHashLookup(cr, secondaryTuple, primaryTuple), sql.NewTree, nil
+			return plan.NewHashLookup(cr, secondaryTuple, primaryTuple), transform.NewTree, nil
 		}
-		return c.Node, sql.SameTree, nil
+		return c.Node, transform.SameTree, nil
 	})
 }
 

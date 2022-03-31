@@ -21,36 +21,36 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 
-		e, same, err := transform.Expr(filter.Expression, func(expr sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := transform.Expr(filter.Expression, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if e, ok := expr.(*expression.InTuple); ok &&
 				hasSingleOutput(e.Left()) &&
 				isStatic(e.Right()) {
 				newe, err := expression.NewHashInTuple(e.Left(), e.Right())
 				if err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
-				return newe, sql.NewTree, nil
+				return newe, transform.NewTree, nil
 			}
-			return expr, sql.SameTree, nil
+			return expr, transform.SameTree, nil
 		})
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 		if same {
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 		node, err = filter.WithExpressions(e)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
-		return node, sql.NewTree, nil
+		return node, transform.NewTree, nil
 	})
 }
 

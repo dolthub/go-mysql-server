@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
@@ -110,10 +111,10 @@ func TestResolveSubqueries(t *testing.T) {
 	finalizeSubqueries := getRule("finalize_subqueries")
 	runTestCases(t, ctx, testCases, a, Rule{
 		Name: "subqueries",
-		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 			n, _, err := resolveSubqueries.Apply(ctx, a, n, scope)
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 			return finalizeSubqueries.Apply(ctx, a, n, scope)
 		},

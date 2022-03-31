@@ -79,12 +79,12 @@ func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, e
 	// Even though we return the *ResolvedTable in Children, we cannot assume that the given child is still
 	// *ResolvedTable. In the analyzer, there are instances where the table is buried under other nodes such as
 	// tracking nodes, so we must walk the tree and find the table.
-	nt, _, err := transform.Node(children[0], func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	nt, _, err := transform.Node(children[0], func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		rt, ok := children[0].(*ResolvedTable)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
-		return NewProcedureResolvedTable(rt), sql.NewTree, nil
+		return NewProcedureResolvedTable(rt), transform.NewTree, nil
 	})
 	return nt, err
 }

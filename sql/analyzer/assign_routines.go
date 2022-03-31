@@ -30,13 +30,13 @@ type RoutineTable interface {
 }
 
 // assignRoutines sets the catalog in the required nodes.
-func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("assign_routines")
 	defer span.Finish()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if !n.Resolved() {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		switch node := n.(type) {
@@ -52,11 +52,11 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 
 			if ok {
 				nc.Table = ct.AssignProcedures(pm)
-				return &nc, sql.NewTree, nil
+				return &nc, transform.NewTree, nil
 			}
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		default:
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 	})
 }

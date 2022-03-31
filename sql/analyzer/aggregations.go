@@ -28,46 +28,46 @@ import (
 // e.g. GroupBy(sum(a) + sum(b)) becomes project(sum(a) + sum(b), GroupBy(sum(a), sum(b)).
 // e.g. Window(sum(a) + sum(b) over (partition by a)) becomes
 //    project(sum(a) + sum(b) over (partition by a), Window(sum(a), sum(b) over (partition by a))).
-func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func flattenAggregationExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("flatten_aggregation_exprs")
 	defer span.Finish()
 
 	if !n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.Window:
 			if !hasHiddenAggregations(n.SelectExprs) && !hasHiddenWindows(n.SelectExprs) {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
 			return flattenedWindow(ctx, n.SelectExprs, n.Child)
 		case *plan.GroupBy:
 			if !hasHiddenAggregations(n.SelectedExprs) {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
 			return flattenedGroupBy(ctx, n.SelectedExprs, n.GroupByExprs, n.Child)
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 	if allSame {
-		return nil, sql.SameTree, nil
+		return nil, transform.SameTree, nil
 	}
 	return plan.NewProject(
 		newProjection,
 		plan.NewGroupBy(newAggregates, grouping, child),
-	), sql.NewTree, nil
+	), transform.NewTree, nil
 }
 
 // replaceAggregatesWithGetFieldProjections takes a slice of projection expressions and flattens out any aggregate
@@ -75,36 +75,36 @@ func flattenedGroupBy(ctx *sql.Context, projection, grouping []sql.Expression, c
 // new set of project expressions, and the new set of aggregations. The former always matches the size of the projection
 // expressions passed in. The latter will have the size of the number of aggregate expressions contained in the input
 // slice.
-func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, identity sql.TreeIdentity, err error) {
+func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql.Expression) (projections, aggregations []sql.Expression, identity transform.TreeIdentity, err error) {
 	var newProjection = make([]sql.Expression, len(projection))
 	var newAggregates []sql.Expression
 	allGetFields := make(map[int]sql.Expression)
 	projDeps := make(map[int]struct{})
-	allSame := sql.SameTree
+	allSame := transform.SameTree
 	for i, p := range projection {
-		e, same, err := transform.Expr(p, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		e, same, err := transform.Expr(p, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
 			case sql.Aggregation, sql.WindowAggregation:
 			// continue on
 			case *expression.GetField:
 				allGetFields[e.Index()] = e
 				projDeps[e.Index()] = struct{}{}
-				return e, sql.SameTree, nil
+				return e, transform.SameTree, nil
 			default:
-				return e, sql.SameTree, nil
+				return e, transform.SameTree, nil
 			}
 
 			newAggregates = append(newAggregates, e)
 			return expression.NewGetField(
 				len(newAggregates)-1, e.Type(), e.String(), e.IsNullable(),
-			), sql.NewTree, nil
+			), transform.NewTree, nil
 		})
 		if err != nil {
 			return nil, nil, allSame, err
 		}
 
 		if same {
-			allSame = sql.NewTree
+			allSame = transform.NewTree
 			newAggregates = append(newAggregates, e)
 			name, source := getNameAndSource(e)
 			newProjection[i] = expression.NewGetFieldWithTable(
@@ -133,13 +133,13 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 		}
 	}
 
-	return newProjection, newAggregates, sql.NewTree, nil
+	return newProjection, newAggregates, transform.NewTree, nil
 }
 
-func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	newProjection, newAggregates, allSame, err := replaceAggregatesWithGetFieldProjections(ctx, projection)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 	if allSame {
 		return nil, allSame, nil
@@ -147,7 +147,7 @@ func flattenedWindow(ctx *sql.Context, projection []sql.Expression, child sql.No
 	return plan.NewProject(
 		newProjection,
 		plan.NewWindow(newAggregates, child),
-	), sql.NewTree, nil
+	), transform.NewTree, nil
 }
 
 func getNameAndSource(e sql.Expression) (name, source string) {

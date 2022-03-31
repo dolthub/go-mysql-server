@@ -201,11 +201,11 @@ func (e *Exchange) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpe
 
 func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition) (sql.RowIter, error) {
 	return func(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			if t, ok := n.(sql.Table); ok {
-				return &exchangePartition{partition, t}, sql.NewTree, nil
+				return &exchangePartition{partition, t}, transform.NewTree, nil
 			}
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		})
 		if err != nil {
 			return nil, err
@@ -216,11 +216,11 @@ func (e *Exchange) getRowIterFunc(row sql.Row) func(*sql.Context, sql.Partition)
 
 func (e *Exchange) getRowIter2Func() func(*sql.Context, sql.Partition, *sql.RowFrame) (sql.RowIter2, error) {
 	return func(ctx *sql.Context, partition sql.Partition, frame *sql.RowFrame) (sql.RowIter2, error) {
-		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		node, _, err := transform.Node(e.Child, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			if t, ok := n.(sql.Table); ok {
-				return &exchangePartition{partition, t}, sql.NewTree, nil
+				return &exchangePartition{partition, t}, transform.NewTree, nil
 			}
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		})
 		if err != nil {
 			return nil, err

@@ -30,13 +30,13 @@ import (
 // 3. The left hand side is a GetField expression against the Child.
 // 4. The Child is a *plan.ResolvedTable.
 // 5. The referenced field in the Child is indexed.
-func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	aliases, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
-	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch node := node.(type) {
 		case *plan.Filter:
 			var replacement sql.Node
@@ -46,10 +46,10 @@ func applyIndexesForSubqueryComparisons(ctx *sql.Context, a *Analyzer, n sql.Nod
 				replacement = getIndexedInSubqueryFilter(ctx, a, is.Left, is.Right, node, false, scope, aliases)
 			}
 			if replacement != nil {
-				return replacement, sql.NewTree, nil
+				return replacement, transform.NewTree, nil
 			}
 		}
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	})
 }
 

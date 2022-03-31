@@ -58,29 +58,29 @@ func shouldParallelize(node sql.Node, scope *Scope) bool {
 	return !plan.IsNoRowNode(node)
 }
 
-func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if a.Parallelism <= 1 || !node.Resolved() {
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
 	proc, ok := node.(*plan.QueryProcess)
 	if (ok && !shouldParallelize(proc.Child, nil)) || !shouldParallelize(node, scope) {
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
-	node, same, err := transform.Node(node, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	node, same, err := transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if !isParallelizable(node) {
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 		ParallelQueryCounter.With("parallelism", strconv.Itoa(a.Parallelism)).Add(1)
 
-		return plan.NewExchange(a.Parallelism, node), sql.NewTree, nil
+		return plan.NewExchange(a.Parallelism, node), transform.NewTree, nil
 	})
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 	if same {
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
 	return transform.Node(node, removeRedundantExchanges)
@@ -88,26 +88,26 @@ func parallelize(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sq
 
 // removeRedundantExchanges removes all the exchanges except for the topmost
 // of all.
-func removeRedundantExchanges(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func removeRedundantExchanges(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	exchange, ok := node.(*plan.Exchange)
 	if !ok {
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
-	child, same, err := transform.Node(exchange.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	child, same, err := transform.Node(exchange.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if exchange, ok := node.(*plan.Exchange); ok {
-			return exchange.Child, sql.NewTree, nil
+			return exchange.Child, transform.NewTree, nil
 		}
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	})
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 	if same {
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 	node, err = exchange.WithChildren(child)
-	return node, sql.NewTree, err
+	return node, transform.NewTree, err
 }
 
 func isParallelizable(node sql.Node) bool {

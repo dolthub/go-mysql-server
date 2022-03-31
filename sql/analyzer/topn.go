@@ -23,37 +23,37 @@ import (
 
 // insertTopNNodes replaces Limit(Sort(...)) and Limit(Offset(Sort(...))) with
 // a TopN node.
-func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	var updateCalcFoundRows bool
-	return transform.NodeWithCtx(n, nil, func(tc transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		if o, ok := tc.Node.(*plan.Offset); ok {
 			parentLimit, ok := tc.Parent.(*plan.Limit)
 			if !ok {
-				return tc.Node, sql.SameTree, nil
+				return tc.Node, transform.SameTree, nil
 			}
 			childSort, ok := o.UnaryNode.Child.(*plan.Sort)
 			if !ok {
-				return tc.Node, sql.SameTree, nil
+				return tc.Node, transform.SameTree, nil
 			}
 			topn := plan.NewTopN(childSort.SortFields, expression.NewPlus(parentLimit.Limit, o.Offset), childSort.UnaryNode.Child)
 			topn = topn.WithCalcFoundRows(parentLimit.CalcFoundRows)
 			updateCalcFoundRows = true
 			node, err := o.WithChildren(topn)
-			return node, sql.NewTree, err
+			return node, transform.NewTree, err
 		} else if l, ok := tc.Node.(*plan.Limit); ok {
 			childSort, ok := l.UnaryNode.Child.(*plan.Sort)
 			if !ok {
 				if updateCalcFoundRows {
 					updateCalcFoundRows = false
-					return l.WithCalcFoundRows(false), sql.NewTree, nil
+					return l.WithCalcFoundRows(false), transform.NewTree, nil
 				}
-				return tc.Node, sql.SameTree, nil
+				return tc.Node, transform.SameTree, nil
 			}
 			topn := plan.NewTopN(childSort.SortFields, l.Limit, childSort.UnaryNode.Child)
 			topn = topn.WithCalcFoundRows(l.CalcFoundRows)
 			node, err := l.WithCalcFoundRows(false).WithChildren(topn)
-			return node, sql.NewTree, err
+			return node, transform.NewTree, err
 		}
-		return tc.Node, sql.SameTree, nil
+		return tc.Node, transform.SameTree, nil
 	})
 }

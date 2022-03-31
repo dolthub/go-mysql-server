@@ -24,31 +24,31 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	} else if _, ok := n.(*plan.CreateProcedure); ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		insert, ok := n.(*plan.InsertInto)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		table := getResolvedTable(insert.Destination)
 
 		insertable, err := plan.GetInsertable(table)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		if insert.IsReplace {
 			var ok bool
 			_, ok = insertable.(sql.ReplaceableTable)
 			if !ok {
-				return nil, sql.SameTree, plan.ErrReplaceIntoNotSupported.New()
+				return nil, transform.SameTree, plan.ErrReplaceIntoNotSupported.New()
 			}
 		}
 
@@ -56,7 +56,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			var ok bool
 			_, ok = insertable.(sql.UpdatableTable)
 			if !ok {
-				return nil, sql.SameTree, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
+				return nil, transform.SameTree, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
 			}
 		}
 
@@ -66,7 +66,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			// Analyze the source of the insert independently
 			source, err = a.Analyze(ctx, insert.Source, scope)
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 
 			source = StripPassthroughNodes(source)
@@ -89,22 +89,22 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		} else {
 			err = validateColumns(columnNames, dstSchema)
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 		}
 
 		err = validateValueCount(columnNames, source)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
 		project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project), sql.NewTree, nil
+		return insert.WithSource(project), transform.NewTree, nil
 	})
 }
 

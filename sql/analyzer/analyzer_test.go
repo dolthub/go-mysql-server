@@ -17,6 +17,7 @@ package analyzer
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func TestMaxIterations(t *testing.T) {
 
 	count := 0
 	a := withoutProcessTracking(NewBuilder(provider).AddPostAnalyzeRule("loop",
-		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 
 			switch n.(type) {
 			case *plan.ResolvedTable:
@@ -54,7 +55,7 @@ func TestMaxIterations(t *testing.T) {
 				n = plan.NewResolvedTable(table, nil, nil)
 			}
 
-			return n, sql.NewTree, nil
+			return n, transform.NewTree, nil
 		}).Build())
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")

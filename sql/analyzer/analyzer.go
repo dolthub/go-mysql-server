@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"os"
 	"reflect"
 	"strings"
@@ -351,7 +352,7 @@ func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node
 	return n, err
 }
 
-func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string) (sql.Node, sql.TreeIdentity, error) {
+func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string) (sql.Node, transform.TreeIdentity, error) {
 	stop := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if stop {
@@ -366,16 +367,14 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 	})
 }
 
-func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, selector func(d string) bool) (sql.Node, sql.TreeIdentity, error) {
+func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, selector func(d string) bool) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		//"plan": , n.String(),
 	})
-	//a.Debug = true
-	//a.Verbose = true
 
 	var (
-		same    = sql.SameTree
-		allSame = sql.SameTree
+		same    = transform.SameTree
+		allSame = transform.SameTree
 		err     error
 	)
 	a.Log("starting analysis of node of type: %T", n)
@@ -386,7 +385,7 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 			if err != nil {
 				a.Log("Encountered error: %v", err)
 				a.PopDebugContext()
-				return n, sql.SameTree, err
+				return n, transform.SameTree, err
 			}
 			allSame = allSame && same
 			a.PopDebugContext()
@@ -403,7 +402,7 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 	return n, allSame, err
 }
 
-func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string) (sql.Node, sql.TreeIdentity, error) {
+func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string) (sql.Node, transform.TreeIdentity, error) {
 	start := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if desc == startAt {

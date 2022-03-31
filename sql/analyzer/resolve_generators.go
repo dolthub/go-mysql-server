@@ -30,24 +30,24 @@ var (
 	errExplodeNotArray    = errors.NewKind("argument of type %q given to EXPLODE, expecting array")
 )
 
-func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		p, ok := n.(*plan.Project)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		projection := p.Projections
 
 		g, err := findGenerator(ctx, projection)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		// There might be no generator in the project, in that case we don't
 		// have to do anything.
 		if g == nil {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		projection[g.idx] = g.expr
@@ -62,7 +62,7 @@ func resolveGenerators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		return plan.NewGenerate(
 			plan.NewProject(projection, p.Child),
 			expression.NewGetField(g.idx, g.expr.Type(), name, g.expr.IsNullable()),
-		), sql.NewTree, nil
+		), transform.NewTree, nil
 	})
 }
 

@@ -103,27 +103,27 @@ type triggerIter struct {
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
-	return func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+	return func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *Project:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
 			switch c.Parent.(type) {
 			case *InsertInto, *TriggerExecutor:
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			default:
 				return &prependNode{
 					UnaryNode: UnaryNode{Child: n},
 					row:       row,
-				}, sql.NewTree, nil
+				}, transform.NewTree, nil
 			}
 		case *ResolvedTable, *IndexedTableAccess:
 			return &prependNode{
 				UnaryNode: UnaryNode{Child: n},
 				row:       row,
-			}, sql.NewTree, nil
+			}, transform.NewTree, nil
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	}
 }

@@ -29,14 +29,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func checkUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func checkUniqueTableNames(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	// getTableAliases will error if any table name / alias is repeated
 	_, err := getTableAliases(n, scope)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, sql.SameTree, err
+	return n, transform.SameTree, err
 }
 
 // deferredColumn is a wrapper on UnresolvedColumn used to defer the resolution of the column because it may require
@@ -181,15 +181,15 @@ func dedupStrings(in []string) []string {
 }
 
 // qualifyColumns assigns a table to any column expressions that don't have one already
-func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func qualifyColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if _, ok := n.(sql.Expressioner); !ok || n.Resolved() {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		symbols := getNodeAvailableNames(n, scope)
 
-		return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			return qualifyExpression(e, symbols)
 		})
 	})
@@ -234,16 +234,16 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 	return names
 }
 
-func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression, sql.TreeIdentity, error) {
+func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression, transform.TreeIdentity, error) {
 	switch col := e.(type) {
 	case column:
 		if col.Resolved() {
-			return col, sql.SameTree, nil
+			return col, transform.SameTree, nil
 		}
 
 		// Skip this step for variables
 		if strings.HasPrefix(col.Name(), "@") || strings.HasPrefix(col.Table(), "@") {
-			return col, sql.SameTree, nil
+			return col, transform.SameTree, nil
 		}
 
 		nestingLevels := symbols.nestingLevels()
@@ -251,7 +251,7 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 		// if there are no tables or columns anywhere in the query, just give up and let another part of the analyzer throw
 		// an analysis error. (for some queries, like SHOW statements, this is expected and not an error)
 		if len(nestingLevels) == 0 {
-			return col, sql.SameTree, nil
+			return col, transform.SameTree, nil
 		}
 
 		// TODO: more tests for error conditions
@@ -270,10 +270,10 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 
 			if !tableFound {
 				similar := similartext.Find(symbols.allTables(), col.Table())
-				return nil, sql.SameTree, sql.ErrTableNotFound.New(col.Table() + similar)
+				return nil, transform.SameTree, sql.ErrTableNotFound.New(col.Table() + similar)
 			}
 
-			return col, sql.SameTree, nil
+			return col, transform.SameTree, nil
 		}
 
 		// Look in all the scope, inner to outer, to identify the column. Stop as soon as we have a scope with exactly 1
@@ -301,15 +301,15 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 				return expression.NewUnresolvedQualifiedColumn(
 					tablesForColumn[0],
 					col.Name(),
-				), sql.NewTree, nil
+				), transform.NewTree, nil
 			default:
-				return nil, sql.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
+				return nil, transform.SameTree, sql.ErrAmbiguousColumnName.New(col.Name(), strings.Join(tablesForColumn, ", "))
 			}
 		}
 
 		// If there are no tables that have any column with the column name let's just return it as it is. This may be an
 		// alias, so we'll wait for the reorder of the projection to resolve it.
-		return col, sql.SameTree, nil
+		return col, transform.SameTree, nil
 	case *expression.Star:
 		// Make sure that any qualified stars reference known tables
 		if col.Table != "" {
@@ -323,18 +323,18 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 				}
 			}
 			if !tableFound {
-				return nil, sql.SameTree, sql.ErrTableNotFound.New(col.Table)
+				return nil, transform.SameTree, sql.ErrTableNotFound.New(col.Table)
 			}
 		}
-		return col, sql.SameTree, nil
+		return col, transform.SameTree, nil
 	default:
 		// If any other kind of expression has a star, just replace it
 		// with an unqualified star because it cannot be expanded.
-		return transform.Expr(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if _, ok := e.(*expression.Star); ok {
-				return expression.NewStar(), sql.NewTree, nil
+				return expression.NewStar(), transform.NewTree, nil
 			}
-			return e, sql.SameTree, nil
+			return e, transform.SameTree, nil
 		})
 	}
 }
@@ -381,17 +381,17 @@ const (
 
 // resolveColumns replaces UnresolvedColumn expressions with GetField expressions for the appropriate numbered field in
 // the expression's child node.
-func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_columns")
 	defer span.Finish()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		if _, ok := n.(sql.Expressioner); !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// We need to use the schema, so all children must be resolved.
@@ -399,19 +399,19 @@ func resolveColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 		//  be Resolved() owing to a child expression (the one being evaluated) not being resolved yet.
 		for _, c := range n.Children() {
 			if !c.Resolved() {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 		}
 
 		columns, err := indexColumns(ctx, a, n, scope)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
-		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		return transform.OneNodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			uc, ok := e.(column)
 			if !ok || e.Resolved() {
-				return e, sql.SameTree, nil
+				return e, transform.SameTree, nil
 			}
 
 			return resolveColumnExpression(a, n, uc, columns)
@@ -553,7 +553,7 @@ func indexColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (map[
 	return columns, nil
 }
 
-func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, sql.TreeIdentity, error) {
+func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tableCol]indexedCol) (sql.Expression, transform.TreeIdentity, error) {
 	name := strings.ToLower(e.Name())
 	table := strings.ToLower(e.Table())
 	col, ok := columns[tableCol{table, name}]
@@ -563,20 +563,20 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 			// Defer the resolution of the column to give the analyzer more
 			// time to resolve other parts so this can be resolved.
 			a.Log("deferring resolution of column %s", e)
-			return &deferredColumn{uc}, sql.NewTree, nil
+			return &deferredColumn{uc}, transform.NewTree, nil
 		default:
 			if table != "" {
-				return nil, sql.SameTree, sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
+				return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(e.Table(), e.Name())
 			}
 
 			// This means the expression is either a non-existent column or an alias defined in the same projection.
 			// Check for the latter first.
 			aliasesInNode := aliasesDefinedInNode(n)
 			if stringContains(aliasesInNode, name) {
-				return nil, sql.SameTree, sql.ErrMisusedAlias.New(name)
+				return nil, transform.SameTree, sql.ErrMisusedAlias.New(name)
 			}
 
-			return nil, sql.SameTree, sql.ErrColumnNotFound.New(e.Name())
+			return nil, transform.SameTree, sql.ErrColumnNotFound.New(e.Name())
 		}
 	}
 
@@ -588,21 +588,21 @@ func resolveColumnExpression(a *Analyzer, n sql.Node, e column, columns map[tabl
 		col.Source,
 		col.Name,
 		col.Nullable,
-	), sql.NewTree, nil
+	), transform.NewTree, nil
 }
 
 // pushdownGroupByAliases reorders the aggregation in a groupby so aliases defined in it can be resolved in the grouping
 // of the groupby. To do so, all aliases are pushed down to a projection node under the group by.
-func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	// replacedAliases is a map of original expression string to alias that has been pushed down below the GroupBy in
 	// the new projection node.
 	replacedAliases := make(map[string]string)
 	var err error
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		// For any Expressioner node above the GroupBy, we need to apply the same alias replacement as we did in the
 		// GroupBy itself.
 		ex, ok := n.(sql.Expressioner)
@@ -610,13 +610,13 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 			newExprs, same := replaceExpressionsWithAliases(ex.Expressions(), replacedAliases)
 			if !same {
 				n, err = ex.WithExpressions(newExprs...)
-				return n, sql.NewTree, err
+				return n, transform.NewTree, err
 			}
 		}
 
 		g, ok := n.(*plan.GroupBy)
 		if n.Resolved() || !ok || len(g.GroupByExprs) == 0 {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// The reason we have two sets of columns, one for grouping and
@@ -682,7 +682,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		if !needsReorder {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// Any replacements of aliases in the select expression must be mirrored in the group by, replacing any aliased
@@ -739,20 +739,20 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		if len(renames) > 0 {
 			for i, expr := range newSelectedExprs {
 				var err error
-				newSelectedExprs[i], _, err = transform.Expr(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+				newSelectedExprs[i], _, err = transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					col, ok := e.(*expression.UnresolvedColumn)
 					if ok {
 						// We need to make sure we don't rename the reference to the
 						// pushed down alias.
 						if to, ok := renames[col.Name()]; ok && aliases[col.Name()] != i {
-							return expression.NewUnresolvedColumn(to), sql.NewTree, nil
+							return expression.NewUnresolvedColumn(to), transform.NewTree, nil
 						}
 					}
 
-					return e, sql.SameTree, nil
+					return e, transform.SameTree, nil
 				})
 				if err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
 			}
 		}
@@ -760,7 +760,7 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		return plan.NewGroupBy(
 			newSelectedExprs, newGroupBys,
 			plan.NewProject(projection, g.Child),
-		), sql.NewTree, nil
+		), transform.NewTree, nil
 	})
 }
 

@@ -20,11 +20,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// TransformExprWithNodeFunc is a function that given an expression and the node that contains it, will return that
-// expression as is or transformed along with an error, if any.
-type TransformExprWithNodeFunc func(sql.Node, sql.Expression) (sql.Expression, sql.TreeIdentity, error)
-
-func Expr(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeIdentity, error) {
+func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(e)
@@ -33,7 +29,7 @@ func Expr(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeId
 	var (
 		newChildren []sql.Expression
 		c           sql.Expression
-		sameC       = sql.SameTree
+		sameC       = SameTree
 		err         error
 	)
 
@@ -41,7 +37,7 @@ func Expr(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeId
 		c = children[i]
 		c, sameC, err = Expr(c, f)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, SameTree, err
 		}
 		if !sameC {
 			if newChildren == nil {
@@ -53,16 +49,16 @@ func Expr(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeId
 	}
 
 	if len(newChildren) > 0 {
-		sameC = sql.NewTree
+		sameC = NewTree
 		e, err = e.WithChildren(newChildren...)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, SameTree, err
 		}
 	}
 
 	e, sameN, err := f(e)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, SameTree, err
 	}
 	return e, sameC && sameN, nil
 }
@@ -71,12 +67,12 @@ func Expr(e sql.Expression, f sql.TransformExprFunc) (sql.Expression, sql.TreeId
 // stop = true. Returns a bool indicating whether traversal was interrupted.
 func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
 	stop := errors.New("stop")
-	_, _, err := Expr(node, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	_, _, err := Expr(node, func(e sql.Expression) (sql.Expression, TreeIdentity, error) {
 		ok := f(e)
 		if ok {
-			return nil, sql.SameTree, stop
+			return nil, SameTree, stop
 		}
-		return e, sql.SameTree, nil
+		return e, SameTree, nil
 	})
 	return errors.Is(err, stop)
 }
@@ -86,14 +82,14 @@ func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
 // stateful expression nodes where an evaluation needs to create multiple
 // independent histories of the internal state of the expression nodes.
 func Clone(expr sql.Expression) (sql.Expression, error) {
-	expr, _, err := Expr(expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
-		return e, sql.NewTree, nil
+	expr, _, err := Expr(expr, func(e sql.Expression) (sql.Expression, TreeIdentity, error) {
+		return e, NewTree, nil
 	})
 	return expr, err
 }
 
 // ExprWithNode applies a transformation function to the given expression from the bottom up.
-func ExprWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sql.Expression, sql.TreeIdentity, error) {
+func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Expression, TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
 		return f(n, e)
@@ -102,7 +98,7 @@ func ExprWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sq
 	var (
 		newChildren []sql.Expression
 		c           sql.Expression
-		sameC       = sql.SameTree
+		sameC       = SameTree
 		err         error
 	)
 
@@ -110,7 +106,7 @@ func ExprWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sq
 		c = children[i]
 		c, sameC, err = ExprWithNode(n, c, f)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, SameTree, err
 		}
 		if !sameC {
 			if newChildren == nil {
@@ -122,16 +118,16 @@ func ExprWithNode(n sql.Node, e sql.Expression, f TransformExprWithNodeFunc) (sq
 	}
 
 	if len(newChildren) > 0 {
-		sameC = sql.NewTree
+		sameC = NewTree
 		e, err = e.WithChildren(newChildren...)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, SameTree, err
 		}
 	}
 
 	e, sameN, err := f(n, e)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, SameTree, err
 	}
 	return e, sameC && sameN, nil
 }

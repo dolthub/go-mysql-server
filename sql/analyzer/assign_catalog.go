@@ -29,14 +29,14 @@ type CatalogTable interface {
 }
 
 // assignCatalog sets the catalog in the required nodes.
-func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("assign_catalog")
 	defer span.Finish()
 
 	// TODO make the catalog interfaces change sensitive
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if !n.Resolved() {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		switch node := n.(type) {
@@ -44,53 +44,53 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 			nc := *node
 			nc.Catalog = a.Catalog
 			nc.CurrentDatabase = ctx.GetCurrentDatabase()
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.DropIndex:
 			nc := *node
 			nc.Catalog = a.Catalog
 			nc.CurrentDatabase = ctx.GetCurrentDatabase()
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.ShowDatabases:
 			nc := *node
 			nc.Catalog = a.Catalog
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.ShowProcessList:
 			nc := *node
 			nc.Database = ctx.GetCurrentDatabase()
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.ShowTableStatus:
 			nc := *node
 			nc.Catalog = a.Catalog
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.Use:
 			nc := *node
 			nc.Catalog = a.Catalog
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.CreateDB:
 			nc := *node
 			nc.Catalog = a.Catalog
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.DropDB:
 			nc := *node
 			nc.Catalog = a.Catalog
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.LockTables:
 			nc := *node
 			nc.Catalog = a.Catalog
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.UnlockTables:
 			nc := *node
 			nc.Catalog = a.Catalog
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		case *plan.ResolvedTable:
 			nc := *node
 			ct, ok := nc.Table.(CatalogTable)
 			if ok {
 				nc.Table = ct.AssignCatalog(a.Catalog)
 			}
-			return &nc, sql.NewTree, nil
+			return &nc, transform.NewTree, nil
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }

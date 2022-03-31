@@ -9,12 +9,12 @@ import (
 
 // modifyUpdateExpressionsForJoin searches for a JOIN for UPDATE query and updates the child of the original update
 // node to use a plan.UpdateJoin node as a child.
-func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	switch n := n.(type) {
 	case *plan.Update:
 		us, ok := n.Child.(*plan.UpdateSource)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		var jn sql.Node
@@ -29,25 +29,25 @@ func modifyUpdateExpressionsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, s
 		})
 
 		if jn == nil {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		updaters, err := rowUpdatersByTable(ctx, us, jn)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		uj := plan.NewUpdateJoin(updaters, us)
 		ret, err := n.WithChildren(uj)
 
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
-		return ret, sql.NewTree, nil
+		return ret, transform.NewTree, nil
 	}
 
-	return n, sql.SameTree, nil
+	return n, transform.SameTree, nil
 }
 
 // rowUpdatersByTable maps a set of tables to their RowUpdater objects.

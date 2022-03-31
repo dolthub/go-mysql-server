@@ -22,20 +22,20 @@ import (
 
 // resolveDatabases sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
 // actual sql.Database implementation from the catalog.
-func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		d, ok := n.(sql.Databaser)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		var dbName = ctx.GetCurrentDatabase()
 		if db := d.Database(); db != nil {
 			if _, ok := db.(sql.UnresolvedDatabase); !ok {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
 			if db.Name() != "" {
@@ -45,21 +45,21 @@ func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 
 		// Nothing to resolve. This can happen if no database is current
 		if dbName == "" {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		db, err := a.Catalog.Database(ctx, dbName)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		n, err = d.WithDatabase(db)
-		return n, sql.NewTree, err
+		return n, transform.NewTree, err
 	})
 }
 
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
-func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	transform.Inspect(n, func(node sql.Node) bool {
 		switch n.(type) {
@@ -74,8 +74,8 @@ func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return true
 	})
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, sql.SameTree, nil
+	return n, transform.SameTree, nil
 }

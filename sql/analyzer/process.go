@@ -35,36 +35,36 @@ func init() {
 
 // trackProcess will wrap the query in a process node and add progress items
 // to the already existing process.
-func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	if _, ok := n.(*plan.QueryProcess); ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
-	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
 			case *plan.ProcessTable, *plan.ProcessIndexableTable:
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
 			name := n.Table.Name()
 			if _, ok := seen[name]; ok {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
 			var total int64 = -1
 			if counter, ok := n.Table.(sql.PartitionCounter); ok {
 				count, err := counter.PartitionCount(ctx)
 				if err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
 				total = count
 			}
@@ -98,40 +98,40 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 			}
 
 			n, err := n.WithTable(t)
-			return n, sql.NewTree, err
+			return n, transform.NewTree, err
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
 	// Don't wrap CreateIndex in a QueryProcess, as it is a CreateIndexProcess.
 	// CreateIndex will take care of marking the process as done on its own.
 	if _, ok := n.(*plan.CreateIndex); ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	// Remove QueryProcess nodes from the subqueries and trigger bodies. Otherwise, the process
 	// will be marked as done as soon as a subquery / trigger finishes.
-	node, _, err := transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	node, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sq, ok := n.(*plan.SubqueryAlias); ok {
 			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
 				n, err := sq.WithChildren(qp.Child)
-				return n, sql.NewTree, err
+				return n, transform.NewTree, err
 			}
 		}
 		if t, ok := n.(*plan.TriggerExecutor); ok {
 			if qp, ok := t.Right().(*plan.QueryProcess); ok {
 				n, err := t.WithChildren(t.Left(), qp.Child)
-				return n, sql.NewTree, err
+				return n, transform.NewTree, err
 			}
 		}
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	})
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
 	return plan.NewQueryProcess(node, func() {
@@ -139,5 +139,5 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		if span := ctx.RootSpan(); span != nil {
 			span.Finish()
 		}
-	}), sql.NewTree, nil
+	}), transform.NewTree, nil
 }

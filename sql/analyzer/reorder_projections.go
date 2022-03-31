@@ -32,15 +32,15 @@ import (
 // Project([a, foo], Sort(foo, Project([a, 1 as foo], table)))
 // This process also converts higher-level projected fields to GetField expressions, since we don't want to evaluate
 // the original expression more than once (which could actually produce incorrect results in some cases).
-func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("reorder_projection")
 	defer span.Finish()
 
 	if n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
 		// When we transform the projection, the children will always be
 		// unresolved in the case we want to fix, as the reorder happens just
@@ -52,7 +52,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		// Without this check, it would cause a panic, because NaturalJoin's
 		// schema method is just a placeholder that should not be called.
 		if !ok || hasNaturalJoin(project.Child) {
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 
 		// We must find all aliases that may need to be moved inside the projection.
@@ -67,27 +67,27 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		// And add projection nodes where needed in the child tree.
 		neededReorder, child, err := addIntermediateProjections(project, projectedAliases)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		if !neededReorder {
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 
 		// To do the reordering, we need to reason about column types, which means the child needs to be resolved.
 		// If it can't be resolved, we can't continue.
 		child, _, err = resolveColumns(ctx, a, child, scope)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		child, _, err = resolveSubqueryExpressions(ctx, a, child, scope)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		if !child.Resolved() {
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 
 		childSchema := child.Schema()
@@ -115,7 +115,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 		}
 
-		return plan.NewProject(projections, child), sql.NewTree, nil
+		return plan.NewProject(projections, child), transform.NewTree, nil
 	})
 }
 
@@ -124,7 +124,7 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 	// processed first, so only the lowest mention of each alias will be applied at that layer. High layers will just have
 	// a normal GetField expression to reference the lower layer.
 	appliedProjections := make(map[string]bool)
-	child, _, err = transform.Node(project.Child, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	child, _, err = transform.Node(project.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var missingColumns []string
 		switch node := node.(type) {
 		case *plan.Sort, *plan.Filter:
@@ -145,11 +145,11 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 				})
 			}
 		default:
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 
 		if len(missingColumns) == 0 {
-			return node, sql.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 
 		neededReorder = true
@@ -174,11 +174,11 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		child = plan.NewProject(projections, child)
 		switch node := node.(type) {
 		case *plan.Filter:
-			return plan.NewFilter(node.Expression, child), sql.NewTree, nil
+			return plan.NewFilter(node.Expression, child), transform.NewTree, nil
 		case *plan.Sort:
-			return plan.NewSort(node.SortFields, child), sql.NewTree, nil
+			return plan.NewSort(node.SortFields, child), transform.NewTree, nil
 		default:
-			return nil, sql.SameTree, ErrInvalidNodeType.New("reorderProjection", node)
+			return nil, transform.SameTree, ErrInvalidNodeType.New("reorderProjection", node)
 		}
 	})
 

@@ -24,24 +24,24 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveNaturalJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_natural_joins")
 	defer span.Finish()
 
 	var replacements = make(map[tableCol]tableCol)
 
-	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.NaturalJoin:
 			newn, err := resolveNaturalJoin(n, replacements)
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
-			return newn, sql.NewTree, nil
+			return newn, transform.NewTree, nil
 		case sql.Expressioner:
 			return replaceExpressionsForNaturalJoin(ctx, node, replacements)
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
@@ -132,17 +132,17 @@ func replaceExpressionsForNaturalJoin(
 	ctx *sql.Context,
 	n sql.Node,
 	replacements map[tableCol]tableCol,
-) (sql.Node, sql.TreeIdentity, error) {
-	return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+) (sql.Node, transform.TreeIdentity, error) {
+	return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn:
 			var tableName = strings.ToLower(e.(sql.Tableable).Table())
 
 			name := e.(sql.Nameable).Name()
 			if col, ok := replacements[tableCol{strings.ToLower(tableName), strings.ToLower(name)}]; ok {
-				return expression.NewUnresolvedQualifiedColumn(col.table, col.col), sql.NewTree, nil
+				return expression.NewUnresolvedQualifiedColumn(col.table, col.col), transform.NewTree, nil
 			}
 		}
-		return e, sql.SameTree, nil
+		return e, transform.SameTree, nil
 	})
 }

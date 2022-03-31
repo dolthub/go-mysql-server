@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -65,14 +66,14 @@ func (d *declarationScope) getCondition(name string) *plan.DeclareCondition {
 
 // resolveDeclarations handles all Declare nodes, ensuring correct node order and assigning variables and conditions to
 // their appropriate references.
-func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveDeclarations(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	return resolveDeclarationsInner(ctx, a, node, newDeclarationScope(nil))
 }
 
-func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scope *declarationScope) (sql.Node, sql.TreeIdentity, error) {
+func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scope *declarationScope) (sql.Node, transform.TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 	// First pass checks for order and assigns to scope
 	isBeginEnd := false
@@ -89,10 +90,10 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			switch child := child.(type) {
 			case *plan.DeclareCondition:
 				if !lastStatementDeclare {
-					return nil, sql.SameTree, sql.ErrDeclareOrderInvalid.New()
+					return nil, transform.SameTree, sql.ErrDeclareOrderInvalid.New()
 				}
 				if err := scope.AddCondition(child); err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
 			default:
 				lastStatementDeclare = false
@@ -102,7 +103,7 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		for _, child := range children {
 			switch child.(type) {
 			case *plan.DeclareCondition:
-				return nil, sql.SameTree, sql.ErrDeclareOrderInvalid.New()
+				return nil, transform.SameTree, sql.ErrDeclareOrderInvalid.New()
 			}
 		}
 	}
@@ -111,7 +112,7 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		child       sql.Node
 		newChild    sql.Node
 		newChildren []sql.Node
-		same        = sql.SameTree
+		same        = transform.SameTree
 		err         error
 	)
 
@@ -125,10 +126,10 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		case *plan.SignalName:
 			condition := scope.GetCondition(c.Name)
 			if condition == nil {
-				return nil, sql.SameTree, sql.ErrDeclareConditionNotFound.New(c.Name)
+				return nil, transform.SameTree, sql.ErrDeclareConditionNotFound.New(c.Name)
 			}
 			if condition.SqlStateValue == "" {
-				return nil, sql.SameTree, sql.ErrSignalOnlySqlState.New()
+				return nil, transform.SameTree, sql.ErrSignalOnlySqlState.New()
 			}
 			newChild = plan.NewSignal(condition.SqlStateValue, c.Signal.Info)
 			same = false
@@ -136,7 +137,7 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			newChild = c
 		}
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 		if !same {
 			if newChildren == nil {
@@ -150,10 +151,10 @@ func resolveDeclarationsInner(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 	if len(newChildren) > 0 {
 		node, err = node.WithChildren(newChildren...)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
-		return node, sql.NewTree, nil
+		return node, transform.NewTree, nil
 	}
 
-	return node, sql.SameTree, nil
+	return node, transform.SameTree, nil
 }

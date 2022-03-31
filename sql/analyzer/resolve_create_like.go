@@ -16,27 +16,28 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok || ct.Like() == nil {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 	resolvedLikeTable, ok := ct.Like().(*plan.ResolvedTable)
 	if !ok {
-		return nil, sql.SameTree, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", ct.Like())
+		return nil, transform.SameTree, fmt.Errorf("attempted to resolve CREATE LIKE, expected `ResolvedTable` but received `%T`", ct.Like())
 	}
 	likeTable := resolvedLikeTable.Table
 	var idxDefs []*plan.IndexDefinition
 	if indexableTable, ok := likeTable.(sql.IndexedTable); ok {
 		indexes, err := indexableTable.GetIndexes(ctx)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 		for _, index := range indexes {
 			if index.IsGenerated() {
@@ -82,5 +83,5 @@ func resolveCreateLike(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		IdxDefs: idxDefs,
 	}
 
-	return plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), tableSpec), sql.NewTree, nil
+	return plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), tableSpec), transform.NewTree, nil
 }

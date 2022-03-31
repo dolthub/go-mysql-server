@@ -818,14 +818,14 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 			continue
 		}
 		newCol := *col
-		newCol.Default.Expression, _, err = transform.Expr(col.Default.Expression, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		newCol.Default.Expression, _, err = transform.Expr(col.Default.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := e.(*expression.GetField); ok {
 				if strings.ToLower(expr.Name()) == oldName {
 					colsToModify[&newCol] = struct{}{}
-					return expr.WithName(newName), sql.NewTree, nil
+					return expr.WithName(newName), transform.NewTree, nil
 				}
 			}
-			return e, sql.SameTree, nil
+			return e, transform.SameTree, nil
 		})
 		if err != nil {
 			return err

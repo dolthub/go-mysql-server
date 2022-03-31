@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -24,82 +25,82 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func processTruncate(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func processTruncate(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("processTruncate")
 	defer span.Finish()
 
 	switch n := node.(type) {
 	case *plan.DeleteFrom:
 		if !n.Resolved() {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 		return deleteToTruncate(ctx, a, n)
 	case *plan.Truncate:
 		if !n.Resolved() {
-			return nil, sql.SameTree, fmt.Errorf("cannot process TRUNCATE as node is expected to be resolved")
+			return nil, transform.SameTree, fmt.Errorf("cannot process TRUNCATE as node is expected to be resolved")
 		}
 		var db sql.Database
 		var err error
 		if n.DatabaseName() == "" {
 			db, err = a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 		} else {
 			db, err = a.Catalog.Database(ctx, n.DatabaseName())
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 		}
 		_, err = validateTruncate(ctx, db, n.Child)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	default:
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 }
 
-func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom) (sql.Node, sql.TreeIdentity, error) {
+func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom) (sql.Node, transform.TreeIdentity, error) {
 	tbl, ok := deletePlan.Child.(*plan.ResolvedTable)
 	if !ok {
-		return deletePlan, sql.SameTree, nil
+		return deletePlan, transform.SameTree, nil
 	}
 	tblName := strings.ToLower(tbl.Name())
 
 	// auto_increment behaves differently for TRUNCATE and DELETE
 	for _, col := range tbl.Schema() {
 		if col.AutoIncrement {
-			return deletePlan, sql.SameTree, nil
+			return deletePlan, transform.SameTree, nil
 		}
 	}
 
 	tblFound := false
 	currentDb, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 	dbTblNames, err := currentDb.GetTableNames(ctx)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 	for _, dbTblName := range dbTblNames {
 		if strings.ToLower(dbTblName) == tblName {
 			if tblFound == false {
 				tblFound = true
 			} else {
-				return deletePlan, sql.SameTree, nil
+				return deletePlan, transform.SameTree, nil
 			}
 		}
 	}
 	if !tblFound {
-		return deletePlan, sql.SameTree, nil
+		return deletePlan, transform.SameTree, nil
 	}
 
 	triggers, err := loadTriggersFromDb(ctx, currentDb)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 	for _, trigger := range triggers {
 		if trigger.TriggerEvent != sqlparser.DeleteStr {
@@ -108,22 +109,22 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		triggerTblName, ok := trigger.Table.(*plan.UnresolvedTable)
 		if !ok {
 			// If we can't determine the name of the table that the trigger is on, we just abort to be safe
-			return deletePlan, sql.SameTree, nil
+			return deletePlan, transform.SameTree, nil
 		}
 		if strings.ToLower(triggerTblName.Name()) == tblName {
 			// An ON DELETE trigger is present so we can't use TRUNCATE
-			return deletePlan, sql.SameTree, nil
+			return deletePlan, transform.SameTree, nil
 		}
 	}
 
 	if ok, err := validateTruncate(ctx, currentDb, tbl); ok {
 		// We only check err if ok is true, as some errors won't apply to us attempting to convert from a DELETE
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
-		return plan.NewTruncate(ctx.GetCurrentDatabase(), tbl), sql.NewTree, nil
+		return plan.NewTruncate(ctx.GetCurrentDatabase(), tbl), transform.NewTree, nil
 	}
-	return deletePlan, sql.SameTree, nil
+	return deletePlan, transform.SameTree, nil
 }
 
 // validateTruncate returns whether the truncate operation adheres to the limitations as specified in

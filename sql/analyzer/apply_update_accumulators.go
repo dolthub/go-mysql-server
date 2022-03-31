@@ -25,23 +25,23 @@ import (
 
 // applyUpdateAccumulators wraps any Insert, Update, or Delete nodes with RowUpdateAccumulators to tally the results
 // for report to the client.
-func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func applyUpdateAccumulators(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	// Scope will be non-null in the case of trigger execution analysis. We don't want to apply update accumulators in
 	// that case.
 	// TODO: probably better to just remove this rule from the analyzer in that specific case
 	if scope != nil {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	switch n := n.(type) {
 	case *plan.TriggerExecutor, *plan.InsertInto, *plan.DeleteFrom, *plan.Update:
 		accumulatorType, err := getUpdateAccumulatorType(n)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
-		return plan.NewRowUpdateAccumulator(n, accumulatorType), sql.NewTree, nil
+		return plan.NewRowUpdateAccumulator(n, accumulatorType), transform.NewTree, nil
 	default:
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 }
 

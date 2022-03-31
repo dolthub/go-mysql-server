@@ -187,15 +187,15 @@ func normalizeExpressions(ctx *sql.Context, tableAliases TableAliases, expr ...s
 // declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(ctx *sql.Context, tableAliases TableAliases, e sql.Expression) sql.Expression {
 	// If the query has table aliases, use them to replace any table aliases in column expressions
-	normalized, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	normalized, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if field, ok := e.(*expression.GetField); ok {
 			table := field.Table()
 			if rt, ok := tableAliases[table]; ok {
-				return field.WithTable(rt.Name()), sql.NewTree, nil
+				return field.WithTable(rt.Name()), transform.NewTree, nil
 			}
 		}
 
-		return e, sql.SameTree, nil
+		return e, transform.SameTree, nil
 	})
 
 	return normalized

@@ -25,28 +25,28 @@ import (
 
 // validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
 // at execution time, and should be moved here over time.
-func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	err := validateAutoIncrement(ct.CreateSchema.Schema)
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
 	err = validateIndexes(ct.TableSpec())
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, sql.SameTree, nil
+	return n, transform.SameTree, nil
 }
 
-func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	var sch sql.Schema
@@ -80,12 +80,12 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	})
 
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
 
 	// Skip this validation if we didn't find one or more of the above node types
 	if len(sch) == 0 {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
@@ -118,9 +118,9 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return true
 	})
 	if err != nil {
-		return nil, sql.SameTree, err
+		return nil, transform.SameTree, err
 	}
-	return n, sql.SameTree, nil
+	return n, transform.SameTree, nil
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other

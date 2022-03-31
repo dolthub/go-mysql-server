@@ -223,12 +223,12 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 	// When transforming an analyzed CheckConstraint into a CheckDefinition (for storage), we strip off any table
 	// qualifiers that got resolved during analysis. This is to naively match the MySQL behavior, which doesn't print
 	// any table qualifiers in check expressions.
-	unqualifiedCols, _, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	unqualifiedCols, _, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		gf, ok := e.(*expression.GetField)
 		if ok {
-			return expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable()), sql.NewTree, nil
+			return expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable()), transform.NewTree, nil
 		}
-		return e, sql.SameTree, nil
+		return e, transform.SameTree, nil
 	})
 	if err != nil {
 		return nil, err

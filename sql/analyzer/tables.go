@@ -197,34 +197,34 @@ func findTables(exprs ...sql.Expression) []string {
 
 // Transforms the node given bottom up by setting resolve tables to reference the table given. Returns an error if more
 // than one table was set in this way.
-func withTable(node sql.Node, table sql.Table) (sql.Node, sql.TreeIdentity, error) {
+func withTable(node sql.Node, table sql.Table) (sql.Node, transform.TreeIdentity, error) {
 	foundTable := false
-	return transform.Node(node, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			if foundTable {
-				return nil, sql.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+				return nil, transform.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
 			n, err := n.WithTable(table)
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
-			return n, sql.NewTree, nil
+			return n, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			if foundTable {
-				return nil, sql.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+				return nil, transform.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
 			newRt, err := n.WithTable(table)
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 			n2 := *n
 			n2.ResolvedTable = newRt
-			return &n2, sql.NewTree, nil
+			return &n2, transform.NewTree, nil
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }

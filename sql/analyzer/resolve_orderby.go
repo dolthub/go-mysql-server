@@ -27,18 +27,18 @@ import (
 
 // pushdownSort pushes the Sort node underneath the Project or GroupBy node in the case that columns needed to
 // sort would be projected away before sorting. This can also alter the projection in some cases.
-func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("pushdownSort")
 	defer span.Finish()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		sort, ok := n.(*plan.Sort)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		if !sort.Child.Resolved() {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		childAliases := aliasesDefinedInNode(sort.Child)
@@ -68,7 +68,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		// If all the columns required by the order by are available, do nothing about it.
 		if len(missingCols) == 0 {
 			a.Log("no missing columns, skipping")
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// If there are no columns required by the order by available, then move the order by
@@ -84,9 +84,9 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		// we have to do some more complex logic and split the projection in two.
 		n, err := reorderSort(sort, missingCols)
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
-		return n, sql.NewTree, nil
+		return n, transform.NewTree, nil
 	})
 }
 
@@ -161,59 +161,59 @@ func reorderSort(sort *plan.Sort, missingCols []string) (sql.Node, error) {
 
 var errSortPushdown = errors.NewKind("unable to push plan.Sort node below %T")
 
-func pushSortDown(sort *plan.Sort) (sql.Node, sql.TreeIdentity, error) {
+func pushSortDown(sort *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	switch child := sort.Child.(type) {
 	case *plan.Project:
 		return plan.NewProject(
 			child.Projections,
 			plan.NewSort(sort.SortFields, child.Child),
-		), sql.NewTree, nil
+		), transform.NewTree, nil
 	case *plan.GroupBy:
 		return plan.NewGroupBy(
 			child.SelectedExprs,
 			child.GroupByExprs,
 			plan.NewSort(sort.SortFields, child.Child),
-		), sql.NewTree, nil
+		), transform.NewTree, nil
 	case *plan.Window:
 		return plan.NewWindow(
 			child.SelectExprs,
 			plan.NewSort(sort.SortFields, child.Child),
-		), sql.NewTree, nil
+		), transform.NewTree, nil
 	case *plan.ResolvedTable:
-		return sort, sql.SameTree, nil
+		return sort, transform.SameTree, nil
 	default:
 		children := child.Children()
 		if len(children) == 1 {
 			newChild, same, err := pushSortDown(plan.NewSort(sort.SortFields, children[0]))
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 			if same {
-				return sort, sql.SameTree, nil
+				return sort, transform.SameTree, nil
 			}
 			child, err = child.WithChildren(newChild)
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
-			return child, sql.NewTree, nil
+			return child, transform.NewTree, nil
 		}
 
 		// If the child has more than one child we don't know to which side
 		// the sort must be pushed down.
-		return nil, sql.SameTree, errSortPushdown.New(child)
+		return nil, transform.SameTree, errSortPushdown.New(child)
 	}
 }
 
-func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		sort, ok := n.(*plan.Sort)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		// wait for the child to be resolved
 		if !sort.Child.Resolved() {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		schema := sort.Child.Schema()
@@ -224,12 +224,12 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				// it is safe to eval literals with no context and/or row
 				v, err := lit.Eval(nil, nil)
 				if err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
 
 				v, err = sql.Int64.Convert(v)
 				if err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
 
 				// column access is 1-indexed
@@ -276,9 +276,9 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 
 		if same {
-			return sort, sql.SameTree, nil
+			return sort, transform.SameTree, nil
 		}
-		return plan.NewSort(fields, sort.Child), sql.NewTree, nil
+		return plan.NewSort(fields, sort.Child), transform.NewTree, nil
 	})
 }
 

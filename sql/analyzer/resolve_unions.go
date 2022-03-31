@@ -26,16 +26,16 @@ import (
 )
 
 // resolveUnions resolves the left and right side of a union node in isolation.
-func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 	// Procedures explicitly handle unions
 	if _, ok := n.(*plan.CreateProcedure); ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.Union:
 			subqueryCtx, cancelFunc := ctx.NewSubContext()
@@ -43,36 +43,36 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 			left, sameL, err := a.analyzeThroughBatch(subqueryCtx, n.Left(), scope, "default-rules")
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 
 			right, sameR, err := a.analyzeThroughBatch(subqueryCtx, n.Right(), scope, "default-rules")
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 
 			if sameL && sameR {
-				return node, sql.SameTree, nil
+				return node, transform.SameTree, nil
 			}
 			node, err = n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
-			return node, sql.NewTree, nil
+			return node, transform.NewTree, nil
 
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	// Procedures explicitly handle unions
 	if _, ok := n.(*plan.CreateProcedure); ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.Union:
 			subqueryCtx, cancelFunc := ctx.NewSubContext()
@@ -81,24 +81,24 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 			// TODO we could detect tree modifications here, skip rebuilding
 			left, sameL, err := a.analyzeStartingAtBatch(subqueryCtx, n.Left(), scope, "default-rules")
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 
 			right, sameR, err := a.analyzeStartingAtBatch(subqueryCtx, n.Right(), scope, "default-rules")
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 
 			if sameL && sameR {
-				return node, sql.SameTree, nil
+				return node, transform.SameTree, nil
 			}
 			node, err = n.WithChildren(StripPassthroughNodes(left), StripPassthroughNodes(right))
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
-			return node, sql.NewTree, nil
+			return node, transform.NewTree, nil
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
@@ -113,15 +113,15 @@ var (
 
 // mergeUnionSchemas determines the narrowest possible shared schema types between the two sides of a union, and
 // applies projections the two sides to convert column types as necessary.
-func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if u, ok := n.(*plan.Union); ok {
 			ls, rs := u.Left().Schema(), u.Right().Schema()
 			if len(ls) != len(rs) {
-				return nil, sql.SameTree, ErrUnionSchemasDifferentLength.New(len(ls), len(rs))
+				return nil, transform.SameTree, ErrUnionSchemasDifferentLength.New(len(ls), len(rs))
 			}
 			les, res := make([]sql.Expression, len(ls)), make([]sql.Expression, len(rs))
 			hasdiff := false
@@ -147,11 +147,11 @@ func mergeUnionSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 					plan.NewProject(res, u.Right()),
 				)
 				if err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
-				return n, sql.NewTree, nil
+				return n, transform.NewTree, nil
 			}
 		}
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	})
 }

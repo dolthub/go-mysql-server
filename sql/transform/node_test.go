@@ -29,21 +29,21 @@ func TestTransformUp(t *testing.T) {
 		name  string
 		inp   sql.Node
 		cmp   sql.Node
-		visit sql.TransformNodeFunc
+		visit NodeFunc
 		same  bool
 	}{
 		{
 			name: "modify tree",
 			inp:  a(a(a(), a(), a(b())), c()),
 			cmp:  b(b(b(), b(), b(c())), c()),
-			visit: func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
-					return b(n.children...), sql.NewTree, nil
+					return b(n.children...), NewTree, nil
 				case *nodeB:
-					return c(n.children...), sql.NewTree, nil
+					return c(n.children...), NewTree, nil
 				default:
-					return n, sql.SameTree, nil
+					return n, SameTree, nil
 				}
 			},
 		},
@@ -52,12 +52,12 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(a(a(), a(), a(b())), b()),
 			cmp:  a(a(a(), a(), a(b())), b()),
 			same: true,
-			visit: func(node sql.Node) (sql.Node, sql.TreeIdentity, error) {
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
-					return a(n.children...), sql.NewTree, nil
+					return a(n.children...), NewTree, nil
 				default:
-					return n, sql.SameTree, nil
+					return n, SameTree, nil
 				}
 			},
 		},

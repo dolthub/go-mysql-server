@@ -48,11 +48,11 @@ func isDualTable(t sql.Table) bool {
 	return t.Name() == dualTableName && t.Schema().Equals(dualTableSchema.Schema)
 }
 
-func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	return transform.NodeWithCtx(n, nil, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		ignore := false
 		switch p := c.Parent.(type) {
 		case *plan.DropTable:
@@ -68,15 +68,15 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				}
 			}
 			newn, _ := p.WithChildren(resolvedTables...)
-			return newn, sql.NewTree, nil
+			return newn, transform.NewTree, nil
 		case *plan.UnresolvedTable:
 			r, err := resolveTable(ctx, p, a)
 			if sql.ErrTableNotFound.Is(err) && ignore {
-				return p, sql.SameTree, nil
+				return p, transform.SameTree, nil
 			}
-			return r, sql.NewTree, err
+			return r, transform.NewTree, err
 		default:
-			return p, sql.SameTree, nil
+			return p, transform.SameTree, nil
 		}
 	})
 }
@@ -126,39 +126,39 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
 // store supplementary schema information. This is useful for lazy resolution of column default values.
-func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("set_target_schema")
 	defer span.Finish()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		t, ok := n.(sql.SchemaTarget)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		table := getResolvedTable(n)
 		if table == nil {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 
 		var err error
 		n, err = t.WithTargetSchema(table.Schema())
 		if err != nil {
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		pkst, ok := n.(sql.PrimaryKeySchemaTarget)
 		if !ok {
-			return n, sql.NewTree, nil
+			return n, transform.NewTree, nil
 		}
 
 		pkt, ok := table.Table.(sql.PrimaryKeyTable)
 		if !ok {
-			return n, sql.NewTree, nil
+			return n, transform.NewTree, nil
 		}
 
 		n, err = pkst.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
-		return n, sql.NewTree, err
+		return n, transform.NewTree, err
 	})
 }
 
@@ -182,10 +182,10 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 }
 
 // validateDropTables returns an error if the database is not droppable.
-func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
 	// validates that each table in DropTable is ResolvedTable and each database of
@@ -193,13 +193,13 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 	for _, table := range dt.Tables {
 		rt, ok := table.(*plan.ResolvedTable)
 		if !ok {
-			return nil, sql.SameTree, plan.ErrUnresolvedTable.New(rt.String())
+			return nil, transform.SameTree, plan.ErrUnresolvedTable.New(rt.String())
 		}
 		_, ok = rt.Database.(sql.TableDropper)
 		if !ok {
-			return nil, sql.SameTree, sql.ErrDropTableNotSupported.New(rt.Database.Name())
+			return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(rt.Database.Name())
 		}
 	}
 
-	return n, sql.SameTree, nil
+	return n, transform.SameTree, nil
 }

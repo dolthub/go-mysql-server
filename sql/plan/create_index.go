@@ -307,10 +307,10 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+		ex, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
-				return e, sql.SameTree, nil
+				return e, transform.SameTree, nil
 			}
 
 			var idx int
@@ -328,7 +328,7 @@ func GetColumnsAndPrepareExpressions(
 				gf.Table(),
 				gf.Name(),
 				gf.IsNullable(),
-			), sql.NewTree, nil
+			), transform.NewTree, nil
 		})
 
 		if err != nil {

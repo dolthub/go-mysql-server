@@ -73,22 +73,22 @@ func expressionCoversJoin(c sql.Expression, j *plan.CrossJoin) (found bool) {
 // 2) For every CrossJoin, check whether a subset of predicates covers as join conditions,
 //    and create a new InnerJoin with the matching predicates.
 // 3) Remove predicates from the parent Filter that have been pushed into InnerJoins.
-func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		f, ok := n.(*plan.Filter)
 		if !ok {
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 		predicates := splitConjunction(f.Expression)
 		movedPredicates := make(map[int]struct{})
-		newF, _, err := transform.Node(f, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+		newF, _, err := transform.Node(f, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			cj, ok := n.(*plan.CrossJoin)
 			if !ok {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
 			joinConjs := make([]int, 0, len(predicates))
@@ -99,7 +99,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 
 			if len(joinConjs) == 0 {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
 			newExprs := make([]sql.Expression, len(joinConjs))
@@ -107,20 +107,20 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 				movedPredicates[v] = struct{}{}
 				newExprs[i] = predicates[v]
 			}
-			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), sql.NewTree, nil
+			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), transform.NewTree, nil
 		})
 		if err != nil {
-			return f, sql.SameTree, err
+			return f, transform.SameTree, err
 		}
 
 		// only alter the Filter expression tree if we transferred predicates to an InnerJoin
 		if len(movedPredicates) == 0 {
-			return f, sql.SameTree, nil
+			return f, transform.SameTree, nil
 		}
 
 		// remove Filter if all expressions were transferred to joins
 		if len(predicates) == len(movedPredicates) {
-			return newF.(*plan.Filter).Child, sql.NewTree, nil
+			return newF.(*plan.Filter).Child, transform.NewTree, nil
 		}
 
 		newFilterExprs := make([]sql.Expression, 0, len(predicates)-len(movedPredicates))
@@ -131,6 +131,6 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			newFilterExprs = append(newFilterExprs, e)
 		}
 		newF, err = newF.(*plan.Filter).WithExpressions(expression.JoinAnd(newFilterExprs...))
-		return newF, sql.NewTree, err
+		return newF, transform.NewTree, err
 	})
 }

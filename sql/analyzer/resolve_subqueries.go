@@ -21,92 +21,92 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("resolve_subqueries")
 	defer span.Finish()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			// subqueries do not have access to outer scope
 			child, same, err := a.analyzeThroughBatch(ctx, n.Child, nil, "default-rules")
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 
 			if len(n.Columns) > 0 {
 				schemaLen := schemaLength(n.Child)
 				if schemaLen != len(n.Columns) {
-					return nil, sql.SameTree, sql.ErrColumnCountMismatch.New()
+					return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
 				}
 			}
 			if same {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 			newn, err := n.WithChildren(StripPassthroughNodes(child))
-			return newn, sql.NewTree, err
+			return newn, transform.NewTree, err
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("finalize_subqueries")
 	defer span.Finish()
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.SubqueryAlias:
 			// subqueries do not have access to outer scope
 			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, nil, "default-rules")
 			if err != nil {
-				return nil, sql.SameTree, err
+				return nil, transform.SameTree, err
 			}
 
 			if len(n.Columns) > 0 {
 				schemaLen := schemaLength(n.Child)
 				if schemaLen != len(n.Columns) {
-					return nil, sql.SameTree, sql.ErrColumnCountMismatch.New()
+					return nil, transform.SameTree, sql.ErrColumnCountMismatch.New()
 				}
 			}
 			if same {
-				return n, sql.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 			newn, err := n.WithChildren(StripPassthroughNodes(child))
-			return newn, sql.NewTree, err
+			return newn, transform.NewTree, err
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func flattenTableAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("flatten_table_aliases")
 	defer span.Finish()
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.TableAlias:
 			if sa, isSA := n.Children()[0].(*plan.SubqueryAlias); isSA {
-				return sa.WithName(n.Name()), sql.NewTree, nil
+				return sa.WithName(n.Name()), transform.NewTree, nil
 			}
 			if ta, isTA := n.Children()[0].(*plan.TableAlias); isTA {
-				return ta.WithName(n.Name()), sql.NewTree, nil
+				return ta.WithName(n.Name()), transform.NewTree, nil
 			}
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		default:
-			return n, sql.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		s, ok := e.(*plan.Subquery)
 		// We always analyze subquery expressions even if they are resolved, since other transformations to the surrounding
 		// query might cause them to need to shift their field indexes.
 		if !ok {
-			return e, sql.SameTree, nil
+			return e, transform.SameTree, nil
 		}
 
 		subqueryCtx, cancelFunc := ctx.NewSubContext()
@@ -121,15 +121,15 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			//  recover the actual error in the validation step.
 			if ErrValidationResolved.Is(err) || sql.ErrTableColumnNotFound.Is(err) || sql.ErrColumnNotFound.Is(err) {
 				// keep the work we have and defer remainder of analysis of this subquery until a later pass
-				return s.WithQuery(analyzed), sql.NewTree, nil
+				return s.WithQuery(analyzed), transform.NewTree, nil
 			}
-			return nil, sql.SameTree, err
+			return nil, transform.SameTree, err
 		}
 
 		//if same {
 		//	return e, sql.SameTree, nil
 		//}
-		return s.WithQuery(StripPassthroughNodes(analyzed)), sql.NewTree, nil
+		return s.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
 	})
 }
 
@@ -214,33 +214,33 @@ func isDeterminstic(n sql.Node) bool {
 // cacheSubqueryResults determines whether it's safe to cache the results for any subquery expressions, and marks the
 // subquery as cacheable if so. Caching subquery results is safe in the case that no outer scope columns are referenced,
 // if all expressions in the subquery are deterministic, and if the subquery isn't inside a trigger block.
-func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func cacheSubqueryResults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	// No need to inspect for trigger blocks as the Analyzer is recursively invoked on trigger blocks.
 	if n, ok := n.(*plan.TriggerBeginEndBlock); ok {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
-	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, sql.TreeIdentity, error) {
+	return transform.NodeExprsWithNode(n, func(n sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		s, ok := e.(*plan.Subquery)
 		if !ok || !s.Resolved() {
-			return e, sql.SameTree, nil
+			return e, transform.SameTree, nil
 		}
 
 		scopeLen := len(scope.newScope(n).Schema())
 		cacheable := nodeIsCacheable(s.Query, scopeLen)
 
 		if cacheable {
-			return s.WithCachedResults(), sql.NewTree, nil
+			return s.WithCachedResults(), transform.NewTree, nil
 		}
 
-		return s, sql.SameTree, nil
+		return s, transform.SameTree, nil
 	})
 }
 
 // cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
 // node on top of those nodes.
-func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
-	n, sameA, err := transform.NodeWithCtx(n, nil, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	n, sameA, err := transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		_, isJoin := c.Parent.(plan.JoinNode)
 		_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
 		if isJoin || isIndexedJoin {
@@ -251,21 +251,21 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 				// even when they have non-determinstic
 				// expressions they should return the same
 				// results across multiple iterations.
-				return plan.NewCachedResults(c.Node), sql.NewTree, nil
+				return plan.NewCachedResults(c.Node), transform.NewTree, nil
 			}
 		}
-		return c.Node, sql.SameTree, nil
+		return c.Node, transform.SameTree, nil
 	})
 	if err != nil {
-		return n, sql.SameTree, err
+		return n, transform.SameTree, err
 	}
 
 	// If the most primary table in the top level join is a CachedResults, remove it.
 	// We only want to do this if we're at the top of the tree.
 	// TODO: Not a perfect indicator of whether we're at the top of the tree...
-	sameD := sql.SameTree
+	sameD := transform.SameTree
 	if scope == nil {
-		selector := func(c transform.TransformContext) bool {
+		selector := func(c transform.Context) bool {
 			if _, isIndexedJoin := c.Parent.(*plan.IndexedJoin); isIndexedJoin {
 				return c.ChildNum == 0
 			} else if j, isJoin := c.Parent.(plan.JoinNode); isJoin {
@@ -277,23 +277,23 @@ func cacheSubqueryAlisesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			}
 			return true
 		}
-		n, sameD, err = transform.NodeWithCtx(n, selector, func(c transform.TransformContext) (sql.Node, sql.TreeIdentity, error) {
+		n, sameD, err = transform.NodeWithCtx(n, selector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			cr, isCR := c.Node.(*plan.CachedResults)
 			if isCR {
-				return cr.UnaryNode.Child, sql.NewTree, nil
+				return cr.UnaryNode.Child, transform.NewTree, nil
 			}
-			return c.Node, sql.SameTree, nil
+			return c.Node, transform.SameTree, nil
 		})
 	}
 	return n, sameA && sameD, err
 }
 
-func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	scopeLen := len(scope.Schema())
 	if scopeLen == 0 {
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	}
-	return transform.Node(n, func(n sql.Node) (sql.Node, sql.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if j, ok := n.(plan.JoinNode); ok {
 			nj := j.WithScopeLen(scopeLen)
 			if _, ok := nj.Left().(*plan.StripRowNode); !ok {
@@ -302,13 +302,13 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 					plan.NewStripRowNode(nj.Right(), scopeLen),
 				)
 				if err != nil {
-					return nil, sql.SameTree, err
+					return nil, transform.SameTree, err
 				}
-				return nj, sql.NewTree, nil
+				return nj, transform.NewTree, nil
 			} else {
-				return nj, sql.SameTree, nil
+				return nj, transform.SameTree, nil
 			}
 		}
-		return n, sql.SameTree, nil
+		return n, transform.SameTree, nil
 	})
 }

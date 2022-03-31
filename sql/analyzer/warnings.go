@@ -17,25 +17,26 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, sql.TreeIdentity, error) {
+func clearWarnings(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	children := node.Children()
 	if len(children) == 0 {
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
 	switch ch := children[0].(type) {
 	case plan.ShowWarnings:
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	case *plan.Offset:
 		clearWarnings(ctx, a, ch, scope)
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	case *plan.Limit:
 		clearWarnings(ctx, a, ch, scope)
-		return node, sql.SameTree, nil
+		return node, transform.SameTree, nil
 	}
 
 	ctx.ClearWarnings()
-	return node, sql.SameTree, nil
+	return node, transform.SameTree, nil
 }
