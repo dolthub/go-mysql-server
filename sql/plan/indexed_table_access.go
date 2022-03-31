@@ -37,7 +37,7 @@ type IndexedTableAccess struct {
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
 var _ sql.Nameable = (*IndexedTableAccess)(nil)
-//var _ sql.Node2 = (*IndexedTableAccess)(nil)
+var _ sql.Node2 = (*IndexedTableAccess)(nil)
 var _ sql.Expressioner = (*IndexedTableAccess)(nil)
 
 // NewIndexedTableAccess returns a new IndexedTableAccess node with the index and key expressions given. An index
@@ -118,10 +118,10 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
 }
 
-// func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-// 	// TODO implement me
-// 	panic("implement me")
-// }
+func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
+	// TODO implement me
+	panic("implement me")
+}
 
 // CanBuildIndex returns whether an index lookup on this table can be successfully built for a zero-valued key. For a
 // static lookup, no lookup needs to be built, so returns true.
