@@ -15,9 +15,10 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/transform"
 	"reflect"
 	"strconv"
+
+	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
