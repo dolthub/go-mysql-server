@@ -797,9 +797,12 @@ func createSubsetTestData(t *testing.T, harness Harness, includedTables []string
 			}), "2019-01-03")
 
 			if err == nil {
+				DeleteRows(t, NewContext(harness), mustDeletableTable(t, table),
+					sql.NewRow(int64(1), "first row, 2"),
+					sql.NewRow(int64(2), "second row, 2"),
+					sql.NewRow(int64(3), "third row, 2"))
 				column := sql.Column{Name: "c", Type: sql.Text}
 				AddColumn(t, NewContext(harness), mustAlterableTable(t, table), &column)
-
 				InsertRows(t, NewContext(harness), mustInsertableTable(t, table),
 					sql.NewRow(int64(1), "first row, 2", "1"),
 					sql.NewRow(int64(2), "second row, 2", "2"),

@@ -7214,10 +7214,6 @@ var VersionedScripts = []ScriptTest{
 				},
 			},
 			{
-				Query:       "DESCRIBE myhistorytable AS OF '2018-12-01'",
-				ExpectedErr: sql.ErrTableNotFound,
-			},
-			{
 				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
 				Expected: []sql.Row{
 					{"i", "bigint", "NO", "PRI", "", ""},
