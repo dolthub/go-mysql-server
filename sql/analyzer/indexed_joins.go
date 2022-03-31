@@ -363,7 +363,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	tablesByName := byLowerCaseName(tableJoinOrder.tables())
 
 	joinNode := joinTreeToNodes(joinTree, tablesByName, scope, ordered)
-	
+
 	return joinNode, nil
 }
 
