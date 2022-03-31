@@ -429,36 +429,11 @@ func (j JoinOrder) HintType() string {
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
 // todo(max): smarter index generation/search to avoid pruning bad plans here
 func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope, ordered bool) sql.Node {
-	if tree.isCrossJoin() {
+	if tree.isLeaf() {
 		return tree.node
-	} else if tree.isLeaf() {
-		nn, ok := tablesByName[strings.ToLower(tree.table)]
-		if !ok {
-			panic(fmt.Sprintf("Could not find NameableNode for '%s'", tree.table))
-		}
-		return nn
 	}
-
 	left := joinTreeToNodes(tree.left, tablesByName, scope, ordered)
-
 	right := joinTreeToNodes(tree.right, tablesByName, scope, ordered)
-
-	switch right.(type) {
-	case plan.JoinNode, *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias:
-		switch tree.joinCond.joinType {
-		case plan.JoinTypeLeft:
-			return plan.NewLeftJoin(left, right, tree.joinCond.cond)
-		case plan.JoinTypeRight:
-			return plan.NewRightJoin(left, right, tree.joinCond.cond)
-		case plan.JoinTypeInner:
-			if ordered {
-				return plan.NewInnerJoin(left, right, tree.joinCond.cond)
-			}
-			left, right = right, left
-		}
-	default:
-	}
-
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
@@ -657,6 +632,8 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
 			if !(joinIndex.joinPosition == plan.JoinTypeRight && joinIndex.joinType == plan.JoinTypeRight) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+				// the first condition permits more flexible IndexedJoins
+				// zach thinks maybe related to the LALR parse ordering.
 				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
 		}

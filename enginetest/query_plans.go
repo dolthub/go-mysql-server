@@ -260,12 +260,12 @@ var PlanTests = []QueryPlanTest{
 	},
 	{
 		Query: `select /*+ JOIN_ORDER( i, k, j ) */  * from one_pk i join one_pk k on i.pk = k.pk join (select pk, rand() r from one_pk) j on i.pk = j.pk`,
-		ExpectedPlan: "InnerJoin(i.pk = j.pk)\n" +
-			" ├─ InnerJoin(i.pk = k.pk)\n" +
+		ExpectedPlan: "IndexedJoin(i.pk = j.pk)\n" +
+			" ├─ IndexedJoin(i.pk = k.pk)\n" +
 			" │   ├─ TableAlias(i)\n" +
 			" │   │   └─ Table(one_pk)\n" +
 			" │   └─ TableAlias(k)\n" +
-			" │       └─ Table(one_pk)\n" +
+			" │       └─ IndexedTableAccess(one_pk on [one_pk.pk])\n" +
 			" └─ HashLookup(child: (j.pk), lookup: (i.pk))\n" +
 			"     └─ CachedResults\n" +
 			"         └─ SubqueryAlias(j)\n" +
