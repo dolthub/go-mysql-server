@@ -84,12 +84,12 @@ func expandStars(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.N
 	})
 }
 
-func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, bool, error) {
+func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.Schema, tableAliases TableAliases) ([]sql.Expression, transform.TreeIdentity, error) {
 	var expressions []sql.Expression
-	var found bool
+	same := transform.SameTree
 	for _, e := range exprs {
 		if star, ok := e.(*expression.Star); ok {
-			found = true
+			same = transform.NewTree
 			var exprs []sql.Expression
 			for i, col := range schema {
 				lowerSource := strings.ToLower(col.Source)
@@ -112,5 +112,5 @@ func expandStarsForExpressions(a *Analyzer, exprs []sql.Expression, schema sql.S
 	}
 
 	a.Log("resolved * to expressions %s", expressions)
-	return expressions, !found, nil
+	return expressions, same, nil
 }

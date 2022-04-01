@@ -59,12 +59,12 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 		return cur, transform.SameTree, err
 	}
 
-	nodesEq := !nodesEqual(prev, cur)
+	nodesEq := nodesEqual(prev, cur)
 	if b.Iterations == 1 {
 		return cur, transform.TreeIdentity(nodesEq), nil
 	}
 
-	for i := 1; nodesEq; {
+	for i := 1; !nodesEq; {
 		a.Log("Nodes not equal, re-running batch")
 		a.LogDiff(prev, cur)
 		if i >= b.Iterations {
@@ -79,14 +79,14 @@ func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 			return cur, transform.SameTree, err
 		}
 
-		// Use nodesEqual until all rules can reliably report modifications.
-		// False positives, where a rule incorrectly states report sql.NewTree,
-		// are the primary barrier.
-		nodesEq = !nodesEqual(prev, cur)
+		//todo(max): Use nodesEqual until all rules can reliably report
+		// modifications. False positives, where a rule incorrectly states
+		// report sql.NewTree, are the primary barrier.
+		nodesEq = nodesEqual(prev, cur)
 		i++
 	}
 
-	return cur, transform.TreeIdentity(nodesEq), nil
+	return cur, transform.TreeIdentity(!nodesEq), nil
 }
 
 // evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result
@@ -104,9 +104,7 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
 		next, same, err = rule.Apply(ctx, a, prev, scope)
-		if !same {
-			allSame = allSame && same
-		}
+		allSame = same && allSame
 		if next != nil && !same {
 			a.LogDiff(prev, next)
 			a.LogNode(next)
@@ -119,7 +117,6 @@ func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return prev, allSame, err
 		}
 		prev = next
-		allSame = same && allSame
 	}
 
 	return prev, allSame, nil

@@ -178,10 +178,7 @@ func validateLimitAndOffset(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 		}
 		return true
 	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return n, transform.SameTree, nil
+	return n, transform.SameTree, err
 }
 
 func validateIsResolved(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {

@@ -295,9 +295,9 @@ func qualifyExpression(e sql.Expression, symbols availableNames) (sql.Expression
 				// This column could be in an outer scope, keep going
 				continue
 			case 1:
-				//if tablesForColumn[0] == "" {
-				//	return col, sql.SameTree, nil
-				//}
+				if tablesForColumn[0] == "" {
+					return col, transform.SameTree, nil
+				}
 				return expression.NewUnresolvedQualifiedColumn(
 					tablesForColumn[0],
 					col.Name(),
@@ -767,10 +767,10 @@ func pushdownGroupByAliases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 // replaceExpressionsWithAliases replaces any expressions in the slice given that match the map of aliases given with
 // their alias expression. This is necessary when pushing aliases down the tree, since we introduce a projection node
 // that effectively erases the original columns of a table.
-func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[string]string) ([]sql.Expression, bool) {
+func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[string]string) ([]sql.Expression, transform.TreeIdentity) {
 	var newExprs []sql.Expression
 	var expr sql.Expression
-	for i := 0; i < len(exprs); i++ {
+	for i := range exprs {
 		expr = exprs[i]
 		if alias, ok := replacedAliases[expr.String()]; ok {
 			if newExprs == nil {
@@ -781,9 +781,9 @@ func replaceExpressionsWithAliases(exprs []sql.Expression, replacedAliases map[s
 		}
 	}
 	if len(newExprs) > 0 {
-		return newExprs, false
+		return newExprs, transform.NewTree
 	}
-	return exprs, true
+	return exprs, transform.SameTree
 }
 
 func findAllColumns(e sql.Expression) []*expression.UnresolvedColumn {

@@ -27,7 +27,7 @@ func FixFieldIndexesOnExpressions(ctx *sql.Context, scope *Scope, a *Analyzer, s
 	var res sql.Expression
 	var same transform.TreeIdentity
 	var err error
-	for i := 0; i < len(expressions); i++ {
+	for i := range expressions {
 		e := expressions[i]
 		res, same, err = FixFieldIndexes(ctx, scope, a, schema, e)
 		if err != nil {
@@ -191,14 +191,14 @@ func FixFieldIndexesForExpressions(ctx *sql.Context, a *Analyzer, node sql.Node,
 	return n, sameC && sameJ, nil
 }
 
-// Transforms the expressions in the Node given, fixing the field indexes. This is useful for Table nodes that have
+// FixFieldIndexesForTableNode transforms the expressions in the Node given,
+// fixing the field indexes. This is useful for Table nodes that have
 // expressions but no children.
 func FixFieldIndexesForTableNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := node.(sql.Expressioner); !ok {
 		return node, transform.SameTree, nil
 	}
-
-	n, same, err := transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.OneNodeExprsWithNode(node, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		schema := node.Schema()
 		fixed, same, err := FixFieldIndexes(ctx, scope, a, schema, e)
 		if err != nil {
@@ -209,10 +209,4 @@ func FixFieldIndexesForTableNode(ctx *sql.Context, a *Analyzer, node sql.Node, s
 		}
 		return fixed, same, nil
 	})
-
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return n, same, nil
 }

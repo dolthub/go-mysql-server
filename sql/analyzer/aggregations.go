@@ -80,7 +80,6 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 	var newAggregates []sql.Expression
 	allGetFields := make(map[int]sql.Expression)
 	projDeps := make(map[int]struct{})
-	allSame := transform.SameTree
 	for i, p := range projection {
 		e, same, err := transform.Expr(p, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
@@ -100,11 +99,10 @@ func replaceAggregatesWithGetFieldProjections(ctx *sql.Context, projection []sql
 			), transform.NewTree, nil
 		})
 		if err != nil {
-			return nil, nil, allSame, err
+			return nil, nil, transform.SameTree, err
 		}
 
 		if same {
-			allSame = transform.NewTree
 			newAggregates = append(newAggregates, e)
 			name, source := getNameAndSource(e)
 			newProjection[i] = expression.NewGetFieldWithTable(

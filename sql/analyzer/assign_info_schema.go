@@ -32,6 +32,7 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			}
 
 			x.IndexesToShow = filterGeneratedIndexes(tableIndexes)
+			return x, transform.NewTree, nil
 		case *plan.ShowCreateTable:
 			if !x.IsView {
 				tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
@@ -40,6 +41,7 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 				}
 
 				x.Indexes = filterGeneratedIndexes(tableIndexes)
+				return x, transform.NewTree, nil
 			}
 		case *plan.ShowColumns:
 			tableIndexes, err := getIndexesForTable(ctx, a, x.Child)
@@ -48,6 +50,8 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			}
 
 			x.Indexes = filterGeneratedIndexes(tableIndexes)
+			return x, transform.NewTree, nil
+
 		case *plan.ShowCharset:
 			rt, err := getInformationSchemaTable(ctx, a, "character_sets")
 			if err != nil {
@@ -55,10 +59,10 @@ func assignInfoSchema(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			}
 
 			x.CharacterSetTable = rt
+			return x, transform.NewTree, nil
 		default:
-			return n, transform.SameTree, nil
 		}
-		return n, transform.NewTree, nil
+		return n, transform.SameTree, nil
 	})
 }
 

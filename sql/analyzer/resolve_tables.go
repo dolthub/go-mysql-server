@@ -61,6 +61,12 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 		switch p := c.Node.(type) {
 		case *plan.DropTable:
+			// *plan.DropTable is special cased to account
+			// for when we explicitly remove nonexistent
+			// child tables. In this case, the output node
+			// will have fewer children. The UnresolvedNode
+			// case is modified to skip those undesired children
+			// lower in the tree.
 			var resolvedTables []sql.Node
 			for _, t := range p.Children() {
 				if _, ok := t.(*plan.ResolvedTable); ok {

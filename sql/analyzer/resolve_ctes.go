@@ -37,18 +37,18 @@ func resolveCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, sc
 	return resolveCtesInNode(ctx, a, n, scope, make(map[string]sql.Node))
 }
 
-func resolveCtesInNode(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, ctes map[string]sql.Node) (sql.Node, transform.TreeIdentity, error) {
-	with, ok := n.(*plan.With)
+func resolveCtesInNode(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, ctes map[string]sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	with, ok := node.(*plan.With)
 	if ok {
 		var err error
-		n, err = stripWith(ctx, a, scope, with, ctes)
+		node, err = stripWith(ctx, a, scope, with, ctes)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 	}
 
 	// Transform in two passes: the first to catch any uses of CTEs in subquery expressions
-	n, _, err := transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		sq, ok := e.(*plan.Subquery)
 		if !ok {
 			return e, transform.SameTree, nil
@@ -188,25 +188,21 @@ func schemaLength(node sql.Node) int {
 // where the CTE will be visible on the second half of the UNION. We live with
 // it for now.
 func liftCommonTableExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	n, _, err := liftCommonTableExpressionsHelper(ctx, a, n, scope)
-	return n, transform.SameTree, err
-}
-func liftCommonTableExpressionsHelper(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if union, isUnion := n.(*plan.Union); isUnion {
 			if cte, isCTE := union.Left().(*plan.With); isCTE && !cte.Recursive {
 				return plan.NewWith(plan.NewUnion(cte.Child, union.Right()), cte.CTEs, cte.Recursive), transform.NewTree, nil
 			}
-			l, sameL, err := liftCommonTableExpressionsHelper(ctx, a, union.Left(), scope)
+			l, sameL, err := liftCommonTableExpressions(ctx, a, union.Left(), scope)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			r, sameR, err := liftCommonTableExpressionsHelper(ctx, a, union.Right(), scope)
+			r, sameR, err := liftCommonTableExpressions(ctx, a, union.Right(), scope)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			if _, isCTE := l.(*plan.With); isCTE {
-				return liftCommonTableExpressionsHelper(ctx, a, plan.NewUnion(l, r), scope)
+				return liftCommonTableExpressions(ctx, a, plan.NewUnion(l, r), scope)
 			}
 			if sameL && sameR {
 				return n, transform.SameTree, nil
@@ -277,7 +273,7 @@ func resolveRecursiveCte(ctx *sql.Context, a *Analyzer, node sql.Node, sq sql.No
 		return node, transform.SameTree, nil
 	}
 
-	newInit, same, err := a.analyzeThroughBatch(ctx, rCte.Init, scope, "default-rules")
+	newInit, _, err := a.analyzeThroughBatch(ctx, rCte.Init, scope, "default-rules")
 	if err != nil {
 		return node, transform.SameTree, err
 	}
@@ -317,7 +313,7 @@ func resolveRecursiveCte(ctx *sql.Context, a *Analyzer, node sql.Node, sq sql.No
 	rTable := plan.NewRecursiveTable(rCte.Name(), schema)
 
 	// replace recursive table refs
-	newRec, same, err := transform.Node(rCte.Rec, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newRec, sameR, err := transform.Node(rCte.Rec, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch t := n.(type) {
 		case *plan.UnresolvedTable:
 			if t.Name() == rCte.Name() {
@@ -330,7 +326,9 @@ func resolveRecursiveCte(ctx *sql.Context, a *Analyzer, node sql.Node, sq sql.No
 		return node, transform.SameTree, err
 	}
 
-	if same {
+	if sameR {
+		//todo(max): failing to consider sameR breaks,
+		// including sameI in the check also breaks.
 		return sq, transform.SameTree, nil
 	}
 	node, err = rCte.WithSchema(schema).WithWorking(rTable).WithChildren(newInit, newRec)

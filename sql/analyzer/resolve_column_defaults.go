@@ -608,33 +608,33 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		}
 		switch n.(type) {
 		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
-			n, err := parseColumnDefaultsForWrapper(ctx, eWrapper)
-			return n, transform.NewTree, err
+			n, same, err := parseColumnDefaultsForWrapper(ctx, eWrapper)
+			return n, same, err
 		default:
 			return e, transform.SameTree, nil
 		}
 	})
 }
 
-func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql.Expression, error) {
+func parseColumnDefaultsForWrapper(ctx *sql.Context, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
 	newDefault, ok := e.Unwrap().(*sql.ColumnDefaultValue)
 	if !ok {
-		return e, nil
+		return e, transform.SameTree, nil
 	}
 
 	if newDefault.Resolved() {
-		return e, nil
+		return e, transform.SameTree, nil
 	}
 
 	if ucd, ok := newDefault.Expression.(sql.UnresolvedColumnDefault); ok {
 		var err error
 		newDefault, err = parse.StringToColumnDefaultValue(ctx, ucd.String())
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 	}
 
-	return expression.WrapExpression(newDefault), nil
+	return expression.WrapExpression(newDefault), transform.NewTree, nil
 }
 
 func resolveColumnDefaultsOnWrapper(ctx *sql.Context, col *sql.Column, e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {

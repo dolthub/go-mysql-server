@@ -31,7 +31,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			// subqueries do not have access to outer scope
 			child, same, err := a.analyzeThroughBatch(ctx, n.Child, nil, "default-rules")
 			if err != nil {
-				return nil, transform.SameTree, err
+				return nil, same, err
 			}
 
 			if len(n.Columns) > 0 {
@@ -61,7 +61,7 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 			// subqueries do not have access to outer scope
 			child, same, err := a.analyzeStartingAtBatch(ctx, n.Child, nil, "default-rules")
 			if err != nil {
-				return nil, transform.SameTree, err
+				return nil, same, err
 			}
 
 			if len(n.Columns) > 0 {
@@ -126,9 +126,11 @@ func resolveSubqueryExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			return nil, transform.SameTree, err
 		}
 
-		//if same {
-		//	return e, sql.SameTree, nil
-		//}
+		//todo(max): Infinite cycles with subqueries, unions, ctes, catalog.
+		// we squashed most negative errors, where a rule fails to report a plan change
+		// to the expense of positive errors, where a rule reports a change when the plan
+		// is the same before/after.
+		// .Resolved() might be useful for fixing these bugs.
 		return s.WithQuery(StripPassthroughNodes(analyzed)), transform.NewTree, nil
 	})
 }
@@ -306,7 +308,7 @@ func setJoinScopeLen(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (s
 				}
 				return nj, transform.NewTree, nil
 			} else {
-				return nj, transform.SameTree, nil
+				return nj, transform.NewTree, nil
 			}
 		}
 		return n, transform.SameTree, nil

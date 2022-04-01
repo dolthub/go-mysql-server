@@ -65,12 +65,12 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 
 		// And add projection nodes where needed in the child tree.
-		neededReorder, child, err := addIntermediateProjections(project, projectedAliases)
+		child, same, err := addIntermediateProjections(project, projectedAliases)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		if !neededReorder {
+		if same {
 			return node, transform.SameTree, nil
 		}
 
@@ -119,12 +119,18 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	})
 }
 
-func addIntermediateProjections(project *plan.Project, projectedAliases map[string]sql.Expression) (neededReorder bool, child sql.Node, err error) {
-	// We only want to apply each projection once, even if it occurs multiple times in the tree. Lower tree levels are
-	// processed first, so only the lowest mention of each alias will be applied at that layer. High layers will just have
-	// a normal GetField expression to reference the lower layer.
+func addIntermediateProjections(
+	project *plan.Project,
+	projectedAliases map[string]sql.Expression,
+) (sql.Node, transform.TreeIdentity, error) {
+	// We only want to apply each projection once, even if it
+	// occurs multiple times in the tree. Lower tree levels are
+	// processed first, so only the lowest mention of each
+	// alias will be applied at that layer. High layers will
+	// just have a normal GetField expression to reference the
+	// lower layer.
 	appliedProjections := make(map[string]bool)
-	child, _, err = transform.Node(project.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	child, same, err := transform.Node(project.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var missingColumns []string
 		switch node := node.(type) {
 		case *plan.Sort, *plan.Filter:
@@ -151,8 +157,6 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		if len(missingColumns) == 0 {
 			return node, transform.SameTree, nil
 		}
-
-		neededReorder = true
 
 		// Only add the required columns for that node in the projection.
 		child := node.Children()[0]
@@ -211,14 +215,14 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		for _, dc := range deferredColumns {
 			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
 				projections = append(projections, c)
-				neededReorder = true
+				same = transform.NewTree
 			}
 		}
 
 		child = plan.NewProject(projections, child)
 	}
 
-	return neededReorder, child, err
+	return child, same, err
 }
 
 // findDeferredColumns returns all the deferredColumn expressions in the node given

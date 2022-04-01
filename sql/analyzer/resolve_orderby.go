@@ -83,10 +83,7 @@ func pushdownSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 		// If there are some columns required by the order by on the child but some are missing
 		// we have to do some more complex logic and split the projection in two.
 		n, err := reorderSort(sort, missingCols)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		return n, transform.NewTree, nil
+		return n, transform.NewTree, err
 	})
 }
 
@@ -235,7 +232,7 @@ func resolveOrderByLiterals(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sc
 				// column access is 1-indexed
 				idx := int(v.(int64)) - 1
 				if idx >= len(schema) || idx < 0 {
-					return nil, false, ErrOrderByColumnIndex.New(idx + 1)
+					return nil, transform.SameTree, ErrOrderByColumnIndex.New(idx + 1)
 				}
 
 				// If there is more than one alias with this name, we can't handle it yet. This is because we rewrite

@@ -249,8 +249,7 @@ func resolveProcedureParams(ctx *sql.Context, paramNames map[string]struct{}, pr
 			}
 			return n.WithSource(newSource), transform.NewTree, nil
 		case *plan.Union:
-			//TODO unions aren't opaque, is this necessary?
-			// IndexedJoins might be missed
+			// todo(max): IndexedJoins might be missed here
 			newLeft, sameL, err := resolveProcedureParamsTransform(ctx, paramNames, n.Left())
 			if err != nil {
 				return nil, transform.SameTree, err

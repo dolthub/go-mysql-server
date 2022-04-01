@@ -20,7 +20,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// Expr applies a transformation function to the given expression tree from the bottom up.
+// Expr applies a transformation function to the given expression
+// tree from the bottom up. Each callback [f] returns a TreeIdentity
+// that is aggregated into a final output indicating whether the
+// expression tree was changed.
 func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 	children := e.Children()
 	if len(children) == 0 {
@@ -29,18 +32,16 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 
 	var (
 		newChildren []sql.Expression
-		c           sql.Expression
-		sameC       = SameTree
 		err         error
 	)
 
 	for i := 0; i < len(children); i++ {
-		c = children[i]
-		c, sameC, err = Expr(c, f)
+		c := children[i]
+		c, same, err := Expr(c, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
-		if !sameC {
+		if !same {
 			if newChildren == nil {
 				newChildren = make([]sql.Expression, len(children))
 				copy(newChildren, children)
@@ -49,6 +50,7 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 		}
 	}
 
+	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
 		e, err = e.WithChildren(newChildren...)
@@ -64,7 +66,7 @@ func Expr(e sql.Expression, f ExprFunc) (sql.Expression, TreeIdentity, error) {
 	return e, sameC && sameN, nil
 }
 
-// InspectExpr traverses the given tree from the bottom up, breaking if
+// InspectExpr traverses the given expression tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
 func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
 	stop := errors.New("stop")
@@ -98,14 +100,12 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 
 	var (
 		newChildren []sql.Expression
-		c           sql.Expression
-		sameC       = SameTree
 		err         error
 	)
 
 	for i := 0; i < len(children); i++ {
-		c = children[i]
-		c, sameC, err = ExprWithNode(n, c, f)
+		c := children[i]
+		c, sameC, err := ExprWithNode(n, c, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -118,6 +118,7 @@ func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Express
 		}
 	}
 
+	sameC := SameTree
 	if len(newChildren) > 0 {
 		sameC = NewTree
 		e, err = e.WithChildren(newChildren...)

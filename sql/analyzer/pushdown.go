@@ -244,12 +244,12 @@ func transformPushdownFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 				if !ok || lookup.expr == nil {
 					return node, transform.SameTree, nil
 				}
-				handled, same, err := getPredicateExprsHandledByLookup(ctx, a, node, lookup, tableAliases)
+				handled, err := getPredicateExprsHandledByLookup(ctx, a, node, lookup, tableAliases)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
 				filters.markFiltersHandled(handled...)
-				return node, same, nil
+				return node, len(handled) == 0, nil
 			case *plan.TableAlias, *plan.ResolvedTable, *plan.ValueDerivedTable:
 				n, samePred, err := pushdownFiltersToTable(ctx, a, node.(NameableNode), scope, filters, tableAliases)
 				if err != nil {
@@ -477,21 +477,21 @@ func convertFiltersToIndexedAccess(
 }
 
 // pushdownFiltersToTable attempts to push down filters to indexes that can accept them.
-func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *plan.IndexedTableAccess, lookup *indexLookup, tableAliases TableAliases) ([]sql.Expression, transform.TreeIdentity, error) {
+func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *plan.IndexedTableAccess, lookup *indexLookup, tableAliases TableAliases) ([]sql.Expression, error) {
 	filteredIdx, ok := idxTable.Index().(sql.FilteredIndex)
 	if !ok {
-		return nil, transform.SameTree, nil
+		return nil, nil
 	}
 
 	idxFilters := splitConjunction(lookup.expr)
 	if len(idxFilters) == 0 {
-		return nil, transform.SameTree, nil
+		return nil, nil
 	}
 	idxFilters = normalizeExpressions(ctx, tableAliases, idxFilters...)
 
 	handled := filteredIdx.HandledFilters(idxFilters)
 	if len(handled) == 0 {
-		return nil, transform.SameTree, nil
+		return nil, nil
 	}
 
 	a.Log(
@@ -501,7 +501,7 @@ func getPredicateExprsHandledByLookup(ctx *sql.Context, a *Analyzer, idxTable *p
 		len(handled),
 		len(idxFilters),
 	)
-	return handled, transform.NewTree, nil
+	return handled, nil
 }
 
 // pushdownFiltersToTable attempts to push filters to tables that can accept them
@@ -513,46 +513,48 @@ func pushdownFiltersToTable(
 	filters *filterSet,
 	tableAliases TableAliases,
 ) (sql.Node, transform.TreeIdentity, error) {
+	switch tableNode.(type) {
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
+		// only subset of nodes can be sql.FilteredTables
+	default:
+		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
+	}
+
 	table := getTable(tableNode)
 	if table == nil {
 		return tableNode, transform.SameTree, nil
 	}
 
-	var newTableNode sql.Node = tableNode
-
-	same := transform.SameTree
-	// Push any filters for this table onto the table itself if it's a sql.FilteredTable
-	if ft, ok := table.(sql.FilteredTable); ok && len(filters.availableFiltersForTable(ctx, tableNode.Name())) > 0 {
-		tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
-		handled := ft.HandledFilters(normalizeExpressions(ctx, tableAliases, tableFilters...))
-		filters.markFiltersHandled(handled...)
-
-		handled, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), handled...)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		same = transform.NewTree
-		table = ft.WithFilters(ctx, handled)
-		newTableNode = plan.NewDecoratedNode(
-			fmt.Sprintf("Filtered table access on %v", handled),
-			newTableNode)
-
-		a.Log(
-			"table %q transformed with pushdown of filters, %d filters handled of %d",
-			tableNode.Name(),
-			len(handled),
-			len(tableFilters),
-		)
+	ft, ok := table.(sql.FilteredTable)
+	if !ok {
+		return tableNode, transform.SameTree, nil
 	}
 
-	switch tableNode.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.IndexedTableAccess, *plan.ValueDerivedTable:
-		t, _, err := withTable(newTableNode, table)
-		return t, same, err
-	default:
-		return nil, transform.SameTree, ErrInvalidNodeType.New("pushdownFiltersToTable", tableNode)
+	// push filters for this table onto the table itself
+	tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name())
+	if len(tableFilters) == 0 {
+		return tableNode, transform.SameTree, nil
 	}
+	handled := ft.HandledFilters(normalizeExpressions(ctx, tableAliases, tableFilters...))
+	filters.markFiltersHandled(handled...)
+
+	handled, _, err := FixFieldIndexesOnExpressions(ctx, scope, a, tableNode.Schema(), handled...)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
+	table = ft.WithFilters(ctx, handled)
+	newTableNode := plan.NewDecoratedNode(
+		fmt.Sprintf("Filtered table access on %v", handled),
+		tableNode)
+
+	a.Log(
+		"table %q transformed with pushdown of filters, %d filters handled of %d",
+		tableNode.Name(),
+		len(handled),
+		len(tableFilters),
+	)
+	return withTable(newTableNode, table)
 }
 
 // pushdownFiltersToAboveTable introduces a filter node with the given predicate

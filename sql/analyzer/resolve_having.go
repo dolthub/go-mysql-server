@@ -28,7 +28,7 @@ import (
 )
 
 func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	n, _, err := transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		having, ok := node.(*plan.Having)
 		if !ok {
 			return node, transform.SameTree, nil
@@ -71,10 +71,6 @@ func resolveHaving(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (
 
 		return projectOriginalAggregation(having, originalSchema), transform.NewTree, nil
 	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-	return n, transform.TreeIdentity(nodesEqual(n, node)), nil
 }
 
 func findMissingColumns(node sql.Node, expr sql.Expression) []string {

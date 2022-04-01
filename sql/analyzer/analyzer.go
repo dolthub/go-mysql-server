@@ -382,12 +382,12 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 		if selector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)
 			n, same, err = batch.Eval(ctx, a, n, scope)
+			allSame = allSame && same
 			if err != nil {
 				a.Log("Encountered error: %v", err)
 				a.PopDebugContext()
 				return n, transform.SameTree, err
 			}
-			allSame = allSame && same
 			a.PopDebugContext()
 		}
 	}

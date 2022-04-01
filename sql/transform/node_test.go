@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//todo(max): more tests
 func TestTransformUp(t *testing.T) {
 	require := require.New(t)
 
@@ -30,12 +31,13 @@ func TestTransformUp(t *testing.T) {
 		inp   sql.Node
 		cmp   sql.Node
 		visit NodeFunc
-		same  bool
+		same  TreeIdentity
 	}{
 		{
 			name: "modify tree",
 			inp:  a(a(a(), a(), a(b())), c()),
 			cmp:  b(b(b(), b(), b(c())), c()),
+			same: NewTree,
 			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
@@ -51,7 +53,7 @@ func TestTransformUp(t *testing.T) {
 			name: "no modification",
 			inp:  a(a(a(), a(), a(b())), b()),
 			cmp:  a(a(a(), a(), a(b())), b()),
-			same: true,
+			same: SameTree,
 			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
@@ -68,7 +70,7 @@ func TestTransformUp(t *testing.T) {
 			res, same, err := Node(tt.inp, tt.visit)
 			require.NoError(err)
 			require.Equal(tt.cmp, res)
-			require.Equal(bool(same), tt.same)
+			require.Equal(same, tt.same)
 		})
 	}
 }

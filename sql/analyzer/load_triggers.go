@@ -55,7 +55,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 					node.TriggerName = trigger.TriggerName
 				} else if trigger.TriggerOrder != nil &&
 					strings.ToLower(trigger.TriggerOrder.OtherTriggerName) == lowercasedTriggerName {
-					return nil, false, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
+					return nil, transform.SameTree, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
 				}
 			}
 			return node, transform.NewTree, nil

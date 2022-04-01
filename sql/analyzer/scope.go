@@ -69,7 +69,7 @@ func (s *Scope) MemoNodes() []sql.Node {
 	return s.memos
 }
 
-// InnerToOuter returns the scope Node in order of innermost scope to outermost scope. When using these nodes for
+// InnerToOuter returns the scope Nodes in order of innermost scope to outermost scope. When using these nodes for
 // analysis, always inspect the children of the nodes, rather than the nodes themselves. The children define the schema
 // of the rows being processed by the scope node itself.
 func (s *Scope) InnerToOuter() []sql.Node {
