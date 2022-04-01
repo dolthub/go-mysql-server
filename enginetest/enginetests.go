@@ -64,13 +64,23 @@ func TestQueries(t *testing.T, harness Harness) {
 	}
 }
 
-// Tests a variety of spatial geometry queries against databases and tables provided by the given harness.
+// Tests a variety of geometry queries against databases and tables provided by the given harness.
 func TestSpatialQueries(t *testing.T, harness Harness) {
+	engine := NewSpatialEngine(t, harness)
+	defer engine.Close()
+
+	for _, tt := range SpatialQueryTests {
+		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
+	}
+}
+
+// Tests join queries against a provided harness.
+func TestJoinQueries(t *testing.T, harness Harness) {
 	engine := NewEngine(t, harness)
 	CreateIndexes(t, harness, engine)
 	createForeignKeys(t, harness, engine)
 
-	for _, tt := range SpatialQueryTests {
+	for _, tt := range JoinQueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	}
 }
@@ -259,6 +269,17 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 	for _, tt := range VersionedScripts {
 		TestScriptWithEngine(t, engine, harness, tt)
 	}
+
+	// This query returns a different error in the Memory engine and in the Dolt engine.
+	// Memory engine returns ErrTableNotFound, while Dolt engine returns ErrBranchNotFound.
+	// Until that is fixed, this test will not pass in both GMS and Dolt.
+	t.Run("Describe Table AsOf NonExistent Version", func(t *testing.T) {
+		t.Skip()
+		TestScript(t, NewDefaultMemoryHarness(), ScriptTest{
+			Query:       "DESCRIBE myhistorytable AS OF '2018-12-01'",
+			ExpectedErr: sql.ErrTableNotFound,
+		})
+	})
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
@@ -608,7 +629,8 @@ func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 
 func TestSpatialInsertInto(t *testing.T, harness Harness) {
 	for _, insertion := range SpatialInsertQueries {
-		e := NewEngine(t, harness)
+		e := NewSpatialEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, insertion.WriteQuery, insertion.ExpectedWriteResult, nil, insertion.Bindings)
 		// If we skipped the insert, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -713,7 +735,8 @@ func TestUpdateErrors(t *testing.T, harness Harness) {
 
 func TestSpatialUpdate(t *testing.T, harness Harness) {
 	for _, update := range SpatialUpdateTests {
-		e := NewEngine(t, harness)
+		e := NewSpatialEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, update.WriteQuery, update.ExpectedWriteResult, nil, update.Bindings)
 		// If we skipped the update, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -758,7 +781,8 @@ func TestDeleteErrors(t *testing.T, harness Harness) {
 
 func TestSpatialDelete(t *testing.T, harness Harness) {
 	for _, delete := range SpatialDeleteTests {
-		e := NewEngine(t, harness)
+		e := NewSpatialEngine(t, harness)
+		defer e.Close()
 		TestQuery(t, harness, e, delete.WriteQuery, delete.ExpectedWriteResult, nil, delete.Bindings)
 		// If we skipped the delete, also skip the select
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -4437,6 +4461,90 @@ func TestVariables(t *testing.T, harness Harness) {
 	}
 }
 
+func TestPreparedInsert(t *testing.T, harness Harness) {
+	myDb := harness.NewDatabase("mydb")
+	databases := []sql.Database{myDb}
+	e := NewEngineWithDbs(t, harness, databases)
+	defer e.Close()
+
+	tests := []struct {
+		Name        string
+		SetUpScript []string
+		Assertions  []QueryTest
+	}{
+		{
+			Name: "Insert on duplicate key",
+			SetUpScript: []string{
+				`CREATE TABLE users (
+  				id varchar(42) PRIMARY KEY
+			)`,
+				`CREATE TABLE nodes (
+			    id varchar(42) PRIMARY KEY,
+			    owner varchar(42),
+			    status varchar(12),
+			    timestamp bigint NOT NULL,
+			    FOREIGN KEY(owner) REFERENCES users(id)
+			)`,
+				"INSERT INTO users values ('milo'), ('dabe')",
+				"INSERT INTO nodes values ('id1', 'milo', 'off', 1)",
+			},
+			Assertions: []QueryTest{
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
+					Bindings: map[string]sql.Expression{
+						"v1": expression.NewLiteral("id1", sql.Text),
+						"v2": expression.NewLiteral("dabe", sql.Text),
+						"v3": expression.NewLiteral("off", sql.Text),
+						"v4": expression.NewLiteral(2, sql.Int64),
+						"v5": expression.NewLiteral("milo", sql.Text),
+						"v6": expression.NewLiteral("on", sql.Text),
+					},
+					Expected: []sql.Row{
+						{sql.OkResult{RowsAffected: 2}},
+					},
+				},
+				{
+					Query: "insert into nodes(id,owner,status,timestamp) values(?, ?, ?, ?) on duplicate key update owner=?,status=?",
+					Bindings: map[string]sql.Expression{
+						"v1": expression.NewLiteral("id2", sql.Text),
+						"v2": expression.NewLiteral("dabe", sql.Text),
+						"v3": expression.NewLiteral("off", sql.Text),
+						"v4": expression.NewLiteral(3, sql.Int64),
+						"v5": expression.NewLiteral("milo", sql.Text),
+						"v6": expression.NewLiteral("on", sql.Text),
+					},
+					Expected: []sql.Row{
+						{sql.OkResult{RowsAffected: 1}},
+					},
+				},
+				{
+					Query: "select * from nodes",
+					Expected: []sql.Row{
+						{"id1", "milo", "on", 1},
+						{"id2", "dabe", "off", 3},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		ctx := NewContextWithEngine(harness, e)
+		for _, statement := range tt.SetUpScript {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(statement) {
+					t.Skip()
+				}
+			}
+
+			RunQuery(t, e, harness, statement)
+		}
+
+		for _, a := range tt.Assertions {
+			TestQueryWithContext(t, ctx, e, a.Query, a.Expected, nil, a.Bindings)
+		}
+	}
+}
+
 func TestVariableErrors(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()
@@ -5781,6 +5889,13 @@ func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
 // NewEngine creates test data and returns an engine using the harness provided.
 func NewEngine(t *testing.T, harness Harness) *sqle.Engine {
 	dbs := CreateTestData(t, harness)
+	engine := NewEngineWithDbs(t, harness, dbs)
+	return engine
+}
+
+// NewSpatialEngine creates test data and returns an engine using the harness provided.
+func NewSpatialEngine(t *testing.T, harness Harness) *sqle.Engine {
+	dbs := CreateSpatialTestData(t, harness)
 	engine := NewEngineWithDbs(t, harness, dbs)
 	return engine
 }

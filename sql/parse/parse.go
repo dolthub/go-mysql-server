@@ -462,10 +462,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "processlist":
 		return plan.NewShowProcessList(), nil
 	case "create table", "create view":
-		return plan.NewShowCreateTable(
-			tableNameToUnresolvedTable(s.Table),
-			showType == "create view",
-		), nil
+		var asOfExpression sql.Expression
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+			asOfExpression = expression
+		}
+		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
+		return plan.NewShowCreateTable(table, showType == "create view"), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(
 			sql.UnresolvedDatabase(s.Database),
@@ -631,8 +637,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.DATABASES), sqlparser.KeywordString(sqlparser.SCHEMAS):
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
-		// TODO(erizocosmico): vitess parser does not support EXTENDED.
-		table := tableNameToUnresolvedTable(s.OnTable)
+		var asOfExpression sql.Expression
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+			asOfExpression = expression
+		}
+
+		table := tableNameToUnresolvedTableAsOf(s.OnTable, asOfExpression)
 		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
@@ -1308,6 +1322,10 @@ func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedT
 	return plan.NewUnresolvedTable(tableName.Name.String(), tableName.Qualifier.String())
 }
 
+func tableNameToUnresolvedTableAsOf(tableName sqlparser.TableName, asOf sql.Expression) *plan.UnresolvedTable {
+	return plan.NewUnresolvedTableAsOf(tableName.Name.String(), tableName.Qualifier.String(), asOf)
+}
+
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	table := tableNameToUnresolvedTable(ddl.Table)
 	switch strings.ToLower(ddl.IndexSpec.Action) {
@@ -1519,13 +1537,17 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	seenPrimary := false
+	seenUnique := false
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
 			constraint = sql.IndexConstraint_Primary
+			seenPrimary = true
 		} else if idxDef.Info.Unique {
 			constraint = sql.IndexConstraint_Unique
+			seenUnique = true
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
@@ -1568,7 +1590,14 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	for _, colDef := range c.TableSpec.Columns {
+		if colDef.Type.KeyOpt == colKeyFulltextKey {
+			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+		}
+		if colDef.Type.KeyOpt == colKeyPrimary {
+			seenPrimary = true
+		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
+			seenUnique = true
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -1580,6 +1609,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 				}},
 			})
 		}
+	}
+
+	// can't use unique constraint on keyless tables
+	if seenUnique && !seenPrimary {
+		return nil, sql.ErrUnsupportedFeature.New("unique constraint on keyless tables")
 	}
 
 	qualifier := c.Table.Qualifier.String()

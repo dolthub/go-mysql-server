@@ -27,7 +27,7 @@ import (
 // whether all entries in |bindings| are used at least once throughout the |n|.
 // sql.DeferredType instances will be resolved by the binding types.
 func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
-	fixBindings := func(_ sql.Node, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	fixBindings := func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := expr.(type) {
 		case *expression.BindVar:
 			val, found := bindings[e.Name]
@@ -48,6 +48,14 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 
 	n, _, err := transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
+		case *IndexedJoin:
+			// *plan.IndexedJoin cannot implement sql.Expressioner
+			// because the column indexes get mis-ordered by FixFieldIndexesForExpressions.
+			cond, same, err := transform.Expr(n.Cond, fixBindings)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return NewIndexedJoin(n.left, n.right, n.joinType, cond, n.scopeLen), same, nil
 		case *InsertInto:
 			// Manually apply bindings to [Source] because it is separated
 			// from [Destination].
@@ -55,12 +63,10 @@ func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, er
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return n.WithSource(newSource), transform.NewTree, nil
+			return transform.NodeExprs(n.WithSource(newSource), fixBindings)
 		default:
-			return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-				return transform.OneNodeExprsWithNode(n, fixBindings)
-			})
 		}
+		return transform.NodeExprs(node, fixBindings)
 	})
 	if err != nil {
 		return nil, err

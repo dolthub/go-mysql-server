@@ -183,6 +183,23 @@ func findTables(exprs ...sql.Expression) []string {
 	return names
 }
 
+// Returns a hashmap of tableCol used in the expressions given
+func findCols(exprs ...sql.Expression) []tableCol {
+	columns := make([]tableCol, 0)
+	for _, e := range exprs {
+		sql.Inspect(e, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case *expression.GetField:
+				columns = append(columns, tableCol{table: e.Table(), col: e.Name()})
+				return false
+			default:
+				return true
+			}
+		})
+	}
+	return columns
+}
+
 // Transforms the node given bottom up by setting resolve tables to reference the table given. Returns an error if more
 // than one table was set in this way.
 func withTable(node sql.Node, table sql.Table) (sql.Node, transform.TreeIdentity, error) {

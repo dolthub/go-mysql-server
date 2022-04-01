@@ -44,6 +44,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	//TODO replan children of crossjoins
 	selector := func(c transform.Context) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
 		switch c.Parent.(type) {
@@ -62,6 +63,10 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		case *plan.IndexedJoin:
 			return n, transform.SameTree, nil
 		case plan.JoinNode:
+			if !hasIndexableChild(n) {
+				return n, transform.SameTree, nil
+			}
+
 			oldJoin = n
 
 			var err error
@@ -73,12 +78,6 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			joinIndexes, err = findJoinIndexesByTable(ctx, n, tableAliases, a)
 			if err != nil {
 				return nil, transform.SameTree, err
-			}
-
-			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
-			// some tables / conditions)
-			if len(joinIndexes) != len(getTablesOrSubqueryAliases(n)) {
-				return n, transform.SameTree, nil
 			}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
@@ -304,9 +303,16 @@ func replaceIndexedAccessInUnaryNode(
 	return newNode, transform.NewTree, nil
 }
 
-func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
-	// only certain nodes can be below it.
+func replanJoin(
+	ctx *sql.Context,
+	node plan.JoinNode,
+	a *Analyzer,
+	joinIndexes joinIndexesByTable,
+	scope *Scope,
+) (sql.Node, transform.TreeIdentity, error) {
+	// Inspect the node for eligibility. The join planner rewrites
+	// the tree beneath this node, and for this to be correct only
+	// certain nodes can be below it.
 	eligible := true
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
@@ -316,6 +322,10 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 			// table alias in join conditions, but the subquery
 			// itself has already been analyzed. Do not inspect
 			// below here.
+			return false
+		case *plan.CrossJoin:
+			// cross join subtrees have to be planned in isolation,
+			// but otherwise are valid leafs for join planning.
 			return false
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)
@@ -360,7 +370,7 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 
 	joinNode := joinTreeToNodes(joinTree, scope, ordered)
 
-	return joinNode, nil
+	return joinNode, transform.NewTree, nil
 }
 
 func extractJoinHint(node plan.JoinNode) QueryHint {
@@ -426,11 +436,7 @@ func (j JoinOrder) HintType() string {
 // todo(max): smarter index generation/search to avoid pruning bad plans here
 func joinTreeToNodes(tree *joinSearchNode, scope *Scope, ordered bool) sql.Node {
 	if tree.isLeaf() {
-		nn, ok := tablesByName[strings.ToLower(tree.table)]
-		if !ok {
-			panic(fmt.Sprintf("Could not find NameableNode for '%s'", tree.table))
-		}
-		return nn
+		return tree.node
 	}
 	left := joinTreeToNodes(tree.left, scope, ordered)
 	right := joinTreeToNodes(tree.right, scope, ordered)
@@ -628,10 +634,6 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 // flattenJoinConds returns the set of distinct join conditions in the collection. A table order must be given to ensure
 // that the order of the conditions returned is deterministic for a given table order.
 func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
-	if len(tableOrder) != len(ji) {
-		panic(fmt.Sprintf("Inconsistent table order for flattenJoinConds: tableOrder: %v, ji: %v", tableOrder, ji))
-	}
-
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
