@@ -645,7 +645,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			asOfExpression = expression
 		}
 
-		table := tableNameToUnresolvedTableAsOf(s.OnTable, asOfExpression)
+		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
 		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
