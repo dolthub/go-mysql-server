@@ -358,10 +358,9 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 		return node, transform.SameTree, nil
 	}
 
-	tablesByName := byLowerCaseName(tableJoinOrder.tables())
-	joinNode := joinTreeToNodes(joinTree, tablesByName, scope)
+	joinNode := joinTreeToNodes(joinTree, scope, ordered)
 
-	return joinNode, transform.NewTree, nil
+	return joinNode, nil
 }
 
 func extractJoinHint(node plan.JoinNode) QueryHint {
@@ -424,7 +423,8 @@ func (j JoinOrder) HintType() string {
 }
 
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
-func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
+// todo(max): smarter index generation/search to avoid pruning bad plans here
+func joinTreeToNodes(tree *joinSearchNode, scope *Scope, ordered bool) sql.Node {
 	if tree.isLeaf() {
 		nn, ok := tablesByName[strings.ToLower(tree.table)]
 		if !ok {
@@ -432,9 +432,8 @@ func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode,
 		}
 		return nn
 	}
-
-	left := joinTreeToNodes(tree.left, tablesByName, scope)
-	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	left := joinTreeToNodes(tree.left, scope, ordered)
+	right := joinTreeToNodes(tree.right, scope, ordered)
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
@@ -636,7 +635,11 @@ func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
-			if joinIndex.joinPosition != plan.JoinTypeRight && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+			if !(joinIndex.joinPosition == plan.JoinTypeRight && joinIndex.joinType == plan.JoinTypeRight) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+				// the first condition permits more flexible IndexedJoins
+				//todo(max): understand why right handed index positioning
+				// interferes with index join planning. zach thinks this might
+				// be necessary due to an LALR parse ordering.
 				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
 		}
@@ -887,4 +890,30 @@ func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 	})
 
 	return tables
+}
+
+// hasIndexableChild validates whether the join tree
+// has indexable tables.
+func hasIndexableChild(node plan.JoinNode) bool {
+	switch n := node.Right().(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		return true
+	case *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.StripRowNode, *plan.RecursiveCte:
+		// these nodes are not indexable. subqueries can be an
+		// exception when optimized to hash lookups
+	case plan.JoinNode:
+		if hasIndexableChild(n) {
+			return true
+		}
+	}
+
+	switch n := node.Left().(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		return true
+	case plan.JoinNode:
+		return hasIndexableChild(n)
+	default:
+	}
+
+	return false
 }

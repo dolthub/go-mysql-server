@@ -15,13 +15,10 @@
 package analyzer
 
 import (
-	"strings"
-
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Returns the underlying table name for the node given
@@ -75,15 +72,6 @@ func getTables(node sql.Node) []NameableNode {
 	})
 
 	return tables
-}
-
-// byLowerCaseName returns all the nodes given mapped by their lowercase name.
-func byLowerCaseName(nodes []NameableNode) map[string]NameableNode {
-	byName := make(map[string]NameableNode)
-	for _, n := range nodes {
-		byName[strings.ToLower(n.Name())] = n
-	}
-	return byName
 }
 
 // Returns the underlying table name for the node given, ignoring table aliases
