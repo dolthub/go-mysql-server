@@ -114,13 +114,18 @@ func TestQueriesSimple(t *testing.T) {
 	enginetest.TestQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
 }
 
+// TestQueriesSimple runs the canonical test queries against a single threaded index enabled harness.
+func TestJoinQueries(t *testing.T) {
+	enginetest.TestJoinQueries(t, enginetest.NewMemoryHarness("simple", 1, testNumPartitions, true, nil))
+}
+
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleQuery(t *testing.T) {
 	t.Skip()
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `SELECT * FROM datetime_table where date_col = '2020-01-01'`,
+		Query:    `SELECT a.* FROM one_pk a CROSS JOIN one_pk b LEFT JOIN one_pk c ON b.pk = c.pk`,
 		Expected: []sql.Row{},
 	}
 
@@ -128,8 +133,8 @@ func TestSingleQuery(t *testing.T) {
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	engine := enginetest.NewEngine(t, harness)
 	enginetest.CreateIndexes(t, harness, engine)
-	//engine.Analyzer.Debug = true
-	//engine.Analyzer.Verbose = true
+	engine.Analyzer.Debug = true
+	engine.Analyzer.Verbose = true
 
 	enginetest.TestQuery(t, harness, engine, test.Query, test.Expected, nil, test.Bindings)
 }
@@ -142,19 +147,42 @@ func TestSingleScript(t *testing.T) {
 		{
 			Name: "trigger before insert, alter inserted value",
 			SetUpScript: []string{
-				"create table a (x int primary key)",
-				"create table b (y int primary key, x int, index idx_x(x))",
-				"create table c (z int primary key, x int, y int, index idx_x(x))",
-				"insert into a values (0),(1),(2),(3)",
-				"insert into b values (0,1), (1,1), (2,2), (3,2)",
-				"insert into c values (0,1,0), (1,1,0), (2,2,1), (3,2,1)",
+				"create table a (x int primary key, y varchar(4))",
+				"create table b (x int primary key, a_x int)",
+				"create table c (x int primary key, name varchar(4))",
+				"create table d (x int primary key, a_x int, c_x int, index idx1(a_x))",
+				"insert into a values (0, 'a'), (1, 'b'), (2,'c')",
+				"insert into b values (0, 0), (1, 1), (2,2)",
+				"insert into c values (0, 'c1'), (1, 'c2'), (2,'c3')",
+				"insert into d values (0, 1, 0), (1, 2, 1), (2, 0, 2)",
 			},
-			Query: "select a.* from a join b on a.x = b.x join c where c.x = a.x and b.x = 1",
+			Query: `WITH
+					cte AS
+					(
+						SELECT
+							a.x AS a_x,
+							b.x AS b_x
+						FROM
+							a
+						INNER JOIN
+							b
+						ON
+							a.x = b.a_x
+						WHERE a.y IN ('a', 'b')
+					)
+				SELECT cte.*
+				FROM
+					cte
+				CROSS JOIN
+					c
+				LEFT JOIN
+					d ON d.c_x = c.x AND d.a_x = cte.a_x
+				ORDER BY
+					cte.b_x,
+					c.name
+				;`,
 			Expected: []sql.Row{
-				{1},
-				{1},
-				{1},
-				{1},
+				{2},
 			},
 		},
 	}
@@ -162,8 +190,8 @@ func TestSingleScript(t *testing.T) {
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		engine := enginetest.NewEngine(t, harness)
-		//engine.Analyzer.Debug = true
-		//engine.Analyzer.Verbose = true
+		engine.Analyzer.Debug = true
+		engine.Analyzer.Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

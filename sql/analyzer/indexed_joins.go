@@ -42,6 +42,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 }
 
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+	//TODO replan children of crossjoins
 	selector := func(c plan.TransformContext) bool {
 		// We only want the top-most join node, so don't examine anything beneath join nodes
 		switch c.Parent.(type) {
@@ -60,6 +61,10 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 		case *plan.IndexedJoin:
 			return n, nil
 		case plan.JoinNode:
+			if !hasIndexableChild(n) {
+				return n, nil
+			}
+
 			oldJoin = n
 
 			var err error
@@ -71,12 +76,6 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 			joinIndexes, err = findJoinIndexesByTable(ctx, n, tableAliases, a)
 			if err != nil {
 				return nil, err
-			}
-
-			// If we didn't identify a join condition for every table, we can't construct a join plan safely (we would be missing
-			// some tables / conditions)
-			if len(joinIndexes) != len(getTablesOrSubqueryAliases(n)) {
-				return n, nil
 			}
 
 			return replanJoin(ctx, n, a, joinIndexes, scope)
@@ -303,8 +302,9 @@ func replaceIndexedAccessInUnaryNode(
 }
 
 func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes joinIndexesByTable, scope *Scope) (sql.Node, error) {
-	// Inspect the node for eligibility. The join planner rewrites the tree beneath this node, and for this to be correct
-	// only certain nodes can be below it.
+	// Inspect the node for eligibility. The join planner rewrites
+	// the tree beneath this node, and for this to be correct only
+	// certain nodes can be below it.
 	eligible := true
 	plan.Inspect(node, func(node sql.Node) bool {
 		switch node.(type) {
@@ -314,6 +314,10 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 			// table alias in join conditions, but the subquery
 			// itself has already been analyzed. Do not inspect
 			// below here.
+			return false
+		case *plan.CrossJoin:
+			// cross join subtrees have to be planned in isolation,
+			// but otherwise are valid leafs for join planning.
 			return false
 		default:
 			a.Log("Skipping join replanning because of incompatible node: %T", node)
@@ -357,7 +361,8 @@ func replanJoin(ctx *sql.Context, node plan.JoinNode, a *Analyzer, joinIndexes j
 	}
 
 	tablesByName := byLowerCaseName(tableJoinOrder.tables())
-	joinNode := joinTreeToNodes(joinTree, tablesByName, scope)
+
+	joinNode := joinTreeToNodes(joinTree, tablesByName, scope, ordered)
 
 	return joinNode, nil
 }
@@ -422,17 +427,13 @@ func (j JoinOrder) HintType() string {
 }
 
 // joinTreeToNodes transforms the simplified join tree given into a real tree of IndexedJoin nodes.
-func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope) sql.Node {
+// todo(max): smarter index generation/search to avoid pruning bad plans here
+func joinTreeToNodes(tree *joinSearchNode, tablesByName map[string]NameableNode, scope *Scope, ordered bool) sql.Node {
 	if tree.isLeaf() {
-		nn, ok := tablesByName[strings.ToLower(tree.table)]
-		if !ok {
-			panic(fmt.Sprintf("Could not find NameableNode for '%s'", tree.table))
-		}
-		return nn
+		return tree.node
 	}
-
-	left := joinTreeToNodes(tree.left, tablesByName, scope)
-	right := joinTreeToNodes(tree.right, tablesByName, scope)
+	left := joinTreeToNodes(tree.left, tablesByName, scope, ordered)
+	right := joinTreeToNodes(tree.right, tablesByName, scope, ordered)
 	return plan.NewIndexedJoin(left, right, tree.joinCond.joinType, tree.joinCond.cond, len(scope.Schema()))
 }
 
@@ -627,14 +628,12 @@ func (ji joinIndexesByTable) merge(other joinIndexesByTable) {
 // flattenJoinConds returns the set of distinct join conditions in the collection. A table order must be given to ensure
 // that the order of the conditions returned is deterministic for a given table order.
 func (ji joinIndexesByTable) flattenJoinConds(tableOrder []string) []*joinCond {
-	if len(tableOrder) != len(ji) {
-		panic(fmt.Sprintf("Inconsistent table order for flattenJoinConds: tableOrder: %v, ji: %v", tableOrder, ji))
-	}
-
 	joinConditions := make([]*joinCond, 0)
 	for _, table := range tableOrder {
 		for _, joinIndex := range ji[table] {
-			if joinIndex.joinPosition != plan.JoinTypeRight && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+			if !(joinIndex.joinPosition == plan.JoinTypeRight && joinIndex.joinType == plan.JoinTypeRight) && !joinCondPresent(joinIndex.joinCond, joinConditions) {
+				// the first condition permits more flexible IndexedJoins
+				// zach thinks maybe related to the LALR parse ordering.
 				joinConditions = append(joinConditions, &joinCond{joinIndex.joinCond, joinIndex.joinType, joinIndex.table})
 			}
 		}
@@ -885,4 +884,30 @@ func getTablesOrSubqueryAliases(node sql.Node) []NameableNode {
 	})
 
 	return tables
+}
+
+// hasIndexableChild validates whether the join tree
+// has indexable tables.
+func hasIndexableChild(node plan.JoinNode) bool {
+	switch n := node.Right().(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		return true
+	case *plan.CrossJoin, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.StripRowNode:
+		// this set of nodes are not indexable, with the exception
+		// of subqueries which can be optimized to hash lookups
+	case plan.JoinNode:
+		if hasIndexableChild(n) {
+			return true
+		}
+	}
+
+	switch n := node.Left().(type) {
+	case *plan.ResolvedTable, *plan.TableAlias:
+		return true
+	case plan.JoinNode:
+		return hasIndexableChild(n)
+	default:
+	}
+
+	return false
 }
