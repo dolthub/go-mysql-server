@@ -16,6 +16,8 @@ package sql
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -108,6 +110,8 @@ func TestJsonConvert(t *testing.T) {
 		{[]byte(`{"a": true, "b": 3}`), MustJSON(`{"a":true,"b":3}`), false},
 		{testStruct{Field: "test"}, MustJSON(`{"field":"test"}`), false},
 		{MustJSON(`{"field":"test"}`), MustJSON(`{"field":"test"}`), false},
+		{[]string{}, MustJSON(`[]`), false},
+		{[]string{`555-555-5555`}, MustJSON(`["555-555-5555"]`), false},
 	}
 
 	for _, test := range tests {
@@ -125,4 +129,31 @@ func TestJsonConvert(t *testing.T) {
 
 func TestJsonString(t *testing.T) {
 	require.Equal(t, "JSON", JSON.String())
+}
+
+func TestJsonSQL(t *testing.T) {
+	type testStruct struct {
+		Field string `json:"field"`
+	}
+	tests := []struct {
+		val         string
+		expectedErr bool
+	}{
+		{`""`, false},
+		{`"555-555-555"`, false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.val), func(t *testing.T) {
+			val, err := JSON.SQL(nil, test.val)
+			if test.expectedErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				expected, err := sqltypes.NewValue(querypb.Type_JSON, []byte(test.val))
+				require.NoError(t, err)
+				assert.Equal(t, expected, val)
+			}
+		})
+	}
 }
