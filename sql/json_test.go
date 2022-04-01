@@ -16,9 +16,10 @@ package sql
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
