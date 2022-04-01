@@ -8007,6 +8007,28 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "information_schema.columns shows default value with more types",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (pk int primary key, fname varchar(20), lname varchar(20), height int)",
+			"ALTER TABLE test_table CHANGE fname col2 float NOT NULL DEFAULT 4.5",
+			"ALTER TABLE test_table CHANGE lname col3 double NOT NULL DEFAULT 3.14159",
+			"ALTER TABLE test_table CHANGE height col4 datetime NULL DEFAULT '2008-04-22 16:16:16'",
+			"ALTER TABLE test_table ADD COLUMN col5 boolean NULL DEFAULT FALSE",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
+				Expected: []sql.Row{
+					{"test_table", "pk", nil, "NO"},
+					{"test_table", "col2", "4.5", "NO"},
+					{"test_table", "col3", "3.14159", "NO"},
+					{"test_table", "col4", "2008-04-22 16:16:16", "YES"},
+					{"test_table", "col5", "false", "YES"},
+				},
+			},
+		},
+	},
+	{
 		Name: "information_schema.routines",
 		SetUpScript: []string{
 			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",

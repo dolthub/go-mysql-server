@@ -137,7 +137,7 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 	)
 	require.NoError(t, err)
 
-	t.Run("expression default represented incorrectly in information_schema.columns table", func(t *testing.T) {
+	t.Run("expression default represented correctly in information_schema.columns table", func(t *testing.T) {
 		t.Skip()
 		TestScriptWithEngine(t, engine, harness, ScriptTest{
 			Name: "information_schema.columns shows default expressions",
