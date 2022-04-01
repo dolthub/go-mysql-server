@@ -34,13 +34,20 @@ type ShowCreateTable struct {
 	Checks           sql.CheckConstraints
 	targetSchema     sql.Schema
 	primaryKeySchema sql.PrimaryKeySchema
+	AsOf             sql.Expression
 }
 
 // NewShowCreateTable creates a new ShowCreateTable node.
 func NewShowCreateTable(table sql.Node, isView bool) *ShowCreateTable {
+	return NewShowCreateTableWithAsOf(table, isView, nil)
+}
+
+// NewShowCreateTableWithAsOf creates a new ShowCreateTable node for a specific version of a table.
+func NewShowCreateTableWithAsOf(table sql.Node, isView bool, asOf sql.Expression) *ShowCreateTable {
 	return &ShowCreateTable{
 		UnaryNode: &UnaryNode{table},
 		IsView:    isView,
+		AsOf:      asOf,
 	}
 }
 
@@ -146,7 +153,12 @@ func (sc *ShowCreateTable) String() string {
 		name = nameable.Name()
 	}
 
-	return fmt.Sprintf("SHOW CREATE %s %s", t, name)
+	asOfClause := ""
+	if sc.AsOf != nil {
+		asOfClause = fmt.Sprintf("as of %v", sc.AsOf)
+	}
+
+	return fmt.Sprintf("SHOW CREATE %s %s %s", t, name, asOfClause)
 }
 
 type showCreateTablesIter struct {
