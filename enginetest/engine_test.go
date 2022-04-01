@@ -258,7 +258,7 @@ func TestTrackProcess(t *testing.T) {
 	require.NoError(err)
 
 	rule := getRuleFrom(analyzer.OnceAfterAll, "track_process")
-	result, err := rule.Apply(ctx, a, node, nil)
+	result, _, err := rule.Apply(ctx, a, node, nil)
 	require.NoError(err)
 
 	processes := ctx.ProcessList.Processes()

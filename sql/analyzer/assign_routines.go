@@ -17,6 +17,7 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // RoutineTable is a Table that depends on a procedures and functions.
@@ -28,14 +29,14 @@ type RoutineTable interface {
 	// TODO: also should assign FUNCTIONS
 }
 
-// assignRoutines sets the map of db-procedures in the routineTable node.
-func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+// assignRoutines sets the catalog in the required nodes.
+func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("assign_routines")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if !n.Resolved() {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		switch node := n.(type) {
@@ -51,11 +52,11 @@ func assignRoutines(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sq
 
 			if ok {
 				nc.Table = ct.AssignProcedures(pm)
+				return &nc, transform.NewTree, nil
 			}
-
-			return &nc, nil
+			return node, transform.SameTree, nil
 		default:
-			return n, nil
+			return node, transform.SameTree, nil
 		}
 	})
 }

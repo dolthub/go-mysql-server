@@ -18,31 +18,31 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
-	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, error) {
+func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_table_functions")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		utf, ok := n.(*expression.UnresolvedTableFunction)
 		if !ok {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		tableFunction, err := a.Catalog.TableFunction(ctx, utf.FunctionName())
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		database, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		if privilegedDatabase, ok := database.(grant_tables.PrivilegedDatabase); ok {
@@ -51,47 +51,47 @@ func resolveTableFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) 
 
 		newInstance, err := tableFunction.NewInstance(ctx, database, utf.Arguments)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
-		return newInstance, nil
+		return newInstance, transform.NewTree, nil
 	})
 }
 
 // resolveFunctions replaces UnresolvedFunction nodes with equivalent functions from the Catalog.
-func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, error) {
+func resolveFunctions(ctx *sql.Context, a *Analyzer, n sql.Node, _ *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_functions")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if n.Resolved() {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
-		return plan.TransformExpressionsUp(n, resolveFunctionsInExpr(ctx, a))
+		return transform.OneNodeExpressions(n, resolveFunctionsInExpr(ctx, a))
 	})
 }
 
-func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) sql.TransformExprFunc {
-	return func(e sql.Expression) (sql.Expression, error) {
+func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) transform.ExprFunc {
+	return func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if e.Resolved() {
-			return e, nil
+			return e, transform.SameTree, nil
 		}
 
 		uf, ok := e.(*expression.UnresolvedFunction)
 		if !ok {
-			return e, nil
+			return e, transform.SameTree, nil
 		}
 
 		n := uf.Name()
 		f, err := a.Catalog.Function(ctx, n)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		rf, err := f.NewInstance(uf.Arguments)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		// Because of the way that we instantiate functions, we need to pass in the window from the UnresolvedFunction
@@ -101,16 +101,16 @@ func resolveFunctionsInExpr(ctx *sql.Context, a *Analyzer) sql.TransformExprFunc
 		case sql.WindowAggregation:
 			rf, err = a.WithWindow(uf.Window)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 		case sql.Aggregation:
 			rf, err = a.WithWindow(uf.Window)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 		}
 
 		a.Log("resolved function %q", n)
-		return rf, nil
+		return rf, transform.NewTree, nil
 	}
 }

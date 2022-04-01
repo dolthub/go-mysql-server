@@ -17,6 +17,7 @@ package plan
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ApplyBindings replaces all `BindVar` expressions in the given sql.Node with
@@ -26,44 +27,49 @@ import (
 // whether all entries in |bindings| are used at least once throughout the |n|.
 // sql.DeferredType instances will be resolved by the binding types.
 func ApplyBindings(n sql.Node, bindings map[string]sql.Expression) (sql.Node, error) {
-	fixBindings := func(expr sql.Expression) (sql.Expression, error) {
+	fixBindings := func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := expr.(type) {
 		case *expression.BindVar:
 			val, found := bindings[e.Name]
 			if found {
-				return val, nil
+				return val, transform.NewTree, nil
 			}
 		case *Subquery:
 			// *Subquery is a sql.Expression with a sql.Node not reachable
 			// by the visitor. Manually apply bindings to [Query] field.
 			q, err := ApplyBindings(e.Query, bindings)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-			return e.WithQuery(q), nil
+			return e.WithQuery(q), transform.NewTree, nil
 		}
-		return expr, nil
+		return expr, transform.SameTree, nil
 	}
 
-	return TransformUpWithOpaque(n, func(node sql.Node) (sql.Node, error) {
+	n, _, err := transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *IndexedJoin:
 			// *plan.IndexedJoin cannot implement sql.Expressioner
 			// because the column indexes get mis-ordered by FixFieldIndexesForExpressions.
-			cond, err := expression.TransformUp(n.Cond, fixBindings)
+			cond, same, err := transform.Expr(n.Cond, fixBindings)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-			return NewIndexedJoin(n.left, n.right, n.joinType, cond, n.scopeLen), nil
+			return NewIndexedJoin(n.left, n.right, n.joinType, cond, n.scopeLen), same, nil
 		case *InsertInto:
 			// Manually apply bindings to [Source] because it is separated
 			// from [Destination].
 			newSource, err := ApplyBindings(n.Source, bindings)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
-			return TransformExpressionsUp(n.WithSource(newSource), fixBindings)
+			return transform.NodeExprs(n.WithSource(newSource), fixBindings)
+		default:
 		}
-		return TransformExpressionsUp(node, fixBindings)
+		return transform.NodeExprs(node, fixBindings)
 	})
+	if err != nil {
+		return nil, err
+	}
+	return n, err
 }

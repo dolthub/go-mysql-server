@@ -17,8 +17,8 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 const dualTableName = "dual"
@@ -48,11 +48,11 @@ func isDualTable(t sql.Table) bool {
 	return t.Name() == dualTableName && t.Schema().Equals(dualTableSchema.Schema)
 }
 
-func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_tables")
 	defer span.Finish()
 
-	return plan.TransformUpCtx(n, nil, func(c plan.TransformContext) (sql.Node, error) {
+	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		ignore := false
 		switch p := c.Parent.(type) {
 		case *plan.DropTable:
@@ -61,22 +61,28 @@ func resolveTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 
 		switch p := c.Node.(type) {
 		case *plan.DropTable:
+			// *plan.DropTable is special cased to account
+			// for when we explicitly remove nonexistent
+			// child tables. In this case, the output node
+			// will have fewer children. The UnresolvedNode
+			// case is modified to skip those undesired children
+			// lower in the tree.
 			var resolvedTables []sql.Node
 			for _, t := range p.Children() {
 				if _, ok := t.(*plan.ResolvedTable); ok {
 					resolvedTables = append(resolvedTables, t)
 				}
 			}
-			c.Node, _ = p.WithChildren(resolvedTables...)
-			return n, nil
+			newn, _ := p.WithChildren(resolvedTables...)
+			return newn, transform.NewTree, nil
 		case *plan.UnresolvedTable:
 			r, err := resolveTable(ctx, p, a)
 			if sql.ErrTableNotFound.Is(err) && ignore {
-				return p, nil
+				return p, transform.SameTree, nil
 			}
-			return r, err
+			return r, transform.NewTree, err
 		default:
-			return p, nil
+			return p, transform.SameTree, nil
 		}
 	})
 }
@@ -92,7 +98,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 		// This is necessary to use functions in AS OF expressions. Because function resolution happens after table
 		// resolution, we resolve any functions in the AsOf here in order to evaluate them immediately. A better solution
 		// might be to defer evaluating the expression until later in the analysis, but that requires bigger changes.
-		asOfExpr, err := expression.TransformUp(t.AsOf, resolveFunctionsInExpr(ctx, a))
+		asOfExpr, _, err := transform.Expr(t.AsOf, resolveFunctionsInExpr(ctx, a))
 		if err != nil {
 			return nil, err
 		}
@@ -126,38 +132,39 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
 // store supplementary schema information. This is useful for lazy resolution of column default values.
-func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func setTargetSchemas(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("set_target_schema")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		t, ok := n.(sql.SchemaTarget)
 		if !ok {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		table := getResolvedTable(n)
 		if table == nil {
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 
 		var err error
 		n, err = t.WithTargetSchema(table.Schema())
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		pkst, ok := n.(sql.PrimaryKeySchemaTarget)
 		if !ok {
-			return n, nil
+			return n, transform.NewTree, nil
 		}
 
 		pkt, ok := table.Table.(sql.PrimaryKeyTable)
 		if !ok {
-			return n, nil
+			return n, transform.NewTree, nil
 		}
 
-		return pkst.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
+		n, err = pkst.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
+		return n, transform.NewTree, err
 	})
 }
 
@@ -181,10 +188,10 @@ func handleTableLookupFailure(err error, tableName string, dbName string, a *Ana
 }
 
 // validateDropTables returns an error if the database is not droppable.
-func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	dt, ok := n.(*plan.DropTable)
 	if !ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	// validates that each table in DropTable is ResolvedTable and each database of
@@ -192,13 +199,13 @@ func validateDropTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope)
 	for _, table := range dt.Tables {
 		rt, ok := table.(*plan.ResolvedTable)
 		if !ok {
-			return nil, plan.ErrUnresolvedTable.New(rt.String())
+			return nil, transform.SameTree, plan.ErrUnresolvedTable.New(rt.String())
 		}
 		_, ok = rt.Database.(sql.TableDropper)
 		if !ok {
-			return nil, sql.ErrDropTableNotSupported.New(rt.Database.Name())
+			return nil, transform.SameTree, sql.ErrDropTableNotSupported.New(rt.Database.Name())
 		}
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }

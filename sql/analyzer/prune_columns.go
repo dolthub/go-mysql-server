@@ -17,6 +17,8 @@ package analyzer
 import (
 	"fmt"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -42,39 +44,40 @@ func (uc usedColumns) has(table, col string) bool {
 // pruneColumns removes unneeded columns from Project and GroupBy nodes. It also rewrites field indexes as necessary,
 // even if no columns were pruned. This is especially important for subqueries -- this function handles fixing field
 // indexes when the outer scope schema changes as a result of other analyzer functions.
-func pruneColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	if !n.Resolved() {
-		return n, nil
+func pruneColumns(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	if !node.Resolved() {
+		return node, transform.SameTree, nil
 	}
 
 	// Skip pruning columns for insert statements. For inserts involving a select (INSERT INTO table1 SELECT a,b FROM
 	// table2), all columns from the select are used for the insert, and error checking for schema compatibility
 	// happens at execution time. Otherwise the logic below will convert a Project to a ResolvedTable for the selected
 	// table, which can alter the column order of the select.
-	switch n := n.(type) {
+	switch n := node.(type) {
 	case *plan.InsertInto, *plan.CreateTrigger:
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
-	if !pruneColumnsIsSafe(n) {
+	if !pruneColumnsIsSafe(node) {
 		a.Log("not pruning columns because it is not safe.")
-		return n, nil
+		return node, transform.SameTree, nil
 	}
 
-	columns := columnsUsedByNode(n)
-	findUsedColumns(columns, n)
+	columns := columnsUsedByNode(node)
+	findUsedColumns(columns, node)
 
-	n, err := pruneUnusedColumns(a, n, columns)
+	n, sameC, err := pruneUnusedColumns(a, node, columns)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	n, err = pruneSubqueries(ctx, a, n, columns)
+	n, sameSq, err := pruneSubqueries(ctx, a, n, columns)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return fixRemainingFieldsIndexes(ctx, a, n, scope)
+	n, sameFi, err := fixRemainingFieldsIndexes(ctx, a, n, scope)
+	return n, sameC && sameSq && sameFi, err
 }
 
 func pruneColumnsIsSafe(n sql.Node) bool {
@@ -82,7 +85,7 @@ func pruneColumnsIsSafe(n sql.Node) bool {
 	// We do not run pruneColumns if there is a Subquery
 	// expression, because the field rewrites and scope handling
 	// in here are not principled.
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		if _, ok := e.(*plan.Subquery); ok {
 			isSafe = false
 		}
@@ -94,7 +97,7 @@ func pruneColumnsIsSafe(n sql.Node) bool {
 	// We cannot eliminate projections in RecursiveCte's,
 	// they are used implicitly in the recursive execution
 	// if not explicitly in the outer scope.
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		if _, ok := n.(*plan.RecursiveCte); ok {
 			isSafe = false
 		}
@@ -113,7 +116,7 @@ func columnsUsedByNode(n sql.Node) usedColumns {
 	return columns
 }
 
-func canPruneChild(c plan.TransformContext) bool {
+func canPruneChild(c transform.Context) bool {
 	_, isIndexedJoin := c.Parent.(*plan.IndexedJoin)
 	return !isIndexedJoin
 }
@@ -123,7 +126,7 @@ func pruneSubqueryColumns(
 	a *Analyzer,
 	n *plan.SubqueryAlias,
 	parentColumns usedColumns,
-) (sql.Node, error) {
+) (sql.Node, transform.TreeIdentity, error) {
 	a.Log("pruning columns of subquery with alias %q", n.Name())
 
 	columns := make(usedColumns)
@@ -142,32 +145,35 @@ func pruneSubqueryColumns(
 	for col := range parentColumns[n.Name()] {
 		table, ok := tableByCol[col]
 		if !ok {
-			return nil, fmt.Errorf("this is likely a bug: missing projected column %q on subquery %q", col, n.Name())
+			return nil, transform.SameTree, fmt.Errorf("this is likely a bug: missing projected column %q on subquery %q", col, n.Name())
 		}
 		columns.add(table, col)
 	}
 
 	findUsedColumns(columns, n.Child)
 
-	node, err := pruneUnusedColumns(a, n.Child, columns)
+	node, sameCols, err := pruneUnusedColumns(a, n.Child, columns)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	node, err = pruneSubqueries(ctx, a, node, columns)
+	node, sameSq, err := pruneSubqueries(ctx, a, node, columns)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	// There is no need to fix the field indexes after pruning here
 	// because the main query will take care of fixing the indexes of all the
 	// nodes in the tree.
-
-	return n.WithChildren(node)
+	if sameCols && sameSq {
+		return node, transform.SameTree, err
+	}
+	newn, err := n.WithChildren(node)
+	return newn, transform.NewTree, err
 }
 
 func findUsedColumns(columns usedColumns, n sql.Node) {
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Project:
 			addUsedProjectColumns(columns, n.Projections)
@@ -234,31 +240,30 @@ func pruneSubqueries(
 	a *Analyzer,
 	n sql.Node,
 	parentColumns usedColumns,
-) (sql.Node, error) {
-	return plan.TransformUpCtx(n, canPruneChild, func(c plan.TransformContext) (sql.Node, error) {
+) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		subq, ok := c.Node.(*plan.SubqueryAlias)
 		if !ok {
-			return c.Node, nil
+			return c.Node, transform.SameTree, nil
 		}
-
 		return pruneSubqueryColumns(ctx, a, subq, parentColumns)
 	})
 }
 
-func pruneUnusedColumns(a *Analyzer, n sql.Node, columns usedColumns) (sql.Node, error) {
-	return plan.TransformUpCtx(n, canPruneChild, func(c plan.TransformContext) (sql.Node, error) {
+func pruneUnusedColumns(a *Analyzer, n sql.Node, columns usedColumns) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *plan.Project:
-			return pruneProject(a, n, columns), nil
+			return pruneProject(a, n, columns)
 		case *plan.GroupBy:
-			return pruneGroupBy(a, n, columns), nil
+			return pruneGroupBy(a, n, columns)
 		default:
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
 
-func pruneProject(a *Analyzer, n *plan.Project, columns usedColumns) sql.Node {
+func pruneProject(a *Analyzer, n *plan.Project, columns usedColumns) (sql.Node, transform.TreeIdentity, error) {
 	var remaining []sql.Expression
 	for _, e := range n.Projections {
 		if !shouldPruneExpr(e, columns) {
@@ -270,13 +275,16 @@ func pruneProject(a *Analyzer, n *plan.Project, columns usedColumns) sql.Node {
 
 	if len(remaining) == 0 {
 		a.Log("Replacing empty project %s node with child %s", n, n.Child)
-		return n.Child
+		return n.Child, transform.NewTree, nil
 	}
 
-	return plan.NewProject(remaining, n.Child)
+	if len(remaining) == len(n.Projections) {
+		return n, transform.SameTree, nil
+	}
+	return plan.NewProject(remaining, n.Child), transform.NewTree, nil
 }
 
-func pruneGroupBy(a *Analyzer, n *plan.GroupBy, columns usedColumns) sql.Node {
+func pruneGroupBy(a *Analyzer, n *plan.GroupBy, columns usedColumns) (sql.Node, transform.TreeIdentity, error) {
 	var remaining []sql.Expression
 	for _, e := range n.SelectedExprs {
 		if !shouldPruneExpr(e, columns) {
@@ -289,10 +297,13 @@ func pruneGroupBy(a *Analyzer, n *plan.GroupBy, columns usedColumns) sql.Node {
 	if len(remaining) == 0 {
 		a.Log("Replacing empty groupby %s node with child %s", n, n.Child)
 		// TODO: this seems wrong, even if all projections are now gone we still need to do a grouping
-		return n.Child
+		return n.Child, transform.NewTree, nil
 	}
 
-	return plan.NewGroupBy(remaining, n.GroupByExprs, n.Child)
+	if len(remaining) == len(n.SelectedExprs) {
+		return n, transform.SameTree, nil
+	}
+	return plan.NewGroupBy(remaining, n.GroupByExprs, n.Child), transform.NewTree, nil
 }
 
 func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
@@ -308,45 +319,55 @@ func shouldPruneExpr(e sql.Expression, cols usedColumns) bool {
 	return !cols.has(gf.Table(), gf.Name())
 }
 
-func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUpCtx(n, canPruneChild, func(c plan.TransformContext) (sql.Node, error) {
+func fixRemainingFieldsIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, canPruneChild, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *plan.RenameColumn, *plan.AddColumn, *plan.ModifyColumn, *plan.AlterDefaultSet, *plan.DropColumn, *plan.ShowCreateTable:
 			// do nothing, column defaults already have been resolved
-			return n, nil
+			return n, transform.SameTree, nil
 		case *plan.SubqueryAlias:
-			child, err := fixRemainingFieldsIndexes(ctx, a, n.Child, nil)
+			child, same, err := fixRemainingFieldsIndexes(ctx, a, n.Child, nil)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
+			}
+			if same {
+				return n, transform.SameTree, nil
 			}
 
-			return n.WithChildren(child)
+			node, err := n.WithChildren(child)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return node, transform.NewTree, nil
 		default:
 			if _, ok := n.(sql.Expressioner); !ok {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
 			indexedCols, err := indexColumns(ctx, a, n, scope)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
 			if len(indexedCols) == 0 {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
-			return plan.TransformExpressions(n, func(e sql.Expression) (sql.Expression, error) {
+			return transform.OneNodeExprsWithNode(n, func(_ sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				gf, ok := e.(*expression.GetField)
 				if !ok {
-					return e, nil
+					return e, transform.SameTree, nil
 				}
 
 				idx, ok := indexedCols[newTableCol(gf.Table(), gf.Name())]
 				if !ok {
-					return nil, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
+					return nil, transform.SameTree, sql.ErrTableColumnNotFound.New(gf.Table(), gf.Name())
 				}
 
-				return gf.WithIndex(idx.index), nil
+				if idx.index == gf.Index() {
+					return e, transform.SameTree, nil
+				}
+				return gf.WithIndex(idx.index), transform.NewTree, nil
 			})
 		}
 	})

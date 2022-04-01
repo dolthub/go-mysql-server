@@ -26,6 +26,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var (
@@ -306,10 +307,10 @@ func GetColumnsAndPrepareExpressions(
 	var expressions = make([]sql.Expression, len(exprs))
 
 	for i, e := range exprs {
-		ex, err := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+		ex, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			gf, ok := e.(*expression.GetField)
 			if !ok {
-				return e, nil
+				return e, transform.SameTree, nil
 			}
 
 			var idx int
@@ -327,7 +328,7 @@ func GetColumnsAndPrepareExpressions(
 				gf.Table(),
 				gf.Name(),
 				gf.IsNullable(),
-			), nil
+			), transform.NewTree, nil
 		})
 
 		if err != nil {

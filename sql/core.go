@@ -40,14 +40,6 @@ type Resolvable interface {
 	Resolved() bool
 }
 
-// TransformNodeFunc is a function that given a node will return that node
-// as is or transformed along with an error, if any.
-type TransformNodeFunc func(Node) (Node, error)
-
-// TransformExprFunc is a function that given an expression will return that
-// expression as is or transformed along with an error, if any.
-type TransformExprFunc func(Expression) (Expression, error)
-
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable

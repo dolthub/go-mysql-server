@@ -18,6 +18,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // reorderProjection adds intermediate Project nodes to the descendants of existing Project nodes, adding fields to
@@ -31,15 +32,15 @@ import (
 // Project([a, foo], Sort(foo, Project([a, 1 as foo], table)))
 // This process also converts higher-level projected fields to GetField expressions, since we don't want to evaluate
 // the original expression more than once (which could actually produce incorrect results in some cases).
-func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("reorder_projection")
 	defer span.Finish()
 
 	if n.Resolved() {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
-	return plan.TransformUp(n, func(node sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		project, ok := node.(*plan.Project)
 		// When we transform the projection, the children will always be
 		// unresolved in the case we want to fix, as the reorder happens just
@@ -51,7 +52,7 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		// Without this check, it would cause a panic, because NaturalJoin's
 		// schema method is just a placeholder that should not be called.
 		if !ok || hasNaturalJoin(project.Child) {
-			return node, nil
+			return node, transform.SameTree, nil
 		}
 
 		// We must find all aliases that may need to be moved inside the projection.
@@ -64,29 +65,29 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 		}
 
 		// And add projection nodes where needed in the child tree.
-		neededReorder, child, err := addIntermediateProjections(project, projectedAliases)
+		child, same, err := addIntermediateProjections(project, projectedAliases)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
-		if !neededReorder {
-			return node, nil
+		if same {
+			return node, transform.SameTree, nil
 		}
 
 		// To do the reordering, we need to reason about column types, which means the child needs to be resolved.
 		// If it can't be resolved, we can't continue.
-		child, err = resolveColumns(ctx, a, child, scope)
+		child, _, err = resolveColumns(ctx, a, child, scope)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
-		child, err = resolveSubqueryExpressions(ctx, a, child, scope)
+		child, _, err = resolveSubqueryExpressions(ctx, a, child, scope)
 		if err != nil {
-			return nil, err
+			return nil, transform.SameTree, err
 		}
 
 		if !child.Resolved() {
-			return node, nil
+			return node, transform.SameTree, nil
 		}
 
 		childSchema := child.Schema()
@@ -114,16 +115,22 @@ func reorderProjection(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 			}
 		}
 
-		return plan.NewProject(projections, child), nil
+		return plan.NewProject(projections, child), transform.NewTree, nil
 	})
 }
 
-func addIntermediateProjections(project *plan.Project, projectedAliases map[string]sql.Expression) (neededReorder bool, child sql.Node, err error) {
-	// We only want to apply each projection once, even if it occurs multiple times in the tree. Lower tree levels are
-	// processed first, so only the lowest mention of each alias will be applied at that layer. High layers will just have
-	// a normal GetField expression to reference the lower layer.
+func addIntermediateProjections(
+	project *plan.Project,
+	projectedAliases map[string]sql.Expression,
+) (sql.Node, transform.TreeIdentity, error) {
+	// We only want to apply each projection once, even if it
+	// occurs multiple times in the tree. Lower tree levels are
+	// processed first, so only the lowest mention of each
+	// alias will be applied at that layer. High layers will
+	// just have a normal GetField expression to reference the
+	// lower layer.
 	appliedProjections := make(map[string]bool)
-	child, err = plan.TransformUp(project.Child, func(node sql.Node) (sql.Node, error) {
+	child, same, err := transform.Node(project.Child, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		var missingColumns []string
 		switch node := node.(type) {
 		case *plan.Sort, *plan.Filter:
@@ -144,14 +151,12 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 				})
 			}
 		default:
-			return node, nil
+			return node, transform.SameTree, nil
 		}
 
 		if len(missingColumns) == 0 {
-			return node, nil
+			return node, transform.SameTree, nil
 		}
-
-		neededReorder = true
 
 		// Only add the required columns for that node in the projection.
 		child := node.Children()[0]
@@ -173,11 +178,11 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		child = plan.NewProject(projections, child)
 		switch node := node.(type) {
 		case *plan.Filter:
-			return plan.NewFilter(node.Expression, child), nil
+			return plan.NewFilter(node.Expression, child), transform.NewTree, nil
 		case *plan.Sort:
-			return plan.NewSort(node.SortFields, child), nil
+			return plan.NewSort(node.SortFields, child), transform.NewTree, nil
 		default:
-			return nil, ErrInvalidNodeType.New("reorderProjection", node)
+			return nil, transform.SameTree, ErrInvalidNodeType.New("reorderProjection", node)
 		}
 	})
 
@@ -210,20 +215,20 @@ func addIntermediateProjections(project *plan.Project, projectedAliases map[stri
 		for _, dc := range deferredColumns {
 			if c, ok := projectedAliases[dc.Name()]; ok && dc.Table() == "" {
 				projections = append(projections, c)
-				neededReorder = true
+				same = transform.NewTree
 			}
 		}
 
 		child = plan.NewProject(projections, child)
 	}
 
-	return neededReorder, child, err
+	return child, same, err
 }
 
 // findDeferredColumns returns all the deferredColumn expressions in the node given
 func findDeferredColumns(n sql.Node) []*deferredColumn {
 	var cols []*deferredColumn
-	plan.InspectExpressions(n, func(e sql.Expression) bool {
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
 		if dc, ok := e.(*deferredColumn); ok {
 			cols = append(cols, dc)
 		}
@@ -237,7 +242,7 @@ func findDeferredColumns(n sql.Node) []*deferredColumn {
 // given node and its children.
 func hasNaturalJoin(node sql.Node) bool {
 	var found bool
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		if _, ok := node.(*plan.NaturalJoin); ok {
 			found = true
 			return false
