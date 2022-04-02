@@ -269,16 +269,25 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 		TestScriptWithEngine(t, engine, harness, tt)
 	}
 
-	// This query returns a different error in the Memory engine and in the Dolt engine.
+	// These queries return different errors in the Memory engine and in the Dolt engine.
 	// Memory engine returns ErrTableNotFound, while Dolt engine returns ErrBranchNotFound.
 	// Until that is fixed, this test will not pass in both GMS and Dolt.
-	t.Run("Describe Table AsOf NonExistent Version", func(t *testing.T) {
-		t.Skip()
-		TestScript(t, NewDefaultMemoryHarness(), ScriptTest{
+	skippedTests := []ScriptTest{
+		{
 			Query:       "DESCRIBE myhistorytable AS OF '2018-12-01'",
 			ExpectedErr: sql.ErrTableNotFound,
+		},
+		{
+			Query:       "SHOW CREATE TABLE myhistorytable AS OF '2018-12-01'",
+			ExpectedErr: sql.ErrTableNotFound,
+		},
+	}
+	for _, skippedTest := range skippedTests {
+		t.Run(skippedTest.Query, func(t *testing.T) {
+			t.Skip()
+			TestScript(t, harness, skippedTest)
 		})
-	})
+	}
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
