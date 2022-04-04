@@ -471,7 +471,7 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 			asOfExpression = expression
 		}
 		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
-		return plan.NewShowCreateTable(table, showType == "create view"), nil
+		return plan.NewShowCreateTableWithAsOf(table, showType == "create view", asOfExpression), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(
 			sql.UnresolvedDatabase(s.Database),

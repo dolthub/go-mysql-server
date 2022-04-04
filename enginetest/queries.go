@@ -7259,6 +7259,27 @@ var VersionedQueries = []QueryTest{
 			{"myhistorytable"},
 		},
 	},
+	{
+		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-02'",
+		Expected: []sql.Row{
+			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` text NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
+	{
+		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-03'",
+		Expected: []sql.Row{
+			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` text NOT NULL,\n" +
+				"  `c` text NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
 }
 
 var VersionedScripts = []ScriptTest{
