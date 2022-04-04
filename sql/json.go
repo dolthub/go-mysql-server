@@ -81,7 +81,7 @@ func (t jsonType) SQL(dest []byte, v interface{}) (sqltypes.Value, error) {
 	// Convert to jsonType
 	jsVal, err := t.Convert(v)
 	if err != nil {
-		return sqltypes.NULL, nil
+		return sqltypes.NULL, err
 	}
 	js := jsVal.(JSONValue)
 

@@ -133,25 +133,37 @@ func TestJsonString(t *testing.T) {
 
 func TestJsonSQL(t *testing.T) {
 	tests := []struct {
-		val          string
-		expectedNull bool
+		val         interface{}
+		expectedErr bool
 	}{
 		{`""`, false},
 		{`"555-555-555"`, false},
-		{"1", false},
+		{`{}`, false},
 		{`{"field":"test"}`, false},
+		{MustJSON(`{"field":"test"}`), false},
+		{"1", false},
+		{`[1,2,3]`, false},
+		{[]int{1, 2, 3}, false},
+		{[]string{"1", "2", "3"}, false},
 		{"thisisbad", true},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.val), func(t *testing.T) {
 			val, err := JSON.SQL(nil, test.val)
-			require.NoError(t, err)
-			if test.expectedNull {
-				assert.Equal(t, querypb.Type_NULL_TYPE, val.Type())
+			if test.expectedErr {
+				require.Error(t, err)
 			} else {
+				require.NoError(t, err)
 				assert.Equal(t, querypb.Type_JSON, val.Type())
 			}
 		})
 	}
+
+	// test that nulls are null
+	t.Run(fmt.Sprintf("%v", nil), func(t *testing.T) {
+		val, err := JSON.SQL(nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, querypb.Type_NULL_TYPE, val.Type())
+	})
 }
