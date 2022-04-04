@@ -14,7 +14,10 @@
 
 package plan
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+)
 
 // IsUnary returns whether the node is unary or not.
 func IsUnary(node sql.Node) bool {
@@ -98,7 +101,7 @@ func nodeRepresentsSelect(s sql.Node) bool {
 	}
 	isSelect := false
 	// All SELECT statements, including those that do not specify a table (using "dual"), have a ResolvedTable.
-	Inspect(s, func(node sql.Node) bool {
+	transform.Inspect(s, func(node sql.Node) bool {
 		switch node.(type) {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
 			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update:

@@ -17,42 +17,42 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // validateCreateTable validates various constraints about CREATE TABLE statements. Some validation is currently done
 // at execution time, and should be moved here over time.
-func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	err := validateAutoIncrement(ct.CreateSchema.Schema)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	err = validateIndexes(ct.TableSpec())
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
-	return n, nil
+	return n, transform.SameTree, nil
 }
 
-func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	var sch sql.Schema
 	var indexes []string
 	var err error
-	plan.Inspect(n, func(n sql.Node) bool {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch = n.Table.Schema()
@@ -80,12 +80,12 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	// Skip this validation if we didn't find one or more of the above node types
 	if len(sch) == 0 {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	sch = sch.Copy() // Make a copy of the original schema to deal with any references to the original table.
@@ -93,51 +93,34 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	// Need a TransformUp here because multiple of these statement types can be nested under other nodes.
 	// It doesn't look it, but this is actually an iterative loop over all the independent clauses in an ALTER statement
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch, err = validateModifyColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.RenameColumn:
 			sch, err = validateRenameColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.AddColumn:
 			sch, err = validateAddColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.DropColumn:
 			sch, err = validateDropColumn(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.AlterIndex:
 			indexes, err = validateAlterIndex(initialSch, sch, n, indexes)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.AlterPK:
 			sch, err = validatePrimaryKey(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.AlterDefaultSet:
 			sch, err = validateAlterDefault(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		case *plan.AlterDefaultDrop:
 			sch, err = validateDropDefault(initialSch, sch, n)
-			if err != nil {
-				return nil, err
-			}
 		}
-		return n, nil
+		if err != nil {
+			return false
+		}
+		return true
 	})
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	return n, transform.SameTree, nil
 }
 
 // validateRenameColumn checks that a DDL RenameColumn node can be safely executed (e.g. no collision with other
@@ -247,14 +230,16 @@ func validateDropColumn(initialSch, sch sql.Schema, dc *plan.DropColumn) (sql.Sc
 // validateColumnNotUsedInCheckConstraint validates that the specified column name is not referenced in any of
 // the specified table check constraints.
 func validateColumnNotUsedInCheckConstraint(columnName string, checks sql.CheckConstraints) error {
+	var err error
 	for _, check := range checks {
-		_, err := expression.TransformUp(check.Expr, func(e sql.Expression) (sql.Expression, error) {
+		_ = transform.InspectExpr(check.Expr, func(e sql.Expression) bool {
 			if unresolvedColumn, ok := e.(*expression.UnresolvedColumn); ok {
 				if columnName == unresolvedColumn.Name() {
-					return nil, sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					err = sql.ErrCheckConstraintInvalidatedByColumnAlter.New(columnName, check.Name)
+					return true
 				}
 			}
-			return e, nil
+			return false
 		})
 
 		if err != nil {

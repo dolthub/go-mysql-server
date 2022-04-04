@@ -62,4 +62,28 @@ func TestSwapXY(t *testing.T) {
 		require.NoError(err)
 		require.Equal(nil, v)
 	})
+
+	t.Run("geometry point swap", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.Geometry{Inner: sql.Point{X: 1, Y: 2}}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Geometry{Inner: sql.Point{X: 2, Y: 1}}, v)
+	})
+
+	t.Run("geometry linestring swap", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 0, Y: 1}, {X: 2, Y: 3}}}}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Geometry{Inner: sql.Linestring{Points: []sql.Point{{X: 1, Y: 0}, {X: 3, Y: 2}}}}, v)
+	})
+
+	t.Run("geometry polygon swap", func(t *testing.T) {
+		require := require.New(t)
+		f := NewSwapXY(expression.NewLiteral(sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 1}, {X: 0, Y: 0}}}}}}, sql.GeometryType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(sql.Geometry{Inner: sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 0}}}}}}, v)
+	})
 }

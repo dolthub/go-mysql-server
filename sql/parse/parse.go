@@ -33,6 +33,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var (
@@ -461,10 +462,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case "processlist":
 		return plan.NewShowProcessList(), nil
 	case "create table", "create view":
-		return plan.NewShowCreateTable(
-			tableNameToUnresolvedTable(s.Table),
-			showType == "create view",
-		), nil
+		var asOfExpression sql.Expression
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+			asOfExpression = expression
+		}
+		table := tableNameToUnresolvedTableAsOf(s.Table, asOfExpression)
+		return plan.NewShowCreateTable(table, showType == "create view"), nil
 	case "create database", "create schema":
 		return plan.NewShowCreateDatabase(
 			sql.UnresolvedDatabase(s.Database),
@@ -630,8 +637,16 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 	case sqlparser.KeywordString(sqlparser.DATABASES), sqlparser.KeywordString(sqlparser.SCHEMAS):
 		return plan.NewShowDatabases(), nil
 	case sqlparser.KeywordString(sqlparser.FIELDS), sqlparser.KeywordString(sqlparser.COLUMNS):
-		// TODO(erizocosmico): vitess parser does not support EXTENDED.
-		table := tableNameToUnresolvedTable(s.OnTable)
+		var asOfExpression sql.Expression
+		if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
+			expression, err := ExprToExpression(ctx, s.ShowTablesOpt.AsOf)
+			if err != nil {
+				return nil, err
+			}
+			asOfExpression = expression
+		}
+
+		table := tableNameToUnresolvedTableAsOf(s.OnTable, asOfExpression)
 		full := s.Full
 
 		var node sql.Node = plan.NewShowColumns(full, table)
@@ -701,14 +716,14 @@ func convertShow(ctx *sql.Context, s *sqlparser.Show, query string) (sql.Node, e
 				return nil, err
 			}
 			// TODO: once collations are properly implemented, we should better be able to handle utf8 -> utf8mb3 comparisons as they're aliases
-			filterExpr, err = expression.TransformUp(filterExpr, func(expr sql.Expression) (sql.Expression, error) {
+			filterExpr, _, err = transform.Expr(filterExpr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if exprLiteral, ok := expr.(*expression.Literal); ok {
 					const utf8Prefix = "utf8_"
 					if strLiteral, ok := exprLiteral.Value().(string); ok && strings.HasPrefix(strLiteral, utf8Prefix) {
-						return expression.NewLiteral("utf8mb3_"+strLiteral[len(utf8Prefix):], exprLiteral.Type()), nil
+						return expression.NewLiteral("utf8mb3_"+strLiteral[len(utf8Prefix):], exprLiteral.Type()), transform.NewTree, nil
 					}
 				}
-				return expr, nil
+				return expr, transform.SameTree, nil
 			})
 			if err != nil {
 				return nil, err
@@ -1307,6 +1322,10 @@ func tableNameToUnresolvedTable(tableName sqlparser.TableName) *plan.UnresolvedT
 	return plan.NewUnresolvedTable(tableName.Name.String(), tableName.Qualifier.String())
 }
 
+func tableNameToUnresolvedTableAsOf(tableName sqlparser.TableName, asOf sql.Expression) *plan.UnresolvedTable {
+	return plan.NewUnresolvedTableAsOf(tableName.Name.String(), tableName.Qualifier.String(), asOf)
+}
+
 func convertAlterIndex(ctx *sql.Context, ddl *sqlparser.DDL) (sql.Node, error) {
 	table := tableNameToUnresolvedTable(ddl.Table)
 	switch strings.ToLower(ddl.IndexSpec.Action) {
@@ -1518,13 +1537,17 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
+	seenPrimary := false
+	seenUnique := false
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
 			constraint = sql.IndexConstraint_Primary
+			seenPrimary = true
 		} else if idxDef.Info.Unique {
 			constraint = sql.IndexConstraint_Unique
+			seenUnique = true
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
@@ -1567,7 +1590,14 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 	}
 
 	for _, colDef := range c.TableSpec.Columns {
+		if colDef.Type.KeyOpt == colKeyFulltextKey {
+			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
+		}
+		if colDef.Type.KeyOpt == colKeyPrimary {
+			seenPrimary = true
+		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
+			seenUnique = true
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -1579,6 +1609,11 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 				}},
 			})
 		}
+	}
+
+	// can't use unique constraint on keyless tables
+	if seenUnique && !seenPrimary {
+		return nil, sql.ErrUnsupportedFeature.New("unique constraint on keyless tables")
 	}
 
 	qualifier := c.Table.Qualifier.String()

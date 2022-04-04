@@ -86,6 +86,17 @@ func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 1, nil
 	case sql.Polygon:
 		return 2, nil
+	case sql.Geometry:
+		switch val.(sql.Geometry).Inner.(type) {
+		case sql.Point:
+			return 0, nil
+		case sql.Linestring:
+			return 1, nil
+		case sql.Polygon:
+			return 2, nil
+		default:
+			return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
+		}
 	default:
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
 	}
