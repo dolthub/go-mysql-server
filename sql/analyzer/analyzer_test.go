@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func TestMaxIterations(t *testing.T) {
@@ -41,7 +42,7 @@ func TestMaxIterations(t *testing.T) {
 
 	count := 0
 	a := withoutProcessTracking(NewBuilder(provider).AddPostAnalyzeRule("loop",
-		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+		func(c *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 
 			switch n.(type) {
 			case *plan.ResolvedTable:
@@ -54,7 +55,7 @@ func TestMaxIterations(t *testing.T) {
 				n = plan.NewResolvedTable(table, nil, nil)
 			}
 
-			return n, nil
+			return n, transform.NewTree, nil
 		}).Build())
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
@@ -241,6 +242,8 @@ func TestMixInnerAndNaturalJoins(t *testing.T) {
 	)
 
 	ctx := sql.NewContext(context.Background()).WithCurrentDB("mydb")
+	a.Debug = true
+	a.Verbose = true
 	result, err := a.Analyze(ctx, node, nil)
 	require.NoError(err)
 

@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation/window"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func TestParallelize(t *testing.T) {
@@ -66,7 +67,7 @@ func TestParallelize(t *testing.T) {
 		),
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 2}, node, nil)
 	require.NoError(err)
 	require.Equal(expected, result)
 }
@@ -83,7 +84,7 @@ func TestParallelizeCreateIndex(t *testing.T) {
 		nil,
 	)
 
-	result, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil)
+	result, _, err := rule.Apply(sql.NewEmptyContext(), &Analyzer{Parallelism: 1}, node, nil)
 	require.NoError(err)
 	require.Equal(node, result)
 }
@@ -295,7 +296,7 @@ func TestRemoveRedundantExchanges(t *testing.T) {
 		),
 	)
 
-	result, err := plan.TransformUp(node, removeRedundantExchanges)
+	result, _, err := transform.Node(node, removeRedundantExchanges)
 	require.NoError(err)
 	require.Equal(expected, result)
 }

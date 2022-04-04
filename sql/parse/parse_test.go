@@ -2619,17 +2619,20 @@ CREATE TABLE t2
 	"SHOW CREATE TABLE `my``db`.`my``table`": plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", "my`db"), false),
 	"SHOW CREATE TABLE ````":                 plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), false),
 	"SHOW CREATE TABLE `.`":                  plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), false),
-	"SHOW CREATE VIEW `mytable`":             plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
-	"SHOW CREATE VIEW mytable":               plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
-	"SHOW CREATE VIEW mydb.`mytable`":        plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
-	"SHOW CREATE VIEW `mydb`.mytable":        plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
-	"SHOW CREATE VIEW `mydb`.`mytable`":      plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
-	"SHOW CREATE VIEW `my.table`":            plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", ""), true),
-	"SHOW CREATE VIEW `my.db`.`my.table`":    plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", "my.db"), true),
-	"SHOW CREATE VIEW `my``table`":           plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", ""), true),
-	"SHOW CREATE VIEW `my``db`.`my``table`":  plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", "my`db"), true),
-	"SHOW CREATE VIEW ````":                  plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), true),
-	"SHOW CREATE VIEW `.`":                   plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), true),
+	"SHOW CREATE TABLE mytable as of 'version'": plan.NewShowCreateTableWithAsOf(
+		plan.NewUnresolvedTableAsOf("mytable", "", expression.NewLiteral("version", sql.LongText)),
+		false, expression.NewLiteral("version", sql.LongText)),
+	"SHOW CREATE VIEW `mytable`":            plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
+	"SHOW CREATE VIEW mytable":              plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", ""), true),
+	"SHOW CREATE VIEW mydb.`mytable`":       plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `mydb`.mytable":       plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `mydb`.`mytable`":     plan.NewShowCreateTable(plan.NewUnresolvedTable("mytable", "mydb"), true),
+	"SHOW CREATE VIEW `my.table`":           plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", ""), true),
+	"SHOW CREATE VIEW `my.db`.`my.table`":   plan.NewShowCreateTable(plan.NewUnresolvedTable("my.table", "my.db"), true),
+	"SHOW CREATE VIEW `my``table`":          plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", ""), true),
+	"SHOW CREATE VIEW `my``db`.`my``table`": plan.NewShowCreateTable(plan.NewUnresolvedTable("my`table", "my`db"), true),
+	"SHOW CREATE VIEW ````":                 plan.NewShowCreateTable(plan.NewUnresolvedTable("`", ""), true),
+	"SHOW CREATE VIEW `.`":                  plan.NewShowCreateTable(plan.NewUnresolvedTable(".", ""), true),
 	`SELECT '2018-05-01' + INTERVAL 1 DAY`: plan.NewProject(
 		[]sql.Expression{
 			expression.NewAlias("'2018-05-01' + INTERVAL 1 DAY",
@@ -3826,6 +3829,10 @@ var fixturesErrors = map[string]*errors.Kind{
 	`KILL CONNECTION 4294967296`:                                sql.ErrUnsupportedFeature,
 	`DROP TABLE IF EXISTS curdb.foo, otherdb.bar`:               sql.ErrUnsupportedFeature,
 	`DROP TABLE curdb.t1, t2`:                                   sql.ErrUnsupportedFeature,
+	`CREATE TABLE test (i int fulltext key)`:                    sql.ErrUnsupportedFeature,
+	`CREATE TABLE test (i int unique)`:                          sql.ErrUnsupportedFeature,
+	`CREATE TABLE test (i int, j int unique)`:                   sql.ErrUnsupportedFeature,
+	`CREATE TABLE test (i int, unique(i))`:                      sql.ErrUnsupportedFeature,
 }
 
 func TestParseOne(t *testing.T) {

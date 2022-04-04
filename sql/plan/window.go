@@ -18,10 +18,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrAggregationMissingWindow = errors.New("aggregation missing window expression")
@@ -73,7 +73,7 @@ func (w *Window) DebugString() string {
 func (w *Window) Schema() sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = expression.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e)
 	}
 	return s
 }

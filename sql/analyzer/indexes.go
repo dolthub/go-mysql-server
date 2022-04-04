@@ -17,6 +17,8 @@ package analyzer
 import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -1044,12 +1046,12 @@ func canMergeIndexes(a, b sql.IndexLookup) bool {
 // convertIsNullForIndexes converts all nested IsNull(col) expressions to Equals(col, nil) expressions, as they are
 // equivalent as far as the index interfaces are concerned.
 func convertIsNullForIndexes(ctx *sql.Context, e sql.Expression) sql.Expression {
-	expr, _ := expression.TransformUp(e, func(e sql.Expression) (sql.Expression, error) {
+	expr, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		isNull, ok := e.(*expression.IsNull)
 		if !ok {
-			return e, nil
+			return e, transform.SameTree, nil
 		}
-		return expression.NewEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), nil
+		return expression.NewEquals(isNull.Child, expression.NewLiteral(nil, sql.Null)), transform.NewTree, nil
 	})
 	return expr
 }

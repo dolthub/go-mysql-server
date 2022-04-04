@@ -67,6 +67,17 @@ var SpatialQueryTests = []QueryTest{
 		}},
 	},
 	{
+		Query: `SHOW CREATE TABLE geometry_table`,
+		Expected: []sql.Row{{
+			"geometry_table",
+			"CREATE TABLE `geometry_table` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `g` geometry NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+		}},
+	},
+	{
 		Query:    `SELECT HEX(ST_ASWKB(p)) from point_table`,
 		Expected: []sql.Row{{"0101000000000000000000F03F0000000000000040"}},
 	},
@@ -285,6 +296,72 @@ var SpatialQueryTests = []QueryTest{
 		Query: `SELECT ST_SWAPXY(p) from polygon_table`,
 		Expected: []sql.Row{
 			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_ASWKT(g) from geometry_table ORDER BY i`,
+		Expected: []sql.Row{
+			{"POINT(1 2)"},
+			{"LINESTRING(1 2,3 4)"},
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+			{"POINT(1 2)"},
+			{"LINESTRING(1 2,3 4)"},
+			{"POLYGON((0 0,0 1,1 1,0 0))"},
+		},
+	},
+	{
+		Query: `SELECT HEX(ST_ASWKB(g)) from geometry_table`,
+		Expected: []sql.Row{
+			{"0101000000000000000000F03F0000000000000040"},
+			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
+			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+			{"0101000000000000000000F03F0000000000000040"},
+			{"010200000002000000000000000000F03F000000000000004000000000000008400000000000001040"},
+			{"01030000000100000004000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F00000000000000000000000000000000"},
+		},
+	},
+	{
+		Query: `SELECT ST_SRID(g) from geometry_table order by i`,
+		Expected: []sql.Row{
+			{uint64(0)},
+			{uint64(0)},
+			{uint64(0)},
+			{uint64(4326)},
+			{uint64(4326)},
+			{uint64(4326)},
+		},
+	},
+	{
+		Query: `SELECT ST_SRID(g, 0) from geometry_table order by i`,
+		Expected: []sql.Row{
+			{sql.Point{X: 1, Y: 2}},
+			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{X: 1, Y: 2}},
+			{sql.Linestring{Points: []sql.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+		},
+	},
+	{
+		Query: `SELECT ST_DIMENSION(g) from geometry_table order by i`,
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{2},
+			{0},
+			{1},
+			{2},
+		},
+	},
+	{
+		Query: `SELECT ST_SWAPXY(g) from geometry_table order by i`,
+		Expected: []sql.Row{
+			{sql.Point{X: 2, Y: 1}},
+			{sql.Linestring{Points: []sql.Point{{X: 2, Y: 1}, {X: 4, Y: 3}}}},
+			{sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}},
+			{sql.Point{SRID: 4326, X: 2, Y: 1}},
+			{sql.Linestring{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 2, Y: 1}, {SRID: 4326, X: 4, Y: 3}}}},
+			{sql.Polygon{SRID: 4326, Lines: []sql.Linestring{{SRID: 4326, Points: []sql.Point{{SRID: 4326, X: 0, Y: 0}, {SRID: 4326, X: 1, Y: 0}, {SRID: 4326, X: 1, Y: 1}, {SRID: 4326, X: 0, Y: 0}}}}}},
 		},
 	},
 }
@@ -2256,6 +2333,14 @@ var QueryTests = []QueryTest{
 	},
 	{
 		Query:    "select i from datetime_table where datetime_col >= '2020-01-01' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col >= '2020-01-01 00:00' order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select i from datetime_table where datetime_col >= '2020-01-01 00:00:00' order by 1",
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
@@ -4462,6 +4547,10 @@ var QueryTests = []QueryTest{
 	{
 		Query:    "SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00'`,
+		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00:00'`,
@@ -7153,9 +7242,9 @@ var VersionedQueries = []QueryTest{
 	{
 		Query: "SELECT *  FROM myhistorytable ORDER BY i",
 		Expected: []sql.Row{
-			{int64(1), "first row, 2"},
-			{int64(2), "second row, 2"},
-			{int64(3), "third row, 2"},
+			{int64(1), "first row, 3", "1"},
+			{int64(2), "second row, 3", "2"},
+			{int64(3), "third row, 3", "3"},
 		},
 	},
 	{
@@ -7168,6 +7257,27 @@ var VersionedQueries = []QueryTest{
 		Query: "SHOW TABLES FROM mydb AS OF '2019-01-02' LIKE 'myhistorytable'",
 		Expected: []sql.Row{
 			{"myhistorytable"},
+		},
+	},
+	{
+		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-02'",
+		Expected: []sql.Row{
+			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` text NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
+	{
+		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-03'",
+		Expected: []sql.Row{
+			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` text NOT NULL,\n" +
+				"  `c` text NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
 	},
 }
@@ -7199,6 +7309,21 @@ var VersionedScripts = []ScriptTest{
 				Query: "SHOW TABLES AS OF @rev1 LIKE 'myhistorytable'",
 				Expected: []sql.Row{
 					{"myhistorytable"},
+				},
+			},
+			{
+				Query: "DESCRIBE myhistorytable AS OF '2019-01-02'",
+				Expected: []sql.Row{
+					{"i", "bigint", "NO", "PRI", "", ""},
+					{"s", "text", "NO", "", "", ""},
+				},
+			},
+			{
+				Query: "DESCRIBE myhistorytable AS OF '2019-01-03'",
+				Expected: []sql.Row{
+					{"i", "bigint", "NO", "PRI", "", ""},
+					{"s", "text", "NO", "", "", ""},
+					{"c", "text", "NO", "", "", ""},
 				},
 			},
 		},
@@ -8009,6 +8134,24 @@ var InfoSchemaScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "information_schema.columns",
+		SetUpScript: []string{
+			"CREATE DATABASE somedb",
+			"USE somedb",
+			"CREATE TABLE t (i int)",
+			"CREATE VIEW v as select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'somedb'",
+				Expected: []sql.Row{
+					{"def", "somedb", "t", "i", uint64(1), "NULL", "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", ""},
+					{"def", "somedb", "v", "", uint64(0), nil, nil, nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", ""},
+				},
+			},
+		},
+	},
 }
 
 var ExplodeQueries = []QueryTest{
@@ -8418,6 +8561,14 @@ var errorQueries = []QueryErrorTest{
 		Query:       `CREATE FULLTEXT INDEX idx ON opening_lines(opening_line)`,
 		ExpectedErr: sql.ErrUnsupportedFeature,
 	},
+	{
+		Query:       `SELECT * FROM datetime_table where date_col >= 'not a valid date'`,
+		ExpectedErr: sql.ErrConvertingToTime,
+	},
+	{
+		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
+		ExpectedErr: sql.ErrConvertingToTime,
+	},
 }
 
 // WriteQueryTest is a query test for INSERT, UPDATE, etc. statements. It has a query to run and a select query to
@@ -8536,17 +8687,17 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview1 ORDER BY i",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
+			sql.NewRow(int64(1), "first row, 3", "1"),
+			sql.NewRow(int64(2), "second row, 3", "2"),
+			sql.NewRow(int64(3), "third row, 3", "3"),
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview1 AS t ORDER BY i",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
-			sql.NewRow(int64(2), "second row, 2"),
-			sql.NewRow(int64(3), "third row, 2"),
+			sql.NewRow(int64(1), "first row, 3", "1"),
+			sql.NewRow(int64(2), "second row, 3", "2"),
+			sql.NewRow(int64(3), "third row, 3", "3"),
 		},
 	},
 	{
@@ -8568,7 +8719,7 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT * FROM myview2",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 3", "1"),
 		},
 	},
 	{
@@ -8586,13 +8737,13 @@ var VersionedViewTests = []QueryTest{
 	{
 		Query: "SELECT myview2.* FROM myview2",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 3", "1"),
 		},
 	},
 	{
 		Query: "SELECT t.* FROM myview2 as t",
 		Expected: []sql.Row{
-			sql.NewRow(int64(1), "first row, 2"),
+			sql.NewRow(int64(1), "first row, 3", "1"),
 		},
 	},
 	{

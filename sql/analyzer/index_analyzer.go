@@ -17,6 +17,8 @@ package analyzer
 import (
 	"sort"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -55,7 +57,7 @@ func newIndexAnalyzerForNode(ctx *sql.Context, n sql.Node) (*indexAnalyzer, erro
 
 	// Find all of the native indexed tables in the node (those that don't require a driver)
 	if n != nil {
-		plan.Inspect(n, func(n sql.Node) bool {
+		transform.Inspect(n, func(n sql.Node) bool {
 			switch n := n.(type) {
 			case *plan.TableAlias:
 				rt, ok := n.Child.(*plan.ResolvedTable)

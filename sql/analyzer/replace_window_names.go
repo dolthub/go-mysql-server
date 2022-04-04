@@ -18,57 +18,65 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // replaceNamedWindows will 1) extract window definitions from a *plan.NamedWindows node,
 // 2) resolve window name references, 3) embed resolved window definitions in sql.Window clauses
 // (currently in expression.UnresolvedFunction instances), and 4) replace the plan.NamedWindows
 // node with its child *plan.Window.
-func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+func replaceNamedWindows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n.(type) {
 		case *plan.NamedWindows:
 			wn, ok := n.(*plan.NamedWindows)
 			if !ok {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
 			window, ok := wn.Child.(*plan.Window)
 			if !ok {
-				return n, nil
+				return n, transform.SameTree, nil
 			}
 
 			err := checkCircularWindowDef(wn.WindowDefs)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 
 			// find and replace over expressions with new window definitions
 			// over sql.Windows are in unresolved aggregation functions
 			newExprs := make([]sql.Expression, len(window.SelectExprs))
+			same := transform.SameTree
 			for i, expr := range window.SelectExprs {
-				newExprs[i], err = expression.TransformUp(expr, func(e sql.Expression) (sql.Expression, error) {
+				newExprs[i], _, err = transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					uf, ok := e.(*expression.UnresolvedFunction)
 					if !ok {
-						return e, nil
+						return e, transform.SameTree, nil
 					}
 					if uf.Window == nil {
-						return e, nil
+						return e, transform.SameTree, nil
 					}
-					newWindow, err := resolveWindowDef(uf.Window, wn.WindowDefs)
+					newWindow, sameDef, err := resolveWindowDef(uf.Window, wn.WindowDefs)
 					if err != nil {
-						return nil, err
+						return nil, transform.SameTree, err
 					}
-					return uf.WithWindow(newWindow), nil
+					same = same && sameDef
+					if sameDef {
+						return expr, transform.SameTree, nil
+					}
+					return uf.WithWindow(newWindow), transform.NewTree, nil
 				})
 				if err != nil {
-					return nil, err
+					return nil, transform.SameTree, err
 				}
 			}
-
-			return plan.NewWindow(newExprs, window.Child), nil
+			if same {
+				return window, transform.SameTree, nil
+			}
+			return plan.NewWindow(newExprs, window.Child), transform.NewTree, nil
 		}
-		return n, nil
+		return n, transform.SameTree, nil
 	})
 }
 
@@ -105,35 +113,35 @@ func checkCircularWindowDef(windowDefs map[string]*sql.WindowDefinition) error {
 // definition.
 // A sql.WindowDef can have at most one named reference.
 // We cache merged definitions in [windowDefs] to aid subsequent lookups.
-func resolveWindowDef(n *sql.WindowDefinition, windowDefs map[string]*sql.WindowDefinition) (*sql.WindowDefinition, error) {
+func resolveWindowDef(n *sql.WindowDefinition, windowDefs map[string]*sql.WindowDefinition) (*sql.WindowDefinition, transform.TreeIdentity, error) {
 	// base case
 	if n.Ref == "" {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	var err error
 	ref, ok := windowDefs[n.Ref]
 	if !ok {
-		return nil, sql.ErrUnknownWindowName.New(n.Ref)
+		return nil, transform.SameTree, sql.ErrUnknownWindowName.New(n.Ref)
 	}
 
 	// recursively resolve [n.Ref]
-	ref, err = resolveWindowDef(ref, windowDefs)
+	ref, _, err = resolveWindowDef(ref, windowDefs)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	// [n] is fully defined by its attributes merging with the named reference
 	n, err = mergeWindowDefs(n, ref)
 	if err != nil {
-		return nil, err
+		return nil, transform.SameTree, err
 	}
 
 	if n.Name != "" {
 		// cache lookup
 		windowDefs[n.Name] = n
 	}
-	return n, nil
+	return n, transform.NewTree, nil
 }
 
 // mergeWindowDefs combines the attributes of two window definitions or returns
