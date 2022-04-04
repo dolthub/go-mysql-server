@@ -18,12 +18,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
-
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 func TestResolveSubqueries(t *testing.T) {
@@ -110,10 +110,10 @@ func TestResolveSubqueries(t *testing.T) {
 	finalizeSubqueries := getRule("finalize_subqueries")
 	runTestCases(t, ctx, testCases, a, Rule{
 		Name: "subqueries",
-		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-			n, err := resolveSubqueries.Apply(ctx, a, n, scope)
+		Apply: func(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+			n, _, err := resolveSubqueries.Apply(ctx, a, n, scope)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 			return finalizeSubqueries.Apply(ctx, a, n, scope)
 		},

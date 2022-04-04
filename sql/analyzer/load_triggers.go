@@ -17,6 +17,8 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -24,28 +26,28 @@ import (
 
 // loadTriggers loads any triggers that are required for a plan node to operate properly (except for nodes dealing with
 // trigger execution).
-func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("loadTriggers")
 	defer span.Finish()
 
-	return plan.TransformUp(n, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node
 			loadedTriggers, err := loadTriggersFromDb(ctx, newShowTriggers.Database())
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 			if len(loadedTriggers) != 0 {
 				newShowTriggers.Triggers = loadedTriggers
 			} else {
 				newShowTriggers.Triggers = make([]*plan.CreateTrigger, 0)
 			}
-			return &newShowTriggers, nil
+			return &newShowTriggers, transform.NewTree, nil
 		case *plan.DropTrigger:
 			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database())
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 			lowercasedTriggerName := strings.ToLower(node.TriggerName)
 			for _, trigger := range loadedTriggers {
@@ -53,14 +55,14 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 					node.TriggerName = trigger.TriggerName
 				} else if trigger.TriggerOrder != nil &&
 					strings.ToLower(trigger.TriggerOrder.OtherTriggerName) == lowercasedTriggerName {
-					return nil, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
+					return nil, transform.SameTree, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
 				}
 			}
-			return node, nil
+			return node, transform.NewTree, nil
 		case *plan.DropTable:
 			// if there is no table left after filtering out non-existent tables, no need to load triggers
 			if len(node.Tables) == 0 {
-				return node, nil
+				return node, transform.SameTree, nil
 			}
 
 			// the table has to be ResolvedTable as this rule is executed after resolve-table rule
@@ -71,12 +73,12 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 
 			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 			lowercasedNames := make(map[string]struct{})
 			tblNames, err := node.TableNames()
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 			for _, tableName := range tblNames {
 				lowercasedNames[strings.ToLower(tableName)] = struct{}{}
@@ -87,9 +89,9 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.
 					triggersForTable = append(triggersForTable, trigger.TriggerName)
 				}
 			}
-			return node.WithTriggers(triggersForTable), nil
+			return node.WithTriggers(triggersForTable), transform.NewTree, nil
 		default:
-			return node, nil
+			return node, transform.SameTree, nil
 		}
 	})
 }

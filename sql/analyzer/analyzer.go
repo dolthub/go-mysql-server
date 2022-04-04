@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
@@ -347,10 +348,11 @@ func analyzeAll(batchName string) bool {
 // Analyze applies the transformation rules to the node given. In the case of an error, the last successfully
 // transformed node is returned along with the error.
 func (a *Analyzer) Analyze(ctx *sql.Context, n sql.Node, scope *Scope) (sql.Node, error) {
-	return a.analyzeWithSelector(ctx, n, scope, analyzeAll)
+	n, _, err := a.analyzeWithSelector(ctx, n, scope, analyzeAll)
+	return n, err
 }
 
-func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string) (sql.Node, error) {
+func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scope, until string) (sql.Node, transform.TreeIdentity, error) {
 	stop := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if stop {
@@ -365,21 +367,26 @@ func (a *Analyzer) analyzeThroughBatch(ctx *sql.Context, n sql.Node, scope *Scop
 	})
 }
 
-func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, selector func(d string) bool) (sql.Node, error) {
+func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scope, selector func(d string) bool) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("analyze", opentracing.Tags{
 		//"plan": , n.String(),
 	})
 
-	var err error
+	var (
+		same    = transform.SameTree
+		allSame = transform.SameTree
+		err     error
+	)
 	a.Log("starting analysis of node of type: %T", n)
 	for _, batch := range a.Batches {
 		if selector(batch.Desc) {
 			a.PushDebugContext(batch.Desc)
-			n, err = batch.Eval(ctx, a, n, scope)
+			n, same, err = batch.Eval(ctx, a, n, scope)
+			allSame = allSame && same
 			if err != nil {
 				a.Log("Encountered error: %v", err)
 				a.PopDebugContext()
-				return n, err
+				return n, transform.SameTree, err
 			}
 			a.PopDebugContext()
 		}
@@ -392,10 +399,10 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *Scop
 		span.Finish()
 	}()
 
-	return n, err
+	return n, allSame, err
 }
 
-func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string) (sql.Node, error) {
+func (a *Analyzer) analyzeStartingAtBatch(ctx *sql.Context, n sql.Node, scope *Scope, startAt string) (sql.Node, transform.TreeIdentity, error) {
 	start := false
 	return a.analyzeWithSelector(ctx, n, scope, func(desc string) bool {
 		if desc == startAt {

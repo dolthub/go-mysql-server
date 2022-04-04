@@ -18,11 +18,13 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/dolthub/go-mysql-server/sql/transform"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // RuleFunc is the function to be applied in a rule.
-type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *Scope) (sql.Node, error)
+type RuleFunc func(*sql.Context, *Analyzer, sql.Node, *Scope) (sql.Node, transform.TreeIdentity, error)
 
 // Rule to transform nodes.
 type Rule struct {
@@ -44,69 +46,80 @@ type Batch struct {
 // Eval executes the rules of the batch. On any error, the partially transformed node is returned along with the error.
 // If the batch's max number of iterations is reached without achieving stabilization (batch evaluation no longer
 // changes the node), then this method returns ErrMaxAnalysisIters.
-func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
+func (b *Batch) Eval(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if b.Iterations == 0 {
-		return n, nil
+		return n, transform.SameTree, nil
 	}
 
 	prev := n
 	a.PushDebugContext("0")
-	cur, err := b.evalOnce(ctx, a, n, scope)
+	cur, _, err := b.evalOnce(ctx, a, n, scope)
 	a.PopDebugContext()
 	if err != nil {
-		return cur, err
+		return cur, transform.SameTree, err
 	}
 
+	nodesEq := nodesEqual(prev, cur)
 	if b.Iterations == 1 {
-		return cur, nil
+		return cur, transform.TreeIdentity(nodesEq), nil
 	}
 
-	for i := 1; !nodesEqual(prev, cur); {
+	for i := 1; !nodesEq; {
 		a.Log("Nodes not equal, re-running batch")
 		a.LogDiff(prev, cur)
 		if i >= b.Iterations {
-			return cur, ErrMaxAnalysisIters.New(b.Iterations)
+			return cur, transform.SameTree, ErrMaxAnalysisIters.New(b.Iterations)
 		}
 
 		prev = cur
 		a.PushDebugContext(strconv.Itoa(i))
-		cur, err = b.evalOnce(ctx, a, cur, scope)
+		cur, _, err = b.evalOnce(ctx, a, cur, scope)
 		a.PopDebugContext()
 		if err != nil {
-			return cur, err
+			return cur, transform.SameTree, err
 		}
 
+		//todo(max): Use nodesEqual until all rules can reliably report
+		// modifications. False positives, where a rule incorrectly states
+		// report sql.NewTree, are the primary barrier.
+		nodesEq = nodesEqual(prev, cur)
 		i++
 	}
 
-	return cur, nil
+	return cur, transform.TreeIdentity(!nodesEq), nil
 }
 
 // evalOnce returns the result of evaluating a batch of rules on the node given. In the result of an error, the result
 // of the last successful transformation is returned along with the error. If no transformation was successful, the
 // input node is returned as-is.
-func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, error) {
-	prev := n
+func (b *Batch) evalOnce(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	var (
+		err     error
+		same    = transform.SameTree
+		allSame = transform.SameTree
+		next    sql.Node
+		prev    = n
+	)
 	for _, rule := range b.Rules {
-		var err error
 		a.Log("Evaluating rule %s", rule.Name)
 		a.PushDebugContext(rule.Name)
-		next, err := rule.Apply(ctx, a, prev, scope)
-		if next != nil {
+		next, same, err = rule.Apply(ctx, a, prev, scope)
+		allSame = same && allSame
+		if next != nil && !same {
 			a.LogDiff(prev, next)
-			prev = next
-			a.LogNode(prev)
+			a.LogNode(next)
 		}
 		a.PopDebugContext()
 		if err != nil {
 			// Returning the last node before the error is important. This is non-idiomatic, but in the case of partial
 			// resolution before an error we want the last successful transformation result. Very important for resolving
 			// subqueries.
-			return prev, err
+			return prev, allSame, err
 		}
+		prev = next
 	}
 
-	return prev, nil
+	return prev, allSame, nil
 }
 
 func nodesEqual(a, b sql.Node) bool {

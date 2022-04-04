@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plan
+package transform
 
 import (
 	"testing"
@@ -23,11 +23,11 @@ import (
 )
 
 func TestWalk(t *testing.T) {
-	t1 := NewUnresolvedTable("foo", "")
-	t2 := NewUnresolvedTable("bar", "")
-	join := NewCrossJoin(t1, t2)
-	filter := NewFilter(nil, join)
-	project := NewProject(nil, filter)
+	a1 := a()
+	b1 := b()
+	c1 := c(a1, b1)
+	a2 := a(c1)
+	a3 := a(a2)
 
 	var f visitor
 	var visited []sql.Node
@@ -36,26 +36,26 @@ func TestWalk(t *testing.T) {
 		return f
 	}
 
-	Walk(f, project)
+	Walk(f, a3)
 
 	require.Equal(t,
-		[]sql.Node{project, filter, join, t1, nil, t2, nil, nil, nil, nil},
+		[]sql.Node{a3, a2, c1, a1, nil, b1, nil, nil, nil, nil},
 		visited,
 	)
 
 	visited = nil
 	f = func(node sql.Node) Visitor {
 		visited = append(visited, node)
-		if _, ok := node.(*CrossJoin); ok {
+		if _, ok := node.(*nodeC); ok {
 			return nil
 		}
 		return f
 	}
 
-	Walk(f, project)
+	Walk(f, a3)
 
 	require.Equal(t,
-		[]sql.Node{project, filter, join, nil, nil},
+		[]sql.Node{a3, a2, c1, nil, nil},
 		visited,
 	)
 }
@@ -67,11 +67,11 @@ func (f visitor) Visit(n sql.Node) Visitor {
 }
 
 func TestInspect(t *testing.T) {
-	t1 := NewUnresolvedTable("foo", "")
-	t2 := NewUnresolvedTable("bar", "")
-	join := NewCrossJoin(t1, t2)
-	filter := NewFilter(nil, join)
-	project := NewProject(nil, filter)
+	a1 := a()
+	b1 := b()
+	c1 := c(a1, b1)
+	a2 := a(c1)
+	a3 := a(a2)
 
 	var f func(sql.Node) bool
 	var visited []sql.Node
@@ -80,26 +80,26 @@ func TestInspect(t *testing.T) {
 		return true
 	}
 
-	Inspect(project, f)
+	Inspect(a3, f)
 
 	require.Equal(t,
-		[]sql.Node{project, filter, join, t1, nil, t2, nil, nil, nil, nil},
+		[]sql.Node{a3, a2, c1, a1, nil, b1, nil, nil, nil, nil},
 		visited,
 	)
 
 	visited = nil
 	f = func(node sql.Node) bool {
 		visited = append(visited, node)
-		if _, ok := node.(*CrossJoin); ok {
+		if _, ok := node.(*nodeC); ok {
 			return false
 		}
 		return true
 	}
 
-	Inspect(project, f)
+	Inspect(a3, f)
 
 	require.Equal(t,
-		[]sql.Node{project, filter, join, nil, nil},
+		[]sql.Node{a3, a2, c1, nil, nil},
 		visited,
 	)
 }

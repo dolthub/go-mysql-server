@@ -125,7 +125,7 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `SELECT a.* FROM one_pk a CROSS JOIN one_pk b LEFT JOIN one_pk c ON b.pk = c.pk`,
+		Query:    `SELECT COUNT(*) FROM mytable`,
 		Expected: []sql.Row{},
 	}
 

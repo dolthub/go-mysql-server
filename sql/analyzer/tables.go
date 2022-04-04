@@ -15,17 +15,16 @@
 package analyzer
 
 import (
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Returns the underlying table name for the node given
 func getTableName(node sql.Node) string {
 	var tableName string
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.TableAlias:
 			tableName = node.Name()
@@ -54,7 +53,7 @@ type NameableNode interface {
 // getTables returns all tables in the node given
 func getTables(node sql.Node) []NameableNode {
 	var tables []NameableNode
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.TableAlias:
 			tables = append(tables, node)
@@ -75,19 +74,10 @@ func getTables(node sql.Node) []NameableNode {
 	return tables
 }
 
-// byLowerCaseName returns all the nodes given mapped by their lowercase name.
-func byLowerCaseName(nodes []NameableNode) map[string]NameableNode {
-	byName := make(map[string]NameableNode)
-	for _, n := range nodes {
-		byName[strings.ToLower(n.Name())] = n
-	}
-	return byName
-}
-
 // Returns the underlying table name for the node given, ignoring table aliases
 func getUnaliasedTableName(node sql.Node) string {
 	var tableName string
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.ResolvedTable:
 			tableName = node.Name()
@@ -108,7 +98,7 @@ func getUnaliasedTableName(node sql.Node) string {
 // Finds first table node that is a descendant of the node given
 func getTable(node sql.Node) sql.Table {
 	var table sql.Table
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			table = n.Table
@@ -125,7 +115,7 @@ func getTable(node sql.Node) sql.Table {
 // Finds first ResolvedTable node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
 		// only want the first ResolvedTable match.
 		if table != nil {
@@ -149,7 +139,7 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
 
-	plan.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			ret[n.Table.Name()] = n
@@ -212,30 +202,34 @@ func findCols(exprs ...sql.Expression) []tableCol {
 
 // Transforms the node given bottom up by setting resolve tables to reference the table given. Returns an error if more
 // than one table was set in this way.
-func withTable(node sql.Node, table sql.Table) (sql.Node, error) {
+func withTable(node sql.Node, table sql.Table) (sql.Node, transform.TreeIdentity, error) {
 	foundTable := false
-	return plan.TransformUp(node, func(n sql.Node) (sql.Node, error) {
+	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			if foundTable {
-				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+				return nil, transform.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
-			return n.WithTable(table)
+			n, err := n.WithTable(table)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return n, transform.NewTree, nil
 		case *plan.IndexedTableAccess:
 			if foundTable {
-				return nil, ErrInAnalysis.New("attempted to set more than one table in withTable()")
+				return nil, transform.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
 			}
 			foundTable = true
 			newRt, err := n.WithTable(table)
 			if err != nil {
-				return nil, err
+				return nil, transform.SameTree, err
 			}
 			n2 := *n
 			n2.ResolvedTable = newRt
-			return &n2, nil
+			return &n2, transform.NewTree, nil
 		default:
-			return n, nil
+			return n, transform.SameTree, nil
 		}
 	})
 }
@@ -264,7 +258,7 @@ func getFieldsByTable(ctx *sql.Context, n sql.Node) fieldsByTable {
 	defer colSpan.Finish()
 
 	var fieldsByTable = make(fieldsByTable)
-	plan.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
+	transform.InspectExpressionsWithNode(n, func(n sql.Node, e sql.Expression) bool {
 		if gf, ok := e.(*expression.GetField); ok {
 			fieldsByTable.add(gf.Table(), gf.Name())
 		}

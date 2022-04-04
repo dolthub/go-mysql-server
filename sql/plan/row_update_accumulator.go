@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type RowUpdateType int
@@ -385,7 +386,7 @@ func (r RowUpdateAccumulator) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIte
 	case UpdateTypeJoinUpdate:
 		var schema sql.Schema
 		var updaterMap map[string]sql.RowUpdater
-		Inspect(r.Child, func(node sql.Node) bool {
+		transform.Inspect(r.Child, func(node sql.Node) bool {
 			switch node.(type) {
 			case JoinNode, *CrossJoin, *Project, *IndexedJoin:
 				schema = node.Schema()
