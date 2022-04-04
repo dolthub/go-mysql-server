@@ -883,10 +883,7 @@ func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					collName = Collation_Default.String()
 				}
 				ordinalPos = uint64(i + 1)
-				colDefault, err = getColumnDefaultValue(ctx, c.Default)
-				if err != nil {
-					return false, err
-				}
+				colDefault = getColumnDefaultValue(c.Default)
 
 				rows = append(rows, Row{
 					"def",                            // table_catalog
@@ -2029,24 +2026,27 @@ func partitionKey(tableName string) []byte {
 }
 
 // getColumnDefaultValue returns value for column default value in string format or nil for 'NULL' default value.
-func getColumnDefaultValue(ctx *Context, cd *ColumnDefaultValue) (interface{}, error) {
+func getColumnDefaultValue(cd *ColumnDefaultValue) interface{} {
 	if cd.String() == "" {
-		return nil, nil
+		return nil
 	} else if cd.IsLiteral() && cd.String() == "NULL" {
-		return nil, nil
+		return nil
 	} else if cd.IsLiteral() && cd.String() == `""` {
-		return "", nil
+		return ""
 	} else {
-		colDefault, err := parse.StringToColumnDefaultValue(ctx, cd.String())
-		if err != nil {
-			return nil, err
+		// in FromDoltSchema function, all default values are handled as expression including literal value, and string of expr value is in parentheses
+		colDefaultStr := cd.String()
+		if strings.HasPrefix(colDefaultStr, "(") && strings.HasSuffix(colDefaultStr, ")") {
+			colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(cd.String(), "("), ")")
 		}
-		colDefaultStr := strings.ToLower(colDefault.String())
 		if strings.HasPrefix(colDefaultStr, "\"") && strings.HasSuffix(colDefaultStr, "\"") {
-			colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(cd.String(), "\""), "\"")
+			colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(colDefaultStr, "\""), "\"")
 		}
-
-		return colDefaultStr, nil
+		colDefaultStr = strings.ToLower(colDefaultStr)
+		if colDefaultStr == "current_timestamp()" || colDefaultStr == "now()" {
+			colDefaultStr = "current_timestamp"
+		}
+		return colDefaultStr
 	}
 }
 
