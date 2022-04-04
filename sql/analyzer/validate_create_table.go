@@ -366,7 +366,7 @@ func validateAutoIncrement(schema sql.Schema) error {
 	for _, col := range schema {
 		if col.AutoIncrement {
 			if !col.PrimaryKey && !col.UniqueKey {
-				// AUTO_INCREMENT col must be a pk
+				// AUTO_INCREMENT col must be a key
 				return sql.ErrInvalidAutoIncCols.New()
 			}
 			if col.Default != nil {

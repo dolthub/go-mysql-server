@@ -40,6 +40,10 @@ type Column struct {
 	Source string
 	// PrimaryKey is true if the column is part of the primary key for its table.
 	PrimaryKey bool
+	// UniqueKey is true if the column is part of the unique key for its table.
+	UniqueKey bool
+	// MultipleKey is true if the column is part of the key, but is not Primary or Unique
+	MultipleKey bool
 	// Comment contains the string comment for this column.
 	Comment string
 	// Extra contains any additional information to put in the `extra` column under `information_schema.columns`.
