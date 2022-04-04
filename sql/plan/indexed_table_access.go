@@ -30,9 +30,10 @@ var ErrNoIndexedTableAccess = errors.NewKind("expected an IndexedTableAccess, co
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
 	ResolvedTable *ResolvedTable
-	index    sql.Index
-	keyExprs []sql.Expression
-	lookup   sql.IndexLookup
+	index         sql.Index
+	keyExprs      []sql.Expression
+	keyExprs2     []sql.Expression2
+	lookup        sql.IndexLookup
 }
 
 var _ sql.Node = (*IndexedTableAccess)(nil)
@@ -119,8 +120,23 @@ func (i *IndexedTableAccess) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter
 }
 
 func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	// TODO implement me
-	panic("implement me")
+	resolvedTable, ok := i.ResolvedTable.Table.(sql.IndexAddressableTable)
+	if !ok {
+		return nil, ErrNoIndexableTable.New(i.ResolvedTable)
+	}
+
+	lookup, err := i.getLookup2(ctx, f.Row2())
+	if err != nil {
+		return nil, err
+	}
+
+	indexedTable := resolvedTable.WithIndexLookup(lookup)
+	partIter, err := indexedTable.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewTableRowIter(ctx, indexedTable, partIter), nil
 }
 
 // CanBuildIndex returns whether an index lookup on this table can be successfully built for a zero-valued key. For a
@@ -177,6 +193,37 @@ func (i *IndexedTableAccess) getLookup(ctx *sql.Context, row sql.Row) (sql.Index
 
 	return lookup, nil
 }
+
+func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.IndexLookup, error) {
+	// if the lookup was provided at analysis time (static evaluation), use it.
+	if i.lookup != nil {
+		return i.lookup, nil
+	}
+
+	// otherwise, evaluate the key expressions against the row given to obtain the key for an index lookup
+	// TODO: allocate this once, not in loop
+	key := make([]interface{}, len(i.keyExprs2))
+	for i, keyExpr := range i.keyExprs2 {
+		var err error
+		key[i], err = keyExpr.Eval2(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	idxExpressions := i.index.Expressions()
+	idxBuilder := sql.NewIndexBuilder(ctx, i.index)
+	for keyIndex := 0; keyIndex < len(key); keyIndex++ {
+		idxBuilder = idxBuilder.Equals(ctx, idxExpressions[keyIndex], key[keyIndex])
+	}
+	lookup, err := idxBuilder.Build(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return lookup, nil
+}
+
 
 func (i *IndexedTableAccess) String() string {
 	var filters string
