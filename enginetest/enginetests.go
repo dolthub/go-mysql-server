@@ -133,20 +133,22 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 		TestScript(t, harness, script)
 	}
 
-	p := sqle.NewProcessList()
-	sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
+	t.Run("information_schema.processlist", func(t *testing.T) {
+		p := sqle.NewProcessList()
+		sess := sql.NewBaseSessionWithClientServer("localhost", sql.Client{Address: "localhost", User: "root"}, 1)
+		ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
-	ctx, err := p.AddProcess(ctx, "SELECT foo")
-	require.NoError(t, err)
+		ctx, err := p.AddProcess(ctx, "SELECT foo")
+		require.NoError(t, err)
 
-	TestQueryWithContext(t, ctx, engine,
-		"SELECT * FROM information_schema.processlist",
-		[]sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}},
-		nil,
-		nil,
-	)
-	require.NoError(t, err)
+		TestQueryWithContext(t, ctx, engine,
+			"SELECT * FROM information_schema.processlist",
+			[]sql.Row{{1, "root", "localhost", "NULL", "Query", 0, "processlist(processlist (0/? partitions))", "SELECT foo"}},
+			nil,
+			nil,
+		)
+		require.NoError(t, err)
+	})
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
@@ -1829,6 +1831,18 @@ func TestViews(t *testing.T, harness Harness) {
 			nil,
 			nil,
 		)
+	})
+
+	t.Run("create view with algorithm, definer, security defined", func(t *testing.T) {
+		TestQueryWithContext(t, ctx, e, "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW newview AS SELECT * FROM myview WHERE i = 1", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM newview ORDER BY i", []sql.Row{
+			sql.NewRow(int64(1), "first row"),
+		}, nil, nil)
+
+		TestQueryWithContext(t, ctx, e, "CREATE OR REPLACE ALGORITHM=MERGE DEFINER=doltUser SQL SECURITY INVOKER VIEW newview AS SELECT * FROM myview WHERE i = 2", []sql.Row{}, nil, nil)
+		TestQueryWithContext(t, ctx, e, "SELECT * FROM newview ORDER BY i", []sql.Row{
+			sql.NewRow(int64(2), "second row"),
+		}, nil, nil)
 	})
 }
 

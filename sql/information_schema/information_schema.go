@@ -1211,7 +1211,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						"NEW",                   // action_reference_new_row
 						triggerPlan.CreatedAt,   // created
 						"",                      // sql_mode
-						"",                      // definer
+						triggerPlan.Definer,     // definer
 						characterSetClient,      // character_set_client
 						collationConnection,     // collation_connection
 						collationServer,         // database_collation

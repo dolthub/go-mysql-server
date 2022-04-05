@@ -921,7 +921,7 @@ func convertDDL(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, err
 		if c.ProcedureSpec != nil {
 			return convertCreateProcedure(ctx, query, c)
 		}
-		if !c.View.IsEmpty() {
+		if c.ViewSpec != nil {
 			return convertCreateView(ctx, query, c)
 		}
 		return convertCreateTable(ctx, c)
@@ -1014,6 +1014,7 @@ func convertCreateTrigger(ctx *sql.Context, query string, c *sqlparser.DDL) (sql
 		query,
 		bodyStr,
 		ctx.QueryTime(),
+		c.TriggerSpec.Definer,
 	), nil
 }
 
@@ -1704,9 +1705,9 @@ func convertReferenceAction(action sqlparser.ReferenceAction) sql.ForeignKeyRefe
 }
 
 func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.Node, error) {
-	selectStatement, ok := c.ViewExpr.(sqlparser.SelectStatement)
+	selectStatement, ok := c.ViewSpec.ViewExpr.(sqlparser.SelectStatement)
 	if !ok {
-		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(c.ViewExpr))
+		return nil, sql.ErrUnsupportedSyntax.New(sqlparser.String(c.ViewSpec.ViewExpr))
 	}
 
 	queryNode, err := convertSelectStatement(ctx, selectStatement)
@@ -1715,10 +1716,10 @@ func convertCreateView(ctx *sql.Context, query string, c *sqlparser.DDL) (sql.No
 	}
 
 	selectStr := query[c.SubStatementPositionStart:c.SubStatementPositionEnd]
-	queryAlias := plan.NewSubqueryAlias(c.View.Name.String(), selectStr, queryNode)
+	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryNode)
 
 	return plan.NewCreateView(
-		sql.UnresolvedDatabase(""), c.View.Name.String(), []string{}, queryAlias, c.OrReplace), nil
+		sql.UnresolvedDatabase(""), c.ViewSpec.ViewName.Name.String(), []string{}, queryAlias, c.OrReplace), nil
 }
 
 func convertDropView(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
