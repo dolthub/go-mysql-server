@@ -665,6 +665,36 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "insert into auto_increment unique key column",
+		SetUpScript: []string{
+			"create table auto (pk int primary key, npk int unique auto_increment)",
+			"insert into auto (pk) values (10), (20), (30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{10, 1}, {20, 2}, {30, 3},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment key/index column",
+		SetUpScript: []string{
+			"create table auto (i int auto_increment, index(i))",
+			"insert into auto (i) values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
 		Name: "auto increment table handles deletes",
 		SetUpScript: []string{
 			"create table auto (pk int primary key auto_increment)",
