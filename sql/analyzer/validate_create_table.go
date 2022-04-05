@@ -31,12 +31,34 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, transform.SameTree, nil
 	}
 
-	err := validateAutoIncrement(ct.CreateSchema.Schema)
+	err := validateIndexes(ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	err = validateIndexes(ct.TableSpec())
+	// TODO: move this to a helper method
+	// make schema map
+	schMap := make(map[string]*sql.Column)
+	for _, col := range ct.CreateSchema.Schema {
+		schMap[strings.ToLower(col.Name)] = col
+	}
+
+	// mark unique keys
+	idxDefs := ct.TableSpec().IdxDefs
+	for _, idx := range idxDefs {
+		for _, col := range idx.Columns {
+			if schCol, ok := schMap[strings.ToLower(col.Name)]; ok {
+				switch idx.Constraint {
+				case sql.IndexConstraint_None:
+					schCol.MultipleKey = true
+				case sql.IndexConstraint_Unique:
+					schCol.UniqueKey = true
+				}
+			}
+		}
+	}
+
+	err = validateAutoIncrement(ct.CreateSchema.Schema)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -176,6 +198,8 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	newCol.Source = nameable.Name()
 	newSch := append(schema, newCol)
 
+	// TODO: figure out if there are indexes/keys defined on the column you want to make auto_increment
+
 	// TODO: more validation possible to do here
 	err := validateAutoIncrement(newSch)
 	if err != nil {
@@ -195,6 +219,8 @@ func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.Modi
 	}
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
+
+	// TODO: figure out if there are indexes/keys defined on the column you want to make auto_increment
 
 	err := validateAutoIncrement(newSch)
 	if err != nil {
@@ -365,7 +391,7 @@ func validateAutoIncrement(schema sql.Schema) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			if !col.PrimaryKey && !col.UniqueKey {
+			if !col.PrimaryKey && !col.UniqueKey && !col.MultipleKey {
 				// AUTO_INCREMENT col must be a key
 				return sql.ErrInvalidAutoIncCols.New()
 			}
