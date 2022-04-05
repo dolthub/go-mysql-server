@@ -67,6 +67,7 @@ var DefaultRules = []Rule{
 	{"pushdown_subquery_alias_filters", pushdownSubqueryAliasFilters},
 	{"qualify_columns", qualifyColumns},
 	{"resolve_columns", resolveColumns},
+	{"resolve_dynamic_table", resolveDynamicTables},
 	{"resolve_column_defaults", resolveColumnDefaults},
 	{"validate_check_constraint", validateCheckConstraints},
 	{"resolve_bareword_set_variables", resolveBarewordSetVariables},
