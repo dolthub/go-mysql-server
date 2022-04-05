@@ -1,9 +1,10 @@
 package analyzer
 
 import (
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestQuickPerm(t *testing.T) {
