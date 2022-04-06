@@ -131,6 +131,7 @@ func (i *IndexedTableAccess) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.Ro
 	}
 
 	indexedTable := resolvedTable.WithIndexLookup(lookup)
+
 	partIter, err := indexedTable.Partitions(ctx)
 	if err != nil {
 		return nil, err

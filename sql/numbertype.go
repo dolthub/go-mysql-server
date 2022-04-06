@@ -147,13 +147,6 @@ func NumericUnaryValue(t Type) interface{} {
 
 // Compare implements Type interface.
 func (t numberTypeImpl) Compare(a interface{}, b interface{}) (int, error) {
-	// TODO: remove these type casts, call Compare2 directly where needed
-	a2, aok := a.(Value)
-	b2, bok := b.(Value)
-	if aok && bok {
-		return t.Compare2(a2, b2)
-	}
-
 	if hasNulls, res := compareNulls(a, b); hasNulls {
 		return res, nil
 	}
