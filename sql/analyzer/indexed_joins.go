@@ -43,6 +43,14 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 	return replaceJoinPlans(ctx, a, n, scope)
 }
 
+// validateJoinDepth prevents joins with 13 or more tables from being analyzed further
+func validateJoinDepth(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	if d := countJoinDepth(n); d > joinCountLimit {
+		return nil, transform.SameTree, sql.ErrUnsupportedJoinCount.New(joinCountLimit, d)
+	}
+	return n, transform.SameTree, nil
+}
+
 func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	//TODO replan children of crossjoins
 	selector := func(c transform.Context) bool {
@@ -110,6 +118,33 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	}
 
 	return withIndexedTableAccess, transform.NewTree, nil
+}
+
+func countJoinDepth(n sql.Node) int {
+	var cnt int
+	transform.Inspect(n, func(n sql.Node) bool {
+		switch n := n.(type) {
+		case plan.JoinNode, *plan.CrossJoin, *plan.IndexedJoin:
+			if isJoinLeaf(n.(sql.BinaryNode).Left()) {
+				cnt++
+			}
+			if isJoinLeaf(n.(sql.BinaryNode).Right()) {
+				cnt++
+			}
+		default:
+		}
+		return true
+	})
+	return cnt
+}
+
+func isJoinLeaf(n sql.Node) bool {
+	switch n.(type) {
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.RecursiveCte:
+		return true
+	default:
+	}
+	return false
 }
 
 func wrapIndexedJoinForUpdateCases(node sql.Node, oldJoin sql.Node) (sql.Node, error) {

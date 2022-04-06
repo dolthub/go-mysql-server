@@ -473,6 +473,9 @@ var (
 
 	// ErrUnexpectedNilRow is returned when an invalid operation is applied to an empty row
 	ErrUnexpectedNilRow = errors.NewKind("unexpected nil row")
+
+	// ErrUnsupportedJoinCount is returned for a query with more commutable join tables than we support
+	ErrUnsupportedJoinCount = errors.NewKind("unsupported join count: expected fewer than %d tables, found %d")
 )
 
 func CastSQLError(err error) (*mysql.SQLError, error, bool) {
