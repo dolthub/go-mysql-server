@@ -8210,6 +8210,22 @@ type QueryErrorTest struct {
 
 var errorQueries = []QueryErrorTest{
 	{
+		Query:       "select * from mytable where (i = 1, i = 0 or i = 2) and (i > -1)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select * from mytable where (i = 1, i = 0 or i = 2) or (i > -1)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select * from mytable where ((i = 1, i = 0 or i = 2) or (i > -1)) and (i < 6)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select * from mytable where ((i = 1, i = 0 or i = 2) is true or (i > -1)) and (i < 6)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
 		Query:       "select foo.i from mytable as a",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
