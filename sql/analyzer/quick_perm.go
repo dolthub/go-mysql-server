@@ -50,10 +50,3 @@ func (p *quickPerm) Next() ([]int, error) {
 	}
 	return nil, io.EOF
 }
-
-func (p *quickPerm) Close() error {
-	p.a = nil
-	p.p = nil
-	p.i = 0
-	return nil
-}
