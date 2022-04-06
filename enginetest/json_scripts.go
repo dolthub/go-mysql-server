@@ -20,7 +20,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAYAGG on one column",
 		SetUpScript: []string{
-			"create table t (o_id int)",
+			"create table t (o_id int primary key)",
 			"INSERT INTO t VALUES (1),(2)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -37,7 +37,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "Simple JSON_ARRAYAGG on two columns",
 		SetUpScript: []string{
-			"create table t (o_id int, attribute longtext)",
+			"create table t (o_id int primary key, attribute longtext)",
 			"INSERT INTO t VALUES (2, 'color'), (2, 'fabric')",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -55,7 +55,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAYAGG on column with string values w/ groupby",
 		SetUpScript: []string{
-			"create table t (o_id int, attribute longtext, value longtext)",
+			"create table t (o_id int primary key, attribute longtext, value longtext)",
 			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -82,7 +82,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAYAGG on column with int values w/ groupby",
 		SetUpScript: []string{
-			"create table t2 (o_id int, val int)",
+			"create table t2 (o_id int primary key, val int)",
 			"INSERT INTO t2 VALUES (1,1), (1,2), (1,3)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -100,7 +100,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAYAGG on unknown column throws error",
 		SetUpScript: []string{
-			"create table t2 (o_id int, val int)",
+			"create table t2 (o_id int primary key, val int)",
 			"INSERT INTO t2 VALUES (1,1), (1,2), (1,3)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -113,7 +113,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAYAGG on column with no rows returns NULL",
 		SetUpScript: []string{
-			"create table t2 (o_id int)",
+			"create table t2 (o_id int primary key)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -129,7 +129,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAYAGG on row with 1 value, 1 null is fine",
 		SetUpScript: []string{
-			"create table x(pk int, c1 int)",
+			"create table x(pk int primary key, c1 int)",
 			"INSERT INTO x VALUES (1,NULL)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -155,7 +155,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAYAGG and group by use the same field.",
 		SetUpScript: []string{
-			"create table x(pk int, c1 int)",
+			"create table x(pk int primary key, c1 int)",
 			"INSERT INTO x VALUES (1, 1)",
 			"INSERT INTO x VALUES (1, 2)",
 			"INSERT INTO x VALUES (2, 3)",
@@ -182,11 +182,11 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_ARRAGG with simple and nested json objects.",
 		SetUpScript: []string{
-			"create table j(field JSON)",
-			`INSERT INTO j VALUES('{"key1": {"key": "value"}}')`,
-			`INSERT INTO j VALUES('{"key1": "value1", "key2": "value2"}')`,
-			`INSERT INTO j VALUES('{"key1": {"key": [2,3]}}')`,
-			`INSERT INTO j VALUES('["a", 1]')`,
+			"create table j(pk int primary key, field JSON)",
+			`INSERT INTO j VALUES(1, '{"key1": {"key": "value"}}')`,
+			`INSERT INTO j VALUES(2, '{"key1": "value1", "key2": "value2"}')`,
+			`INSERT INTO j VALUES(3, '{"key1": {"key": [2,3]}}')`,
+			`INSERT INTO j VALUES(4, '["a", 1]')`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -211,7 +211,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "Simple JSON_OBJECTAGG with GROUP BY",
 		SetUpScript: []string{
-			"create table t2 (o_id int, val int)",
+			"create table t2 (o_id int primary key, val int)",
 			"INSERT INTO t2 VALUES (1,1), (1,2), (1,3)",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -228,7 +228,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "More complex JSON_OBJECTAGG WITH GROUP BY",
 		SetUpScript: []string{
-			"create table t (o_id int, attribute longtext, value longtext)",
+			"create table t (o_id int primary key, attribute longtext, value longtext)",
 			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
 			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
 		},
@@ -260,7 +260,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "3 column table that uses JSON_OBJECTAGG without groupby",
 		SetUpScript: []string{
-			"create table t (o_id int, attribute longtext, value longtext)",
+			"create table t (o_id int primary key, attribute longtext, value longtext)",
 			"INSERT INTO t VALUES (2, 'color', 'red'), (2, 'fabric', 'silk')",
 			"INSERT INTO t VALUES (3, 'color', 'green'), (3, 'shape', 'square')",
 		},
@@ -303,7 +303,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_OBJECTAGG and nested json values",
 		SetUpScript: []string{
-			"create table j(pk int, val JSON)",
+			"create table j(pk int primary key, val JSON)",
 			`INSERT INTO j VALUES(1, '{"key1": "value1", "key2": "value2"}')`,
 			`INSERT INTO j VALUES(1, '{"key1": {"key": [2,3]}}')`,
 			`INSERT INTO j VALUES(2, '["a", 1]')`,
@@ -338,7 +338,7 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "JSON_OBJECTAGG handles errors appropriately",
 		SetUpScript: []string{
-			`create table test (pk int, val longtext)`,
+			`create table test (pk int primary key, val longtext)`,
 			`insert into test values (1, NULL)`,
 			`insert into test values (NULL, 1)`, // NULL keys are not allowed in JSON_OBJECTAGG
 		},
