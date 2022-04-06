@@ -17,6 +17,8 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -126,8 +128,59 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 		return handleTableLookupFailure(err, name, db, a, t)
 	}
 
+	resolvedTableNode := plan.NewResolvedTable(rt, database, nil)
+
+	// Check for the information_schema.columns table which needs to resolve all defaults
+	if database.Name() == "information_schema" && rt.Name() == "columns" {
+		return handleInfoSchemaColumnsTable(ctx, resolvedTableNode, a.Catalog)
+	}
+
 	a.Log("table resolved: %s", t.Name())
-	return plan.NewResolvedTable(rt, database, nil), nil
+	return resolvedTableNode, nil
+}
+
+func handleInfoSchemaColumnsTable(ctx *sql.Context, rt sql.Node, c sql.Catalog) (sql.Node, error) {
+	tableColumnsToDefaultValue, err := getAllColumnsWithADefaultValue(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
+	return information_schema.CreateNewColumnsNode(rt, tableColumnsToDefaultValue), nil
+}
+
+// getAllColumnDefaults returns a map of tableName.Column to default column value.
+func getAllColumnsWithADefaultValue(ctx *sql.Context, catalog sql.Catalog) (map[string]*sql.Column, error) {
+	ret := make(map[string]*sql.Column)
+
+	for _, db := range catalog.AllDatabases(ctx) {
+		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+			for _, col := range t.Schema() {
+				if col.Default == nil {
+					continue
+				}
+
+				if ucd, ok := col.Default.Expression.(sql.UnresolvedColumnDefault); ok {
+					newDefault, err := parse.StringToColumnDefaultValue(ctx, ucd.String())
+					if err != nil {
+						return false, err
+					}
+
+					col.Default = newDefault
+				}
+
+				key := db.Name() + "." + t.Name() + "." + col.Name
+				ret[key] = col
+			}
+
+			return false, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ret, nil
 }
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
