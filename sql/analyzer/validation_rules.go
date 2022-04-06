@@ -826,11 +826,23 @@ func validateSem(e sql.Expression) error {
 }
 
 func logicalSem(e expression.BinaryExpression) error {
-	if lc := sql.NumColumns(e.Left.Type()); lc != 1 {
+	if lc := fds(e.Left); lc != 1 {
 		return sql.ErrInvalidOperandColumns.New(1, lc)
 	}
-	if rc := sql.NumColumns(e.Right.Type()); rc != 1 {
+	if rc := fds(e.Right); rc != 1 {
 		return sql.ErrInvalidOperandColumns.New(1, rc)
 	}
 	return nil
+}
+
+// fds counts the functional dependencies of an expression.
+//todo(max): input/output fd's should be part of the expression
+// interface.
+func fds(e sql.Expression) int {
+	switch e.(type) {
+	case *expression.UnresolvedColumn:
+		return 1
+	default:
+		return sql.NumColumns(e.Type())
+	}
 }
