@@ -15,13 +15,13 @@
 package enginetest
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 

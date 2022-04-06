@@ -16,13 +16,13 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
