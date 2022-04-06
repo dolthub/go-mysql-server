@@ -17,152 +17,119 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"strings"
 )
 
+// ColumnsNode wraps the information_schema.columns table as a way to resolve column defaults.
 type ColumnsNode struct {
 	plan.UnaryNode
-	Catalog         sql.Catalog
-	ctx             *sql.Context
-	defaultToColumn map[*sql.ColumnDefaultValue]*sql.Column
-	tableToDefault  map[string]*sql.ColumnDefaultValue
+	columnNameToColumn map[string]*sql.Column // databaseName.tableName.columnName -> sql.Column
+	defaultToColumn    map[*sql.ColumnDefaultValue]*sql.Column
 }
 
 var _ sql.Node = (*ColumnsNode)(nil)
 var _ sql.Expressioner = (*ColumnsNode)(nil)
 
-func CreateNewColumnsNode(child sql.Node, catalog sql.Catalog, ctx *sql.Context) *ColumnsNode {
+// CreateNewColumnsNode returns a new ColumnsNode.
+func CreateNewColumnsNode(child sql.Node, tableToColumnsWithDefaultValue map[string]*sql.Column) *ColumnsNode {
 	return &ColumnsNode{
-		UnaryNode: plan.UnaryNode{Child: child},
-		Catalog:   catalog,
-		ctx:       ctx,
+		UnaryNode:          plan.UnaryNode{Child: child},
+		columnNameToColumn: tableToColumnsWithDefaultValue,
 	}
 }
 
+// Resolved implements the sql.Node interface.
 func (c *ColumnsNode) Resolved() bool {
-	rt := c.Child.Resolved() && c.tableToDefault != nil && c.defaultToColumn != nil
-	if rt {
-		return rt
-	}
-
-	return false
+	return c.Child.Resolved() && c.defaultToColumn != nil
 }
 
+// String implements the sql.Node interface.
 func (c *ColumnsNode) String() string {
 	return fmt.Sprintf("ColumnsNode(%s)", c.Child.String())
 }
 
+// Schema implements the sql.Node interface.
 func (c *ColumnsNode) Schema() sql.Schema {
 	return c.Child.Schema()
 }
 
+// RowIter implements the sql.Node interface.
 func (c *ColumnsNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	ct := getColumnsTable(c)
-	ct.WithTableToDefaultMap(c.tableToDefault)
+
+	colToDefaults := make(map[string]*sql.ColumnDefaultValue)
+	for colName, col := range c.columnNameToColumn {
+		colToDefaults[colName] = col.Default
+	}
+
+	ct.WithTableToDefaultMap(colToDefaults)
 
 	return c.Child.RowIter(ctx, row)
 }
 
+// WithChildren implements the sql.Node interface.
 func (c *ColumnsNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 
-	c.Child = children[0]
-
-	return c, nil
+	nc := *c
+	nc.Child = children[0]
+	return &nc, nil
 }
 
+// CheckPrivileges implements the sql.Node interface.
 func (c *ColumnsNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return c.Child.CheckPrivileges(ctx, opChecker)
 }
 
+// Expressions implements the sql.Expressioner interface.
 func (c *ColumnsNode) Expressions() []sql.Expression {
-	if c.Catalog == nil {
-		return nil
-	}
-
 	c.defaultToColumn = make(map[*sql.ColumnDefaultValue]*sql.Column)
 	toResolvedColumnDefaults := make([]sql.Expression, 0)
 
-	// Iterate through all databases and tables and get all the column default values that need to be
-	// Resolved.
-	// TODO: Performance?
-	for _, db := range c.Catalog.AllDatabases(c.ctx) {
-		err := sql.DBTableIter(c.ctx, db, func(t sql.Table) (cont bool, err error) {
-			for _, col := range t.Schema() {
-				if col.Default != nil {
-					if ucd, ok := col.Default.Expression.(sql.UnresolvedColumnDefault); ok {
-						newDefault, err := parse.StringToColumnDefaultValue(c.ctx, ucd.String())
-						if err != nil {
-							return false, err
-						}
-
-						toResolvedColumnDefaults = append(toResolvedColumnDefaults, expression.WrapExpression(newDefault))
-						c.defaultToColumn[newDefault] = col
-					} else {
-						toResolvedColumnDefaults = append(toResolvedColumnDefaults, expression.WrapExpression(col.Default))
-						c.defaultToColumn[col.Default] = col
-					}
-				}
-			}
-
-			return false, nil
-		})
-
-		if err != nil {
-			panic("dasasas")
-		}
+	for _, col := range c.columnNameToColumn {
+		toResolvedColumnDefaults = append(toResolvedColumnDefaults, expression.WrapExpression(col.Default))
+		c.defaultToColumn[col.Default] = col
 	}
 
 	return toResolvedColumnDefaults
 }
 
 func (c *ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	c.tableToDefault = make(map[string]*sql.ColumnDefaultValue)
-
 	// TODO: This is super hacky assumes order is the same....
 	i := 0
-	for _, db := range c.Catalog.AllDatabases(c.ctx) {
-		err := sql.DBTableIter(c.ctx, db, func(t sql.Table) (cont bool, err error) {
-			for _, col := range t.Schema() {
-				if col.Default != nil {
-					expr := expressions[i]
-					for true {
-						wr, ok := expr.(*expression.Wrapper)
-						if !ok {
-							break
-						}
-						expr = wr.Unwrap()
-					}
-
-					key := t.Name() + col.Name
-					c.tableToDefault[key] = expr.(*sql.ColumnDefaultValue)
-					i += 1
-				}
+	for _, col := range c.columnNameToColumn {
+		expr := expressions[i]
+		// TODO: Get rid of this someday
+		for true {
+			wr, ok := expr.(*expression.Wrapper)
+			if !ok {
+				break
 			}
-
-			return false, nil
-		})
-
-		if err != nil {
-			panic("dasasas")
+			expr = wr.Unwrap()
 		}
+
+		newDefault := expr.(*sql.ColumnDefaultValue)
+		col.Default = newDefault
+		c.defaultToColumn[newDefault] = col
+		i++
 	}
 
 	return c, nil
 }
 
-func (c *ColumnsNode) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) *sql.Column {
-	return c.defaultToColumn[d]
+func (c *ColumnsNode) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql.Column, bool) {
+	col, ok := c.defaultToColumn[d]
+	return col, ok
 }
 
-// this could be so much better...
+// TODO: Fix this shit
 func getColumnsTable(n sql.Node) *ColumnsTable {
 	var ct *ColumnsTable
 
@@ -265,7 +232,7 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string
 					collName = sql.Collation_Default.String()
 				}
 				ordinalPos = uint64(i + 1)
-				key := t.Name() + c.Name
+				key := db.Name() + "." + t.Name() + "." + c.Name
 				colDefault, ok := tableToDefault[key]
 				if !ok {
 					colDefault = nil

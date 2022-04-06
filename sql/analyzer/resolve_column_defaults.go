@@ -15,15 +15,14 @@
 package analyzer
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"strings"
-
-	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var validColumnDefaultFuncs = map[string]struct{}{
@@ -581,16 +580,17 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper := expression.WrapExpression(e)
 
-				// Need to get relevant column information
-				exp := eWrapper.Unwrap()
-				_, ok := exp.(*sql.ColumnDefaultValue)
+				_, ok := e.(*sql.ColumnDefaultValue)
 				if !ok {
 					return eWrapper, transform.SameTree, nil
 				}
 
-				col := node.GetColumnFromDefaultValue(exp.(*sql.ColumnDefaultValue))
+				col, ok := node.GetColumnFromDefaultValue(e.(*sql.ColumnDefaultValue))
+				if !ok {
+					return eWrapper, transform.SameTree, nil
+				}
 
-				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+				return resolveColumnDefaultsOnWrapper(ctx, col, expression.WrapExpression(e))
 			})
 		default:
 			return node, transform.SameTree, nil

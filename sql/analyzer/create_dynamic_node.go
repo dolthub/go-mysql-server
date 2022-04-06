@@ -17,41 +17,90 @@ package analyzer
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// resolveDynamicTables creates custom analyzer nodes for information schema tables that need use the analyzer
+// resolveDynamicTables wraps information_schema tables with custom nodes that need use to the analyzer.
 func resolveDynamicTables(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolveDynamicTables")
 	defer span.Finish()
 
+	return resolveInfoSchemaColumnTable(ctx, a.Catalog, n)
+}
+
+// resolveInfoSchemaColumnTable looks for the information_schema.Column table and wraps with an information_schema.ColumnsNode
+// if found.
+// TODO: Should we should hard code this in resolve_tables? Would be much simpler
+func resolveInfoSchemaColumnTable(ctx *sql.Context, catalog sql.Catalog, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	canSelectResolvedTable := func(c transform.Context) bool {
 		switch c.Node.(type) {
 		case *plan.ResolvedTable:
-			// Don't want to transform already transformed node
+			// Once the information_schema.ColumnsNode wraps the information_schema.columns (resolved table) we don't
+			// need to keep searching.
 			if _, ok := c.Parent.(*information_schema.ColumnsNode); ok {
 				return false
 			}
 
 			return true
 		default:
-			return false
+			return true
 		}
 	}
 
-	return transform.NodeWithCtx(n, canSelectResolvedTable, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch node := c.Node.(type) {
+	return transform.NodeWithCtx(node, canSelectResolvedTable, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		switch n := c.Node.(type) {
 		case *plan.ResolvedTable:
 			// Doing it twice
-			_, ok := node.Table.(*information_schema.ColumnsTable)
+			_, ok := n.Table.(*information_schema.ColumnsTable)
 			if !ok {
-				return node, transform.SameTree, nil
+				return n, transform.SameTree, nil
 			}
 
-			return information_schema.CreateNewColumnsNode(node, a.Catalog, ctx), transform.NewTree, nil
+			tableColumnsToDefaultValue, err := getAllColumnsWithADefaultValue(ctx, catalog)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			return information_schema.CreateNewColumnsNode(n, tableColumnsToDefaultValue), transform.NewTree, nil
 		default:
-			return node, transform.SameTree, nil
+			return n, transform.SameTree, nil
 		}
 	})
+}
+
+// getAllColumnDefaults returns a map of tableName.Column to default column value.
+func getAllColumnsWithADefaultValue(ctx *sql.Context, catalog sql.Catalog) (map[string]*sql.Column, error) {
+	ret := make(map[string]*sql.Column)
+
+	for _, db := range catalog.AllDatabases(ctx) {
+		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+			for _, col := range t.Schema() {
+				if col.Default == nil {
+					continue
+				}
+
+				if ucd, ok := col.Default.Expression.(sql.UnresolvedColumnDefault); ok {
+					newDefault, err := parse.StringToColumnDefaultValue(ctx, ucd.String())
+					if err != nil {
+						return false, err
+					}
+
+					col.Default = newDefault
+				}
+
+				key := db.Name() + "." + t.Name() + "." + col.Name
+				ret[key] = col
+			}
+
+			return false, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ret, nil
 }
