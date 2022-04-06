@@ -191,7 +191,6 @@ var JoinQueryTests = []QueryTest{
 		},
 	},
 	{
-		// todo: CROSS JOIN -> RIGHT JOIN correctness
 		Query: "select * from mytable a CROSS JOIN mytable b RIGHT JOIN mytable c ON b.i+1 = c.i;",
 		Expected: []sql.Row{
 			{nil, nil, nil, nil, 1, "first row"},
@@ -201,6 +200,40 @@ var JoinQueryTests = []QueryTest{
 			{1, "first row", 2, "second row", 3, "third row"},
 			{2, "second row", 2, "second row", 3, "third row"},
 			{3, "third row", 2, "second row", 3, "third row"},
+		},
+	},
+	{
+		Query: "with a as (select a.i, a.s from mytable a CROSS JOIN mytable b) select * from a RIGHT JOIN mytable c on a.i+1 = c.i-1;",
+		Expected: []sql.Row{
+			{nil, nil, 1, "first row"},
+			{nil, nil, 2, "second row"},
+			{1, "first row", 3, "third row"},
+			{1, "first row", 3, "third row"},
+			{1, "first row", 3, "third row"},
+		},
+	},
+	{
+		Query: "select a.* from mytable a RIGHT JOIN mytable b on a.i = b.i+1 LEFT JOIN mytable c on a.i = c.i-1 RIGHT JOIN mytable d on b.i = d.i;",
+		Expected: []sql.Row{
+			{2, "second row"},
+			{3, "third row"},
+			{nil, nil},
+		},
+	},
+	{
+		Query: "select a.*,b.* from mytable a RIGHT JOIN othertable b on a.i = b.i2+1 LEFT JOIN mytable c on a.i = c.i-1 LEFT JOIN othertable d on b.i2 = d.i2;",
+		Expected: []sql.Row{
+			{2, "second row", "third", 1},
+			{3, "third row", "second", 2},
+			{nil, nil, "first", 3},
+		},
+	},
+	{
+		Query: "select a.*,b.* from mytable a RIGHT JOIN othertable b on a.i = b.i2+1 RIGHT JOIN mytable c on a.i = c.i-1 LEFT JOIN othertable d on b.i2 = d.i2;",
+		Expected: []sql.Row{
+			{nil, nil, nil, nil},
+			{nil, nil, nil, nil},
+			{2, "second row", "third", 1},
 		},
 	},
 }

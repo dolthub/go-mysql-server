@@ -125,8 +125,10 @@ func TestSingleQuery(t *testing.T) {
 
 	var test enginetest.QueryTest
 	test = enginetest.QueryTest{
-		Query:    `SELECT COUNT(*) FROM mytable`,
-		Expected: []sql.Row{},
+		Query: `SELECT * FROM mytable mt JOIN othertable ot ON ot.i2 = (SELECT i2 FROM othertable WHERE s2 = "second") AND mt.i = ot.i2 JOIN mytable mt2 ON mt.i = mt2.i`,
+		Expected: []sql.Row{
+			{2, "second row", "second", 2, 2, "second row"},
+		},
 	}
 
 	fmt.Sprintf("%v", test)

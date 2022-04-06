@@ -24,6 +24,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+const searchLimit = 1 << 29 // includes 12 tables joins
+
 func buildJoinTree(
 	jo *joinOrderNode,
 	joinConds []*joinCond,
@@ -316,19 +318,19 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 			indexes[i] = i
 		}
 		lowestCost := uint64(math.MaxUint64)
-		accessOrders := permutations(indexes)
-		lowestCostIdx := 0
-		for i, accessOrder := range accessOrders {
+		perm := newQuickPerm(indexes)
+		lowestOrder := make([]int, len(indexes))
+		for accessOrder, err := perm.Next(); err == nil && perm.i < searchLimit; accessOrder, err = perm.Next() {
 			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost)
 			if err != nil {
 				return err
 			}
 			if cost < lowestCost {
 				lowestCost = cost
-				lowestCostIdx = i
+				copy(lowestOrder, accessOrder)
 			}
 		}
-		jo.order = accessOrders[lowestCostIdx]
+		jo.order = lowestOrder
 		jo.cost = lowestCost
 	}
 

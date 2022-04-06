@@ -2093,11 +2093,13 @@ CREATE TABLE t2
 		[]sql.SortField{
 			{
 				Column:       expression.NewLiteral(int8(2), sql.Int8),
+				Column2:      expression.NewLiteral(int8(2), sql.Int8),
 				Order:        sql.Ascending,
 				NullOrdering: sql.NullsFirst,
 			},
 			{
 				Column:       expression.NewLiteral(int8(1), sql.Int8),
+				Column2:      expression.NewLiteral(int8(1), sql.Int8),
 				Order:        sql.Ascending,
 				NullOrdering: sql.NullsFirst,
 			},

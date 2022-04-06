@@ -133,7 +133,7 @@ func getOuterScopeIndexes(
 		case *plan.Filter:
 
 			var indexAnalyzer *indexAnalyzer
-			indexAnalyzer, err = getIndexesForNode(ctx, a, node)
+			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node)
 			if err != nil {
 				return false
 			}

@@ -23,43 +23,45 @@ import (
 // Literal represents a literal expression (string, number, bool, ...).
 type Literal struct {
 	value     interface{}
+	val2      sql.Value
 	fieldType sql.Type
 }
 
 var _ sql.Expression = &Literal{}
+var _ sql.Expression2 = &Literal{}
 
 // NewLiteral creates a new Literal expression.
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
-	// TODO(juanjux): we should probably check here if the type is sql.VarChar and the
-	// Capacity of the Type and the length of the value, but this can't return an error
+	val2, _ := sql.ConvertToValue(value)
 	return &Literal{
 		value:     value,
+		val2:      val2,
 		fieldType: fieldType,
 	}
 }
 
 // Resolved implements the Expression interface.
-func (p *Literal) Resolved() bool {
+func (lit *Literal) Resolved() bool {
 	return true
 }
 
 // IsNullable implements the Expression interface.
-func (p *Literal) IsNullable() bool {
-	return p.value == nil
+func (lit *Literal) IsNullable() bool {
+	return lit.value == nil
 }
 
 // Type implements the Expression interface.
-func (p *Literal) Type() sql.Type {
-	return p.fieldType
+func (lit *Literal) Type() sql.Type {
+	return lit.fieldType
 }
 
 // Eval implements the Expression interface.
-func (p *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return p.value, nil
+func (lit *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	return lit.value, nil
 }
 
-func (p *Literal) String() string {
-	switch v := p.value.(type) {
+func (lit *Literal) String() string {
+	switch v := lit.value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v)
 	case string:
@@ -73,9 +75,9 @@ func (p *Literal) String() string {
 	}
 }
 
-func (p *Literal) DebugString() string {
-	typeStr := p.fieldType.String()
-	switch v := p.value.(type) {
+func (lit *Literal) DebugString() string {
+	typeStr := lit.fieldType.String()
+	switch v := lit.value.(type) {
 	case string:
 		return fmt.Sprintf("%s (%s)", v, typeStr)
 	case []byte:
@@ -92,16 +94,28 @@ func (p *Literal) DebugString() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Literal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (lit *Literal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New(lit, len(children), 0)
 	}
-	return p, nil
+	return lit, nil
 }
 
 // Children implements the Expression interface.
 func (*Literal) Children() []sql.Expression {
 	return nil
+}
+
+func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+	return lit.val2, nil
+}
+
+func (lit *Literal) Type2() sql.Type2 {
+	t2, ok := lit.fieldType.(sql.Type2)
+	if !ok {
+		panic(fmt.Errorf("expected Type2, but was %T", lit.fieldType))
+	}
+	return t2
 }
 
 // Value returns the literal value.
