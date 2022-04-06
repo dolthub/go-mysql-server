@@ -15,6 +15,7 @@
 package transform
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -27,14 +28,12 @@ func TestTransformUp(t *testing.T) {
 	require := require.New(t)
 
 	tests := []struct {
-		name  string
 		inp   sql.Node
 		cmp   sql.Node
 		visit NodeFunc
 		same  TreeIdentity
 	}{
 		{
-			name: "modify tree",
 			inp:  a(a(a(), a(), a(b())), c()),
 			cmp:  b(b(b(), b(), b(c())), c()),
 			same: NewTree,
@@ -50,7 +49,97 @@ func TestTransformUp(t *testing.T) {
 			},
 		},
 		{
-			name: "no modification",
+			inp:  a(a(a(), a(), a(b())), c()),
+			cmp:  b(b(b(), b(), b(b())), b()),
+			same: NewTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeA, *nodeB, *nodeC:
+					return b(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(a(a(), a(), a(b())), c()),
+			cmp:  a(a(a(), a(), a(b())), b()),
+			same: NewTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeC:
+					return b(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(b(b(), c(), b(b())), c()),
+			cmp:  c(b(b(), c(), b(b())), c()),
+			same: NewTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeA:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(b(b())),
+			cmp:  c(b(b())),
+			same: NewTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeA:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(b(a())),
+			cmp:  c(b(c())),
+			same: NewTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeA:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(b(b(b(b(b(b(b(b(b()))))))))),
+			cmp:  c(b(b(b(b(b(b(b(b(b()))))))))),
+			same: NewTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeA:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(),
+			cmp:  c(),
+			same: NewTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeA:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
 			inp:  a(a(a(), a(), a(b())), b()),
 			cmp:  a(a(a(), a(), a(b())), b()),
 			same: SameTree,
@@ -63,10 +152,95 @@ func TestTransformUp(t *testing.T) {
 				}
 			},
 		},
+		{
+			inp:  a(a(a(), a(), a(b())), b()),
+			cmp:  a(a(a(), a(), a(b())), b()),
+			same: SameTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeC:
+					return a(n.children...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  c(b(b(), c(), b(b())), c()),
+			cmp:  c(b(b(), c(), b(b())), c()),
+			same: SameTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeA:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(b(b())),
+			cmp:  a(b(b())),
+			same: SameTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeC:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(b(a())),
+			cmp:  a(b(a())),
+			same: SameTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeC:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(b(b(b(b(b(b(b(b(b()))))))))),
+			cmp:  a(b(b(b(b(b(b(b(b(b()))))))))),
+			same: SameTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeC:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
+		{
+			inp:  a(),
+			cmp:  a(),
+			same: SameTree,
+			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+				switch n := node.(type) {
+				case *nodeC:
+					return c(n.Children()...), NewTree, nil
+				default:
+					return n, SameTree, nil
+				}
+			},
+		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for i, tt := range tests {
+		var name string
+		if tt.same {
+			name = fmt.Sprintf("same tree #%d", i)
+		} else {
+			name = fmt.Sprintf("new tree #%d", i)
+		}
+
+		t.Run(name, func(t *testing.T) {
 			res, same, err := Node(tt.inp, tt.visit)
 			require.NoError(err)
 			require.Equal(tt.cmp, res)
