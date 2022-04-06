@@ -225,7 +225,6 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.Ind
 	return lookup, nil
 }
 
-
 func (i *IndexedTableAccess) String() string {
 	var filters string
 	if i.lookup != nil {

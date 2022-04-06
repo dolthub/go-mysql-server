@@ -274,10 +274,10 @@ func getIndexes(
 // It works for the following comparisons: eq, lt, gt, gte and lte.
 // TODO: add support for BETWEEN
 func getComparisonIndexLookup(
-		ctx *sql.Context,
-		ia *indexAnalyzer,
-		e expression.Comparer,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	ia *indexAnalyzer,
+	e expression.Comparer,
+	tableAliases TableAliases,
 ) (*indexLookup, error) {
 	left, right := e.Left(), e.Right()
 	// if the form is SOMETHING OP {INDEXABLE EXPR}, swap it, so it's {INDEXABLE EXPR} OP SOMETHING
@@ -555,10 +555,10 @@ func indexesIntersection(ctx *sql.Context, left, right indexLookupsByTable) (ind
 }
 
 func getMultiColumnIndexes(
-		ctx *sql.Context,
-		exprs []sql.Expression,
-		ia *indexAnalyzer,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	exprs []sql.Expression,
+	ia *indexAnalyzer,
+	tableAliases TableAliases,
 ) (indexLookupsByTable, []sql.Expression, error) {
 	result := make(indexLookupsByTable)
 	var unusedExprs []sql.Expression
@@ -630,12 +630,12 @@ func getMultiColumnIndexes(
 }
 
 func getMultiColumnIndexForExpressions(
-		ctx *sql.Context,
-		ia *indexAnalyzer,
-		table string,
-		selected []sql.Expression,
-		exprs []joinColExpr,
-		tableAliases TableAliases,
+	ctx *sql.Context,
+	ia *indexAnalyzer,
+	table string,
+	selected []sql.Expression,
+	exprs []joinColExpr,
+	tableAliases TableAliases,
 ) (*indexLookup, error) {
 	normalizedExpressions := normalizeExpressions(ctx, tableAliases, selected...)
 	index := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table, normalizedExpressions...)
