@@ -110,6 +110,8 @@ func (c *Column) Copy() *Column {
 		Nullable:      c.Nullable,
 		Source:        c.Source,
 		PrimaryKey:    c.PrimaryKey,
+		UniqueKey:     c.UniqueKey,
+		MultipleKey:   c.MultipleKey,
 		Comment:       c.Comment,
 		Extra:         c.Extra,
 	}
