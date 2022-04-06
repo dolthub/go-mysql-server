@@ -69,12 +69,12 @@ func ConvertToValue(v interface{}) (Value, error) {
 	case float32:
 		return Value{
 			Typ: query.Type_FLOAT32,
-			Val: values.WriteFloat32(make([]byte, values.Uint16Size), v),
+			Val: values.WriteFloat32(make([]byte, values.Float32Size), v),
 		}, nil
 	case float64:
 		return Value{
 			Typ: query.Type_FLOAT64,
-			Val: values.WriteFloat64(make([]byte, values.Uint16Size), v),
+			Val: values.WriteFloat64(make([]byte, values.Float64Size), v),
 		}, nil
 	case string:
 		return Value{

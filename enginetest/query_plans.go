@@ -182,7 +182,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2`,
 		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			" └─ IndexedJoin((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, \" \", &{1 {257}}) = othertable.s2))\n" +
+			" └─ IndexedJoin((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, \" \", 1) = othertable.s2))\n" +
 			"     ├─ Table(mytable)\n" +
 			"     └─ Concat\n" +
 			"         ├─ IndexedTableAccess(othertable on [othertable.i2])\n" +
@@ -192,7 +192,7 @@ var PlanTests = []QueryPlanTest{
 	{
 		Query: `SELECT i, i2, s2 FROM mytable INNER JOIN othertable ON i = i2 OR SUBSTRING_INDEX(s, ' ', 1) = s2 OR SUBSTRING_INDEX(s, ' ', 2) = s2`,
 		ExpectedPlan: "Project(mytable.i, othertable.i2, othertable.s2)\n" +
-			" └─ IndexedJoin(((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, \" \", &{1 {257}}) = othertable.s2)) OR (SUBSTRING_INDEX(mytable.s, \" \", &{2 {257}}) = othertable.s2))\n" +
+			" └─ IndexedJoin(((mytable.i = othertable.i2) OR (SUBSTRING_INDEX(mytable.s, \" \", 1) = othertable.s2)) OR (SUBSTRING_INDEX(mytable.s, \" \", 2) = othertable.s2))\n" +
 			"     ├─ Table(mytable)\n" +
 			"     └─ Concat\n" +
 			"         ├─ Concat\n" +

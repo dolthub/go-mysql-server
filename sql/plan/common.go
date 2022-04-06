@@ -135,7 +135,7 @@ func getTableName(nodeToSearch sql.Node) string {
 		case *UnresolvedTable:
 			return n.name
 		case *IndexedTableAccess:
-			return n.Table.Name()
+			return n.Name()
 		case sql.TableWrapper:
 			return n.Underlying().Name()
 		}
@@ -162,7 +162,7 @@ func getDatabaseName(nodeToSearch sql.Node) string {
 		case *UnresolvedTable:
 			return n.Database
 		case *IndexedTableAccess:
-			return n.Database.Name()
+			return n.Database().Name()
 		}
 		nodeStack = append(nodeStack, node.Children()...)
 	}

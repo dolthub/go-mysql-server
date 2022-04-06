@@ -91,6 +91,10 @@ func (f *RowFrame) Recycle() {
 // Row2 returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
 // further modification to this frame may result in the returned value changing as well.
 func (f *RowFrame) Row2() Row2 {
+	if f == nil {
+		return nil
+	}
+
 	rs := make(Row2, len(f.Values))
 	for i := range f.Values {
 		rs[i] = Value{
