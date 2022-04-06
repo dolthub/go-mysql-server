@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -576,6 +577,21 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				}
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
+		case *information_schema.ColumnsNode:
+			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				eWrapper := expression.WrapExpression(e)
+
+				// Need to get relevant column information
+				exp := eWrapper.Unwrap()
+				_, ok := exp.(*sql.ColumnDefaultValue)
+				if !ok {
+					return eWrapper, transform.SameTree, nil
+				}
+
+				col := node.GetColumnFromDefaultValue(exp.(*sql.ColumnDefaultValue))
+
+				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
+			})
 		default:
 			return node, transform.SameTree, nil
 		}
@@ -607,7 +623,7 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return e, transform.SameTree, nil
 		}
 		switch n.(type) {
-		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
+		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable, *information_schema.ColumnsNode:
 			n, same, err := parseColumnDefaultsForWrapper(ctx, eWrapper)
 			return n, same, err
 		default:

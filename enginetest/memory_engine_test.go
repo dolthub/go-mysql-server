@@ -141,49 +141,16 @@ func TestSingleQuery(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 
 	var scripts = []enginetest.ScriptTest{
 		{
 			Name: "trigger before insert, alter inserted value",
 			SetUpScript: []string{
-				"create table a (x int primary key, y varchar(4))",
-				"create table b (x int primary key, a_x int)",
-				"create table c (x int primary key, name varchar(4))",
-				"create table d (x int primary key, a_x int, c_x int, index idx1(a_x))",
-				"insert into a values (0, 'a'), (1, 'b'), (2,'c')",
-				"insert into b values (0, 0), (1, 1), (2,2)",
-				"insert into c values (0, 'c1'), (1, 'c2'), (2,'c3')",
-				"insert into d values (0, 1, 0), (1, 2, 1), (2, 0, 2)",
+				`create table a (x int primary key, y varchar(4) DEFAULT 'YOLO')`,
 			},
-			Query: `WITH
-					cte AS
-					(
-						SELECT
-							a.x AS a_x,
-							b.x AS b_x
-						FROM
-							a
-						INNER JOIN
-							b
-						ON
-							a.x = b.a_x
-						WHERE a.y IN ('a', 'b')
-					)
-				SELECT cte.*
-				FROM
-					cte
-				CROSS JOIN
-					c
-				LEFT JOIN
-					d ON d.c_x = c.x AND d.a_x = cte.a_x
-				ORDER BY
-					cte.b_x,
-					c.name
-				;`,
-			Expected: []sql.Row{
-				{2},
-			},
+			Query:    `SELECT * FROM information_schema.columns`,
+			Expected: []sql.Row{{}, {"YOLO"}},
 		},
 	}
 

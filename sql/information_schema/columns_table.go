@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"strings"
@@ -26,8 +27,10 @@ import (
 
 type ColumnsNode struct {
 	plan.UnaryNode
-	Catalog sql.Catalog
-	ctx     *sql.Context
+	Catalog         sql.Catalog
+	ctx             *sql.Context
+	defaultToColumn map[*sql.ColumnDefaultValue]*sql.Column
+	tableToDefault  map[string]*sql.ColumnDefaultValue
 }
 
 var _ sql.Node = (*ColumnsNode)(nil)
@@ -41,9 +44,8 @@ func CreateNewColumnsNode(child sql.Node, catalog sql.Catalog, ctx *sql.Context)
 	}
 }
 
-func (c ColumnsNode) Resolved() bool {
-	ct := getColumnsTable(c.Child)
-	rt := ct.tableToDefault != nil
+func (c *ColumnsNode) Resolved() bool {
+	rt := c.Child.Resolved() && c.tableToDefault != nil && c.defaultToColumn != nil
 	if rt {
 		return rt
 	}
@@ -51,42 +53,63 @@ func (c ColumnsNode) Resolved() bool {
 	return false
 }
 
-func (c ColumnsNode) String() string {
+func (c *ColumnsNode) String() string {
 	return fmt.Sprintf("ColumnsNode(%s)", c.Child.String())
 }
 
-func (c ColumnsNode) Schema() sql.Schema {
+func (c *ColumnsNode) Schema() sql.Schema {
 	return c.Child.Schema()
 }
 
-func (c ColumnsNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+func (c *ColumnsNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	ct := getColumnsTable(c)
+	ct.WithTableToDefaultMap(c.tableToDefault)
+
 	return c.Child.RowIter(ctx, row)
 }
 
-func (c ColumnsNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *ColumnsNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 
-	return CreateNewColumnsNode(children[0], c.Catalog, c.ctx), nil
+	c.Child = children[0]
+
+	return c, nil
 }
 
-func (c ColumnsNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (c *ColumnsNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	return c.Child.CheckPrivileges(ctx, opChecker)
 }
 
-func (c ColumnsNode) Expressions() []sql.Expression {
-	ct := getColumnsTable(c.Child)
-
+func (c *ColumnsNode) Expressions() []sql.Expression {
 	if c.Catalog == nil {
 		return nil
 	}
 
+	c.defaultToColumn = make(map[*sql.ColumnDefaultValue]*sql.Column)
 	toResolvedColumnDefaults := make([]sql.Expression, 0)
+
+	// Iterate through all databases and tables and get all the column default values that need to be
+	// Resolved.
+	// TODO: Performance?
 	for _, db := range c.Catalog.AllDatabases(c.ctx) {
 		err := sql.DBTableIter(c.ctx, db, func(t sql.Table) (cont bool, err error) {
 			for _, col := range t.Schema() {
-				toResolvedColumnDefaults = append(toResolvedColumnDefaults, expression.WrapExpression(col.Default))
+				if col.Default != nil {
+					if ucd, ok := col.Default.Expression.(sql.UnresolvedColumnDefault); ok {
+						newDefault, err := parse.StringToColumnDefaultValue(c.ctx, ucd.String())
+						if err != nil {
+							return false, err
+						}
+
+						toResolvedColumnDefaults = append(toResolvedColumnDefaults, expression.WrapExpression(newDefault))
+						c.defaultToColumn[newDefault] = col
+					} else {
+						toResolvedColumnDefaults = append(toResolvedColumnDefaults, expression.WrapExpression(col.Default))
+						c.defaultToColumn[col.Default] = col
+					}
+				}
 			}
 
 			return false, nil
@@ -97,29 +120,31 @@ func (c ColumnsNode) Expressions() []sql.Expression {
 		}
 	}
 
-	ct.tableToDefault = make(map[string]*sql.ColumnDefaultValue)
-
 	return toResolvedColumnDefaults
 }
 
-func (c ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	ct := getColumnsTable(c.Child)
-
-	if ct.tableToDefault != nil {
-		return c, nil
-	}
-
-	ct.tableToDefault = make(map[string]*sql.ColumnDefaultValue)
+func (c *ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+	c.tableToDefault = make(map[string]*sql.ColumnDefaultValue)
 
 	// TODO: This is super hacky assumes order is the same....
 	i := 0
-	ctx := sql.NewEmptyContext()
-	for _, db := range ct.Catalog.AllDatabases(ctx) {
-		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+	for _, db := range c.Catalog.AllDatabases(c.ctx) {
+		err := sql.DBTableIter(c.ctx, db, func(t sql.Table) (cont bool, err error) {
 			for _, col := range t.Schema() {
-				key := t.Name() + col.Name
-				ct.tableToDefault[key] = expressions[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
-				i += 1
+				if col.Default != nil {
+					expr := expressions[i]
+					for true {
+						wr, ok := expr.(*expression.Wrapper)
+						if !ok {
+							break
+						}
+						expr = wr.Unwrap()
+					}
+
+					key := t.Name() + col.Name
+					c.tableToDefault[key] = expr.(*sql.ColumnDefaultValue)
+					i += 1
+				}
 			}
 
 			return false, nil
@@ -133,6 +158,11 @@ func (c ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, e
 	return c, nil
 }
 
+func (c *ColumnsNode) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) *sql.Column {
+	return c.defaultToColumn[d]
+}
+
+// this could be so much better...
 func getColumnsTable(n sql.Node) *ColumnsTable {
 	var ct *ColumnsTable
 
@@ -208,6 +238,10 @@ func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
 	return c
 }
 
+func (c *ColumnsTable) WithTableToDefaultMap(tableToDefault map[string]*sql.ColumnDefaultValue) {
+	c.tableToDefault = tableToDefault
+}
+
 func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, db := range cat.AllDatabases(ctx) {
@@ -231,8 +265,16 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string
 					collName = sql.Collation_Default.String()
 				}
 				ordinalPos = uint64(i + 1)
-				key := db.Name() + t.Name()
-				colDefault = tableToDefault[key]
+				key := t.Name() + c.Name
+				colDefault, ok := tableToDefault[key]
+				if !ok {
+					colDefault = nil
+				} else {
+					colDefault = colDefault.(*sql.ColumnDefaultValue).String()
+					if strings.HasPrefix(colDefault.(string), "\"") && strings.HasSuffix(colDefault.(string), "\"") {
+						colDefault = strings.TrimSuffix(strings.TrimPrefix(colDefault.(string), "\""), "\"")
+					}
+				}
 
 				rows = append(rows, sql.Row{
 					"def",                            // table_catalog
