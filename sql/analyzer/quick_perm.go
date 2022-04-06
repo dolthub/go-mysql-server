@@ -3,7 +3,7 @@ package analyzer
 import "io"
 
 // quickPerm is an in-place permutation algorithm.
-// As such, the original array passed into quickPerm
+// The original array passed into quickPerm
 // is mutated by every .Next() call.
 // Use copy(newArray, perm) to save an intermediate
 // result.
@@ -25,7 +25,7 @@ func newQuickPerm(a []int) *quickPerm {
 }
 
 // Next returns the next array permutation
-// refer to // https://www.quickperm.org for pseudocode
+// refer to https://www.quickperm.org for pseudocode
 func (p *quickPerm) Next() ([]int, error) {
 	if !p.init {
 		p.init = true
