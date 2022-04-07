@@ -17,7 +17,6 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"sort"
 	"strings"
 
@@ -30,8 +29,13 @@ import (
 // ColumnsNode wraps the information_schema.columns table as a way to resolve column defaults.
 type ColumnsNode struct {
 	plan.UnaryNode
-	columnNameToColumn map[string]*sql.Column // databaseName.tableName.columnName -> sql.Column
-	defaultToColumn    map[*sql.ColumnDefaultValue]*sql.Column
+
+	// columnNameToColumn maps the name of a column (databaseName.tableName.columnName) with a non nil default value
+	// to its column object.
+	columnNameToColumn map[string]*sql.Column
+
+	// defaultToColumn maps the pointer of a sql.ColumnDefault value back to its original Column Object.
+	defaultToColumn map[*sql.ColumnDefaultValue]*sql.Column
 }
 
 var _ sql.Node = (*ColumnsNode)(nil)
@@ -70,7 +74,7 @@ func (c *ColumnsNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 		colToDefaults[colName] = col.Default
 	}
 
-	ct.WithTableToDefaultMap(colToDefaults)
+	ct.WithColumnNametoDefaultMap(colToDefaults)
 
 	return c.Child.RowIter(ctx, row)
 }
@@ -96,6 +100,7 @@ func (c *ColumnsNode) Expressions() []sql.Expression {
 	c.defaultToColumn = make(map[*sql.ColumnDefaultValue]*sql.Column)
 	toResolvedColumnDefaults := make([]sql.Expression, 0)
 
+	// To maintain order in WithExpressions we sort the list and output the keys.
 	keys := make([]string, 0, len(c.columnNameToColumn))
 	for k := range c.columnNameToColumn {
 		keys = append(keys, k)
@@ -112,16 +117,17 @@ func (c *ColumnsNode) Expressions() []sql.Expression {
 	return toResolvedColumnDefaults
 }
 
+// WithExpressions implements the sql.Expressioner interface.
 func (c *ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	// TODO: This is super hacky assumes order is the same....
-	i := 0
-
+	// We have to sort by keys to ensure that the order of the evaluated expressions can be aligned with the original
+	// sql.Expressions call.
 	keys := make([]string, 0, len(c.columnNameToColumn))
 	for k := range c.columnNameToColumn {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
+	i := 0
 	for _, colName := range keys {
 		col := c.columnNameToColumn[colName]
 		expr := expressions[i].(*expression.Wrapper)
@@ -134,6 +140,8 @@ func (c *ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, 
 	return c, nil
 }
 
+// GetColumnFromDefaultValue takes in a default value and returns its associated column. This is essential in the
+// resolveColumnDefaults analyzer rule where we need the relevant column to resolve any unresolved column defaults.
 func (c *ColumnsNode) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql.Column, bool) {
 	col, ok := c.defaultToColumn[d]
 	return col, ok
@@ -169,6 +177,7 @@ func getColumnsTable(node sql.Node) *ColumnsTable {
 	return getInnerTable(table.Table)
 }
 
+// getInnerTable takes a sql.Table and searches for a ColumnsTable.
 func getInnerTable(t sql.Table) *ColumnsTable {
 	switch tt := t.(type) {
 	case *plan.ProcessTable:
@@ -181,11 +190,14 @@ func getInnerTable(t sql.Table) *ColumnsTable {
 }
 
 type ColumnsTable struct {
-	name           string
-	schema         sql.Schema
-	rowIter        func(*sql.Context, sql.Catalog, map[string]*sql.ColumnDefaultValue) (sql.RowIter, error)
-	Catalog        sql.Catalog
-	tableToDefault map[string]*sql.ColumnDefaultValue
+	name    string
+	schema  sql.Schema
+	rowIter func(*sql.Context, sql.Catalog, map[string]*sql.ColumnDefaultValue) (sql.RowIter, error)
+	Catalog sql.Catalog
+
+	// columnNameToDefault maps the name of a column (databaseName.tableName.columnName) with a non nil default value
+	// to its column object.
+	columnNameToDefault map[string]*sql.ColumnDefaultValue
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
@@ -222,7 +234,7 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 		return nil, fmt.Errorf("nil catalog for info schema table %s", c.name)
 	}
 
-	return c.rowIter(context, c.Catalog, c.tableToDefault)
+	return c.rowIter(context, c.Catalog, c.columnNameToDefault)
 }
 
 // AssignCatalog implements the analyzer.Catalog interface.
@@ -231,11 +243,11 @@ func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
 	return c
 }
 
-func (c *ColumnsTable) WithTableToDefaultMap(tableToDefault map[string]*sql.ColumnDefaultValue) {
-	c.tableToDefault = tableToDefault
+func (c *ColumnsTable) WithColumnNametoDefaultMap(columnNameToDefault map[string]*sql.ColumnDefaultValue) {
+	c.columnNameToDefault = columnNameToDefault
 }
 
-func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {
+func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, db := range cat.AllDatabases(ctx) {
 		// Get all Tables
@@ -259,13 +271,8 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string
 				}
 				ordinalPos = uint64(i + 1)
 
-				key := db.Name() + "." + t.Name() + "." + c.Name
-
-				//colDefault, err = parseAndResolveColumnDefault(ctx, tableToDefault[key])
-				//if err != nil {
-				//	return false, err
-				//}
-				colDefault = colDefaultOutput(tableToDefault[key])
+				fullColumnName := db.Name() + "." + t.Name() + "." + c.Name
+				colDefault = trimColumnDefaultOutput(columnNameToDefault[fullColumnName])
 
 				rows = append(rows, sql.Row{
 					"def",                            // table_catalog
@@ -334,107 +341,9 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string
 	return sql.RowsToRowIter(rows...), nil
 }
 
-func parseAndResolveColumnDefault(ctx *sql.Context, col *sql.Column) (*sql.ColumnDefaultValue, error) {
-	if col.Default.Resolved() {
-		return col.Default, nil
-	}
-
-	newDefault := col.Default
-	var err error
-	if ucd, ok := newDefault.Expression.(sql.UnresolvedColumnDefault); ok {
-		newDefault, err = parse.StringToColumnDefaultValue(ctx, ucd.String())
-		if err != nil {
-			return nil, err
-		}
-
-		col.Default = newDefault
-	}
-
-	newDefault.Expression, _, err = transform.Expr(newDefault.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if expr, ok := e.(*expression.GetField); ok {
-			// Default values can only reference their host table, so we can remove the table name, removing
-			// the necessity to update default values on table renames.
-			return expr.WithTable(""), transform.NewTree, nil
-		}
-		return e, transform.SameTree, nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	sql.Inspect(newDefault.Expression, func(e sql.Expression) bool {
-		switch expr := e.(type) {
-		case sql.FunctionExpression:
-			funcName := expr.FunctionName()
-			// TODO: Drop is valid
-			if (funcName == "now" || funcName == "current_timestamp") &&
-				newDefault.IsLiteral() &&
-				(!sql.IsTime(col.Type) || sql.Date == col.Type) {
-				err = sql.ErrColumnDefaultDatetimeOnlyFunc.New()
-				return false
-			}
-			return true
-		case *plan.Subquery:
-			err = sql.ErrColumnDefaultSubquery.New(col.Name)
-			return false
-		default:
-			return true
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	//TODO: fix the vitess parser so that it parses negative numbers as numbers and not negation of an expression
-	isLiteral := newDefault.IsLiteral()
-	if unaryMinusExpr, ok := newDefault.Expression.(*expression.UnaryMinus); ok {
-		if literalExpr, ok := unaryMinusExpr.Child.(*expression.Literal); ok {
-			switch val := literalExpr.Value().(type) {
-			case float32:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float32)
-				isLiteral = true
-			case float64:
-				newDefault.Expression = expression.NewLiteral(-val, sql.Float64)
-				isLiteral = true
-			}
-		}
-	}
-
-	newDefault, err = sql.NewColumnDefaultValue(newDefault.Expression, col.Type, isLiteral, col.Nullable)
-	if err != nil {
-		return nil, err
-	}
-
-	// validate type of default expression
-	if err = newDefault.CheckType(ctx); err != nil {
-		return nil, err
-	}
-
-	return col.Default, nil
-}
-
-func colDefaultToRowOutput(ctx *sql.Context, col *sql.Column) interface{} {
-	if col.Default == nil {
-		return nil
-	}
-
-	newDefault, err := parseAndResolveColumnDefault(ctx, col)
-	if err != nil {
-		return nil
-	}
-
-	colStr := newDefault.String()
-	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
-		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
-	} else if colStr == "NULL" {
-		return nil
-	}
-
-	return colStr
-}
-
-func colDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
+// trimColumnDefaultOutput takes in a column default value and 1. Removes Double Quotes for literals 2. Ensures that the
+// string NULL becomes nil.
+func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
 	if cd == nil {
 		return nil
 	}

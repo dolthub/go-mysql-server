@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -343,7 +342,7 @@ func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *S
 }
 
 func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.CreateTrigger {
-	beforeTriggers, afterTriggers := OrderTriggers(triggers)
+	beforeTriggers, afterTriggers := plan.OrderTriggers(triggers)
 
 	// Reverse the order of after triggers. This is because we always apply them to the Insert / Update / Delete node
 	// that initiated the trigger, so after triggers, which wrap the Insert, need be applied in reverse order for them to
@@ -353,49 +352,6 @@ func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.Create
 	}
 
 	return append(beforeTriggers, afterTriggers...)
-}
-
-func OrderTriggers(triggers []*plan.CreateTrigger) (beforeTriggers []*plan.CreateTrigger, afterTriggers []*plan.CreateTrigger) {
-	orderedTriggers := make([]*plan.CreateTrigger, len(triggers))
-	copy(orderedTriggers, triggers)
-
-Top:
-	for i, trigger := range triggers {
-		if trigger.TriggerOrder != nil {
-			ref := trigger.TriggerOrder.OtherTriggerName
-			// remove the trigger from the slice
-			orderedTriggers = append(orderedTriggers[:i], orderedTriggers[i+1:]...)
-			// then find where to reinsert it
-			for j, t := range orderedTriggers {
-				if t.TriggerName == ref {
-					if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
-						orderedTriggers = append(orderedTriggers[:j], append(triggers[i:i+1], orderedTriggers[j:]...)...)
-					} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
-						if len(orderedTriggers) == j-1 {
-							orderedTriggers = append(orderedTriggers, triggers[i])
-						} else {
-							orderedTriggers = append(orderedTriggers[:j+1], append(triggers[i:i+1], orderedTriggers[j+1:]...)...)
-						}
-					} else {
-						panic("unexpected value for trigger order")
-					}
-					continue Top
-				}
-			}
-			panic(fmt.Sprintf("Referenced trigger %s not found", ref))
-		}
-	}
-
-	// Now that we have ordered the triggers according to precedence, split them into BEFORE / AFTER triggers
-	for _, trigger := range orderedTriggers {
-		if trigger.TriggerTime == sqlparser.BeforeStr {
-			beforeTriggers = append(beforeTriggers, trigger)
-		} else {
-			afterTriggers = append(afterTriggers, trigger)
-		}
-	}
-
-	return beforeTriggers, afterTriggers
 }
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {

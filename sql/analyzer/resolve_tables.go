@@ -131,6 +131,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	resolvedTableNode := plan.NewResolvedTable(rt, database, nil)
 
 	// Check for the information_schema.columns table which needs to resolve all defaults
+	// TODO: Is it okay to put something one off like this?
 	if database.Name() == "information_schema" && rt.Name() == "columns" {
 		return handleInfoSchemaColumnsTable(ctx, resolvedTableNode, a.Catalog)
 	}
@@ -139,6 +140,8 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	return resolvedTableNode, nil
 }
 
+// handleInfoSchemaColumnsTable wraps the information_schema.columns with an information_schema.ColumnsNode
+// for additional analyzer work.
 func handleInfoSchemaColumnsTable(ctx *sql.Context, rt sql.Node, c sql.Catalog) (sql.Node, error) {
 	tableColumnsToDefaultValue, err := getAllColumnsWithADefaultValue(ctx, c)
 	if err != nil {
@@ -148,7 +151,8 @@ func handleInfoSchemaColumnsTable(ctx *sql.Context, rt sql.Node, c sql.Catalog) 
 	return information_schema.CreateNewColumnsNode(rt, tableColumnsToDefaultValue), nil
 }
 
-// getAllColumnDefaults returns a map of tableName.Column to default column value.
+// getAllColumnsWithADefaultValue returns a map of columns of column names to columns. Each column stored in this map
+// is a Column that has a non-nil default value.
 func getAllColumnsWithADefaultValue(ctx *sql.Context, catalog sql.Catalog) (map[string]*sql.Column, error) {
 	ret := make(map[string]*sql.Column)
 

@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
@@ -1028,102 +1029,102 @@ func engineRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	var rows []Row
-	//for _, db := range c.AllDatabases(ctx) {
-	//	triggerDb, ok := db.(TriggerDatabase)
-	//	if ok {
-	//		triggers, err := triggerDb.GetTriggers(ctx)
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		var triggerPlans []*plan.CreateTrigger
-	//		for _, trigger := range triggers {
-	//			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
-	//			if err != nil {
-	//				return nil, err
-	//			}
-	//			triggerPlan, ok := parsedTrigger.(*plan.CreateTrigger)
-	//			if !ok {
-	//				return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
-	//			}
-	//			triggerPlan.CreatedAt = trigger.CreatedAt // Keep stored created time
-	//			triggerPlans = append(triggerPlans, triggerPlan)
-	//		}
-	//
-	//		beforeTriggers, afterTriggers := analyzer.OrderTriggers(triggerPlans)
-	//		var beforeDelete []*plan.CreateTrigger
-	//		var beforeInsert []*plan.CreateTrigger
-	//		var beforeUpdate []*plan.CreateTrigger
-	//		var afterDelete []*plan.CreateTrigger
-	//		var afterInsert []*plan.CreateTrigger
-	//		var afterUpdate []*plan.CreateTrigger
-	//		for _, triggerPlan := range beforeTriggers {
-	//			switch triggerPlan.TriggerEvent {
-	//			case sqlparser.DeleteStr:
-	//				beforeDelete = append(beforeDelete, triggerPlan)
-	//			case sqlparser.InsertStr:
-	//				beforeInsert = append(beforeInsert, triggerPlan)
-	//			case sqlparser.UpdateStr:
-	//				beforeUpdate = append(beforeUpdate, triggerPlan)
-	//			}
-	//		}
-	//		for _, triggerPlan := range afterTriggers {
-	//			switch triggerPlan.TriggerEvent {
-	//			case sqlparser.DeleteStr:
-	//				afterDelete = append(afterDelete, triggerPlan)
-	//			case sqlparser.InsertStr:
-	//				afterInsert = append(afterInsert, triggerPlan)
-	//			case sqlparser.UpdateStr:
-	//				afterUpdate = append(afterUpdate, triggerPlan)
-	//			}
-	//		}
-	//
-	//		// These are grouped as such just to use the index as the action order. No special importance on the arrangement,
-	//		// or the fact that these are slices in a larger slice rather than separate counts.
-	//		for _, planGroup := range [][]*plan.CreateTrigger{beforeDelete, beforeInsert, beforeUpdate, afterDelete, afterInsert, afterUpdate} {
-	//			for order, triggerPlan := range planGroup {
-	//				triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
-	//				triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
-	//				tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
-	//				characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-	//				if err != nil {
-	//					return nil, err
-	//				}
-	//				collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-	//				if err != nil {
-	//					return nil, err
-	//				}
-	//				collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-	//				if err != nil {
-	//					return nil, err
-	//				}
-	//				rows = append(rows, Row{
-	//					"def",                   // trigger_catalog
-	//					triggerDb.Name(),        // trigger_schema
-	//					triggerPlan.TriggerName, // trigger_name
-	//					triggerEvent,            // event_manipulation
-	//					"def",                   // event_object_catalog
-	//					triggerDb.Name(),        // event_object_schema //TODO: table may be in a different db
-	//					tableName,               // event_object_table
-	//					int64(order + 1),        // action_order
-	//					nil,                     // action_condition
-	//					triggerPlan.BodyString,  // action_statement
-	//					"ROW",                   // action_orientation
-	//					triggerTime,             // action_timing
-	//					nil,                     // action_reference_old_table
-	//					nil,                     // action_reference_new_table
-	//					"OLD",                   // action_reference_old_row
-	//					"NEW",                   // action_reference_new_row
-	//					triggerPlan.CreatedAt,   // created
-	//					"",                      // sql_mode
-	//					"",                      // definer
-	//					characterSetClient,      // character_set_client
-	//					collationConnection,     // collation_connection
-	//					collationServer,         // database_collation
-	//				})
-	//			}
-	//		}
-	//	}
-	//}
+	for _, db := range c.AllDatabases(ctx) {
+		triggerDb, ok := db.(TriggerDatabase)
+		if ok {
+			triggers, err := triggerDb.GetTriggers(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var triggerPlans []*plan.CreateTrigger
+			for _, trigger := range triggers {
+				parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+				if err != nil {
+					return nil, err
+				}
+				triggerPlan, ok := parsedTrigger.(*plan.CreateTrigger)
+				if !ok {
+					return nil, ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
+				}
+				triggerPlan.CreatedAt = trigger.CreatedAt // Keep stored created time
+				triggerPlans = append(triggerPlans, triggerPlan)
+			}
+
+			beforeTriggers, afterTriggers := plan.OrderTriggers(triggerPlans)
+			var beforeDelete []*plan.CreateTrigger
+			var beforeInsert []*plan.CreateTrigger
+			var beforeUpdate []*plan.CreateTrigger
+			var afterDelete []*plan.CreateTrigger
+			var afterInsert []*plan.CreateTrigger
+			var afterUpdate []*plan.CreateTrigger
+			for _, triggerPlan := range beforeTriggers {
+				switch triggerPlan.TriggerEvent {
+				case sqlparser.DeleteStr:
+					beforeDelete = append(beforeDelete, triggerPlan)
+				case sqlparser.InsertStr:
+					beforeInsert = append(beforeInsert, triggerPlan)
+				case sqlparser.UpdateStr:
+					beforeUpdate = append(beforeUpdate, triggerPlan)
+				}
+			}
+			for _, triggerPlan := range afterTriggers {
+				switch triggerPlan.TriggerEvent {
+				case sqlparser.DeleteStr:
+					afterDelete = append(afterDelete, triggerPlan)
+				case sqlparser.InsertStr:
+					afterInsert = append(afterInsert, triggerPlan)
+				case sqlparser.UpdateStr:
+					afterUpdate = append(afterUpdate, triggerPlan)
+				}
+			}
+
+			// These are grouped as such just to use the index as the action order. No special importance on the arrangement,
+			// or the fact that these are slices in a larger slice rather than separate counts.
+			for _, planGroup := range [][]*plan.CreateTrigger{beforeDelete, beforeInsert, beforeUpdate, afterDelete, afterInsert, afterUpdate} {
+				for order, triggerPlan := range planGroup {
+					triggerEvent := strings.ToUpper(triggerPlan.TriggerEvent)
+					triggerTime := strings.ToUpper(triggerPlan.TriggerTime)
+					tableName := triggerPlan.Table.(*plan.UnresolvedTable).Name()
+					characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
+					if err != nil {
+						return nil, err
+					}
+					collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
+					if err != nil {
+						return nil, err
+					}
+					collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
+					if err != nil {
+						return nil, err
+					}
+					rows = append(rows, Row{
+						"def",                   // trigger_catalog
+						triggerDb.Name(),        // trigger_schema
+						triggerPlan.TriggerName, // trigger_name
+						triggerEvent,            // event_manipulation
+						"def",                   // event_object_catalog
+						triggerDb.Name(),        // event_object_schema //TODO: table may be in a different db
+						tableName,               // event_object_table
+						int64(order + 1),        // action_order
+						nil,                     // action_condition
+						triggerPlan.BodyString,  // action_statement
+						"ROW",                   // action_orientation
+						triggerTime,             // action_timing
+						nil,                     // action_reference_old_table
+						nil,                     // action_reference_new_table
+						"OLD",                   // action_reference_old_row
+						"NEW",                   // action_reference_new_row
+						triggerPlan.CreatedAt,   // created
+						"",                      // sql_mode
+						"",                      // definer
+						characterSetClient,      // character_set_client
+						collationConnection,     // collation_connection
+						collationServer,         // database_collation
+					})
+				}
+			}
+		}
+	}
 	return RowsToRowIter(rows...), nil
 }
 
