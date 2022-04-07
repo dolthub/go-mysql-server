@@ -172,7 +172,7 @@ func getAllColumnsWithADefaultValue(ctx *sql.Context, catalog sql.Catalog) (map[
 				ret[key] = col
 			}
 
-			return false, nil
+			return true, nil
 		})
 
 		if err != nil {
