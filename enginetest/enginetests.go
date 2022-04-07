@@ -2645,6 +2645,43 @@ func TestAddColumn(t *testing.T, harness Harness) {
 	})
 }
 
+// TODO: delete me this is for debugging
+func TestTmp(t *testing.T, harness Harness) {
+	e := NewEngine(t, harness)
+	defer e.Close()
+	db, err := e.Analyzer.Catalog.Database(NewContext(harness), "mydb")
+	require.NoError(t, err)
+
+	t.Run("auto increment attribute", func(t *testing.T) {
+		TestQuery(t, harness, e, "ALTER TABLE mytable MODIFY i BIGINT auto_increment", []sql.Row(nil), nil, nil)
+
+		tbl, ok, err := db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Nullable: false, Extra: "auto_increment"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: false, Source: "mytable", Comment: "column s"},
+		}, tbl.Schema())
+
+		RunQuery(t, e, harness, "insert into mytable (s) values ('new row')")
+		TestQuery(t, harness, e, "select i from mytable where s = 'new row'", []sql.Row{{4}}, nil, nil)
+
+		AssertErr(t, e, harness, "ALTER TABLE mytable add column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
+
+		RunQuery(t, e, harness, "alter table mytable add column i2 bigint")
+		AssertErr(t, e, harness, "ALTER TABLE mytable modify column i2 bigint auto_increment", sql.ErrInvalidAutoIncCols)
+
+		tbl, ok, err = db.GetTableInsensitive(NewContext(harness), "mytable")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, sql.Schema{
+			{Name: "i", Type: sql.Int64, Source: "mytable", PrimaryKey: true, AutoIncrement: true, Extra: "auto_increment"},
+			{Name: "s", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Nullable: false, Source: "mytable", Comment: "column s"},
+			{Name: "i2", Type: sql.Int64, Source: "mytable", Nullable: true},
+		}, tbl.Schema())
+	})
+}
+
 func TestModifyColumn(t *testing.T, harness Harness) {
 	e := NewEngine(t, harness)
 	defer e.Close()

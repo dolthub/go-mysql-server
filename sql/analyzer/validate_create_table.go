@@ -375,12 +375,10 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 }
 
 func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) error {
-	if keyedColumns == nil {
-		return nil
-	}
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
+			// keyedColumns == nil means they are trying to add auto_increment column
 			if !col.PrimaryKey && !keyedColumns[col.Name] {
 				// AUTO_INCREMENT col must be a key
 				return sql.ErrInvalidAutoIncCols.New()

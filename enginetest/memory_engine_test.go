@@ -590,6 +590,10 @@ func TestAddColumn(t *testing.T) {
 	enginetest.TestAddColumn(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestTmp(t *testing.T) {
+	enginetest.TestTmp(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestModifyColumn(t *testing.T) {
 	enginetest.TestModifyColumn(t, enginetest.NewDefaultMemoryHarness())
 }
