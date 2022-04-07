@@ -243,7 +243,7 @@ var JsonScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "select JSON_OBJECTAGG(`attribute`, value) from t",
+				Query: "select JSON_OBJECTAGG(`attribute`, value) from (SELECT * FROM t ORDER BY o_id) as sub",
 				Expected: []sql.Row{
 					{sql.MustJSON(`{"color": "green", "fabric": "silk", "shape": "square"}`)},
 				},
@@ -275,7 +275,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT JSON_OBJECTAGG(c0, val) from j`,
+				Query: `SELECT JSON_OBJECTAGG(c0, val) from (SELECT * FROM j ORDER BY pk) as sub`,
 				Expected: []sql.Row{
 					{sql.MustJSON(`{"1": {"key1": {"key": [2, 3]}}, "2": ["a", 1]}`)},
 				},
