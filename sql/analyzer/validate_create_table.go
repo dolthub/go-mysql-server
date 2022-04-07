@@ -111,6 +111,8 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		case *plan.RenameColumn:
 			sch, err = validateRenameColumn(initialSch, sch, n)
 		case *plan.AddColumn:
+			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
+			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
 			sch, err = validateAddColumn(initialSch, sch, n)
 		case *plan.DropColumn:
 			sch, err = validateDropColumn(initialSch, sch, n)
@@ -187,8 +189,6 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	newCol.Source = nameable.Name()
 	newSch := append(schema, newCol)
 
-	// TODO: figure out if there are indexes/keys defined on the column you want to make auto_increment
-
 	// TODO: more validation possible to do here
 	err := validateAutoIncrement(newSch, nil)
 	if err != nil {
@@ -208,8 +208,6 @@ func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.Modi
 	}
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
-
-	// TODO: figure out if there are indexes/keys defined on the column you want to make auto_increment
 
 	err := validateAutoIncrement(newSch, keyedColumns)
 	if err != nil {
