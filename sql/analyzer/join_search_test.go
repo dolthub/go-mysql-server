@@ -763,6 +763,123 @@ func TestJoinDepth(t *testing.T) {
 						t1.s = t2.i`,
 			exp: 15,
 		},
+		{
+			name: "filter -> cross join",
+			join: `INSERT into a select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6`,
+			exp: 6,
+		},
+		{
+			name: "filter -> cross join",
+			join: `select * from (
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i) as sq`,
+			exp: 6,
+		},
+		{
+			name: "simple union",
+			join: `select * from (
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i
+					  union
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i) as sq`,
+			exp: 12,
+		},
+		{
+			name: "join -> subquery",
+			join: `select * from (
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i) as sq
+					join mytable on sq.i = mytable.i`,
+			exp: 7,
+		},
+		{
+			name: "join -> subquery -> union",
+			join: `select * from (
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i
+					  union
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i) as sq
+					join mytable on sq.i = mytable.i`,
+
+			exp: 13,
+		},
+		{
+			name: "insert -> source = join -> subquery -> union",
+			join: `insert into a select * from (
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i
+					  union
+					select t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6
+					  WHERE t1.s = t2.i) as sq
+					join mytable on sq.i = mytable.i`,
+
+			exp: 13,
+		},
 	}
 
 	for _, tt := range tests {

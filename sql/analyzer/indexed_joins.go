@@ -120,6 +120,10 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	return withIndexedTableAccess, transform.NewTree, nil
 }
 
+// countJoinDepth uses a naive algorithm to count
+// the number of join leaves in a query.
+//todo(max): recursive ctes with joins might be double counted,
+// tricky to test
 func countJoinDepth(n sql.Node) int {
 	var cnt int
 	transform.Inspect(n, func(n sql.Node) bool {
@@ -131,16 +135,34 @@ func countJoinDepth(n sql.Node) int {
 			if isJoinLeaf(n.(sql.BinaryNode).Right()) {
 				cnt++
 			}
+		case *plan.InsertInto:
+			cnt += countJoinDepth(n.Source)
+		case *plan.RecursiveCte:
+			cnt += countJoinDepth(n.Rec)
 		default:
+		}
+
+		if n, ok := n.(sql.Expressioner); ok {
+			// include subqueries without double counting
+			exprs := n.Expressions()
+			for i := range exprs {
+				expr := exprs[i]
+				if sq, ok := expr.(*plan.Subquery); ok {
+					cnt += countJoinDepth(sq.Query)
+				}
+			}
 		}
 		return true
 	})
 	return cnt
 }
 
+// isJoinLeaf returns true if the given node is considered a leaf
+// to join search.
 func isJoinLeaf(n sql.Node) bool {
 	switch n.(type) {
-	case *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.RecursiveCte:
+	case *plan.ResolvedTable, *plan.TableAlias, *plan.ValueDerivedTable, *plan.SubqueryAlias, *plan.Union, *plan.RecursiveCte:
+		//todo(max): possible to double count unions and recursive ctes with joins
 		return true
 	default:
 	}

@@ -326,8 +326,15 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		lowestCost := uint64(math.MaxUint64)
 		perm := newQuickPerm(indexes)
 		lowestOrder := make([]int, len(indexes))
+		availableSchemaForKeys := make(map[tableCol]struct{})
+		for idx := range jo.commutes {
+			for _, col := range jo.commutes[idx].schema() {
+				availableSchemaForKeys[tableCol{table: col.Source, col: col.Name}] = struct{}{}
+				availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
+			}
+		}
 		for accessOrder, err := perm.Next(); err == nil; accessOrder, err = perm.Next() {
-			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost)
+			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost, availableSchemaForKeys)
 			if err != nil {
 				return err
 			}
@@ -343,18 +350,11 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 	return nil
 }
 
-func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64) (uint64, error) {
+func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64, availableSchemaForKeys map[tableCol]struct{}) (uint64, error) {
 	cost := uint64(1)
-	//var availableSchemaForKeys sql.Schema
-	availableSchemaForKeys := make(map[tableCol]struct{})
 	for i, idx := range accessOrder {
 		if cost >= lowestCost {
 			return cost, nil
-		}
-		//availableSchemaForKeys = append(availableSchemaForKeys, jo.commutes[idx].schema()...)
-		for _, col := range jo.commutes[idx].schema() {
-			availableSchemaForKeys[tableCol{table: col.Source, col: col.Name}] = struct{}{}
-			availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
 		}
 		if jo.commutes[idx].node != nil {
 			indexes := joinIndexes[strings.ToLower(jo.commutes[idx].name)]
