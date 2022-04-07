@@ -8084,7 +8084,7 @@ var InfoSchemaScripts = []ScriptTest{
 			"CREATE TABLE mytable (pk int primary key, fname varchar(20), lname varchar(20), height int)",
 			"ALTER TABLE mytable CHANGE fname fname varchar(20) NOT NULL DEFAULT ''",
 			"ALTER TABLE mytable CHANGE lname lname varchar(20) NOT NULL DEFAULT 'ln'",
-			"ALTER TABLE mytable CHANGE height h int NULL DEFAULT NULL",
+			"ALTER TABLE mytable CHANGE height h int DEFAULT NULL",
 		},
 		Assertions: []ScriptTestAssertion{
 			{

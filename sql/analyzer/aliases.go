@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/transform"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 type TableAliases map[string]sql.Nameable
@@ -76,6 +76,9 @@ func getTableAliases(n sql.Node, scope *Scope) (TableAliases, error) {
 			case *plan.IndexedTableAccess:
 				analysisErr = passAliases.add(at, t)
 			case *plan.RecursiveCte:
+			case *information_schema.ColumnsNode:
+				rt := getResolvedTable(at.Child)
+				analysisErr = passAliases.add(at, rt)
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:

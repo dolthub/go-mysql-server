@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -219,7 +220,7 @@ func getNodeAvailableNames(n sql.Node, scope *Scope) availableNames {
 				return false
 			case *plan.TableAlias:
 				switch t := n.Child.(type) {
-				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias, *plan.RecursiveTable:
+				case *plan.ResolvedTable, *plan.UnresolvedTable, *plan.SubqueryAlias, *plan.RecursiveTable, *information_schema.ColumnsNode:
 					name := strings.ToLower(t.(sql.Nameable).Name())
 					alias := strings.ToLower(n.Name())
 					names.indexTable(alias, name, i)

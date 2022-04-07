@@ -34,6 +34,7 @@ type ColumnsNode struct {
 
 var _ sql.Node = (*ColumnsNode)(nil)
 var _ sql.Expressioner = (*ColumnsNode)(nil)
+var _ sql.Nameable = (*ColumnsNode)(nil)
 
 // CreateNewColumnsNode returns a new ColumnsNode.
 func CreateNewColumnsNode(child sql.Node, tableToColumnsWithDefaultValue map[string]*sql.Column) *ColumnsNode {
@@ -105,19 +106,10 @@ func (c *ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, 
 	// TODO: This is super hacky assumes order is the same....
 	i := 0
 	for _, col := range c.columnNameToColumn {
-		expr := expressions[i]
-		// TODO: Get rid of this someday
-		for true {
-			wr, ok := expr.(*expression.Wrapper)
-			if !ok {
-				break
-			}
-			expr = wr.Unwrap()
-		}
+		expr := expressions[i].(*expression.Wrapper)
 
-		newDefault := expr.(*sql.ColumnDefaultValue)
-		col.Default = newDefault
-		c.defaultToColumn[newDefault] = col
+		col.Default = expr.Unwrap().(*sql.ColumnDefaultValue)
+		c.defaultToColumn[col.Default] = col
 		i++
 	}
 
@@ -129,31 +121,47 @@ func (c *ColumnsNode) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql
 	return col, ok
 }
 
-// TODO: Fix this shit
-func getColumnsTable(n sql.Node) *ColumnsTable {
-	var ct *ColumnsTable
-
-	transform.Inspect(n, func(n sql.Node) bool {
-		switch node := n.(type) {
-		case *plan.ResolvedTable:
-			switch t := node.Table.(type) {
-			case *plan.ProcessTable:
-				if cte, ok := t.Table.(*ColumnsTable); ok {
-					ct = cte
-				}
-			case *ColumnsTable:
-				ct = t
-			}
-			return false
-		default:
-			return true
-		}
-	})
-
-	return ct
+// Name implements the sql.Nameable interface.
+func (c *ColumnsNode) Name() string {
+	rt := getColumnsTable(c)
+	return rt.name
 }
 
-// Probably not the right solution
+// Finds first ResolvedTable node that is a descendant of the node given
+func getColumnsTable(node sql.Node) *ColumnsTable {
+	var table *plan.ResolvedTable
+	transform.Inspect(node, func(node sql.Node) bool {
+		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
+		// only want the first ResolvedTable match.
+		if table != nil {
+			return false
+		}
+
+		switch n := node.(type) {
+		case *plan.ResolvedTable:
+			table = n
+			return false
+		case *plan.IndexedTableAccess:
+			table = n.ResolvedTable
+			return false
+		}
+		return true
+	})
+
+	return getInnerTable(table.Table)
+}
+
+func getInnerTable(t sql.Table) *ColumnsTable {
+	switch tt := t.(type) {
+	case *plan.ProcessTable:
+		return getInnerTable(tt.Table)
+	case *ColumnsTable:
+		return tt
+	default:
+		return nil
+	}
+}
+
 type ColumnsTable struct {
 	name           string
 	schema         sql.Schema
@@ -232,6 +240,8 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string
 					collName = sql.Collation_Default.String()
 				}
 				ordinalPos = uint64(i + 1)
+
+				// TODO: Clean this shit up
 				key := db.Name() + "." + t.Name() + "." + c.Name
 				colDefault, ok := tableToDefault[key]
 				if !ok {
@@ -240,6 +250,8 @@ func columnsRowIter(ctx *sql.Context, cat sql.Catalog, tableToDefault map[string
 					colDefault = colDefault.(*sql.ColumnDefaultValue).String()
 					if strings.HasPrefix(colDefault.(string), "\"") && strings.HasSuffix(colDefault.(string), "\"") {
 						colDefault = strings.TrimSuffix(strings.TrimPrefix(colDefault.(string), "\""), "\"")
+					} else if colDefault == "NULL" {
+						colDefault = nil
 					}
 				}
 
