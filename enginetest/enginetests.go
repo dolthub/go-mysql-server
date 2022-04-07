@@ -2207,6 +2207,46 @@ func TestCreateTable(t *testing.T, harness Harness) {
 		}
 	})
 	//TODO: Implement "CREATE TABLE otherDb.tableName"
+
+	t.Run("CREATE TABLE with auto_increment on unique column", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE auto_t1 (i int primary key, j int auto_increment unique)",
+			[]sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(t, err)
+
+		ctx := NewContext(harness)
+		testTable, ok, err := db.GetTableInsensitive(ctx, "auto_t1")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "i", Type: sql.Int32, Nullable: false, Source: "auto_t1", PrimaryKey: true},
+			{Name: "j", Type: sql.Int32, Nullable: true, Source: "auto_t1", AutoIncrement: true, Extra: "auto_increment"},
+		}
+
+		require.Equal(t, s, testTable.Schema())
+	})
+
+	t.Run("CREATE TABLE with auto_increment on index column", func(t *testing.T) {
+		TestQuery(t, harness, e, "CREATE TABLE auto_t2 (i int primary key, j int auto_increment, index (j))",
+			[]sql.Row(nil), nil, nil)
+
+		db, err := e.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(t, err)
+
+		ctx := NewContext(harness)
+		testTable, ok, err := db.GetTableInsensitive(ctx, "auto_t2")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		s := sql.Schema{
+			{Name: "i", Type: sql.Int32, Nullable: false, Source: "auto_t2", PrimaryKey: true},
+			{Name: "j", Type: sql.Int32, Nullable: true, Source: "auto_t2", AutoIncrement: true, Extra: "auto_increment"},
+		}
+
+		require.Equal(t, s, testTable.Schema())
+	})
 }
 
 func TestDropTable(t *testing.T, harness Harness) {
