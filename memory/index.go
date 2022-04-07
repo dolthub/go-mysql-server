@@ -44,7 +44,17 @@ func (idx *Index) Driver() string                      { return idx.DriverName }
 func (idx *Index) MemTable() *Table                    { return idx.Tbl }
 func (idx *Index) ColumnExpressions() []sql.Expression { return idx.Exprs }
 func (idx *Index) IsGenerated() bool                   { return false }
-func (idx *Index) ColumnNames() []string               { return nil }
+func (idx *Index) ColumnNames() []string {
+	var colNames []string
+	// Parse Tbl to extract columns indexes are defined over
+	// TODO: this will not work for mutiple indexes as the names are just concatenated
+	tblName := idx.Tbl.Name()
+	indexNameStart := len(tblName) + 1 // +1 for period
+	for key, _ := range idx.Tbl.indexes {
+		colNames = append(colNames, key[indexNameStart:])
+	}
+	return colNames
+}
 
 func (idx *Index) Expressions() []string {
 	var exprs []string
