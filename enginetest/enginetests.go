@@ -2023,7 +2023,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 		s := sql.Schema{
 			{Name: "pk", Type: sql.Int64, PrimaryKey: true, Nullable: false, Source: "t7"},
-			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7", MultipleKey: true,
+			{Name: "v1", Type: sql.Int64, Nullable: true, Source: "t7",
 				Default: parse.MustStringToColumnDefaultValue(ctx, "(2)", sql.Int64, true), Comment: "hi there"},
 		}
 		assertSchemasEqualWithDefaults(t, s, indexableTable.Schema())
@@ -2088,11 +2088,11 @@ func TestCreateTable(t *testing.T, harness Harness) {
 
 		require.Equal(t, sql.Schema{
 			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t9"},
-			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t9", UniqueKey: true},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t9"},
 		}, t9Table.Schema())
 		require.Equal(t, sql.Schema{
 			{Name: "a", Type: sql.Int32, Nullable: false, PrimaryKey: true, Source: "t9a"},
-			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t9a", UniqueKey: true},
+			{Name: "b", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: true, Source: "t9a"},
 		}, t9aTable.Schema())
 
 		t9TableIndexable, ok := t9Table.(sql.IndexedTable)
