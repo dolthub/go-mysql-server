@@ -234,15 +234,6 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			stmt = fmt.Sprintf("%s AUTO_INCREMENT", stmt)
 		}
 
-		// TODO: delete this
-		if col.UniqueKey {
-			stmt = fmt.Sprintf("%s UNIQUE", stmt)
-		}
-
-		if col.MultipleKey {
-			stmt = fmt.Sprintf("%s MULTIPLE", stmt)
-		}
-
 		// TODO: The columns that are rendered in defaults should be backticked
 		if col.Default != nil {
 			stmt = fmt.Sprintf("%s DEFAULT %s", stmt, col.Default.String())

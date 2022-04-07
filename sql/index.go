@@ -49,6 +49,8 @@ type Index interface {
 	// ColumnExpressionTypes returns each expression and its associated Type. Each expression string should exactly
 	// match the string returned from Index.Expressions().
 	ColumnExpressionTypes(ctx *Context) []ColumnExpressionType
+	// ColumnNames returns the names of the Columns that this Index is defined over
+	ColumnNames() []string
 }
 
 type FilteredIndex interface {

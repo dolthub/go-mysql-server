@@ -44,6 +44,7 @@ func (idx *Index) Driver() string                      { return idx.DriverName }
 func (idx *Index) MemTable() *Table                    { return idx.Tbl }
 func (idx *Index) ColumnExpressions() []sql.Expression { return idx.Exprs }
 func (idx *Index) IsGenerated() bool                   { return false }
+func (idx *Index) ColumnNames() []string               { return nil }
 
 func (idx *Index) Expressions() []string {
 	var exprs []string
