@@ -221,7 +221,12 @@ func replaceTableAccessWithIndexedAccess(
 		// If the available schema makes an index on this table possible, use it, replacing the table with indexed access
 		indexes := joinIndexes[node.(sql.Nameable).Name()]
 		_, isSubquery := node.(*plan.SubqueryAlias)
-		indexToApply := indexes.getUsableIndex(schema)
+		schemaCols := make(map[tableCol]struct{})
+		for _, col := range schema {
+			schemaCols[tableCol{table: col.Source, col: col.Name}] = struct{}{}
+			schemaCols[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
+		}
+		indexToApply := indexes.getUsableIndex(schemaCols)
 		if isSubquery || indexToApply == nil {
 			return node, transform.SameTree, nil
 		}
@@ -547,7 +552,7 @@ type joinIndexes []*joinIndex
 type joinIndexesByTable map[string]joinIndexes
 
 // getUsableIndex returns an index that can be satisfied by the schema given, or nil if no such index exists.
-func (j joinIndexes) getUsableIndex(schema sql.Schema) *joinIndex {
+func (j joinIndexes) getUsableIndex(schema map[tableCol]struct{}) *joinIndex {
 	for _, joinIndex := range j {
 		if !joinIndex.hasIndex() {
 			continue
@@ -555,7 +560,6 @@ func (j joinIndexes) getUsableIndex(schema sql.Schema) *joinIndex {
 		// If every comparand for this join index is present in the schema given, we can use the corresponding index
 		allFound := true
 		for _, cmpCol := range joinIndex.comparandCols {
-			// TODO: this is needlessly expensive for large schemas
 			if !schemaContainsField(schema, cmpCol) {
 				allFound = false
 				break
@@ -571,14 +575,9 @@ func (j joinIndexes) getUsableIndex(schema sql.Schema) *joinIndex {
 }
 
 // schemaContainsField returns whether the schema given has a GetField expression with the column and table name given.
-func schemaContainsField(schema sql.Schema, field *expression.GetField) bool {
-	for _, col := range schema {
-		if strings.ToLower(col.Source) == strings.ToLower(field.Table()) &&
-			strings.ToLower(col.Name) == strings.ToLower(field.Name()) {
-			return true
-		}
-	}
-	return false
+func schemaContainsField(schemaCols map[tableCol]struct{}, field *expression.GetField) bool {
+	_, ok := schemaCols[tableCol{field.Table(), field.Name()}]
+	return ok
 }
 
 // joinCond is a simplified structure to capture information about a join relevant to query planning.

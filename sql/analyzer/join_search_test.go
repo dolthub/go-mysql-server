@@ -16,13 +16,13 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -738,6 +738,29 @@ func TestJoinDepth(t *testing.T) {
 						t12.i = t13.i and
 						t13.i = t14.i and
 						t14.i = t15.i`,
+			exp: 15,
+		},
+		{
+			name: "filter -> cross join",
+			join: `SELECT t1.i, t2.s
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6,
+						mytable as t7,
+						mytable as t8,
+						mytable as t9,
+						mytable as t10,
+						mytable as t11,
+						mytable as t12,
+						mytable as t13,
+						mytable as t14,
+						mytable as t15
+					  WHERE
+						t1.s = t2.i`,
 			exp: 15,
 		},
 	}
