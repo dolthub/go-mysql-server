@@ -25,7 +25,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT JSON_ARRAYAGG(o_id) FROM t",
+				Query: "SELECT JSON_ARRAYAGG(o_id) FROM (SELECT * FROM t ORDER BY o_id) as sub",
 				Expected: []sql.Row{
 					{
 						sql.MustJSON(`[1,2]`),
@@ -136,18 +136,13 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: "SELECT pk, JSON_ARRAYAGG(c1) FROM x GROUP BY pk",
 				Expected: []sql.Row{
-					{
-						1,
-						sql.MustJSON(`[null]`),
-					},
+					{1, sql.MustJSON(`[null]`)},
 				},
 			},
 			{
 				Query: "SELECT JSON_ARRAYAGG(c1) FROM x",
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`[null]`),
-					},
+					{sql.MustJSON(`[null]`)},
 				},
 			},
 		},
@@ -164,17 +159,11 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT JSON_ARRAYAGG(pk) FROM x GROUP BY c1",
+				Query: "SELECT JSON_ARRAYAGG(pk) FROM (SELECT * FROM x ORDER BY pk) as sub GROUP BY c1",
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`[1,2]`),
-					},
-					{
-						sql.MustJSON(`[3,4]`),
-					},
-					{
-						sql.MustJSON(`[5]`),
-					},
+					{sql.MustJSON(`[1,2]`)},
+					{sql.MustJSON(`[3,4]`)},
+					{sql.MustJSON(`[5]`)},
 				},
 			},
 		},
@@ -190,20 +179,12 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT JSON_ARRAYAGG(field) FROM j GROUP BY field",
+				Query: "SELECT pk, JSON_ARRAYAGG(field) FROM (SELECT * FROM j ORDER BY pk) as sub GROUP BY field ORDER BY pk",
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`[{"key1": "value1", "key2": "value2"}]`),
-					},
-					{
-						sql.MustJSON(`[{"key1": {"key": "value"}}]`),
-					},
-					{
-						sql.MustJSON(`[{"key1":{"key":[2,3]}}]`),
-					},
-					{
-						sql.MustJSON(`[["a",1]]`),
-					},
+					{1, sql.MustJSON(`[{"key1": {"key": "value"}}]`)},
+					{2, sql.MustJSON(`[{"key1": "value1", "key2": "value2"}]`)},
+					{3, sql.MustJSON(`[{"key1":{"key":[2,3]}}]`)},
+					{4, sql.MustJSON(`[["a",1]]`)},
 				},
 			},
 		},
@@ -218,9 +199,7 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: "SELECT JSON_OBJECTAGG(val, o_id) FROM (SELECT * FROM t2 ORDER BY o_id) as sub GROUP BY val",
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`{"1": 3}`),
-					},
+					{sql.MustJSON(`{"1": 3}`)},
 				},
 			},
 		},
@@ -236,23 +215,15 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: "SELECT c0, JSON_OBJECTAGG(`attribute`, value) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0",
 				Expected: []sql.Row{
-					{
-						2, sql.MustJSON(`{"color": "red", "fabric": "silk"}`),
-					},
-					{
-						3, sql.MustJSON(`{"color": "green", "shape": "square"}`),
-					},
+					{2, sql.MustJSON(`{"color": "red", "fabric": "silk"}`)},
+					{3, sql.MustJSON(`{"color": "green", "shape": "square"}`)},
 				},
 			},
 			{
 				Query: `SELECT c0, JSON_OBJECTAGG(c0, value) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0`,
 				Expected: []sql.Row{
-					{
-						2, sql.MustJSON(`{"2": "silk"}`),
-					},
-					{
-						3, sql.MustJSON(`{"3": "square"}`),
-					},
+					{2, sql.MustJSON(`{"2": "silk"}`)},
+					{3, sql.MustJSON(`{"3": "square"}`)},
 				},
 			},
 		},
@@ -268,17 +239,13 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: `select JSON_OBJECTAGG(c0, value) from (SELECT * FROM t ORDER BY o_id) as sub`,
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`{"2": "silk", "3": "square"}`),
-					},
+					{sql.MustJSON(`{"2": "silk", "3": "square"}`)},
 				},
 			},
 			{
 				Query: "select JSON_OBJECTAGG(`attribute`, value) from t",
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`{"color": "green", "fabric": "silk", "shape": "square"}`),
-					},
+					{sql.MustJSON(`{"color": "green", "fabric": "silk", "shape": "square"}`)},
 				},
 			},
 		},
@@ -293,9 +260,7 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: `SELECT JSON_OBJECTAGG(pk, val) from test`,
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`{"1": null}`),
-					},
+					{sql.MustJSON(`{"1": null}`)},
 				},
 			},
 		},
@@ -312,9 +277,7 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: `SELECT JSON_OBJECTAGG(c0, val) from j`,
 				Expected: []sql.Row{
-					{
-						sql.MustJSON(`{"1": {"key1": {"key": [2, 3]}}, "2": ["a", 1]}`),
-					},
+					{sql.MustJSON(`{"1": {"key1": {"key": [2, 3]}}, "2": ["a", 1]}`)},
 				},
 			},
 		},
@@ -328,9 +291,7 @@ var JsonScripts = []ScriptTest{
 			{
 				Query: `SELECT JSON_OBJECTAGG(pk, val) from test`,
 				Expected: []sql.Row{
-					{
-						nil,
-					},
+					{nil},
 				},
 			},
 		},
