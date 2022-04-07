@@ -349,9 +349,15 @@ func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
 	}
 
 	colStr := cd.String()
+	if strings.HasPrefix(colStr, "(") && strings.HasSuffix(colStr, ")") {
+		colStr = strings.TrimSuffix(strings.TrimPrefix(cd.String(), "("), ")")
+	}
+
 	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
 		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
-	} else if colStr == "NULL" {
+	}
+
+	if colStr == "NULL" {
 		return nil
 	}
 

@@ -147,26 +147,6 @@ func TestInfoSchema(t *testing.T, harness Harness) {
 		nil,
 	)
 	require.NoError(t, err)
-
-	t.Run("expression default represented correctly in information_schema.columns table", func(t *testing.T) {
-		t.Skip()
-		TestScriptWithEngine(t, engine, harness, ScriptTest{
-			Name: "information_schema.columns shows default expressions",
-			SetUpScript: []string{
-				"CREATE TABLE test_table (pk int primary key, fname varchar(20), lname varchar(20), h int)",
-				"ALTER TABLE test_table CHANGE fname col2 INT NULL DEFAULT (RAND()+RAND());",
-				"ALTER TABLE test_table CHANGE lname col3 BOOLEAN NULL DEFAULT (CASE pk WHEN 1 THEN false ELSE true END);",
-				"ALTER TABLE test_table CHANGE h h varchar(100) NULL DEFAULT (DATE_FORMAT(CURRENT_TIMESTAMP(), '%W %M %e %Y'))",
-			},
-			Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
-			Expected: []sql.Row{
-				{"test_table", "pk", nil, "NO"},
-				{"test_table", "col2", "(rand() + rand())", "YES"},
-				{"test_table", "col3", "(case `pk` when 1 then false else true end)", "YES"},
-				{"test_table", "h", "date_format(now(),_utf8mb4'%W %M %e %Y')", "YES"},
-			},
-		})
-	})
 }
 
 func CreateIndexes(t *testing.T, harness Harness, engine *sqle.Engine) {
