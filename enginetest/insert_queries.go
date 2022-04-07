@@ -680,6 +680,21 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "insert into auto_increment with multiple unique key columns",
+		SetUpScript: []string{
+			"create table auto (pk int primary key, npk1 int auto_increment, npk2 int, unique(npk1, npk2))",
+			"insert into auto (pk) values (10), (20), (30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{10, 1, nil}, {20, 2, nil}, {30, 3, nil},
+				},
+			},
+		},
+	},
+	{
 		Name: "insert into auto_increment key/index column",
 		SetUpScript: []string{
 			"create table auto (i int auto_increment, index(i))",
@@ -690,6 +705,21 @@ var InsertScripts = []ScriptTest{
 				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{1}, {2}, {3},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert into auto_increment with multiple key/index columns",
+		SetUpScript: []string{
+			"create table auto (i int auto_increment, j int, index(i))",
+			"insert into auto (i) values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{1, nil}, {2, nil}, {3, nil},
 				},
 			},
 		},
