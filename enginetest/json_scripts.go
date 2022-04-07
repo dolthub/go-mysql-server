@@ -229,12 +229,12 @@ var JsonScripts = []ScriptTest{
 		Name: "More complex JSON_OBJECTAGG WITH GROUP BY",
 		SetUpScript: []string{
 			"create table t (o_id int primary key, c0 int, attribute longtext, value longtext)",
-			"INSERT INTO t VALUES (2, 2, 'color', 'red'), (4, 2, 'fabric', 'silk')",
-			"INSERT INTO t VALUES (3, 3, 'color', 'green'), (5, 3, 'shape', 'square')",
+			"INSERT INTO t VALUES (1, 2, 'color', 'red'), (2, 2, 'fabric', 'silk')",
+			"INSERT INTO t VALUES (3, 3, 'color', 'green'), (4, 3, 'shape', 'square')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT c0, JSON_OBJECTAGG(`attribute`, value) FROM t GROUP BY c0",
+				Query: "SELECT c0, JSON_OBJECTAGG(`attribute`, value) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0",
 				Expected: []sql.Row{
 					{
 						2, sql.MustJSON(`{"color": "red", "fabric": "silk"}`),
@@ -245,7 +245,7 @@ var JsonScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: `SELECT c0, JSON_OBJECTAGG(c0, value) FROM t GROUP BY c0`,
+				Query: `SELECT c0, JSON_OBJECTAGG(c0, value) FROM (SELECT * FROM t ORDER BY o_id) as sub GROUP BY c0`,
 				Expected: []sql.Row{
 					{
 						2, sql.MustJSON(`{"2": "silk"}`),
