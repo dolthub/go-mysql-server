@@ -712,12 +712,12 @@ var InsertScripts = []ScriptTest{
 	{
 		Name: "insert into auto_increment with multiple key/index columns",
 		SetUpScript: []string{
-			"create table auto (i int auto_increment, j int, index(i))",
-			"insert into auto (i) values (0), (0), (0)",
+			"create table auto_no_primary (i int auto_increment, j int, index(i))",
+			"insert into auto_no_primary (i) values (0), (0), (0)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto order by 1",
+				Query: "select * from auto_no_primary order by 1",
 				Expected: []sql.Row{
 					{1, nil}, {2, nil}, {3, nil},
 				},
