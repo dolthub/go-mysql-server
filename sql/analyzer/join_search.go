@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-const joinCountLimit = 12
+const joinTablesLimit = 12
 
 func buildJoinTree(
 	jo *joinOrderNode,
@@ -329,7 +329,6 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		availableSchemaForKeys := make(map[tableCol]struct{})
 		for idx := range jo.commutes {
 			for _, col := range jo.commutes[idx].schema() {
-				availableSchemaForKeys[tableCol{table: col.Source, col: col.Name}] = struct{}{}
 				availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
 			}
 		}

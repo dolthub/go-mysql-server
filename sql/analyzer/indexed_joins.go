@@ -45,8 +45,8 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 
 // validateJoinDepth prevents joins with 13 or more tables from being analyzed further
 func validateJoinDepth(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
-	if d := countJoinDepth(n); d > joinCountLimit {
-		return nil, transform.SameTree, sql.ErrUnsupportedJoinCount.New(joinCountLimit, d)
+	if d := countTableFactors(n); d > joinTablesLimit {
+		return nil, transform.SameTree, sql.ErrUnsupportedJoinCount.New(joinTablesLimit, d)
 	}
 	return n, transform.SameTree, nil
 }
@@ -120,11 +120,11 @@ func replaceJoinPlans(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	return withIndexedTableAccess, transform.NewTree, nil
 }
 
-// countJoinDepth uses a naive algorithm to count
+// countTableFactors uses a naive algorithm to count
 // the number of join leaves in a query.
 //todo(max): recursive ctes with joins might be double counted,
 // tricky to test
-func countJoinDepth(n sql.Node) int {
+func countTableFactors(n sql.Node) int {
 	var cnt int
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
@@ -136,9 +136,9 @@ func countJoinDepth(n sql.Node) int {
 				cnt++
 			}
 		case *plan.InsertInto:
-			cnt += countJoinDepth(n.Source)
+			cnt += countTableFactors(n.Source)
 		case *plan.RecursiveCte:
-			cnt += countJoinDepth(n.Rec)
+			cnt += countTableFactors(n.Rec)
 		default:
 		}
 
@@ -148,7 +148,7 @@ func countJoinDepth(n sql.Node) int {
 			for i := range exprs {
 				expr := exprs[i]
 				if sq, ok := expr.(*plan.Subquery); ok {
-					cnt += countJoinDepth(sq.Query)
+					cnt += countTableFactors(sq.Query)
 				}
 			}
 		}
@@ -598,7 +598,7 @@ func (j joinIndexes) getUsableIndex(schema map[tableCol]struct{}) *joinIndex {
 
 // schemaContainsField returns whether the schema given has a GetField expression with the column and table name given.
 func schemaContainsField(schemaCols map[tableCol]struct{}, field *expression.GetField) bool {
-	_, ok := schemaCols[tableCol{field.Table(), field.Name()}]
+	_, ok := schemaCols[tableCol{strings.ToLower(field.Table()), strings.ToLower(field.Name())}]
 	return ok
 }
 
