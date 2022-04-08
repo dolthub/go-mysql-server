@@ -1017,6 +1017,52 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "ALTER TABLE MODIFY column with UNIQUE KEY",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk int unique)",
+			"ALTER TABLE `test` MODIFY column uk int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"uk", "int", "YES", "UNI", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with KEY",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk int, index (mk))",
+			"ALTER TABLE `test` MODIFY column mk int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"mk", "int", "YES", "MUL", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE AUTO INCREMENT no-ops on table with no original auto increment key",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key)",
+			"ALTER TABLE `test` auto_increment = 2;",
+			"INSERT INTO test VALUES (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "Run through some complex queries with DISTINCT and aggregates",
 		SetUpScript: []string{
 			"CREATE TABLE tab1(col0 INTEGER, col1 INTEGER, col2 INTEGER)",
@@ -2134,6 +2180,43 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 				Query: "SELECT * FROM test where i = 2",
 				Expected: []sql.Row{
 					{2},
+				},
+			},
+		},
+	},
+}
+
+var BrokenScriptTests = []ScriptTest{
+	{
+		Name: "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
+					{"uk1", "int", "YES", "UNI", "", "auto_increment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE MODIFY column with multiple KEYS",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", "", ""},
+					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
+					{"mk1", "int", "YES", "MUL", "", "auto_increment"},
 				},
 			},
 		},

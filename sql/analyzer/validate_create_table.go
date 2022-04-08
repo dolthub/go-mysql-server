@@ -31,12 +31,21 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		return n, transform.SameTree, nil
 	}
 
-	err := validateAutoIncrement(ct.CreateSchema.Schema)
+	err := validateIndexes(ct.TableSpec())
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	err = validateIndexes(ct.TableSpec())
+	// passed validateIndexes, so they all must be valid indexes
+	// extract map of columns that have indexes defined over them
+	keyedColumns := make(map[string]bool)
+	for _, index := range ct.TableSpec().IdxDefs {
+		for _, col := range index.Columns {
+			keyedColumns[col.Name] = true
+		}
+	}
+
+	err = validateAutoIncrement(ct.CreateSchema.Schema, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -51,11 +60,13 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 
 	var sch sql.Schema
 	var indexes []string
+	var keyedColumns map[string]bool
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
 			sch = n.Table.Schema()
+			keyedColumns, err = getTableIndexColumns(ctx, n.Table)
 			return false
 		case *plan.RenameColumn:
 			sch = n.Table.Schema()
@@ -96,10 +107,12 @@ func validateAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.ModifyColumn:
-			sch, err = validateModifyColumn(initialSch, sch, n)
+			sch, err = validateModifyColumn(initialSch, sch, n, keyedColumns)
 		case *plan.RenameColumn:
 			sch, err = validateRenameColumn(initialSch, sch, n)
 		case *plan.AddColumn:
+			// TODO: can't `alter table add column j int unique auto_increment` as it ignores unique
+			// TODO: when above works, need to make sure unique index exists first then do what we did for modify
 			sch, err = validateAddColumn(initialSch, sch, n)
 		case *plan.DropColumn:
 			sch, err = validateDropColumn(initialSch, sch, n)
@@ -177,7 +190,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	newSch := append(schema, newCol)
 
 	// TODO: more validation possible to do here
-	err := validateAutoIncrement(newSch)
+	err := validateAutoIncrement(newSch, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +198,7 @@ func validateAddColumn(initialSch sql.Schema, schema sql.Schema, ac *plan.AddCol
 	return newSch, nil
 }
 
-func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn) (sql.Schema, error) {
+func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.ModifyColumn, keyedColumns map[string]bool) (sql.Schema, error) {
 	table := mc.Table
 	nameable := table.(sql.Nameable)
 
@@ -196,7 +209,7 @@ func validateModifyColumn(intialSch sql.Schema, schema sql.Schema, mc *plan.Modi
 
 	newSch := replaceInSchema(schema, mc.NewColumn(), nameable.Name())
 
-	err := validateAutoIncrement(newSch)
+	err := validateAutoIncrement(newSch, keyedColumns)
 	if err != nil {
 		return nil, err
 	}
@@ -361,12 +374,13 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
-func validateAutoIncrement(schema sql.Schema) error {
+func validateAutoIncrement(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			if !col.PrimaryKey {
-				// AUTO_INCREMENT col must be a pk
+			// keyedColumns == nil means they are trying to add auto_increment column
+			if !col.PrimaryKey && !keyedColumns[col.Name] {
+				// AUTO_INCREMENT col must be a key
 				return sql.ErrInvalidAutoIncCols.New()
 			}
 			if col.Default != nil {
@@ -398,6 +412,26 @@ func validateIndexes(tableSpec *plan.TableSpec) error {
 	}
 
 	return nil
+}
+
+// getTableIndexColumns returns the columns over which indexes are defined
+func getTableIndexColumns(ctx *sql.Context, table sql.Node) (map[string]bool, error) {
+	ia, err := newIndexAnalyzerForNode(ctx, table)
+	if err != nil {
+		return nil, err
+	}
+
+	keyedColumns := make(map[string]bool)
+	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
+	for _, index := range indexes {
+		for _, expr := range index.Expressions() {
+			if col := plan.GetColumnFromIndexExpr(expr, getTable(table)); col != nil {
+				keyedColumns[col.Name] = true
+			}
+		}
+	}
+
+	return keyedColumns, nil
 }
 
 // getTableIndexNames returns the names of indexes associated with a table.
