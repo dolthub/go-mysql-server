@@ -137,14 +137,13 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
-func (i *dummyIdx) ID() string            { return i.id }
-func (i *dummyIdx) Database() string      { return i.database }
-func (i *dummyIdx) Table() string         { return i.table }
-func (i *dummyIdx) IsUnique() bool        { return false }
-func (i *dummyIdx) Comment() string       { return "" }
-func (i *dummyIdx) IsGenerated() bool     { return false }
-func (i *dummyIdx) IndexType() string     { return "BTREE" }
-func (i *dummyIdx) ColumnNames() []string { return nil }
+func (i *dummyIdx) ID() string        { return i.id }
+func (i *dummyIdx) Database() string  { return i.database }
+func (i *dummyIdx) Table() string     { return i.table }
+func (i *dummyIdx) IsUnique() bool    { return false }
+func (i *dummyIdx) Comment() string   { return "" }
+func (i *dummyIdx) IsGenerated() bool { return false }
+func (i *dummyIdx) IndexType() string { return "BTREE" }
 
 func (i *dummyIdx) NewLookup(*sql.Context, ...sql.Range) (sql.IndexLookup, error) {
 	panic("not implemented")

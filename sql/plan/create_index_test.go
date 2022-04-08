@@ -373,14 +373,13 @@ type mockIndex struct {
 
 var _ sql.DriverIndex = (*mockIndex)(nil)
 
-func (i *mockIndex) ID() string            { return i.id }
-func (i *mockIndex) Table() string         { return i.table }
-func (i *mockIndex) Database() string      { return i.db }
-func (i *mockIndex) IsUnique() bool        { return i.unique }
-func (i *mockIndex) Comment() string       { return i.comment }
-func (i *mockIndex) IndexType() string     { return "BTREE" }
-func (i *mockIndex) ColumnNames() []string { return nil }
-func (i *mockIndex) IsGenerated() bool     { return false }
+func (i *mockIndex) ID() string        { return i.id }
+func (i *mockIndex) Table() string     { return i.table }
+func (i *mockIndex) Database() string  { return i.db }
+func (i *mockIndex) IsUnique() bool    { return i.unique }
+func (i *mockIndex) Comment() string   { return i.comment }
+func (i *mockIndex) IndexType() string { return "BTREE" }
+func (i *mockIndex) IsGenerated() bool { return false }
 func (i *mockIndex) Expressions() []string {
 	exprs := make([]string, len(i.exprs))
 	for i, e := range i.exprs {
