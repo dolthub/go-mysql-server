@@ -167,6 +167,8 @@ func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 	}, nil
 }
 
+// OrderTriggers is a utility method that first sorts triggers into their precedence. It then splits the triggers into
+// before and after pairs.
 func OrderTriggers(triggers []*CreateTrigger) (beforeTriggers []*CreateTrigger, afterTriggers []*CreateTrigger) {
 	orderedTriggers := make([]*CreateTrigger, len(triggers))
 	copy(orderedTriggers, triggers)

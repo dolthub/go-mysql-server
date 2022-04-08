@@ -1380,7 +1380,7 @@ func NewInformationSchemaDatabase() Database {
 				schema:  tablesSchema,
 				rowIter: tablesRowIter,
 			},
-			ColumnsTableName: &ColumnsNode{
+			ColumnsTableName: &ColumnsTable{
 				name: ColumnsTableName,
 			},
 			SchemataTableName: &informationSchemaTable{

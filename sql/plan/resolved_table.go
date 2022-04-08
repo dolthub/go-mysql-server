@@ -39,7 +39,7 @@ func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *Resol
 }
 
 // Resolved implements the Resolvable interface.
-func (*ResolvedTable) Resolved() bool {
+func (t *ResolvedTable) Resolved() bool {
 	return true
 }
 

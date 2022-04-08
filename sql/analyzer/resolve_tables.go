@@ -138,7 +138,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	return resolvedTableNode, nil
 }
 
-// handleInfoSchemaColumnsTable wraps the information_schema.columns with an information_schema.ColumnsNode
+// handleInfoSchemaColumnsTable wraps the information_schema.columns with an information_schema.ColumnsTable
 // for additional analyzer work.
 func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sql.Catalog) (sql.Node, error) {
 	tableColumnsToDefaultValue, err := getAllColumnsWithADefaultValue(ctx, c)
@@ -146,9 +146,9 @@ func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sq
 		return nil, err
 	}
 
-	rt.Table = rt.Table.(*information_schema.ColumnsNode).WithTableToDefault(tableColumnsToDefaultValue)
+	rt2 := rt.Table.(*information_schema.ColumnsTable).WithTableToDefault(tableColumnsToDefaultValue)
 
-	return rt, nil
+	return rt2, nil
 }
 
 // getAllColumnsWithADefaultValue returns a map of columns of column names to columns. Each column stored in this map

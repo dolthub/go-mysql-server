@@ -24,8 +24,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
-// ColumnsNode wraps the information_schema.columns table as a way to resolve column defaults.
-type ColumnsNode struct {
+// ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
+// as way to handle resolving column defaults.
+type ColumnsTable struct {
 	// columnNameToColumn maps the name of a column (databaseName.tableName.columnName) with a non nil default value
 	// to its column object.
 	columnNameToColumn map[string]*sql.Column
@@ -38,47 +39,54 @@ type ColumnsNode struct {
 	name string
 }
 
-var _ sql.Node = (*ColumnsNode)(nil)
-var _ sql.Expressioner = (*ColumnsNode)(nil)
-var _ sql.Nameable = (*ColumnsNode)(nil)
-var _ sql.Table = (*ColumnsNode)(nil)
+var _ sql.Node = (*ColumnsTable)(nil)
+var _ sql.Expressioner = (*ColumnsTable)(nil)
+var _ sql.Nameable = (*ColumnsTable)(nil)
+var _ sql.Table = (*ColumnsTable)(nil)
 
 // Resolved implements the sql.Node interface.
-func (c *ColumnsNode) Resolved() bool {
+func (c *ColumnsTable) Resolved() bool {
 	return c.defaultToColumn != nil
 }
 
 // String implements the sql.Node interface.
-func (c *ColumnsNode) String() string {
-	return fmt.Sprintf("ColumnsNode(%s)", c.name)
+func (c *ColumnsTable) String() string {
+	return fmt.Sprintf("ColumnsTable(%s)", c.name)
 }
 
 // Schema implements the sql.Node interface.
-func (c *ColumnsNode) Schema() sql.Schema {
+func (c *ColumnsTable) Schema() sql.Schema {
 	return columnsSchema
 }
 
 // RowIter implements the sql.Node interface.
-func (c *ColumnsNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return sql.RowsToRowIter(), nil
+func (c *ColumnsTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	partitions, err := c.Partitions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewTableRowIter(ctx, c, partitions), nil
 }
 
 // WithChildren implements the sql.Node interface.
-func (c *ColumnsNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *ColumnsTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return c, nil
 }
 
-func (c *ColumnsNode) Children() []sql.Node {
-	return nil // TODO: will fail
+// Children implements the sql.Node interface.
+func (c *ColumnsTable) Children() []sql.Node {
+	return nil
 }
 
 // CheckPrivileges implements the sql.Node interface.
-func (c *ColumnsNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return false // TODO: Will do
+func (c *ColumnsTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	// Copied from the resolved table implementation
+	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("information_schema", c.name, "", sql.PrivilegeType_Select))
 }
 
 // Expressions implements the sql.Expressioner interface.
-func (c *ColumnsNode) Expressions() []sql.Expression {
+func (c *ColumnsTable) Expressions() []sql.Expression {
 	c.defaultToColumn = make(map[*sql.ColumnDefaultValue]*sql.Column)
 	toResolvedColumnDefaults := make([]sql.Expression, 0)
 
@@ -100,7 +108,7 @@ func (c *ColumnsNode) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (c *ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+func (c *ColumnsTable) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
 	// We have to sort by keys to ensure that the order of the evaluated expressions can be aligned with the original
 	// sql.Expressions call.
 	keys := make([]string, 0, len(c.columnNameToColumn))
@@ -124,21 +132,21 @@ func (c *ColumnsNode) WithExpressions(expressions ...sql.Expression) (sql.Node, 
 
 // GetColumnFromDefaultValue takes in a default value and returns its associated column. This is essential in the
 // resolveColumnDefaults analyzer rule where we need the relevant column to resolve any unresolved column defaults.
-func (c *ColumnsNode) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql.Column, bool) {
+func (c *ColumnsTable) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql.Column, bool) {
 	col, ok := c.defaultToColumn[d]
 	return col, ok
 }
 
 // Name implements the sql.Nameable interface.
-func (c *ColumnsNode) Name() string {
+func (c *ColumnsTable) Name() string {
 	return c.name
 }
 
-func (c *ColumnsNode) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+func (c *ColumnsTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(c.Name())}}, nil
 }
 
-func (c *ColumnsNode) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	if !bytes.Equal(partition.Key(), partitionKey(c.Name())) {
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
@@ -156,17 +164,18 @@ func (c *ColumnsNode) PartitionRows(context *sql.Context, partition sql.Partitio
 }
 
 // AssignCatalog implements the analyzer.Catalog interface.
-func (c *ColumnsNode) AssignCatalog(cat sql.Catalog) sql.Table {
+func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
 	c.Catalog = cat
 	return c
 }
 
-func (c *ColumnsNode) WithTableToDefault(tblToDef map[string]*sql.Column) sql.Table {
+func (c *ColumnsTable) WithTableToDefault(tblToDef map[string]*sql.Column) sql.Node {
 	nc := *c
 	nc.columnNameToColumn = tblToDef
 	return &nc
 }
 
+// columnsRowIter implements the custom sql.RowIter for the information_schema.columns table.
 func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {
 	var rows []sql.Row
 	for _, db := range cat.AllDatabases(ctx) {
@@ -269,10 +278,7 @@ func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
 	}
 
 	colStr := cd.String()
-	if strings.HasPrefix(colStr, "(") && strings.HasSuffix(colStr, ")") {
-		colStr = strings.TrimSuffix(strings.TrimPrefix(cd.String(), "("), ")")
-	}
-
+	// TODO: We need to fix the ColumnDefault String() to prevent double quoting.
 	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
 		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
 	}

@@ -90,7 +90,7 @@ func assignCatalog(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql
 				nc.Table = ct.AssignCatalog(a.Catalog)
 			}
 			return &nc, transform.NewTree, nil
-		case *information_schema.ColumnsNode:
+		case *information_schema.ColumnsTable:
 			nc := *node
 			nc.Catalog = a.Catalog
 			return &nc, transform.NewTree, nil
