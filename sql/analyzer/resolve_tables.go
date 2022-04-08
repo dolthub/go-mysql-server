@@ -18,7 +18,6 @@ import (
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -131,7 +130,6 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	resolvedTableNode := plan.NewResolvedTable(rt, database, nil)
 
 	// Check for the information_schema.columns table which needs to resolve all defaults
-	// TODO: Is it okay to put something one off like this?
 	if database.Name() == "information_schema" && rt.Name() == "columns" {
 		return handleInfoSchemaColumnsTable(ctx, resolvedTableNode, a.Catalog)
 	}
@@ -142,13 +140,15 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 
 // handleInfoSchemaColumnsTable wraps the information_schema.columns with an information_schema.ColumnsNode
 // for additional analyzer work.
-func handleInfoSchemaColumnsTable(ctx *sql.Context, rt sql.Node, c sql.Catalog) (sql.Node, error) {
+func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sql.Catalog) (sql.Node, error) {
 	tableColumnsToDefaultValue, err := getAllColumnsWithADefaultValue(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	return information_schema.CreateNewColumnsNode(rt, tableColumnsToDefaultValue), nil
+	rt.Table = rt.Table.(*information_schema.ColumnsNode).WithTableToDefault(tableColumnsToDefaultValue)
+
+	return rt, nil
 }
 
 // getAllColumnsWithADefaultValue returns a map of columns of column names to columns. Each column stored in this map
@@ -161,15 +161,6 @@ func getAllColumnsWithADefaultValue(ctx *sql.Context, catalog sql.Catalog) (map[
 			for _, col := range t.Schema() {
 				if col.Default == nil {
 					continue
-				}
-
-				if ucd, ok := col.Default.Expression.(sql.UnresolvedColumnDefault); ok {
-					newDefault, err := parse.StringToColumnDefaultValue(ctx, ucd.String())
-					if err != nil {
-						return false, err
-					}
-
-					col.Default = newDefault
 				}
 
 				key := db.Name() + "." + t.Name() + "." + col.Name

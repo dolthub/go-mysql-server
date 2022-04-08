@@ -22,77 +22,59 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // ColumnsNode wraps the information_schema.columns table as a way to resolve column defaults.
 type ColumnsNode struct {
-	plan.UnaryNode
-
 	// columnNameToColumn maps the name of a column (databaseName.tableName.columnName) with a non nil default value
 	// to its column object.
 	columnNameToColumn map[string]*sql.Column
 
 	// defaultToColumn maps the pointer of a sql.ColumnDefault value back to its original Column Object.
 	defaultToColumn map[*sql.ColumnDefaultValue]*sql.Column
+
+	Catalog sql.Catalog
+
+	name string
 }
 
 var _ sql.Node = (*ColumnsNode)(nil)
 var _ sql.Expressioner = (*ColumnsNode)(nil)
 var _ sql.Nameable = (*ColumnsNode)(nil)
-
-// CreateNewColumnsNode returns a new ColumnsNode.
-func CreateNewColumnsNode(child sql.Node, tableToColumnsWithDefaultValue map[string]*sql.Column) *ColumnsNode {
-	return &ColumnsNode{
-		UnaryNode:          plan.UnaryNode{Child: child},
-		columnNameToColumn: tableToColumnsWithDefaultValue,
-	}
-}
+var _ sql.Table = (*ColumnsNode)(nil)
 
 // Resolved implements the sql.Node interface.
 func (c *ColumnsNode) Resolved() bool {
-	return c.Child.Resolved() && c.defaultToColumn != nil
+	return c.defaultToColumn != nil
 }
 
 // String implements the sql.Node interface.
 func (c *ColumnsNode) String() string {
-	return fmt.Sprintf("ColumnsNode(%s)", c.Child.String())
+	return fmt.Sprintf("ColumnsNode(%s)", c.name)
 }
 
 // Schema implements the sql.Node interface.
 func (c *ColumnsNode) Schema() sql.Schema {
-	return c.Child.Schema()
+	return columnsSchema
 }
 
 // RowIter implements the sql.Node interface.
 func (c *ColumnsNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	ct := getColumnsTable(c)
-
-	colToDefaults := make(map[string]*sql.ColumnDefaultValue)
-	for colName, col := range c.columnNameToColumn {
-		colToDefaults[colName] = col.Default
-	}
-
-	ct.WithColumnNametoDefaultMap(colToDefaults)
-
-	return c.Child.RowIter(ctx, row)
+	return sql.RowsToRowIter(), nil
 }
 
 // WithChildren implements the sql.Node interface.
 func (c *ColumnsNode) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
-	}
+	return c, nil
+}
 
-	nc := *c
-	nc.Child = children[0]
-	return &nc, nil
+func (c *ColumnsNode) Children() []sql.Node {
+	return nil // TODO: will fail
 }
 
 // CheckPrivileges implements the sql.Node interface.
 func (c *ColumnsNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return c.Child.CheckPrivileges(ctx, opChecker)
+	return false // TODO: Will do
 }
 
 // Expressions implements the sql.Expressioner interface.
@@ -149,102 +131,40 @@ func (c *ColumnsNode) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql
 
 // Name implements the sql.Nameable interface.
 func (c *ColumnsNode) Name() string {
-	rt := getColumnsTable(c)
-	return rt.name
-}
-
-// Finds first ResolvedTable node that is a descendant of the node given
-func getColumnsTable(node sql.Node) *ColumnsTable {
-	var table *plan.ResolvedTable
-	transform.Inspect(node, func(node sql.Node) bool {
-		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
-		if table != nil {
-			return false
-		}
-
-		switch n := node.(type) {
-		case *plan.ResolvedTable:
-			table = n
-			return false
-		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
-		}
-		return true
-	})
-
-	return getInnerTable(table.Table)
-}
-
-// getInnerTable takes a sql.Table and searches for a ColumnsTable.
-func getInnerTable(t sql.Table) *ColumnsTable {
-	switch tt := t.(type) {
-	case *plan.ProcessTable:
-		return getInnerTable(tt.Table)
-	case *ColumnsTable:
-		return tt
-	default:
-		return nil
-	}
-}
-
-type ColumnsTable struct {
-	name    string
-	schema  sql.Schema
-	rowIter func(*sql.Context, sql.Catalog, map[string]*sql.ColumnDefaultValue) (sql.RowIter, error)
-	Catalog sql.Catalog
-
-	// columnNameToDefault maps the name of a column (databaseName.tableName.columnName) with a non nil default value
-	// to its column object.
-	columnNameToDefault map[string]*sql.ColumnDefaultValue
-}
-
-var _ sql.Table = (*ColumnsTable)(nil)
-
-// String implements the sql.Table interface.
-func (c *ColumnsTable) String() string {
 	return c.name
 }
 
-// Schema implements the sql.Table interface.
-func (c *ColumnsTable) Schema() sql.Schema {
-	return c.schema
-}
-
-// Name implements the sql.Table interface.
-func (c *ColumnsTable) Name() string {
-	return c.name
-}
-
-// Partitions implements the sql.Table interface.
-func (c *ColumnsTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+func (c *ColumnsNode) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(c.Name())}}, nil
 }
 
-// PartitionRows implements the sql.Table interface.
-func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+func (c *ColumnsNode) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	if !bytes.Equal(partition.Key(), partitionKey(c.Name())) {
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
 	}
-	if c.rowIter == nil {
-		return sql.RowsToRowIter(), nil
-	}
+
 	if c.Catalog == nil {
-		return nil, fmt.Errorf("nil catalog for info schema table %s", c.name)
+		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
 	}
 
-	return c.rowIter(context, c.Catalog, c.columnNameToDefault)
+	colToDefaults := make(map[string]*sql.ColumnDefaultValue)
+	for colName, col := range c.columnNameToColumn {
+		colToDefaults[colName] = col.Default
+	}
+
+	return columnsRowIter(context, c.Catalog, colToDefaults)
 }
 
 // AssignCatalog implements the analyzer.Catalog interface.
-func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
+func (c *ColumnsNode) AssignCatalog(cat sql.Catalog) sql.Table {
 	c.Catalog = cat
 	return c
 }
 
-func (c *ColumnsTable) WithColumnNametoDefaultMap(columnNameToDefault map[string]*sql.ColumnDefaultValue) {
-	c.columnNameToDefault = columnNameToDefault
+func (c *ColumnsNode) WithTableToDefault(tblToDef map[string]*sql.Column) sql.Table {
+	nc := *c
+	nc.columnNameToColumn = tblToDef
+	return &nc
 }
 
 func columnsRowIter(ctx *sql.Context, cat sql.Catalog, columnNameToDefault map[string]*sql.ColumnDefaultValue) (sql.RowIter, error) {

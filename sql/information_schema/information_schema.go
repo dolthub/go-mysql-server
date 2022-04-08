@@ -1380,10 +1380,8 @@ func NewInformationSchemaDatabase() Database {
 				schema:  tablesSchema,
 				rowIter: tablesRowIter,
 			},
-			ColumnsTableName: &ColumnsTable{
-				name:    ColumnsTableName,
-				schema:  columnsSchema,
-				rowIter: columnsRowIter,
+			ColumnsTableName: &ColumnsNode{
+				name: ColumnsTableName,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:    SchemataTableName,
@@ -1930,27 +1928,6 @@ func printTable(name string, tableSchema Schema) string {
 
 func partitionKey(tableName string) []byte {
 	return []byte(InformationSchemaDatabaseName + "." + tableName)
-}
-
-// getColumnDefaultValue returns value for column default value in string format or nil for 'NULL' default value.
-func getColumnDefaultValue(cd *ColumnDefaultValue) interface{} {
-	if cd.String() == "" {
-		return nil
-	} else if cd.IsLiteral() && cd.String() == "NULL" {
-		return nil
-	} else if cd.IsLiteral() && cd.String() == `""` {
-		return ""
-	} else {
-		colDefaultStr := cd.String()
-		if strings.HasPrefix(colDefaultStr, "\"") && strings.HasSuffix(colDefaultStr, "\"") {
-			colDefaultStr = strings.TrimSuffix(strings.TrimPrefix(colDefaultStr, "\""), "\"")
-		}
-		colDefaultStr = strings.ToLower(colDefaultStr)
-		if colDefaultStr == "current_timestamp()" || colDefaultStr == "now()" {
-			colDefaultStr = "current_timestamp"
-		}
-		return colDefaultStr
-	}
 }
 
 func getTotalNumRows(ctx *Context, st StatisticsTable) (int64, error) {
