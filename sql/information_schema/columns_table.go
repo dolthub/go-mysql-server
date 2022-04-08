@@ -35,8 +35,7 @@ type ColumnsTable struct {
 	defaultToColumn map[*sql.ColumnDefaultValue]*sql.Column
 
 	Catalog sql.Catalog
-
-	name string
+	name    string
 }
 
 var _ sql.Node = (*ColumnsTable)(nil)
@@ -142,10 +141,12 @@ func (c *ColumnsTable) Name() string {
 	return c.name
 }
 
+// Partitions implements the sql.Table interface.
 func (c *ColumnsTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	return &informationSchemaPartitionIter{informationSchemaPartition: informationSchemaPartition{partitionKey(c.Name())}}, nil
 }
 
+// PartitionRows implements the sql.Table interface.
 func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	if !bytes.Equal(partition.Key(), partitionKey(c.Name())) {
 		return nil, sql.ErrPartitionNotFound.New(partition.Key())
@@ -161,12 +162,6 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 	}
 
 	return columnsRowIter(context, c.Catalog, colToDefaults)
-}
-
-// AssignCatalog implements the analyzer.Catalog interface.
-func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
-	c.Catalog = cat
-	return c
 }
 
 func (c *ColumnsTable) WithTableToDefault(tblToDef map[string]*sql.Column) sql.Node {
