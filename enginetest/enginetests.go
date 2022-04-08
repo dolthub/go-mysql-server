@@ -2345,8 +2345,8 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.False(ok)
 
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer primary key)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer primary key)")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
 		require.Error(err)
@@ -2393,9 +2393,9 @@ func TestDropTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
 		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
-		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer, c1 text)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab2 (other_pk2 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer primary key, c1 text)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer primary key)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab2 (other_pk2 integer primary key)")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
 		require.NoError(err)
