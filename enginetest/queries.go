@@ -7259,6 +7259,27 @@ var VersionedQueries = []QueryTest{
 			{"myhistorytable"},
 		},
 	},
+	{
+		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-02'",
+		Expected: []sql.Row{
+			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` text NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
+	{
+		Query: "SHOW CREATE TABLE myhistorytable as of '2019-01-03'",
+		Expected: []sql.Row{
+			{"myhistorytable", "CREATE TABLE `myhistorytable` (\n" +
+				"  `i` bigint NOT NULL,\n" +
+				"  `s` text NOT NULL,\n" +
+				"  `c` text NOT NULL,\n" +
+				"  PRIMARY KEY (`i`)\n" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+		},
+	},
 }
 
 var VersionedScripts = []ScriptTest{
@@ -8230,6 +8251,22 @@ type QueryErrorTest struct {
 }
 
 var errorQueries = []QueryErrorTest{
+	{
+		Query:       "select * from mytable where (i = 1, i = 0 or i = 2) and (i > -1)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select * from mytable where (i = 1, i = 0 or i = 2) or (i > -1)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select * from mytable where ((i = 1, i = 0 or i = 2) or (i > -1)) and (i < 6)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
+	{
+		Query:       "select * from mytable where ((i = 1, i = 0 or i = 2) is true or (i > -1)) and (i < 6)",
+		ExpectedErr: sql.ErrInvalidOperandColumns,
+	},
 	{
 		Query:       "select foo.i from mytable as a",
 		ExpectedErr: sql.ErrTableNotFound,

@@ -270,16 +270,25 @@ func TestVersionedQueries(t *testing.T, harness Harness) {
 		TestScriptWithEngine(t, engine, harness, tt)
 	}
 
-	// This query returns a different error in the Memory engine and in the Dolt engine.
+	// These queries return different errors in the Memory engine and in the Dolt engine.
 	// Memory engine returns ErrTableNotFound, while Dolt engine returns ErrBranchNotFound.
 	// Until that is fixed, this test will not pass in both GMS and Dolt.
-	t.Run("Describe Table AsOf NonExistent Version", func(t *testing.T) {
-		t.Skip()
-		TestScript(t, NewDefaultMemoryHarness(), ScriptTest{
+	skippedTests := []ScriptTest{
+		{
 			Query:       "DESCRIBE myhistorytable AS OF '2018-12-01'",
 			ExpectedErr: sql.ErrTableNotFound,
+		},
+		{
+			Query:       "SHOW CREATE TABLE myhistorytable AS OF '2018-12-01'",
+			ExpectedErr: sql.ErrTableNotFound,
+		},
+	}
+	for _, skippedTest := range skippedTests {
+		t.Run(skippedTest.Query, func(t *testing.T) {
+			t.Skip()
+			TestScript(t, harness, skippedTest)
 		})
-	})
+	}
 }
 
 // TestQueryPlan analyzes the query given and asserts that its printed plan matches the expected one.
@@ -2255,8 +2264,8 @@ func TestDropTable(t *testing.T, harness Harness) {
 		require.NoError(err)
 		require.False(ok)
 
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table1 (pk1 integer primary key)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.table2 (pk2 integer primary key)")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.table1, mydb.one_pk_two_idx")
 		require.Error(err)
@@ -2303,9 +2312,9 @@ func TestDropTable(t *testing.T, harness Harness) {
 		RunQuery(t, e, harness, "CREATE DATABASE otherdb")
 		otherdb, err := e.Analyzer.Catalog.Database(ctx, "otherdb")
 
-		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer, c1 text)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer)")
-		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab2 (other_pk2 integer)")
+		RunQuery(t, e, harness, "CREATE TABLE tab1 (pk1 integer primary key, c1 text)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab1 (other_pk1 integer primary key)")
+		RunQuery(t, e, harness, "CREATE TABLE otherdb.tab2 (other_pk2 integer primary key)")
 
 		_, _, err = e.Query(ctx, "DROP TABLE otherdb.tab1")
 		require.NoError(err)

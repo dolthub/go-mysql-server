@@ -213,7 +213,7 @@ func (e *Engine) QueryNodeWithBindings(
 		}
 	}
 
-	if enableRowIter2 {
+	if useIter2 {
 		iter = rowFormatSelectorIter{
 			iter:    iter,
 			iter2:   iter2,

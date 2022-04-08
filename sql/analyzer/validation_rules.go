@@ -795,3 +795,54 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 	}
 	return n, transform.SameTree, nil
 }
+
+func validateExprSem(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
+	var err error
+	transform.InspectExpressions(n, func(e sql.Expression) bool {
+		err = validateSem(e)
+		return err == nil
+	})
+	return n, transform.SameTree, err
+}
+
+// validateSem is a way to add validation logic for
+// specific expression types.
+//todo(max): Refactor and consolidate validation so it can
+// run before the rest of analysis. Add more expression types.
+// Add node equivalent.
+func validateSem(e sql.Expression) error {
+	switch e := e.(type) {
+	case *expression.And:
+		if err := logicalSem(e.BinaryExpression); err != nil {
+			return err
+		}
+	case *expression.Or:
+		if err := logicalSem(e.BinaryExpression); err != nil {
+			return err
+		}
+	default:
+	}
+	return nil
+}
+
+func logicalSem(e expression.BinaryExpression) error {
+	if lc := fds(e.Left); lc != 1 {
+		return sql.ErrInvalidOperandColumns.New(1, lc)
+	}
+	if rc := fds(e.Right); rc != 1 {
+		return sql.ErrInvalidOperandColumns.New(1, rc)
+	}
+	return nil
+}
+
+// fds counts the functional dependencies of an expression.
+//todo(max): input/output fd's should be part of the expression
+// interface.
+func fds(e sql.Expression) int {
+	switch e.(type) {
+	case *expression.UnresolvedColumn:
+		return 1
+	default:
+		return sql.NumColumns(e.Type())
+	}
+}
