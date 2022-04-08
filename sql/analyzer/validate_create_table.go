@@ -425,7 +425,9 @@ func getTableIndexColumns(ctx *sql.Context, table sql.Node) (map[string]bool, er
 	indexes := ia.IndexesByTable(ctx, ctx.GetCurrentDatabase(), getTableName(table))
 	for _, index := range indexes {
 		for _, expr := range index.Expressions() {
-			keyedColumns[plan.GetColumnFromIndexExpr(expr, getTable(table)).Name] = true
+			if col := plan.GetColumnFromIndexExpr(expr, getTable(table)); col != nil {
+				keyedColumns[col.Name] = true
+			}
 		}
 	}
 
