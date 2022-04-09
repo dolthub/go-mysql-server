@@ -277,7 +277,7 @@ func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
 	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
 		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
 	}
-	
+
 	if colStr == "NULL" {
 		return nil
 	}
