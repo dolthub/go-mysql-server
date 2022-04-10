@@ -138,10 +138,9 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	return resolvedTableNode, nil
 }
 
-// handleInfoSchemaColumnsTable wraps the information_schema.columns with an information_schema.ColumnsTable
-// for additional analyzer work.
+// handleInfoSchemaColumnsTable adds additional processing logic with the information_schema.columns table.
 func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sql.Catalog) (sql.Node, error) {
-	allColsWithDefaults, err := getAllColumns(ctx, c)
+	allColsWithDefaults, err := getAllColumnsWithDefaultValue(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +149,9 @@ func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sq
 	return rt2, nil
 }
 
-func getAllColumns(ctx *sql.Context, catalog sql.Catalog) ([]*sql.Column, error) {
+// getAllColumnsWithDefaultValue iterates through all tables in all databases and returns a list of columns with non-nil
+// default values.
+func getAllColumnsWithDefaultValue(ctx *sql.Context, catalog sql.Catalog) ([]*sql.Column, error) {
 	ret := make([]*sql.Column, 0)
 
 	for _, db := range catalog.AllDatabases(ctx) {
@@ -160,6 +161,7 @@ func getAllColumns(ctx *sql.Context, catalog sql.Catalog) ([]*sql.Column, error)
 					continue
 				}
 
+				// Create a new column and update its name. This is useful for sorting later.
 				newCol := col.Copy()
 				newCol.Name = db.Name() + "." + t.Name() + "." + col.Name
 				ret = append(ret, newCol)

@@ -580,12 +580,12 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper := expression.WrapExpression(e)
 
-				_, ok := e.(*sql.ColumnDefaultValue)
+				cd, ok := e.(*sql.ColumnDefaultValue)
 				if !ok {
 					return eWrapper, transform.SameTree, nil
 				}
 
-				col, ok := node.GetColumnFromDefaultValue(e.(*sql.ColumnDefaultValue))
+				col, ok := node.GetColumnFromDefaultValue(cd)
 				if !ok {
 					return eWrapper, transform.SameTree, nil
 				}
