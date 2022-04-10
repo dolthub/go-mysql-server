@@ -26,13 +26,11 @@ import (
 
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
+// Note: One way to approach this node, as it is some sort of analogue of sql.Table.
 type ColumnsTable struct {
-	// columnNameToColumn maps the name of a column (databaseName.tableName.columnName) with a non nil default value
-	// to its column object.
-	columnNameToColumn map[string]*sql.Column
-
-	// defaultToColumn maps the pointer of a sql.ColumnDefault value back to its original Column Object.
-	defaultToColumn map[*sql.ColumnDefaultValue]*sql.Column
+	// allColsWithDefaultValue is a list of all column with a non nill default value. Our goal is to resolve all of
+	// the expressions in this table.
+	allColsWithDefaultValue []*sql.Column
 
 	Catalog sql.Catalog
 	name    string
@@ -45,7 +43,13 @@ var _ sql.Table = (*ColumnsTable)(nil)
 
 // Resolved implements the sql.Node interface.
 func (c *ColumnsTable) Resolved() bool {
-	return c.defaultToColumn != nil
+	for _, col := range c.allColsWithDefaultValue {
+		if _, ok := col.Default.Expression.(*sql.UnresolvedColumnDefault); ok {
+			return false
+		}
+	}
+
+	return true
 }
 
 // String implements the sql.Node interface.
@@ -86,44 +90,18 @@ func (c *ColumnsTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 
 // Expressions implements the sql.Expressioner interface.
 func (c *ColumnsTable) Expressions() []sql.Expression {
-	c.defaultToColumn = make(map[*sql.ColumnDefaultValue]*sql.Column)
-	toResolvedColumnDefaults := make([]sql.Expression, 0)
-
-	// To maintain order in WithExpressions we sort the list and output the keys.
-	keys := make([]string, 0, len(c.columnNameToColumn))
-	for k := range c.columnNameToColumn {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	// Iterate through sorted order.
-	for _, colName := range keys {
-		col := c.columnNameToColumn[colName]
-		toResolvedColumnDefaults = append(toResolvedColumnDefaults, expression.WrapExpression(col.Default))
-		c.defaultToColumn[col.Default] = col
+	defaults := make([]sql.Expression, len(c.allColsWithDefaultValue))
+	for i, col := range c.allColsWithDefaultValue {
+		defaults[i] = expression.WrapExpression(col.Default)
 	}
 
-	return toResolvedColumnDefaults
+	return defaults
 }
 
 // WithExpressions implements the sql.Expressioner interface.
 func (c *ColumnsTable) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	// We have to sort by keys to ensure that the order of the evaluated expressions can be aligned with the original
-	// sql.Expressions call.
-	keys := make([]string, 0, len(c.columnNameToColumn))
-	for k := range c.columnNameToColumn {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	i := 0
-	for _, colName := range keys {
-		col := c.columnNameToColumn[colName]
-		expr := expressions[i].(*expression.Wrapper)
-
-		col.Default = expr.Unwrap().(*sql.ColumnDefaultValue)
-		c.defaultToColumn[col.Default] = col
-		i++
+	for i, col := range c.allColsWithDefaultValue {
+		col.Default = expressions[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
 	}
 
 	return c, nil
@@ -132,8 +110,13 @@ func (c *ColumnsTable) WithExpressions(expressions ...sql.Expression) (sql.Node,
 // GetColumnFromDefaultValue takes in a default value and returns its associated column. This is essential in the
 // resolveColumnDefaults analyzer rule where we need the relevant column to resolve any unresolved column defaults.
 func (c *ColumnsTable) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql.Column, bool) {
-	col, ok := c.defaultToColumn[d]
-	return col, ok
+	for _, col := range c.allColsWithDefaultValue {
+		if col.Default == d {
+			return col, true
+		}
+	}
+
+	return nil, false
 }
 
 // Name implements the sql.Nameable interface.
@@ -157,16 +140,22 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 	}
 
 	colToDefaults := make(map[string]*sql.ColumnDefaultValue)
-	for colName, col := range c.columnNameToColumn {
-		colToDefaults[colName] = col.Default
+	for _, col := range c.allColsWithDefaultValue {
+		colToDefaults[col.Name] = col.Default
 	}
 
 	return columnsRowIter(context, c.Catalog, colToDefaults)
 }
 
-func (c *ColumnsTable) WithTableToDefault(tblToDef map[string]*sql.Column) sql.Node {
+func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Node {
+	// Start by sorting the slice by the columnName. Remember that each column is updated with key of type
+	// databaseName.tableName.colName
+	sort.Slice(c.allColsWithDefaultValue, func(i, j int) bool {
+		return c.allColsWithDefaultValue[i].Name < c.allColsWithDefaultValue[j].Name
+	})
+
 	nc := *c
-	nc.columnNameToColumn = tblToDef
+	nc.allColsWithDefaultValue = cols
 	return &nc
 }
 
@@ -277,7 +266,7 @@ func trimColumnDefaultOutput(cd *sql.ColumnDefaultValue) interface{} {
 	if strings.HasPrefix(colStr, "\"") && strings.HasSuffix(colStr, "\"") {
 		return strings.TrimSuffix(strings.TrimPrefix(colStr, "\""), "\"")
 	}
-	
+
 	if colStr == "NULL" {
 		return nil
 	}

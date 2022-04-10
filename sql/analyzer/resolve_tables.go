@@ -141,20 +141,17 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 // handleInfoSchemaColumnsTable wraps the information_schema.columns with an information_schema.ColumnsTable
 // for additional analyzer work.
 func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sql.Catalog) (sql.Node, error) {
-	tableColumnsToDefaultValue, err := getAllColumnsWithADefaultValue(ctx, c)
+	allColsWithDefaults, err := getAllColumns(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	rt2 := rt.Table.(*information_schema.ColumnsTable).WithTableToDefault(tableColumnsToDefaultValue)
-
+	rt2 := rt.Table.(*information_schema.ColumnsTable).WithAllColumns(allColsWithDefaults)
 	return rt2, nil
 }
 
-// getAllColumnsWithADefaultValue returns a map of columns of column names to columns. Each column stored in this map
-// is a Column that has a non-nil default value.
-func getAllColumnsWithADefaultValue(ctx *sql.Context, catalog sql.Catalog) (map[string]*sql.Column, error) {
-	ret := make(map[string]*sql.Column)
+func getAllColumns(ctx *sql.Context, catalog sql.Catalog) ([]*sql.Column, error) {
+	ret := make([]*sql.Column, 0)
 
 	for _, db := range catalog.AllDatabases(ctx) {
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
@@ -163,8 +160,9 @@ func getAllColumnsWithADefaultValue(ctx *sql.Context, catalog sql.Catalog) (map[
 					continue
 				}
 
-				key := db.Name() + "." + t.Name() + "." + col.Name
-				ret[key] = col
+				newCol := col.Copy()
+				newCol.Name = db.Name() + "." + t.Name() + "." + col.Name
+				ret = append(ret, newCol)
 			}
 
 			return true, nil
