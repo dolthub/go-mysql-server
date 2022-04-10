@@ -81,6 +81,12 @@ func (t PointType) Convert(v interface{}) (interface{}, error) {
 	return nil, ErrNotPoint.New(v)
 }
 
+// Equals implements the Type interface.
+func (t PointType) Equals(otherType Type) bool {
+	_, ok := otherType.(PointType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t PointType) Promote() Type {
 	return t

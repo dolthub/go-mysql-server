@@ -156,6 +156,10 @@ func isParallelizable(node sql.Node) bool {
 		case *plan.IndexedTableAccess:
 			parallelizable = false
 			return false
+		// Foreign keys expect specific nodes as children and face issues when they're swapped with Exchange nodes
+		case *plan.ForeignKeyHandler:
+			parallelizable = false
+			return false
 		case sql.Table:
 			lastWasTable = true
 			tableSeen = true

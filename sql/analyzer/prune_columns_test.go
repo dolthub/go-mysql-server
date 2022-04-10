@@ -32,13 +32,13 @@ func TestPruneColumns(t *testing.T) {
 		{Name: "foo", Type: sql.Int64, Source: "t1"},
 		{Name: "bar", Type: sql.Int64, Source: "t1"},
 		{Name: "bax", Type: sql.Int64, Source: "t1"},
-	})), nil, nil)
+	}), nil), nil, nil)
 
 	t2 := plan.NewResolvedTable(memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: sql.Int64, Source: "t2"},
 		{Name: "baz", Type: sql.Int64, Source: "t2"},
 		{Name: "bux", Type: sql.Int64, Source: "t2"},
-	})), nil, nil)
+	}), nil), nil, nil)
 
 	testCases := []analyzerFnTestCase{
 		{

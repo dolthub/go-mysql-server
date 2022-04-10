@@ -7617,6 +7617,8 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -7626,6 +7628,8 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -7635,6 +7639,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
 				"  PRIMARY KEY (`i`),\n" +
+				"  KEY `idx_si` (`s`,`i`),\n" +
 				"  KEY `mytable_i_s` (`i`,`s`),\n" +
 				"  UNIQUE KEY `mytable_s` (`s`)\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
@@ -7648,6 +7653,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  `a` bigint,\n" +
 				"  `b` varchar(20),\n" +
 				"  PRIMARY KEY (`pk`),\n" +
+				"  KEY `ab` (`a`,`b`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},

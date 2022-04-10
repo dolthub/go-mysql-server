@@ -21,40 +21,50 @@ import (
 )
 
 // resolveDatabases sets a database for nodes that implement sql.Databaser. Replaces sql.UnresolvedDatabase with the
-// actual sql.Database implementation from the catalog.
+// actual sql.Database implementation from the catalog. Also sets the database provider for nodes that implement
+// sql.MultiDatabaser.
 func resolveDatabases(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	span, _ := ctx.Span("resolve_database")
 	defer span.Finish()
 
 	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		treeIdentity := transform.SameTree
 		d, ok := n.(sql.Databaser)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
+		if ok {
+			var dbName = ctx.GetCurrentDatabase()
+			if db := d.Database(); db != nil {
+				if _, ok := db.(sql.UnresolvedDatabase); !ok {
+					return n, transform.SameTree, nil
+				}
 
-		var dbName = ctx.GetCurrentDatabase()
-		if db := d.Database(); db != nil {
-			if _, ok := db.(sql.UnresolvedDatabase); !ok {
-				return n, transform.SameTree, nil
+				if db.Name() != "" {
+					dbName = db.Name()
+				}
 			}
 
-			if db.Name() != "" {
-				dbName = db.Name()
+			// Only search the catalog if we have a database to resolve.
+			if dbName != "" {
+				db, err := a.Catalog.Database(ctx, dbName)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				n, err = d.WithDatabase(db)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				treeIdentity = transform.NewTree
 			}
 		}
-
-		// Nothing to resolve. This can happen if no database is current
-		if dbName == "" {
-			return n, transform.SameTree, nil
+		md, ok := n.(sql.MultiDatabaser)
+		if ok && md.DatabaseProvider() == nil {
+			var err error
+			n, err = md.WithDatabaseProvider(a.Catalog.provider)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			treeIdentity = transform.NewTree
 		}
-
-		db, err := a.Catalog.Database(ctx, dbName)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		n, err = d.WithDatabase(db)
-		return n, transform.NewTree, err
+		return n, treeIdentity, nil
 	})
 }
 

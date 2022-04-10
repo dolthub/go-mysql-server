@@ -29,7 +29,7 @@ import (
 
 func TestParallelize(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
 	rule := getRuleFrom(OnceAfterAll, "parallelize")
 	node := plan.NewProject(
 		nil,
@@ -74,7 +74,7 @@ func TestParallelize(t *testing.T) {
 
 func TestParallelizeCreateIndex(t *testing.T) {
 	require := require.New(t)
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
 	rule := getRuleFrom(OnceAfterAll, "parallelize")
 	node := plan.NewCreateIndex(
 		"",
@@ -90,7 +90,7 @@ func TestParallelizeCreateIndex(t *testing.T) {
 }
 
 func TestIsParallelizable(t *testing.T) {
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
 
 	testCases := []struct {
 		name           string
@@ -246,7 +246,7 @@ func TestIsParallelizable(t *testing.T) {
 func TestRemoveRedundantExchanges(t *testing.T) {
 	require := require.New(t)
 
-	table := memory.NewTable("t", sql.PrimaryKeySchema{})
+	table := memory.NewTable("t", sql.PrimaryKeySchema{}, nil)
 
 	node := plan.NewProject(
 		nil,

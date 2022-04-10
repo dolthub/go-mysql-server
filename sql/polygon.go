@@ -94,6 +94,12 @@ func (t PolygonType) Convert(v interface{}) (interface{}, error) {
 	return nil, ErrNotPolygon.New(v)
 }
 
+// Equals implements the Type interface.
+func (t PolygonType) Equals(otherType Type) bool {
+	_, ok := otherType.(PolygonType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t PolygonType) Promote() Type {
 	return t
