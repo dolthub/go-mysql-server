@@ -33,7 +33,7 @@ func TestFlattenAggregationExprs(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "foo"},
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
-	}))
+	}), nil)
 	rule := getRule("flatten_aggregation_exprs")
 
 	tests := []struct {

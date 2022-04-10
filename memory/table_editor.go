@@ -34,6 +34,7 @@ var _ sql.RowReplacer = (*tableEditor)(nil)
 var _ sql.RowUpdater = (*tableEditor)(nil)
 var _ sql.RowInserter = (*tableEditor)(nil)
 var _ sql.RowDeleter = (*tableEditor)(nil)
+var _ sql.ForeignKeyUpdater = (*tableEditor)(nil)
 
 func (t *tableEditor) Close(ctx *sql.Context) error {
 	return t.ea.ApplyEdits(ctx)
@@ -165,6 +166,65 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 func (t *tableEditor) SetAutoIncrementValue(ctx *sql.Context, val uint64) error {
 	t.table.autoIncVal = val
 	return nil
+}
+
+// WithIndexLookup returns
+func (t *tableEditor) WithIndexLookup(lookup sql.IndexLookup) sql.Table {
+	//TODO: optimize this, should create some a struct that encloses the tableEditor and filters based on the lookup
+	if pkTea, ok := t.ea.(*pkTableEditAccumulator); ok {
+		newTable, err := copyTable(pkTea.table, pkTea.table.schema)
+		if err != nil {
+			panic(err)
+		}
+		adds := make(map[string]sql.Row)
+		deletes := make(map[string]sql.Row)
+		for key, val := range pkTea.adds {
+			adds[key] = val
+		}
+		for key, val := range pkTea.deletes {
+			deletes[key] = val
+		}
+		err = (&pkTableEditAccumulator{
+			table:   newTable,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+		memoryLookup := lookup.(*IndexLookup)
+		lookupIndex := *memoryLookup.idx.(*Index)
+		lookupIndex.Tbl = newTable
+		memoryLookup.idx = &lookupIndex
+		return newTable.WithIndexLookup(memoryLookup)
+	} else {
+		nonPkTea := t.ea.(*keylessTableEditAccumulator)
+		newTable, err := copyTable(nonPkTea.table, nonPkTea.table.schema)
+		if err != nil {
+			panic(err)
+		}
+		adds := make([]sql.Row, len(nonPkTea.adds))
+		deletes := make([]sql.Row, len(nonPkTea.deletes))
+		for i, val := range nonPkTea.adds {
+			adds[i] = val
+		}
+		for i, val := range nonPkTea.deletes {
+			deletes[i] = val
+		}
+		err = (&keylessTableEditAccumulator{
+			table:   newTable,
+			adds:    adds,
+			deletes: deletes,
+		}).ApplyEdits(sql.NewEmptyContext())
+		if err != nil {
+			panic(err)
+		}
+		memoryLookup := lookup.(*IndexLookup)
+		lookupIndex := *memoryLookup.idx.(*Index)
+		lookupIndex.Tbl = newTable
+		memoryLookup.idx = &lookupIndex
+		return newTable.WithIndexLookup(memoryLookup)
+	}
 }
 
 func (t *tableEditor) pkColumnIndexes() []int {

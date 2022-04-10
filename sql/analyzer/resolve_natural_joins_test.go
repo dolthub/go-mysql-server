@@ -32,14 +32,14 @@ func TestResolveNaturalJoins(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewNaturalJoin(
 		plan.NewResolvedTable(left, nil, nil),
@@ -85,14 +85,14 @@ func TestResolveNaturalJoinsColumns(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -147,14 +147,14 @@ func TestResolveNaturalJoinsTableAlias(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -212,21 +212,21 @@ func TestResolveNaturalJoinsChained(t *testing.T) {
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
 		{Name: "f", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	upperRight := memory.NewTable("t3", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t3"},
 		{Name: "b", Type: sql.Int64, Source: "t3"},
 		{Name: "f", Type: sql.Int64, Source: "t3"},
 		{Name: "g", Type: sql.Int64, Source: "t3"},
-	}))
+	}), nil)
 
 	node := plan.NewProject(
 		[]sql.Expression{
@@ -316,13 +316,13 @@ func TestResolveNaturalJoinsEqual(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "t2"},
 		{Name: "b", Type: sql.Int64, Source: "t2"},
 		{Name: "c", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewNaturalJoin(
 		plan.NewResolvedTable(left, nil, nil),
@@ -369,12 +369,12 @@ func TestResolveNaturalJoinsDisjoint(t *testing.T) {
 		{Name: "a", Type: sql.Int64, Source: "t1"},
 		{Name: "b", Type: sql.Int64, Source: "t1"},
 		{Name: "c", Type: sql.Int64, Source: "t1"},
-	}))
+	}), nil)
 
 	right := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "d", Type: sql.Int64, Source: "t2"},
 		{Name: "e", Type: sql.Int64, Source: "t2"},
-	}))
+	}), nil)
 
 	node := plan.NewNaturalJoin(
 		plan.NewResolvedTable(left, nil, nil),

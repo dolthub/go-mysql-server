@@ -222,6 +222,12 @@ func (t timespanType) ConvertToTimeDuration(v interface{}) (time.Duration, error
 	return val.AsTimeDuration(), nil
 }
 
+// Equals implements the Type interface.
+func (t timespanType) Equals(otherType Type) bool {
+	_, ok := otherType.(timespanType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t timespanType) Promote() Type {
 	return t

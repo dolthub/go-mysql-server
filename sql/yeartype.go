@@ -136,6 +136,12 @@ func (t yearType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t yearType) Equals(otherType Type) bool {
+	_, ok := otherType.(yearType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t yearType) Promote() Type {
 	return t

@@ -32,18 +32,18 @@ func NewDeleteFrom(n sql.Node) *DeleteFrom {
 	return &DeleteFrom{UnaryNode{n}}
 }
 
-func getDeletable(node sql.Node) (sql.DeletableTable, error) {
+func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
 	switch node := node.(type) {
 	case sql.DeletableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return getDeletable(node.ResolvedTable)
+		return GetDeletable(node.ResolvedTable)
 	case *ResolvedTable:
 		return getDeletableTable(node.Table)
 	case *SubqueryAlias:
 		return nil, ErrDeleteFromNotSupported.New()
 	case *TriggerExecutor:
-		return getDeletable(node.Left())
+		return GetDeletable(node.Left())
 	case sql.TableWrapper:
 		return getDeletableTable(node.Underlying())
 	}
@@ -51,7 +51,7 @@ func getDeletable(node sql.Node) (sql.DeletableTable, error) {
 		return nil, ErrDeleteFromNotSupported.New()
 	}
 	for _, child := range node.Children() {
-		deleter, _ := getDeletable(child)
+		deleter, _ := GetDeletable(child)
 		if deleter != nil {
 			return deleter, nil
 		}
@@ -101,7 +101,7 @@ func (p *DeleteFrom) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		return sql.RowsToRowIter(), nil
 	}
 
-	deletable, err := getDeletable(p.Child)
+	deletable, err := GetDeletable(p.Child)
 	if err != nil {
 		return nil, err
 	}

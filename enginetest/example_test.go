@@ -64,7 +64,7 @@ func createTestDatabase() sql.Database {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: sql.Text, Source: "mytable"},
 		{Name: "email", Type: sql.Text, Source: "mytable"},
-	}))
+	}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
 	ctx := sql.NewEmptyContext()
 

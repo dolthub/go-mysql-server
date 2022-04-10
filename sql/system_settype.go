@@ -103,6 +103,14 @@ func (t systemSetType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemSetType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemSetType); ok {
+		return t.varName == ot.varName && t.SetType.Equals(ot.SetType)
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemSetType) Promote() Type {
 	return t

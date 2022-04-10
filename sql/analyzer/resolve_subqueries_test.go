@@ -29,14 +29,14 @@ import (
 func TestResolveSubqueries(t *testing.T) {
 	foo := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: sql.Int64, Source: "foo"},
-	}))
+	}), nil)
 	bar := memory.NewTable("bar", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "b", Type: sql.Int64, Source: "bar"},
 		{Name: "k", Type: sql.Int64, Source: "bar"},
-	}))
+	}), nil)
 	baz := memory.NewTable("baz", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c", Type: sql.Int64, Source: "baz"},
-	}))
+	}), nil)
 	db := memory.NewDatabase("mydb")
 	db.AddTable("foo", foo)
 	db.AddTable("bar", bar)
@@ -124,11 +124,11 @@ func TestResolveSubqueryExpressions(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "x", Type: sql.Int64, Source: "mytable"},
-	}))
+	}), nil)
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable2"},
 		{Name: "y", Type: sql.Int64, Source: "mytable2"},
-	}))
+	}), nil)
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -445,11 +445,11 @@ func TestCacheSubqueryResults(t *testing.T) {
 	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable"},
 		{Name: "x", Type: sql.Int64, Source: "mytable"},
-	}))
+	}), nil)
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Type: sql.Int64, Source: "mytable2"},
 		{Name: "y", Type: sql.Int64, Source: "mytable2"},
-	}))
+	}), nil)
 
 	testCases := []analyzerFnTestCase{
 		{

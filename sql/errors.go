@@ -284,8 +284,59 @@ var (
 	// ErrForeignKeyColumnCountMismatch is called when the declared column and referenced column counts do not match.
 	ErrForeignKeyColumnCountMismatch = errors.NewKind("the foreign key must reference an equivalent number of columns")
 
+	// ErrForeignKeyColumnTypeMismatch is returned when the declared column's type and referenced column's type do not match.
+	ErrForeignKeyColumnTypeMismatch = errors.NewKind("column type mismatch on `%s` and `%s`")
+
 	// ErrForeignKeyNotResolved is called when an add or update is attempted on a foreign key that has not been resolved yet.
-	ErrForeignKeyNotResolved = errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))")
+	ErrForeignKeyNotResolved = errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`.`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))")
+
+	// ErrNoForeignKeySupport is returned when the table does not support FOREIGN KEY operations.
+	ErrNoForeignKeySupport = errors.NewKind("the table does not support foreign key operations: %s")
+
+	// ErrForeignKeyMissingColumns is returned when an ALTER TABLE ADD FOREIGN KEY statement does not provide any columns
+	ErrForeignKeyMissingColumns = errors.NewKind("cannot create a foreign key without columns")
+
+	// ErrForeignKeyDropColumn is returned when attempting to drop a column used in a foreign key
+	ErrForeignKeyDropColumn = errors.NewKind("cannot drop column `%s` as it is used in foreign key `%s`")
+
+	// ErrForeignKeyDropTable is returned when attempting to drop a table used in a foreign key
+	ErrForeignKeyDropTable = errors.NewKind("cannot drop table `%s` as it is referenced in foreign key `%s`")
+
+	// ErrForeignKeyDropIndex is returned when attempting to drop an index used in a foreign key when there are no other
+	// indexes which may be used in its place.
+	ErrForeignKeyDropIndex = errors.NewKind("cannot drop index: `%s` is used by foreign key `%s`")
+
+	// ErrForeignKeyDuplicateName is returned when a foreign key already exists with the given name.
+	ErrForeignKeyDuplicateName = errors.NewKind("duplicate foreign key constraint name `%s`")
+
+	// ErrAddForeignKeyDuplicateColumn is returned when an ALTER TABLE ADD FOREIGN KEY statement has the same column multiple times
+	ErrAddForeignKeyDuplicateColumn = errors.NewKind("cannot have duplicates of columns in a foreign key: `%v`")
+
+	// ErrTemporaryTablesForeignKeySupport is returned when a user tries to create a temporary table with a foreign key
+	ErrTemporaryTablesForeignKeySupport = errors.NewKind("temporary tables do not support foreign keys")
+
+	// ErrForeignKeyNotFound is returned when a foreign key was not found.
+	ErrForeignKeyNotFound = errors.NewKind("foreign key `%s` was not found on the table `%s`")
+
+	// ErrForeignKeySetDefault is returned when attempting to set a referential action as SET DEFAULT.
+	ErrForeignKeySetDefault = errors.NewKind(`"SET DEFAULT" is not supported`)
+
+	// ErrForeignKeySetNullNonNullable is returned when attempting to set a referential action as SET NULL when the
+	// column is non-nullable.
+	ErrForeignKeySetNullNonNullable = errors.NewKind("cannot use SET NULL as column `%s` is non-nullable")
+
+	// ErrForeignKeyTypeChangeSetNull is returned when attempting to change a column's type to disallow NULL values when
+	// a foreign key referential action is SET NULL.
+	ErrForeignKeyTypeChangeSetNull = errors.NewKind("column `%s` must allow NULL values as foreign key `%s` has SET NULL")
+
+	// ErrForeignKeyMissingReferenceIndex is returned when the referenced columns in a foreign key do not have an index.
+	ErrForeignKeyMissingReferenceIndex = errors.NewKind("missing index for foreign key `%s` on the referenced table `%s`")
+
+	// ErrForeignKeyTextBlob is returned when a TEXT or BLOB column is used in a foreign key, which are not valid types.
+	ErrForeignKeyTextBlob = errors.NewKind("TEXT/BLOB are not valid types for foreign keys")
+
+	// ErrForeignKeyTypeChange is returned when attempting to change the type of some column used in a foreign key.
+	ErrForeignKeyTypeChange = errors.NewKind("unable to change type of column `%s` as it is used by foreign keys")
 
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")

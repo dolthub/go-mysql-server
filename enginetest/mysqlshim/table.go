@@ -40,7 +40,6 @@ var _ sql.IndexAddressableTable = Table{}
 var _ sql.AlterableTable = Table{}
 var _ sql.IndexAlterableTable = Table{}
 var _ sql.IndexedTable = Table{}
-var _ sql.ForeignKeyAlterableTable = Table{}
 var _ sql.ForeignKeyTable = Table{}
 var _ sql.CheckAlterableTable = Table{}
 var _ sql.CheckTable = Table{}
@@ -238,33 +237,61 @@ func (t Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 	return nil, nil
 }
 
-// CreateForeignKey implements the interface sql.ForeignKeyAlterableTable.
-func (t Table) CreateForeignKey(ctx *sql.Context, fkName string, columns []string, referencedTable string, referencedColumns []string, onUpdate, onDelete sql.ForeignKeyReferenceOption) error {
-	constraint := ""
-	if len(fkName) > 0 {
-		constraint = fmt.Sprintf(" CONSTRAINT `%s`", fkName)
-	}
-	onDeleteStr := ""
-	if onDelete != sql.ForeignKeyReferenceOption_DefaultAction {
-		onDeleteStr = fmt.Sprintf(" ON DELETE %s", string(onDelete))
-	}
-	onUpdateStr := ""
-	if onUpdate != sql.ForeignKeyReferenceOption_DefaultAction {
-		onUpdateStr = fmt.Sprintf(" ON UPDATE %s", string(onUpdate))
-	}
-	return t.db.shim.Exec(t.db.name, fmt.Sprintf("ALTER TABLE `%s` ADD%s FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`)%s%s;",
-		t.name, constraint, strings.Join(columns, "`,`"), referencedTable, strings.Join(referencedColumns, "`,`"), onDeleteStr, onUpdateStr))
+// GetDeclaredForeignKeys implements the interface sql.ForeignKeyTable.
+func (t Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
+	//TODO: add this
+	return nil, nil
 }
 
-// DropForeignKey implements the interface sql.ForeignKeyAlterableTable.
+// GetReferencedForeignKeys implements the interface sql.ForeignKeyTable.
+func (t Table) GetReferencedForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
+	//TODO: add this
+	return nil, nil
+}
+
+// AddForeignKey implements the interface sql.ForeignKeyTable.
+func (t Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) error {
+	constraint := ""
+	if len(fk.Name) > 0 {
+		constraint = fmt.Sprintf(" CONSTRAINT `%s`", fk.Name)
+	}
+	onDeleteStr := ""
+	if fk.OnDelete != sql.ForeignKeyReferentialAction_DefaultAction {
+		onDeleteStr = fmt.Sprintf(" ON DELETE %s", string(fk.OnDelete))
+	}
+	onUpdateStr := ""
+	if fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
+		onUpdateStr = fmt.Sprintf(" ON UPDATE %s", string(fk.OnUpdate))
+	}
+	return t.db.shim.Exec(t.db.name, fmt.Sprintf("ALTER TABLE `%s`.`%s` ADD%s FOREIGN KEY (`%s`) REFERENCES `%s`.`%s` (`%s`)%s%s;",
+		fk.Database, t.name, constraint, strings.Join(fk.Columns, "`,`"), fk.ParentDatabase, fk.ParentTable,
+		strings.Join(fk.ParentColumns, "`,`"), onDeleteStr, onUpdateStr))
+}
+
+// DropForeignKey implements the interface sql.ForeignKeyTable.
 func (t Table) DropForeignKey(ctx *sql.Context, fkName string) error {
 	return t.db.shim.Exec(t.db.name, fmt.Sprintf("ALTER TABLE `%s` DROP FOREIGN KEY `%s`;", t.name, fkName))
 }
 
-// GetForeignKeys implements the interface sql.ForeignKeyTable.
-func (t Table) GetForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
-	//TODO: add this
-	return nil, nil
+// UpdateForeignKey implements the interface sql.ForeignKeyTable.
+func (t Table) UpdateForeignKey(ctx *sql.Context, fkName string, fkDef sql.ForeignKeyConstraint) error {
+	// Will automatically be handled by MySQL
+	return nil
+}
+
+// CreateIndexForForeignKey implements the interface sql.ForeignKeyTable.
+func (t Table) CreateIndexForForeignKey(ctx *sql.Context, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn) error {
+	return nil
+}
+
+// SetForeignKeyResolved implements the interface sql.ForeignKeyTable.
+func (t Table) SetForeignKeyResolved(ctx *sql.Context, fkName string) error {
+	return nil
+}
+
+// GetForeignKeyUpdater implements the interface sql.ForeignKeyTable.
+func (t Table) GetForeignKeyUpdater(ctx *sql.Context) sql.ForeignKeyUpdater {
+	return &tableEditor{t, t.Schema()}
 }
 
 // CreateCheck implements the interface sql.CheckAlterableTable.

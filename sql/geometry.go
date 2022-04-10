@@ -78,6 +78,14 @@ func (t GeometryType) Convert(v interface{}) (interface{}, error) {
 	}
 }
 
+// Equals implements the Type interface.
+func (t GeometryType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(GeometryType); ok {
+		return t.InnerType.Equals(ot.InnerType)
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t GeometryType) Promote() Type {
 	return t

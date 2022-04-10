@@ -115,6 +115,14 @@ func (t arrayType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t arrayType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(arrayType); ok {
+		return t.underlying.Equals(ot.underlying)
+	}
+	return false
+}
+
 func (t arrayType) Promote() Type {
 	return t
 }

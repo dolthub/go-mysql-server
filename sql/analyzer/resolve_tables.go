@@ -27,7 +27,7 @@ var dualTableSchema = sql.NewPrimaryKeySchema(sql.Schema{
 	{Name: "dummy", Source: dualTableName, Type: sql.LongText, Nullable: false},
 })
 var dualTable = func() sql.Table {
-	t := memory.NewTable(dualTableName, dualTableSchema)
+	t := memory.NewTable(dualTableName, dualTableSchema, nil)
 
 	ctx := sql.NewEmptyContext()
 

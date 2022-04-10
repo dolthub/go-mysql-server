@@ -74,6 +74,14 @@ func (t systemStringType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemStringType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemStringType); ok {
+		return t.varName == ot.varName
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemStringType) Promote() Type {
 	return t
