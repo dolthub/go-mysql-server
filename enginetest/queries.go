@@ -8602,7 +8602,7 @@ var errorQueries = []QueryErrorTest{
 						t12.i = t13.i and
 						t13.i = t14.i and
 						t14.i = t15.i`,
-		ExpectedErr: sql.ErrUnsupportedJoinCount,
+		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
 	},
 	{
 		Query: `SELECT t1.*
@@ -8622,7 +8622,7 @@ var errorQueries = []QueryErrorTest{
 						mytable as t13,
 						mytable as t14,
 						mytable as t15`,
-		ExpectedErr: sql.ErrUnsupportedJoinCount,
+		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
 	},
 	{
 		Query: `SELECT t1.*
@@ -8642,7 +8642,7 @@ var errorQueries = []QueryErrorTest{
 						LEFT JOIN mytable as t13 ON t12.i = t13.i
 						LEFT JOIN mytable as t14 ON t13.i = t14.i
 						LEFT JOIN mytable as t15 ON t14.i = t15.i`,
-		ExpectedErr: sql.ErrUnsupportedJoinCount,
+		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
 	},
 }
 

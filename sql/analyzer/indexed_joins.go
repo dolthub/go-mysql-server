@@ -46,7 +46,7 @@ func constructJoinPlan(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) 
 // validateJoinDepth prevents joins with 13 or more tables from being analyzed further
 func validateJoinDepth(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (sql.Node, transform.TreeIdentity, error) {
 	if d := countJoinDepth(n); d > joinCountLimit {
-		return nil, transform.SameTree, sql.ErrUnsupportedJoinCount.New(joinCountLimit, d)
+		return nil, transform.SameTree, sql.ErrUnsupportedJoinFactorCount.New(joinCountLimit, d)
 	}
 	return n, transform.SameTree, nil
 }

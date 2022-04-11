@@ -635,7 +635,7 @@ func TestBuildJoinTree(t *testing.T) {
 	}
 }
 
-func TestJoinDepth(t *testing.T) {
+func TestJoinFactors(t *testing.T) {
 	tests := []struct {
 		name string
 		join string
