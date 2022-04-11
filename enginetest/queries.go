@@ -8121,6 +8121,68 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "information_schema.columns shows default value",
+		SetUpScript: []string{
+			"CREATE TABLE mytable (pk int primary key, fname varchar(20), lname varchar(20), height int)",
+			"ALTER TABLE mytable CHANGE fname fname varchar(20) NOT NULL DEFAULT ''",
+			"ALTER TABLE mytable CHANGE lname lname varchar(20) NOT NULL DEFAULT 'ln'",
+			"ALTER TABLE mytable CHANGE height h int DEFAULT NULL",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='mytable'",
+				Expected: []sql.Row{
+					{"mytable", "pk", nil, "NO"},
+					{"mytable", "fname", "", "NO"},
+					{"mytable", "lname", "ln", "NO"},
+					{"mytable", "h", nil, "YES"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns shows default value with more types",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (pk int primary key, fname varchar(20), lname varchar(20), height int)",
+			"ALTER TABLE test_table CHANGE fname col2 float NOT NULL DEFAULT 4.5",
+			"ALTER TABLE test_table CHANGE lname col3 double NOT NULL DEFAULT 3.14159",
+			"ALTER TABLE test_table CHANGE height col4 datetime NULL DEFAULT '2008-04-22 16:16:16'",
+			"ALTER TABLE test_table ADD COLUMN col5 boolean NULL DEFAULT FALSE",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.CoLuMnS where table_name='test_table'",
+				Expected: []sql.Row{
+					{"test_table", "pk", nil, "NO"},
+					{"test_table", "col2", "4.5", "NO"},
+					{"test_table", "col3", "3.14159", "NO"},
+					{"test_table", "col4", "2008-04-22 16:16:16", "YES"},
+					{"test_table", "col5", "false", "YES"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns shows default value with more types",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (pk int primary key)",
+			"ALTER TABLE test_table ADD COLUMN col2 float DEFAULT length('hello')",
+			"ALTER TABLE test_table ADD COLUMN col3 int DEFAULT greatest(`pk`, 2)",
+			"ALTER TABLE test_table ADD COLUMN col4 int DEFAULT (5 + 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
+				Expected: []sql.Row{
+					{"test_table", "pk", nil, "NO"},
+					{"test_table", "col2", "LENGTH(\"hello\")", "YES"},
+					{"test_table", "col3", "GREATEST(pk, 2)", "YES"},
+					{"test_table", "col4", "(5 + 5)", "YES"},
+				},
+			},
+		},
+	},
+	{
 		Name: "information_schema.routines",
 		SetUpScript: []string{
 			"CREATE PROCEDURE p1() COMMENT 'hi' DETERMINISTIC SELECT 6",
@@ -8167,7 +8229,7 @@ var InfoSchemaScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'somedb'",
 				Expected: []sql.Row{
-					{"def", "somedb", "t", "i", uint64(1), "NULL", "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", ""},
+					{"def", "somedb", "t", "i", uint64(1), nil, "YES", "int", nil, nil, nil, nil, nil, nil, nil, "int", "", "", "select", "", ""},
 					{"def", "somedb", "v", "", uint64(0), nil, nil, nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", ""},
 				},
 			},

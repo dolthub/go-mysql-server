@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	. "github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/grant_tables"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -860,100 +859,6 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	return RowsToRowIter(rows...), nil
 }
 
-func columnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
-	var rows []Row
-	for _, db := range cat.AllDatabases(ctx) {
-		// Get all Tables
-		err := DBTableIter(ctx, db, func(t Table) (cont bool, err error) {
-			for i, c := range t.Schema() {
-				var (
-					nullable   string
-					charName   interface{}
-					collName   interface{}
-					ordinalPos uint64
-					colDefault string
-				)
-				if c.Nullable {
-					nullable = "YES"
-				} else {
-					nullable = "NO"
-				}
-				if IsText(c.Type) {
-					charName = Collation_Default.CharacterSet().String()
-					collName = Collation_Default.String()
-				}
-				ordinalPos = uint64(i + 1)
-				colDefault = c.Default.String()
-				if c.Default == nil {
-					colDefault = "NULL"
-				}
-				rows = append(rows, Row{
-					"def",                            // table_catalog
-					db.Name(),                        // table_schema
-					t.Name(),                         // table_name
-					c.Name,                           // column_name
-					ordinalPos,                       // ordinal_position
-					colDefault,                       // column_default
-					nullable,                         // is_nullable
-					strings.ToLower(c.Type.String()), // data_type
-					nil,                              // character_maximum_length
-					nil,                              // character_octet_length
-					nil,                              // numeric_precision
-					nil,                              // numeric_scale
-					nil,                              // datetime_precision
-					charName,                         // character_set_name
-					collName,                         // collation_name
-					strings.ToLower(c.Type.String()), // column_type
-					"",                               // column_key
-					c.Extra,                          // extra
-					"select",                         // privileges
-					c.Comment,                        // column_comment
-					"",                               // generation_expression
-				})
-			}
-			return true, nil
-		})
-
-		// TODO: View Definition is lacking information to properly fill out these table
-		// TODO: Should somehow get reference to table(s) view is referencing
-		// TODO: Each column that view references should also show up as unique entries as well
-		views, err := viewsInDatabase(ctx, db)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, view := range views {
-			rows = append(rows, Row{
-				"def",     // table_catalog
-				db.Name(), // table_schema
-				view.Name, // table_name
-				"",        // column_name
-				uint64(0), // ordinal_position
-				nil,       // column_default
-				nil,       // is_nullable
-				nil,       // data_type
-				nil,       // character_maximum_length
-				nil,       // character_octet_length
-				nil,       // numeric_precision
-				nil,       // numeric_scale
-				nil,       // datetime_precision
-				"",        // character_set_name
-				"",        // collation_name
-				"",        // column_type
-				"",        // column_key
-				"",        // extra
-				"select",  // privileges
-				"",        // column_comment
-				"",        // generation_expression
-			})
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	return RowsToRowIter(rows...), nil
-}
-
 func schemataRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	dbs := c.AllDatabases(ctx)
 
@@ -1145,7 +1050,7 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
 
-			beforeTriggers, afterTriggers := analyzer.OrderTriggers(triggerPlans)
+			beforeTriggers, afterTriggers := plan.OrderTriggers(triggerPlans)
 			var beforeDelete []*plan.CreateTrigger
 			var beforeInsert []*plan.CreateTrigger
 			var beforeUpdate []*plan.CreateTrigger
@@ -1475,10 +1380,8 @@ func NewInformationSchemaDatabase() Database {
 				schema:  tablesSchema,
 				rowIter: tablesRowIter,
 			},
-			ColumnsTableName: &informationSchemaTable{
-				name:    ColumnsTableName,
-				schema:  columnsSchema,
-				rowIter: columnsRowIter,
+			ColumnsTableName: &ColumnsTable{
+				name: ColumnsTableName,
 			},
 			SchemataTableName: &informationSchemaTable{
 				name:    SchemataTableName,

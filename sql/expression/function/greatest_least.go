@@ -244,7 +244,7 @@ func (f *Greatest) String() string {
 	for i, arg := range f.Args {
 		args[i] = arg.String()
 	}
-	return fmt.Sprintf("greatest(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("GREATEST(%s)", strings.Join(args, ", "))
 }
 
 // WithChildren implements the Expression interface.

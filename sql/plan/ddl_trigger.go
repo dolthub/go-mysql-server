@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -166,4 +168,49 @@ func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, err
 		},
 		db: c.db,
 	}, nil
+}
+
+// OrderTriggers is a utility method that first sorts triggers into their precedence. It then splits the triggers into
+// before and after pairs.
+func OrderTriggers(triggers []*CreateTrigger) (beforeTriggers []*CreateTrigger, afterTriggers []*CreateTrigger) {
+	orderedTriggers := make([]*CreateTrigger, len(triggers))
+	copy(orderedTriggers, triggers)
+
+Top:
+	for i, trigger := range triggers {
+		if trigger.TriggerOrder != nil {
+			ref := trigger.TriggerOrder.OtherTriggerName
+			// remove the trigger from the slice
+			orderedTriggers = append(orderedTriggers[:i], orderedTriggers[i+1:]...)
+			// then find where to reinsert it
+			for j, t := range orderedTriggers {
+				if t.TriggerName == ref {
+					if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
+						orderedTriggers = append(orderedTriggers[:j], append(triggers[i:i+1], orderedTriggers[j:]...)...)
+					} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
+						if len(orderedTriggers) == j-1 {
+							orderedTriggers = append(orderedTriggers, triggers[i])
+						} else {
+							orderedTriggers = append(orderedTriggers[:j+1], append(triggers[i:i+1], orderedTriggers[j+1:]...)...)
+						}
+					} else {
+						panic("unexpected value for trigger order")
+					}
+					continue Top
+				}
+			}
+			panic(fmt.Sprintf("Referenced trigger %s not found", ref))
+		}
+	}
+
+	// Now that we have ordered the triggers according to precedence, split them into BEFORE / AFTER triggers
+	for _, trigger := range orderedTriggers {
+		if trigger.TriggerTime == sqlparser.BeforeStr {
+			beforeTriggers = append(beforeTriggers, trigger)
+		} else {
+			afterTriggers = append(afterTriggers, trigger)
+		}
+	}
+
+	return beforeTriggers, afterTriggers
 }

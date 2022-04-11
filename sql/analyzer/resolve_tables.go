@@ -15,8 +15,12 @@
 package analyzer
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -126,8 +130,67 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 		return handleTableLookupFailure(err, name, db, a, t)
 	}
 
+	resolvedTableNode := plan.NewResolvedTable(rt, database, nil)
+
+	// Check for the information_schema.columns table which needs to resolve all defaults
+	if strings.ToLower(database.Name()) == information_schema.InformationSchemaDatabaseName && strings.ToLower(rt.Name()) == information_schema.ColumnsTableName {
+		return handleInfoSchemaColumnsTable(ctx, resolvedTableNode, a)
+	}
+
 	a.Log("table resolved: %s", t.Name())
-	return plan.NewResolvedTable(rt, database, nil), nil
+	return resolvedTableNode, nil
+}
+
+// handleInfoSchemaColumnsTable modifies the detected information_schema.columns table and adds a large set of colums
+// to it.
+func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, a *Analyzer) (sql.Node, error) {
+	allColsWithDefaults, err := getAllColumnsWithDefaultValue(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+
+	rt2 := rt.Table.(*information_schema.ColumnsTable).WithAllColumns(allColsWithDefaults)
+	return rt2, nil
+}
+
+// getAllColumnsWithDefaultValue iterates through all tables in all databases and returns a list of columns with non-nil
+// default values.
+func getAllColumnsWithDefaultValue(ctx *sql.Context, a *Analyzer) ([]*sql.Column, error) {
+	ret := make([]*sql.Column, 0)
+	catalog := a.Catalog
+
+	for _, db := range catalog.AllDatabases(ctx) {
+		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+			// Construct a show create table node and analyze it to get a full resolved column default.
+			st := plan.NewShowCreateTable(plan.NewResolvedTable(t, db, nil), false)
+			analyzed, err := a.Analyze(ctx, st, nil)
+			if err != nil {
+				return false, err
+			}
+
+			processed := StripPassthroughNodes(analyzed)
+
+			sct, ok := processed.(*plan.ShowCreateTable)
+			if !ok {
+				return false, fmt.Errorf("analyzed node was not a SHOW CREATE TABLE node.")
+			}
+
+			for _, col := range sct.GetTargetSchema() {
+				// Create a new column and update its name. This is useful for sorting later.
+				newCol := col.Copy()
+				newCol.Name = db.Name() + "." + t.Name() + "." + col.Name
+				ret = append(ret, newCol)
+			}
+
+			return true, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ret, nil
 }
 
 // setTargetSchemas fills in the target schema for any nodes in the tree that operate on a table node but also want to
