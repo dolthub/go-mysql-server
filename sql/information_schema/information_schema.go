@@ -1313,7 +1313,7 @@ func tableConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			// Get FKs
 			fkTable, ok := tbl.(ForeignKeyTable)
 			if ok {
-				fks, err := fkTable.GetForeignKeys(ctx)
+				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -1384,7 +1384,7 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			// Get FKs
 			fkTable, ok := tbl.(ForeignKeyTable)
 			if ok {
-				fks, err := fkTable.GetForeignKeys(ctx)
+				fks, err := fkTable.GetDeclaredForeignKeys(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -1394,8 +1394,8 @@ func keyColumnConstraintRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						ordinalPosition := j + 1
 
 						referencedSchema := db.Name()
-						referencedTableName := fk.ReferencedTable
-						referencedColumnName := strings.Replace(fk.ReferencedColumns[j], "`", "", -1) // get rid of backticks
+						referencedTableName := fk.ParentTable
+						referencedColumnName := strings.Replace(fk.ParentColumns[j], "`", "", -1) // get rid of backticks
 
 						rows = append(rows, Row{"def", db.Name(), fk.Name, "def", db.Name(), tbl.Name(), colName, ordinalPosition, ordinalPosition, referencedSchema, referencedTableName, referencedColumnName})
 					}

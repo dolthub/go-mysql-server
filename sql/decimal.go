@@ -209,6 +209,14 @@ func (t decimalType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t decimalType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(decimalType); ok {
+		return t.precision == ot.precision && t.scale == ot.scale
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t decimalType) Promote() Type {
 	return MustCreateDecimalType(DecimalTypeMaxPrecision, t.scale)

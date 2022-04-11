@@ -67,6 +67,12 @@ func (t jsonType) Convert(v interface{}) (doc interface{}, err error) {
 	return JSONDocument{Val: doc}, nil
 }
 
+// Equals implements the Type interface.
+func (t jsonType) Equals(otherType Type) bool {
+	_, ok := otherType.(jsonType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t jsonType) Promote() Type {
 	return t

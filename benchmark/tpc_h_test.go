@@ -100,7 +100,7 @@ func genDB(b *testing.B) (sql.Database, error) {
 
 	for _, m := range tpchTableMetadata {
 		b.Log("generating table", m.name)
-		t := memory.NewTable(m.name, m.schema)
+		t := memory.NewTable(m.name, m.schema, db.GetForeignKeyCollection())
 		if err := insertDataToTable(m.name, t, len(m.schema.Schema)); err != nil {
 			return nil, err
 		}

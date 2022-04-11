@@ -29,8 +29,8 @@ func TestResolveTables(t *testing.T) {
 	require := require.New(t)
 	f := getRule("resolve_tables")
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewHistoryDatabase("mydb")
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
 	db.AddTableAsOf("mytable", table, "2019-01-01")
 
 	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Name, f.Apply).Build()
@@ -79,8 +79,8 @@ func TestResolveTablesNoCurrentDB(t *testing.T) {
 	require := require.New(t)
 	f := getRule("resolve_tables")
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewDatabase("mydb")
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
 
 	a := NewBuilder(sql.NewDatabaseProvider(db)).AddPostAnalyzeRule(f.Name, f.Apply).Build()
@@ -107,9 +107,9 @@ func TestResolveTablesNested(t *testing.T) {
 
 	f := getRule("resolve_tables")
 
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
-	table2 := memory.NewTable("my_other_table", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}))
 	db := memory.NewDatabase("mydb")
+	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
+	table2 := memory.NewTable("my_other_table", sql.NewPrimaryKeySchema(sql.Schema{{Name: "i", Type: sql.Int32}}), db.GetForeignKeyCollection())
 	db.AddTable("mytable", table)
 
 	db2 := memory.NewDatabase("my_other_db")

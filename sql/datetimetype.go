@@ -294,6 +294,11 @@ func (t datetimeType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t datetimeType) Equals(otherType Type) bool {
+	return t.baseType == otherType.Type()
+}
+
 // Promote implements the Type interface.
 func (t datetimeType) Promote() Type {
 	return Datetime

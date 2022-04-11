@@ -116,6 +116,19 @@ func (t systemEnumType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t systemEnumType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(systemEnumType); ok && t.varName == ot.varName && len(t.indexToVal) == len(ot.indexToVal) {
+		for i, val := range t.indexToVal {
+			if ot.indexToVal[i] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t systemEnumType) Promote() Type {
 	return t

@@ -326,6 +326,11 @@ func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t numberTypeImpl) Equals(otherType Type) bool {
+	return t.baseType == otherType.Type()
+}
+
 // Promote implements the Type interface.
 func (t numberTypeImpl) Promote() Type {
 	switch t.baseType {

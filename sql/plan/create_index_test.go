@@ -37,7 +37,7 @@ func TestCreateIndexAsync(t *testing.T) {
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	}))
+	}), nil)
 
 	idxReg := sql.NewIndexRegistry()
 	driver := new(mockDriver)
@@ -93,7 +93,7 @@ func TestCreateIndexNotIndexableExprs(t *testing.T) {
 		{Name: "a", Source: "foo", Type: sql.Blob},
 		{Name: "b", Source: "foo", Type: sql.JSON},
 		{Name: "c", Source: "foo", Type: sql.Text},
-	}))
+	}), nil)
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -145,7 +145,7 @@ func TestCreateIndexSync(t *testing.T) {
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	}))
+	}), nil)
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -202,7 +202,7 @@ func TestCreateIndexChecksum(t *testing.T) {
 			{Name: "a", Source: "foo"},
 			{Name: "b", Source: "foo"},
 			{Name: "c", Source: "foo"},
-		})),
+		}), nil),
 		"1",
 	}
 
@@ -247,7 +247,7 @@ func TestCreateIndexChecksumWithUnderlying(t *testing.T) {
 							{Name: "a", Source: "foo"},
 							{Name: "b", Source: "foo"},
 							{Name: "c", Source: "foo"},
-						})),
+						}), nil),
 						"1",
 					},
 				},
@@ -286,7 +286,7 @@ func TestCreateIndexWithIter(t *testing.T) {
 	foo := memory.NewPartitionedTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "one", Source: "foo", Type: sql.Int64},
 		{Name: "two", Source: "foo", Type: sql.Int64},
-	}), 2)
+	}), nil, 2)
 
 	rows := [][2]int64{
 		{1, 2},

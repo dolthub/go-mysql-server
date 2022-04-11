@@ -35,7 +35,7 @@ func TestDeleteIndex(t *testing.T) {
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	}))
+	}), nil)
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -81,7 +81,7 @@ func TestDeleteIndexNotReady(t *testing.T) {
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	}))
+	}), nil)
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()
@@ -129,7 +129,7 @@ func TestDeleteIndexOutdated(t *testing.T) {
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 		{Name: "c", Source: "foo"},
-	}))
+	}), nil)
 
 	driver := new(mockDriver)
 	idxReg := sql.NewIndexRegistry()

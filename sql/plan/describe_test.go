@@ -32,7 +32,7 @@ func TestDescribe(t *testing.T) {
 	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "c1", Type: sql.Text},
 		{Name: "c2", Type: sql.Int32},
-	}))
+	}), nil)
 
 	d := NewDescribe(NewResolvedTable(table, nil, nil))
 	iter, err := d.RowIter(ctx, nil)
@@ -73,7 +73,7 @@ func TestDescribeQuery(t *testing.T) {
 	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Source: "foo", Name: "a", Type: sql.Text},
 		{Source: "foo", Name: "b", Type: sql.Text},
-	}))
+	}), nil)
 
 	node := NewDescribeQuery("tree", NewProject(
 		[]sql.Expression{

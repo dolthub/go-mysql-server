@@ -103,7 +103,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "DELETE FROM test WHERE pk > 0;",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -115,7 +115,7 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:       "REPLACE INTO test VALUES (1,7), (4,8), (5,9);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
 				Query:    "SELECT * FROM test;",
@@ -1521,8 +1521,8 @@ var ScriptTests = []ScriptTest{
 			"alter table t1 add constraint ck1 check (b like '%abc%')",
 			"create index t1b on t1(b)",
 			"create table t2(c int primary key, d varchar(10))",
-			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
 			"alter table t2 add constraint t2du unique (d)",
+			"alter table t2 add constraint fk1 foreign key (d) references t1 (b)",
 			"create table t3 (a int, b varchar(100), c datetime, primary key (b,a))",
 			"create table t4 (a int default floor(1), b int default coalesce(a, 10))",
 		},
@@ -1546,7 +1546,7 @@ var ScriptTests = []ScriptTest{
 						"  `c` int NOT NULL,\n" +
 						"  `d` varchar(10),\n" +
 						"  PRIMARY KEY (`c`),\n" +
-						"  UNIQUE KEY `t2.d` (`d`),\n" +
+						"  UNIQUE KEY `d` (`d`),\n" +
 						"  CONSTRAINT `fk1` FOREIGN KEY (`d`) REFERENCES `t1` (`b`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 				},

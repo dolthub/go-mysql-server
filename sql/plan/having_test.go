@@ -34,7 +34,7 @@ func TestHaving(t *testing.T) {
 		{Name: "col3", Type: sql.Int32, Nullable: true},
 		{Name: "col4", Type: sql.Int64, Nullable: true},
 	})
-	child := memory.NewTable("test", childSchema)
+	child := memory.NewTable("test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", "col2_1", int32(1111), int64(2222)),

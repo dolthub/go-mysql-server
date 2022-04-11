@@ -153,8 +153,63 @@ func (p *AlterIndex) Execute(ctx *sql.Context) error {
 			}
 		}
 
-		return indexable.CreateIndex(ctx, p.IndexName, p.Using, p.Constraint, p.Columns, p.Comment)
+		indexName := p.IndexName
+		if indexName == "" {
+			indexMap := make(map[string]struct{})
+			// If we can get the other indexes declared on this table then we can ensure that we're creating a unique
+			// index name. In either case, we retain the map search to simplify the logic (it will either be populated
+			// or empty).
+			if indexedTable, ok := indexable.(sql.IndexedTable); ok {
+				indexes, err := indexedTable.GetIndexes(ctx)
+				if err != nil {
+					return err
+				}
+				for _, index := range indexes {
+					indexMap[strings.ToLower(index.ID())] = struct{}{}
+				}
+			}
+			indexName = strings.Join(p.columnNames(), "")
+			if _, ok := indexMap[strings.ToLower(indexName)]; ok {
+				for i := 0; true; i++ {
+					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
+					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
+						indexName = newIndexName
+						break
+					}
+				}
+			}
+		}
+		return indexable.CreateIndex(ctx, indexName, p.Using, p.Constraint, p.Columns, p.Comment)
 	case IndexAction_Drop:
+		if fkTable, ok := indexable.(sql.ForeignKeyTable); ok {
+			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+			if err != nil {
+				return err
+			}
+			for _, fk := range fks {
+				_, ok, err := FindIndexWithPrefix(ctx, fkTable, fk.Columns, p.IndexName)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return sql.ErrForeignKeyDropIndex.New(p.IndexName, fk.Name)
+				}
+			}
+
+			parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+			if err != nil {
+				return err
+			}
+			for _, parentFk := range parentFks {
+				_, ok, err := FindIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, p.IndexName)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return sql.ErrForeignKeyDropIndex.New(p.IndexName, parentFk.Name)
+				}
+			}
+		}
 		return indexable.DropIndex(ctx, p.IndexName)
 	case IndexAction_Rename:
 		return indexable.RenameIndex(ctx, p.PreviousIndexName, p.IndexName)
@@ -267,4 +322,13 @@ func (p *AlterIndex) Resolved() bool {
 // Children implements the sql.Node interface.
 func (p *AlterIndex) Children() []sql.Node {
 	return []sql.Node{p.Table}
+}
+
+// ColumnNames returns each column's name without the length property.
+func (p *AlterIndex) columnNames() []string {
+	colNames := make([]string, len(p.Columns))
+	for i, col := range p.Columns {
+		colNames[i] = col.Name
+	}
+	return colNames
 }

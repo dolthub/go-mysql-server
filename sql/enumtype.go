@@ -176,6 +176,19 @@ func (t enumType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t enumType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(enumType); ok && t.collation.Equals(ot.collation) && len(t.indexToVal) == len(ot.indexToVal) {
+		for i, val := range t.indexToVal {
+			if ot.indexToVal[i] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // ConvertToIndex is similar to Convert, except that it converts to the index rather than the value.
 // Returns an error on nil.
 func (t enumType) ConvertToIndex(v interface{}) (int, error) {
