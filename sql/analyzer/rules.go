@@ -53,7 +53,7 @@ var OnceBeforeDefault = []Rule{
 	{"validate_read_only_database", validateReadOnlyDatabase},
 	{"validate_read_only_transaction", validateReadOnlyTransaction},
 	{"validate_database_set", validateDatabaseSet},
-	{"validateJoinDepth", validateJoinDepth},
+	{"validateJoinComplexity", validateJoinComplexity},
 	{"check_privileges", checkPrivileges}, // Ensure that checking privileges happens after db, table, and table function resolution
 }
 

@@ -887,7 +887,7 @@ func TestJoinFactors(t *testing.T) {
 			ctx := sql.NewEmptyContext()
 			n, err := parse.Parse(ctx, tt.join)
 			assert.NoError(t, err)
-			cmp := countJoinDepth(n)
+			cmp := countTableFactors(n)
 			assert.Equal(t, tt.exp, cmp)
 		})
 	}
