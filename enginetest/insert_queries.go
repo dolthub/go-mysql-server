@@ -671,13 +671,14 @@ var InsertScripts = []ScriptTest{
 			"create table auto (pk int primary key auto_increment)",
 			"insert into auto values (10), (20), (30)",
 			"insert into auto values (-1), (-2), (-3)",
+			"insert into auto () values ()",
 			"insert into auto values (0), (0), (0)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
-					{-3}, {-2}, {-1}, {10}, {20}, {30}, {31}, {32}, {33},
+					{-3}, {-2}, {-1}, {10}, {20}, {30}, {31}, {32}, {33}, {34},
 				},
 			},
 		},
