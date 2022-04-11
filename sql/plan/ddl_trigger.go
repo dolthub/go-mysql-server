@@ -39,6 +39,7 @@ type CreateTrigger struct {
 	CreateTriggerString string
 	BodyString          string
 	CreatedAt           time.Time
+	Definer             string
 }
 
 func NewCreateTrigger(triggerDb sql.Database,
@@ -50,7 +51,8 @@ func NewCreateTrigger(triggerDb sql.Database,
 	body sql.Node,
 	createTriggerString,
 	bodyString string,
-	createdAt time.Time) *CreateTrigger {
+	createdAt time.Time,
+	definer string) *CreateTrigger {
 	return &CreateTrigger{
 		ddlNode:             ddlNode{db: triggerDb},
 		TriggerName:         triggerName,
@@ -62,6 +64,7 @@ func NewCreateTrigger(triggerDb sql.Database,
 		BodyString:          bodyString,
 		CreateTriggerString: createTriggerString,
 		CreatedAt:           createdAt,
+		Definer:             definer,
 	}
 }
 

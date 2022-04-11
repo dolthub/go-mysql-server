@@ -3728,6 +3728,7 @@ var triggerFixtures = map[string]sql.Node{
 		 INSERT INTO zzz (a,b) VALUES (old.a, old.b);
    END`,
 		time.Unix(0, 0),
+		"",
 	),
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
 		"myTrigger", "before", "update", nil,
@@ -3740,6 +3741,7 @@ var triggerFixtures = map[string]sql.Node{
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		time.Unix(0, 0),
+		"",
 	),
 	`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`: plan.NewCreateTrigger(sql.UnresolvedDatabase(""),
 		"myTrigger", "before", "update",
@@ -3753,6 +3755,7 @@ var triggerFixtures = map[string]sql.Node{
 		`CREATE TRIGGER myTrigger BEFORE UPDATE ON foo FOR EACH ROW FOLLOWS yourTrigger INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		`INSERT INTO zzz (a,b) VALUES (old.a, old.b)`,
 		time.Unix(0, 0),
+		"",
 	),
 }
 
