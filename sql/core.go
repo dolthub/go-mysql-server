@@ -40,6 +40,12 @@ type Resolvable interface {
 	Resolved() bool
 }
 
+// BinaryNode has two children
+type BinaryNode interface {
+	Left() Node
+	Right() Node
+}
+
 // Expression is a combination of one or more SQL expressions.
 type Expression interface {
 	Resolvable
