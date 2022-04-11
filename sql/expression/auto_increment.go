@@ -86,6 +86,9 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 	if cmp == 0 {
 		given = nil
+	} else if cmp < 0 {
+		// if given is negative, don't do any auto_increment logic
+		return i.Type().Convert(given)
 	}
 
 	// Update integrator AUTO_INCREMENT sequence with our value
