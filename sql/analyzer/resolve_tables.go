@@ -15,11 +15,13 @@
 package analyzer
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"strings"
 )
 
 const dualTableName = "dual"
@@ -130,7 +132,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	resolvedTableNode := plan.NewResolvedTable(rt, database, nil)
 
 	// Check for the information_schema.columns table which needs to resolve all defaults
-	if database.Name() == "information_schema" && rt.Name() == "columns" {
+	if strings.ToLower(database.Name()) == information_schema.InformationSchemaDatabaseName && strings.ToLower(rt.Name()) == information_schema.ColumnsTableName {
 		return handleInfoSchemaColumnsTable(ctx, resolvedTableNode, a)
 	}
 
@@ -138,7 +140,8 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 	return resolvedTableNode, nil
 }
 
-// handleInfoSchemaColumnsTable adds additional processing logic with the information_schema.columns table.
+// handleInfoSchemaColumnsTable modifies the detected information_schema.columns table and adds a large set of colums
+// to it.
 func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, a *Analyzer) (sql.Node, error) {
 	allColsWithDefaults, err := getAllColumnsWithDefaultValue(ctx, a)
 	if err != nil {
@@ -164,14 +167,11 @@ func getAllColumnsWithDefaultValue(ctx *sql.Context, a *Analyzer) ([]*sql.Column
 				return false, err
 			}
 
-			processNode, ok := analyzed.(*plan.QueryProcess)
-			if !ok {
-				return false, nil
-			}
+			processed := StripPassthroughNodes(analyzed)
 
-			sct, ok := processNode.Child.(*plan.ShowCreateTable)
+			sct, ok := processed.(*plan.ShowCreateTable)
 			if !ok {
-				return false, nil
+				return false, fmt.Errorf("analyzed node was not a SHOW CREATE TABLE node.")
 			}
 
 			for _, col := range sct.GetTargetSchema() {

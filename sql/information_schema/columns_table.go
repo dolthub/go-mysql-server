@@ -24,10 +24,9 @@ import (
 
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
-// Note: One way to approach this node, as it is some sort of analogue of sql.Table.
 type ColumnsTable struct {
-	// allColsWithDefaultValue is a list of all column with a non nill default value. Our goal is to resolve all of
-	// the expressions in this table.
+	// allColsWithDefaultValue is a list of all columns with a non nil default value. The default values should be
+	// completely resolved.
 	allColsWithDefaultValue []*sql.Column
 
 	Catalog sql.Catalog

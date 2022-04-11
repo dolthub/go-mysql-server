@@ -8136,7 +8136,7 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.columns where table_name='test_table'",
+				Query: "SELECT table_name, column_name, column_default, is_nullable FROM information_schema.CoLuMnS where table_name='test_table'",
 				Expected: []sql.Row{
 					{"test_table", "pk", nil, "NO"},
 					{"test_table", "col2", "4.5", "NO"},
