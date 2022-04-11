@@ -645,6 +645,7 @@ var SpatialInsertQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{0, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}}}}, {1, sql.Polygon{Lines: []sql.Linestring{{Points: []sql.Point{{X: 1, Y: 1}, {X: 1, Y: -1}, {X: -1, Y: -1}, {X: -1, Y: 1}, {X: 1, Y: 1}}}}}}},
 	},
 }
+
 var InsertScripts = []ScriptTest{
 	{
 		Name: "insert into sparse auto_increment table",
@@ -660,6 +661,24 @@ var InsertScripts = []ScriptTest{
 				Query: "select * from auto order by 1",
 				Expected: []sql.Row{
 					{10}, {20}, {30}, {31}, {40}, {41},
+				},
+			},
+		},
+	},
+	{
+		Name: "insert negative values into auto_increment values",
+		SetUpScript: []string{
+			"create table auto (pk int primary key auto_increment)",
+			"insert into auto values (10), (20), (30)",
+			"insert into auto values (-1), (-2), (-3)",
+			"insert into auto () values ()",
+			"insert into auto values (0), (0), (0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from auto order by 1",
+				Expected: []sql.Row{
+					{-3}, {-2}, {-1}, {10}, {20}, {30}, {31}, {32}, {33}, {34},
 				},
 			},
 		},
