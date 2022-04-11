@@ -16,10 +16,11 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"io"
 	"sync"
 	"time"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
