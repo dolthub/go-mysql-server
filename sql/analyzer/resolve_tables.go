@@ -131,7 +131,7 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 
 	// Check for the information_schema.columns table which needs to resolve all defaults
 	if database.Name() == "information_schema" && rt.Name() == "columns" {
-		return handleInfoSchemaColumnsTable(ctx, resolvedTableNode, a.Catalog)
+		return handleInfoSchemaColumnsTable(ctx, resolvedTableNode, a)
 	}
 
 	a.Log("table resolved: %s", t.Name())
@@ -139,8 +139,8 @@ func resolveTable(ctx *sql.Context, t *plan.UnresolvedTable, a *Analyzer) (sql.N
 }
 
 // handleInfoSchemaColumnsTable adds additional processing logic with the information_schema.columns table.
-func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sql.Catalog) (sql.Node, error) {
-	allColsWithDefaults, err := getAllColumnsWithDefaultValue(ctx, c)
+func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, a *Analyzer) (sql.Node, error) {
+	allColsWithDefaults, err := getAllColumnsWithDefaultValue(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -151,16 +151,30 @@ func handleInfoSchemaColumnsTable(ctx *sql.Context, rt *plan.ResolvedTable, c sq
 
 // getAllColumnsWithDefaultValue iterates through all tables in all databases and returns a list of columns with non-nil
 // default values.
-func getAllColumnsWithDefaultValue(ctx *sql.Context, catalog sql.Catalog) ([]*sql.Column, error) {
+func getAllColumnsWithDefaultValue(ctx *sql.Context, a *Analyzer) ([]*sql.Column, error) {
 	ret := make([]*sql.Column, 0)
+	catalog := a.Catalog
 
 	for _, db := range catalog.AllDatabases(ctx) {
 		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
-			for _, col := range t.Schema() {
-				if col.Default == nil {
-					continue
-				}
+			// Construct a show create table node and analyze it to get a full resolved column default.
+			st := plan.NewShowCreateTable(plan.NewResolvedTable(t, db, nil), false)
+			analyzed, err := a.Analyze(ctx, st, nil)
+			if err != nil {
+				return false, err
+			}
 
+			processNode, ok := analyzed.(*plan.QueryProcess)
+			if !ok {
+				return false, nil
+			}
+
+			sct, ok := processNode.Child.(*plan.ShowCreateTable)
+			if !ok {
+				return false, nil
+			}
+
+			for _, col := range sct.GetTargetSchema() {
 				// Create a new column and update its name. This is useful for sorting later.
 				newCol := col.Copy()
 				newCol.Name = db.Name() + "." + t.Name() + "." + col.Name

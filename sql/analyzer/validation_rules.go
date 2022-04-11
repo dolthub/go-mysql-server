@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -499,12 +498,6 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope) (
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		if n == nil {
-			return false
-		}
-
-		// For the columns table we have no need to validate the column default value operands.
-		// We just care about printing its string value.
-		if _, ok := n.(*information_schema.ColumnsTable); ok {
 			return false
 		}
 

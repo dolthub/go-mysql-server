@@ -17,11 +17,9 @@ package information_schema
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
@@ -37,14 +35,13 @@ type ColumnsTable struct {
 }
 
 var _ sql.Node = (*ColumnsTable)(nil)
-var _ sql.Expressioner = (*ColumnsTable)(nil)
 var _ sql.Nameable = (*ColumnsTable)(nil)
 var _ sql.Table = (*ColumnsTable)(nil)
 
 // Resolved implements the sql.Node interface.
 func (c *ColumnsTable) Resolved() bool {
 	for _, col := range c.allColsWithDefaultValue {
-		if _, ok := col.Default.Expression.(*sql.UnresolvedColumnDefault); ok {
+		if !col.Default.Resolved() {
 			return false
 		}
 	}
@@ -88,37 +85,6 @@ func (c *ColumnsTable) CheckPrivileges(ctx *sql.Context, opChecker sql.Privilege
 	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("information_schema", c.name, "", sql.PrivilegeType_Select))
 }
 
-// Expressions implements the sql.Expressioner interface.
-func (c *ColumnsTable) Expressions() []sql.Expression {
-	defaults := make([]sql.Expression, len(c.allColsWithDefaultValue))
-	for i, col := range c.allColsWithDefaultValue {
-		defaults[i] = expression.WrapExpression(col.Default)
-	}
-
-	return defaults
-}
-
-// WithExpressions implements the sql.Expressioner interface.
-func (c *ColumnsTable) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	for i, col := range c.allColsWithDefaultValue {
-		col.Default = expressions[i].(*expression.Wrapper).Unwrap().(*sql.ColumnDefaultValue)
-	}
-
-	return c, nil
-}
-
-// GetColumnFromDefaultValue takes in a default value and returns its associated column. This is essential in the
-// resolveColumnDefaults analyzer rule where we need the relevant column to resolve any unresolved column defaults.
-func (c *ColumnsTable) GetColumnFromDefaultValue(d *sql.ColumnDefaultValue) (*sql.Column, bool) {
-	for _, col := range c.allColsWithDefaultValue {
-		if col.Default == d {
-			return col, true
-		}
-	}
-
-	return nil, false
-}
-
 // Name implements the sql.Nameable interface.
 func (c *ColumnsTable) Name() string {
 	return c.name
@@ -147,13 +113,8 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 	return columnsRowIter(context, c.Catalog, colToDefaults)
 }
 
+// WithAllColumns passes in a set of all columns.
 func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Node {
-	// Start by sorting the slice by the columnName. Remember that each column is updated with key of type
-	// databaseName.tableName.colName
-	sort.Slice(c.allColsWithDefaultValue, func(i, j int) bool {
-		return c.allColsWithDefaultValue[i].Name < c.allColsWithDefaultValue[j].Name
-	})
-
 	nc := *c
 	nc.allColsWithDefaultValue = cols
 	return &nc

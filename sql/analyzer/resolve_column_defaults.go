@@ -19,7 +19,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/information_schema"
 	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -576,22 +575,6 @@ func resolveColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Sco
 				}
 				return resolveColumnDefaultsOnWrapper(ctx, col, eWrapper)
 			})
-		case *information_schema.ColumnsTable:
-			return transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				eWrapper := expression.WrapExpression(e)
-
-				cd, ok := e.(*sql.ColumnDefaultValue)
-				if !ok {
-					return eWrapper, transform.SameTree, nil
-				}
-
-				col, ok := node.GetColumnFromDefaultValue(cd)
-				if !ok {
-					return eWrapper, transform.SameTree, nil
-				}
-
-				return resolveColumnDefaultsOnWrapper(ctx, col, expression.WrapExpression(e))
-			})
 		default:
 			return node, transform.SameTree, nil
 		}
@@ -623,7 +606,7 @@ func parseColumnDefaults(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 			return e, transform.SameTree, nil
 		}
 		switch n.(type) {
-		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable, *information_schema.ColumnsTable:
+		case *plan.InsertDestination, *plan.AddColumn, *plan.ShowColumns, *plan.ShowCreateTable, *plan.RenameColumn, *plan.ModifyColumn, *plan.DropColumn, *plan.CreateTable:
 			n, same, err := parseColumnDefaultsForWrapper(ctx, eWrapper)
 			return n, same, err
 		default:

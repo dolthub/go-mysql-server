@@ -129,6 +129,11 @@ func (sc *ShowCreateTable) Schema() sql.Schema {
 	}
 }
 
+// GetTargetSchema returns the final resolved target schema of show create table.
+func (sc *ShowCreateTable) GetTargetSchema() sql.Schema {
+	return sc.targetSchema
+}
+
 // RowIter implements the Node interface
 func (sc *ShowCreateTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
