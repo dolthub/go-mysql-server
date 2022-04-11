@@ -18,7 +18,7 @@ func TestApplyHashIn(t *testing.T) {
 		{Name: "b", Type: sql.Int64, Source: "foo"},
 		{Name: "c", Type: sql.Int64, Source: "foo"},
 		{Name: "d", Type: sql.MustCreateStringWithDefaults(sqltypes.VarChar, 20), Source: "foo"},
-	}))
+	}), nil)
 
 	hitLiteral, _ := expression.NewHashInTuple(
 		expression.NewGetField(0, sql.Int64, "foo", false),

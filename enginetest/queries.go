@@ -7617,6 +7617,8 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -7626,6 +7628,8 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -7635,6 +7639,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  `i` bigint NOT NULL,\n" +
 				"  `s` varchar(20) NOT NULL COMMENT 'column s',\n" +
 				"  PRIMARY KEY (`i`),\n" +
+				"  KEY `idx_si` (`s`,`i`),\n" +
 				"  KEY `mytable_i_s` (`i`,`s`),\n" +
 				"  UNIQUE KEY `mytable_s` (`s`)\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
@@ -7648,6 +7653,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  `a` bigint,\n" +
 				"  `b` varchar(20),\n" +
 				"  PRIMARY KEY (`pk`),\n" +
+				"  KEY `ab` (`a`,`b`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
 		},
@@ -8626,6 +8632,81 @@ var errorQueries = []QueryErrorTest{
 	{
 		Query:       `SELECT * FROM datetime_table where datetime_col >= 'not a valid datetime'`,
 		ExpectedErr: sql.ErrConvertingToTime,
+	},
+	{
+		Query: `SELECT t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6,
+						mytable as t7,
+						mytable as t8,
+						mytable as t9,
+						mytable as t10,
+						mytable as t11,
+						mytable as t12,
+						mytable as t13,
+						mytable as t14,
+						mytable as t15
+					  WHERE
+						t1.i = t2.i and
+						t2.i = t3.i and
+						t3.i = t4.i and
+						t4.i = t5.i and
+						t5.i = t6.i and
+						t6.i = t7.i and
+						t7.i = t8.i and
+						t8.i = t9.i and
+						t9.i = t10.i and
+						t10.i = t11.i and
+						t11.i = t12.i and
+						t12.i = t13.i and
+						t13.i = t14.i and
+						t14.i = t15.i`,
+		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
+	},
+	{
+		Query: `SELECT t1.*
+					  FROM
+						mytable as t1,
+						mytable as t2,
+						mytable as t3,
+						mytable as t4,
+						mytable as t5,
+						mytable as t6,
+						mytable as t7,
+						mytable as t8,
+						mytable as t9,
+						mytable as t10,
+						mytable as t11,
+						mytable as t12,
+						mytable as t13,
+						mytable as t14,
+						mytable as t15`,
+		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
+	},
+	{
+		Query: `SELECT t1.*
+					  FROM
+						mytable as t1
+						LEFT JOIN mytable as t2 ON t1.i = t2.i
+						LEFT JOIN mytable as t3 ON t2.i = t3.i
+						LEFT JOIN mytable as t4 ON t3.i = t4.i
+						LEFT JOIN mytable as t5 ON t4.i = t5.i
+						LEFT JOIN mytable as t6 ON t5.i = t6.i
+						LEFT JOIN mytable as t7 ON t6.i = t7.i
+						LEFT JOIN mytable as t8 ON t7.i = t8.i
+						LEFT JOIN mytable as t9 ON t8.i = t9.i
+						LEFT JOIN mytable as t10 ON t9.i = t10.i
+						LEFT JOIN mytable as t11 ON t10.i = t11.i
+						LEFT JOIN mytable as t12 ON t11.i = t12.i
+						LEFT JOIN mytable as t13 ON t12.i = t13.i
+						LEFT JOIN mytable as t14 ON t13.i = t14.i
+						LEFT JOIN mytable as t15 ON t14.i = t15.i`,
+		ExpectedErr: sql.ErrUnsupportedJoinFactorCount,
 	},
 }
 

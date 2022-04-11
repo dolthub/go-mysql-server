@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-const searchLimit = 1 << 29 // includes 12 tables joins
+const joinComplexityLimit = 12
 
 func buildJoinTree(
 	jo *joinOrderNode,
@@ -244,9 +244,15 @@ func (jo *joinOrderNode) tableNames() []string {
 		return []string{jo.name}
 	} else if jo.left != nil {
 		return append(jo.left.tableNames(), jo.right.tableNames()...)
+	} else if len(jo.order) > 0 {
+		var res []string
+		for i := range jo.order {
+			res = append(res, jo.commutes[i].tableNames()...)
+		}
+		return res
 	} else {
 		var res []string
-		for _, i := range jo.order {
+		for i := range jo.commutes {
 			res = append(res, jo.commutes[i].tableNames()...)
 		}
 		return res
@@ -320,8 +326,14 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 		lowestCost := uint64(math.MaxUint64)
 		perm := newQuickPerm(indexes)
 		lowestOrder := make([]int, len(indexes))
-		for accessOrder, err := perm.Next(); err == nil && perm.i < searchLimit; accessOrder, err = perm.Next() {
-			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost)
+		availableSchemaForKeys := make(map[tableCol]struct{})
+		for idx := range jo.commutes {
+			for _, col := range jo.commutes[idx].schema() {
+				availableSchemaForKeys[tableCol{table: strings.ToLower(col.Source), col: strings.ToLower(col.Name)}] = struct{}{}
+			}
+		}
+		for accessOrder, err := perm.Next(); err == nil; accessOrder, err = perm.Next() {
+			cost, err := jo.estimateAccessOrderCost(ctx, accessOrder, joinIndexes, lowestCost, availableSchemaForKeys)
 			if err != nil {
 				return err
 			}
@@ -337,14 +349,14 @@ func (jo *joinOrderNode) estimateCost(ctx *sql.Context, joinIndexes joinIndexesB
 	return nil
 }
 
-func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64) (uint64, error) {
+//todo(max): if availableSchemaForKeys was a bitmap/fastintmap, 50% of the join
+// search CPU time would be O(1)
+func (jo *joinOrderNode) estimateAccessOrderCost(ctx *sql.Context, accessOrder []int, joinIndexes joinIndexesByTable, lowestCost uint64, availableSchemaForKeys map[tableCol]struct{}) (uint64, error) {
 	cost := uint64(1)
-	var availableSchemaForKeys sql.Schema
 	for i, idx := range accessOrder {
 		if cost >= lowestCost {
 			return cost, nil
 		}
-		availableSchemaForKeys = append(availableSchemaForKeys, jo.commutes[idx].schema()...)
 		if jo.commutes[idx].node != nil {
 			indexes := joinIndexes[strings.ToLower(jo.commutes[idx].name)]
 			_, isSubquery := jo.commutes[idx].node.(*plan.SubqueryAlias)

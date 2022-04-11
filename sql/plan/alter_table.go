@@ -72,6 +72,47 @@ func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error
 			return nil, sql.ErrTableNotFound.New(oldName)
 		}
 
+		if fkTable, ok := tbl.(sql.ForeignKeyTable); ok {
+			parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+			if err != nil {
+				return nil, err
+			}
+			for _, parentFk := range parentFks {
+				//TODO: support renaming tables across databases for foreign keys
+				if strings.ToLower(parentFk.Database) != strings.ToLower(parentFk.ParentDatabase) {
+					return nil, fmt.Errorf("updating foreign key table names across databases is not yet supported")
+				}
+				parentFk.ParentTable = r.newNames[i]
+				childTbl, ok, err := r.db.GetTableInsensitive(ctx, parentFk.Table)
+				if err != nil {
+					return nil, err
+				}
+				if !ok {
+					return nil, sql.ErrTableNotFound.New(parentFk.Table)
+				}
+				childFkTbl, ok := childTbl.(sql.ForeignKeyTable)
+				if !ok {
+					return nil, fmt.Errorf("referenced table `%s` supports foreign keys but declaring table `%s` does not", parentFk.ParentTable, parentFk.Table)
+				}
+				err = childFkTbl.UpdateForeignKey(ctx, parentFk.Name, parentFk)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+			if err != nil {
+				return nil, err
+			}
+			for _, fk := range fks {
+				fk.Table = r.newNames[i]
+				err = fkTable.UpdateForeignKey(ctx, fk.Name, fk)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
 		err = renamer.RenameTable(ctx, tbl.Name(), r.newNames[i])
 		if err != nil {
 			break
@@ -422,6 +463,32 @@ func (d *DropColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 		}
 	}
 
+	if fkTable, ok := tbl.(sql.ForeignKeyTable); ok {
+		lowercaseColumn := strings.ToLower(d.Column)
+		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, fk := range fks {
+			for _, fkCol := range fk.Columns {
+				if lowercaseColumn == strings.ToLower(fkCol) {
+					return nil, sql.ErrForeignKeyDropColumn.New(d.Column, fk.Name)
+				}
+			}
+		}
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, parentFk := range parentFks {
+			for _, parentFkCol := range parentFk.Columns {
+				if lowercaseColumn == strings.ToLower(parentFkCol) {
+					return nil, sql.ErrForeignKeyDropColumn.New(d.Column, parentFk.Name)
+				}
+			}
+		}
+	}
+
 	return sql.RowsToRowIter(), alterable.DropColumn(ctx, d.Column)
 }
 
@@ -590,6 +657,24 @@ func (r *RenameColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 		return nil, err
 	}
 
+	// Update the foreign key columns as well
+	if fkTable, ok := alterable.(sql.ForeignKeyTable); ok {
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if len(parentFks) > 0 || len(fks) > 0 {
+			err = handleColumnRename(ctx, fkTable, r.db, r.ColumnName, r.NewColumnName)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, r.ColumnName, col, nil)
 }
 
@@ -699,6 +784,39 @@ func (m *ModifyColumn) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, erro
 	// TODO: fix me
 	if err := updateDefaultsOnColumnRename(ctx, alterable, tblSch, m.columnName, m.column.Name); err != nil {
 		return nil, err
+	}
+
+	// Update the foreign key columns as well
+	if fkTable, ok := alterable.(sql.ForeignKeyTable); ok {
+		parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+		fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if len(parentFks) > 0 || len(fks) > 0 {
+			if !tblSch[idx].Type.Equals(m.column.Type) {
+				return nil, sql.ErrForeignKeyTypeChange.New(m.columnName)
+			}
+			if !m.column.Nullable {
+				lowerColName := strings.ToLower(m.columnName)
+				for _, fk := range fks {
+					if fk.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fk.OnDelete == sql.ForeignKeyReferentialAction_SetNull {
+						for _, col := range fk.Columns {
+							if lowerColName == strings.ToLower(col) {
+								return nil, sql.ErrForeignKeyTypeChangeSetNull.New(m.columnName, fk.Name)
+							}
+						}
+					}
+				}
+			}
+			err = handleColumnRename(ctx, fkTable, m.db, m.columnName, m.column.Name)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return sql.RowsToRowIter(), alterable.ModifyColumn(ctx, m.columnName, m.column, m.order)
@@ -835,6 +953,69 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 		err := tbl.ModifyColumn(ctx, col.Name, col, nil)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func handleColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
+	lowerOldName := strings.ToLower(oldName)
+	if lowerOldName == strings.ToLower(newName) {
+		return nil
+	}
+
+	parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
+	if err != nil {
+		return err
+	}
+	if len(parentFks) > 0 {
+		dbName := strings.ToLower(db.Name())
+		for _, parentFk := range parentFks {
+			//TODO: add support for multi db foreign keys
+			if dbName != strings.ToLower(parentFk.ParentDatabase) {
+				return fmt.Errorf("renaming columns involved in foreign keys referencing a different database" +
+					" is not yet supported")
+			}
+			shouldUpdate := false
+			for i, col := range parentFk.ParentColumns {
+				if strings.ToLower(col) == lowerOldName {
+					parentFk.ParentColumns[i] = newName
+					shouldUpdate = true
+				}
+			}
+			if shouldUpdate {
+				childTable, ok, err := db.GetTableInsensitive(ctx, parentFk.Table)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					return sql.ErrTableNotFound.New(parentFk.Table)
+				}
+				err = childTable.(sql.ForeignKeyTable).UpdateForeignKey(ctx, parentFk.Name, parentFk)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	fks, err := fkTable.GetDeclaredForeignKeys(ctx)
+	if err != nil {
+		return err
+	}
+	for _, fk := range fks {
+		shouldUpdate := false
+		for i, col := range fk.Columns {
+			if strings.ToLower(col) == lowerOldName {
+				fk.Columns[i] = newName
+				shouldUpdate = true
+			}
+		}
+		if shouldUpdate {
+			err = fkTable.UpdateForeignKey(ctx, fk.Name, fk)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

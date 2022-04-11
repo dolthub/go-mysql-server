@@ -31,13 +31,13 @@ func TestPushdownProjectionToTables(t *testing.T) {
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	}))
+	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	}))
+	}), nil)
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -100,13 +100,13 @@ func TestPushdownFilterToTables(t *testing.T) {
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	}))
+	}), nil)
 
 	table2 := memory.NewFilteredTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	}))
+	}), nil)
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -214,13 +214,13 @@ func TestPushdownFiltersAboveTables(t *testing.T) {
 		{Name: "i", Type: sql.Int32, Source: "mytable"},
 		{Name: "f", Type: sql.Float64, Source: "mytable"},
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	}))
+	}), nil)
 
 	table2 := memory.NewTable("mytable2", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i2", Type: sql.Int32, Source: "mytable2"},
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	}))
+	}), nil)
 
 	db := memory.NewDatabase("mydb")
 	db.AddTable("mytable", table)
@@ -540,7 +540,7 @@ func TestPushdownIndex(t *testing.T) {
 		myTableI,
 		myTableF,
 		{Name: "t", Type: sql.Text, Source: "mytable"},
-	}))
+	}), nil)
 
 	table.EnablePrimaryKeyIndexes()
 	err := table.CreateIndex(ctx, "f", sql.IndexUsing_BTree, sql.IndexConstraint_None, []sql.IndexColumn{
@@ -562,7 +562,7 @@ func TestPushdownIndex(t *testing.T) {
 		mytable2I,
 		{Name: "f2", Type: sql.Float64, Source: "mytable2"},
 		{Name: "t2", Type: sql.Text, Source: "mytable2"},
-	}))
+	}), nil)
 
 	table2.EnablePrimaryKeyIndexes()
 	table2Idxes, err := table2.GetIndexes(ctx)

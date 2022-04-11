@@ -57,6 +57,12 @@ func (t nullType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t nullType) Equals(otherType Type) bool {
+	_, ok := otherType.(nullType)
+	return ok
+}
+
 // Promote implements the Type interface.
 func (t nullType) Promote() Type {
 	return t

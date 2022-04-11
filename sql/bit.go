@@ -168,6 +168,14 @@ func (t bitType) MustConvert(v interface{}) interface{} {
 	return value
 }
 
+// Equals implements the Type interface.
+func (t bitType) Equals(otherType Type) bool {
+	if ot, ok := otherType.(bitType); ok {
+		return t.numOfBits == ot.numOfBits
+	}
+	return false
+}
+
 // Promote implements the Type interface.
 func (t bitType) Promote() Type {
 	return promotedBitType

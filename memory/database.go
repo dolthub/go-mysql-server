@@ -17,6 +17,8 @@ package memory
 import (
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -43,6 +45,7 @@ var _ sql.ViewDatabase = (*Database)(nil)
 type BaseDatabase struct {
 	name              string
 	tables            map[string]sql.Table
+	fkColl            *ForeignKeyCollection
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
 	primaryKeyIndexes bool
@@ -64,6 +67,7 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 	return &BaseDatabase{
 		name:   name,
 		tables: map[string]sql.Table{},
+		fkColl: newForeignKeyCollection(),
 	}
 }
 
@@ -94,6 +98,10 @@ func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
 	}
 
 	return tblNames, nil
+}
+
+func (d *BaseDatabase) GetForeignKeyCollection() *ForeignKeyCollection {
+	return d.fkColl
 }
 
 // HistoryDatabase is a test-only VersionedDatabase implementation. It only supports exact lookups, not AS OF queries
@@ -159,7 +167,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTable(name, schema)
+	table := NewTable(name, schema, d.fkColl)
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
@@ -190,7 +198,18 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		return sql.ErrTableAlreadyExists.New(newName)
 	}
 
-	tbl.(*Table).name = newName
+	memTbl := tbl.(*Table)
+	memTbl.name = newName
+	for _, col := range memTbl.schema.Schema {
+		col.Source = newName
+	}
+	for _, index := range memTbl.indexes {
+		memIndex := index.(*Index)
+		for i, expr := range memIndex.Exprs {
+			getField := expr.(*expression.GetField)
+			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), newName, getField.Name(), getField.IsNullable())
+		}
+	}
 	d.tables[newName] = tbl
 	delete(d.tables, oldName)
 
