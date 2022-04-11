@@ -8089,6 +8089,21 @@ var InfoSchemaScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "information_schema.triggers create trigger definer defined",
+		SetUpScript: []string{
+			"CREATE TABLE aa (x INT PRIMARY KEY)",
+			"CREATE DEFINER=`dolt`@`localhost` TRIGGER trigger1 BEFORE INSERT ON aa FOR EACH ROW SET NEW.x = NEW.x + 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT trigger_name, event_object_table, definer FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_name = 'trigger1'",
+				Expected: []sql.Row{
+					{"trigger1", "aa", "`dolt`@`localhost`"},
+				},
+			},
+		},
+	},
+	{
 		Name: "information_schema.statistics shows non unique index",
 		SetUpScript: []string{
 			"CREATE TABLE mytable (pk int primary key, test_score int, height int)",
@@ -8128,7 +8143,7 @@ var InfoSchemaScripts = []ScriptTest{
 						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hi", "", "utf8mb4", "utf8mb4_0900_bin",
 						"utf8mb4_0900_bin"},
 					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
-						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "user", "utf8mb4", "utf8mb4_0900_bin",
+						nil, "SQL", "SQL", "", "", nil, "INVOKER", "SQL", "", "`user`@`%`", "utf8mb4", "utf8mb4_0900_bin",
 						"utf8mb4_0900_bin"},
 					{"p12", "def", "somedb", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, "", "SQL",
 						nil, "SQL", "SQL", "", "", nil, "DEFINER", "SQL", "hello", "", "utf8mb4", "utf8mb4_0900_bin",
