@@ -1551,17 +1551,13 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		}
 	}
 
-	seenPrimary := false
-	seenUnique := false
 	var idxDefs []*plan.IndexDefinition
 	for _, idxDef := range c.TableSpec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
 			constraint = sql.IndexConstraint_Primary
-			seenPrimary = true
 		} else if idxDef.Info.Unique {
 			constraint = sql.IndexConstraint_Unique
-			seenUnique = true
 		} else if idxDef.Info.Spatial {
 			constraint = sql.IndexConstraint_Spatial
 		} else if idxDef.Info.Fulltext {
@@ -1607,11 +1603,7 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 		if colDef.Type.KeyOpt == colKeyFulltextKey {
 			return nil, sql.ErrUnsupportedFeature.New("fulltext keys are unsupported")
 		}
-		if colDef.Type.KeyOpt == colKeyPrimary {
-			seenPrimary = true
-		}
 		if colDef.Type.KeyOpt == colKeyUnique || colDef.Type.KeyOpt == colKeyUniqueKey {
-			seenUnique = true
 			idxDefs = append(idxDefs, &plan.IndexDefinition{
 				IndexName:  "",
 				Using:      sql.IndexUsing_Default,
@@ -1623,11 +1615,6 @@ func convertCreateTable(ctx *sql.Context, c *sqlparser.DDL) (sql.Node, error) {
 				}},
 			})
 		}
-	}
-
-	// can't use unique constraint on keyless tables
-	if seenUnique && !seenPrimary {
-		return nil, sql.ErrUnsupportedFeature.New("unique constraint on keyless tables")
 	}
 
 	qualifier := c.Table.Qualifier.String()
