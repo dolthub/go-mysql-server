@@ -18,62 +18,87 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // ProcedureCache contains all of the stored procedures for each database.
 type ProcedureCache struct {
-	dbToProcedureMap map[string]map[string]*plan.Procedure
+	dbToProcedureMap map[string]map[string]map[int]*plan.Procedure
 	IsPopulating     bool
 }
 
 // NewProcedureCache returns a *ProcedureCache.
 func NewProcedureCache() *ProcedureCache {
 	return &ProcedureCache{
-		dbToProcedureMap: make(map[string]map[string]*plan.Procedure),
+		dbToProcedureMap: make(map[string]map[string]map[int]*plan.Procedure),
 		IsPopulating:     false,
 	}
 }
 
 // Get returns the stored procedure with the given name from the given database. All names are case-insensitive. If the
-// procedure does not exist, then this returns nil.
-func (pc *ProcedureCache) Get(dbName, procedureName string) *plan.Procedure {
+// procedure does not exist, then this returns nil. If the number of parameters do not match any given procedure, then
+// returns the procedure with the largest number of parameters.
+func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *plan.Procedure {
 	dbName = strings.ToLower(dbName)
 	procedureName = strings.ToLower(procedureName)
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
-		if procedure, ok := procMap[procedureName]; ok {
-			return procedure
+		if procedures, ok := procMap[procedureName]; ok {
+			if procedure, ok := procedures[numOfParams]; ok {
+				return procedure
+			}
+
+			var largestParamProc *plan.Procedure
+			for _, procedure := range procedures {
+				if len(procedure.Params) == numOfParams {
+					return procedure
+				}
+				if largestParamProc == nil || len(largestParamProc.Params) < len(procedure.Params) {
+					largestParamProc = procedure
+				}
+			}
+			return largestParamProc
 		}
 	}
 	return nil
 }
 
-// AllForDatabase returns all of the stored procedures for the given database, sorted by name ascending. The database
-// name is case-insensitive.
+// AllForDatabase returns all of the stored procedures for the given database, sorted by name and parameter count
+// ascending. The database name is case-insensitive.
 func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
 	dbName = strings.ToLower(dbName)
-	var procedures []*plan.Procedure
+	var proceduresForDb []*plan.Procedure
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
-		procedures = make([]*plan.Procedure, len(procMap))
-		i := 0
-		for _, procedure := range procMap {
-			procedures[i] = procedure
-			i++
+		for _, procedures := range procMap {
+			for _, procedure := range procedures {
+				proceduresForDb = append(proceduresForDb, procedure)
+			}
 		}
-		sort.Slice(procedures, func(i, j int) bool {
-			return procedures[i].Name < procedures[j].Name
+		sort.Slice(proceduresForDb, func(i, j int) bool {
+			if proceduresForDb[i].Name != proceduresForDb[j].Name {
+				return proceduresForDb[i].Name < proceduresForDb[j].Name
+			}
+			return len(proceduresForDb[i].Params) < len(proceduresForDb[j].Params)
 		})
 	}
-	return procedures
+	return proceduresForDb
 }
 
 // Register adds the given stored procedure to the cache. Will overwrite any procedures that already exist with the
-// same name for the given database name.
-func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) {
+// same name and same number of parameters for the given database name.
+func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) error {
 	dbName = strings.ToLower(dbName)
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
-		procMap[strings.ToLower(procedure.Name)] = procedure
+		if procedures, ok := procMap[strings.ToLower(procedure.Name)]; ok {
+			if _, ok := procedures[len(procedure.Params)]; ok {
+				return sql.ErrExternalProcedureAmbiguousOverload.New(procedure.Name, len(procedure.Params))
+			}
+			procedures[len(procedure.Params)] = procedure
+		} else {
+			procMap[strings.ToLower(procedure.Name)] = map[int]*plan.Procedure{len(procedure.Params): procedure}
+		}
 	} else {
-		pc.dbToProcedureMap[dbName] = map[string]*plan.Procedure{strings.ToLower(procedure.Name): procedure}
+		pc.dbToProcedureMap[dbName] = map[string]map[int]*plan.Procedure{strings.ToLower(procedure.Name): {len(procedure.Params): procedure}}
 	}
+	return nil
 }

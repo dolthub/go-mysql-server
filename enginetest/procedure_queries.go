@@ -748,6 +748,14 @@ BEGIN
 END;`,
 		ExpectedErr: sql.ErrDeclareConditionNotFound,
 	},
+	{
+		Name: "Duplicate procedure name",
+		SetUpScript: []string{
+			"CREATE PROCEDURE test_proc(x DOUBLE, y DOUBLE) SELECT x*y",
+		},
+		Query:       "CREATE PROCEDURE test_proc(z VARCHAR(20)) SELECT z",
+		ExpectedErr: sql.ErrStoredProcedureAlreadyExists,
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{
