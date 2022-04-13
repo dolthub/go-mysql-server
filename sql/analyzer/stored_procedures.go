@@ -55,7 +55,24 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 		a.ProcedureCache.IsPopulating = false
 	}()
 
-	for _, database := range a.Catalog.AllDatabases(ctx) {
+	allDatabases := a.Catalog.AllDatabases(ctx)
+	for _, database := range allDatabases {
+		if epdb, ok := database.(sql.ExternalStoredProcedureDatabase); ok {
+			externalProcedures, err := epdb.GetExternalStoredProcedures(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			for _, externalProcedure := range externalProcedures {
+				procedure, err := resolveExternalStoredProcedure(ctx, epdb.Name(), externalProcedure)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				a.ProcedureCache.Register(database.Name(), procedure)
+			}
+		}
+	}
+
+	for _, database := range allDatabases {
 		if pdb, ok := database.(sql.StoredProcedureDatabase); ok {
 			procedures, err := pdb.GetStoredProcedures(ctx)
 			if err != nil {
@@ -336,7 +353,7 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	pRef := expression.NewProcedureParamReference()
 	call = call.WithParamReference(pRef)
 
-	procedure := a.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name)
+	procedure := a.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
 	if procedure == nil {
 		return nil, transform.SameTree, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
 	}

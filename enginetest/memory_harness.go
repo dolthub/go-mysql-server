@@ -218,3 +218,29 @@ func (m *MemoryHarness) NewReadOnlyDatabases(names ...string) []sql.ReadOnlyData
 	}
 	return dbs
 }
+
+type ExternalStoredProcedureMemoryHarness struct {
+	*MemoryHarness
+}
+
+var _ Harness = ExternalStoredProcedureMemoryHarness{}
+
+func NewExternalStoredProcedureMemoryHarness() *ExternalStoredProcedureMemoryHarness {
+	return &ExternalStoredProcedureMemoryHarness{NewDefaultMemoryHarness()}
+}
+
+func (h ExternalStoredProcedureMemoryHarness) NewDatabase(name string) sql.Database {
+	database := memory.NewExternalStoredProcedureDatabase(name)
+	if h.nativeIndexSupport {
+		database.EnablePrimaryKeyIndexes()
+	}
+	return database
+}
+
+func (h ExternalStoredProcedureMemoryHarness) NewDatabases(names ...string) []sql.Database {
+	var dbs []sql.Database
+	for _, name := range names {
+		dbs = append(dbs, h.NewDatabase(name))
+	}
+	return dbs
+}
