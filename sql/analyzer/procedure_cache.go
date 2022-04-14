@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"math"
 	"sort"
 	"strings"
 
@@ -48,13 +49,16 @@ func (pc *ProcedureCache) Get(dbName, procedureName string, numOfParams int) *pl
 				return procedure
 			}
 
+			var largestParamLen int
 			var largestParamProc *plan.Procedure
 			for _, procedure := range procedures {
-				if len(procedure.Params) == numOfParams {
-					return procedure
+				paramLen := len(procedure.Params)
+				if procedure.HasVariadicParameter() {
+					paramLen = math.MaxInt
 				}
-				if largestParamProc == nil || len(largestParamProc.Params) < len(procedure.Params) {
+				if largestParamProc == nil || largestParamLen < paramLen {
 					largestParamProc = procedure
+					largestParamLen = paramLen
 				}
 			}
 			return largestParamProc
@@ -88,17 +92,21 @@ func (pc *ProcedureCache) AllForDatabase(dbName string) []*plan.Procedure {
 // same name and same number of parameters for the given database name.
 func (pc *ProcedureCache) Register(dbName string, procedure *plan.Procedure) error {
 	dbName = strings.ToLower(dbName)
+	paramLen := len(procedure.Params)
+	if procedure.HasVariadicParameter() {
+		paramLen = math.MaxInt
+	}
 	if procMap, ok := pc.dbToProcedureMap[dbName]; ok {
 		if procedures, ok := procMap[strings.ToLower(procedure.Name)]; ok {
-			if _, ok := procedures[len(procedure.Params)]; ok {
-				return sql.ErrExternalProcedureAmbiguousOverload.New(procedure.Name, len(procedure.Params))
+			if _, ok := procedures[paramLen]; ok {
+				return sql.ErrExternalProcedureAmbiguousOverload.New(procedure.Name, paramLen)
 			}
-			procedures[len(procedure.Params)] = procedure
+			procedures[paramLen] = procedure
 		} else {
-			procMap[strings.ToLower(procedure.Name)] = map[int]*plan.Procedure{len(procedure.Params): procedure}
+			procMap[strings.ToLower(procedure.Name)] = map[int]*plan.Procedure{paramLen: procedure}
 		}
 	} else {
-		pc.dbToProcedureMap[dbName] = map[string]map[int]*plan.Procedure{strings.ToLower(procedure.Name): {len(procedure.Params): procedure}}
+		pc.dbToProcedureMap[dbName] = map[string]map[int]*plan.Procedure{strings.ToLower(procedure.Name): {paramLen: procedure}}
 	}
 	return nil
 }

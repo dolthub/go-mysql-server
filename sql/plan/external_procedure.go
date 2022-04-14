@@ -109,59 +109,27 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 	funcParams := make([]reflect.Value, len(n.Params)+1)
 	funcParams[0] = reflect.ValueOf(ctx)
 
-	for i, exprParam := range n.Params {
-		funcParamType := funcType.In(i + 1)
+	for i := range n.Params {
+		paramDefinition := n.ParamDefinitions[i]
+		var funcParamType reflect.Type
+		if paramDefinition.Variadic {
+			funcParamType = funcType.In(funcType.NumIn() - 1).Elem()
+		} else {
+			funcParamType = funcType.In(i + 1)
+		}
 		// Grab the passed-in variable and convert it to the type we expect
-		exprParamVal, err := exprParam.Eval(ctx, nil)
+		exprParamVal, err := n.Params[i].Eval(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
-		exprParamVal, err = n.ParamDefinitions[i].Type.Convert(exprParamVal)
+		exprParamVal, err = paramDefinition.Type.Convert(exprParamVal)
 		if err != nil {
 			return nil, err
 		}
 
-		funcParamCompType := funcParamType
-		if funcParamType.Kind() == reflect.Ptr {
-			funcParamCompType = funcParamType.Elem()
-		}
-		// Convert to bool, []byte, int, and uint as they differ from their sql.Type value
-		switch funcParamCompType {
-		case boolType:
-			val := false
-			if exprParamVal.(int8) != 0 {
-				val = true
-			}
-			exprParamVal = val
-		case byteSliceType:
-			exprParamVal = []byte(exprParamVal.(string))
-		case intType:
-			if strconv.IntSize == 32 {
-				exprParamVal = int(exprParamVal.(int32))
-			} else {
-				exprParamVal = int(exprParamVal.(int64))
-			}
-		case uintType:
-			if strconv.IntSize == 64 {
-				exprParamVal = int(exprParamVal.(uint32))
-			} else {
-				exprParamVal = int(exprParamVal.(uint64))
-			}
-		case decimalType:
-			exprParamVal, err = decimal.NewFromString(exprParamVal.(string))
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		if funcParamType.Kind() == reflect.Ptr { // Coincides with INOUT
-			funcParamVal := reflect.New(funcParamType.Elem())
-			funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
-			funcParams[i+1] = funcParamVal
-		} else { // Coincides with IN
-			funcParamVal := reflect.New(funcParamType)
-			funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
-			funcParams[i+1] = funcParamVal.Elem()
+		funcParams[i+1], err = n.processParam(ctx, funcParamType, exprParamVal)
+		if err != nil {
+			return nil, err
 		}
 	}
 	out := funcVal.Call(funcParams)
@@ -185,4 +153,50 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		return rowIter, nil
 	}
 	return sql.RowsToRowIter(), nil
+}
+
+func (n *ExternalProcedure) processParam(ctx *sql.Context, funcParamType reflect.Type, exprParamVal interface{}) (reflect.Value, error) {
+	funcParamCompType := funcParamType
+	if funcParamType.Kind() == reflect.Ptr {
+		funcParamCompType = funcParamType.Elem()
+	}
+	// Convert to bool, []byte, int, and uint as they differ from their sql.Type value
+	switch funcParamCompType {
+	case boolType:
+		val := false
+		if exprParamVal.(int8) != 0 {
+			val = true
+		}
+		exprParamVal = val
+	case byteSliceType:
+		exprParamVal = []byte(exprParamVal.(string))
+	case intType:
+		if strconv.IntSize == 32 {
+			exprParamVal = int(exprParamVal.(int32))
+		} else {
+			exprParamVal = int(exprParamVal.(int64))
+		}
+	case uintType:
+		if strconv.IntSize == 64 {
+			exprParamVal = int(exprParamVal.(uint32))
+		} else {
+			exprParamVal = int(exprParamVal.(uint64))
+		}
+	case decimalType:
+		var err error
+		exprParamVal, err = decimal.NewFromString(exprParamVal.(string))
+		if err != nil {
+			return reflect.Value{}, err
+		}
+	}
+
+	if funcParamType.Kind() == reflect.Ptr { // Coincides with INOUT
+		funcParamVal := reflect.New(funcParamType.Elem())
+		funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+		return funcParamVal, nil
+	} else { // Coincides with IN
+		funcParamVal := reflect.New(funcParamType)
+		funcParamVal.Elem().Set(reflect.ValueOf(exprParamVal))
+		return funcParamVal.Elem(), nil
+	}
 }
