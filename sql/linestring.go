@@ -86,6 +86,9 @@ func (t LinestringType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 func (t LinestringType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	// Must be a Linestring, fail otherwise
 	if v, ok := v.(Linestring); ok {
 		return v, nil
