@@ -992,14 +992,18 @@ type ExternalStoredProcedureDetails struct {
 	// becomes an INOUT parameter. There is no way to set a parameter as an OUT parameter.
 	//
 	// Values are converted to their nearest type before being passed in, following the conversion rules of their
-	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with the
-	// default collation) and decimal (treated with a larger precision and scale). Take extra care when using decimal
+	// related SQL types. The exceptions are `time.Time` (treated as a `DATETIME`), string (treated as a `LONGTEXT` with
+	// the default collation) and decimal (treated with a larger precision and scale). Take extra care when using decimal
 	// for an INOUT parameter, to ensure that the returned value fits the original's precision and scale, else an error
 	// will occur.
 	//
 	// As functions support overloading, each variant must have a completely unique function signature to prevent
 	// ambiguity. Uniqueness is determined by the number of parameters. If two functions are returned that have the same
-	// name and same number of parameters, then an error is thrown.
+	// name and same number of parameters, then an error is thrown. If the last parameter is variadic, then the stored
+	// procedure functions as though it has the integer-max number of parameters. When an exact match is not found for
+	// overloaded functions, the largest function is used (which in this case will be the variadic function). Also, due
+	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
+	// The type of the variadic parameter may not have a pointer type.
 	Function interface{}
 }
 

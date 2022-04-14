@@ -67,7 +67,10 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				a.ProcedureCache.Register(database.Name(), procedure)
+				err = a.ProcedureCache.Register(database.Name(), procedure)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
 			}
 		}
 	}
@@ -110,7 +113,10 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scop
 					return nil, transform.SameTree, fmt.Errorf("analyzed node %T and expected *plan.Procedure", analyzedNode)
 				}
 
-				a.ProcedureCache.Register(database.Name(), analyzedProc)
+				err = a.ProcedureCache.Register(database.Name(), analyzedProc)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
 			}
 		}
 	}
@@ -356,6 +362,9 @@ func applyProceduresCall(ctx *sql.Context, a *Analyzer, call *plan.Call, scope *
 	procedure := a.ProcedureCache.Get(ctx.GetCurrentDatabase(), call.Name, len(call.Params))
 	if procedure == nil {
 		return nil, transform.SameTree, sql.ErrStoredProcedureDoesNotExist.New(call.Name)
+	}
+	if procedure.HasVariadicParameter() {
+		procedure = procedure.ExtendVariadic(ctx, len(call.Params))
 	}
 
 	var procParamTransformFunc transform.ExprFunc

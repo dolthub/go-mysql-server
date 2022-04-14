@@ -96,9 +96,6 @@ func resolveExternalStoredProcedure(ctx *sql.Context, dbName string, externalPro
 	if funcType.NumIn() == 0 {
 		return nil, sql.ErrExternalProcedureMissingContextParam.New()
 	}
-	if funcType.NumIn() > 27 {
-		return nil, sql.ErrExternalProcedureTooManyParams.New()
-	}
 	if funcType.NumOut() != 2 {
 		return nil, sql.ErrExternalProcedureReturnTypes.New()
 	}
@@ -111,18 +108,28 @@ func resolveExternalStoredProcedure(ctx *sql.Context, dbName string, externalPro
 	if funcType.Out(1) != errorType {
 		return nil, sql.ErrExternalProcedureSecondReturn.New()
 	}
+	funcIsVariadic := funcType.IsVariadic()
 
 	paramDefinitions := make([]plan.ProcedureParam, funcType.NumIn()-1)
 	paramReferences := make([]*expression.ProcedureParam, len(paramDefinitions))
 	for i := 0; i < len(paramDefinitions); i++ {
 		funcParamType := funcType.In(i + 1)
-		paramName := string([]byte{byte(i) + 65}) // Names will be "A", "B", "C", etc.
+		paramName := "A" + strconv.FormatInt(int64(i), 10)
+		paramIsVariadic := false
+		if funcIsVariadic && i == len(paramDefinitions)-1 {
+			paramIsVariadic = true
+			funcParamType = funcParamType.Elem()
+			if funcParamType.Kind() == reflect.Ptr {
+				return nil, sql.ErrExternalProcedurePointerVariadic.New()
+			}
+		}
 
 		if sqlType, ok := externalStoredProcedureTypes[funcParamType]; ok {
 			paramDefinitions[i] = plan.ProcedureParam{
 				Direction: plan.ProcedureParamDirection_In,
 				Name:      paramName,
 				Type:      sqlType,
+				Variadic:  paramIsVariadic,
 			}
 			paramReferences[i] = expression.NewProcedureParam(paramName)
 		} else if sqlType, ok = externalStoredProcedurePointerTypes[funcParamType]; ok {
@@ -130,6 +137,7 @@ func resolveExternalStoredProcedure(ctx *sql.Context, dbName string, externalPro
 				Direction: plan.ProcedureParamDirection_Inout,
 				Name:      paramName,
 				Type:      sqlType,
+				Variadic:  paramIsVariadic,
 			}
 			paramReferences[i] = expression.NewProcedureParam(paramName)
 		} else {

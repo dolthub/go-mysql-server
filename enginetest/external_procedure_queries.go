@@ -114,4 +114,71 @@ var ExternalProcedureTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Variadic parameter",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL memory_variadic_add();",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "CALL memory_variadic_add(1);",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "CALL memory_variadic_add(1, 2);",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "CALL memory_variadic_add(1, 2, 3);",
+				Expected: []sql.Row{{6}},
+			},
+			{
+				Query:    "CALL memory_variadic_add(1, 2, 3, 4);",
+				Expected: []sql.Row{{10}},
+			},
+		},
+	},
+	{
+		Name: "Variadic byte slices",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL memory_variadic_byte_slice();",
+				Expected: []sql.Row{{""}},
+			},
+			{
+				Query:    "CALL memory_variadic_byte_slice('A');",
+				Expected: []sql.Row{{"A"}},
+			},
+			{
+				Query:    "CALL memory_variadic_byte_slice('A', 'B');",
+				Expected: []sql.Row{{"AB"}},
+			},
+		},
+	},
+	{
+		Name: "Variadic overloading",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CALL memory_variadic_overload();",
+				ExpectedErr: sql.ErrCallIncorrectParameterCount,
+			},
+			{
+				Query:       "CALL memory_variadic_overload('A');",
+				ExpectedErr: sql.ErrCallIncorrectParameterCount,
+			},
+			{
+				Query:    "CALL memory_variadic_overload('A', 'B');",
+				Expected: []sql.Row{{"A-B"}},
+			},
+			{
+				Query:       "CALL memory_variadic_overload('A', 'B', 'C');",
+				ExpectedErr: sql.ErrInvalidValue,
+			},
+			{
+				Query:    "CALL memory_variadic_overload('A', 'B', 5);",
+				Expected: []sql.Row{{"A,B,[5]"}},
+			},
+		},
+	},
 }

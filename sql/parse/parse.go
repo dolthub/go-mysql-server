@@ -1040,6 +1040,7 @@ func convertCreateProcedure(ctx *sql.Context, query string, c *sqlparser.DDL) (s
 			Direction: direction,
 			Name:      param.Name,
 			Type:      internalTyp,
+			Variadic:  false,
 		})
 	}
 

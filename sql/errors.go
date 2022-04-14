@@ -189,8 +189,8 @@ var (
 	// the context.
 	ErrExternalProcedureMissingContextParam = errors.NewKind("external stored procedures require the first parameter to be the context")
 
-	// ErrExternalProcedureTooManyParams is returned when an external stored procedure has too many parameters.
-	ErrExternalProcedureTooManyParams = errors.NewKind("external stored procedures may have a max of 27 parameters")
+	// ErrExternalProcedurePointerVariadic is returned when an external stored procedure's variadic parameter has a pointer type.
+	ErrExternalProcedurePointerVariadic = errors.NewKind("an external stored procedures's variadiac parameter may not have a pointer type")
 
 	// ErrExternalProcedureReturnTypes is returned when an external stored procedure's return types are incorrect.
 	ErrExternalProcedureReturnTypes = errors.NewKind("external stored procedures must return a RowIter and error")

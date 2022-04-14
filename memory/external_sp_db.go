@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -76,7 +77,7 @@ func (e ExternalStoredProcedureDatabase) GetExternalStoredProcedures(ctx *sql.Co
 		},
 		{
 			Name:     "memory_overloaded_type_test",
-			Schema:   externalSPSchemaInt,
+			Schema:   externalSPSchemaText,
 			Function: e.overloaded_type_test2,
 		},
 		{
@@ -88,6 +89,26 @@ func (e ExternalStoredProcedureDatabase) GetExternalStoredProcedures(ctx *sql.Co
 			Name:     "memory_error_table_not_found",
 			Schema:   nil,
 			Function: e.error_table_not_found,
+		},
+		{
+			Name:     "memory_variadic_add",
+			Schema:   externalSPSchemaInt,
+			Function: e.variadic_add,
+		},
+		{
+			Name:     "memory_variadic_byte_slice",
+			Schema:   externalSPSchemaText,
+			Function: e.variadic_byte_slice,
+		},
+		{
+			Name:     "memory_variadic_overload",
+			Schema:   externalSPSchemaText,
+			Function: e.variadic_overload1,
+		},
+		{
+			Name:     "memory_variadic_overload",
+			Schema:   externalSPSchemaText,
+			Function: e.variadic_overload2,
 		},
 	}, nil
 }
@@ -142,4 +163,28 @@ func (e ExternalStoredProcedureDatabase) inout_bool_byte(ctx *sql.Context, a boo
 
 func (e ExternalStoredProcedureDatabase) error_table_not_found(ctx *sql.Context) (sql.RowIter, error) {
 	return nil, sql.ErrTableNotFound.New("non_existent_table")
+}
+
+func (e ExternalStoredProcedureDatabase) variadic_add(ctx *sql.Context, vals ...int) (sql.RowIter, error) {
+	sum := int64(0)
+	for _, val := range vals {
+		sum += int64(val)
+	}
+	return sql.RowsToRowIter(sql.Row{sum}), nil
+}
+
+func (e ExternalStoredProcedureDatabase) variadic_byte_slice(ctx *sql.Context, vals ...[]byte) (sql.RowIter, error) {
+	sb := strings.Builder{}
+	for _, val := range vals {
+		sb.Write(val)
+	}
+	return sql.RowsToRowIter(sql.Row{sb.String()}), nil
+}
+
+func (e ExternalStoredProcedureDatabase) variadic_overload1(ctx *sql.Context, a string, b string) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.Row{fmt.Sprintf("%s-%s", a, b)}), nil
+}
+
+func (e ExternalStoredProcedureDatabase) variadic_overload2(ctx *sql.Context, a string, b string, vals ...uint8) (sql.RowIter, error) {
+	return sql.RowsToRowIter(sql.Row{fmt.Sprintf("%s,%s,%v", a, b, vals)}), nil
 }
