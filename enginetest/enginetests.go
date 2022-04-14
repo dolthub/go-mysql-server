@@ -72,6 +72,20 @@ func TestSpatialQueries(t *testing.T, harness Harness) {
 	for _, tt := range SpatialQueryTests {
 		TestQuery(t, harness, engine, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings)
 	}
+
+	t.Run("create table with NULL default values for geometry types", func(t *testing.T) {
+		ctx := NewContext(harness)
+
+		TestQuery(t, harness, engine, "CREATE TABLE null_default (pk int NOT NULL PRIMARY KEY, v1 geometry DEFAULT NULL, v2 linestring DEFAULT NULL, v3 point DEFAULT NULL, v4 polygon DEFAULT NULL)",
+			[]sql.Row{}, nil, nil)
+		db, err := engine.Analyzer.Catalog.Database(ctx, "mydb")
+		require.NoError(t, err)
+
+		_, ok, err := db.GetTableInsensitive(ctx, "null_default")
+		require.NoError(t, err)
+		require.True(t, ok)
+	})
+
 }
 
 // Tests join queries against a provided harness.

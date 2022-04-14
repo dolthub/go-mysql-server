@@ -63,6 +63,9 @@ func (t GeometryType) Compare(a any, b any) (int, error) {
 
 // Convert implements Type interface.
 func (t GeometryType) Convert(v interface{}) (interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
 	// Must be a one of the Spatial Types
 	switch this := v.(type) {
 	case Point:
